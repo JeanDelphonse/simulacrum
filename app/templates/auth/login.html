@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-sub">Sign in to your Simulacrum account</p>
+    <form class="auth-form" id="loginForm">
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+        <a href="{{ url_for('pages.forgot_password_page') }}" class="form-hint-link">Forgot password?</a>
+      </div>
+      <div id="loginError" class="form-error hidden"></div>
+      <button type="submit" class="btn btn-primary btn-full">Sign in</button>
+    </form>
+    <p class="auth-footer">Don't have an account? <a href="{{ url_for('pages.register_page') }}">Get started free</a></p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  const errEl = document.getElementById('loginError');
+  errEl.classList.add('hidden');
+  try {
+    const res = await fetch(ROOT + '/api/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('sim_token', data.token);
+      window.location.href = '{{ url_for("pages.dashboard") }}';
+    } else {
+      errEl.textContent = data.error || 'Login failed';
+      errEl.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Sign in';
+    }
+  } catch (err) {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+});
+</script>
+{% endblock %}

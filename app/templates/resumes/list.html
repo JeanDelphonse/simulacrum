@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}My Sources{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <h1>Career Sources</h1>
+    <p>Upload your resume or connect LinkedIn to extract your Expertise Zones</p>
+  </div>
+
+  <div class="source-upload-grid">
+    <div class="upload-card" id="uploadCard">
+      <div class="upload-icon">📄</div>
+      <h3>Upload Resume</h3>
+      <p>PDF or DOCX, up to 5MB</p>
+      <form id="uploadForm" enctype="multipart/form-data">
+        <div class="file-drop-zone" id="dropZone">
+          <input type="file" id="resumeFile" name="file" accept=".pdf,.docx" required>
+          <span>Drop file here or <label for="resumeFile" class="file-label">browse</label></span>
+        </div>
+        <input type="text" name="label" placeholder="Label (e.g. 'Main Resume 2026')" class="input-text" required>
+        <div id="uploadError" class="form-error hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full">Upload &amp; Parse</button>
+      </form>
+    </div>
+
+    <div class="upload-card">
+      <div class="upload-icon">💼</div>
+      <h3>Import from LinkedIn</h3>
+      <p>Crawl your public profile automatically</p>
+      <button class="btn btn-primary btn-full" onclick="startLinkedIn()">Connect LinkedIn →</button>
+    </div>
+  </div>
+
+  {% if resumes %}
+  <h2 class="section-title">Uploaded Sources</h2>
+  <div class="source-list">
+    {% for r in resumes %}
+    <div class="source-item">
+      <div class="source-icon">{{ '💼' if r.source == 'linkedin' else '📄' }}</div>
+      <div class="source-info">
+        <span class="source-label">{{ r.label }}</span>
+        <span class="source-meta">{{ r.source.title() }} · {{ r.file_type or 'Profile' }} · {{ r.created_at.strftime('%b %d, %Y') }}</span>
+      </div>
+      <div class="source-actions">
+        <a href="{{ url_for('pages.resume_detail', resume_id=r.id) }}" class="btn btn-ghost btn-sm">Open</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function startLinkedIn() {
+  const res = await fetch(ROOT + '/api/resumes/linkedin');
+  const data = await res.json();
+  if (data.auth_url) window.location.href = data.auth_url;
+}
+
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = 'Parsing…';
+  const errEl = document.getElementById('uploadError');
+  errEl.classList.add('hidden');
+  const fd = new FormData(e.target);
+  try {
+    const res = await fetch(ROOT + '/api/resumes/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (res.ok) {
+      window.location.href = ROOT + '/resumes/' + data.id;
+    } else {
+      errEl.textContent = data.error || 'Upload failed';
+      errEl.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Upload & Parse';
+    }
+  } catch (err) {
+    errEl.textContent = 'Upload failed. Please try again.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Upload & Parse';
+  }
+});
+</script>
+{% endblock %}

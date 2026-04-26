@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Profile not yet published — Simulacrum</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    body { background: #f9fafb; color: #111827; }
+    .unpub-wrap { max-width: 480px; margin: 8rem auto; text-align: center; padding: 0 1rem; }
+    .unpub-wrap h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: .5rem; }
+    .unpub-wrap p { font-size: .9rem; color: #6b7280; }
+  </style>
+</head>
+<body>
+<div class="unpub-wrap">
+  <h1>This profile is not yet published</h1>
+  <p>The person at <strong>/u/{{ username }}</strong> hasn't published their profile yet.</p>
+  <p style="margin-top:1.5rem"><a href="/" style="color:#0e7490">Learn about Simulacrum →</a></p>
+</div>
+</body>
+</html>

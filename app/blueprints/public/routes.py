@@ -1,0 +1,158 @@
+import hashlib
+import os
+from datetime import datetime, timedelta
+
+from flask import request, jsonify, render_template, current_app, send_from_directory
+from flask_login import current_user
+
+from app.blueprints.public import public_bp
+from app.extensions import db
+from app.models.profile import UserProfile, SimulationVisibility, ProfileInquiry
+from app.models.user import User
+from app.models.simulation import Simulation
+from utils.id_gen import generate_id
+
+_SUBJECTS = (
+    'Consulting inquiry',
+    'Workshop inquiry',
+    'Speaking inquiry',
+    'General inquiry',
+    'Other',
+)
+
+
+@public_bp.route('/avatars/<path:filename>')
+def serve_avatar(filename):
+    upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+    return send_from_directory(upload_folder, filename)
+
+
+@public_bp.route('/u/<username>')
+def profile_page(username):
+    profile = UserProfile.query.filter_by(username=username.lower()).first()
+
+    if not profile:
+        return render_template('public/profile_unpublished.html', username=username), 200
+
+    user = User.query.get(profile.user_id)
+    if not user or user.deleted_at:
+        return render_template('public/profile_unpublished.html', username=username), 200
+
+    if not profile.is_published:
+        return render_template('public/profile_unpublished.html', username=username), 200
+
+    vis_records = SimulationVisibility.query.filter_by(
+        user_id=profile.user_id, is_public=True,
+    ).order_by(SimulationVisibility.display_order.asc()).all()
+
+    zone_cards = []
+    for vis in vis_records:
+        sim = Simulation.query.get(vis.simulation_id)
+        if sim:
+            zone_cards.append({'vis': vis, 'sim': sim})
+
+    booking_url = profile.effective_booking_url()
+
+    is_owner = current_user.is_authenticated and current_user.id == profile.user_id
+
+    bio_sections = _parse_bio(profile.bio) if profile.bio else None
+
+    return render_template(
+        'public/profile.html',
+        profile=profile,
+        user=user,
+        zone_cards=zone_cards,
+        booking_url=booking_url,
+        is_owner=is_owner,
+        bio_sections=bio_sections,
+        subjects=_SUBJECTS,
+    )
+
+
+@public_bp.route('/u/<username>/contact', methods=['POST'])
+def contact_form(username):
+    profile = UserProfile.query.filter_by(username=username.lower()).first()
+    if not profile or not profile.is_published or not profile.show_contact_form:
+        return jsonify({'error': 'Not found'}), 404
+
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+    ip_hash = hashlib.sha256(ip.encode()).hexdigest()
+
+    cutoff = datetime.utcnow() - timedelta(hours=1)
+    recent = ProfileInquiry.query.filter(
+        ProfileInquiry.ip_hash == ip_hash,
+        ProfileInquiry.profile_user_id == profile.user_id,
+        ProfileInquiry.created_at >= cutoff,
+    ).count()
+    if recent >= 3:
+        return jsonify({'error': 'Too many submissions. Please try again later.'}), 429
+
+    data = request.get_json(force=True, silent=True) or {}
+    visitor_name = (data.get('name') or '').strip()[:100]
+    visitor_email = (data.get('email') or '').strip()[:255]
+    subject = (data.get('subject') or 'General inquiry').strip()[:100]
+    message = (data.get('message') or '').strip()[:1000]
+
+    if not visitor_name or not visitor_email or '@' not in visitor_email or not message:
+        return jsonify({'error': 'Name, email, and message are required'}), 400
+
+    if subject not in _SUBJECTS:
+        subject = 'General inquiry'
+
+    inquiry = ProfileInquiry(
+        id=generate_id(),
+        profile_user_id=profile.user_id,
+        visitor_name=visitor_name,
+        visitor_email=visitor_email,
+        subject=subject,
+        message=message,
+        ip_hash=ip_hash,
+    )
+    db.session.add(inquiry)
+    db.session.commit()
+
+    user = User.query.get(profile.user_id)
+    if user:
+        try:
+            from app.services.email_service import send_profile_inquiry_email
+            send_profile_inquiry_email(
+                user.email, profile.display_name or user.full_name,
+                visitor_name, visitor_email, subject, message,
+            )
+        except Exception:
+            pass
+
+    return jsonify({
+        'ok': True,
+        'message': f'Your message has been sent. {profile.display_name or "They"} will be in touch soon.',
+    })
+
+
+def _parse_bio(bio_text: str) -> list:
+    """Split Wikipedia-style bio into sections for rendering."""
+    import re
+    sections = []
+    current_title = None
+    current_paras = []
+
+    for line in bio_text.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        m = re.match(r'^\*\*(.+?)\*\*(.*)$', line)
+        if m:
+            if current_paras or current_title:
+                sections.append({'title': current_title, 'text': ' '.join(current_paras)})
+            current_title = m.group(1).strip()
+            rest = m.group(2).strip()
+            current_paras = [rest] if rest else []
+        else:
+            current_paras.append(line)
+
+    if current_paras or current_title:
+        sections.append({'title': current_title, 'text': ' '.join(current_paras)})
+
+    if not sections:
+        sections.append({'title': None, 'text': bio_text.strip()})
+
+    return sections

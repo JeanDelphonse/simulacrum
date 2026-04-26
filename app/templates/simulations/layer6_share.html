@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Orchestrator Diagram — {{ sim.name }}{% endblock %}
+
+{% block head %}
+<style>
+.share-banner {
+  background: #f0fdf4; border-bottom: 1px solid #bbf7d0;
+  padding: 0.6rem 2rem; font-size: 0.82rem; color: #166534;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.share-banner strong { font-weight: 700; }
+.share-meta { color: #4ade80; }
+.share-page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.25rem 2rem; border-bottom: 1px solid var(--border);
+}
+.share-page-header h1 { font-size: 1.2rem; font-weight: 700; margin: 0; }
+.share-page-header .sim-name { color: var(--muted); font-size: 0.88rem; margin-top: 0.2rem; }
+.share-body { padding: 2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="share-banner">
+  <span>👁</span>
+  <span><strong>Read-only view</strong> — shared by {{ sim.name }}. Controls are disabled.</span>
+  <span class="share-meta" style="margin-left:auto">Expires {{ share.expires_at[:10] }}</span>
+</div>
+
+<div class="share-page-header">
+  <div>
+    <h1>Growth Command Center — Orchestrator Diagram</h1>
+    <div class="sim-name">{{ sim.name }}</div>
+  </div>
+</div>
+
+<div class="share-body">
+  {% include 'simulations/_orchestrator_diagram.html' %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"
+        integrity="sha512-M7nHCiNUOwFt6Us3r8alutZLm9qMt4s9951uo8jqO4UwJ1hziseL6O3ndFyigx6+LREfZqnhHxYjKRJ8ZQ69A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="{{ url_for('static', filename='js/orchestrator_diagram.js') }}"></script>
+<script>
+const SIM_ID  = '{{ sim.id }}';
+const basePath = '';
+const API     = `/api/simulations/${SIM_ID}/layer6`;
+window.__diagramCycle = {{ diagram_cycle | tojson if diagram_cycle else 'null' }};
+window.__allCycles    = {{ all_cycles | tojson }};
+window.__readOnly     = true;
+if (window.initDiagram) {
+  initDiagram(window.__diagramCycle, window.__allCycles);
+}
+</script>
+{% endblock %}

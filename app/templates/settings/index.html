@@ -1,0 +1,716 @@
+{% extends 'base.html' %}
+{% block title %}Settings{% endblock %}
+
+{% block head %}
+<style>
+.settings-layout { display: flex; gap: 2rem; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+.settings-nav { width: 200px; flex-shrink: 0; }
+.settings-nav-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.35); margin-bottom: .75rem; }
+.settings-nav-link { display: block; padding: .45rem .75rem; border-radius: 6px; font-size: .875rem; color: rgba(255,255,255,.6); text-decoration: none; margin-bottom: .2rem; transition: background .15s, color .15s; }
+.settings-nav-link:hover { background: rgba(255,255,255,.06); color: #e8eaf0; }
+.settings-nav-link.active { background: rgba(245,200,66,.12); color: #f5c842; font-weight: 600; }
+.settings-panel { flex: 1; min-width: 0; }
+.settings-section { margin-bottom: 2rem; }
+.settings-section-title { font-size: 1rem; font-weight: 700; color: #e8eaf0; margin-bottom: 1.25rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.settings-row { display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1rem; }
+.settings-label { font-size: .8rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; }
+.settings-hint { font-size: .78rem; color: rgba(255,255,255,.35); margin-top: .2rem; }
+.settings-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,.06); }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: .6rem 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+.toggle-row:last-child { border-bottom: none; }
+.toggle-label { font-size: .875rem; color: #e8eaf0; }
+.toggle-desc { font-size: .78rem; color: rgba(255,255,255,.4); }
+.toggle-switch { position: relative; width: 40px; height: 22px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: rgba(255,255,255,.12); border-radius: 22px; cursor: pointer; transition: background .2s; }
+.toggle-slider:before { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform .2s; }
+.toggle-switch input:checked + .toggle-slider { background: #f5c842; }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
+.bio-panel { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 1rem; }
+.bio-preview { font-size: .875rem; line-height: 1.7; color: rgba(255,255,255,.8); white-space: pre-wrap; }
+.bio-section-title { font-weight: 700; color: #e8eaf0; }
+.bio-meta { font-size: .75rem; color: rgba(255,255,255,.35); margin-top: .5rem; }
+.bio-actions-row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+.username-check { font-size: .78rem; margin-top: .25rem; }
+.username-check.ok { color: #86efac; }
+.username-check.err { color: #fca5a5; }
+.avatar-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,.12); }
+.avatar-initials { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg,#1a4a6b,#0e7490); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: #fff; }
+.avatar-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.vis-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; margin-bottom: .75rem; overflow: hidden; }
+.vis-card-header { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; cursor: pointer; }
+.vis-drag-handle { color: rgba(255,255,255,.25); cursor: grab; font-size: 1.1rem; }
+.vis-sim-name { font-weight: 600; font-size: .9rem; flex: 1; }
+.vis-zone { font-size: .78rem; color: rgba(255,255,255,.45); }
+.vis-card-body { padding: 0 1rem 1rem; border-top: 1px solid rgba(255,255,255,.06); display: none; }
+.vis-card-body.open { display: block; padding-top: .75rem; }
+.vis-preview-card { background: #fff; border-radius: 10px; padding: 1rem; margin-top: .75rem; }
+.vis-preview-zone { font-size: .85rem; font-weight: 700; color: #111827; }
+.vis-preview-tagline { font-size: .8rem; color: #374151; margin-top: .25rem; }
+.vis-preview-services { margin-top: .5rem; display: flex; flex-wrap: wrap; gap: .3rem; }
+.vis-preview-pill { font-size: .72rem; background: #f3f4f6; color: #374151; border-radius: 20px; padding: .15rem .5rem; }
+.avail-badge { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
+.avail-available { background: rgba(34,197,94,.15); color: #86efac; }
+.avail-limited { background: rgba(245,200,66,.15); color: #f5c842; }
+.avail-unavailable { background: rgba(255,255,255,.08); color: rgba(255,255,255,.4); }
+.session-list { display: flex; flex-direction: column; gap: .5rem; }
+.session-row { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: .75rem 1rem; display: flex; align-items: center; gap: 1rem; }
+.session-device { font-weight: 600; font-size: .875rem; flex: 1; }
+.session-meta { font-size: .75rem; color: rgba(255,255,255,.4); }
+.session-current-badge { font-size: .68rem; background: rgba(245,200,66,.15); color: #f5c842; border-radius: 20px; padding: .1rem .45rem; font-weight: 700; }
+.delete-zone { border: 1px solid rgba(239,68,68,.25); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+.delete-zone p { font-size: .875rem; color: rgba(255,255,255,.6); margin-bottom: .75rem; }
+.publish-bar { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1.5rem; }
+.publish-status { font-size: .875rem; }
+.publish-status.live { color: #86efac; font-weight: 700; }
+.publish-status.draft { color: rgba(255,255,255,.45); }
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #1a2235; border: 1px solid rgba(245,200,66,.3); color: #f5c842; padding: .65rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.toast.show { opacity: 1; }
+@media (max-width: 640px) { .settings-layout { flex-direction: column; } .settings-nav { width: 100%; display: flex; gap: .5rem; overflow-x: auto; } .settings-nav-title { display: none; } .settings-nav-link { white-space: nowrap; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+  <nav class="settings-nav">
+    <div class="settings-nav-title">Settings</div>
+    <a href="/settings/profile" class="settings-nav-link {% if active_tab == 'profile' %}active{% endif %}">Profile &amp; Bio</a>
+    <a href="/settings/visibility" class="settings-nav-link {% if active_tab == 'visibility' %}active{% endif %}">Simulation Visibility</a>
+    <a href="/settings/security" class="settings-nav-link {% if active_tab == 'security' %}active{% endif %}">Security</a>
+  </nav>
+
+  <div class="settings-panel">
+
+    {# ── Profile & Bio tab ──────────────────────────────────────────── #}
+    {% if active_tab == 'profile' %}
+    <div id="profileTab">
+      <div class="settings-section">
+        <div class="settings-section-title">Public Profile</div>
+
+        <div class="avatar-row">
+          <div id="avatarDisplay">
+            {% if profile and profile.avatar_path %}
+            <img class="avatar-preview" src="/avatars/{{ profile.avatar_path }}" alt="Avatar">
+            {% else %}
+            <div class="avatar-initials" id="avatarInitials">{{ (profile.display_name or current_user.full_name or '?')[:2].upper() }}</div>
+            {% endif %}
+          </div>
+          <div>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('avatarInput').click()">Upload photo</button>
+            <input type="file" id="avatarInput" accept="image/jpeg,image/png" style="display:none" onchange="uploadAvatar(this)">
+            <div class="settings-hint">JPEG or PNG, max 2 MB. Circular 120×120 px.</div>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <label class="settings-label">Display name</label>
+          <input type="text" class="input-text" id="f-display_name" maxlength="100"
+                 value="{{ profile.display_name or current_user.full_name or '' }}" placeholder="Your full name">
+        </div>
+
+        <div class="settings-row">
+          <label class="settings-label">Username</label>
+          <input type="text" class="input-text" id="f-username"
+                 value="{{ profile.username or '' }}" placeholder="your-username"
+                 oninput="checkUsername(this.value)">
+          <div class="username-check" id="usernameCheck"></div>
+          <div class="settings-hint">simulacrum.io/u/<strong id="usernamePreview">{{ profile.username or '' }}</strong></div>
+        </div>
+
+        <div class="settings-row">
+          <label class="settings-label">Tagline</label>
+          <input type="text" class="input-text" id="f-tagline" maxlength="200"
+                 value="{{ profile.tagline or '' }}" placeholder="Short professional tagline">
+        </div>
+
+        <div class="settings-row">
+          <label class="settings-label">Location</label>
+          <input type="text" class="input-text" id="f-location" maxlength="100"
+                 value="{{ profile.location or '' }}" placeholder="City, Country">
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Social Links</div>
+        <div class="settings-row">
+          <label class="settings-label">LinkedIn URL</label>
+          <input type="url" class="input-text" id="f-linkedin_url" value="{{ profile.linkedin_url or '' }}" placeholder="https://linkedin.com/in/your-profile">
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Personal website</label>
+          <input type="url" class="input-text" id="f-website_url" value="{{ profile.website_url or '' }}" placeholder="https://yourwebsite.com">
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Twitter / X</label>
+          <input type="url" class="input-text" id="f-twitter_url" value="{{ profile.twitter_url or '' }}" placeholder="https://x.com/yourhandle">
+        </div>
+        <div style="display:flex;gap:.75rem">
+          <div class="settings-row" style="flex:1">
+            <label class="settings-label">Other link URL</label>
+            <input type="url" class="input-text" id="f-other_link_url" value="{{ profile.other_link_url or '' }}" placeholder="https://...">
+          </div>
+          <div class="settings-row" style="width:160px">
+            <label class="settings-label">Label</label>
+            <input type="text" class="input-text" id="f-other_link_label" maxlength="30" value="{{ profile.other_link_label or '' }}" placeholder="e.g. GitHub">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Booking & Contact</div>
+        <div class="settings-row">
+          <label class="settings-label">Booking URL</label>
+          <input type="url" class="input-text" id="f-booking_url" value="{{ profile.booking_url or '' }}" placeholder="https://cal.com/yourname">
+          <div class="settings-hint">Overrides the Cal.com URL from your Layer 1 agent artifact if set.</div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Booking button label</label>
+          <input type="text" class="input-text" id="f-booking_btn_label" maxlength="50"
+                 value="{{ profile.booking_btn_label or 'Book a Call' }}" placeholder="Book a Call">
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Show contact form</div><div class="toggle-desc">Display the inquiry form on your public profile</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="f-show_contact_form" {% if profile.show_contact_form %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Show booking button</div><div class="toggle-desc">Display the booking link button on your public profile</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="f-show_booking_btn" {% if profile.show_booking_btn %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Prevent search engine indexing</div><div class="toggle-desc">Adds a noindex tag to your public profile page</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="f-noindex" {% if profile.noindex %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Professional Bio</div>
+        {% if profile and profile.bio %}
+        <div class="bio-panel">
+          <div class="bio-preview" id="bioPreview">{{ profile.bio }}</div>
+          <div class="bio-meta">
+            {% if profile.bio_generated_at %}Generated {{ profile.bio_generated_at.strftime('%b %d, %Y') }}{% endif %}
+            {% if profile.bio_edited %} · Manually edited{% endif %}
+          </div>
+          <div class="bio-actions-row">
+            <button class="btn btn-ghost btn-sm" onclick="toggleBioEdit()">Edit</button>
+            <button class="btn btn-ghost btn-sm" id="regenBtn" onclick="regenerateBio()">Regenerate{% if profile.bio_edited %} (replaces your edits){% endif %}</button>
+            <a href="/u/{{ profile.username }}" target="_blank" class="btn btn-ghost btn-sm">Preview profile ↗</a>
+          </div>
+          <textarea class="input-text" id="bioEditor" rows="12" style="display:none;margin-top:.75rem">{{ profile.bio }}</textarea>
+        </div>
+        {% else %}
+        <div class="bio-panel">
+          <p style="font-size:.875rem;color:rgba(255,255,255,.5);margin:0 0 .75rem">
+            {% if has_source_data %}
+            Generate your Wikipedia-style professional bio from your resume and Expertise Zones.
+            {% else %}
+            Upload a resume or connect LinkedIn, then complete a Simulation to generate your bio.
+            {% endif %}
+          </p>
+          <button class="btn btn-primary btn-sm" id="regenBtn" {% if not has_source_data %}disabled title="Upload a resume first"{% endif %} onclick="regenerateBio()">Generate bio</button>
+          <textarea class="input-text" id="bioEditor" rows="12" style="display:none;margin-top:.75rem"></textarea>
+        </div>
+        {% endif %}
+        <div id="bioGenErr" class="form-error hidden" style="margin-top:.5rem"></div>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn btn-primary" onclick="saveProfile()">Save Profile</button>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Simulation Visibility tab ──────────────────────────────────── #}
+    {% if active_tab == 'visibility' %}
+    <div id="visibilityTab">
+      <div class="publish-bar" id="publishBar">
+        <div>
+          <div class="publish-status {{ 'live' if profile.is_published else 'draft' }}" id="publishStatus">
+            {{ '● Profile is Published' if profile.is_published else '○ Profile is Private' }}
+          </div>
+          <div class="settings-hint">
+            {% if profile.is_published %}Your public page is live at
+              <a href="/u/{{ profile.username }}" target="_blank" style="color:#f5c842">/u/{{ profile.username }}</a>
+            {% else %}Your profile URL is not yet publicly visible{% endif %}
+          </div>
+        </div>
+        <button class="btn {% if profile.is_published %}btn-ghost{% else %}btn-primary{% endif %} btn-sm" id="publishBtn" onclick="togglePublish()">
+          {{ 'Set to Private' if profile.is_published else 'Publish Profile' }}
+        </button>
+      </div>
+
+      <div id="visCards">
+        <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Security tab ──────────────────────────────────────────────── #}
+    {% if active_tab == 'security' %}
+    <div id="securityTab">
+
+      <div class="settings-section">
+        <div class="settings-section-title">Change Email</div>
+        <div class="settings-row">
+          <label class="settings-label">New email address</label>
+          <input type="email" class="input-text" id="sec-new-email" placeholder="new@email.com">
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Current password</label>
+          <input type="password" class="input-text" id="sec-email-pw" placeholder="Your current password">
+        </div>
+        <div id="emailChangeErr" class="form-error hidden"></div>
+        <div style="margin-top:.75rem">
+          <button class="btn btn-ghost btn-sm" onclick="initiateEmailChange()">Send verification email</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Change Password</div>
+        <div class="settings-row">
+          <label class="settings-label">Current password</label>
+          <input type="password" class="input-text" id="sec-cur-pw" placeholder="Current password">
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">New password</label>
+          <input type="password" class="input-text" id="sec-new-pw" placeholder="Min 8 chars, uppercase, number, special char"
+                 oninput="updatePwStrength(this.value)">
+          <div id="pwStrength" style="font-size:.75rem;margin-top:.25rem;color:rgba(255,255,255,.4)"></div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Confirm new password</label>
+          <input type="password" class="input-text" id="sec-confirm-pw" placeholder="Repeat new password">
+        </div>
+        <div id="pwChangeErr" class="form-error hidden"></div>
+        <div style="margin-top:.75rem">
+          <button class="btn btn-ghost btn-sm" onclick="changePassword()">Update password</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Active Sessions</div>
+        <div style="margin-bottom:.75rem">
+          <button class="btn btn-ghost btn-sm" onclick="revokeAllSessions()">Revoke all other sessions</button>
+        </div>
+        <div class="session-list" id="sessionList"><div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title" style="color:#fca5a5">Delete Account</div>
+        <div class="delete-zone">
+          <p>This will schedule your account for permanent deletion after 30 days. All simulations, artifacts, and profile data will be removed. You can cancel within 30 days using the link in your confirmation email.</p>
+          <button class="btn btn-ghost btn-sm" style="border-color:rgba(239,68,68,.4);color:#fca5a5" onclick="initiateDeleteAccount()">Delete my account</button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ROOT2 = window.ROOT || '';
+
+function toast(msg) {
+  const el = document.getElementById('toastEl');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── Profile & Bio ──────────────────────────────────────────────────────────
+let _usernameTimer;
+function checkUsername(val) {
+  const el = document.getElementById('usernameCheck');
+  const preview = document.getElementById('usernamePreview');
+  if (preview) preview.textContent = val;
+  clearTimeout(_usernameTimer);
+  if (!val) { el.textContent = ''; return; }
+  _usernameTimer = setTimeout(async () => {
+    const res = await fetch(ROOT2 + `/api/profile/username-check?username=${encodeURIComponent(val)}`);
+    const data = await res.json();
+    el.textContent = data.available ? '✓ Available' : (data.error || '✗ Not available');
+    el.className = 'username-check ' + (data.available ? 'ok' : 'err');
+  }, 400);
+}
+
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('avatar', file);
+  const res = await fetch(ROOT2 + '/api/settings/profile/avatar', { method: 'POST', body: form });
+  if (res.ok) {
+    toast('Avatar updated');
+    const data = await res.json();
+    const display = document.getElementById('avatarDisplay');
+    display.innerHTML = `<img class="avatar-preview" src="/avatars/${data.avatar_path}?t=${Date.now()}" alt="Avatar">`;
+  } else {
+    const data = await res.json();
+    toast(data.error || 'Upload failed');
+  }
+}
+
+async function saveProfile() {
+  const boolVal = id => document.getElementById(id)?.checked;
+  const strVal = id => (document.getElementById(id)?.value || '').trim();
+
+  const body = {
+    display_name:      strVal('f-display_name'),
+    username:          strVal('f-username'),
+    tagline:           strVal('f-tagline'),
+    location:          strVal('f-location'),
+    linkedin_url:      strVal('f-linkedin_url'),
+    website_url:       strVal('f-website_url'),
+    twitter_url:       strVal('f-twitter_url'),
+    other_link_url:    strVal('f-other_link_url'),
+    other_link_label:  strVal('f-other_link_label'),
+    booking_url:       strVal('f-booking_url'),
+    booking_btn_label: strVal('f-booking_btn_label'),
+    show_contact_form: boolVal('f-show_contact_form'),
+    show_booking_btn:  boolVal('f-show_booking_btn'),
+    noindex:           boolVal('f-noindex'),
+  };
+
+  const bioEditorEl = document.getElementById('bioEditor');
+  if (bioEditorEl && bioEditorEl.style.display !== 'none') {
+    body.bio = bioEditorEl.value.trim();
+  }
+
+  const res = await fetch(ROOT2 + '/api/settings/profile', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    toast('Profile saved');
+    const preview = document.getElementById('usernamePreview');
+    if (preview && data.username) preview.textContent = data.username;
+  } else {
+    toast(data.error || 'Save failed');
+  }
+}
+
+function toggleBioEdit() {
+  const preview = document.getElementById('bioPreview');
+  const editor  = document.getElementById('bioEditor');
+  if (!editor) return;
+  const showing = editor.style.display !== 'none';
+  editor.style.display = showing ? 'none' : 'block';
+  if (preview) preview.style.display = showing ? '' : 'none';
+}
+
+let _regenCooldown = false;
+async function regenerateBio() {
+  if (_regenCooldown) return;
+  const btn = document.getElementById('regenBtn');
+  const errEl = document.getElementById('bioGenErr');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  const res = await fetch(ROOT2 + '/api/settings/profile/bio/generate', { method: 'POST' });
+  const data = await res.json();
+  btn.textContent = 'Regenerate';
+
+  if (!res.ok) {
+    errEl.textContent = data.error || 'Generation failed';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    return;
+  }
+
+  const editor = document.getElementById('bioEditor');
+  const preview = document.getElementById('bioPreview');
+  if (editor) { editor.value = data.bio; editor.style.display = 'block'; }
+  if (preview) preview.style.display = 'none';
+  toast('Bio generated — review and click Save Profile to keep it');
+
+  _regenCooldown = true;
+  setTimeout(() => { _regenCooldown = false; btn.disabled = false; }, 60000);
+}
+
+// ── Visibility ─────────────────────────────────────────────────────────────
+{% if active_tab == 'visibility' %}
+(async () => {
+  const res = await fetch(ROOT2 + '/api/settings/visibility');
+  if (!res.ok) return;
+  const data = await res.json();
+  renderVisCards(data.simulations);
+})();
+
+function renderVisCards(sims) {
+  const container = document.getElementById('visCards');
+  if (!sims.length) {
+    container.innerHTML = '<p style="font-size:.875rem;color:rgba(255,255,255,.4)">No completed Simulations yet. <a href="/dashboard" style="color:#f5c842">Create your first Simulation →</a></p>';
+    return;
+  }
+  container.innerHTML = sims.map(s => visCardHtml(s)).join('');
+}
+
+function visCardHtml(s) {
+  const avail = s.availability !== 'hidden' ? s.availability : '';
+  const badge = avail ? `<span class="avail-badge avail-${avail}">${avail}</span>` : '';
+  const pubBadge = s.is_public
+    ? '<span class="status-badge status-complete" style="font-size:.68rem">Public</span>'
+    : '<span class="status-badge status-pending" style="font-size:.68rem">Private</span>';
+  return `
+  <div class="vis-card" id="vc-${s.simulation_id}">
+    <div class="vis-card-header" onclick="toggleVisCard('${s.simulation_id}')">
+      <span class="vis-drag-handle">⠿</span>
+      <div style="flex:1">
+        <div class="vis-sim-name">${esc(s.simulation_name)}</div>
+        <div class="vis-zone">${esc(s.expertise_zone || '')}</div>
+      </div>
+      ${pubBadge} ${badge}
+      <span style="color:rgba(255,255,255,.3)">▾</span>
+    </div>
+    <div class="vis-card-body" id="vcb-${s.simulation_id}">
+      <div class="toggle-row">
+        <div><div class="toggle-label">Show on public profile</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="vis-pub-${s.simulation_id}" ${s.is_public ? 'checked' : ''} onchange="saveVis('${s.simulation_id}')"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row" style="margin-top:.75rem">
+        <label class="settings-label">Zone tagline</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" class="input-text" id="vis-tag-${s.simulation_id}" maxlength="200"
+                 value="${esc(s.zone_tagline || '')}" placeholder="What you do and who you help in this area"
+                 style="flex:1">
+          <button class="btn btn-ghost btn-sm" onclick="aiTagline('${s.simulation_id}')">AI Draft</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">Services offered <span style="font-weight:400;text-transform:none;letter-spacing:0">(up to 6)</span></label>
+        <div id="vis-svc-${s.simulation_id}" style="display:flex;flex-direction:column;gap:.35rem"></div>
+        <div style="display:flex;gap:.5rem;margin-top:.4rem">
+          <button class="btn btn-ghost btn-sm" onclick="addServiceField('${s.simulation_id}')">+ Add service</button>
+          <button class="btn btn-ghost btn-sm" onclick="aiServices('${s.simulation_id}')">AI Suggest</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">Availability</label>
+        <select class="input-select" id="vis-avail-${s.simulation_id}">
+          <option value="hidden" ${s.availability==='hidden'?'selected':''}>— Not shown</option>
+          <option value="available" ${s.availability==='available'?'selected':''}>Available for new clients</option>
+          <option value="limited" ${s.availability==='limited'?'selected':''}>Limited availability</option>
+          <option value="unavailable" ${s.availability==='unavailable'?'selected':''}>Not currently taking clients</option>
+        </select>
+      </div>
+      <div style="margin-top:.5rem">
+        <div class="settings-label" style="margin-bottom:.4rem">Live preview</div>
+        <div class="vis-preview-card" id="vis-preview-${s.simulation_id}">${visPreviewHtml(s)}</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:.75rem">
+        <button class="btn btn-primary btn-sm" onclick="saveVis('${s.simulation_id}')">Save</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleVisCard(simId) {
+  const body = document.getElementById('vcb-' + simId);
+  body.classList.toggle('open');
+  const s = _visState[simId];
+  if (s) renderServiceFields(simId, s.services || []);
+}
+
+const _visState = {};
+
+function visPreviewHtml(s) {
+  const tagline = document.getElementById('vis-tag-' + s.simulation_id)?.value || s.zone_tagline || '';
+  const svcEls = document.querySelectorAll(`#vis-svc-${s.simulation_id} input`);
+  const svcs = [...svcEls].map(el => el.value.trim()).filter(Boolean);
+  const pills = svcs.map(sv => `<span class="vis-preview-pill">${esc(sv)}</span>`).join('');
+  const avail = document.getElementById('vis-avail-' + s.simulation_id)?.value || s.availability || '';
+  const availHtml = avail && avail !== 'hidden'
+    ? `<span class="avail-badge avail-${avail}" style="color:#111;background:${avail==='available'?'#dcfce7':avail==='limited'?'#fef3c7':'#f3f4f6'};margin-top:.4rem;display:inline-block">${avail}</span>`
+    : '';
+  return `<div class="vis-preview-zone">${esc(s.expertise_zone || '')}</div>
+    <div class="vis-preview-tagline">${esc(tagline)}</div>
+    <div class="vis-preview-services">${pills}</div>${availHtml}`;
+}
+
+function renderServiceFields(simId, services) {
+  const container = document.getElementById('vis-svc-' + simId);
+  container.innerHTML = '';
+  (services || []).forEach((svc, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:.35rem';
+    row.innerHTML = `<input type="text" class="input-text" maxlength="60" value="${esc(svc)}" placeholder="e.g. Data pipeline architecture" oninput="updatePreview('${simId}')">
+      <button class="btn btn-ghost btn-sm" onclick="removeServiceField(this)">×</button>`;
+    container.appendChild(row);
+  });
+}
+
+function addServiceField(simId) {
+  const container = document.getElementById('vis-svc-' + simId);
+  if (container.querySelectorAll('input').length >= 6) { toast('Max 6 services'); return; }
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:.35rem';
+  row.innerHTML = `<input type="text" class="input-text" maxlength="60" placeholder="e.g. Data pipeline architecture" oninput="updatePreview('${simId}')">
+    <button class="btn btn-ghost btn-sm" onclick="removeServiceField(this)">×</button>`;
+  container.appendChild(row);
+}
+
+function removeServiceField(btn) { btn.parentElement.remove(); }
+
+function updatePreview(simId) {
+  const previewEl = document.getElementById('vis-preview-' + simId);
+  if (previewEl) previewEl.innerHTML = visPreviewHtml({simulation_id: simId, expertise_zone: previewEl.dataset.zone || ''});
+}
+
+async function aiTagline(simId) {
+  const res = await fetch(ROOT2 + `/api/settings/visibility/${simId}/ai-tagline`, { method: 'POST' });
+  const data = await res.json();
+  if (res.ok) {
+    const el = document.getElementById('vis-tag-' + simId);
+    if (el) el.value = data.tagline;
+    toast('AI tagline suggestion applied — edit or keep it, then Save');
+  } else {
+    toast(data.error || 'AI suggestion failed');
+  }
+}
+
+async function aiServices(simId) {
+  const res = await fetch(ROOT2 + `/api/settings/visibility/${simId}/ai-services`, { method: 'POST' });
+  const data = await res.json();
+  if (res.ok) {
+    renderServiceFields(simId, data.services || []);
+    toast('AI service suggestions loaded — edit or keep them, then Save');
+  } else {
+    toast(data.error || 'AI suggestion failed');
+  }
+}
+
+async function saveVis(simId) {
+  const svcEls = document.querySelectorAll(`#vis-svc-${simId} input`);
+  const services = [...svcEls].map(el => el.value.trim()).filter(Boolean);
+  const body = {
+    is_public:    document.getElementById('vis-pub-' + simId)?.checked,
+    zone_tagline: document.getElementById('vis-tag-' + simId)?.value?.trim(),
+    services,
+    availability: document.getElementById('vis-avail-' + simId)?.value,
+  };
+  const res = await fetch(ROOT2 + `/api/settings/visibility/${simId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  if (res.ok) {
+    toast('Profile updated — changes are live');
+  } else {
+    const data = await res.json();
+    toast(data.error || 'Save failed');
+  }
+}
+
+async function togglePublish() {
+  const res = await fetch(ROOT2 + '/api/settings/visibility/publish', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({}),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    const statusEl = document.getElementById('publishStatus');
+    const btn = document.getElementById('publishBtn');
+    if (data.is_published) {
+      statusEl.textContent = '● Profile is Published';
+      statusEl.className = 'publish-status live';
+      btn.textContent = 'Set to Private';
+      btn.className = 'btn btn-ghost btn-sm';
+    } else {
+      statusEl.textContent = '○ Profile is Private';
+      statusEl.className = 'publish-status draft';
+      btn.textContent = 'Publish Profile';
+      btn.className = 'btn btn-primary btn-sm';
+    }
+    toast(data.is_published ? 'Profile is now live' : 'Profile set to private');
+  }
+}
+{% endif %}
+
+// ── Security ───────────────────────────────────────────────────────────────
+{% if active_tab == 'security' %}
+(async () => {
+  const res = await fetch(ROOT2 + '/api/settings/security/sessions');
+  if (!res.ok) return;
+  const sessions = await res.json();
+  const container = document.getElementById('sessionList');
+  if (!sessions.length) { container.innerHTML = '<div style="font-size:.875rem;color:rgba(255,255,255,.4)">No active sessions found.</div>'; return; }
+  container.innerHTML = sessions.map(s => `
+    <div class="session-row">
+      <div>
+        <div class="session-device">${esc(s.device)} ${s.is_current ? '<span class="session-current-badge">This device</span>' : ''}</div>
+        <div class="session-meta">${esc(s.ip)} · Last active ${new Date(s.last_active).toLocaleString()}</div>
+      </div>
+      ${!s.is_current ? `<button class="btn btn-ghost btn-sm" onclick="revokeSession('${s.id}', this)">Revoke</button>` : ''}
+    </div>`).join('');
+})();
+
+async function revokeSession(id, btn) {
+  const res = await fetch(ROOT2 + `/api/settings/security/sessions/${id}`, { method: 'DELETE' });
+  if (res.ok) { btn.closest('.session-row').remove(); toast('Session revoked'); }
+}
+
+async function revokeAllSessions() {
+  if (!confirm('Revoke all other sessions?')) return;
+  const res = await fetch(ROOT2 + '/api/settings/security/sessions', { method: 'DELETE' });
+  if (res.ok) { toast('All other sessions revoked'); location.reload(); }
+}
+
+async function initiateEmailChange() {
+  const errEl = document.getElementById('emailChangeErr');
+  errEl.classList.add('hidden');
+  const body = { new_email: document.getElementById('sec-new-email').value, current_password: document.getElementById('sec-email-pw').value };
+  const res = await fetch(ROOT2 + '/api/settings/security/email', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (res.ok) { toast(data.message); } else { errEl.textContent = data.error; errEl.classList.remove('hidden'); }
+}
+
+function updatePwStrength(val) {
+  const el = document.getElementById('pwStrength');
+  let score = 0;
+  if (val.length >= 8) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/\d/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+  const colors = ['', '#fca5a5', '#f5c842', '#86efac', '#86efac'];
+  el.textContent = val ? `Strength: ${labels[score]}` : '';
+  el.style.color = colors[score] || 'rgba(255,255,255,.4)';
+}
+
+async function changePassword() {
+  const errEl = document.getElementById('pwChangeErr');
+  errEl.classList.add('hidden');
+  const body = {
+    current_password: document.getElementById('sec-cur-pw').value,
+    new_password:     document.getElementById('sec-new-pw').value,
+    confirm_password: document.getElementById('sec-confirm-pw').value,
+  };
+  const res = await fetch(ROOT2 + '/api/settings/security/password', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (res.ok) { toast('Password updated'); document.getElementById('sec-cur-pw').value=''; document.getElementById('sec-new-pw').value=''; document.getElementById('sec-confirm-pw').value=''; }
+  else { errEl.textContent = data.error; errEl.classList.remove('hidden'); }
+}
+
+async function initiateDeleteAccount() {
+  const email = prompt('Type your email address to confirm account deletion:');
+  if (!email) return;
+  const res = await fetch(ROOT2 + '/api/settings/security/delete-account', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({confirm_email: email}) });
+  const data = await res.json();
+  if (res.ok) { toast(data.message); setTimeout(() => window.location.href = '/', 2000); }
+  else { toast(data.error || 'Deletion failed'); }
+}
+{% endif %}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+{% endblock %}

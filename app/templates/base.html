@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Simulacrum{% endblock %} — AI Career Wealth Platform</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="{{ url_for('pages.index') }}" class="nav-logo">
+      <span class="logo-mark">S</span><span class="logo-text">Simulacrum</span>
+    </a>
+    {% if current_user.is_authenticated %}
+    <div class="nav-links">
+      <a href="{{ url_for('pages.dashboard') }}" class="nav-link">Dashboard</a>
+      <a href="{{ url_for('pages.resumes_view') }}" class="nav-link">Sources</a>
+      <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
+      {% if current_user.is_partner %}
+      <a href="{{ url_for('pages.partner_dashboard') }}" class="nav-link">Partner Dashboard</a>
+      {% else %}
+      <a href="{{ url_for('pages.partner_apply_page') }}" class="nav-link">Become a Partner</a>
+      {% endif %}
+      {% if current_user.is_admin %}
+      <a href="{{ url_for('pages.admin_view') }}" class="nav-link">Admin</a>
+      {% endif %}
+      <a href="{{ url_for('pages.settings_profile') }}" class="nav-link">Settings</a>
+      <span class="nav-user">{{ current_user.full_name }}</span>
+      <button class="btn btn-ghost" id="signOutBtn">Sign out</button>
+    </div>
+    {% else %}
+    <div class="nav-links">
+      <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
+      <a href="{{ url_for('pages.partner_apply_page') }}" class="nav-link">Become a Partner</a>
+      <a href="{{ url_for('pages.login_page') }}" class="nav-link">Sign in</a>
+    </div>
+    {% endif %}
+  </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<main class="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>© 2026 Simulacrum — Bay Area Experiences Ventures</span>
+    <span class="footer-tagline">Turn your resume into autonomous income</span>
+  </div>
+</footer>
+
+<script>
+window.ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+window.DEMO_VIDEO_URL = '{% if current_user.is_authenticated %}{{ url_for("static", filename="media/Simulacrum_Career_as_Asset.mp4") }}{% else %}{{ url_for("static", filename="media/Simulacrum_Revenue_Engine.mp4") }}{% endif %}';
+</script>
+{% block scripts %}{% endblock %}
+<script>
+const signOutBtn = document.getElementById('signOutBtn');
+if (signOutBtn) {
+  signOutBtn.addEventListener('click', () => {
+    fetch(ROOT + '/api/auth/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}})
+      .finally(() => { window.location.href = '{{ url_for("pages.index") }}'; });
+  });
+}
+
+(function () {
+  const btn = document.getElementById('videoDemoBtn');
+  if (!btn) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'videoModalOverlay';
+  overlay.style.cssText = [
+    'display:none', 'position:fixed', 'inset:0',
+    'background:rgba(0,0,0,0.75)', 'z-index:2000',
+    'align-items:center', 'justify-content:center', 'padding:1rem',
+  ].join(';');
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:12px;max-width:900px;width:100%;' +
+    'box-shadow:0 24px 72px rgba(0,0,0,0.4);overflow:hidden;position:relative">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;' +
+      'padding:0.75rem 1rem;border-bottom:1px solid #e2e8f0">' +
+        '<span style="font-weight:700;font-size:0.9rem;color:#1e293b">Revenue Engine — Demo</span>' +
+        '<button id="videoModalClose" type="button" aria-label="Close" ' +
+        'style="background:none;border:none;cursor:pointer;font-size:1.4rem;' +
+        'line-height:1;color:#94a3b8;padding:0.2rem 0.4rem;border-radius:4px">&times;</button>' +
+      '</div>' +
+      '<video id="demoVideo" controls muted playsinline ' +
+      'style="width:100%;display:block;max-height:72vh;background:#000">' +
+        '<source src="' + window.DEMO_VIDEO_URL + '" type="video/mp4">' +
+      '</video>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  const video = overlay.querySelector('#demoVideo');
+  const closeBtn = overlay.querySelector('#videoModalClose');
+
+  function openModal() {
+    overlay.style.display = 'flex';
+    video.currentTime = 0;
+    video.load();
+    video.play().catch(function () {});
+  }
+
+  function closeModal() {
+    overlay.style.display = 'none';
+    video.pause();
+  }
+
+  btn.addEventListener('click', openModal);
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal();
+  });
+})();
+</script>
+
+<style>
+.btn-video-demo {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.btn-video-demo:hover {
+  text-decoration: underline;
+}
+</style>
+</body>
+</html>

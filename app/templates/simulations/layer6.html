@@ -1,0 +1,700 @@
+{% extends "base.html" %}
+{% block title %}Growth Command Center — {{ sim.name }}{% endblock %}
+
+{% block head %}
+<style>
+/* ── Layer 6 Growth Command Center ───────────────────────────────────────── */
+.l6-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);
+}
+.l6-header h1 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.l6-header .sim-name { color: var(--muted); font-size: 0.9rem; margin-top: 0.2rem; }
+.l6-controls { display: flex; gap: 0.75rem; align-items: center; }
+.phase-badge {
+  padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+}
+.phase-explore { background: #fef9c3; color: #854d0e; }
+.phase-exploit { background: #dcfce7; color: #166534; }
+
+/* ── Zones ───────────────────────────────────────────────────────────────── */
+.l6-zones { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; padding: 2rem; }
+@media (max-width: 1100px) { .l6-zones { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 720px)  { .l6-zones { grid-template-columns: 1fr; } }
+
+.zone-card {
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+  overflow: hidden;
+}
+.zone-card h2 {
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border);
+  margin: 0; color: var(--muted);
+}
+
+/* ── Numbers Zone ────────────────────────────────────────────────────────── */
+.layer-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 0.5rem;
+  align-items: center; padding: 0.7rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.layer-row:last-child { border-bottom: none; }
+.layer-label { font-size: 0.85rem; font-weight: 600; }
+.layer-sub { font-size: 0.75rem; color: var(--muted); }
+.layer-actual { font-size: 0.9rem; font-weight: 700; }
+.var-pill {
+  font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+.var-pos { background: #dcfce7; color: #166534; }
+.var-neg { background: #fee2e2; color: #991b1b; }
+.var-neu { background: #f1f5f9; color: #475569; }
+.totals-row {
+  padding: 0.85rem 1.25rem; border-top: 2px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: 700;
+}
+.velocity-card {
+  padding: 1rem 1.25rem; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.big-metric { font-size: 2rem; font-weight: 800; }
+.big-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ── Actions Zone ────────────────────────────────────────────────────────── */
+.action-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.action-tab {
+  padding: 0.6rem 1rem; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  border-bottom: 2px solid transparent; color: var(--muted);
+}
+.action-tab.active { border-bottom-color: var(--accent); color: var(--fg); }
+.tab-panel { display: none; max-height: 420px; overflow-y: auto; }
+.tab-panel.active { display: block; }
+
+.log-entry {
+  padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.log-entry:last-child { border-bottom: none; }
+.log-entry .action-name { font-weight: 700; }
+.log-entry .log-meta { color: var(--muted); font-size: 0.75rem; margin-top: 0.2rem; }
+.status-badge {
+  display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700; margin-left: 0.4rem;
+}
+.s-complete  { background: #dcfce7; color: #166534; }
+.s-dispatch  { background: #dbeafe; color: #1e40af; }
+.s-escalated { background: #fef3c7; color: #92400e; }
+.s-rejected  { background: #fee2e2; color: #991b1b; }
+.s-queued    { background: #f1f5f9; color: #475569; }
+
+.escalation-item {
+  padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+}
+.escalation-item:last-child { border-bottom: none; }
+.escalation-reason { font-size: 0.78rem; color: var(--muted); margin: 0.4rem 0; }
+.escalation-btns { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+
+/* ── Momentum Zone ───────────────────────────────────────────────────────── */
+.momentum-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+}
+.momentum-cell {
+  padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.momentum-cell:nth-child(even) { border-right: none; }
+.momentum-value { font-size: 1.3rem; font-weight: 800; }
+.momentum-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.15rem; }
+
+/* ── Setup Overlay ───────────────────────────────────────────────────────── */
+.setup-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+}
+.setup-modal {
+  background: #ffffff; color: #111827; border-radius: 12px; width: min(520px, 95vw);
+  max-height: 90vh; overflow-y: auto; padding: 2rem;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+}
+.setup-modal h2 { margin: 0 0 0.5rem; font-size: 1.25rem; color: #111827; }
+.setup-modal h3 { color: #111827; }
+.setup-modal p.sub { color: #6b7280; font-size: 0.88rem; margin-bottom: 1.5rem; }
+.setup-modal p { color: #374151; }
+.setup-modal small { color: #6b7280; }
+.setup-modal .field-row label { color: #111827; }
+.setup-modal .field-row select,
+.setup-modal .field-row input[type=number],
+.setup-modal .field-row input[type=text] {
+  background: #f9fafb; color: #111827; border-color: #d1d5db;
+}
+.setup-modal .toggle-row { color: #111827; border-bottom-color: #e5e7eb; }
+.setup-step { display: none; }
+.setup-step.active { display: block; }
+.step-indicator { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+.step-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #d1d5db;
+}
+.step-dot.done { background: #6366f1; }
+.setup-nav { display: flex; justify-content: space-between; margin-top: 1.5rem; }
+
+.field-row { margin-bottom: 1rem; }
+.field-row label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.3rem; }
+.field-row select, .field-row input[type=number], .field-row input[type=text] {
+  width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 0.88rem; background: var(--bg);
+}
+.toggle-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-row label { cursor: pointer; }
+
+/* ── Cycle Diagram Modal ─────────────────────────────────────────────────── */
+.diagram-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.diagram-modal-overlay.open { display: flex; }
+.diagram-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: min(96vw, 1100px);
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 72px rgba(0,0,0,0.3);
+  --fg: #1e293b;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --bg: #f8fafc;
+  --surface: #f1f5f9;
+  --accent: #6366f1;
+}
+.diagram-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+.diagram-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #94a3b8;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+.diagram-modal-close:hover { color: #1e293b; background: #f1f5f9; }
+</style>
+{% endblock %}
+
+{% block body_class %}sim-detail-page l6-page{% endblock %}
+
+{% block content %}
+<div class="l6-header">
+  <div>
+    <h1>Growth Command Center</h1>
+    <div class="sim-name">{{ sim.name }} &nbsp;·&nbsp;
+      <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}">← Back to Simulation</a>
+    </div>
+  </div>
+  <div class="l6-controls" id="l6Controls" style="display:none">
+    <span id="phaseBadge" class="phase-badge">—</span>
+    <button class="btn btn-ghost btn-sm" id="runCycleBtn">Run Cycle</button>
+    <button class="btn btn-ghost btn-sm" id="togglePauseBtn">Pause</button>
+    <button class="btn btn-primary btn-sm" id="configBtn">⚙ Settings</button>
+  </div>
+</div>
+
+<!-- Setup overlay — shown when no config exists -->
+<div class="setup-overlay" id="setupOverlay" style="display:none">
+  <div class="setup-modal">
+    <h2>Activate Layer 6</h2>
+    <p class="sub">Set your autonomy boundaries. The orchestrator will only act within these limits.</p>
+    <div class="step-indicator" id="stepDots"></div>
+
+    <!-- Step 1: Channel Approvals -->
+    <div class="setup-step active" data-step="1">
+      <h3>Step 1 — Channel Approvals</h3>
+      <p style="font-size:0.84rem;color:var(--muted)">Which channels can the orchestrator use automatically?</p>
+      <div class="toggle-row"><label><input type="checkbox" id="ch_email" checked> Email outreach</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="ch_email_funnels" checked> Email funnels (ConvertKit)</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="ch_linkedin"> LinkedIn messaging</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="ch_calendar"> Calendar booking (Cal.com)</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="ch_content"> Content publishing</label></div>
+    </div>
+
+    <!-- Step 2: Spending Guardrails -->
+    <div class="setup-step" data-step="2">
+      <h3>Step 2 — Spending Guardrails</h3>
+      <div class="field-row">
+        <label>Max autonomous spend per cycle (USD)</label>
+        <input type="number" id="spendCeiling" value="0" min="0" step="5">
+        <small style="color:var(--muted)">$0 = agent uses only pre-paid integrations</small>
+      </div>
+    </div>
+
+    <!-- Step 3: Contact Scope -->
+    <div class="setup-step" data-step="3">
+      <h3>Step 3 — Contact List Scope</h3>
+      <div class="field-row">
+        <label>Which contacts can the orchestrator use for outreach?</label>
+        <select id="contactScope">
+          <option value="uploaded_only">My uploaded lists only</option>
+          <option value="linkedin_connections">LinkedIn connections (OAuth required)</option>
+          <option value="any_researched">Any researched prospect (Apollo)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Step 4: Blocked Actions -->
+    <div class="setup-step" data-step="4">
+      <h3>Step 4 — Blocked Action Types</h3>
+      <p style="font-size:0.84rem;color:var(--muted)">These will never be auto-executed. Financial and legal actions are always escalated regardless.</p>
+      <div class="toggle-row"><label><input type="checkbox" id="block_tax"> Tax / entity advice actions</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="block_invest"> Investment / DCA actions</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="block_social"> Social media publishing</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="block_cold_email"> Cold outreach campaigns</label></div>
+    </div>
+
+    <!-- Step 5: Execution Cadence -->
+    <div class="setup-step" data-step="5">
+      <h3>Step 5 — Execution Cadence</h3>
+      <div class="field-row">
+        <label>How often should the orchestrator run?</label>
+        <select id="cadence">
+          <option value="daily">Daily</option>
+          <option value="every_3_days">Every 3 days</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label>Max actions per cycle</label>
+        <input type="number" id="actionsPerCycle" value="3" min="1" max="10">
+      </div>
+      <div class="field-row">
+        <label>Quiet hours start (HH:MM, 24h)</label>
+        <input type="text" id="quietStart" value="22:00" placeholder="22:00">
+      </div>
+      <div class="field-row">
+        <label>Quiet hours end (HH:MM, 24h)</label>
+        <input type="text" id="quietEnd" value="07:00" placeholder="07:00">
+      </div>
+    </div>
+
+    <div class="setup-nav">
+      <button class="btn btn-ghost" id="setupBack">Back</button>
+      <button class="btn btn-primary" id="setupNext">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="l6-zones" id="l6Zones" style="display:none">
+
+  <!-- NUMBERS ZONE -->
+  <div class="zone-card">
+    <h2>Numbers</h2>
+    <div id="layerRows"></div>
+    <div class="totals-row">
+      <span>Total</span>
+      <span id="totalActual">$0</span>
+    </div>
+    <div class="velocity-card">
+      <div>
+        <div class="big-metric" id="velocityValue">—</div>
+        <div class="big-label">Monthly velocity</div>
+      </div>
+      <canvas id="velocitySparkline" width="120" height="40" style="opacity:0.7"></canvas>
+    </div>
+  </div>
+
+  <!-- ACTIONS ZONE -->
+  <div class="zone-card">
+    <h2>Actions</h2>
+    <div class="action-tabs">
+      <div class="action-tab active" data-tab="log">Execution Log</div>
+      <div class="action-tab" data-tab="escalations">Escalations <span id="escCount" class="status-badge s-escalated" style="display:none"></span></div>
+      <div class="action-tab" data-tab="diagram">⚡ Cycle Diagram</div>
+    </div>
+    <div class="tab-panel active" id="tabLog"></div>
+    <div class="tab-panel" id="tabEscalations"></div>
+    <div class="tab-panel" id="tabDiagram"></div>
+  </div>
+
+  <!-- MOMENTUM ZONE -->
+  <div class="zone-card">
+    <h2>Momentum</h2>
+    <div class="momentum-grid" id="momentumGrid"></div>
+  </div>
+
+</div>
+
+<!-- Cycle Diagram Modal -->
+<div class="diagram-modal-overlay" id="diagramModal">
+  <div class="diagram-modal">
+    <div class="diagram-modal-header">
+      <span style="font-weight:700;font-size:0.9rem;color:#1e293b">⚡ Cycle Diagram</span>
+      <button class="diagram-modal-close" id="diagramModalClose" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div style="padding:0 1.25rem 1.25rem">
+      {% include 'simulations/_orchestrator_diagram.html' %}
+    </div>
+  </div>
+</div>
+
+<!-- Empty state when no config -->
+<div id="emptyState" style="text-align:center;padding:4rem 2rem;">
+  <div style="font-size:3rem;margin-bottom:1rem">⚡</div>
+  <h2>Layer 6 — Autonomous Growth Orchestrator</h2>
+  <p style="color:var(--muted);max-width:480px;margin:0 auto 1.5rem">
+    The meta-layer that sits above all five wealth engines.
+    It runs autonomously, executes the highest-value actions,
+    and adapts its strategy as real income data comes in.
+  </p>
+  <button class="btn btn-primary" id="activateBtn">Activate Layer 6</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SIM_ID = '{{ sim.id }}';
+const basePath = window.location.pathname.split('/simulations/')[0];
+const API = `${basePath}/api/simulations/${SIM_ID}/layer6`;
+let currentStep = 1;
+const TOTAL_STEPS = 5;
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+const fmt = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+const fmtPct = n => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: {'Content-Type': 'application/json', ...opts.headers},
+    ...opts,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    let errMsg = res.statusText || `HTTP ${res.status}`;
+    try { errMsg = JSON.parse(text).error || errMsg; } catch {}
+    throw new Error(errMsg);
+  }
+  return res.json();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const cfg = await apiFetch(`${API}/config`);
+    showDashboard(cfg);
+    loadDashboard();
+  } catch (e) {
+    // No config yet — show empty state
+    document.getElementById('emptyState').style.display = 'block';
+  }
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const data = await apiFetch(`${API}/dashboard`);
+  renderNumbers(data.numbers || {});
+  renderActions(data.actions || {});
+  renderMomentum(data.momentum || {});
+}
+
+function showDashboard(cfg) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('l6Zones').style.display = 'grid';
+  document.getElementById('l6Controls').style.display = 'flex';
+  const badge = document.getElementById('phaseBadge');
+  const phase = cfg.is_active ? 'Active' : 'Paused';
+  badge.textContent = phase;
+  badge.className = 'phase-badge ' + (cfg.is_active ? 'phase-exploit' : 's-rejected');
+  document.getElementById('togglePauseBtn').textContent = cfg.is_active ? 'Pause' : 'Resume';
+}
+
+function renderNumbers(numbers) {
+  const container = document.getElementById('layerRows');
+  container.innerHTML = '';
+  (numbers.layers || []).forEach(l => {
+    const varClass = l.variance > 0 ? 'var-pos' : l.variance < 0 ? 'var-neg' : 'var-neu';
+    container.innerHTML += `
+      <div class="layer-row">
+        <div>
+          <div class="layer-label">Layer ${l.layer_number}</div>
+          <div class="layer-sub">${l.layer_name || ''}</div>
+        </div>
+        <div class="layer-actual">${fmt(l.actual_income)}</div>
+        <div class="var-pill ${varClass}">${fmtPct(l.variance_pct)}</div>
+      </div>`;
+  });
+  document.getElementById('totalActual').textContent = fmt(numbers.total_actual || 0);
+
+  // Velocity: MoM growth estimate
+  const velocity = numbers.total_projected > 0
+    ? ((numbers.total_actual / numbers.total_projected - 1) * 100).toFixed(1)
+    : '—';
+  document.getElementById('velocityValue').textContent =
+    velocity === '—' ? '—' : fmtPct(parseFloat(velocity));
+}
+
+function renderActions(actions) {
+  const log = document.getElementById('tabLog');
+  const esc = document.getElementById('tabEscalations');
+  const escCount = document.getElementById('escCount');
+
+  log.innerHTML = '';
+  (actions.recent_log || []).forEach(a => {
+    const statusMap = {
+      complete: 's-complete', dispatched: 's-dispatch', escalated: 's-escalated',
+      rejected: 's-rejected', queued: 's-queued',
+    };
+    const cls = statusMap[a.status] || 's-queued';
+    const ts = a.dispatched_at ? new Date(a.dispatched_at).toLocaleString() : '';
+    log.innerHTML += `
+      <div class="log-entry">
+        <div class="action-name">${a.action_type.replaceAll('_',' ')}
+          <span class="status-badge ${cls}">${a.status}</span>
+        </div>
+        <div class="log-meta">Layer ${a.source_layer} &nbsp;·&nbsp; ${ts}</div>
+      </div>`;
+  });
+  if (!log.innerHTML) log.innerHTML = '<div class="log-entry" style="color:var(--muted)">No actions yet. Run a cycle to begin.</div>';
+
+  esc.innerHTML = '';
+  const escalations = actions.escalations || [];
+  if (escalations.length) {
+    escCount.textContent = escalations.length;
+    escCount.style.display = 'inline-block';
+  } else {
+    escCount.style.display = 'none';
+  }
+  escalations.forEach(e => {
+    esc.innerHTML += `
+      <div class="escalation-item">
+        <div class="action-name">${e.action_type.replaceAll('_',' ')}</div>
+        <div class="escalation-reason">${e.escalation_reason || ''}</div>
+        <div class="escalation-btns">
+          <button class="btn btn-sm btn-primary" onclick="approveEsc('${e.id}')">Approve</button>
+          <button class="btn btn-sm btn-ghost" onclick="rejectEsc('${e.id}')">Reject</button>
+        </div>
+      </div>`;
+  });
+  if (!esc.innerHTML) esc.innerHTML = '<div class="escalation-item" style="color:var(--muted)">No pending escalations.</div>';
+}
+
+function renderMomentum(m) {
+  const grid = document.getElementById('momentumGrid');
+  if (!m || !m.snapshot_date) {
+    grid.innerHTML = '<div style="padding:1.5rem;color:var(--muted);grid-column:1/-1">No momentum data yet. Update your indicators or connect integrations.</div>';
+    return;
+  }
+  const cells = [
+    ['Email list', m.email_list_size?.toLocaleString()],
+    ['Newsletter', m.newsletter_subscribers?.toLocaleString()],
+    ['Enrollments', m.course_enrollments?.toLocaleString()],
+    ['Bookings/mo', m.consulting_bookings_mo?.toLocaleString()],
+    ['Funnel opt-in', (parseFloat(m.funnel_opt_in_rate || 0) * 100).toFixed(1) + '%'],
+    ['SEO sessions', m.seo_organic_sessions?.toLocaleString()],
+    ['Pipeline', fmt(m.pipeline_value || 0)],
+    ['Investment', fmt(m.investment_balance || 0)],
+  ];
+  grid.innerHTML = cells.map(([label, val]) =>
+    `<div class="momentum-cell">
+      <div class="momentum-value">${val ?? '—'}</div>
+      <div class="momentum-label">${label}</div>
+    </div>`
+  ).join('');
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+document.querySelectorAll('.action-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.dataset.tab === 'diagram') {
+      openDiagramModal();
+      return;
+    }
+    document.querySelectorAll('.action-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add('active');
+  });
+});
+
+// ── Cycle Diagram Modal ───────────────────────────────────────────────────
+let diagramInitialized = false;
+
+function openDiagramModal() {
+  document.getElementById('diagramModal').classList.add('open');
+  if (!diagramInitialized && window.initDiagram) {
+    initDiagram(window.__diagramCycle, window.__allCycles);
+    diagramInitialized = true;
+  }
+}
+
+function closeDiagramModal() {
+  document.getElementById('diagramModal').classList.remove('open');
+}
+
+document.getElementById('diagramModalClose').addEventListener('click', closeDiagramModal);
+document.getElementById('diagramModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDiagramModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeDiagramModal();
+});
+
+// ── Boot diagram ──────────────────────────────────────────────────────────
+window.__diagramCycle = {{ diagram_cycle | tojson if diagram_cycle else 'null' }};
+window.__allCycles    = {{ all_cycles | tojson }};
+
+// ── Escalation actions ────────────────────────────────────────────────────
+async function approveEsc(id) {
+  await apiFetch(`${API}/escalations/${id}/approve`, {method:'POST'});
+  loadDashboard();
+}
+async function rejectEsc(id) {
+  await apiFetch(`${API}/escalations/${id}/reject`, {method:'POST'});
+  loadDashboard();
+}
+
+// ── Run cycle ─────────────────────────────────────────────────────────────
+document.getElementById('runCycleBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('runCycleBtn');
+  btn.disabled = true; btn.textContent = 'Running…';
+  try {
+    await apiFetch(`${API}/run`, {method:'POST'});
+    await loadDashboard();
+  } catch (e) {
+    alert('Cycle error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Run Cycle';
+  }
+});
+
+// ── Pause / Resume ────────────────────────────────────────────────────────
+document.getElementById('togglePauseBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('togglePauseBtn');
+  const endpoint = btn.textContent.trim() === 'Pause' ? 'pause' : 'resume';
+  await apiFetch(`${API}/${endpoint}`, {method:'POST'});
+  const cfg = await apiFetch(`${API}/config`);
+  showDashboard(cfg);
+});
+
+// ── Setup flow ────────────────────────────────────────────────────────────
+function buildStepDots() {
+  const container = document.getElementById('stepDots');
+  container.innerHTML = '';
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i <= currentStep ? ' done' : '');
+    container.appendChild(d);
+  }
+}
+
+function showStep(n) {
+  document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
+  document.querySelector(`.setup-step[data-step="${n}"]`).classList.add('active');
+  document.getElementById('setupBack').style.visibility = n === 1 ? 'hidden' : 'visible';
+  document.getElementById('setupNext').textContent = n === TOTAL_STEPS ? '✓ Activate' : 'Next →';
+  buildStepDots();
+}
+
+document.getElementById('setupNext').addEventListener('click', async () => {
+  if (currentStep < TOTAL_STEPS) {
+    currentStep++;
+    showStep(currentStep);
+  } else {
+    await submitSetup();
+  }
+});
+
+document.getElementById('setupBack').addEventListener('click', () => {
+  if (currentStep > 1) { currentStep--; showStep(currentStep); }
+});
+
+document.getElementById('activateBtn')?.addEventListener('click', () => {
+  currentStep = 1;
+  buildStepDots();
+  showStep(1);
+  document.getElementById('setupOverlay').style.display = 'flex';
+});
+
+document.getElementById('configBtn').addEventListener('click', async () => {
+  try {
+    await apiFetch(`${API}/config`);
+    currentStep = 1;
+    buildStepDots();
+    showStep(1);
+    document.getElementById('setupOverlay').style.display = 'flex';
+  } catch {
+    // not set up yet
+    document.getElementById('activateBtn')?.click();
+  }
+});
+
+async function submitSetup() {
+  const blocked = [];
+  if (document.getElementById('block_tax')?.checked)        blocked.push('tax_optimization', 'entity_structure');
+  if (document.getElementById('block_invest')?.checked)     blocked.push('income_allocation', 'dca_schedule', 'compound_growth_model');
+  if (document.getElementById('block_social')?.checked)     blocked.push('youtube_podcast_strategy', 'community_flywheel');
+  if (document.getElementById('block_cold_email')?.checked) blocked.push('cold_email_campaign');
+
+  const payload = {
+    channel_approvals: {
+      email: document.getElementById('ch_email')?.checked,
+      email_funnels: document.getElementById('ch_email_funnels')?.checked,
+      linkedin: document.getElementById('ch_linkedin')?.checked,
+      calendar: document.getElementById('ch_calendar')?.checked,
+      content_publishing: document.getElementById('ch_content')?.checked,
+    },
+    spend_ceiling: parseFloat(document.getElementById('spendCeiling')?.value || '0'),
+    contact_scope: document.getElementById('contactScope')?.value || 'uploaded_only',
+    blocked_actions: blocked,
+    cadence: document.getElementById('cadence')?.value || 'daily',
+    actions_per_cycle: parseInt(document.getElementById('actionsPerCycle')?.value || '3'),
+    quiet_hours: {
+      start: document.getElementById('quietStart')?.value || '22:00',
+      end:   document.getElementById('quietEnd')?.value   || '07:00',
+    },
+  };
+
+  try {
+    // Try update first (config may already exist from config button)
+    try {
+      await apiFetch(`${API}/config`, {method:'PUT', body: JSON.stringify(payload)});
+    } catch {
+      await apiFetch(`${API}/setup`, {method:'POST', body: JSON.stringify(payload)});
+    }
+    document.getElementById('setupOverlay').style.display = 'none';
+    const cfg = await apiFetch(`${API}/config`);
+    showDashboard(cfg);
+    loadDashboard();
+  } catch (e) {
+    alert('Setup error: ' + e.message);
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+init();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"
+        integrity="sha512-M7nHCiNUOwFt6Us3r8alutZLm9qMt4s9951uo8jqO4UwJ1hziseL6O3ndFyigx6+LREfZqnhHxYjKRJ8ZQ69A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="{{ url_for('static', filename='js/orchestrator_diagram.js') }}"></script>
+{% endblock %}

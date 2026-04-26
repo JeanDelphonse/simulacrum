@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Payment Confirmed{% endblock %}
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card text-center">
+    <div class="auth-icon">✅</div>
+    <h1 class="auth-title">Payment Confirmed</h1>
+    <p class="auth-sub">Your $10.00 payment was successful.</p>
+    <p class="auth-hint">
+      <strong>{{ simulation.name }}</strong> is now generating your 5-layer wealth simulation.
+      This takes about 60–90 seconds.
+    </p>
+    <div style="margin-top: 2rem;">
+      <a href="{{ url_for('pages.simulation_view', sim_id=simulation.id) }}" class="btn btn-primary btn-lg">
+        Watch it generate live →
+      </a>
+    </div>
+    <p class="auth-hint" style="margin-top: 1rem; font-size: 0.85rem; opacity: 0.6;">
+      You will be redirected automatically in <span id="countdown">5</span> seconds…
+    </p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let secs = 5;
+const el = document.getElementById('countdown');
+const interval = setInterval(() => {
+  secs--;
+  el.textContent = secs;
+  if (secs <= 0) {
+    clearInterval(interval);
+    window.location.href = '{{ url_for("pages.simulation_view", sim_id=simulation.id) }}';
+  }
+}, 1000);
+</script>
+{% endblock %}

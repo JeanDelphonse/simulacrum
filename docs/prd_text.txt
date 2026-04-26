@@ -1,0 +1,1585 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Simulacrum
+AI-Powered Career Wealth Simulation Platform
+Turn your resume into autonomous income-generating digital simulations of yourself
+Version
+1.0 — Final
+Status
+Approved for Engineering
+Stack
+Flask · SQLAlchemy · MySQL · Python · Claude API
+Hosting
+GoDaddy Managed Server
+Author
+JD / Bay Area Experiences Ventures
+Date
+April 2026
+1. Executive Summary
+Simulacrum is a web application that allows authenticated users to upload their professional resume and have an AI analyze their career history to identify zones of excellence, extractable intellectual property, and monetizable expertise. The platform then generates one or more Simulations — structured, AI-powered blueprints that map a user's real work deliverables onto a five-layer wealth automation framework, producing a personalized roadmap for turning career capital into continuous residual income.
+Each Simulation is a living object that users can iterate on, evolving from a simple 1:1 active income model all the way to a fully automated Layer 5 wealth engine with SaaS products, licensing deals, and passive investment vehicles — all anchored to verifiable professional history captured in the resume or LinkedIn profile.
+Key Decisions Resolved
+Decision Area
+Resolution
+Simulation Streaming
+Server-Sent Events (SSE) — layers stream live as Claude generates them, layer by layer.
+Monetization Model
+Per-usage fee, admin-configurable. Default price at launch is $10.00 per Simulation. Admin can update the price at any time via the Admin Panel without redeployment. Price is stored in platform_settings and read dynamically at checkout.
+Collaboration
+Users may share and collaborate on Simulations generated from prior sessions.
+LinkedIn Integration
+LinkedIn profile crawler integrated as primary input alternative to resume upload.
+AI Reasoning Transparency
+Claude's reasoning is surfaced for every Income Stream recommendation in the UI.
+Fintech Partnership (Layer 5)
+General guidance by default. Fintech API (e.g., Plaid, Alpaca) enabled via admin on/off toggle.
+Success Metrics — 90-Day Targets
+Metric
+Target
+Notes
+User registrations
+500
+Organic + LinkedIn
+Simulations generated
+800
+1.6 avg per user
+Revenue (@ $10/Simulation)
+$8,000
+Break-even target
+Resume / LinkedIn uploads
+600
+80% of registered users
+Avg. time to first Simulation
+< 8 min
+Upload to streaming results
+2. Problem Statement & Vision
+The Problem
+Most professionals accumulate 10–30 years of experience that never compounds beyond their next salary negotiation. Their intellectual property — battle-tested frameworks, domain knowledge, repeatable methodologies — is locked inside their employment history, invisible even to themselves. A life career coach can unlock this, but coaching is expensive, time-intensive, and does not scale.
+The Vision
+Simulacrum democratizes the career coaching process and adds a wealth-engineering layer on top. By combining resume parsing, LinkedIn profile crawling, AI-powered expertise extraction, and a structured five-layer income model, the platform helps any professional answer three questions:
+What are you excellent at — and what real deliverables prove it?
+How is that excellence packaged into sellable products?
+How do those products eventually run without you?
+Strategic Positioning
+Simulacrum sits at the intersection of career technology, AI coaching, and wealth strategy. Unlike resume builders or job boards, it is not about finding the next role. It is about converting the totality of a professional's career into a compounding economic engine.
+3. Core Concepts & Terminology
+Term
+Definition
+Simulation
+A complete wealth-building blueprint generated for a user from their resume or LinkedIn profile and a chosen Expertise Zone. One user may create multiple Simulations for different career verticals. Each Simulation is independently charged at the current admin-configured price (default $10.00).
+Expertise Zone
+A discrete area of professional strength extracted by the AI — e.g., 'Enterprise Data Pipeline Architecture' or 'B2B SaaS Go-to-Market.' Grounded in verifiable Deliverables.
+Deliverable
+A real, named output from the user's career history used as AI evidence for an Expertise Zone.
+Layer
+One of five income tiers in a Simulation, ranging from active 1:1 work (Layer 1) to fully automated residual systems (Layer 5).
+Income Stream
+A specific monetizable product or service within a Layer, e.g., 'Data Architecture Workshop' or 'AI Audit SaaS Tool.'
+AI Reasoning
+Claude's explicit explanation of why a specific Income Stream was recommended for this user, surfaced inline in the UI alongside each recommendation.
+Collaboration
+The ability for a user to share a Simulation with one or more collaborators who can view, comment on, or co-edit layers, seeded from a prior Simulation session.
+LinkedIn Crawl
+An automated scrape of the user's public LinkedIn profile to extract work history, roles, and achievements as an alternative to resume upload.
+Automation Blueprint
+The Layer 4 and Layer 5 plan detailing tools, funnels, platforms, and investment vehicles the user should build to achieve residual income.
+Fintech Toggle
+An admin-controlled on/off flag that enables or disables live fintech API integration (Plaid, Alpaca, etc.) for Layer 5 wealth deployment recommendations.
+4. User Personas
+Persona
+Profile
+Primary Goal
+Key Feature Use
+A — Senior IC
+15+ years experience. Knows they are undermonetized.
+Convert expertise to consulting + courses + passive income.
+Full 5-layer Simulation with LinkedIn crawl, AI reasoning surfaced.
+B — Career Changer
+Pivoting industries. Resume spans multiple domains.
+Understand how transferable skills map to new revenue streams.
+Multiple Simulations from same resume, different Expertise Zones.
+C — Entrepreneur
+Already runs a business. Wants to productize their method.
+License IP or build SaaS around methodology.
+Layer 3–5 depth, Collaboration with co-founder, Fintech Toggle.
+D — New Graduate
+Limited history. Wants to plan from Layer 1 with a roadmap.
+Start earning actively while building toward Layer 3 products.
+Resume upload, single Simulation, AI reasoning as learning tool.
+5. Functional Requirements
+5.1 Authentication & User Management
+FR-AUTH-01: Email and password registration with Flask-Login and Bcrypt hashing (cost factor 12+).
+FR-AUTH-02: Email verification required before first use. Password reset via tokenized email link (24-hour expiry).
+FR-AUTH-03: Optional Google OAuth via Flask-Dance. JWT tokens for session management with 7-day expiry.
+FR-AUTH-04: User profile stores full name, email, created_at, simulation_count, and total_spend.
+5.2 Monetization — Per-Usage Fee
+FR-MON-01: Each Simulation generation is charged at the current configured Simulation price, set by the admin in the platform settings. The default price at launch is $10.00. The price is stored in the platform_settings table under the key 'simulation_price' and is read dynamically at checkout — no redeployment required to change it.
+FR-MON-02: Admin can update the Simulation price at any time via the Admin Panel. The new price takes effect immediately for all subsequent Simulation creations. In-progress checkouts (Stripe session already opened) honor the price at session creation time.
+FR-MON-03: The Admin Panel displays the current configured price prominently alongside a price history log showing every price change: old value, new value, changed by (admin user_id), and timestamp.
+FR-MON-04: The price shown to the user on the Simulation setup screen, payment confirmation dialog, and invoice is always fetched live from platform_settings — never hardcoded in the frontend. If the price has been changed since the user last visited, a session refresh surfaces the updated price before checkout.
+FR-MON-05: Stripe Checkout integration. User must have a saved payment method or complete checkout before generation begins. The Stripe price object is created dynamically per transaction using the current simulation_price value — no pre-configured Stripe Price ID is used, allowing price changes without Stripe dashboard intervention.
+FR-MON-06: Payment confirmation triggers the Simulation generation job via Celery task queue.
+FR-MON-07: Failed generations (Claude API error after payment) trigger automatic refund via Stripe API within 60 seconds. The refund amount matches the exact amount charged, regardless of any price change that may have occurred between charge and failure.
+FR-MON-08: Invoice emailed automatically for each successful Simulation, showing the price paid at time of purchase. Admin dashboard shows revenue, refund rate, per-user spend, and a price change audit trail.
+5.3 Resume Management
+FR-RES-01: Accept PDF and DOCX files up to 5 MB. Parse using PyMuPDF (PDF) and python-docx (DOCX).
+FR-RES-02: Store original file on GoDaddy file system. Store parsed text in MySQL. Display parsed text in editable rich-text area for user correction before AI analysis.
+FR-RES-03: Support multiple resumes per user. Each resume labeled with a version name and upload date.
+FR-RES-04: Claude expertise zone extraction cached in Resume.expertise_zones JSON column. Re-called only if parsed_text changes.
+5.4 LinkedIn Profile Integration
+FR-LI-01: User authenticates with LinkedIn OAuth 2.0. Platform crawls the public profile: work experience, role titles, dates, and listed accomplishments.
+FR-LI-02: Crawled data is normalized into the same parsed_text schema used by resume uploads, enabling identical downstream AI processing.
+FR-LI-03: User can review and edit crawled LinkedIn data before triggering expertise zone extraction — same editable rich-text flow as resume.
+FR-LI-04: LinkedIn data stored as a Resume record with source='linkedin' flag. Treated identically to uploaded resumes for Simulation creation.
+FR-LI-05: Re-sync option allows user to re-crawl their LinkedIn profile to capture profile updates.
+5.5 Simulation Management
+FR-SIM-01: User selects a resume or LinkedIn profile, optionally provides a focus hint, and chooses an Expertise Zone. Platform displays the current configured Simulation price and charges that amount before generation begins.
+FR-SIM-02: Generation streams via Server-Sent Events (SSE). Each layer appears in the UI as Claude completes it — users see the wealth pyramid populate in real time.
+FR-SIM-03: Each Income Stream recommendation is displayed alongside Claude's AI reasoning — a 2–3 sentence explanation of why this stream was chosen for this user's specific background.
+FR-SIM-04: Users can refine any individual Layer with a new constraint. Regeneration of a single layer is free (no additional charge).
+FR-SIM-05: Users can create multiple Simulations from the same or different source documents. Each Simulation is independently named and managed on the Dashboard.
+FR-SIM-06: Simulations persist indefinitely. Users can return to view, refine, or share any prior Simulation.
+5.6 Collaboration
+FR-COL-01: Any Simulation can be shared with collaborators via a unique share link. Collaborators do not pay to view a shared Simulation.
+FR-COL-02: Collaboration can be seeded from a prior Simulation: the owner selects an existing Simulation as a starting point and invites collaborators by email.
+FR-COL-03: Collaborator permission levels: Viewer (read-only), Commenter (can annotate layers), Editor (can trigger layer refinement — owner pays).
+FR-COL-04: Collaboration activity (comments, refinements) logged in an audit trail visible to the Simulation owner.
+FR-COL-05: Owner can revoke access at any time. Shared links expire after 30 days unless renewed.
+5.7 Fintech Integration Toggle (Layer 5)
+FR-FIN-01: By default, Layer 5 (Wealth Deployment) provides general guidance: recommended asset classes, platforms, and investment strategies tailored to the user's income profile.
+FR-FIN-02: Admin-controlled on/off toggle in the platform settings enables live fintech API integration when activated.
+FR-FIN-03: When enabled, Layer 5 may surface real fund options, brokerage account links, or portfolio suggestions via Plaid, Alpaca, or equivalent API.
+FR-FIN-04: When fintech toggle is off, Layer 5 renders static wealth strategy content only. No external API calls are made.
+FR-FIN-05: Toggle state is stored in a platform_settings table, not hardcoded. Change takes effect immediately without redeployment.
+6. The Simulation Wealth Engine — Five Layers (Agent-Enhanced)
+Every Simulation maps the user's Expertise Zone across five progressive income layers. Each layer is an active agent workspace — not passive guidance. For every layer, the Simulacrum agent plans and executes specific actions on the user's behalf, prompts for any missing information before acting, and displays structured results inline with full artifact storage. The agent operates using the Claude API with tool-use capabilities, a growing set of platform integrations, and a persistent action log per Simulation.
+Agent execution follows a three-step loop for every action: (1) the agent determines what information it needs and surfaces an inline prompt form if anything is missing, (2) the agent executes the action using available tools or generates a production-ready artifact, and (3) the result is displayed inline with a status badge (Complete / In Progress / Failed), a timestamp, and action-specific controls (Copy, Download, Send, Regenerate). All outputs are stored in the Simulation's artifact store linked to a CHAR(9) action_id.
+Agent action execution is included in the Simulation fee charged at creation time. There is no per-action charge. Re-execution of individual actions is free and archives prior outputs — it does not overwrite them. A new charge at the current configured price applies only when creating a brand-new Simulation.
+Layer 1 — Active Income: 1:1 Time-for-Money
+Goal: get the user earning from their expertise as fast as possible. The agent identifies the right buyers, builds the full outreach and positioning arsenal, handles proposal and contract generation, and activates the user's existing network — removing every friction point between expertise and first dollar.
+Agent Action
+User Prompts Required
+Execution Result Displayed
+Draft personalized consulting outreach emails to 10 target prospects
+►  What industries do you want to target?
+►  Do you have a LinkedIn connection list or company names?
+►  What is your preferred engagement model — project, retainer, or hourly?
+10 individually tailored outreach emails with subject lines, body copy, and a P.S. referencing each prospect's company. Scrollable list with one-click copy per email. If email integration is connected, sent count and open rate logged in the action result.
+Execute a cold email campaign to researched target companies
+►  What is your target company size (startup, SMB, mid-market, enterprise)?
+►  What specific pain point or business outcome are you addressing?
+►  Do you have a list of company names or should the agent research and build the list?
+►  What is your preferred cold email tool — Apollo, Instantly, Lemlist, or manual send?
+►  What is your daily send limit?
+A curated list of 25 target companies researched and matched to the Expertise Zone, with company name, size, industry, identified pain point, and a named decision-maker (sourced via LinkedIn and Apollo). A 3-step cold email sequence per company: Email 1 (cold intro with company-specific hook), Email 2 (follow-up with a relevant insight or case study reference), Email 3 (soft close with a low-friction ask). If Apollo or Instantly is connected, sequences are pushed directly to the campaign. Delivery status, open rate, and reply rate logged per company in the action result panel.
+Generate a consulting rate card and capability one-pager
+►  What is your target hourly or day rate?
+►  Do you prefer fixed-project or retainer?
+►  What three outcomes do clients most consistently achieve working with you?
+A formatted PDF-ready rate card listing service tiers (hourly, project, retainer). A one-pager capability statement with Expertise Zone headline, three outcome bullets drawn from resume Deliverables, and a call-to-action block. Downloadable as PDF and DOCX.
+Search and surface active fractional and contract roles matching Expertise Zone
+►  Are you open to remote, hybrid, or on-site?
+►  What is your minimum acceptable monthly rate?
+►  Any industries or company types to exclude?
+Ranked list of 15–20 active fractional and contract postings from LinkedIn Jobs, Toptal, and Contra — filtered to Expertise Zone, location preference, and rate floor. Each shows role title, company, rate range, fit score, and a one-click 'Draft Application' button.
+Optimize LinkedIn headline, About section, and Featured block for inbound consulting leads
+►  Are you currently open to new engagements?
+►  Do you want the profile to reflect consulting availability, a specific industry focus, or both?
+Rewritten LinkedIn headline (220 chars), About section (2,000 chars), and Featured section copy — anchored to Expertise Zone and calibrated for LinkedIn search algorithms. Displayed with before/after toggle if the agent crawled the existing profile.
+Create a public booking page configuration (Calendly or Cal.com)
+►  What meeting types do you want to offer (discovery call, paid consultation, project scoping)?
+►  What are your available days and hours?
+►  What is your paid session rate?
+Complete booking page spec: event type names, durations, descriptions, pricing, confirmation email copy, and intake form questions. Ready to paste into Calendly or Cal.com. Optionally auto-created via Cal.com API if connected.
+Generate a consulting proposal and Statement of Work (SOW) template
+►  What is the project scope you most commonly pitch?
+►  What deliverables do you commit to?
+►  What are your standard payment milestones — 50% upfront, 50% on delivery, or phased?
+A fully structured consulting proposal (executive summary, scope, deliverables, timeline, investment, terms) and a companion SOW with acceptance criteria, revision rounds, and out-of-scope clause. Both downloadable as DOCX. Merge fields ready for client-specific customization.
+Generate a consulting agreement template
+►  What are your preferred payment terms (net-15, net-30, 50% upfront)?
+►  Do you want an IP ownership clause, non-solicitation, or confidentiality clause?
+A plain-English consulting agreement (3–4 pages) with scope, payment terms, IP assignment, confidentiality, termination, and limitation of liability — pre-filled with user's name and preferences. Downloadable as DOCX.
+Activate referral network — draft referral request messages to top 15 contacts
+►  Who are the 3–5 people most likely to refer you (former managers, clients, colleagues)?
+►  What specific type of engagement do you want them to refer?
+►  Is there a referral incentive you want to offer?
+15 personalized referral request messages (email and LinkedIn DM versions) — each referencing the specific person's relationship with the user and the exact type of client they should refer. A referral tracking table with contact name, message sent date, and follow-up reminder date.
+Build a social proof and testimonial collection system
+►  Do you have any existing clients or past colleagues who have praised your work?
+►  What platform do you want testimonials displayed on — LinkedIn, personal website, or both?
+►  Do you want short quotes, long case studies, or video testimonial scripts?
+A testimonial request email sequence (3 emails per contact), a structured testimonial intake form (problem, solution, outcome, quantified result), and a display copy formatted for LinkedIn recommendations, website hero sections, and proposal inserts. Includes 5 pre-populated testimonial request drafts based on resume Deliverables.
+Coach the user on rate negotiation with a scenario-specific script
+►  What rate have you been offered or are you preparing to negotiate?
+►  What is the client's company size and budget signals?
+►  What is your walk-away number?
+►  Have they pushed back on rate before?
+A negotiation script for the specific scenario: opening positioning statement, three value-justification responses, a counter-offer framework, a concession trade (reduced rate in exchange for longer contract or case study rights), and a 'walk away gracefully' close. Displayed as a step-by-step dialogue guide.
+Layer 2 — Leveraged Income: One-to-Many
+Goal: expand the user's reach beyond 1:1 delivery without proportionally increasing time investment. The agent identifies venues, drafts submissions, structures programs, builds all facilitation materials, and sets up the operational infrastructure to run repeatable group delivery.
+Agent Action
+User Prompts Required
+Execution Result Displayed
+Research and submit speaking proposals to relevant conferences and podcasts
+►  Are you targeting in-person conferences, virtual events, or podcasts?
+►  What geographic regions?
+►  What is your preferred talk format — keynote (45 min), breakout (20 min), or panel?
+►  Do you have a speaker bio or prior recording?
+20 matched conferences and podcasts with submission deadlines, audience size, and fit score. For each: a pre-drafted CFP proposal (title, abstract, three learning outcomes, speaker bio) ready for one-click submission. Submitted proposals tracked with deadline reminders.
+Negotiate speaker fees and draft a speaker rider
+►  Are you currently speaking for free to build visibility, or ready to charge?
+►  What is your target fee for a keynote, breakout, and panel respectively?
+►  What logistical requirements do you have (travel class, hotel nights, AV needs, green room)?
+A speaker fee structure with tiered rates (nonprofit/small conference, mid-market conference, corporate event), a one-page speaker rider document, and a negotiation response template for when organizers push back on fee. Includes a speaker contract template for paid engagements.
+Design a group coaching program with curriculum, pricing, and cohort CRM setup
+►  How many participants per cohort (ideal: 8–15)?
+►  What transformation do participants achieve?
+►  How many weeks and sessions?
+►  What is your price per participant?
+►  What community platform will you use?
+Complete group coaching spec: program name, tagline, 6–12 week curriculum, session format, homework, community platform recommendation, pricing tiers (early bird, standard, VIP), projected revenue table by cohort size, and a Notion or Airtable CRM template for tracking cohort participants through enrollment, onboarding, and completion.
+Identify and outreach to corporate training buyers
+►  What company sizes do you want to target (SMB, mid-market, enterprise)?
+►  Which departments are the primary buyers (L&D, Engineering, Sales, HR)?
+►  What is your preferred workshop duration (half-day, full-day, multi-day)?
+25 companies with L&D or relevant department leads sourced from LinkedIn, a corporate training deck outline (5 slides: problem, program overview, outcomes, logistics, pricing), and 5 personalized outreach email drafts targeting identified buyers. Tracks outreach status per company.
+Draft a full workshop curriculum and facilitator guide
+►  What specific skill or outcome should participants leave with?
+►  Who is the audience (role, experience level)?
+►  Will this be in-person or virtual?
+►  What tools will participants need access to?
+Full workshop curriculum: learning objectives, timed agenda, facilitator talking points per segment, participant exercises and worksheets, slide deck outline (30–40 slides), pre-workshop survey, and a post-workshop feedback form. All downloadable as DOCX and PPTX.
+Build a waitlist landing page brief and email sequence for first cohort
+►  What is the program name and one-sentence transformation promise?
+►  What is the anticipated start date and price?
+►  Do you want email-only collection or a full application (name, role, company, goals)?
+Landing page copy: hero headline, three benefit bullets, social proof placeholder, FAQ (5 questions), waitlist form fields, and a 3-email confirmation sequence (confirmation, nurture, launch announcement). Ready for Webflow, Carrd, or ConvertKit.
+Design a cohort graduation and alumni reactivation system
+►  Do you plan to run multiple cohorts of the same program?
+►  What would you offer alumni — a discounted repeat, an advanced cohort, or a referral incentive?
+►  How do you want to maintain the alumni relationship between cohorts?
+A cohort completion ceremony guide (final session agenda, certificate template, celebration email), an alumni community onboarding sequence, a re-enrollment offer email (timed 60 days post-graduation), and a referral incentive program spec. Projected re-enrollment revenue included.
+Calculate workshop and cohort ROI and recommend optimal delivery cadence
+►  How many hours does it take you to prepare and deliver one workshop or cohort?
+►  What is your current per-session rate or cohort price?
+►  How many workshops or cohorts can you realistically run per quarter?
+An ROI analysis table: time invested per delivery, gross revenue per delivery, effective hourly rate, quarterly and annual revenue projection at current cadence. A cadence recommendation showing the delivery frequency that maximizes income without burnout, with a rationale. Displayed as a formatted table with a narrative summary.
+Layer 3 — Productized Income: Sell Once, Deliver Many
+Goal: transform the user's expertise into scalable digital products that generate revenue independently of their time. The agent builds the product scaffolding, writes all sales copy, designs the launch sequence, and implements the ongoing optimization and testimonial flywheel that compounds product revenue over time.
+Agent Action
+User Prompts Required
+Execution Result Displayed
+Design a full online course curriculum with module outlines and platform setup checklist
+►  What outcome does a student achieve by completing this course?
+►  Who is the ideal student (role, experience level, pain point)?
+►  How long should the course be?
+►  What platform will you host it on (Teachable, Maven, Kajabi, Udemy)?
+Course architecture: title, subtitle, 5–7 learning objectives, 6–12 module breakdown with lesson titles, estimated video durations, assessments, and a platform-specific setup checklist. Downloadable as DOCX and importable to Teachable via CSV.
+Research competing courses and recommend positioning and pricing strategy
+►  What are 2–3 courses you consider competitors or comparables?
+►  What is your differentiation — methodology, audience specificity, depth, or format?
+A competitor analysis table (5–10 courses): platform, price, student count, rating, content length, format. A recommended price point with rationale, a positioning statement differentiating the user's course, and a pricing strategy recommendation (one-time, subscription, or cohort-based).
+Write a complete course or product sales page
+►  What is the product name?
+►  What is the single most compelling before/after transformation?
+►  Do you have early student testimonials or beta feedback?
+►  What is the price?
+Full sales page copy (1,500–2,500 words): hero section, transformation statement, who this is for, curriculum overview, instructor bio, social proof section, FAQ (7 questions), guarantee statement, and three CTA placements. Formatted in HTML ready to paste into Teachable, Kajabi, or Webflow.
+Draft and outline an e-book or digital guide with Gumroad or Lemon Squeezy listing
+►  What problem does this guide solve and for whom?
+►  How in-depth should it be (quick guide vs. definitive guide)?
+►  Will this be a free lead magnet or a paid product?
+Complete e-book outline: title, subtitle, introduction draft (500 words), chapter-by-chapter outline, conclusion draft, and cover design brief. If paid: a Gumroad or Lemon Squeezy product listing (title, description, pricing, tags). If free: lead magnet landing page copy block and opt-in confirmation email.
+Design a product A/B test and pricing experiment plan
+►  What is your current product price?
+►  What alternative price points do you want to test?
+►  Do you have enough traffic to run a statistically valid test (at least 200 visits per variant per week)?
+►  What conversion metric defines success?
+An A/B test plan: variant definitions (price A vs. price B, or headline A vs. headline B), required sample size calculation, test duration, success metric, and a decision rule for choosing the winner. A post-test analysis template to log results. Includes guidance on running the test in Teachable, Gumroad, or via a simple redirect split.
+Structure a membership community with tiers, rules, and 12-week content calendar
+►  What platform do you prefer (Circle, Skool, Mighty Networks, Discord)?
+►  How many membership tiers (free, paid, VIP)?
+►  What recurring content will you commit to monthly?
+Full membership structure: tier names, pricing, included benefits; community rules and welcome message; 12-week content calendar (weekly themes, post types, engagement prompts); member milestone roadmap (30/60/90-day outcomes); and a churn-prevention email sequence (3 emails targeting members who have not logged in for 14 days).
+Generate a 7-email product launch sequence
+►  How many days before launch should the sequence start?
+►  Do you have an existing email list?
+►  What is the product and price?
+►  Is there an early-bird discount or cart-close deadline?
+A 7-email launch sequence with subject lines, body copy, and send-day schedule: Day 0 announcement, Day 2 problem agitation, Day 4 solution reveal, Day 6 social proof, Day 8 FAQ and objections, Day 10 cart closing warning, Day 11 final hours. Each email 200–400 words, personalization-token ready for ConvertKit or ActiveCampaign.
+Build an affiliate recruitment program for the user's own product
+►  What commission rate would you offer affiliates (10%, 20%, 30%)?
+►  Is it a one-time commission or recurring on subscription renewals?
+►  Do you want affiliates to be public (open program) or curated (invite-only)?
+►  What is your preferred affiliate tracking tool?
+An affiliate program spec: commission structure, cookie duration, payout schedule, and approved promotional materials (email swipe copy, social post templates, banner ad copy). A list of 20 potential affiliates in the user's space with contact details and recommended outreach. An affiliate recruitment email sequence (3 emails). Setup checklist for Rewardful, Lemon Squeezy, or Gumroad affiliates.
+Design a student testimonial and case study collection system
+►  How many students or customers do you currently have?
+►  Do you want short quotes, long written case studies, or video testimonial scripts?
+►  At what point in the student journey should testimonials be requested (mid-course, at completion, 30 days post-completion)?
+A testimonial collection sequence (2 emails per student: request and follow-up), a structured intake form (before state, after state, quantified outcome, recommendation), and formatted display copy for sales page, social proof blocks, and course platform. Five pre-written testimonial requests tailored to the user's specific product and student outcomes.
+Generate a reactivation campaign for lapsed buyers or inactive members
+►  How long since a buyer last engaged qualifies them as lapsed (30, 60, 90 days)?
+►  What is the re-engagement offer — a discount, bonus module, or a check-in call?
+►  Do you have their email addresses in an accessible list?
+A 3-email reactivation sequence: Email 1 (we noticed you have not been active — here is what you are missing), Email 2 (a win from another student to inspire re-engagement), Email 3 (a time-limited offer to return). Segmentation logic for tagging lapsed buyers in ConvertKit or ActiveCampaign. Projected reactivation revenue based on list size and estimated conversion rate.
+Layer 4 — Automated Residual: Systems Running Without You
+Goal: build the infrastructure that generates income without the user's active involvement. This means automating content production, audience growth, lead conversion, and recurring revenue — and creating or speccing the systems to sustain and compound those outputs indefinitely.
+Agent Action
+User Prompts Required
+Execution Result Displayed
+Generate a 90-day SEO content calendar and draft the first 5 articles
+►  What is your primary content domain?
+►  Do you have an existing blog or website URL?
+►  Who is your target reader — practitioner, executive, or general professional?
+►  Any keywords you already rank for or want to own?
+90-day content calendar: 36 post titles organized by theme cluster, target keyword, recommended word count, and internal linking map. Plus 5 fully drafted articles (800–1,200 words each), optimized with H1/H2 structure, meta description, and a CTA pointing to the user's Layer 3 product. Downloadable as individual DOCX files.
+Build an automated lead magnet and email nurture funnel
+►  What free resource will you offer as the lead magnet (checklist, mini-course, toolkit, assessment)?
+►  What email platform do you use?
+►  What is the end offer the funnel leads toward?
+Complete funnel package: fully drafted lead magnet content, opt-in page copy, thank-you page copy, and a 5-email nurture sequence (Day 0 delivery, Day 2 quick win, Day 5 deeper value, Day 8 social proof, Day 12 offer introduction). All emails import-ready for ConvertKit or ActiveCampaign via CSV.
+Design and launch a newsletter monetization strategy
+►  Do you have an existing newsletter or email list?
+►  What is the current list size and open rate?
+►  Do you want to monetize via sponsorships, paid subscriber tiers, or both?
+►  What topics do you cover in each issue?
+A newsletter monetization plan: sponsorship rate card (based on list size and open rate), a Beehiiv or Substack paid tier structure with content differentiation, a sponsorship outreach list of 15 relevant brands with contact emails and estimated deal value, and a 4-week editorial calendar showing free vs. paid content split.
+Produce a SaaS product specification built on the user's methodology
+►  What is the core repeatable process from your Expertise Zone that others need to execute?
+►  Who is the target user of the SaaS tool?
+►  What is the primary workflow it automates?
+►  What is your preferred monetization model (per-seat, usage-based, flat monthly)?
+A full SaaS product spec (10–15 pages): product name and tagline, problem statement, target persona, core feature set (MVP and v2), user journey map, data model overview, integration requirements, monetization model with pricing tiers, competitive positioning, and a 6-month build roadmap. Exportable as DOCX for sharing with a technical co-founder or development agency.
+Draft IP licensing outreach, one-pager, and licensing agreement template
+►  What specific framework, methodology, curriculum, or tool do you want to license?
+►  Who are your target licensees — companies, training firms, educational institutions, or individual coaches?
+►  What is your preferred licensing model — per-seat, annual flat fee, or revenue share?
+A licensing one-pager (the pitch), a list of 15 target licensee organizations with identified decision-maker contacts, 3 personalized outreach email drafts, and a plain-English IP licensing agreement (licensed scope, territory, exclusivity, term, fees, audit rights, termination). Downloadable as DOCX.
+Identify affiliate and referral partnership opportunities
+►  What tools, platforms, or services do you already recommend in your work?
+►  Are you looking for inbound affiliates (others who promote your products) or outbound (you promote others for commission)?
+►  What commission structure is acceptable?
+A curated list of 20 affiliate programs relevant to the Expertise Zone with commission rates, cookie durations, and fit scores. For inbound: a draft affiliate program one-pager and recruitment email. For outbound: an affiliate disclosure template and recommended content integration strategy.
+Build a YouTube or podcast content strategy and script the first 3 episodes
+►  What is your preferred format — long-form YouTube, short-form YouTube, audio podcast, or video podcast?
+►  What is the show name and premise?
+►  How often can you produce content?
+►  What is your end call-to-action — product, mailing list, or consultation?
+Show strategy doc: 3 show name options, positioning statement, audience profile, 24-episode content plan organized by theme arc, episode format template, and 3 fully scripted episodes (2,000–3,000 words each) with timestamps. Episode titles are SEO-optimized. Distribution checklist for Spotify, Apple, and YouTube included.
+Design a community flywheel activation plan to grow and monetize an existing audience
+►  How large is your current audience across all platforms combined?
+►  Which platform has the highest engagement?
+►  What is the primary reason people follow you — entertainment, education, or career advancement?
+►  Do you have a paid community or are you building toward one?
+A community flywheel strategy: content formats that convert followers to subscribers, a welcome sequence for new community members, a monthly engagement calendar (AMAs, challenges, live sessions), a paid tier upgrade pathway with specific trigger events, and a 90-day audience growth projection based on current platform and engagement rate.
+Create a programmatic ad strategy and ad copy set for evergreen product promotion
+►  What is the product you want to advertise?
+►  What is your monthly ad budget?
+►  Which platforms do you want to run ads on (Meta, LinkedIn, Google, YouTube)?
+►  What is your target cost-per-acquisition based on the product price?
+A full ad strategy brief: platform recommendation with rationale, target audience definition (demographics, interests, behaviors), ad format recommendations per platform, and a set of 10 ad copy variations (headline, primary text, CTA) across three creative angles — pain point, outcome, and social proof. Includes a campaign structure diagram and a budget allocation recommendation.
+Build a reactivation and win-back campaign for lapsed Layer 1 and Layer 2 clients
+►  How long since a past client engaged qualifies them as lapsed (3 months, 6 months, 1 year)?
+►  Do you want to offer a reduced-rate re-engagement, a new service tier, or simply a check-in?
+►  How many lapsed clients do you estimate you have?
+A 3-email win-back sequence tailored to past consulting or coaching clients: Email 1 (genuine check-in — how has their situation evolved?), Email 2 (a relevant insight or resource tied to their known challenge), Email 3 (a specific re-engagement offer with a deadline). A tracking sheet for monitoring responses. Projected re-engagement revenue based on estimated list size and 5% conversion assumption.
+Layer 5 — Wealth Deployment: Money Working for You
+Goal: convert the income generated by Layers 1–4 into compounding long-term wealth. The agent calculates personalized allocation strategies, models growth projections, surfaces specific investment vehicles, addresses tax optimization and entity structure, and drafts all planning documents needed to execute a disciplined, sustained wealth-building program.
+Agent Action
+User Prompts Required
+Execution Result Displayed
+Calculate a personalized monthly income allocation strategy across asset classes
+►  What is your estimated monthly income from Layers 1–4 combined?
+►  What are your fixed monthly personal expenses?
+►  Do you have existing investments or retirement accounts?
+►  What is your risk tolerance (conservative, moderate, aggressive)?
+►  What is your investment time horizon?
+A monthly allocation breakdown: operating reserve (%), tax reserve (%), emergency fund top-up (%), Layer 4 reinvestment (%), index funds (%), real estate reserve (%), and discretionary. Dollar amounts shown for the user's specific income level. Updated automatically when Layer 1–4 income estimates change.
+Model compound growth projections for the user's wealth deployment plan
+►  What monthly amount do you plan to deploy into investments?
+►  Over how many years do you want to model growth?
+►  What average annual return assumption should be used (conservative: 6%, moderate: 8%, aggressive: 10%)?
+A compound growth projection table at Years 1, 3, 5, 10, 15, and 20 under three return scenarios. A breakeven timeline showing when passive investment income covers monthly expenses. All figures in today's dollars and inflation-adjusted. Downloadable as a formatted PDF report.
+Research and recommend specific index funds and ETFs aligned to the user's profile
+►  Do you prefer US-only, international, or global diversification?
+►  Do you want ESG (socially responsible) options?
+►  Do you have a preference for Vanguard, Fidelity, or Schwab?
+►  Are you investing in a taxable account, IRA, or 401(k)?
+A curated list of 8–12 recommended funds: name, ticker, expense ratio, 5-year return, dividend yield, and fit score. Organized by allocation category (US equities, international, bonds, REITs). A model portfolio with percentage allocation across selected funds. If fintech toggle is enabled, links to fund detail pages on the connected brokerage.
+Draft a Personal Investment Policy Statement (IPS)
+►  What are your top three financial goals and target dates?
+►  What minimum annual return do you need?
+►  What events would trigger a portfolio rebalance?
+►  Who, if anyone, should be named as a financial beneficiary?
+A complete 2-page IPS: investment objectives, time horizon, risk tolerance, target asset allocation, rebalancing triggers and schedule, prohibited investments, and a review cadence. Formatted as a signed document template ready for annual review and shareable with a fee-only financial advisor.
+Develop a real estate entry strategy based on current capital position
+►  What is your current investable capital available for real estate?
+►  Are you interested in direct property ownership, REITs, or real estate syndications?
+►  What is your preferred hold period (short-term flip, medium-term rental, long-term appreciation)?
+►  Do you have a target geography?
+A real estate strategy brief: recommended entry strategy based on capital position, direct ownership vs. REIT vs. syndication comparison, and — if direct ownership — 5 target metro markets with median home price, average cap rate, rent-to-price ratio, and population growth trend. First-property acquisition checklist and due diligence sequence included.
+Design a tax optimization strategy for self-employed and multi-stream income
+►  Are you currently operating as a sole proprietor, LLC, or S-Corp?
+►  What is your estimated annual gross income from all Layers combined?
+►  Do you have a retirement account (SEP-IRA, Solo 401k)?
+►  What business expenses do you currently deduct?
+A tax optimization brief (for review with a CPA): recommended entity structure (LLC vs. S-Corp election based on income threshold), retirement account contribution strategy (SEP-IRA vs. Solo 401k limits and tax impact), list of commonly missed deductions for multi-stream earners (home office, software, professional development, health insurance), and a quarterly estimated tax payment schedule. Disclaimer: for planning purposes only — review with a licensed CPA before acting.
+Recommend a business entity structure as income scales
+►  What is your current business entity (none, sole proprietor, LLC, S-Corp, C-Corp)?
+►  What is your current annual revenue from all sources?
+►  Do you have business partners or co-founders?
+►  Do you plan to raise outside investment or sell equity in the future?
+An entity structure recommendation with rationale: comparison of sole proprietor, single-member LLC, S-Corp election, and C-Corp across tax treatment, liability protection, administrative overhead, and investor readiness. A transition checklist if a structure change is recommended. A list of 5 questions to bring to a business attorney for final confirmation.
+Create a dollar-cost averaging schedule and automated contribution plan
+►  What brokerage or investment platform will you use?
+►  What day of the month do you receive your primary income?
+►  What fixed dollar amount do you want to automate per contribution cycle (weekly, bi-weekly, or monthly)?
+A DCA schedule table: contribution date, amount, target fund allocation per contribution, and a 12-month forward projection of portfolio growth from DCA alone. Setup guide for the user's specific brokerage (Fidelity, Schwab, Vanguard, or Robinhood) with step-by-step instructions to enable automatic investment. If fintech toggle is on, the agent initiates automation via connected brokerage API.
+Conduct an insurance gap analysis and coverage recommendation
+►  Do you currently have professional liability (E&O) insurance?
+►  Do you have disability income insurance?
+►  Do you have a term life policy?
+►  Are you covered by a health plan?
+►  What is your current annual income that would need to be replaced if you were unable to work?
+An insurance gap analysis: current coverage vs. recommended coverage for a self-employed multi-stream earner. Specific recommendations for E&O coverage amount (calibrated to Layer 1 consulting volume), disability income benefit amount and elimination period, term life coverage multiple, and health plan type. A checklist of next steps and a list of recommended broker types (independent vs. captive) for each coverage category.
+Build an estate planning trigger checklist and beneficiary review
+►  Do you currently have a will or living trust?
+►  Have you designated beneficiaries on your retirement accounts and life insurance policies?
+►  Do you have dependents or a spouse?
+►  Do you have any business assets that need succession planning?
+An estate planning checklist: documents needed (will, healthcare proxy, durable power of attorney, living trust if applicable), beneficiary designation audit across all accounts, a business succession consideration brief, and a list of 7 questions to bring to an estate planning attorney. A recommended timeline for completing each document based on current asset level and family situation. Disclaimer: for planning purposes only — review with a licensed estate attorney before acting.
+6.6 Agent Execution Architecture
+All agent actions across all five layers operate through a shared execution model. The following table defines how the agent loop is implemented in the platform.
+Component
+Specification
+Agent Trigger
+User clicks 'Execute' on any agent action card within a Simulation layer. Agent checks its required prompt fields — any unanswered prompts surface as an inline form before execution begins.
+Prompt Collection
+Missing information is collected via a lightweight inline form rendered within the layer card. Fields are saved to the simulation's agent_context JSON column so they persist across sessions and are reused for subsequent actions in the same layer without re-asking.
+Execution Engine
+Claude API called with the user's Expertise Zone, relevant Deliverables, all collected prompt answers, and the specific action instruction as a structured tool-use request. Streaming enabled for long outputs.
+Action Log
+Every executed action written to the agent_actions table: action_id (CHAR 9), simulation_id (CHAR 9), layer_number, action_type, status (pending | running | complete | failed), input_context (JSON), output_artifact (TEXT or file path), executed_at.
+Result Display
+Results shown inline within the layer card below the triggering action. Tagged with a status badge (Complete, In Progress, Failed), a timestamp, and action-specific controls (Copy, Download, Send, Regenerate).
+Artifact Storage
+Documents, email drafts, scripts, and structured outputs stored as artifacts in the simulation's artifact store, linked to the action_id. Downloadable at any time from the Simulation view.
+Re-execution
+Any action can be re-executed with updated prompt answers. Previous outputs are archived (not deleted) in the action log. Re-execution generates a new action record, preserving full history.
+Cross-Layer Context
+Prompt answers collected in Layer 1 (e.g., target industry, rate) are automatically surfaced as pre-filled defaults in Layers 2–5 where the same information is relevant. Users are shown the pre-filled value and may override it.
+Cost
+All agent action execution is included in the Simulation fee paid at creation. No per-action charge. Re-execution of individual actions is free. A new charge at the current configured price applies only when creating a new Simulation.
+Legal Disclaimer
+For actions that generate tax, legal, insurance, or estate planning content, results are displayed with a standard disclaimer: 'For planning purposes only. Review with a licensed professional before acting.'
+Layer
+Total Agent Actions Available
+L1
+11 actions — Cold email campaign to target companies, consulting outreach, rate card, role search, LinkedIn optimization, booking page, proposal + SOW, consulting agreement, referral network, social proof, negotiation coaching
+L2
+8 actions — Speaking proposals, speaker fee + rider, group coaching + CRM, corporate training, workshop curriculum, waitlist landing page, alumni reactivation, ROI calculator
+L3
+10 actions — Course curriculum, competitive pricing, sales page, e-book + listing, A/B test plan, membership structure, launch email sequence, affiliate program, testimonial system, lapsed buyer reactivation
+L4
+10 actions — SEO content calendar, lead magnet funnel, newsletter monetization, SaaS spec, IP licensing, affiliate partnerships, YouTube/podcast strategy, community flywheel, programmatic ad strategy, client win-back campaign
+L5
+10 actions — Income allocation, compound growth model, fund recommendations, IPS, real estate strategy, tax optimization, entity structure, DCA schedule, insurance gap analysis, estate planning checklist
+The AI Reasoning field for each Income Stream is displayed alongside every agent action card, reminding the user which of their specific career Deliverables justifies this action and why executing it is the highest-leverage move at this stage of their wealth-building journey.
+6.7 Agent Tool & Skill Registry
+Every agent action is executed through a combination of the Claude API and one or more platform skills or external tool integrations. The registry below maps each action type to the specific skill, tool, or service that executes it. Skills marked as available are implemented natively on the platform. NotebookLM integrations are invoked via NotebookLM API or structured export/import workflows where a direct API is unavailable.
+6.7.1 Available Skills & Tools
+Skill / Tool
+Source
+Output Format
+Used For
+pptx skill
+Platform (local)
+.pptx file
+Slide decks — course overview decks, pitch decks, corporate training presentations, speaking proposals, workshop outlines, product launch slides
+xlsx skill
+Platform (local)
+.xlsx file
+Data tables — competitor analysis tables, income projection models, DCA schedules, compound growth tables, affiliate commission trackers, cohort revenue projections
+docx skill
+Platform (local)
+.docx file
+Reports & documents — consulting proposals, SOW templates, licensing agreements, consulting agreements, e-book outlines, IPS documents, SaaS product specs, workshop facilitator guides
+pdf skill
+Platform (local)
+.pdf file
+PDF exports — rate cards, capability one-pagers, formatted reports, investment policy statements, estate planning checklists
+canvas-design skill
+Platform (local)
+.png / .pdf
+Infographics — visual one-pagers, capability posters, lead magnet covers, e-book covers, speaker media kits, course promotional graphics, infographic reports
+Claude API (text)
+Anthropic API
+Text / HTML / JSON
+All content generation — email copy, sales page copy, course outlines, negotiation scripts, SEO articles, podcast scripts, referral messages, ad copy, legal disclaimers
+NotebookLM Audio Overview
+NotebookLM API
+.mp3 / .wav
+Audio summaries — spoken overview of Simulation results, layer-by-layer audio walkthrough, income stream audio brief for on-the-go consumption
+NotebookLM Video Overview
+NotebookLM API
+.mp4
+Video overviews — short explainer video of the user's Expertise Zone and Simulation plan, shareable for LinkedIn or stakeholder presentations
+NotebookLM Mind Map
+NotebookLM API
+.png / interactive
+Mind maps — visual map of the five-layer wealth pyramid anchored to the user's specific Expertise Zone, Income Streams, and Deliverables
+NotebookLM Flashcards
+NotebookLM API
+Interactive deck
+Flashcards — study cards for key income stream concepts, negotiation tactics, tax optimization terms, investment vocabulary tailored to the user's Simulation
+NotebookLM Report
+NotebookLM API
+.pdf
+Structured reports — deep-dive Simulation summary report, Layer 5 wealth strategy brief, SEO content strategy report
+Apollo / Instantly
+External API
+Campaign
+Cold email execution — push researched prospect lists and 3-step sequences directly to cold email campaign; track open, click, and reply rates per company
+LinkedIn OAuth
+External API
+Profile data
+Profile crawl — fetch work history, roles, achievements for expertise zone extraction; post optimized profile copy back via LinkedIn API if authorized
+Cal.com API
+External API
+Booking page
+Booking page creation — programmatically create event types, availability, pricing, and intake form fields on the user's Cal.com account
+Stripe API
+External API
+Payment
+Per-Simulation billing — dynamic charge at the current admin-configured price, issue invoices, process automatic refunds on failed generation
+ConvertKit / ActiveCampaign
+External API
+Email sequences
+Email funnel automation — import lead magnet nurture sequences, product launch emails, reactivation campaigns, waitlist sequences directly into the user's account
+Plaid / Alpaca
+External API (toggled)
+Portfolio data
+Fintech Layer 5 (admin toggle) — surface real fund data, brokerage account links, initiate DCA automation when toggle is enabled
+6.7.2 Action-to-Skill Mapping by Layer
+The table below maps every agent action to its primary skill or tool and the secondary skill used for the downloadable artifact. Actions with a NotebookLM skill produce an additional rich-media output alongside the primary artifact.
+L
+Agent Action
+Primary Skill / Tool
+Artifact Skill
+NotebookLM Output
+L1
+Cold email campaign to researched target companies
+Claude API + Apollo / Instantly
+docx skill
+—
+L1
+Consulting outreach emails to 10 target prospects
+Claude API
+docx skill
+Audio Overview
+L1
+Consulting rate card and capability one-pager
+Claude API + pdf skill
+canvas-design
+—
+L1
+Search active fractional and contract roles
+Claude API + LinkedIn OAuth
+xlsx skill
+—
+L1
+LinkedIn headline, About section, Featured block optimization
+Claude API + LinkedIn OAuth
+docx skill
+—
+L1
+Public booking page configuration
+Claude API + Cal.com API
+docx skill
+—
+L1
+Consulting proposal and SOW template
+Claude API
+docx skill
+—
+L1
+Consulting agreement template
+Claude API
+docx skill
+—
+L1
+Referral network activation — 15 contact messages
+Claude API
+xlsx skill
+—
+L1
+Social proof and testimonial collection system
+Claude API
+docx skill
+—
+L1
+Rate negotiation coaching script
+Claude API
+docx skill
+—
+L2
+Speaking proposals to conferences and podcasts
+Claude API
+docx skill
+—
+L2
+Speaker fee structure and rider
+Claude API
+docx skill
+—
+L2
+Group coaching program structure and curriculum
+Claude API
+pptx skill
+Mind Map
+L2
+Corporate training buyer outreach
+Claude API + LinkedIn OAuth
+xlsx skill
+—
+L2
+Workshop curriculum and facilitator guide
+Claude API
+pptx skill
+Flashcards
+L2
+Waitlist landing page copy and email sequence
+Claude API + ConvertKit
+docx skill
+—
+L2
+Alumni reactivation email sequence
+Claude API + ConvertKit
+docx skill
+—
+L2
+Workshop ROI calculator for corporate buyers
+Claude API
+xlsx skill
+—
+L3
+Full online course curriculum and module outlines
+Claude API
+pptx skill
+Mind Map
+L3
+Competing course research and positioning strategy
+Claude API
+xlsx skill
+Report
+L3
+Course or product sales page (HTML)
+Claude API
+docx skill
+—
+L3
+E-book or digital guide outline and Gumroad listing
+Claude API
+docx skill
+Audio Overview
+L3
+Product A/B test and pricing experiment plan
+Claude API
+xlsx skill
+—
+L3
+Membership community structure and 12-week content calendar
+Claude API
+pptx skill
+Flashcards
+L3
+7-email product launch sequence
+Claude API + ConvertKit
+docx skill
+—
+L3
+Affiliate recruitment program spec and outreach
+Claude API
+docx skill
+—
+L3
+Student testimonial and case study collection system
+Claude API
+docx skill
+—
+L3
+Reactivation campaign for lapsed buyers
+Claude API + ConvertKit
+docx skill
+—
+L4
+90-day SEO content calendar and 5 drafted articles
+Claude API
+xlsx skill
+Report
+L4
+Automated lead magnet and email nurture funnel
+Claude API + ConvertKit
+docx skill
+Audio Overview
+L4
+Newsletter monetization strategy
+Claude API
+docx skill
+—
+L4
+SaaS product specification built on user methodology
+Claude API
+docx skill
+Video Overview
+L4
+IP licensing outreach and agreement template
+Claude API
+docx skill
+—
+L4
+Affiliate and referral partnership identification
+Claude API
+xlsx skill
+—
+L4
+YouTube or podcast content strategy and 3 episode scripts
+Claude API
+docx skill
+Audio Overview
+L4
+Community flywheel activation plan
+Claude API
+pptx skill
+Mind Map
+L4
+Programmatic ad strategy and copy set
+Claude API
+canvas-design
+—
+L4
+Client win-back campaign for lapsed L1/L2 clients
+Claude API + ConvertKit
+docx skill
+—
+L5
+Personalized income allocation strategy across asset classes
+Claude API
+xlsx skill
+Infographic
+L5
+Compound growth projections for wealth deployment plan
+Claude API
+xlsx skill
+Report
+L5
+Index fund and ETF recommendations aligned to user profile
+Claude API + Plaid/Alpaca (toggle)
+xlsx skill
+Report
+L5
+Personal Investment Policy Statement (IPS)
+Claude API
+docx skill
+—
+L5
+Real estate entry strategy by capital position
+Claude API
+docx skill
+Report
+L5
+Tax optimization strategy for multi-stream income
+Claude API
+docx skill
+—
+L5
+Business entity structure recommendation
+Claude API
+docx skill
+—
+L5
+Dollar-cost averaging schedule and contribution plan
+Claude API + Plaid/Alpaca (toggle)
+xlsx skill
+Flashcards
+L5
+Insurance gap analysis and coverage recommendation
+Claude API
+docx skill
+—
+L5
+Estate planning trigger checklist and beneficiary review
+Claude API
+docx skill
+—
+6.7.3 NotebookLM Integration Specification
+NotebookLM outputs are generated as enrichment artifacts — they supplement the primary skill output but are not prerequisites for action completion. When a NotebookLM output is available for an action, a secondary 'Generate [Output Type]' button appears in the action result panel after the primary artifact has been delivered.
+NotebookLM Output
+Trigger Point
+What Is Generated
+Where It Appears
+Audio Overview
+After primary artifact is complete. User clicks 'Generate Audio Overview' in result panel.
+A 3–5 minute spoken summary of the action's output — narrated in natural conversational style, covering key recommendations, income estimates, and next steps. Delivered as an .mp3 file.
+Inline audio player in the action result card. Downloadable. Shareable link generated for team or collaborator access.
+Video Overview
+Available for SaaS product spec (L4) and selected L5 strategy actions. Triggered manually.
+A short 2–4 minute screen-narrated walkthrough of the key sections of the artifact — suitable for sharing with a technical co-founder, investor, or advisor. Delivered as an .mp4 file.
+Embedded video player in the action result card. Downloadable. Can be pushed to a shared Google Drive folder if connected.
+Mind Map
+Available for curriculum actions (L2, L3) and community flywheel (L4). Triggered manually.
+An interactive or static visual mind map of the program structure, curriculum modules, or strategic plan — centered on the Expertise Zone with branches for each component. Delivered as .png and interactive HTML.
+Rendered inline as a zoomable image in the action result card. HTML version opens in a new tab. Both downloadable.
+Flashcards
+Available for workshop curriculum (L2), membership structure (L3), and DCA schedule (L5). Triggered manually.
+A deck of 15–25 study flashcards covering the key concepts, frameworks, or vocabulary from the artifact — designed for the user to internalize their own methodology or for use in teaching participants. Delivered as an interactive web widget and exportable .pdf.
+Interactive flashcard widget rendered inline. Flip-card UI. PDF export for printing or sharing with participants.
+Report
+Available for competitor research (L3), SEO calendar (L4), compound growth (L5), and real estate strategy (L5).
+A structured 2–4 page narrative report summarizing the action's findings, recommendations, and rationale — formatted for sharing with an advisor, partner, or investor. Delivered as a .pdf via the pdf skill.
+Displayed as a downloadable PDF link in the action result card with a preview thumbnail. Follows platform header/footer branding.
+Infographic
+Available for income allocation strategy (L5). Triggered manually.
+A single-page visual infographic showing the user's income allocation breakdown across asset classes — pie chart, flow diagram, and annotated callouts. Produced via the canvas-design skill. Delivered as .png and .pdf.
+Rendered inline as a high-resolution image in the action result card. Downloadable as both .png and .pdf. Suitable for printing or including in an investor or advisor brief.
+7. Data Models (SQLAlchemy / MySQL)
+7.1 ID Generation Standard — All Tables
+Every primary key across all database tables is a generated 9-character alphanumeric string (CHAR(9)), not an auto-incrementing integer. The ID is generated at the application layer before INSERT using a cryptographically secure random function drawing from uppercase letters, lowercase letters, and digits (62-character alphabet). This applies to all id columns and all foreign key references.
+Property
+Specification
+Type
+CHAR(9) — fixed-length, NOT NULL, PRIMARY KEY
+Alphabet
+A-Z, a-z, 0-9 — 62 characters total
+Length
+9 characters — 62^9 = ~13.5 trillion unique values
+Generation
+secrets.token_urlsafe() sliced and filtered at application layer (Python)
+Collision check
+SELECT COUNT(*) before INSERT. Regenerate on collision (astronomically rare).
+Foreign keys
+All FK columns are also CHAR(9), indexed. No integer sequences anywhere in schema.
+Example value
+A3x9Kq2Rp, mB7nPw4Tz, Zr1Ys6Jd8
+# utils/id_gen.py — 9-character alphanumeric ID generator
+import secrets, string
+ALPHABET = string.ascii_letters + string.digits  # 62 chars: A-Z a-z 0-9
+ID_LENGTH = 9
+def generate_id() -> str:
+"""Return a cryptographically random 9-character alphanumeric string."""
+return ''.join(secrets.choice(ALPHABET) for _ in range(ID_LENGTH))
+# Usage in SQLAlchemy model (all tables follow this pattern):
+from utils.id_gen import generate_id
+class User(db.Model):
+__tablename__ = 'users'
+id = db.Column(db.CHAR(9), primary_key=True, default=generate_id, nullable=False)
+# ...
+class Simulation(db.Model):
+__tablename__ = 'simulations'
+id        = db.Column(db.CHAR(9), primary_key=True, default=generate_id, nullable=False)
+user_id   = db.Column(db.CHAR(9), db.ForeignKey('users.id'), nullable=False)
+resume_id = db.Column(db.CHAR(9), db.ForeignKey('resumes.id'), nullable=False)
+# ...
+# MySQL DDL equivalent:
+# id CHAR(9) NOT NULL PRIMARY KEY  -- no AUTO_INCREMENT
+# user_id CHAR(9) NOT NULL,
+# FOREIGN KEY (user_id) REFERENCES users(id)
+7.2 Core Tables
+Table
+Key Fields
+Notes
+users
+id (CHAR 9, PK), email, password_hash, full_name, created_at
+id is a generated 9-character alphanumeric string (e.g. 'A3x9Kq2Rp'). No integer sequence. Billing is per-Simulation via Stripe.
+resumes
+id (CHAR 9, PK), user_id (CHAR 9, FK), label, file_path, file_type, source, parsed_text, expertise_zones
+All FK references are CHAR(9). source = 'upload' | 'linkedin'. expertise_zones is a JSON cache of Claude extraction results.
+simulations
+id (CHAR 9, PK), user_id (CHAR 9, FK), resume_id (CHAR 9, FK), name, focus_hint, expertise_zone, status, stripe_payment_intent_id
+status: pending | processing | streaming | complete | error | refunded.
+simulation_layers
+id (CHAR 9, PK), simulation_id (CHAR 9, FK), layer_number, layer_name, income_type, income_streams, ai_narrative, priority_score
+income_streams is a JSON array of stream objects, each including ai_reasoning field.
+income_streams
+id (CHAR 9, PK), layer_id (CHAR 9, FK), name, description, platform, est_monthly_low, est_monthly_high, ai_reasoning, deliverable_refs, automation_level
+ai_reasoning is a TEXT field containing Claude's explanation for this recommendation.
+collaborations
+id (CHAR 9, PK), simulation_id (CHAR 9, FK), invitee_email, permission_level, share_token, expires_at, accepted_at
+permission_level: viewer | commenter | editor. Token used for share link auth.
+collab_activities
+id (CHAR 9, PK), simulation_id (CHAR 9, FK), collaborator_id (CHAR 9, FK), activity_type, layer_number, content, created_at
+activity_type: comment | refinement_request | view.
+platform_settings
+id (CHAR 9, PK), key, value, updated_by (CHAR 9, FK), updated_at
+Stores admin-controlled feature flags and pricing. Keys include: simulation_price (decimal, default 10.00), fintech_toggle (on/off). All changes take effect immediately without redeployment.
+ai_interactions
+id (CHAR 9, PK), user_id (CHAR 9, FK), simulation_id (CHAR 9, FK), interaction_type, prompt_tokens, completion_tokens, model, created_at
+interaction_type: zone_extract | layer_generate | layer_refine.
+audit_logs
+id (CHAR 9, PK), user_id (CHAR 9, FK), action, resource_id (CHAR 9), metadata, created_at
+Full activity audit trail. resource_id is CHAR(9) referencing any entity table.
+agent_actions
+id (CHAR 9, PK), simulation_id (CHAR 9, FK), layer_number, action_type, status, input_context, output_artifact, executed_at
+status: pending | running | complete | failed. input_context stores collected prompt answers (JSON). output_artifact is TEXT or a file path for downloadable documents.
+agent_context
+id (CHAR 9, PK), simulation_id (CHAR 9, FK), layer_number, context_key, context_value, updated_at
+Persists user-supplied prompt answers per layer so they are reused across agent action executions without re-prompting.
+8. API Design (Flask REST)
+8.1 Authentication
+Method
+Endpoint
+Description
+POST
+/api/auth/register
+Create user account, trigger verification email
+POST
+/api/auth/login
+Authenticate, return JWT (7-day expiry)
+POST
+/api/auth/logout
+Invalidate session token
+POST
+/api/auth/reset-password
+Send tokenized password reset email
+8.2 Resumes & LinkedIn
+Method
+Endpoint
+Description
+POST
+/api/resumes/upload
+Upload PDF or DOCX resume (multipart/form-data)
+POST
+/api/resumes/linkedin
+Initiate LinkedIn OAuth and crawl profile
+GET
+/api/resumes
+List user's resumes and LinkedIn imports
+GET
+/api/resumes/:id
+Get parsed text and cached expertise zones
+PUT
+/api/resumes/:id
+Update parsed text (user edits before analysis)
+POST
+/api/resumes/:id/extract-zones
+Trigger or refresh Claude expertise zone extraction
+POST
+/api/resumes/:id/linkedin-sync
+Re-crawl LinkedIn to capture profile updates
+DELETE
+/api/resumes/:id
+Delete resume/LinkedIn import and cascade
+8.3 Simulations
+Method
+Endpoint
+Description
+POST
+/api/simulations
+Create Simulation — triggers Stripe charge at current configured price
+GET
+/api/simulations
+List user's Simulations (owned + shared)
+GET
+/api/simulations/:id
+Get full Simulation with all layers and AI reasoning
+GET
+/api/simulations/:id/stream
+SSE endpoint — streams layer generation in real time
+PUT
+/api/simulations/:id/name
+Rename Simulation
+POST
+/api/simulations/:id/layers/:num/refine
+Regenerate one layer with new constraint (free)
+POST
+/api/simulations/:id/export
+Generate PDF export of Simulation
+DELETE
+/api/simulations/:id
+Delete Simulation and all layers
+8.4 Collaboration
+Method
+Endpoint
+Description
+POST
+/api/simulations/:id/collaborators
+Invite collaborator by email with permission level
+GET
+/api/simulations/:id/collaborators
+List collaborators and their permission levels
+PUT
+/api/simulations/:id/collaborators/:cid
+Update collaborator permission level
+DELETE
+/api/simulations/:id/collaborators/:cid
+Revoke collaborator access
+POST
+/api/simulations/:id/activities
+Add comment or refinement request (collaborator)
+GET
+/api/simulations/:id/activities
+Get collaboration activity log
+8.5 Admin & Platform
+Method
+Endpoint
+Description
+GET
+/api/admin/settings
+List all platform_settings key-value pairs
+PUT
+/api/admin/settings/:key
+Update a platform setting (e.g., simulation_price, fintech_toggle)
+GET
+/api/admin/settings/simulation_price
+Get current Simulation price and full price change history
+PUT
+/api/admin/settings/simulation_price
+Set new Simulation price — takes effect immediately for all new checkouts
+GET
+/api/admin/revenue
+Revenue dashboard — daily totals, per-user spend, refund rate, price change audit trail
+GET
+/api/user/profile
+Get user profile and spend summary
+PUT
+/api/user/profile
+Update name and preferences
+9. Claude API Integration
+All Claude interactions use the claude-sonnet-4-20250514 model. Prompts are engineered to return strict JSON with no markdown fences. All interactions are logged in the ai_interactions table for token monitoring and cost control.
+9.1 Interaction Types
+Interaction
+Trigger
+Cost to User
+Notes
+Zone Extraction
+Resume / LinkedIn upload
+Free
+Result cached in resume.expertise_zones. Re-called only if parsed_text changes.
+Full 5-Layer Gen
+Simulation creation
+Configured price
+Streamed via SSE. Each layer pushed to client as completed. Includes ai_reasoning per stream.
+Layer Refinement
+User refines one layer
+Free
+Sends original zone context + new constraint. Only that layer's record is overwritten.
+LinkedIn Normalize
+LinkedIn crawl complete
+Free
+Short Claude call to normalize crawled text into standard resume schema before zone extraction.
+9.2 AI Reasoning — Income Stream Display
+Every Income Stream returned by Claude includes an ai_reasoning field. This field contains Claude's explanation of why this specific stream was recommended for this user. The UI surfaces this inline below each Income Stream card. Example structure of the returned JSON for a single Income Stream:
+{"id": "mB7nPw4Tz",
+"name": "Enterprise Data Architecture Masterclass",
+"description": "8-week live cohort teaching senior engineers data mesh and lakehouse patterns.",
+"platform": "Maven",
+"est_monthly_low": 4000,
+"est_monthly_high": 12000,
+"ai_reasoning": "Your resume cites migrating a 3TB warehouse to Snowflake and designing the real-time ingestion layer for a Fortune 500 client. These are exactly the outcomes senior engineers pay to learn. A cohort course lets you teach the decision framework you built, not just the technology.",
+"deliverable_refs": ["Migrated 3TB data warehouse to Snowflake", "Designed real-time ingestion pipeline for 40M daily events"],
+"automation_level": 2,
+"launch_timeline_weeks": 8
+}
+9.3 SSE Streaming Architecture
+The /api/simulations/:id/stream endpoint uses Flask's Response with stream_with_context and Server-Sent Events. Claude's API streaming mode is used (stream=True). As each layer's JSON object is completed, it is parsed and emitted as a distinct SSE event. The frontend listens with EventSource and appends each layer to the UI as it arrives.
+SSE event types emitted during generation:
+layer_start — layer number and name, signals UI to render skeleton card
+layer_data — complete layer JSON including all income_streams with ai_reasoning
+layer_error — error on a specific layer, triggers retry UI for that layer
+simulation_complete — all five layers delivered, marks Simulation as complete
+simulation_error — fatal error, triggers refund process via Stripe API
+10. Frontend UX Flow
+The platform uses server-rendered Jinja2 templates with lightweight JavaScript for SSE streaming, interactive states, and real-time layer rendering. No heavy frontend framework is required for v1.
+10.1 New User Onboarding Flow
+Step
+Screen
+User Action & System Response
+1
+Register
+User provides email + password. Verification email sent. Redirect to 'Check your inbox' screen.
+2
+Dashboard (empty)
+User sees empty Dashboard with two CTAs: 'Upload Resume' and 'Import from LinkedIn.'
+3
+Source Selection
+User chooses Resume upload (drag-and-drop, PDF/DOCX) or LinkedIn import (OAuth redirect). Both result in editable parsed text preview.
+4
+Zone Extraction
+User clicks 'Analyze My Career.' Claude extracts Expertise Zones. Results display as selectable cards showing zone name, summary, monetization potential, and estimated hourly rate.
+5
+Simulation Setup
+User selects a zone, optionally types a focus hint, and names the Simulation. Pricing confirmation screen shows the current configured price fetched live from platform_settings.
+6
+Payment
+Stripe Checkout or saved card confirmation. On success, Simulation job queued.
+7
+Streaming View
+Wealth pyramid UI appears. Layers populate one at a time via SSE. Each Income Stream card expands to show the full AI reasoning on click.
+8
+Iteration
+User clicks 'Refine this Layer,' types a constraint, and that layer regenerates (free). Remaining layers unchanged.
+9
+Share & Collaborate
+User clicks 'Share' on any Simulation, invites collaborators by email with chosen permission level. Collaborators receive access link.
+10.2 Dashboard Layout
+Section
+Contents
+Header
+Logo, user name, total spend to date, notification bell, settings link.
+My Simulations
+Card grid: name, Expertise Zone, source (resume/LinkedIn), creation date, status badge, collaborator count, Share and Refine quick actions.
+My Sources
+List of uploaded resumes and LinkedIn imports. Labels, dates, linked Simulation counts, re-sync option for LinkedIn.
+Collaboration Inbox
+Pending collaboration invitations from other users. Accept or decline.
+Create New
+CTA prompting new upload, LinkedIn import, or new Simulation from existing source.
+Admin Panel
+Visible to admin users only. Fintech toggle switch, revenue dashboard, refund log, token usage chart.
+11. Non-Functional Requirements
+Category
+Requirement
+Target
+Implementation
+Performance
+Page load (non-AI pages)
+< 2 seconds
+Jinja2 caching, MySQL query optimization
+Performance
+Simulation streaming start
+< 3 seconds
+Celery picks job immediately after payment
+Performance
+Full 5-layer stream completion
+< 60 seconds
+Claude streaming mode, SSE push per layer
+Security
+Password storage
+Bcrypt cost 12+
+Flask-Bcrypt
+Security
+Resume file access
+User-scoped only
+Signed path check before file serve
+Security
+API key storage
+Environment variable
+Never in code or DB. GoDaddy env config.
+Security
+LinkedIn OAuth tokens
+Encrypted at rest
+AES-256 via cryptography library
+Reliability
+Claude API failure handling
+Retry 2x, then refund
+Celery retry + Stripe refund on fatal error
+Reliability
+Database backups
+Daily automated
+GoDaddy Managed Database backup policy
+Reliability
+SSE connection drop recovery
+Auto-reconnect
+EventSource reconnect with last-event-id
+Scalability
+Concurrent AI requests
+Queue-based
+Celery + Redis task queue
+Privacy
+Resume and LinkedIn PII
+Encrypted at rest
+MySQL encryption + GoDaddy disk encryption
+Privacy
+GDPR delete
+Full cascade delete
+DELETE /api/user purges all records
+Accessibility
+WCAG compliance
+Level AA
+All core flows, SSE status announced
+Compliance
+Stripe PCI
+PCI-DSS via Stripe
+No card data stored on platform
+11.1 Flask Application Structure
+simulacrum/
+├── app/
+│   ├── __init__.py          # Flask app factory
+│   ├── config.py            # Env-based config (dev/prod)
+│   ├── models/
+│   │   ├── user.py          # User, AuditLog
+│   │   ├── resume.py        # Resume (upload + linkedin)
+│   │   ├── simulation.py    # Simulation, SimulationLayer, IncomeStream
+│   │   ├── collaboration.py # Collaboration, CollabActivity
+│   │   └── platform.py      # PlatformSettings, AIInteraction
+│   ├── routes/
+│   │   ├── auth.py          # /api/auth/*
+│   │   ├── resumes.py       # /api/resumes/* + linkedin crawl
+│   │   ├── simulations.py   # /api/simulations/* + SSE stream
+│   │   ├── collaboration.py # /api/simulations/:id/collaborators/*
+│   │   ├── admin.py         # /api/admin/* (fintech toggle, revenue)
+│   │   └── user.py          # /api/user/*
+│   ├── services/
+│   │   ├── claude_service.py   # Zone extract, sim gen, layer refine
+│   │   ├── resume_parser.py    # PyMuPDF + python-docx
+│   │   ├── linkedin_crawler.py # OAuth + profile scrape + normalize
+│   │   ├── stripe_service.py   # Charge, refund, webhook, Stripe Connect payouts
+│   │   ├── partner_service.py  # Referral attribution, commission calc, payout trigger
+│   │   ├── sse_service.py      # SSE event builder and emitter
+│   │   ├── pdf_exporter.py     # WeasyPrint PDF export
+│   │   ├── fintech_service.py  # Plaid/Alpaca — toggled on/off
+│   │   └── email_service.py    # Verification, invoices, collab invites
+│   ├── tasks/
+│   │   └── simulation_tasks.py # Celery async generation jobs
+│   ├── templates/
+│   │   ├── base.html
+│   │   ├── dashboard.html
+│   │   ├── simulation.html     # SSE consumer + streaming pyramid UI
+│   │   ├── collaborate.html    # Collaboration view
+│   │   └── admin.html          # Admin dashboard + fintech toggle
+│   └── static/ (css/, js/)
+├── utils/
+│   └── id_gen.py               # 9-char alphanumeric ID generator (all tables)
+├── migrations/                 # Flask-Migrate
+├── tests/
+├── .env                        # CLAUDE_API_KEY, STRIPE_SECRET, etc.
+├── requirements.txt
+└── wsgi.py
+12. Sprint Roadmap — 8 Weeks to Launch
+Sprint
+Weeks
+Deliverables
+Sprint 1 — Foundation
+1–2
+Flask app factory, SQLAlchemy + MySQL schema with CHAR(9) alphanumeric ID generator (utils/id_gen.py), Flask-Migrate, user auth (register/login/JWT/email verify), GoDaddy deployment pipeline, .env config.
+Sprint 2 — Data Ingestion
+3–4
+Resume upload + PyMuPDF/python-docx parsing, LinkedIn OAuth + crawler + normalization, editable parsed text UI, Claude expertise zone extraction with caching.
+Sprint 3 — Simulation Core
+5–6
+Stripe dynamic-price checkout (reads simulation_price from platform_settings), Celery task queue, full 5-layer Claude generation, SSE streaming endpoint, streaming pyramid UI, AI reasoning display per Income Stream.
+Sprint 4 — Collaboration & Admin
+7–8
+Collaboration invite system, share links, permission levels, activity log. Admin panel with fintech toggle, revenue dashboard, refund automation, PDF export, QA, production launch.
+Key Dependencies
+Package
+Version
+Purpose
+flask
+3.0.*
+Core web framework
+flask-sqlalchemy
+3.1.*
+ORM for MySQL
+flask-migrate
+4.*
+Database schema migrations
+flask-login
+0.6.*
+Session management
+flask-bcrypt
+1.0.*
+Password hashing
+anthropic
+0.30.*
+Claude API client with streaming
+PyMuPDF
+1.24.*
+PDF text extraction
+python-docx
+1.1.*
+DOCX text extraction
+celery
+5.4.*
+Async task queue
+redis
+5.0.*
+Celery broker
+stripe
+10.*
+Per-usage payments, refunds, and Stripe Connect partner payouts
+requests-oauthlib
+1.3.*
+LinkedIn OAuth 2.0
+beautifulsoup4
+4.12.*
+LinkedIn profile HTML parsing
+weasyprint
+62.*
+PDF export
+cryptography
+42.*
+OAuth token encryption at rest
+PyJWT
+2.8.*
+JWT token auth
+mysqlclient
+2.2.*
+MySQL driver
+python-dotenv
+1.0.*
+Environment variable loading
+13. Open Questions — Resolved
+All open questions from the initial PRD draft have been formally resolved. The table below documents each question and its binding resolution.
+#
+Question
+Resolution
+1
+Should Simulation generation use SSE streaming or a single async job with polling?
+SSE streaming. Layers appear live in the UI as Claude completes each one. EventSource reconnects automatically on drop using last-event-id.
+2
+What is the monetization model — subscription or per-usage?
+Per-usage fee, admin-configurable. Default price at launch is $10.00 per Simulation. The admin can update the price at any time via the Admin Panel. The price is stored in platform_settings under the key 'simulation_price' and applied dynamically at Stripe checkout — no redeployment or Stripe dashboard change required.
+3
+Should collaboration be available in v1?
+Yes. Collaboration is enabled from the outset and can be seeded from any prior Simulation. Owners invite by email and control permission levels (Viewer, Commenter, Editor).
+4
+Should LinkedIn integration be available as an alternative to resume upload?
+Yes. LinkedIn OAuth + profile crawler is a first-class data source in v1. Crawled data is normalized via a Claude call into the standard resume schema before zone extraction.
+5
+Should AI reasoning be surfaced for each Income Stream recommendation?
+Yes. Claude's ai_reasoning field is surfaced inline in the UI for every Income Stream. It explains the specific resume or LinkedIn Deliverable that justifies the recommendation.
+6
+Should Layer 5 include live fintech API integration?
+General guidance by default. A fintech toggle in the admin panel enables live Plaid/Alpaca API integration when activated. Toggle is database-driven and takes effect without redeployment.
+Simulacrum PRD v1.0 — Approved
+Bay Area Experiences Ventures  |  April 2026
+14. Simulacrum Vision — One-Page Presentation
+The three core questions from the Vision (Section 2) are answered below exactly as Simulacrum answers them for every user — grounded in real career evidence, mapped to the five-layer wealth framework, and delivered through AI-powered analysis. This page serves as both an internal reference for product purpose and a stakeholder-ready summary of the platform's value proposition.
+SIMULACRUM
+How We Answer the Three Questions Every Professional Must Face
+AI-Powered Career Wealth Simulation  •  Flask + Claude API  •  Bay Area Experiences Ventures
+✦
+Q1
+What are you excellent at — and what real deliverables prove it?
+▶  Simulacrum ingests your resume or LinkedIn profile and sends it to Claude, which identifies discrete Expertise Zones — specific domains where your work history shows repeatable, measurable excellence.
+▶  Each zone is grounded in real Deliverables: the migration you led, the revenue you closed, the system you designed. Not generalizations — proof.
+▶  Claude returns each zone with a confidence score, a monetization potential rating, an estimated market rate, and the exact career evidence that justifies it.
+▶  You select the zone that resonates most, or accept Claude’s top recommendation. That zone becomes the anchor for your entire Simulation.
+■
+Q2
+How is that excellence packaged into sellable products?
+▶  Simulacrum maps your Expertise Zone across Layers 1 through 3 of the wealth pyramid: active consulting (Layer 1), leveraged group delivery (Layer 2), and productized IP (Layer 3).
+▶  For each layer, Claude names specific products you could build: not “create a course” but “Data Architecture Masterclass on Maven, targeting senior engineers at Series B startups.”
+▶  Every Income Stream recommendation comes with Claude’s AI reasoning — a direct explanation citing which of your Deliverables justifies that product, who the buyer is, and what the income range looks like.
+▶  Layer refinement lets you constrain any layer (e.g., “focus only on asynchronous digital products, no live sessions”) and Claude regenerates that layer at no additional charge.
+▲
+Q3
+How do those products eventually run without you?
+▶  Layers 4 and 5 are the Automation Blueprint. Layer 4 translates your productized income into fully automated systems: SEO content engines, email funnels, SaaS tools built on your methodology, and IP licensing arrangements.
+▶  Layer 5 closes the flywheel: revenue from the automation layer is deployed into compounding wealth vehicles — index funds, real estate equity, dividend portfolios, and angel positions — with recommendations calibrated to your income profile.
+▶  An admin-controlled fintech toggle enables live integration with Plaid or Alpaca to surface real fund options and brokerage links when the platform is ready for that capability.
+▶  The result is a complete, compounding system: Expertise → Content → Audience → Products → Automation → Wealth — each layer feeding the next.
+Q1 Answer: Your Expertise Zone   →   Q2 Answer: Your Income Streams   →   Q3 Answer: Your Automated Wealth Engine
+Each Simulation answers all three questions simultaneously — grounded in your real career, priced at the admin-configured rate.
+15. Referral Partner & Advisor Access Program
+Simulacrum supports a structured Referral Partner Program enabling life coaches, financial advisors, and career coaches to refer their clients to the platform and earn a commission on every Simulation their referred clients generate. Separately, clients may grant their advisor full read-only access to their Simulation for the purpose of coaching sessions. These two features — referral commission tracking and advisor view access — are distinct but architecturally linked through the ReferralPartner entity.
+15.1 Program Overview
+Property
+Specification
+Commission Model
+Percentage of each Simulation charge earned by the referring partner. Applied at the moment of successful payment. Default global rate: 20%. Admin-configurable in platform_settings under the key 'partner_commission_rate'.
+Rate Governance
+Single global rate applies to all partners. Admin sets and adjusts the rate via the Admin Panel. Rate changes apply to all future Simulation charges — commissions already logged at a prior rate are not retroactively adjusted.
+Payout Method
+Stripe Connect. Partners must complete Stripe Connect onboarding before any commission is disbursed. Earnings accumulate in the partner ledger until the next payout cycle.
+Payout Schedule
+Admin-configurable in platform_settings under 'payout_schedule': weekly, bi-weekly, or monthly. Payout is triggered automatically by a Celery scheduled task on the configured cadence.
+Referral Attribution
+Each partner receives a unique 9-character alphanumeric referral code (CHAR 9, generated by the same id_gen utility). Attribution is captured via URL parameter (?ref=CODE) on signup. Stored as a session cookie persisting through registration and first checkout.
+Attribution Window
+30 days from first click. If a user clicks a referral link, registers within 30 days, and generates a Simulation within 30 days of registration, the referring partner earns the commission.
+Eligible Events
+Commission is earned on every Simulation generated by a referred client — not just the first. A referred client who generates 10 Simulations earns their referring partner 10 commission events.
+Advisor View Access
+Any registered partner may be granted full read-only access to a client's Simulation. The client initiates the share. The advisor sees all 5 layers, all income streams, all AI reasoning, and all agent action artifacts. No edit or regeneration capability.
+Partner Types
+Life Coach, Financial Advisor, Career Coach, Business Coach, Other. Type is self-declared at onboarding and displayed in the Admin Partner roster for filtering.
+Partner Status
+Pending (applied, awaiting admin approval), Active (approved, earning commissions), Suspended (commissions paused by admin), Inactive (self-deactivated).
+15.2 Partner Onboarding Flow
+A prospective partner applies via a public-facing /partners/apply page. The form collects the following information before the application is submitted for admin review.
+Step
+Screen / Action
+Detail
+1
+Application form
+Full name, business name (optional), email, partner type (Life Coach / Financial Advisor / Career Coach / Business Coach / Other), website or LinkedIn URL, brief description of practice (free text, 300 chars max), agreement to partner terms.
+2
+Admin review
+Admin sees pending application in the Admin Panel. One-click Approve or Decline. On approval, the system generates the partner's referral code (CHAR 9) and sends a welcome email with the referral link, dashboard URL, and Stripe Connect onboarding link.
+3
+Stripe Connect onboarding
+Partner completes Stripe Connect Express onboarding (identity verification, bank account linkage). Commissions accumulate in ledger regardless of Stripe status, but payouts are blocked until Stripe Connect is complete. Dashboard shows a 'Complete Payout Setup' banner until resolved.
+4
+Partner Dashboard access
+Partner logs in to their Partner Dashboard (separate auth flow from main user accounts, or unified login with role-based routing). Dashboard shows referral link, earnings summary, client roster, payout history, and advisor view access panel.
+5
+Share referral link
+Partner copies their unique referral link (simulacrum.io/ref/CODE) and shares it with clients via email, social media, their own website, or embedded in a coaching intake workflow.
+15.3 Commission Calculation & Ledger
+Commission is calculated and logged at the moment a referred client's Stripe payment is confirmed. The calculation uses the exact amount charged and the commission rate active at that moment — both values are stored on the commission record for immutability.
+# Commission calculation (services/commission_service.py)
+def calculate_commission(simulation_charge_amount: float) -> float:
+rate = get_platform_setting('partner_commission_rate')  # e.g. 0.20
+return round(simulation_charge_amount * rate, 2)
+# Example: simulation_price = $12.00, rate = 20%
+# commission = round(12.00 * 0.20, 2) = $2.40
+# Commission record written on Stripe payment_intent.succeeded webhook:
+# commissions table:
+#   id                  CHAR(9) PK
+#   partner_id          CHAR(9) FK -> referral_partners.id
+#   simulation_id       CHAR(9) FK -> simulations.id
+#   client_user_id      CHAR(9) FK -> users.id
+#   simulation_charge   DECIMAL(8,2)  — amount the client was charged
+#   commission_rate     DECIMAL(5,4)  — rate at time of charge (e.g. 0.2000)
+#   commission_amount   DECIMAL(8,2)  — calculated commission
+#   status              ENUM('pending','paid','refunded')
+#   stripe_transfer_id  VARCHAR(255)  — populated on payout
+#   created_at          DATETIME
+#   paid_at             DATETIME NULL
+# On Simulation refund: commission status -> 'refunded', not paid out.
+15.4 Partner Dashboard
+The Partner Dashboard is the partner's primary interface. It is accessible at /partners/dashboard after login and is entirely separate from the main Simulacrum user experience. It contains four primary panels.
+Panel
+Contents & Behavior
+Earnings Summary
+Four metric cards at the top of the dashboard: Total Earned (all time), Pending Payout (accumulated since last payout), Paid to Date (sum of all completed payouts), and Commission Rate (current global rate, read-only). A banner displays 'Complete Payout Setup' until Stripe Connect onboarding is finished. A secondary banner shows the next scheduled payout date based on the admin-configured payout_schedule.
+Client Roster
+A table of all referred clients who have signed up and generated at least one Simulation. Columns: Client Full Name, Email Address, Signup Date, Simulations Generated (count), Total Commission Earned from this client (sum), Last Activity Date. Rows are sorted by most recent activity. Admin-facing version shows all partners' rosters; partner sees only their own. Export to CSV available.
+Payout History
+A chronological log of all payouts received. Columns: Payout Date, Amount, Stripe Transfer ID (with link to Stripe dashboard), Status (Completed / Processing / Failed). Each payout row is expandable to show the individual commission records included in that payout batch — displaying the Simulation ID, client name, charge amount, rate applied, and commission earned for each line item.
+My Clients — Advisor View
+A roster of clients who have granted the partner advisor view access to their Simulation. Columns: Client Name, Email, Simulation Name, Expertise Zone, Date Access Granted, Last Viewed by Advisor. Each row has a 'View Simulation' button that opens the client's full Simulation in a read-only advisor view — all 5 layers, all income streams with AI reasoning, and all agent action artifacts visible. The partner can add coaching notes per layer (stored in advisor_notes table, visible only to the advisor and the client). No edit, regenerate, or export capability.
+15.5 Advisor View Access — Client Grant Flow
+Advisor View Access is distinct from the existing Collaboration feature. It is a read-only coaching view, not a collaborative editing session. The client remains the sole owner of the Simulation. The advisor cannot modify, regenerate, export, or share the Simulation.
+Step
+Actor
+Action & System Response
+1
+Client
+Opens a Simulation from their Dashboard. Clicks 'Share with Advisor' button in the Simulation header.
+2
+Client
+Enters their advisor's email address in the share dialog. If the email matches an Active referral partner account, the system displays the partner's name and type for confirmation ('Share with Jane Smith — Life Coach?'). If no match, the system sends an invitation email prompting the recipient to apply as a Referral Partner to access the shared Simulation.
+3
+System
+Creates an advisor_access record: id (CHAR 9), simulation_id, partner_id (or pending_email if not yet a partner), granted_by (client user_id), access_level ('full_read'), granted_at, revoked_at (NULL until revoked). Sends a notification email to the advisor with a direct link to the Simulation in read-only mode.
+4
+Advisor
+Logs into Partner Dashboard. Sees the shared Simulation appear in the 'My Clients — Advisor View' panel. Clicks 'View Simulation' to open the full read-only Simulation view.
+5
+Advisor
+In read-only view: sees all 5 layers fully expanded, all income streams with AI reasoning, all agent action result panels and downloadable artifacts. Can add coaching notes to any layer via a sidebar note panel. Notes are saved to advisor_notes table and are visible to both the advisor and the client.
+6
+Client
+Can revoke advisor access at any time from the Simulation's 'Sharing' settings panel. Revocation immediately removes the Simulation from the advisor's 'My Clients' panel and invalidates any existing direct access links.
+15.6 Data Models — New Tables
+Table
+Key Fields
+Notes
+referral_partners
+id (CHAR 9, PK), user_id (CHAR 9, FK), referral_code (CHAR 9, UNIQUE), full_name, business_name, partner_type, email, stripe_connect_id, status, applied_at, approved_at, approved_by (CHAR 9, FK)
+One record per partner. referral_code is the unique 9-char code embedded in the referral URL. stripe_connect_id populated on Stripe Connect onboarding completion. status: pending | active | suspended | inactive.
+referral_signups
+id (CHAR 9, PK), partner_id (CHAR 9, FK), referred_user_id (CHAR 9, FK), referral_code, clicked_at, registered_at, attributed_at
+One record per referred user signup successfully attributed to a partner. attributed_at marks when the first Simulation charge was completed within the attribution window.
+commissions
+id (CHAR 9, PK), partner_id (CHAR 9, FK), simulation_id (CHAR 9, FK), client_user_id (CHAR 9, FK), simulation_charge, commission_rate, commission_amount, status, stripe_transfer_id, created_at, paid_at
+One record per commission event. Immutable after creation — rate and amount are stored at time of charge. status: pending | paid | refunded.
+partner_payouts
+id (CHAR 9, PK), partner_id (CHAR 9, FK), payout_amount, commission_ids (JSON array of CHAR 9), stripe_payout_id, status, initiated_at, completed_at
+One record per payout batch. commission_ids lists all commission records included in this payout. status: processing | completed | failed.
+advisor_access
+id (CHAR 9, PK), simulation_id (CHAR 9, FK), partner_id (CHAR 9, FK), granted_by (CHAR 9, FK), access_level ENUM('full_read'), granted_at, revoked_at, last_viewed_at
+One record per advisor-simulation pairing. revoked_at NULL until client revokes. last_viewed_at updated on each advisor access.
+advisor_notes
+id (CHAR 9, PK), advisor_access_id (CHAR 9, FK), simulation_id (CHAR 9, FK), layer_number (1–5, NULL for general), note_text (TEXT), created_at, updated_at
+Coaching notes added by advisor per layer or at Simulation level. Visible to advisor and client only. Not editable by client.
+15.7 Platform Settings — New Keys
+Key
+Default Value
+Description
+partner_commission_rate
+0.20
+Global commission rate applied to all partners as a decimal (0.20 = 20%). Admin-configurable. Changes apply to future commissions only — past records are immutable.
+payout_schedule
+monthly
+Cadence of automated partner payouts. Values: weekly | bi-weekly | monthly. Celery beat schedule reads this value on each run.
+partner_program_enabled
+true
+Master on/off toggle for the entire Referral Partner Program. When false, referral links return a 404, no new applications are accepted, and commission calculation is suspended. Existing payouts are not affected.
+min_payout_threshold
+25.00
+Minimum accumulated commission balance (USD) required before a partner payout is initiated. Partners below this threshold carry their balance to the next cycle.
+15.8 API Endpoints — Referral Partner Program
+Method
+Endpoint
+Description
+POST
+/api/partners/apply
+Submit Referral Partner application
+GET
+/api/partners/dashboard
+Partner dashboard summary — earnings, client count, payout status
+GET
+/api/partners/clients
+List referred clients with name, email, sim count, commission earned
+GET
+/api/partners/commissions
+Paginated commission ledger for the authenticated partner
+GET
+/api/partners/payouts
+Payout history with expandable commission line items
+GET
+/api/partners/advisor-clients
+List clients who have granted advisor view access
+GET
+/api/partners/advisor-clients/:sim_id
+Open a client Simulation in full read-only advisor view
+POST
+/api/partners/advisor-clients/:sim_id/notes
+Add a coaching note to a layer or the Simulation overall
+PUT
+/api/partners/advisor-clients/:sim_id/notes/:id
+Update an existing coaching note
+DELETE
+/api/partners/advisor-clients/:sim_id/notes/:id
+Delete a coaching note
+POST
+/api/simulations/:id/advisor-access
+Client grants advisor view access (enters advisor email)
+DELETE
+/api/simulations/:id/advisor-access/:partner_id
+Client revokes advisor access
+GET
+/api/admin/partners
+Admin: list all partners with status, earnings, client count
+PUT
+/api/admin/partners/:id/status
+Admin: approve, suspend, or deactivate a partner
+GET
+/api/admin/partners/:id/commissions
+Admin: view full commission ledger for a specific partner
+POST
+/api/admin/payouts/run
+Admin: manually trigger a payout cycle
+GET
+/api/admin/payouts
+Admin: full payout history across all partners
+15.9 Functional Requirements
+FR-PAR-01: Admin can enable or disable the entire Referral Partner Program via the partner_program_enabled platform setting without redeployment.
+FR-PAR-02: Admin can set and update the global commission rate (partner_commission_rate) and payout schedule (payout_schedule) at any time. Rate changes apply only to future commission events.
+FR-PAR-03: Admin can approve, suspend, or deactivate any partner from the Admin Panel. Suspension immediately pauses commission accrual for that partner. Existing pending commissions are held, not forfeited.
+FR-PAR-04: Each partner's referral link is unique, permanent, and tied to their referral_code. The code cannot be changed after approval.
+FR-PAR-05: Attribution persists for 30 days from first referral link click via a server-side session cookie. If the user registers and generates a Simulation within this window, the referring partner is credited.
+FR-PAR-06: Commission is calculated at the moment of Stripe payment confirmation, using the current simulation_price and partner_commission_rate at that instant. Both values are stored immutably on the commission record.
+FR-PAR-07: If a Simulation is refunded, the associated commission record is marked 'refunded' and excluded from future payouts. If already paid out, the amount is deducted from the partner's next payout cycle.
+FR-PAR-08: Payouts are only disbursed to partners with a completed Stripe Connect onboarding and an accumulated balance meeting or exceeding the min_payout_threshold.
+FR-PAR-09: The Partner Dashboard client roster displays referred client full name, email address, signup date, number of Simulations generated, total commission earned from that client, and last activity date.
+FR-PAR-10: Advisor view access is granted exclusively by the client. The advisor cannot request access — only receive it. The client can revoke access at any time, immediately and without notification delay.
+FR-PAR-11: In advisor read-only view, the advisor sees all 5 layers fully expanded, all income streams with AI reasoning, and all agent action result panels and artifacts. No edit, regenerate, export, or reshare controls are visible.
+FR-PAR-12: Coaching notes added by the advisor are visible to both the advisor and the client in the Simulation view. Notes are not visible to other collaborators or the platform admin.
+FR-PAR-13: The client's Simulation view shows a 'Shared with Advisor' indicator when advisor access is active, displaying the advisor's name and the date access was granted.
+FR-PAR-14: A referred client who is also a Referral Partner may refer other clients. There is no restriction on a user holding both a standard account and a partner account. Commission is earned on all downstream referrals regardless.

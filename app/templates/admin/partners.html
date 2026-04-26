@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block title %}Partners — Admin{% endblock %}
+{% block content %}
+<div class="page-container">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link active">Partners</a>
+  </nav>
+  <h1>Referral Partner Program</h1>
+
+  <section class="admin-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2>All Partners</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="filterPartners('')">All</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterPartners('pending')">Pending</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterPartners('active')">Active</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterPartners('suspended')">Suspended</button>
+      </div>
+    </div>
+
+    <table class="admin-table" id="partnersTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Type</th>
+          <th>Source</th>
+          <th>Status</th>
+          <th>Applied</th>
+          <th>Referral Code</th>
+          <th>Rate</th>
+          <th>Earned</th>
+          <th>Pending</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in partners %}
+        <tr data-status="{{ p.status }}" data-id="{{ p.id }}">
+          <td>
+            {{ p.full_name }}
+            {% if p.business_name %}<br><small style="color:rgba(255,255,255,0.5);">{{ p.business_name }}</small>{% endif %}
+            {% if p.simulations_at_apply is not none %}
+            <br><small style="color:rgba(255,255,255,0.4);">{{ p.simulations_at_apply }} sim{{ 's' if p.simulations_at_apply != 1 }} at apply</small>
+            {% endif %}
+          </td>
+          <td>{{ p.email }}</td>
+          <td>{{ p.partner_type }}</td>
+          <td>
+            {% if p.application_source == 'in_app' %}
+            <span class="status-badge" style="background:rgba(124,58,237,.2);color:#c4b5fd;">Existing Client</span>
+            {% else %}
+            <span style="font-size:.75rem;color:rgba(255,255,255,.4);">Public</span>
+            {% endif %}
+          </td>
+          <td><span class="status-badge status-{{ p.status }}">{{ p.status }}</span></td>
+          <td>{{ p.applied_at.strftime('%Y-%m-%d') }}</td>
+          <td style="font-family:monospace;">{{ p.referral_code or '—' }}</td>
+          <td>
+            <span id="rate-display-{{ p.id }}">{{ (p.effective_commission_rate() * 100)|round(1) }}%</span>
+            <button class="btn btn-ghost btn-xs" onclick="editRate('{{ p.id }}', {{ p.effective_commission_rate() }})">Edit</button>
+          </td>
+          <td>${{ '%.2f'|format(p.total_earned()) }}</td>
+          <td>${{ '%.2f'|format(p.pending_payout()) }}</td>
+          <td class="action-cell">
+            {% if p.status == 'pending' %}
+              <button class="btn btn-primary btn-sm" onclick="partnerAction('{{ p.id }}', 'approve')">Approve</button>
+              <button class="btn btn-ghost btn-sm" onclick="rejectWithReason('{{ p.id }}')">Reject</button>
+            {% elif p.status == 'active' %}
+              <button class="btn btn-ghost btn-sm" onclick="partnerAction('{{ p.id }}', 'suspend')">Suspend</button>
+              {% if p.pending_payout() >= 25 and p.stripe_connect_id %}
+              <button class="btn btn-secondary btn-sm" onclick="partnerAction('{{ p.id }}', 'payout')">Pay Out</button>
+              {% endif %}
+            {% elif p.status == 'suspended' %}
+              <button class="btn btn-primary btn-sm" onclick="partnerAction('{{ p.id }}', 'approve')">Reactivate</button>
+              <button class="btn btn-ghost btn-sm" onclick="rejectWithReason('{{ p.id }}')">Decline</button>
+            {% elif p.status == 'inactive' %}
+              {% if p.last_declined_at %}
+              <small style="color:rgba(255,255,255,.4);">Declined {{ p.last_declined_at.strftime('%Y-%m-%d') }}</small>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="11" style="text-align:center;color:rgba(255,255,255,0.4);">No partners yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterPartners(status) {
+  document.querySelectorAll('#partnersTable tbody tr[data-status]').forEach(row => {
+    row.style.display = (!status || row.dataset.status === status) ? '' : 'none';
+  });
+}
+
+async function partnerAction(id, action) {
+  const labels = { approve: 'Approve', suspend: 'Suspend', payout: 'Trigger payout for' };
+  if (!confirm(`${labels[action]} this partner?`)) return;
+  const r = await fetch(ROOT + `/api/admin/partners/${id}/${action}`, { method: 'POST' });
+  if (r.ok) {
+    window.location.reload();
+  } else {
+    const d = await r.json();
+    alert(d.error || 'Action failed');
+  }
+}
+
+async function rejectWithReason(id) {
+  const reason = prompt('Optional decline reason (shown to partner in email):') ;
+  if (reason === null) return; // cancelled
+  const r = await fetch(ROOT + `/api/admin/partners/${id}/reject`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ reason: reason.trim() }),
+  });
+  if (r.ok) {
+    window.location.reload();
+  } else {
+    const d = await r.json();
+    alert(d.error || 'Action failed');
+  }
+}
+
+async function editRate(id, currentRate) {
+  const input = prompt(`Set commission rate for this partner (e.g. 0.25 for 25%):\nCurrent: ${(currentRate * 100).toFixed(1)}%`);
+  if (input === null || input.trim() === '') return;
+  const rate = parseFloat(input);
+  if (isNaN(rate) || rate <= 0 || rate > 1) { alert('Enter a decimal between 0 and 1'); return; }
+  const r = await fetch(ROOT + `/api/admin/partners/${id}/commission-rate`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ rate }),
+  });
+  if (r.ok) {
+    const d = await r.json();
+    document.getElementById('rate-display-' + id).textContent = (d.effective_commission_rate * 100).toFixed(1) + '%';
+  } else {
+    const d = await r.json();
+    alert(d.error || 'Failed to update rate');
+  }
+}
+</script>
+{% endblock %}

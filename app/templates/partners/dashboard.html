@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block title %}Partner Dashboard{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="dashboard-header">
+    <div>
+      <h1>Partner Dashboard</h1>
+      <p class="dashboard-meta">{{ partner.full_name }} · {{ partner.partner_type }}</p>
+    </div>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      {% if not partner.stripe_connect_id %}
+      <div style="padding:.5rem 1rem;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);border-radius:8px;font-size:.8rem;color:#f5c842">
+        ⚠ Complete Payout Setup — connect your bank account to receive payouts
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Earnings Summary #}
+  <section class="dashboard-section">
+    <h2 class="section-title">Earnings Summary</h2>
+    <div id="earningsGrid" class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="totalEarned">Loading…</div><div class="stat-label">Total Earned (all time)</div></div>
+      <div class="stat-card"><div class="stat-value" id="pendingPayout">—</div><div class="stat-label">Pending Payout</div></div>
+      <div class="stat-card"><div class="stat-value" id="paidToDate">—</div><div class="stat-label">Paid to Date</div></div>
+      <div class="stat-card"><div class="stat-value" id="commRate">—</div><div class="stat-label">Commission Rate</div></div>
+    </div>
+  </section>
+
+  {# Referral Link #}
+  <section class="dashboard-section">
+    <h2 class="section-title">Your Referral Link</h2>
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <input type="text" id="refLink" class="input-text" readonly
+        style="flex:1;font-family:monospace;font-size:.85rem"
+        value="Loading…">
+      <button class="btn btn-secondary" onclick="copyRefLink()">Copy link</button>
+    </div>
+    <p style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.5rem">
+      Share this link with clients. You earn commission on every Simulation they generate.
+    </p>
+  </section>
+
+  {# Client Roster #}
+  <section class="dashboard-section">
+    <h2 class="section-title">My Clients</h2>
+    <div id="clientsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+  </section>
+
+  {# Advisor View Clients #}
+  <section class="dashboard-section">
+    <h2 class="section-title">Advisor View Access</h2>
+    <p style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:.75rem">
+      Clients who have shared their Simulation with you for coaching.
+    </p>
+    <div id="advisorClientsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+  </section>
+
+  {# Payout History #}
+  <section class="dashboard-section">
+    <h2 class="section-title">Payout History</h2>
+    <div id="payoutsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+  </section>
+
+  {# Send Referral Invitation (FR-PAR-15) #}
+  <section class="dashboard-section">
+    <h2 class="section-title">Send Referral Invitation</h2>
+    <div style="max-width:520px">
+      <div class="form-group">
+        <label>Recipient email *</label>
+        <input type="email" id="invEmail" class="input-text" placeholder="client@example.com">
+      </div>
+      <div class="form-group">
+        <label>First name <span style="opacity:.5">(optional)</span></label>
+        <input type="text" id="invFirstName" class="input-text" placeholder="Jane">
+      </div>
+      <div class="form-group">
+        <label>Personal message <span style="opacity:.5">(optional, max 500 chars)</span></label>
+        <textarea id="invMessage" class="input-text" rows="3" maxlength="500"
+          placeholder="I thought you'd benefit from mapping your skills into income streams…"></textarea>
+      </div>
+      <div id="invError" class="form-error hidden"></div>
+      <button class="btn btn-primary" onclick="sendInvitation()">Send Invitation</button>
+    </div>
+
+    <div style="margin-top:1.5rem">
+      <h3 class="section-title" style="font-size:.85rem">Invitation Log</h3>
+      <div id="invitationsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadDashboard() {
+  const res = await fetch(ROOT + '/api/partners/dashboard');
+  if (!res.ok) { window.location.href = ROOT + '/partners/apply'; return; }
+  const data = await res.json();
+  document.getElementById('totalEarned').textContent = '$' + data.earnings_summary.total_earned.toFixed(2);
+  document.getElementById('pendingPayout').textContent = '$' + data.earnings_summary.pending_payout.toFixed(2);
+  document.getElementById('paidToDate').textContent = '$' + data.earnings_summary.paid_to_date.toFixed(2);
+  document.getElementById('commRate').textContent = data.earnings_summary.commission_rate_pct.toFixed(0) + '%';
+  document.getElementById('refLink').value = data.referral_link || '—';
+}
+
+async function loadClients() {
+  const res = await fetch(ROOT + '/api/partners/clients');
+  const clients = await res.json();
+  const el = document.getElementById('clientsContainer');
+  if (!clients.length) { el.innerHTML = '<p style="font-size:.85rem;color:rgba(255,255,255,.35)">No referred clients have generated Simulations yet.</p>'; return; }
+  el.innerHTML = `<table class="admin-table">
+    <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Simulations</th><th>Commission Earned</th><th>Last Activity</th></tr></thead>
+    <tbody>${clients.map(c => `<tr>
+      <td>${esc(c.full_name)}</td>
+      <td>${esc(c.email)}</td>
+      <td>${new Date(c.signup_date).toLocaleDateString()}</td>
+      <td>${c.simulations_generated}</td>
+      <td>$${c.total_commission_earned.toFixed(2)}</td>
+      <td>${c.last_activity ? new Date(c.last_activity).toLocaleDateString() : '—'}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+async function loadAdvisorClients() {
+  const res = await fetch(ROOT + '/api/partners/advisor-clients');
+  const items = await res.json();
+  const el = document.getElementById('advisorClientsContainer');
+  if (!items.length) { el.innerHTML = '<p style="font-size:.85rem;color:rgba(255,255,255,.35)">No clients have shared Simulations with you yet.</p>'; return; }
+  el.innerHTML = `<table class="admin-table">
+    <thead><tr><th>Client</th><th>Simulation</th><th>Expertise Zone</th><th>Access Granted</th><th>Last Viewed</th><th></th></tr></thead>
+    <tbody>${items.map(a => `<tr>
+      <td>${esc(a.client_name || '—')}</td>
+      <td>${esc(a.simulation_name || '—')}</td>
+      <td>${esc(a.expertise_zone || '—')}</td>
+      <td>${new Date(a.granted_at).toLocaleDateString()}</td>
+      <td>${a.last_viewed_at ? new Date(a.last_viewed_at).toLocaleDateString() : 'Never'}</td>
+      <td><a href="${ROOT}/partners/advisor-view/${a.simulation_id}" class="btn btn-primary btn-sm">View Simulation</a></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+async function loadPayouts() {
+  const res = await fetch(ROOT + '/api/partners/payouts');
+  const payouts = await res.json();
+  const el = document.getElementById('payoutsContainer');
+  if (!payouts.length) { el.innerHTML = '<p style="font-size:.85rem;color:rgba(255,255,255,.35)">No payouts yet.</p>'; return; }
+  el.innerHTML = `<table class="admin-table">
+    <thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>Stripe Transfer</th></tr></thead>
+    <tbody>${payouts.map(p => `<tr>
+      <td>${new Date(p.initiated_at).toLocaleDateString()}</td>
+      <td>$${p.payout_amount.toFixed(2)}</td>
+      <td>${p.status}</td>
+      <td style="font-family:monospace;font-size:.75rem">${p.stripe_payout_id || '—'}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function copyRefLink() {
+  const val = document.getElementById('refLink').value;
+  if (!val || val === '—') return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.querySelector('[onclick="copyRefLink()"]');
+    if (btn) { const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = o, 1500); }
+  });
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function sendInvitation() {
+  const email = document.getElementById('invEmail').value.trim();
+  const firstName = document.getElementById('invFirstName').value.trim();
+  const message = document.getElementById('invMessage').value.trim();
+  const errEl = document.getElementById('invError');
+  errEl.classList.add('hidden');
+  if (!email) { errEl.textContent = 'Email is required'; errEl.classList.remove('hidden'); return; }
+  const r = await fetch(ROOT + '/api/partners/send-referral', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ recipient_email: email, recipient_first_name: firstName, personal_message: message }),
+  });
+  const d = await r.json();
+  if (r.ok) {
+    document.getElementById('invEmail').value = '';
+    document.getElementById('invFirstName').value = '';
+    document.getElementById('invMessage').value = '';
+    loadInvitations();
+  } else {
+    errEl.textContent = d.error || 'Failed to send';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function loadInvitations() {
+  const res = await fetch(ROOT + '/api/partners/referral-invitations');
+  const items = await res.json();
+  const el = document.getElementById('invitationsContainer');
+  if (!items.length) { el.innerHTML = '<p style="font-size:.85rem;color:rgba(255,255,255,.35)">No invitations sent yet.</p>'; return; }
+  el.innerHTML = `<table class="admin-table">
+    <thead><tr><th>Email</th><th>Name</th><th>Sent</th><th>Opened</th><th>Status</th></tr></thead>
+    <tbody>${items.map(i => `<tr>
+      <td>${esc(i.recipient_email)}</td>
+      <td>${esc(i.recipient_first_name || '—')}</td>
+      <td>${new Date(i.sent_at).toLocaleDateString()}</td>
+      <td>${i.opened_at ? new Date(i.opened_at).toLocaleDateString() : '—'}</td>
+      <td><span class="status-badge status-${i.status === 'converted' ? 'complete' : 'pending'}">${i.status}</span></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+loadDashboard();
+loadClients();
+loadAdvisorClients();
+loadPayouts();
+loadInvitations();
+</script>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% block title %}{{ resume.label }}{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1>{{ resume.label }}</h1>
+      <p class="page-meta">{{ resume.source.title() }} · Uploaded {{ resume.created_at.strftime('%B %d, %Y') }}</p>
+    </div>
+    <div class="header-actions">
+      {% if resume.source == 'linkedin' %}
+      <button class="btn btn-ghost" onclick="syncLinkedIn('{{ resume.id }}')">↻ Re-sync LinkedIn</button>
+      {% endif %}
+      <button class="btn btn-primary" id="extractBtn" onclick="extractZones('{{ resume.id }}')">Analyze My Career →</button>
+    </div>
+  </div>
+
+  <div class="resume-editor-section">
+    <h2>Career Text <span class="badge">Editable</span></h2>
+    <p class="section-hint">Review and correct the parsed text before running AI analysis</p>
+    <textarea id="parsedText" class="resume-textarea" rows="20">{{ resume.parsed_text or '' }}</textarea>
+    <button class="btn btn-ghost" onclick="saveText('{{ resume.id }}')">Save changes</button>
+  </div>
+
+  <div id="zonesSection" class="zones-section" {% if not resume.expertise_zones %}style="display:none"{% endif %}>
+    <h2>Expertise Zones</h2>
+    <div id="zonesList" class="zones-grid">
+      {% if resume.expertise_zones %}
+        {% for zone in resume.expertise_zones %}
+        <div class="zone-card" data-zone="{{ zone.zone_name }}">
+          <div class="zone-header">
+            <h3>{{ zone.zone_name }}</h3>
+            <span class="zone-potential potential-{{ zone.monetization_potential|lower }}">{{ zone.monetization_potential }}</span>
+          </div>
+          <p class="zone-summary">{{ zone.summary }}</p>
+          <p class="zone-rate">{{ zone.estimated_hourly_rate }}</p>
+          <button class="btn btn-primary btn-sm" onclick="createSimulation('{{ resume.id }}', '{{ zone.zone_name|e }}')">Create Simulation →</button>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="simModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Create Simulation</h2>
+      <p id="simZoneLabel" class="sim-zone-label"></p>
+      <input type="text" id="simName" placeholder="Simulation name" class="input-text">
+      <textarea id="simFocusHint" placeholder="Optional: focus hint (e.g. 'Focus on SaaS products only')" class="input-textarea" rows="3"></textarea>
+      <div id="card-element" class="stripe-card-element"></div>
+      <div id="simError" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="confirmSimBtn" onclick="confirmCreateSim()">Charge &amp; Generate →</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://js.stripe.com/v3/"></script>
+<script src="{{ url_for('static', filename='js/sse.js') }}"></script>
+<script>
+const stripe = Stripe('{{ stripe_pk }}');
+const elements = stripe.elements();
+const cardElement = elements.create('card');
+cardElement.mount('#card-element');
+
+let selectedZone = null;
+let selectedResumeId = null;
+let simPriceLabel = 'Charge & Generate →';
+
+// Fetch current price and update button labels
+fetch(ROOT + '/api/simulations/price').then(r => r.json()).then(p => {
+  simPriceLabel = `Charge ${p.amount_usd} & Generate →`;
+  const btn = document.getElementById('confirmSimBtn');
+  if (btn) btn.textContent = simPriceLabel;
+}).catch(() => {});
+
+async function extractZones(resumeId) {
+  const btn = document.getElementById('extractBtn');
+  btn.disabled = true; btn.textContent = 'Analyzing…';
+
+  // Save latest text first
+  await saveText(resumeId);
+
+  const res = await fetch(ROOT + `/api/resumes/${resumeId}/extract-zones`, { method: 'POST' });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = 'Analyze My Career →';
+
+  if (res.ok) {
+    renderZones(data.expertise_zones);
+  } else {
+    alert(data.error || 'Zone extraction failed');
+  }
+}
+
+function renderZones(zones) {
+  const list = document.getElementById('zonesList');
+  const section = document.getElementById('zonesSection');
+  list.innerHTML = '';
+  zones.forEach(zone => {
+    const resumeId = window.location.pathname.split('/').pop();
+    const card = document.createElement('div');
+    card.className = 'zone-card';
+    card.innerHTML = `
+      <div class="zone-header">
+        <h3>${zone.zone_name}</h3>
+        <span class="zone-potential potential-${zone.monetization_potential.toLowerCase()}">${zone.monetization_potential}</span>
+      </div>
+      <p class="zone-summary">${zone.summary}</p>
+      <p class="zone-rate">${zone.estimated_hourly_rate}</p>
+      <button class="btn btn-primary btn-sm" onclick="createSimulation('${resumeId}', '${zone.zone_name.replace(/'/g,"\\'")}')">Create Simulation →</button>
+    `;
+    list.appendChild(card);
+  });
+  section.style.display = '';
+}
+
+function createSimulation(resumeId, zoneName) {
+  selectedZone = zoneName;
+  selectedResumeId = resumeId;
+  document.getElementById('simZoneLabel').textContent = 'Zone: ' + zoneName;
+  document.getElementById('simName').value = zoneName + ' Wealth Simulation';
+  document.getElementById('simModal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('simModal').classList.add('hidden');
+}
+
+async function confirmCreateSim() {
+  const btn = document.getElementById('confirmSimBtn');
+  btn.disabled = true; btn.textContent = 'Processing payment…';
+  const errEl = document.getElementById('simError');
+  errEl.classList.add('hidden');
+
+  try {
+    // Step 1: Create simulation + PaymentIntent on the server
+    const res = await fetch(ROOT + '/api/simulations', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        resume_id: selectedResumeId,
+        expertise_zone: selectedZone,
+        name: document.getElementById('simName').value,
+        focus_hint: document.getElementById('simFocusHint').value,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Failed to create simulation';
+      errEl.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = simPriceLabel;
+      return;
+    }
+
+    // Step 2: Confirm the card payment via Stripe.js
+    const { error: stripeError } = await stripe.confirmCardPayment(data.client_secret, {
+      payment_method: { card: cardElement },
+    });
+    if (stripeError) {
+      errEl.textContent = stripeError.message || 'Card payment failed';
+      errEl.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = simPriceLabel;
+      return;
+    }
+
+    // Step 3: Notify server that payment succeeded
+    const confirmRes = await fetch(ROOT + `/api/simulations/${data.simulation_id}/confirm-payment`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+    });
+    const confirmData = await confirmRes.json();
+
+    if (confirmRes.ok) {
+      closeModal();
+      window.location.href = ROOT + '/simulations/' + data.simulation_id + '/confirmed';
+    } else {
+      errEl.textContent = confirmData.error || 'Payment confirmation failed';
+      errEl.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = simPriceLabel;
+    }
+  } catch (err) {
+    errEl.textContent = 'Request failed. Please try again.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = simPriceLabel;
+  }
+}
+
+async function saveText(resumeId) {
+  const text = document.getElementById('parsedText').value;
+  await fetch(ROOT + `/api/resumes/${resumeId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ parsed_text: text }),
+  });
+}
+
+async function syncLinkedIn(resumeId) {
+  const res = await fetch(ROOT + `/api/resumes/${resumeId}/linkedin-sync`, { method: 'POST' });
+  const data = await res.json();
+  if (res.ok) {
+    window.location.reload();
+  } else {
+    alert(data.error || 'Sync failed');
+  }
+}
+</script>
+{% endblock %}

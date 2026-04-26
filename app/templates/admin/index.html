@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<div class="page-container">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link active">Overview</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+  </nav>
+  <h1>Admin Panel</h1>
+
+  <section class="admin-section">
+    <h2>Platform Settings</h2>
+    <div class="settings-grid">
+      <div class="setting-card">
+        <div class="setting-info">
+          <h3>Fintech API Integration (Layer 5)</h3>
+          <p>Enable live Plaid/Alpaca integration for Layer 5 wealth recommendations</p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="fintechToggle"
+            {% if settings.get('fintech_toggle') == 'on' %}checked{% endif %}
+            onchange="updateSetting('fintech_toggle', this.checked ? 'on' : 'off')">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-card">
+        <div class="setting-info">
+          <h3>Simulation Price</h3>
+          <p>Price charged per simulation (in USD). Takes effect immediately for new checkouts.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span>$</span>
+          <input type="number" id="simPriceInput" min="1" step="0.01"
+            value="{{ '%.2f'|format((settings.get('simulation_price', '1000')|int) / 100) }}"
+            style="width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+          <button class="btn btn-secondary btn-sm" onclick="saveSimPrice()">Save</button>
+          <span id="simPriceMsg" style="font-size:0.8rem;color:var(--success);display:none;">Saved!</span>
+        </div>
+      </div>
+    </div>
+    <div id="priceHistorySection" style="margin-top:1.25rem;">
+      <h3 style="font-size:0.9rem;margin-bottom:0.25rem;color:rgba(255,255,255,0.7);">Price Change History</h3>
+      <div id="priceHistoryContent"><span style="font-size:0.8rem;color:rgba(255,255,255,0.4);">Loading…</span></div>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2>Revenue Dashboard</h2>
+    <div id="revenueStats" class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="totalRevenue">Loading…</div><div class="stat-label">Total Revenue</div></div>
+      <div class="stat-card"><div class="stat-value" id="totalSims">—</div><div class="stat-label">Simulations Completed</div></div>
+      <div class="stat-card"><div class="stat-value" id="refundRate">—</div><div class="stat-label">Refund Rate</div></div>
+      <div class="stat-card"><div class="stat-value" id="totalTokens">—</div><div class="stat-label">AI Tokens Used</div></div>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2>Users (Top 50)</h2>
+    <table class="admin-table" id="usersTable">
+      <thead><tr><th>Name</th><th>Email</th><th>Simulations</th><th>Spend</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.full_name }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.simulation_count }}</td>
+          <td>${{ "%.2f"|format(u.total_spend / 100) }}</td>
+          <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function updateSetting(key, value) {
+  await fetch(ROOT + `/api/admin/settings/${key}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ value }),
+  });
+}
+
+async function saveSimPrice() {
+  const dollars = parseFloat(document.getElementById('simPriceInput').value);
+  if (isNaN(dollars) || dollars <= 0) { alert('Enter a valid price.'); return; }
+  const cents = Math.round(dollars * 100);
+  await updateSetting('simulation_price', String(cents));
+  const msg = document.getElementById('simPriceMsg');
+  msg.style.display = 'inline';
+  setTimeout(() => { msg.style.display = 'none'; }, 2500);
+}
+
+// Load revenue stats
+fetch(ROOT + '/api/admin/revenue').then(r => r.json()).then(data => {
+  document.getElementById('totalRevenue').textContent = '$' + data.total_revenue_usd.toFixed(2);
+  document.getElementById('totalSims').textContent = data.total_simulations_completed;
+  document.getElementById('refundRate').textContent = data.refund_rate_pct + '%';
+  document.getElementById('totalTokens').textContent = (
+    (data.ai_tokens.prompt_tokens_total + data.ai_tokens.completion_tokens_total) / 1000
+  ).toFixed(1) + 'k';
+});
+
+// Load price history
+fetch(ROOT + '/api/admin/settings/simulation_price').then(r => r.json()).then(data => {
+  const el = document.getElementById('priceHistoryContent');
+  if (!data.price_history || !data.price_history.length) {
+    el.innerHTML = '<p class="price-history-empty">No price changes recorded yet.</p>';
+    return;
+  }
+  el.innerHTML = `<table class="price-history-table">
+    <thead><tr><th>Old Price</th><th>New Price</th><th>Changed By</th><th>Timestamp</th></tr></thead>
+    <tbody>${data.price_history.map(h => `<tr>
+      <td>${h.old_value_cents !== null ? '$' + (h.old_value_cents / 100).toFixed(2) : '—'}</td>
+      <td>$${(h.new_value_cents / 100).toFixed(2)}</td>
+      <td style="font-family:monospace;font-size:0.75rem">${h.changed_by || '—'}</td>
+      <td>${new Date(h.timestamp).toLocaleString()}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}).catch(() => {
+  document.getElementById('priceHistoryContent').innerHTML = '<p class="price-history-empty">Could not load history.</p>';
+});
+</script>
+{% endblock %}

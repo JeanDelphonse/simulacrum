@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="dashboard">
+  <div class="dashboard-header">
+    <div>
+      <h1>Welcome back, {{ current_user.full_name.split()[0] }}</h1>
+      <p class="dashboard-meta">{{ current_user.simulation_count }} simulation{{ 's' if current_user.simulation_count != 1 else '' }} generated · ${{ "%.2f"|format(current_user.total_spend / 100) }} invested</p>
+    </div>
+    <a href="{{ url_for('pages.resumes_view') }}" class="btn btn-primary">+ New Simulation</a>
+  </div>
+
+  {# FR-CTP-10: Partner shortcut card #}
+  {% if partner %}
+  <section class="dashboard-section">
+    <div class="partner-shortcut-card">
+      <div class="partner-shortcut-info">
+        <span class="partner-shortcut-label">Partner Dashboard</span>
+        <div class="partner-shortcut-stats">
+          <span>${{ "%.2f"|format(partner.pending_payout()) }} pending payout</span>
+          <span>·</span>
+          <span>{{ partner.referral_signups.count() }} referred client{{ 's' if partner.referral_signups.count() != 1 else '' }}</span>
+        </div>
+      </div>
+      <a href="{{ url_for('pages.partner_dashboard') }}" class="btn btn-secondary btn-sm">Open →</a>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if pending_collabs %}
+  <section class="dashboard-section">
+    <h2 class="section-title">Collaboration Invites</h2>
+    <div class="collab-invites">
+      {% for c in pending_collabs %}
+      <div class="invite-card">
+        <span>You've been invited to collaborate on a Simulation</span>
+        <a href="{{ url_for('collaboration.accept_invite', token=c.share_token) }}" class="btn btn-primary btn-sm">Accept</a>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="dashboard-section">
+    <h2 class="section-title">My Simulations</h2>
+    {% if simulations %}
+    <div class="sim-grid">
+      {% for sim in simulations %}
+      <div class="sim-card status-{{ sim.status }}">
+        <div class="sim-card-header">
+          <h3 class="sim-name">{{ sim.name }}</h3>
+          <span class="status-badge status-{{ sim.status }}">{{ sim.status.title() }}</span>
+        </div>
+        <p class="sim-zone">{{ sim.expertise_zone }}</p>
+        <p class="sim-meta">{{ sim.created_at.strftime('%b %d, %Y') }} · {{ sim.layers|length }} layer{{ 's' if sim.layers|length != 1 else '' }}</p>
+        <div class="sim-actions">
+          {% if sim.status == 'complete' %}
+          <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}" class="btn btn-primary btn-sm">View →</a>
+          {% elif sim.status in ('processing', 'streaming') %}
+          <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}" class="btn btn-ghost btn-sm">Watch live →</a>
+          {% elif sim.status == 'refunded' %}
+          <span class="sim-notice">Refund issued — generation failed</span>
+          {% elif sim.status == 'error' %}
+          <span class="sim-notice sim-notice-error">Generation failed</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>No simulations yet. Upload your resume or connect LinkedIn to get started.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="dashboard-section">
+    <h2 class="section-title">My Sources</h2>
+    {% if resumes %}
+    <div class="source-list">
+      {% for r in resumes %}
+      <div class="source-item">
+        <div class="source-icon">{{ '💼' if r.source == 'linkedin' else '📄' }}</div>
+        <div class="source-info">
+          <span class="source-label">{{ r.label }}</span>
+          <span class="source-meta">{{ r.source.title() }} · {{ r.created_at.strftime('%b %d, %Y') }}</span>
+        </div>
+        <div class="source-actions">
+          <a href="{{ url_for('pages.resume_detail', resume_id=r.id) }}" class="btn btn-ghost btn-sm">Open</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>No sources uploaded. <a href="{{ url_for('pages.resumes_view') }}">Upload your resume</a> or import from LinkedIn.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+{# FR-CTP-09: Partner welcome modal #}
+{% if show_partner_welcome %}
+<div id="partnerWelcomeModal" class="modal-overlay" onclick="closeWelcome(event)">
+  <div class="modal-card">
+    <h2 style="margin-bottom:.5rem">Welcome to the Partner Program!</h2>
+    <p style="color:rgba(255,255,255,.65);font-size:.9rem;margin-bottom:1.25rem">
+      Your account now has two roles — <strong>Client</strong> and <strong>Partner</strong>.
+      Your personal Simulations stay completely private and are never accessible from your Partner Dashboard.
+      Commissions are earned only on clients you refer.
+    </p>
+    <a href="{{ url_for('pages.partner_dashboard') }}" class="btn btn-primary" style="margin-right:.5rem">Go to Partner Dashboard</a>
+    <button class="btn btn-ghost" onclick="closeWelcome()">Got it</button>
+  </div>
+</div>
+<script>
+function closeWelcome(e) {
+  if (e && e.target !== document.getElementById('partnerWelcomeModal')) return;
+  document.getElementById('partnerWelcomeModal').remove();
+}
+</script>
+{% endif %}
+{% endblock %}

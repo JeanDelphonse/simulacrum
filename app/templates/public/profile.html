@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ profile.display_name or 'Profile' }} — Simulacrum</title>
+  {% if profile.noindex %}<meta name="robots" content="noindex">{% endif %}
+  <meta property="og:title" content="{{ profile.display_name or 'Simulacrum Profile' }}">
+  {% if profile.tagline %}<meta property="og:description" content="{{ profile.tagline }}">{% endif %}
+  {% if profile.avatar_path %}<meta property="og:image" content="/avatars/{{ profile.avatar_path }}">{% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    body { background: #f9fafb; color: #111827; }
+    .pub-page { max-width: 760px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    .pub-header { display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 2.5rem; }
+    .pub-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .pub-avatar-initials { width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg,#1a4a6b,#0e7490); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .pub-name { font-size: 1.75rem; font-weight: 800; color: #111827; margin: 0 0 .3rem; }
+    .pub-tagline { font-size: 1rem; color: #374151; margin: 0 0 .5rem; line-height: 1.5; }
+    .pub-location { font-size: .875rem; color: #6b7280; margin: 0 0 .75rem; }
+    .pub-socials { display: flex; gap: .75rem; flex-wrap: wrap; }
+    .pub-social-link { display: flex; align-items: center; gap: .3rem; font-size: .8rem; color: #374151; text-decoration: none; padding: .2rem .5rem; border: 1px solid #e5e7eb; border-radius: 6px; transition: border-color .15s; }
+    .pub-social-link:hover { border-color: #9ca3af; color: #111827; }
+    .pub-completeness { font-size: .78rem; background: rgba(245,200,66,.1); border: 1px solid rgba(245,200,66,.3); border-radius: 6px; padding: .4rem .75rem; color: #92400e; margin-bottom: 1rem; display: inline-block; }
+    .pub-section { margin-bottom: 2.5rem; }
+    .pub-section-title { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #6b7280; margin-bottom: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: .4rem; }
+    .bio-lede { font-size: 1rem; line-height: 1.75; color: #111827; margin-bottom: 1.25rem; }
+    .bio-block-title { font-weight: 700; color: #111827; margin: 1.25rem 0 .25rem; }
+    .bio-block-text { font-size: .95rem; line-height: 1.75; color: #374151; }
+    .zone-cards { display: flex; flex-direction: column; gap: 1rem; }
+    .zone-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem 1.5rem; }
+    .zone-card-name { font-size: 1.05rem; font-weight: 700; color: #111827; margin: 0 0 .3rem; }
+    .zone-card-tagline { font-size: .875rem; color: #374151; margin: 0 0 .75rem; line-height: 1.5; }
+    .zone-services { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
+    .zone-service-pill { font-size: .78rem; background: #f3f4f6; color: #374151; border-radius: 20px; padding: .2rem .65rem; }
+    .avail-badge { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; display: inline-block; }
+    .avail-available { background: #dcfce7; color: #166534; }
+    .avail-limited    { background: #fef9c3; color: #854d0e; }
+    .avail-unavailable { background: #f3f4f6; color: #6b7280; }
+    .contact-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; }
+    .contact-card h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 1rem; }
+    .contact-group { margin-bottom: .85rem; }
+    .contact-group label { font-size: .78rem; font-weight: 600; color: #374151; display: block; margin-bottom: .3rem; text-transform: uppercase; letter-spacing: .04em; }
+    .contact-input { width: 100%; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: .6rem .85rem; font-size: .95rem; color: #111827; font-family: inherit; outline: none; transition: border-color .15s; box-sizing: border-box; }
+    .contact-input:focus { border-color: #0e7490; }
+    .contact-submit { background: #0e7490; color: #fff; border: none; border-radius: 8px; padding: .65rem 1.5rem; font-size: .9rem; font-weight: 700; cursor: pointer; transition: background .15s; }
+    .contact-submit:hover { background: #0c6479; }
+    .contact-success { font-size: .95rem; color: #166534; background: #dcfce7; border-radius: 8px; padding: .75rem 1rem; }
+    .contact-err { font-size: .82rem; color: #991b1b; margin-top: .35rem; }
+    .booking-btn { display: inline-block; background: #0d1a2e; color: #f5c842; text-decoration: none; border-radius: 8px; padding: .75rem 1.75rem; font-size: .95rem; font-weight: 700; margin-top: 1.25rem; transition: opacity .15s; }
+    .booking-btn:hover { opacity: .85; }
+    .pub-footer { text-align: center; margin-top: 3rem; font-size: .78rem; color: #9ca3af; }
+    .pub-footer a { color: #6b7280; }
+    .owner-banner { background: #fffbeb; border-bottom: 1px solid #fde68a; padding: .6rem 1rem; text-align: center; font-size: .82rem; color: #92400e; }
+    .owner-banner a { color: #0e7490; font-weight: 600; }
+    @media (max-width: 640px) {
+      .pub-header { flex-direction: column; align-items: center; text-align: center; }
+      .pub-socials { justify-content: center; }
+      .pub-name { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+{% if is_owner %}
+<div class="owner-banner">
+  You are viewing your public profile.
+  <a href="/settings/profile">Edit in Settings</a> ·
+  Completeness: {{ profile.completeness }}%
+</div>
+{% endif %}
+
+<div class="pub-page">
+
+  {# ── Header ── #}
+  <div class="pub-header">
+    {% if profile.avatar_path %}
+    <img class="pub-avatar" src="/avatars/{{ profile.avatar_path }}" alt="{{ profile.display_name }}">
+    {% else %}
+    <div class="pub-avatar-initials">{{ (profile.display_name or user.full_name or '?')[:2].upper() }}</div>
+    {% endif %}
+
+    <div style="flex:1">
+      <h1 class="pub-name">{{ profile.display_name or user.full_name }}</h1>
+      {% if profile.tagline %}<p class="pub-tagline">{{ profile.tagline }}</p>{% endif %}
+      {% if profile.location %}<p class="pub-location">{{ profile.location }}</p>{% endif %}
+
+      <div class="pub-socials">
+        {% if profile.linkedin_url %}
+        <a href="{{ profile.linkedin_url }}" target="_blank" rel="noopener" class="pub-social-link">
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+          LinkedIn
+        </a>
+        {% endif %}
+        {% if profile.website_url %}
+        <a href="{{ profile.website_url }}" target="_blank" rel="noopener" class="pub-social-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+          Website
+        </a>
+        {% endif %}
+        {% if profile.twitter_url %}
+        <a href="{{ profile.twitter_url }}" target="_blank" rel="noopener" class="pub-social-link">
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.259 5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          X
+        </a>
+        {% endif %}
+        {% if profile.other_link_url %}
+        <a href="{{ profile.other_link_url }}" target="_blank" rel="noopener" class="pub-social-link">{{ profile.other_link_label or 'Link' }}</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Bio ── #}
+  {% if bio_sections %}
+  <div class="pub-section">
+    <div class="pub-section-title">About</div>
+    {% for section in bio_sections %}
+    {% if loop.first and not section.title %}
+    <p class="bio-lede">{{ section.text }}</p>
+    {% else %}
+    {% if section.title %}<p class="bio-block-title">{{ section.title }}</p>{% endif %}
+    <p class="bio-block-text">{{ section.text }}</p>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── Expertise Zone cards ── #}
+  {% if zone_cards %}
+  <div class="pub-section">
+    <div class="pub-section-title">Services &amp; Expertise</div>
+    <div class="zone-cards">
+      {% for item in zone_cards %}
+      {% set vis = item.vis %}
+      {% set sim = item.sim %}
+      <div class="zone-card">
+        <p class="zone-card-name">{{ sim.expertise_zone or sim.name }}</p>
+        {% if vis.zone_tagline %}<p class="zone-card-tagline">{{ vis.zone_tagline }}</p>{% endif %}
+        {% if vis.services_list %}
+        <div class="zone-services">
+          {% for svc in vis.services_list %}<span class="zone-service-pill">{{ svc }}</span>{% endfor %}
+        </div>
+        {% endif %}
+        {% if vis.availability and vis.availability != 'hidden' %}
+        <span class="avail-badge avail-{{ vis.availability }}">
+          {% if vis.availability == 'available' %}Available for new clients
+          {% elif vis.availability == 'limited' %}Limited availability
+          {% else %}Not currently taking clients{% endif %}
+        </span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Contact form ── #}
+  {% if profile.show_contact_form %}
+  <div class="pub-section">
+    <div class="pub-section-title">Get in Touch</div>
+    <div class="contact-card">
+      <h2>Send a message to {{ profile.display_name or user.full_name }}</h2>
+      <div id="contactFormWrap">
+        <div class="contact-group">
+          <label for="c-name">Your name *</label>
+          <input class="contact-input" id="c-name" type="text" maxlength="100" placeholder="Jane Smith">
+        </div>
+        <div class="contact-group">
+          <label for="c-email">Your email *</label>
+          <input class="contact-input" id="c-email" type="email" maxlength="255" placeholder="jane@company.com">
+        </div>
+        <div class="contact-group">
+          <label for="c-subject">Subject</label>
+          <select class="contact-input" id="c-subject">
+            {% for s in subjects %}<option>{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="contact-group">
+          <label for="c-message">Message *</label>
+          <textarea class="contact-input" id="c-message" rows="5" maxlength="1000" placeholder="Tell them about your project or inquiry…"></textarea>
+        </div>
+        <div class="contact-err" id="contactErr" style="display:none"></div>
+        <button class="contact-submit" onclick="submitContact('{{ profile.username }}', '{{ profile.display_name or user.full_name }}')">Send message</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Booking button ── #}
+  {% if profile.show_booking_btn and booking_url %}
+  <div style="text-align:center;margin-top:1rem">
+    <a href="{{ booking_url }}" target="_blank" rel="noopener" class="booking-btn">
+      {{ profile.booking_btn_label or 'Book a Call' }} with {{ profile.display_name or user.full_name }}
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="pub-footer">
+    <a href="/" target="_blank" rel="noopener">Powered by Simulacrum</a> ·
+    Contact form submissions are handled per the <a href="/privacy" target="_blank">Simulacrum Privacy Policy</a>.
+  </div>
+
+</div>
+
+<script>
+async function submitContact(username, displayName) {
+  const errEl = document.getElementById('contactErr');
+  errEl.style.display = 'none';
+
+  const body = {
+    name:    document.getElementById('c-name').value.trim(),
+    email:   document.getElementById('c-email').value.trim(),
+    subject: document.getElementById('c-subject').value,
+    message: document.getElementById('c-message').value.trim(),
+  };
+
+  const res = await fetch(`/u/${username}/contact`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+
+  if (res.ok) {
+    document.getElementById('contactFormWrap').innerHTML =
+      `<div class="contact-success">✓ ${data.message}</div>`;
+  } else {
+    errEl.textContent = data.error || 'Submission failed. Please try again.';
+    errEl.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

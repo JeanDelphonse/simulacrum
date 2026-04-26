@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+{% block title %}{{ simulation.name }}{% endblock %}
+
+{% block content %}
+{% macro render_layer(layer) %}
+<div class="layer-card layer-{{ layer.layer_number }}" id="layer-card-{{ layer.layer_number }}">
+  <div class="layer-card-header" onclick="toggleLayer({{ layer.layer_number }})">
+    <div class="layer-title-row">
+      <span class="layer-num-badge">L{{ layer.layer_number }}</span>
+      <h3 class="layer-title">{{ layer.layer_name }}</h3>
+      {% if layer.priority_score is not none %}
+      <span class="priority-badge priority-{{ 'high' if layer.priority_score >= 0.7 else ('mid' if layer.priority_score >= 0.4 else 'low') }}"
+            title="Priority score: {{ '%.0f'|format(layer.priority_score * 100) }}%">
+        {{ 'High' if layer.priority_score >= 0.7 else ('Mid' if layer.priority_score >= 0.4 else 'Low') }} priority
+      </span>
+      {% endif %}
+    </div>
+    <span class="layer-toggle">▾</span>
+  </div>
+  <div class="layer-card-body" id="layer-body-{{ layer.layer_number }}">
+    {% if layer.ai_narrative %}
+    <p class="layer-narrative">{{ layer.ai_narrative }}</p>
+    {% endif %}
+    <div class="income-streams">
+      {% for stream in layer.income_streams %}
+      <div class="stream-card">
+        <div class="stream-header" onclick="toggleReasoning(this)">
+          <div class="stream-title-row">
+            <h4 class="stream-name">{{ stream.name }}</h4>
+            {% if stream.est_monthly_low and stream.est_monthly_high %}
+            <span class="stream-range">${{ "{:,}".format(stream.est_monthly_low) }}–${{ "{:,}".format(stream.est_monthly_high) }}/mo</span>
+            {% endif %}
+          </div>
+          <p class="stream-desc">{{ stream.description }}</p>
+          <span class="stream-platform">{{ stream.platform }}</span>
+        </div>
+        <div class="stream-reasoning hidden">
+          <div class="reasoning-label">AI Reasoning</div>
+          <p class="reasoning-text">{{ stream.ai_reasoning }}</p>
+          {% if stream.deliverable_refs %}
+          <div class="deliverable-refs">
+            <strong>Evidence from your background:</strong>
+            <ul>{% for ref in stream.deliverable_refs %}<li>{{ ref }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if stream.automation_level %}
+          <div class="stream-meta-row">
+            <span class="meta-tag">Automation: {{ stream.automation_level }}</span>
+            {% if stream.launch_timeline_weeks %}
+            <span class="meta-tag">Launch: {{ stream.launch_timeline_weeks }}w</span>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="layer-refine">
+      <button class="btn btn-ghost btn-sm" onclick="showRefine({{ layer.layer_number }}, '{{ simulation.id }}')">Refine this layer →</button>
+    </div>
+
+    {% if simulation.status == 'complete' %}
+    <div class="agent-workspace" id="agent-workspace-{{ layer.layer_number }}">
+      <div class="agent-workspace-header" onclick="toggleAgentWorkspace({{ layer.layer_number }})">
+        <span class="agent-workspace-title">⚡ Agent Workspace</span>
+        <span class="agent-workspace-subtitle">Generate actionable artifacts for this layer</span>
+        <span class="agent-toggle" id="agent-toggle-{{ layer.layer_number }}">▾</span>
+      </div>
+      <div class="agent-workspace-body hidden" id="agent-workspace-body-{{ layer.layer_number }}">
+        <div class="agent-action-types" id="action-types-{{ layer.layer_number }}">
+          <div class="agent-loading">Loading available actions…</div>
+        </div>
+        <div class="agent-actions-log" id="actions-log-{{ layer.layer_number }}"></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+<div class="sim-detail">
+  <div class="sim-detail-header">
+    <div>
+      <h1>{{ simulation.name }}</h1>
+      <p class="sim-detail-zone">{{ simulation.expertise_zone }}</p>
+      <p class="sim-detail-meta">
+        <span class="status-badge status-{{ simulation.status }}">{{ simulation.status.title() }}</span>
+        · Created {{ simulation.created_at.strftime('%B %d, %Y') }}
+      </p>
+    </div>
+    <div class="header-actions">
+      {% if simulation.status == 'complete' %}
+      <button class="btn btn-ghost" onclick="exportSim('{{ simulation.id }}')">Export PDF</button>
+      <button class="btn btn-ghost" onclick="shareSimulation('{{ simulation.id }}')">Share</button>
+      <a href="{{ url_for('pages.layer6_view', sim_id=simulation.id) }}" class="btn btn-primary">⚡ Layer 6</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="streamStatus" class="stream-status {% if simulation.status not in ('processing', 'streaming') %}hidden{% endif %}">
+    <div class="stream-spinner"></div>
+    <span id="streamStatusText">Generating your wealth simulation…</span>
+  </div>
+
+  <div class="pyramid-container">
+    <div class="pyramid-header">
+      <h2>Your Wealth Pyramid</h2>
+      <p>5 layers from active income to automated wealth deployment</p>
+    </div>
+
+    <div id="layersContainer" class="layers-container">
+      {% for layer in layers %}
+      {{ render_layer(layer) }}
+      {% endfor %}
+
+      {% for i in range(layers|length + 1, 6) %}
+      <div class="layer-skeleton" id="layer-skeleton-{{ i }}">
+        <div class="layer-skeleton-inner">
+          <span class="layer-num">L{{ i }}</span>
+          <span class="skeleton-text">Generating Layer {{ i }}…</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if is_owner and simulation.status == 'complete' %}
+  <div class="collab-audit-section" id="collabAuditSection">
+    <div class="collab-audit-header" onclick="toggleAuditLog()">
+      <span class="collab-audit-title">Collaboration Activity</span>
+      <button class="btn btn-ghost btn-sm" id="auditToggleBtn">Show ▾</button>
+    </div>
+    <div id="collabAuditLog" class="collab-audit-log hidden"></div>
+  </div>
+  {% endif %}
+
+  <div id="shareModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Share Simulation</h2>
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="shareEmail" placeholder="collaborator@example.com" class="input-text">
+      </div>
+      <div class="form-group">
+        <label>Permission level</label>
+        <select id="sharePermission" class="input-select">
+          <option value="viewer">Viewer — read only</option>
+          <option value="commenter">Commenter — can annotate</option>
+          <option value="editor">Editor — can refine layers</option>
+        </select>
+      </div>
+      <div id="shareError" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="document.getElementById('shareModal').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-primary" onclick="sendInvite('{{ simulation.id }}')">Send invite</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/sse.js') }}"></script>
+<script>
+const SIM_ID = '{{ simulation.id }}';
+const SIM_STATUS = '{{ simulation.status }}';
+
+// Start SSE if simulation is still generating
+if (['pending', 'processing', 'streaming'].includes(SIM_STATUS)) {
+  startSSEStream(SIM_ID);
+}
+
+function toggleLayer(num) {
+  const body = document.getElementById('layer-body-' + num);
+  body.classList.toggle('collapsed');
+}
+
+function toggleReasoning(header) {
+  const reasoning = header.nextElementSibling;
+  reasoning.classList.toggle('hidden');
+}
+
+function showRefine(layerNum, simId) {
+  const constraint = prompt('Enter a constraint for this layer (e.g. "Focus on remote-friendly income streams only"):');
+  if (!constraint) return;
+
+  fetch(ROOT + `/api/simulations/${simId}/layers/${layerNum}/refine`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ constraint }),
+  }).then(r => r.json()).then(data => {
+    if (data.layer_number) {
+      window.location.reload();
+    } else {
+      alert(data.error || 'Refinement failed');
+    }
+  });
+}
+
+function shareSimulation(simId) {
+  document.getElementById('shareModal').classList.remove('hidden');
+}
+
+async function sendInvite(simId) {
+  const errEl = document.getElementById('shareError');
+  errEl.classList.add('hidden');
+  const res = await fetch(ROOT + `/api/simulations/${simId}/collaborators`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      email: document.getElementById('shareEmail').value,
+      permission_level: document.getElementById('sharePermission').value,
+    }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    document.getElementById('shareModal').classList.add('hidden');
+    alert('Invitation sent!');
+  } else {
+    errEl.textContent = data.error || 'Failed to send invite';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function exportSim(simId) {
+  const res = await fetch(ROOT + `/api/simulations/${simId}/export`, { method: 'POST' });
+  if (res.ok) {
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `simulacrum_${simId}.pdf`; a.click();
+    URL.revokeObjectURL(url);
+  } else {
+    alert('Export failed');
+  }
+}
+
+// ─── Collaboration Activity Log ─────────────────────────────────────────────
+
+let _auditLoaded = false;
+
+async function toggleAuditLog() {
+  const log = document.getElementById('collabAuditLog');
+  const btn = document.getElementById('auditToggleBtn');
+  if (!log) return;
+  const isHidden = log.classList.toggle('hidden');
+  btn.textContent = isHidden ? 'Show ▾' : 'Hide ▴';
+  if (!isHidden && !_auditLoaded) {
+    _auditLoaded = true;
+    const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/activities`);
+    if (!res.ok) { log.innerHTML = '<p class="audit-empty">Could not load activity.</p>'; return; }
+    const activities = await res.json();
+    if (!activities.length) {
+      log.innerHTML = '<p class="audit-empty">No collaboration activity yet.</p>';
+    } else {
+      log.innerHTML = activities.map(a => `
+        <div class="audit-entry">
+          <span class="audit-type">${escHtml(a.activity_type.replace(/_/g,' '))}</span>
+          ${a.layer_number ? `<span class="audit-layer">Layer ${a.layer_number}</span>` : ''}
+          ${a.content ? `<span class="audit-content">${escHtml(a.content)}</span>` : ''}
+          <span class="audit-time">${new Date(a.created_at).toLocaleString()}</span>
+        </div>`).join('');
+    }
+  }
+}
+
+// ─── Agent Workspace ────────────────────────────────────────────────────────
+
+const _agentPollers = {};
+
+function toggleAgentWorkspace(layerNum) {
+  const body = document.getElementById('agent-workspace-body-' + layerNum);
+  const toggle = document.getElementById('agent-toggle-' + layerNum);
+  const isHidden = body.classList.toggle('hidden');
+  toggle.textContent = isHidden ? '▾' : '▴';
+  if (!isHidden) loadAgentWorkspace(layerNum);
+}
+
+const _storedContext = {};
+
+async function loadAgentWorkspace(layerNum) {
+  const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions`);
+  if (!res.ok) return;
+  const data = await res.json();
+  if (data.stored_context) _storedContext[layerNum] = data.stored_context;
+  renderActionTypes(layerNum, data.available_action_types);
+  renderActionsLog(layerNum, data.actions);
+}
+
+function renderActionTypes(layerNum, types) {
+  const el = document.getElementById('action-types-' + layerNum);
+  el.innerHTML = types.map(t => `
+    <button class="btn btn-ghost btn-sm agent-type-btn"
+            onclick="showActionForm(${layerNum}, '${t.action_type}', ${JSON.stringify(t.prompt_form).replace(/"/g, '&quot;')}, '${escHtml(t.label)}', ${t.disclaimer ? 'true' : 'false'})">
+      ${escHtml(t.label)}
+    </button>
+  `).join('');
+}
+
+function renderActionsLog(layerNum, actions) {
+  const el = document.getElementById('actions-log-' + layerNum);
+  if (!actions.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="actions-log-title">Previous actions</div>' +
+    actions.map(a => renderActionCard(a, layerNum)).join('');
+  // resume polling for in-flight actions
+  actions.forEach(a => {
+    if (a.status === 'pending' || a.status === 'in_progress') {
+      pollAction(layerNum, a.id);
+    }
+  });
+}
+
+function renderActionCard(action, layerNum) {
+  const statusClass = { pending: 'status-pending', in_progress: 'status-processing',
+                        complete: 'status-complete', failed: 'status-error' }[action.status] || '';
+  const artifactHtml = action.artifact
+    ? `<div class="agent-artifact"><pre>${escHtml(action.artifact)}</pre></div>`
+    : '';
+  const rerunBtn = (action.status === 'complete' || action.status === 'failed')
+    ? `<button class="btn btn-ghost btn-xs" onclick="rerunAction('${action.id}', ${layerNum})">Re-run</button>`
+    : '';
+  const archiveBtn = action.has_archived_artifact
+    ? `<button class="btn btn-ghost btn-xs" onclick="showArchive('${action.id}', ${layerNum})">View prior</button>`
+    : '';
+  const copyBtn = action.artifact
+    ? `<button class="btn btn-ghost btn-xs" onclick="copyArtifact('${action.id}')">Copy</button>`
+    : '';
+  const downloadBtn = action.artifact
+    ? `<button class="btn btn-ghost btn-xs" onclick="downloadArtifact('${action.id}', '${escHtml(action.action_type)}')">Download</button>`
+    : '';
+  return `
+    <div class="agent-action-card" id="action-card-${action.id}" data-artifact="${escHtml(action.artifact || '')}">
+      <div class="action-card-header">
+        <span class="action-type-label">${escHtml(action.action_type.replace(/_/g, ' '))}</span>
+        <span class="status-badge ${statusClass}">${action.status.replace('_', ' ')}</span>
+        <div class="action-card-btns">${copyBtn}${downloadBtn}${rerunBtn}${archiveBtn}</div>
+      </div>
+      ${artifactHtml}
+    </div>`;
+}
+
+function copyArtifact(actionId) {
+  const card = document.getElementById('action-card-' + actionId);
+  const text = card ? card.dataset.artifact : '';
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = card.querySelector('[onclick*="copyArtifact"]');
+    if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = orig, 1500); }
+  }).catch(() => alert('Copy failed — please select and copy manually.'));
+}
+
+function downloadArtifact(actionId, actionType) {
+  const card = document.getElementById('action-card-' + actionId);
+  const text = card ? card.dataset.artifact : '';
+  if (!text) return;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `simulacrum_${actionType}_${actionId}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const _DISCLAIMER_TEXT = 'For planning purposes only. Review with a licensed professional (CPA, attorney, or financial advisor) before acting on this output.';
+
+function showActionForm(layerNum, actionType, promptForm, label, hasDisclaimer = false) {
+  // Remove any existing form
+  const existing = document.getElementById('agent-form-' + layerNum);
+  if (existing) existing.remove();
+
+  const storedCtx = _storedContext[layerNum] || {};
+
+  const fields = promptForm.map(f => {
+    const prefill = storedCtx[f.key] || '';
+    if (f.type === 'select') {
+      const opts = f.options.map(o => `<option value="${o}"${o === prefill ? ' selected' : ''}>${o}</option>`).join('');
+      return `<div class="form-group">
+        <label>${escHtml(f.label)}${f.required ? ' *' : ''}</label>
+        <select class="input-select" id="af-${layerNum}-${f.key}">${opts}</select>
+      </div>`;
+    }
+    if (f.type === 'textarea') {
+      return `<div class="form-group">
+        <label>${escHtml(f.label)}${f.required ? ' *' : ''}</label>
+        <textarea class="input-text" rows="3" id="af-${layerNum}-${f.key}" placeholder="${escHtml(f.label)}">${escHtml(prefill)}</textarea>
+      </div>`;
+    }
+    return `<div class="form-group">
+      <label>${escHtml(f.label)}${f.required ? ' *' : ''}</label>
+      <input type="text" class="input-text" id="af-${layerNum}-${f.key}" placeholder="${escHtml(f.label)}" value="${escHtml(prefill)}">
+    </div>`;
+  }).join('');
+
+  const disclaimerHtml = hasDisclaimer
+    ? `<div class="agent-disclaimer">${escHtml(_DISCLAIMER_TEXT)}</div>`
+    : '';
+
+  const formHtml = `
+    <div class="agent-action-form" id="agent-form-${layerNum}">
+      <div class="form-title">${escHtml(label)}</div>
+      ${fields}
+      ${disclaimerHtml}
+      <div id="agent-form-err-${layerNum}" class="form-error hidden"></div>
+      <div class="form-actions">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('agent-form-${layerNum}').remove()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="submitAction(${layerNum}, '${actionType}', ${JSON.stringify(promptForm).replace(/"/g, '&quot;')})">Run agent</button>
+      </div>
+    </div>`;
+
+  const typesEl = document.getElementById('action-types-' + layerNum);
+  typesEl.insertAdjacentHTML('afterend', formHtml);
+}
+
+async function submitAction(layerNum, actionType, promptForm) {
+  const errEl = document.getElementById('agent-form-err-' + layerNum);
+  errEl.classList.add('hidden');
+
+  const userInputs = {};
+  for (const f of promptForm) {
+    const el = document.getElementById(`af-${layerNum}-${f.key}`);
+    if (!el) continue;
+    const val = el.value.trim();
+    if (f.required && !val) {
+      errEl.textContent = `"${f.label}" is required.`;
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if (val) userInputs[f.key] = val;
+  }
+
+  const btn = document.querySelector(`#agent-form-${layerNum} .btn-primary`);
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+
+  const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ action_type: actionType, user_inputs: userInputs }),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    errEl.textContent = data.error || 'Failed to start action.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Run agent';
+    return;
+  }
+
+  document.getElementById('agent-form-' + layerNum).remove();
+  prependActionCard(data, layerNum);
+  pollAction(layerNum, data.id);
+}
+
+function prependActionCard(action, layerNum) {
+  const log = document.getElementById('actions-log-' + layerNum);
+  if (!log.querySelector('.actions-log-title')) {
+    log.innerHTML = '<div class="actions-log-title">Previous actions</div>';
+  }
+  log.querySelector('.actions-log-title').insertAdjacentHTML('afterend', renderActionCard(action, layerNum));
+}
+
+function pollAction(layerNum, actionId) {
+  if (_agentPollers[actionId]) return;
+  _agentPollers[actionId] = setInterval(async () => {
+    const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions/${actionId}`);
+    if (!res.ok) return;
+    const action = await res.json();
+    const card = document.getElementById('action-card-' + actionId);
+    if (card) card.outerHTML = renderActionCard(action, layerNum);
+    if (action.status === 'complete' || action.status === 'failed') {
+      clearInterval(_agentPollers[actionId]);
+      delete _agentPollers[actionId];
+    }
+  }, 3000);
+}
+
+async function rerunAction(actionId, layerNum) {
+  const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions/${actionId}/execute`, {
+    method: 'POST',
+  });
+  const data = await res.json();
+  if (res.ok) {
+    const card = document.getElementById('action-card-' + actionId);
+    if (card) card.outerHTML = renderActionCard(data, layerNum);
+    pollAction(layerNum, actionId);
+  } else {
+    alert(data.error || 'Re-run failed');
+  }
+}
+
+async function showArchive(actionId, layerNum) {
+  const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions/${actionId}/archive`);
+  const data = await res.json();
+  if (res.ok) {
+    alert('Prior artifact (archived ' + data.archived_at + '):\n\n' + data.archived_artifact);
+  } else {
+    alert(data.error || 'No archive found');
+  }
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

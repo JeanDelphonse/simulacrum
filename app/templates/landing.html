@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Welcome{% endblock %}
+{% block body_class %}landing{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">AI-Powered Career Wealth Engine</div>
+    <h1 class="hero-title">Turn your resume into<br><span class="accent">autonomous income</span></h1>
+    <p class="hero-sub">Upload your resume. Our AI identifies your zones of excellence and maps them onto a 5-layer wealth automation framework — from consulting to passive investment.</p>
+    <div class="hero-ctas">
+      <a href="{{ url_for('pages.register_page') }}" class="btn btn-primary btn-lg">Start free →</a>
+      <a href="{{ url_for('pages.login_page') }}" class="btn btn-ghost btn-lg">Sign in</a>
+    </div>
+  </div>
+  <div class="hero-pyramid">
+    <div class="pyramid-layer l5">L5 — Wealth Deployment</div>
+    <div class="pyramid-layer l4">L4 — Automated Systems</div>
+    <div class="pyramid-layer l3">L3 — Productized Income</div>
+    <div class="pyramid-layer l2">L2 — Leveraged Income</div>
+    <div class="pyramid-layer l1">L1 — Active Income</div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="features-inner">
+    <div class="feature-card">
+      <div class="feature-icon">📄</div>
+      <h3>Resume or LinkedIn</h3>
+      <p>Upload a PDF/DOCX resume or connect your LinkedIn profile. Our AI parses your full career history.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <h3>AI Expertise Extraction</h3>
+      <p>Claude identifies your Expertise Zones — the specific areas where your experience is monetizable.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💰</div>
+      <h3>5-Layer Wealth Blueprint</h3>
+      <p>A personalized roadmap from active consulting (Layer 1) all the way to passive wealth deployment (Layer 5).</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Real-Time Streaming</h3>
+      <p>Watch your wealth simulation populate layer by layer in real time as Claude generates each recommendation.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

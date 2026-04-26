@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}Advisor View — {{ simulation.name }}{% endblock %}
+{% block content %}
+<div class="sim-detail">
+  <div class="sim-detail-header">
+    <div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.3rem">
+        &#x1F441; Advisor Read-Only View
+      </div>
+      <h1>{{ simulation.name }}</h1>
+      <p class="sim-detail-zone">{{ simulation.expertise_zone }}</p>
+      <p class="sim-detail-meta">
+        <span class="status-badge status-{{ simulation.status }}">{{ simulation.status.title() }}</span>
+        · Shared by {{ client_name }}
+      </p>
+    </div>
+    <div class="header-actions">
+      <a href="{{ url_for('pages.partner_dashboard') }}" class="btn btn-ghost">← Partner Dashboard</a>
+    </div>
+  </div>
+
+  <div class="pyramid-container">
+    <div class="pyramid-header">
+      <h2>Wealth Pyramid</h2>
+      <p>Read-only advisor view — all 5 layers</p>
+    </div>
+    <div class="layers-container">
+      {% for layer in layers %}
+      <div class="layer-card layer-{{ layer.layer_number }}" id="layer-card-{{ layer.layer_number }}">
+        <div class="layer-card-header" onclick="toggleLayer({{ layer.layer_number }})">
+          <div class="layer-title-row">
+            <span class="layer-num-badge">L{{ layer.layer_number }}</span>
+            <h3 class="layer-title">{{ layer.layer_name }}</h3>
+          </div>
+          <span class="layer-toggle">▾</span>
+        </div>
+        <div class="layer-card-body" id="layer-body-{{ layer.layer_number }}">
+          {% if layer.ai_narrative %}
+          <p class="layer-narrative">{{ layer.ai_narrative }}</p>
+          {% endif %}
+          <div class="income-streams">
+            {% for stream in layer.income_streams %}
+            <div class="stream-card">
+              <div class="stream-header" onclick="toggleReasoning(this)">
+                <div class="stream-title-row">
+                  <h4 class="stream-name">{{ stream.name }}</h4>
+                  {% if stream.est_monthly_low and stream.est_monthly_high %}
+                  <span class="stream-range">${{ "{:,}".format(stream.est_monthly_low) }}–${{ "{:,}".format(stream.est_monthly_high) }}/mo</span>
+                  {% endif %}
+                </div>
+                <p class="stream-desc">{{ stream.description }}</p>
+              </div>
+              <div class="stream-reasoning hidden">
+                <div class="reasoning-label">AI Reasoning</div>
+                <p class="reasoning-text">{{ stream.ai_reasoning }}</p>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          {# Coaching notes for this layer #}
+          <div class="advisor-notes-section" id="notes-layer-{{ layer.layer_number }}">
+            <div class="advisor-notes-header">
+              <span class="advisor-notes-title">Coaching Notes</span>
+              <button class="btn btn-ghost btn-sm" onclick="showNoteForm({{ layer.layer_number }})">+ Add Note</button>
+            </div>
+            <div class="notes-list" id="notes-list-{{ layer.layer_number }}">
+              {% for note in notes if note.layer_number == layer.layer_number %}
+              <div class="note-card" id="note-{{ note.id }}">
+                <p class="note-text">{{ note.note_text }}</p>
+                <div class="note-meta">{{ note.updated_at.strftime('%b %d, %Y') }}
+                  <button class="btn btn-ghost btn-xs" onclick="editNote('{{ note.id }}', {{ layer.layer_number }}, {{ note.note_text|tojson }})">Edit</button>
+                  <button class="btn btn-ghost btn-xs" onclick="deleteNote('{{ note.id }}', {{ layer.layer_number }})">Delete</button>
+                </div>
+              </div>
+              {% else %}
+              <p class="notes-empty" id="notes-empty-{{ layer.layer_number }}">No coaching notes yet.</p>
+              {% endfor %}
+            </div>
+            <div class="note-form hidden" id="note-form-{{ layer.layer_number }}">
+              <textarea class="input-text" rows="3" id="note-input-{{ layer.layer_number }}"
+                placeholder="Add a coaching note for this layer…"></textarea>
+              <div style="display:flex;gap:.5rem;margin-top:.4rem">
+                <button class="btn btn-ghost btn-sm" onclick="cancelNote({{ layer.layer_number }})">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="saveNote({{ layer.layer_number }})">Save Note</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# General (simulation-level) notes #}
+  <div class="advisor-notes-section" style="margin-top:1.5rem">
+    <div class="advisor-notes-header">
+      <span class="advisor-notes-title">General Notes (Simulation Level)</span>
+      <button class="btn btn-ghost btn-sm" onclick="showNoteForm(null)">+ Add Note</button>
+    </div>
+    <div class="notes-list" id="notes-list-null">
+      {% for note in notes if note.layer_number is none %}
+      <div class="note-card" id="note-{{ note.id }}">
+        <p class="note-text">{{ note.note_text }}</p>
+        <div class="note-meta">{{ note.updated_at.strftime('%b %d, %Y') }}
+          <button class="btn btn-ghost btn-xs" onclick="editNote('{{ note.id }}', null, {{ note.note_text|tojson }})">Edit</button>
+          <button class="btn btn-ghost btn-xs" onclick="deleteNote('{{ note.id }}', null)">Delete</button>
+        </div>
+      </div>
+      {% else %}
+      <p class="notes-empty" id="notes-empty-null">No general notes yet.</p>
+      {% endfor %}
+    </div>
+    <div class="note-form hidden" id="note-form-null">
+      <textarea class="input-text" rows="3" id="note-input-null"
+        placeholder="Add a general note about this Simulation…"></textarea>
+      <div style="display:flex;gap:.5rem;margin-top:.4rem">
+        <button class="btn btn-ghost btn-sm" onclick="cancelNote(null)">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="saveNote(null)">Save Note</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const SIM_ID = '{{ simulation.id }}';
+
+function toggleLayer(num) {
+  document.getElementById('layer-body-' + num).classList.toggle('collapsed');
+}
+function toggleReasoning(header) {
+  header.nextElementSibling.classList.toggle('hidden');
+}
+
+function showNoteForm(layerNum) {
+  const key = layerNum === null ? 'null' : layerNum;
+  document.getElementById('note-form-' + key).classList.remove('hidden');
+}
+function cancelNote(layerNum) {
+  const key = layerNum === null ? 'null' : layerNum;
+  document.getElementById('note-form-' + key).classList.add('hidden');
+  document.getElementById('note-input-' + key).value = '';
+}
+
+async function saveNote(layerNum) {
+  const key = layerNum === null ? 'null' : layerNum;
+  const text = document.getElementById('note-input-' + key).value.trim();
+  if (!text) return;
+  const res = await fetch(ROOT + `/api/partners/advisor-clients/${SIM_ID}/notes`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ note_text: text, layer_number: layerNum }),
+  });
+  const note = await res.json();
+  if (res.ok) {
+    cancelNote(layerNum);
+    prependNote(note, key);
+  } else {
+    alert(note.error || 'Failed to save note');
+  }
+}
+
+function prependNote(note, key) {
+  const list = document.getElementById('notes-list-' + key);
+  const empty = document.getElementById('notes-empty-' + key);
+  if (empty) empty.remove();
+  list.insertAdjacentHTML('afterbegin', `
+    <div class="note-card" id="note-${note.id}">
+      <p class="note-text">${esc(note.note_text)}</p>
+      <div class="note-meta">${new Date(note.updated_at).toLocaleDateString()}
+        <button class="btn btn-ghost btn-xs" onclick="editNote('${note.id}', ${key === 'null' ? 'null' : key}, ${JSON.stringify(note.note_text)})">Edit</button>
+        <button class="btn btn-ghost btn-xs" onclick="deleteNote('${note.id}', ${key === 'null' ? 'null' : key})">Delete</button>
+      </div>
+    </div>`);
+}
+
+async function editNote(noteId, layerNum, currentText) {
+  const newText = prompt('Edit note:', currentText);
+  if (!newText || newText.trim() === currentText) return;
+  const res = await fetch(ROOT + `/api/partners/advisor-clients/${SIM_ID}/notes/${noteId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ note_text: newText.trim() }),
+  });
+  if (res.ok) {
+    const note = await res.json();
+    const card = document.getElementById('note-' + noteId);
+    if (card) card.querySelector('.note-text').textContent = note.note_text;
+  }
+}
+
+async function deleteNote(noteId, layerNum) {
+  if (!confirm('Delete this note?')) return;
+  const res = await fetch(ROOT + `/api/partners/advisor-clients/${SIM_ID}/notes/${noteId}`, { method: 'DELETE' });
+  if (res.ok) {
+    document.getElementById('note-' + noteId)?.remove();
+  }
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}

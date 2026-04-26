@@ -1,0 +1,116 @@
+{
+  "dependencies": [
+    {
+      "upstream_action_type": "rate_card",
+      "upstream_layer": 1,
+      "downstream_action_type": "consulting_proposal",
+      "downstream_layer": 1,
+      "fields_passed": ["hourly_rate", "project_rate", "retainer_rate"]
+    },
+    {
+      "upstream_action_type": "consulting_proposal",
+      "upstream_layer": 1,
+      "downstream_action_type": "consulting_agreement",
+      "downstream_layer": 1,
+      "fields_passed": ["client_name", "scope_summary", "deliverables", "timeline", "rate"]
+    },
+    {
+      "upstream_action_type": "consulting_agreement",
+      "upstream_layer": 1,
+      "downstream_action_type": "consulting_agreement",
+      "downstream_layer": 1,
+      "fields_passed": ["party_names", "engagement_type", "payment_schedule"]
+    },
+    {
+      "upstream_action_type": "linkedin_optimize",
+      "upstream_layer": 1,
+      "downstream_action_type": "speaking_proposals",
+      "downstream_layer": 2,
+      "fields_passed": ["headline", "bio"]
+    },
+    {
+      "upstream_action_type": "rate_card",
+      "upstream_layer": 1,
+      "downstream_action_type": "corporate_training_proposal",
+      "downstream_layer": 2,
+      "fields_passed": ["rate", "target_company_size", "engagement_model"]
+    },
+    {
+      "upstream_action_type": "coaching_curriculum",
+      "upstream_layer": 2,
+      "downstream_action_type": "course_framework",
+      "downstream_layer": 3,
+      "fields_passed": ["module_structure", "depth_level", "audience_seniority"]
+    },
+    {
+      "upstream_action_type": "waitlist_landing_page",
+      "upstream_layer": 2,
+      "downstream_action_type": "launch_email_sequence",
+      "downstream_layer": 3,
+      "fields_passed": ["program_name", "launch_date", "audience"]
+    },
+    {
+      "upstream_action_type": "course_framework",
+      "upstream_layer": 3,
+      "downstream_action_type": "sales_page",
+      "downstream_layer": 3,
+      "fields_passed": ["course_title", "target_audience", "module_highlights", "price"]
+    },
+    {
+      "upstream_action_type": "sales_page",
+      "upstream_layer": 3,
+      "downstream_action_type": "seo_content_calendar",
+      "downstream_layer": 4,
+      "fields_passed": ["headline", "target_keywords", "primary_audience"]
+    },
+    {
+      "upstream_action_type": "sales_page",
+      "upstream_layer": 3,
+      "downstream_action_type": "funnel_design",
+      "downstream_layer": 4,
+      "fields_passed": ["product_positioning", "audience_pain_point"]
+    },
+    {
+      "upstream_action_type": "seo_content_calendar",
+      "upstream_layer": 4,
+      "downstream_action_type": "newsletter_monetization",
+      "downstream_layer": 4,
+      "fields_passed": ["content_topics", "audience_size"]
+    },
+    {
+      "upstream_action_type": "course_framework",
+      "upstream_layer": 3,
+      "downstream_action_type": "saas_product_spec",
+      "downstream_layer": 4,
+      "fields_passed": ["repeatable_methodology", "deliverable_evidence"]
+    },
+    {
+      "upstream_action_type": "compound_growth",
+      "upstream_layer": 5,
+      "downstream_action_type": "portfolio_analysis",
+      "downstream_layer": 5,
+      "fields_passed": ["projected_monthly_income_by_stream"]
+    },
+    {
+      "upstream_action_type": "portfolio_analysis",
+      "upstream_layer": 5,
+      "downstream_action_type": "dca_schedule",
+      "downstream_layer": 5,
+      "fields_passed": ["asset_class_targets", "monthly_contribution"]
+    },
+    {
+      "upstream_action_type": "entity_structure",
+      "upstream_layer": 5,
+      "downstream_action_type": "tax_optimization",
+      "downstream_layer": 5,
+      "fields_passed": ["recommended_entity_type"]
+    },
+    {
+      "upstream_action_type": "compound_growth",
+      "upstream_layer": 5,
+      "downstream_action_type": "compound_growth",
+      "downstream_layer": 5,
+      "fields_passed": ["posterior_income_estimates_by_layer"]
+    }
+  ]
+}

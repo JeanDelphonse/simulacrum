@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <h1 class="auth-title">Start building wealth</h1>
+    <p class="auth-sub">Create your Simulacrum account — free to join</p>
+    <form class="auth-form" id="registerForm">
+      <div class="form-group">
+        <label for="full_name">Full name</label>
+        <input type="text" id="full_name" name="full_name" required placeholder="Jane Smith">
+      </div>
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required minlength="8" placeholder="Minimum 8 characters">
+      </div>
+      <div id="registerError" class="form-error hidden"></div>
+      <button type="submit" class="btn btn-primary btn-full">Create account →</button>
+    </form>
+    <p class="auth-footer">Already have an account? <a href="{{ url_for('pages.login_page') }}">Sign in</a></p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  const errEl = document.getElementById('registerError');
+  errEl.classList.add('hidden');
+  try {
+    const res = await fetch(ROOT + '/api/auth/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        full_name: document.getElementById('full_name').value,
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      window.location.href = '{{ url_for("pages.verify_sent_page") }}';
+    } else {
+      errEl.textContent = data.error || 'Registration failed';
+      errEl.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Create account →';
+    }
+  } catch (err) {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Create account →';
+  }
+});
+</script>
+{% endblock %}
