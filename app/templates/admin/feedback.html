@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+{% block title %}Feedback Moderation{% endblock %}
+
+{% block head %}
+<style>
+.fb-page { max-width: 1000px; margin: 2rem auto; padding: 0 1rem 4rem; }
+.fb-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.fb-stat { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: .6rem 1rem; font-size: .8rem; color: rgba(255,255,255,.5); }
+.fb-stat strong { display: block; font-size: 1.1rem; color: #e8eaf0; }
+.fb-toolbar { display: flex; gap: .75rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.fb-tabs { display: flex; gap: .25rem; }
+.fb-tab { padding: .4rem .85rem; border-radius: 6px; font-size: .82rem; font-weight: 600; cursor: pointer; border: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.5); background: none; }
+.fb-tab.active { background: rgba(245,200,66,.12); color: #f5c842; border-color: rgba(245,200,66,.3); }
+.fb-tab .badge { font-size: .68rem; background: rgba(255,255,255,.12); border-radius: 20px; padding: .05rem .4rem; margin-left: .3rem; }
+.fb-search { flex: 1; min-width: 180px; }
+.fb-search input { width: 100%; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: .45rem .75rem; color: #e8eaf0; font-size: .85rem; }
+.fb-bulk { display: flex; gap: .5rem; }
+.fb-list { display: flex; flex-direction: column; gap: .85rem; }
+.fb-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 1rem 1.25rem; }
+.fb-card-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: .75rem; }
+.fb-check { margin-top: .15rem; }
+.fb-stars { color: #f5c842; font-size: 1rem; letter-spacing: .1em; }
+.fb-meta { font-size: .75rem; color: rgba(255,255,255,.4); margin-top: .15rem; }
+.fb-quote { font-size: .95rem; color: #e8eaf0; font-style: italic; margin-bottom: .5rem; line-height: 1.6; }
+.fb-quote::before { content: '\201C'; }
+.fb-quote::after  { content: '\201D'; }
+.fb-outcome { font-size: .82rem; color: rgba(255,255,255,.6); margin-bottom: .6rem; border-left: 2px solid rgba(255,255,255,.1); padding-left: .6rem; }
+.fb-layers { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .6rem; }
+.layer-chip { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 20px; }
+.lc-1,.lc-2 { background: rgba(13,148,136,.2); color: #5eead4; }
+.lc-3,.lc-4 { background: rgba(245,200,66,.15); color: #f5c842; }
+.lc-5       { background: rgba(26,74,107,.5); color: #93c5fd; }
+.lc-6       { background: rgba(124,58,237,.2); color: #c4b5fd; }
+.lc-0       { background: rgba(255,255,255,.08); color: rgba(255,255,255,.5); }
+.fb-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.fb-nameinfo { font-size: .78rem; color: rgba(255,255,255,.45); }
+.fb-zone { font-size: .78rem; color: rgba(255,255,255,.4); margin-bottom: .4rem; }
+.fb-admin-note { font-size: .78rem; color: #fca5a5; background: rgba(239,68,68,.08); border-radius: 6px; padding: .3rem .6rem; margin-top: .4rem; }
+.approved-meta { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; font-size: .75rem; color: rgba(255,255,255,.4); }
+.featured-chip { font-size: .68rem; background: rgba(245,200,66,.2); color: #f5c842; border-radius: 20px; padding: .1rem .5rem; font-weight: 700; }
+.order-input { width: 56px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: .25rem .4rem; color: #e8eaf0; font-size: .8rem; }
+.withdrawal-flag { font-size: .72rem; background: rgba(239,68,68,.1); color: #fca5a5; border-radius: 6px; padding: .2rem .5rem; }
+.empty-fb { text-align: center; color: rgba(255,255,255,.35); font-size: .9rem; padding: 2rem; }
+#rejectModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9000; align-items: center; justify-content: center; }
+#rejectModal.open { display: flex; }
+.reject-card { background: #1a2235; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 420px; }
+.reject-card h3 { margin: 0 0 1rem; font-size: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fb-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link active">Feedback</a>
+  </nav>
+
+  <h1 style="margin-bottom:1.25rem">Feedback Moderation</h1>
+
+  <div class="fb-stats" id="statsBar">
+    <div class="fb-stat"><strong id="statTotal">—</strong>Total</div>
+    <div class="fb-stat"><strong id="statPending">—</strong>Pending</div>
+    <div class="fb-stat"><strong id="statApproved">—</strong>Approved</div>
+    <div class="fb-stat"><strong id="statRejected">—</strong>Rejected</div>
+    <div class="fb-stat"><strong id="statAvg">—</strong>Avg Rating (approved)</div>
+    <div class="fb-stat"><strong id="statTopLayer">—</strong>Top Layer</div>
+  </div>
+
+  <div class="fb-toolbar">
+    <div class="fb-tabs">
+      <button class="fb-tab active" data-status="pending" onclick="switchTab('pending',this)">
+        Pending <span class="badge" id="badgePending"></span>
+      </button>
+      <button class="fb-tab" data-status="approved" onclick="switchTab('approved',this)">
+        Approved <span class="badge" id="badgeApproved"></span>
+      </button>
+      <button class="fb-tab" data-status="rejected" onclick="switchTab('rejected',this)">
+        Rejected <span class="badge" id="badgeRejected"></span>
+      </button>
+    </div>
+    <div class="fb-search">
+      <input type="text" id="searchInput" placeholder="Search name, quote, or layer…" oninput="filterCards()">
+    </div>
+    <div class="fb-bulk" id="bulkActions" style="display:none">
+      <button class="btn btn-ghost btn-sm" onclick="bulkApprove()">Bulk Approve</button>
+      <button class="btn btn-ghost btn-sm" style="color:#fca5a5" onclick="bulkReject()">Bulk Reject</button>
+    </div>
+  </div>
+
+  <div class="fb-list" id="fbList">
+    <div class="empty-fb">Loading…</div>
+  </div>
+</div>
+
+<div id="rejectModal">
+  <div class="reject-card">
+    <h3>Reject feedback</h3>
+    <div class="settings-row">
+      <label class="settings-label">Reason (optional)</label>
+      <textarea class="input-text" id="rejectNote" rows="3" maxlength="300" placeholder="Visible to user if provided"></textarea>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-ghost btn-sm" onclick="closeRejectModal()">Cancel</button>
+      <button class="btn btn-sm" style="background:#ef4444;color:#fff" onclick="confirmReject()">Confirm Reject</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ROOT2 = window.ROOT || '';
+let _allCards = [];
+let _currentTab = 'pending';
+let _rejectTargetId = null;
+
+const _layerNames = {0:'General',1:'L1: Active Income',2:'L2: Leveraged Income',3:'L3: Productized',4:'L4: Automated Residual',5:'L5: Wealth Deployment',6:'L6: Growth Orchestrator'};
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function stars(n){ return '★'.repeat(n) + '☆'.repeat(5-n); }
+
+async function loadStats() {
+  const r = await fetch(ROOT2 + '/api/admin/feedback/stats');
+  if (!r.ok) return;
+  const d = await r.json();
+  document.getElementById('statTotal').textContent = d.total;
+  document.getElementById('statPending').textContent = d.pending;
+  document.getElementById('statApproved').textContent = d.approved;
+  document.getElementById('statRejected').textContent = d.rejected;
+  document.getElementById('statAvg').textContent = d.avg_rating ? d.avg_rating + ' ★' : '—';
+  document.getElementById('statTopLayer').textContent = d.top_layer !== null ? (_layerNames[d.top_layer] || 'L'+d.top_layer) : '—';
+  document.getElementById('badgePending').textContent = d.pending;
+  document.getElementById('badgeApproved').textContent = d.approved;
+  document.getElementById('badgeRejected').textContent = d.rejected;
+}
+
+async function loadCards(status) {
+  const r = await fetch(ROOT2 + '/api/admin/feedback?status=' + status);
+  if (!r.ok) { document.getElementById('fbList').innerHTML = '<div class="empty-fb">Failed to load.</div>'; return; }
+  _allCards = await r.json();
+  renderCards(_allCards);
+}
+
+function filterCards() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase();
+  if (!q) { renderCards(_allCards); return; }
+  renderCards(_allCards.filter(f =>
+    (f.display_name||'').toLowerCase().includes(q) ||
+    (f.quote_text||'').toLowerCase().includes(q) ||
+    (f.layers||[]).some(l => l.label.toLowerCase().includes(q))
+  ));
+}
+
+function renderCards(cards) {
+  const list = document.getElementById('fbList');
+  const hasBulk = _currentTab === 'pending' || _currentTab === 'approved';
+  document.getElementById('bulkActions').style.display = hasBulk ? '' : 'none';
+  if (!cards.length) { list.innerHTML = '<div class="empty-fb">No submissions.</div>'; return; }
+  list.innerHTML = cards.map(f => cardHtml(f)).join('');
+}
+
+function cardHtml(f) {
+  const starsHtml = `<span class="fb-stars">${stars(f.star_rating)}</span>`;
+  const layerChips = (f.layers||[]).map(l =>
+    `<span class="layer-chip lc-${l.num}">${esc(l.label)}</span>`).join('');
+  const withdrawFlag = f.withdrawn_requested_at
+    ? `<span class="withdrawal-flag">Withdrawal requested</span>` : '';
+  let actions = '';
+  if (_currentTab === 'pending') {
+    actions = `
+      <button class="btn btn-primary btn-sm" onclick="approve('${f.id}')">Approve</button>
+      <button class="btn btn-sm" style="background:rgba(245,200,66,.2);color:#f5c842" onclick="featureIt('${f.id}')">Feature</button>
+      <button class="btn btn-sm" style="color:#fca5a5;border-color:rgba(239,68,68,.3)" onclick="openReject('${f.id}')">Reject</button>`;
+  } else if (_currentTab === 'approved') {
+    const featBtn = f.is_featured
+      ? `<button class="btn btn-ghost btn-sm" onclick="featureIt('${f.id}')">Unfeature</button>`
+      : `<button class="btn btn-sm" style="background:rgba(245,200,66,.15);color:#f5c842" onclick="featureIt('${f.id}')">Feature</button>`;
+    actions = `
+      ${featBtn}
+      <button class="btn btn-ghost btn-sm" onclick="unpublish('${f.id}')">Unpublish</button>
+      Order: <input class="order-input" type="number" value="${f.display_order ?? ''}" onchange="setOrder('${f.id}',this.value)">`;
+  } else {
+    actions = `<button class="btn btn-ghost btn-sm" onclick="unpublish('${f.id}')">Move to Pending</button>`;
+  }
+  const approvedInfo = f.approved_at
+    ? `<div class="approved-meta">${f.is_featured ? '<span class="featured-chip">Featured</span>' : ''}Approved ${f.approved_at}</div>`
+    : '';
+  const adminNoteHtml = f.admin_note ? `<div class="fb-admin-note">Admin note: ${esc(f.admin_note)}</div>` : '';
+
+  return `
+  <div class="fb-card" id="fbc-${f.id}">
+    <div class="fb-card-header">
+      ${hasBulk(f) ? `<input type="checkbox" class="fb-check" data-id="${f.id}">` : ''}
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+          ${starsHtml}
+          <span style="font-weight:700;font-size:.9rem">${esc(f.display_name)}</span>
+          <span class="fb-nameinfo">shows as: ${esc(f.name_display)}</span>
+          ${withdrawFlag}
+        </div>
+        <div class="fb-meta">${f.submitted_at ? f.submitted_at.slice(0,10) : ''} ${f.expertise_zone ? '· ' + esc(f.expertise_zone) : ''}</div>
+      </div>
+    </div>
+    <div class="fb-quote">${esc(f.quote_text)}</div>
+    <div class="fb-outcome">${esc(f.outcome_text)}</div>
+    <div class="fb-layers">${layerChips}</div>
+    ${approvedInfo}
+    ${adminNoteHtml}
+    <div class="fb-actions">${actions}</div>
+  </div>`;
+}
+
+function hasBulk(f) {
+  return _currentTab === 'pending' || _currentTab === 'approved';
+}
+
+function switchTab(status, btn) {
+  _currentTab = status;
+  document.querySelectorAll('.fb-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('searchInput').value = '';
+  loadCards(status);
+}
+
+async function approve(id) {
+  await fetch(ROOT2 + `/api/admin/feedback/${id}/approve`, {method:'PUT'});
+  await reload();
+}
+async function featureIt(id) {
+  const f = _allCards.find(c => c.id === id);
+  const endpoint = (f && f.is_featured) ? 'approve' : 'feature';
+  await fetch(ROOT2 + `/api/admin/feedback/${id}/${endpoint}`, {method:'PUT'});
+  await reload();
+}
+async function unpublish(id) {
+  await fetch(ROOT2 + `/api/admin/feedback/${id}/unpublish`, {method:'PUT'});
+  await reload();
+}
+async function setOrder(id, val) {
+  await fetch(ROOT2 + `/api/admin/feedback/${id}/display-order`, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({display_order: parseInt(val)||0}),
+  });
+}
+
+function openReject(id) {
+  _rejectTargetId = id;
+  document.getElementById('rejectNote').value = '';
+  document.getElementById('rejectModal').classList.add('open');
+}
+function closeRejectModal() {
+  document.getElementById('rejectModal').classList.remove('open');
+  _rejectTargetId = null;
+}
+async function confirmReject() {
+  const note = document.getElementById('rejectNote').value.trim();
+  await fetch(ROOT2 + `/api/admin/feedback/${_rejectTargetId}/reject`, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({admin_note: note}),
+  });
+  closeRejectModal();
+  await reload();
+}
+document.getElementById('rejectModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('rejectModal')) closeRejectModal();
+});
+
+function getCheckedIds() {
+  return [...document.querySelectorAll('.fb-check:checked')].map(el => el.dataset.id);
+}
+async function bulkApprove() {
+  const ids = getCheckedIds();
+  if (!ids.length) return;
+  await fetch(ROOT2 + '/api/admin/feedback/bulk-approve', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ids}),
+  });
+  await reload();
+}
+async function bulkReject() {
+  const ids = getCheckedIds();
+  if (!ids.length) return;
+  const note = prompt('Optional rejection reason (sent to all selected users):') || '';
+  await fetch(ROOT2 + '/api/admin/feedback/bulk-reject', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ids, admin_note: note}),
+  });
+  await reload();
+}
+
+async function reload() {
+  await Promise.all([loadStats(), loadCards(_currentTab)]);
+}
+
+reload();
+</script>
+{% endblock %}

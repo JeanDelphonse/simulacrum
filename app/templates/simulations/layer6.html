@@ -87,6 +87,7 @@
 .s-escalated { background: #fef3c7; color: #92400e; }
 .s-rejected  { background: #fee2e2; color: #991b1b; }
 .s-queued    { background: #f1f5f9; color: #475569; }
+.s-failed    { background: #fee2e2; color: #991b1b; }
 
 .escalation-item {
   padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
@@ -152,6 +153,245 @@
 .toggle-row:last-child { border-bottom: none; }
 .toggle-row label { cursor: pointer; }
 
+/* ── Inner Tab Row ───────────────────────────────────────────────────────── */
+.gcc-tab-row {
+  display: flex; border-bottom: 1px solid #CCCCCC;
+  padding: 0 2rem; background: var(--surface);
+}
+.gcc-tab-btn {
+  padding: 0 1.25rem; height: 40px; font-size: 0.875rem; font-weight: 400;
+  color: #666; background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: color 0.15s; margin-bottom: -1px;
+}
+.gcc-tab-btn:hover { color: #1A1A1A; }
+.gcc-tab-btn.active { font-weight: 500; color: #0D1B3E; border-bottom-color: #0D1B3E; }
+.gcc-tab-panel { display: none; }
+.gcc-tab-panel.active { display: block; }
+.tab-zone-wrap { padding: 2rem; }
+
+/* ── Journey Accordion ───────────────────────────────────────────────────── */
+.jrn-rows { padding: 1.25rem 2rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.jrn-row {
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  overflow: hidden;
+}
+.jrn-header {
+  display: flex; align-items: center; gap: 0.6rem; height: 52px;
+  padding-right: 1rem; cursor: pointer; user-select: none;
+}
+.jrn-accent-bar { width: 4px; align-self: stretch; flex-shrink: 0; }
+.jrn-badge {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 0.2rem 0.55rem; border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+}
+.jrn-status-summary {
+  font-size: 0.75rem; color: var(--muted); flex: 1; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.jrn-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #94a3b8;
+}
+.jrn-dot.dot-running { background: #0d9488; animation: jrn-pulse 1.4s ease-in-out infinite; }
+.jrn-dot.dot-complete { background: #0d9488; }
+.jrn-dot.dot-escalated { background: #d97706; }
+@keyframes jrn-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.5; transform:scale(1.5); }
+}
+.jrn-esc-badge {
+  font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px;
+  background: #fef3c7; color: #92400e; flex-shrink: 0; display: none;
+}
+.jrn-esc-badge.visible { display: inline-block; }
+.jrn-chevron { font-size: 0.7rem; color: var(--muted); flex-shrink: 0; transition: transform 0.2s; }
+.jrn-row.expanded .jrn-chevron { transform: rotate(90deg); }
+.jrn-content { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease, opacity 0.2s ease 0.05s; }
+.jrn-row.expanded .jrn-content { max-height: 2400px; opacity: 1; }
+.jrn-content-inner { padding: 0.6rem 1rem 0.9rem 1.25rem; }
+.jrn-question { font-size: 0.875rem; font-style: italic; color: var(--fg); margin-bottom: 0.75rem; }
+.jrn-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.75rem; }
+.jrn-chip {
+  font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+  border: 1px solid; cursor: pointer; transition: opacity 0.15s; white-space: nowrap;
+  background: none;
+}
+.jrn-chip:hover { opacity: 0.7; }
+.jrn-metric { display: flex; gap: 0.5rem; align-items: baseline; }
+.jrn-metric-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.jrn-metric-value { font-size: 0.875rem; font-weight: 600; }
+
+/* ── Journey Footer ──────────────────────────────────────────────────────── */
+.jrn-footer {
+  margin: 0 2rem 2rem; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+.jrn-footer-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.65rem 1rem; border-bottom: 1px solid var(--border);
+}
+.jrn-footer-title { font-size: 0.72rem; font-weight: 700; color: #0D1B3E; }
+.jrn-footer-sub { font-size: 0.68rem; color: var(--muted); margin-top: 0.1rem; }
+.jrn-footer-right { display: flex; align-items: center; gap: 0.75rem; }
+.jrn-phase-badge {
+  font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.5rem;
+  border-radius: 999px; background: #dbeafe; color: #1e40af;
+}
+.jrn-anv-link { font-size: 0.72rem; color: var(--accent); cursor: pointer; border: none; background: none; }
+.jrn-esc-alert {
+  display: none; padding: 0.5rem 1rem; background: #FDF3DC; border-bottom: 1px solid #E8B84B;
+  font-size: 0.78rem; color: #92400e; align-items: center; justify-content: space-between; gap: 0.5rem;
+}
+.jrn-esc-alert.visible { display: flex; }
+.jrn-esc-review-btn {
+  font-size: 0.72rem; font-weight: 600; color: #92400e; background: none; border: none;
+  cursor: pointer; text-decoration: underline; white-space: nowrap;
+}
+.jrn-income-row { display: flex; border-bottom: 1px solid var(--border); }
+.jrn-income-cell {
+  flex: 1; padding: 0.6rem 1rem; text-align: center;
+  border-right: 1px solid var(--border);
+}
+.jrn-income-cell:last-child { border-right: none; }
+.jrn-income-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.2rem; }
+.jrn-income-value { font-size: 1.1rem; font-weight: 700; }
+.jrn-trend-up { color: #166534; }
+.jrn-trend-dn { color: #991b1b; }
+.jrn-pill-row {
+  display: flex; gap: 0.35rem; padding: 0.6rem 1rem; overflow-x: auto;
+  border-bottom: 1px solid var(--border); min-height: 42px; align-items: center;
+  scrollbar-width: none;
+}
+.jrn-pill-row::-webkit-scrollbar { display: none; }
+.jrn-pill {
+  display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.6rem;
+  border-radius: 999px; font-size: 0.7rem; white-space: nowrap; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--border); transition: opacity 0.15s;
+}
+.jrn-pill:hover { opacity: 0.75; }
+.jrn-pill-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.jrn-pill-dot.running  { background: #0d9488; animation: jrn-pulse 1.4s ease-in-out infinite; }
+.jrn-pill-dot.queued   { background: #d97706; }
+.jrn-pill-dot.complete { background: #94a3b8; }
+.jrn-pill-dot.escalated { background: #d97706; }
+.jrn-pill-dot.error    { background: #dc2626; }
+.jrn-pill-layer { font-size: 0.62rem; color: var(--muted); }
+.jrn-reasoning-section { padding: 0.6rem 1rem; }
+.jrn-reasoning-toggle {
+  font-size: 0.75rem; font-weight: 600; color: var(--muted); background: none;
+  border: none; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 0.35rem;
+}
+.jrn-rti { transition: transform 0.2s; display: inline-block; }
+.jrn-reasoning-section.open .jrn-rti { transform: rotate(90deg); }
+.jrn-reasoning-body { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.2s ease, opacity 0.15s ease 0.05s; }
+.jrn-reasoning-section.open .jrn-reasoning-body { max-height: 400px; opacity: 1; }
+.jrn-reasoning-text { font-size: 0.8rem; line-height: 1.6; color: var(--fg); margin-top: 0.5rem; white-space: pre-wrap; }
+
+/* ── Journey v1.1 — Suggested action button ─────────────────────────────── */
+.jrn-suggest-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.35rem 0.9rem; border-radius: 999px; border: none; cursor: pointer;
+  font-size: 0.78rem; font-weight: 600; color: #fff; margin-bottom: 0.75rem;
+  transition: opacity 0.15s;
+}
+.jrn-suggest-btn:hover:not(:disabled) { opacity: 0.85; }
+.jrn-suggest-btn:disabled { opacity: 0.6; cursor: default; }
+.jrn-suggest-btn.btn-success { background: #166534 !important; }
+
+/* ── Progress bar ────────────────────────────────────────────────────────── */
+.jrn-progress-wrap { margin-bottom: 0.65rem; }
+.jrn-progress-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.3rem; }
+.jrn-progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.jrn-progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+/* ── Step hint ───────────────────────────────────────────────────────────── */
+.jrn-hint { font-size: 0.69rem; font-style: italic; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.45; }
+
+/* ── Step circles ────────────────────────────────────────────────────────── */
+.jrn-steps {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  padding: 0.4rem 0 0.6rem; margin-bottom: 0.65rem;
+}
+.jrn-step { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.jrn-step-circle {
+  width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 8px; font-weight: 600; flex-shrink: 0;
+  border: 1.5px solid var(--border); color: var(--muted);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.jrn-step-circle.s-complete { color: #fff; cursor: pointer; }
+.jrn-step-circle.s-complete:hover { transform: scale(1.12); }
+.jrn-step-circle.s-active { cursor: pointer; }
+.jrn-step-circle.s-active:hover { opacity: 0.8; }
+.jrn-step-circle.s-pending { cursor: default; }
+.jrn-step-circle.s-running { cursor: pointer; animation: jrn-pulse 1.4s ease-in-out infinite; }
+.jrn-step-label { font-size: 10px; white-space: nowrap; color: var(--muted); }
+.jrn-step-label.lbl-complete { font-weight: 500; }
+.jrn-step-conn { flex-shrink: 0; width: 12px; height: 1px; background: var(--border); }
+.jrn-step-conn.conn-done { background: currentColor; }
+
+/* ── Inline artifact panel ───────────────────────────────────────────────── */
+.jrn-ap {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.75rem 0.875rem; margin-bottom: 0.65rem; display: none;
+  flex-direction: column; gap: 0.5rem; position: relative;
+}
+.jrn-ap.show { display: flex; }
+.jrn-ap-close {
+  position: absolute; top: 0.4rem; right: 0.6rem; background: none; border: none;
+  cursor: pointer; font-size: 1rem; line-height: 1; color: var(--muted); padding: 0.1rem 0.2rem;
+}
+.jrn-ap-close:hover { color: var(--fg); }
+.jrn-ap-action { font-size: 0.7rem; color: var(--muted); }
+.jrn-ap-header { display: flex; align-items: center; gap: 0.4rem; }
+.jrn-ap-name { font-size: 0.78rem; font-weight: 500; flex: 1; }
+.jrn-ap-ver { font-size: 0.62rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 999px; background: #0F7B72; color: #D6F0EE; white-space: nowrap; }
+.jrn-kv-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  border: 1px solid var(--border); border-radius: 5px; overflow: hidden;
+}
+.jrn-kv { padding: 5px 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 1px; }
+.jrn-kv:nth-last-child(-n+2) { border-bottom: none; }
+.jrn-kk { font-size: 0.62rem; color: var(--muted); }
+.jrn-kv-val { font-size: 0.75rem; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jrn-ap-footer { display: flex; gap: 0.5rem; margin-top: 0.1rem; }
+.jrn-ap-edit {
+  font-size: 0.69rem; padding: 0.2rem 0.6rem; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--surface); cursor: pointer; color: var(--muted);
+}
+.jrn-ap-edit:hover { background: var(--bg); }
+.jrn-ap-rerun {
+  font-size: 0.69rem; padding: 0.2rem 0.6rem; border-radius: 4px;
+  border: 1.5px solid; background: transparent; cursor: pointer; font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+/* ── Next pending run line ───────────────────────────────────────────────── */
+.jrn-next-run {
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0;
+  border-top: 1px solid var(--border); margin-top: 0.4rem; font-size: 0.75rem;
+}
+.jrn-next-dot { width: 7px; height: 7px; border-radius: 50%; background: #d97706; flex-shrink: 0; }
+.jrn-next-text { flex: 1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jrn-run-now-btn {
+  font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px;
+  background: none; border: 1px solid var(--border); cursor: pointer; color: var(--fg);
+  white-space: nowrap; flex-shrink: 0; transition: background 0.15s;
+}
+.jrn-run-now-btn:hover { background: var(--bg); }
+
+/* ── Unlock note ─────────────────────────────────────────────────────────── */
+.jrn-unlock-note { font-size: 0.8rem; font-style: italic; color: var(--muted); padding: 0.5rem 0 0.25rem; }
+
+@media (max-width: 768px) {
+  .jrn-rows, .jrn-footer { margin-left: 1rem; margin-right: 1rem; }
+  .jrn-rows { padding-left: 1rem; padding-right: 1rem; }
+  .gcc-tab-row { padding: 0 1rem; }
+  .jrn-income-row { flex-direction: column; }
+  .jrn-income-cell { border-right: none; border-bottom: 1px solid var(--border); }
+  .jrn-income-cell:last-child { border-bottom: none; }
+  .tab-zone-wrap { padding: 1rem; }
+}
+
 /* ── Cycle Diagram Modal ─────────────────────────────────────────────────── */
 .diagram-modal-overlay {
   display: none;
@@ -206,18 +446,31 @@
 {% block body_class %}sim-detail-page l6-page{% endblock %}
 
 {% block content %}
+{% if advisor_mode is defined and advisor_mode %}
+{% include 'simulations/_advisor_banner.html' %}
+{% endif %}
+
 <div class="l6-header">
   <div>
     <h1>Growth Command Center</h1>
     <div class="sim-name">{{ sim.name }} &nbsp;·&nbsp;
+      {% if advisor_mode is defined and advisor_mode %}
+      <a href="{{ url_for('pages.partner_dashboard') }}">← Back to my dashboard</a>
+      {% else %}
       <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}">← Back to Simulation</a>
+      {% endif %}
     </div>
   </div>
-  <div class="l6-controls" id="l6Controls" style="display:none">
-    <span id="phaseBadge" class="phase-badge">—</span>
+  <div class="l6-controls" id="l6Controls" style="display:{% if advisor_mode is defined and advisor_mode %}flex{% else %}none{% endif %}">
+    <span id="phaseBadge" class="phase-badge {% if advisor_mode is defined and advisor_mode %}{% if advisor_layer6_config and advisor_layer6_config.is_active %}phase-exploit{% else %}s-rejected{% endif %}{% endif %}">{% if advisor_mode is defined and advisor_mode %}{% if advisor_layer6_config and advisor_layer6_config.is_active %}Active{% else %}Paused{% endif %}{% else %}—{% endif %}</span>
+    {% if not (advisor_mode is defined and advisor_mode) %}
     <button class="btn btn-ghost btn-sm" id="runCycleBtn">Run Cycle</button>
     <button class="btn btn-ghost btn-sm" id="togglePauseBtn">Pause</button>
+    {% endif %}
+    <button class="btn btn-ghost btn-sm" id="agentNetworkBtn">🕸 Agent Network</button>
+    {% if not (advisor_mode is defined and advisor_mode) %}
     <button class="btn btn-primary btn-sm" id="configBtn">⚙ Settings</button>
+    {% endif %}
   </div>
 </div>
 
@@ -304,43 +557,111 @@
   </div>
 </div>
 
-<!-- Main content -->
-<div class="l6-zones" id="l6Zones" style="display:none">
+<!-- Inner Tab Row -->
+<div id="gccInnerTabs" style="display:{% if advisor_mode is defined and advisor_mode %}block{% else %}none{% endif %}">
+  <div class="gcc-tab-row" role="tablist">
+    <button class="gcc-tab-btn active" data-tab="journey" role="tab" aria-selected="true">Journey</button>
+    <button class="gcc-tab-btn" data-tab="numbers" role="tab" aria-selected="false">Numbers</button>
+    <button class="gcc-tab-btn" data-tab="actions" role="tab" aria-selected="false">Actions</button>
+    <button class="gcc-tab-btn" data-tab="momentum" role="tab" aria-selected="false">Momentum</button>
+  </div>
+</div>
 
-  <!-- NUMBERS ZONE -->
-  <div class="zone-card">
-    <h2>Numbers</h2>
-    <div id="layerRows"></div>
-    <div class="totals-row">
-      <span>Total</span>
-      <span id="totalActual">$0</span>
-    </div>
-    <div class="velocity-card">
-      <div>
-        <div class="big-metric" id="velocityValue">—</div>
-        <div class="big-label">Monthly velocity</div>
+<!-- Tab content -->
+<div id="gccTabContent" style="display:{% if advisor_mode is defined and advisor_mode %}block{% else %}none{% endif %}">
+
+  <!-- JOURNEY TAB -->
+  <div id="tab-journey" class="gcc-tab-panel active" role="tabpanel">
+    <div class="jrn-rows" id="jrnRows"></div>
+    <div class="jrn-footer">
+      <div class="jrn-footer-hdr">
+        <div>
+          <div class="jrn-footer-title">Growth Command Center — Layer 6</div>
+          <div class="jrn-footer-sub">What your agents are doing right now</div>
+        </div>
+        <div class="jrn-footer-right">
+          <span class="jrn-phase-badge" id="jrnPhaseBadge">—</span>
+          <button class="jrn-anv-link" onclick="openAgentNetwork()">View Agent Network ↗</button>
+        </div>
       </div>
-      <canvas id="velocitySparkline" width="120" height="40" style="opacity:0.7"></canvas>
+      <div class="jrn-esc-alert" id="jrnEscAlert">
+        <span id="jrnEscAlertText">Actions need your approval before agents can continue.</span>
+        <button class="jrn-esc-review-btn" onclick="switchInnerTab('actions')">Review escalations →</button>
+      </div>
+      <div class="jrn-income-row">
+        <div class="jrn-income-cell">
+          <div class="jrn-income-label">Income this cycle</div>
+          <div class="jrn-income-value" id="jrnIncomeActual">—</div>
+        </div>
+        <div class="jrn-income-cell">
+          <div class="jrn-income-label">vs projected</div>
+          <div class="jrn-income-value" id="jrnIncomeProjected">—</div>
+        </div>
+        <div class="jrn-income-cell">
+          <div class="jrn-income-label">Portfolio balance</div>
+          <div class="jrn-income-value" id="jrnPortfolio">—</div>
+        </div>
+      </div>
+      <div class="jrn-pill-row" id="jrnPillRow">
+        <span style="font-size:0.72rem;color:var(--muted)">No agent actions yet</span>
+      </div>
+      <div class="jrn-reasoning-section" id="jrnReasoningSection">
+        <button class="jrn-reasoning-toggle" onclick="toggleReasoning()">
+          <span class="jrn-rti">▸</span> What the orchestrator decided this cycle
+        </button>
+        <div class="jrn-reasoning-body">
+          <div class="jrn-reasoning-text" id="jrnReasoningText">No cycle data yet.</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- ACTIONS ZONE -->
-  <div class="zone-card">
-    <h2>Actions</h2>
-    <div class="action-tabs">
-      <div class="action-tab active" data-tab="log">Execution Log</div>
-      <div class="action-tab" data-tab="escalations">Escalations <span id="escCount" class="status-badge s-escalated" style="display:none"></span></div>
-      <div class="action-tab" data-tab="diagram">⚡ Cycle Diagram</div>
+  <!-- NUMBERS TAB -->
+  <div id="tab-numbers" class="gcc-tab-panel" role="tabpanel">
+    <div class="tab-zone-wrap">
+      <div class="zone-card" style="max-width:440px">
+        <h2>Numbers</h2>
+        <div id="layerRows"></div>
+        <div class="totals-row">
+          <span>Total</span>
+          <span id="totalActual">$0</span>
+        </div>
+        <div class="velocity-card">
+          <div>
+            <div class="big-metric" id="velocityValue">—</div>
+            <div class="big-label">Monthly velocity</div>
+          </div>
+          <canvas id="velocitySparkline" width="120" height="40" style="opacity:0.7"></canvas>
+        </div>
+      </div>
     </div>
-    <div class="tab-panel active" id="tabLog"></div>
-    <div class="tab-panel" id="tabEscalations"></div>
-    <div class="tab-panel" id="tabDiagram"></div>
   </div>
 
-  <!-- MOMENTUM ZONE -->
-  <div class="zone-card">
-    <h2>Momentum</h2>
-    <div class="momentum-grid" id="momentumGrid"></div>
+  <!-- ACTIONS TAB -->
+  <div id="tab-actions" class="gcc-tab-panel" role="tabpanel">
+    <div class="tab-zone-wrap">
+      <div class="zone-card" style="max-width:600px">
+        <h2>Actions</h2>
+        <div class="action-tabs">
+          <div class="action-tab active" data-tab="log">Execution Log</div>
+          <div class="action-tab" data-tab="escalations">Escalations <span id="escCount" class="status-badge s-escalated" style="display:none"></span></div>
+          <div class="action-tab" data-tab="diagram">⚡ Cycle Diagram</div>
+        </div>
+        <div class="tab-panel active" id="tabLog"></div>
+        <div class="tab-panel" id="tabEscalations"></div>
+        <div class="tab-panel" id="tabDiagram"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOMENTUM TAB -->
+  <div id="tab-momentum" class="gcc-tab-panel" role="tabpanel">
+    <div class="tab-zone-wrap">
+      <div class="zone-card" style="max-width:440px">
+        <h2>Momentum</h2>
+        <div class="momentum-grid" id="momentumGrid"></div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -358,8 +679,10 @@
   </div>
 </div>
 
+{% include 'simulations/_agent_network.html' %}
+
 <!-- Empty state when no config -->
-<div id="emptyState" style="text-align:center;padding:4rem 2rem;">
+<div id="emptyState" style="text-align:center;padding:4rem 2rem;{% if advisor_mode is defined and advisor_mode %}display:none;{% endif %}">
   <div style="font-size:3rem;margin-bottom:1rem">⚡</div>
   <h2>Layer 6 — Autonomous Growth Orchestrator</h2>
   <p style="color:var(--muted);max-width:480px;margin:0 auto 1.5rem">
@@ -369,13 +692,53 @@
   </p>
   <button class="btn btn-primary" id="activateBtn">Activate Layer 6</button>
 </div>
+
+{% if advisor_mode is defined and advisor_mode %}
+<!-- Flag modal (advisor mode only) -->
+<div class="flag-modal-overlay" id="flagModalOverlay">
+  <div class="flag-modal">
+    <h3 id="flagModalTitle">Flag action for client</h3>
+    <p style="font-size:.82rem;color:#64748b;margin:0 0 .75rem">What do you want the client to know about this action?</p>
+    <textarea id="flagModalMsg" maxlength="300" placeholder="Your message (optional, max 300 chars)…"></textarea>
+    <div style="font-size:.7rem;color:#94a3b8;text-align:right;margin-top:.2rem" id="flagMsgCount">0/300</div>
+    <div class="flag-modal-footer">
+      <button class="flag-modal-cancel" onclick="closeFlagModal()">Cancel</button>
+      <button class="flag-modal-send" id="flagModalSendBtn" onclick="sendFlag()">Send flag</button>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById('flagModalMsg').addEventListener('input', function() {
+  document.getElementById('flagMsgCount').textContent = this.value.length + '/300';
+});
+document.getElementById('flagModalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeFlagModal();
+});
+</script>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
 <script>
 const SIM_ID = '{{ sim.id }}';
-const basePath = window.location.pathname.split('/simulations/')[0];
-const API = `${basePath}/api/simulations/${SIM_ID}/layer6`;
+const API = `${window.ROOT}/api/simulations/${SIM_ID}/layer6`;
+
+// Advisor mode data (injected from server)
+window.__advisorMode = {{ 'true' if (advisor_mode is defined and advisor_mode) else 'false' }};
+// URL-based fallback — ensures advisor mode even if Jinja variable is missing
+if (!window.__advisorMode && window.location.pathname.indexOf('/partners/clients/') !== -1) {
+  window.__advisorMode = true;
+}
+window.__advisorAccessId = {{ ('"' + advisor_access.id + '"') if (advisor_mode is defined and advisor_mode and advisor_access is defined) else 'null' }};
+window.__advisorNotesByLayer = {{ advisor_notes_by_layer | tojson if (advisor_notes_by_layer is defined) else '{}' }};
+// Layer 6 data injected server-side — bypasses API auth for advisor read-only view
+window.__advisorL6Config   = {{ advisor_layer6_config | tojson if (advisor_layer6_config is defined and advisor_layer6_config) else 'null' }};
+window.__advisorDashboard  = {{ advisor_dashboard | tojson if (advisor_dashboard is defined and advisor_dashboard) else 'null' }};
+window.__advisorJourney    = {{ advisor_journey | tojson if (advisor_journey is defined and advisor_journey) else 'null' }};
+// Active flags and suggestions for client view
+window.__activeFlags = {{ active_flags | tojson if (active_flags is defined) else '[]' }};
+window.__activeSuggestions = {{ active_suggestions | tojson if (active_suggestions is defined) else '[]' }};
 let currentStep = 1;
 const TOTAL_STEPS = 5;
 
@@ -399,6 +762,22 @@ async function apiFetch(path, opts = {}) {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 async function init() {
+  if (window.__advisorMode) {
+    // Always show the GCC for advisors — use server-injected config or inactive default
+    showDashboard(window.__advisorL6Config || { is_active: false });
+    if (window.__advisorDashboard) {
+      const d = window.__advisorDashboard;
+      renderNumbers(d.numbers || {});
+      renderActions(d.actions || {});
+      renderMomentum(d.momentum || {});
+    }
+    if (window.__advisorJourney) {
+      Object.entries(window.__advisorJourney).forEach(([n, data]) => {
+        populateLayerData(parseInt(n), data);
+      });
+    }
+    return;
+  }
   try {
     const cfg = await apiFetch(`${API}/config`);
     showDashboard(cfg);
@@ -411,21 +790,40 @@ async function init() {
 
 // ── Dashboard ────────────────────────────────────────────────────────────
 async function loadDashboard() {
-  const data = await apiFetch(`${API}/dashboard`);
-  renderNumbers(data.numbers || {});
-  renderActions(data.actions || {});
-  renderMomentum(data.momentum || {});
+  try {
+    const data = await apiFetch(`${API}/dashboard`);
+    renderNumbers(data.numbers || {});
+    renderActions(data.actions || {});
+    renderMomentum(data.momentum || {});
+  } catch (e) {}
 }
 
 function showDashboard(cfg) {
   document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('l6Zones').style.display = 'grid';
+  document.getElementById('gccInnerTabs').style.display = 'block';
+  document.getElementById('gccTabContent').style.display = 'block';
   document.getElementById('l6Controls').style.display = 'flex';
   const badge = document.getElementById('phaseBadge');
-  const phase = cfg.is_active ? 'Active' : 'Paused';
-  badge.textContent = phase;
+  badge.textContent = cfg.is_active ? 'Active' : 'Paused';
   badge.className = 'phase-badge ' + (cfg.is_active ? 'phase-exploit' : 's-rejected');
-  document.getElementById('togglePauseBtn').textContent = cfg.is_active ? 'Pause' : 'Resume';
+  const pauseBtn = document.getElementById('togglePauseBtn');
+  if (pauseBtn) pauseBtn.textContent = cfg.is_active ? 'Pause' : 'Resume';
+  _initTabState();
+  if (!window.__advisorMode) {
+    _initGCCSSE();
+    loadJourneyData();
+  }
+  if (window.__advisorMode) {
+    // Pre-load notes for all layers from server-injected data
+    JOURNEY_LAYERS.forEach(l => _renderNotes(l.n, (window.__advisorNotesByLayer || {})[l.n] || []));
+  } else {
+    _renderSuggestionCallouts();
+    _applyFlagBadges();
+  }
+  try {
+    if (localStorage.getItem('gcc_reasoning_' + SIM_ID) === '1')
+      document.getElementById('jrnReasoningSection')?.classList.add('open');
+  } catch {}
 }
 
 function renderNumbers(numbers) {
@@ -451,6 +849,8 @@ function renderNumbers(numbers) {
     : '—';
   document.getElementById('velocityValue').textContent =
     velocity === '—' ? '—' : fmtPct(parseFloat(velocity));
+
+  _updateJourneyNumbers(numbers);
 }
 
 function renderActions(actions) {
@@ -462,7 +862,7 @@ function renderActions(actions) {
   (actions.recent_log || []).forEach(a => {
     const statusMap = {
       complete: 's-complete', dispatched: 's-dispatch', escalated: 's-escalated',
-      rejected: 's-rejected', queued: 's-queued',
+      rejected: 's-rejected', queued: 's-queued', failed: 's-failed',
     };
     const cls = statusMap[a.status] || 's-queued';
     const ts = a.dispatched_at ? new Date(a.dispatched_at).toLocaleString() : '';
@@ -496,6 +896,8 @@ function renderActions(actions) {
       </div>`;
   });
   if (!esc.innerHTML) esc.innerHTML = '<div class="escalation-item" style="color:var(--muted)">No pending escalations.</div>';
+
+  _updateJourneyActions(actions);
 }
 
 function renderMomentum(m) {
@@ -520,7 +922,827 @@ function renderMomentum(m) {
       <div class="momentum-label">${label}</div>
     </div>`
   ).join('');
+
+  _updateJourneyMomentum(m);
 }
+
+// ── Journey Tab Config ────────────────────────────────────────────────────
+const JOURNEY_LAYERS = [
+  { n:1, name:'Active', color:'#534AB7', light:'#EEF0FF',
+    question:'How do I turn my expertise into consulting income right now — and land the first client?',
+    chips:[['Rate card','rate_card'],['Booking page','booking_page'],['Cold email campaign','cold_email_campaign'],
+           ['Consulting outreach','consulting_outreach'],['Consulting proposal','consulting_proposal'],
+           ['SOW','sow'],['Agreement','agreement'],['LinkedIn optimization','linkedin_optimization'],
+           ['Role search','role_search'],['Referral network','referral_network'],['Negotiation script','negotiation_script']],
+    metricLabel:'Bookings this month', metricKey:'consulting_bookings_mo', metricFmt: v => v != null ? v : '—' },
+  { n:2, name:'Leveraged', color:'#0F6E56', light:'#E8F5F1',
+    question:'How do I reach many people at once — workshops, group coaching, and corporate training built on my active income proof?',
+    chips:[['Workshop curriculum','workshop_curriculum'],['Group coaching program','group_coaching_program'],
+           ['Corporate training pitch','corporate_training_pitch'],['Speaker proposals','speaker_proposals'],
+           ['Speaker fee + rider','speaker_fee_rider'],['Waitlist landing page','waitlist_landing_page'],
+           ['Alumni reactivation','alumni_reactivation'],['ROI calculator','roi_calculator']],
+    metricLabel:'Workshop enrollments', metricKey:'course_enrollments', metricFmt: v => v != null ? v : '—' },
+  { n:3, name:'Productized', color:'#D85A30', light:'#FDF0EA',
+    question:'How do I package my knowledge into products I build once and sell many times?',
+    chips:[['Course curriculum','course_curriculum'],['Sales page','sales_page'],['Launch email sequence','launch_email_sequence'],
+           ['E-book + Gumroad','ebook_gumroad'],['Membership structure','membership_structure'],
+           ['Competitor research','competitor_research'],['Affiliate program','affiliate_program'],
+           ['A/B test plan','ab_test_plan'],['Testimonial system','testimonial_system'],['Lapsed buyer win-back','lapsed_buyer_winback']],
+    metricLabel:'Course sales this cycle', metricKey:'_l3_income', metricFmt: v => v != null ? fmt(v) : '—' },
+  { n:4, name:'Automated', color:'#BA7517', light:'#FEF5E7',
+    question:"How do I set up systems that generate income while I'm not working?",
+    chips:[['SEO content calendar','seo_content_calendar'],['Lead magnet funnel','lead_magnet_funnel'],
+           ['Newsletter monetization','newsletter_monetization'],['SaaS product spec','saas_product_spec'],
+           ['YouTube/podcast strategy','youtube_podcast_strategy'],['Community flywheel','community_flywheel'],
+           ['Affiliate partnerships','affiliate_partnerships'],['IP licensing','ip_licensing'],
+           ['Programmatic ads','programmatic_ads'],['Win-back campaign','winback_campaign']],
+    metricLabel:'Funnel opt-in rate', metricKey:'funnel_opt_in_rate',
+    metricFmt: v => v != null ? (parseFloat(v)*100).toFixed(1)+'%' : '—' },
+  { n:5, name:'Wealth', color:'#185FA5', light:'#E8F0FA',
+    question:"Where do I put the income I'm now generating so money works for me?",
+    chips:[['Income allocation','income_allocation'],['Compound growth projections','compound_growth_model'],
+           ['ETF/fund recommendations','fund_recommendations'],['Investment Policy Statement','ips'],
+           ['Real estate strategy','real_estate'],['Tax optimization','tax_optimization'],
+           ['Entity structure','entity_structure'],['DCA schedule','dca_schedule'],
+           ['Insurance gap analysis','insurance'],['Estate planning checklist','estate_planning']],
+    metricLabel:'Portfolio balance', metricKey:'investment_balance', metricFmt: v => v != null ? fmt(v) : '—' },
+];
+
+// Step sequences per layer (PRD §3.5)
+const LAYER_STEP_SEQS = {
+  1: [['cold_email_campaign','Cold email'],['consulting_outreach','Outreach'],['rate_card','Rate card'],
+      ['role_search','Role search'],['linkedin_optimization','LinkedIn opt.'],['booking_page','Booking page'],
+      ['consulting_proposal','Proposal'],['sow','SOW'],['agreement','Agreement'],
+      ['referral_network','Referral net.'],['negotiation_script','Negotiation']],
+  2: [['speaker_proposals','Speaking prop.'],['speaker_fee_rider','Speaker fee'],
+      ['group_coaching_program','Group coaching'],['corporate_training_pitch','Corp. training'],
+      ['workshop_curriculum','Workshop'],['waitlist_landing_page','Waitlist page'],
+      ['alumni_reactivation','Alumni reactiv.'],['roi_calculator','ROI calculator']],
+  3: [['course_curriculum','Course curric.'],['competitor_research','Competitor res.'],
+      ['product_sales_page','Sales page'],['ebook_gumroad','E-book'],['ab_test_plan','A/B test plan'],
+      ['membership_structure','Membership'],['launch_email_sequence','Launch sequence'],
+      ['affiliate_program','Affiliate prog.'],['testimonial_system','Testimonials'],
+      ['lapsed_buyer_winback','Lapsed buyer']],
+  4: [['seo_content_calendar','SEO calendar'],['lead_magnet_funnel','Lead magnet'],
+      ['newsletter_monetization','Newsletter'],['saas_product_spec','SaaS spec'],
+      ['ip_licensing','IP licensing'],['affiliate_partnerships','Affiliate part.'],
+      ['youtube_podcast_strategy','YouTube/pod.'],['community_flywheel','Community'],
+      ['programmatic_ads','Prog. ads'],['winback_campaign','Win-back']],
+  5: [['income_allocation','Income alloc.'],['compound_growth_model','Projections'],
+      ['fund_recommendations','Fund recs.'],['ips','IPS'],['real_estate','Real estate'],
+      ['tax_optimization','Tax optim.'],['entity_structure','Entity struct.'],
+      ['dca_schedule','DCA schedule'],['insurance','Insurance'],['estate_planning','Estate plan.']],
+};
+
+function _buildJourneyRows() {
+  const container = document.getElementById('jrnRows');
+  if (!container || container.dataset.built) return;
+  container.dataset.built = '1';
+
+  container.innerHTML = JOURNEY_LAYERS.map(l => {
+    const total = (LAYER_STEP_SEQS[l.n] || []).length;
+    // Build step circles (all pending initially; populated by loadJourneyData)
+    const stepsHtml = (LAYER_STEP_SEQS[l.n] || []).map(([atype, label], i, arr) => {
+      const conn = i < arr.length - 1 ? `<div class="jrn-step-conn" id="jrn-conn-${l.n}-${i}"></div>` : '';
+      return `
+        <div class="jrn-step" id="jrn-step-${l.n}-${i}">
+          <div class="jrn-step-circle s-pending" id="jrn-sc-${l.n}-${i}"
+               data-type="${atype}" data-layer="${l.n}"
+               onclick="openToolChip('${atype}')" title="${label}">${i + 1}</div>
+          <div class="jrn-step-label" id="jrn-sl-${l.n}-${i}">${label}</div>
+        </div>${conn}`;
+    }).join('');
+
+    return `
+    <div class="jrn-row" id="jrn-row-${l.n}" data-layer="${l.n}" data-light="${l.light}">
+      <div class="jrn-header" role="button" tabindex="0"
+           onclick="expandLayer(${l.n})"
+           onkeydown="if(event.key==='Enter'||event.key===' ')expandLayer(${l.n})">
+        <div class="jrn-accent-bar" style="background:${l.color}"></div>
+        <span class="jrn-badge" style="color:${l.color};background:${l.light}">Layer ${l.n} · ${l.name.toUpperCase()}</span>
+        <span class="jrn-status-summary" id="jrn-summary-${l.n}">No actions run yet</span>
+        <span class="jrn-dot" id="jrn-dot-${l.n}"></span>
+        <span class="jrn-esc-badge" id="jrn-esc-${l.n}">0</span>
+        <span class="jrn-chevron">▸</span>
+      </div>
+      <div class="jrn-content" id="jrn-content-${l.n}">
+        <div class="jrn-content-inner">
+
+          <!-- 1. Journey question -->
+          <div class="jrn-question">${l.question}</div>
+
+          <!-- Unlock note (shown instead of sub-zones when layer is blocked) -->
+          <div class="jrn-unlock-note" id="jrn-unlock-${l.n}" style="display:none"></div>
+
+          <!-- Sub-zones wrap (hidden when blocked) -->
+          <div id="jrn-zones-${l.n}">
+
+            <!-- 2. Suggested action button -->
+            <button class="jrn-suggest-btn" id="jrn-suggest-${l.n}"
+                    style="background:${l.color}" disabled>▶ Loading…</button>
+
+            <!-- 3. Progress bar + hint + step row -->
+            <div class="jrn-progress-wrap">
+              <div class="jrn-progress-label">
+                Progress — <span id="jrn-done-${l.n}">0</span> of ${total} actions complete
+              </div>
+              <div class="jrn-progress-bar">
+                <div class="jrn-progress-fill" id="jrn-fill-${l.n}" style="background:${l.color};width:0%"></div>
+              </div>
+            </div>
+            <p class="jrn-hint">Click any completed step (✓) to see what it produced. Click any pending step to edit inputs before it runs.</p>
+            <div class="jrn-steps" id="jrn-steps-${l.n}">${stepsHtml}</div>
+
+            <!-- 4. Inline artifact panel (opens on step click) -->
+            <div class="jrn-ap" id="jrn-ap-${l.n}">
+              <button class="jrn-ap-close" onclick="closeStepPanel(${l.n})" aria-label="Close">×</button>
+              <div class="jrn-ap-action" id="jrn-ap-action-${l.n}"></div>
+              <div class="jrn-ap-header">
+                <span class="jrn-ap-name" id="jrn-ap-name-${l.n}"></span>
+                <span class="jrn-ap-ver" id="jrn-ap-ver-${l.n}">v1</span>
+              </div>
+              <div class="jrn-kv-grid" id="jrn-ap-fields-${l.n}"></div>
+              <div class="jrn-ap-footer">
+                ${window.__advisorMode
+                  ? `<button class="jrn-ap-flag" id="jrn-ap-flag-${l.n}" onclick="openFlagModal(${l.n})">⚑ Flag for client</button>`
+                  : `<button class="jrn-ap-edit" id="jrn-ap-edit-${l.n}">Edit inputs</button>
+                     <button class="jrn-ap-rerun" id="jrn-ap-rerun-${l.n}" style="border-color:${l.color};color:${l.color}">Re-run ↗</button>`
+                }
+              </div>
+            </div>
+
+            <!-- 5. Next pending run line -->
+            <div class="jrn-next-run" id="jrn-next-run-${l.n}" style="display:none">
+              <span class="jrn-next-dot"></span>
+              <span class="jrn-next-text" id="jrn-next-text-${l.n}"></span>
+              ${window.__advisorMode ? '' : `<button class="jrn-run-now-btn" id="jrn-run-now-${l.n}">Run now</button>`}
+            </div>
+
+          </div><!-- /jrn-zones -->
+
+          <!-- Inline momentum metric (always shown) -->
+          <div class="jrn-metric" style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border)">
+            <span class="jrn-metric-label">${l.metricLabel}</span>
+            <span class="jrn-metric-value" id="jrn-metric-${l.n}">—</span>
+          </div>
+
+          <!-- Client view: partner suggestion callout -->
+          ${!window.__advisorMode ? `<div id="jrn-suggestion-callout-${l.n}" style="display:none"></div>` : ''}
+
+          <!-- Advisor view: coaching notes panel -->
+          ${window.__advisorMode ? `
+          <div class="jrn-coaching" id="jrn-coaching-${l.n}">
+            <div class="jrn-coaching-header">
+              <span>🔒 Your coaching notes</span>
+              <span class="jrn-coaching-count" id="jrn-coaching-count-${l.n}">0</span>
+            </div>
+            <div class="jrn-notes-list" id="jrn-notes-list-${l.n}"></div>
+            <textarea class="jrn-coaching-input" id="jrn-coaching-input-${l.n}"
+              maxlength="500" rows="2"
+              placeholder="Add a coaching note for this layer..."
+              oninput="document.getElementById('jrn-coaching-cc-${l.n}').textContent=this.value.length+'/500'"
+            ></textarea>
+            <div class="jrn-coaching-footer">
+              <span class="jrn-coaching-charcount" id="jrn-coaching-cc-${l.n}">0/500</span>
+              <button class="jrn-coaching-save" onclick="saveCoachingNote(${l.n})">Save note</button>
+            </div>
+            <div class="jrn-suggest-footer" style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid rgba(201,149,42,.3)">
+              <button class="jrn-suggest-add-btn" onclick="openSuggestionInput(${l.n})">+ Add suggestion for this layer</button>
+              <div id="jrn-suggestion-input-${l.n}" style="display:none;margin-top:.5rem">
+                <textarea id="jrn-suggestion-text-${l.n}" maxlength="200" rows="2" class="jrn-coaching-input"
+                  placeholder="Your suggestion for the client (max 200 chars)..."
+                  oninput="document.getElementById('jrn-sug-cc-${l.n}').textContent=this.value.length+'/200'"
+                ></textarea>
+                <div class="jrn-coaching-footer">
+                  <span class="jrn-coaching-charcount" id="jrn-sug-cc-${l.n}">0/200</span>
+                  <label style="font-size:.75rem;color:#C9952A;display:flex;align-items:center;gap:.3rem;cursor:pointer">
+                    <input type="checkbox" id="jrn-sug-urgent-${l.n}"> Show as urgent
+                  </label>
+                  <button class="jrn-coaching-save" onclick="publishSuggestion(${l.n})">Publish</button>
+                </div>
+              </div>
+            </div>
+          </div>` : ''}
+
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+const _expandedLayers = new Set();
+
+function _applyLightVars(el) {
+  el.style.color = '#1e293b';
+  el.style.setProperty('--fg',      '#1e293b');
+  el.style.setProperty('--muted',   '#64748b');
+  el.style.setProperty('--border',  '#e2e8f0');
+  el.style.setProperty('--bg',      '#f8fafc');
+  el.style.setProperty('--surface', '#f1f5f9');
+  el.style.setProperty('--accent',  '#6366f1');
+}
+
+function _clearLightVars(el) {
+  el.style.backgroundColor = '';
+  el.style.color = '';
+  el.style.removeProperty('--fg');
+  el.style.removeProperty('--muted');
+  el.style.removeProperty('--border');
+  el.style.removeProperty('--bg');
+  el.style.removeProperty('--surface');
+  el.style.removeProperty('--accent');
+}
+
+function expandLayer(n) {
+  const row = document.getElementById('jrn-row-' + n);
+  if (!row) return;
+  const content = row.querySelector('.jrn-content');
+  const wasExpanded = _expandedLayers.has(n);
+  if (wasExpanded) {
+    _expandedLayers.delete(n);
+    row.classList.remove('expanded');
+    if (content) _clearLightVars(content);
+  } else {
+    _expandedLayers.add(n);
+    row.classList.add('expanded');
+    if (content && row.dataset.light) {
+      content.style.backgroundColor = row.dataset.light;
+      _applyLightVars(content);
+    }
+    if (window.__advisorMode && !wasExpanded) {
+      _loadNotesForLayer(n);
+    }
+  }
+  try { sessionStorage.setItem('gcc_acc_' + SIM_ID, JSON.stringify([..._expandedLayers])); } catch {}
+}
+
+function switchInnerTab(tabName) {
+  document.querySelectorAll('.gcc-tab-btn').forEach(btn => {
+    const active = btn.dataset.tab === tabName;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active);
+  });
+  document.querySelectorAll('.gcc-tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'tab-' + tabName);
+  });
+  try { sessionStorage.setItem('gcc_tab_' + SIM_ID, tabName); } catch {}
+}
+
+function openToolChip(actionType) {
+  if (window._openNodeEditorForAction) window._openNodeEditorForAction(actionType);
+}
+
+function toggleReasoning() {
+  const s = document.getElementById('jrnReasoningSection');
+  if (!s) return;
+  s.classList.toggle('open');
+  try { localStorage.setItem('gcc_reasoning_' + SIM_ID, s.classList.contains('open') ? '1' : '0'); } catch {}
+}
+
+function _initTabState() {
+  _buildJourneyRows();
+  let expanded = [1, 2, 3, 4, 5]; // default: all open
+  try {
+    const stored = sessionStorage.getItem('gcc_acc_' + SIM_ID);
+    if (stored) expanded = JSON.parse(stored);
+  } catch {}
+  expanded.forEach(n => expandLayer(n));
+  let tab = 'journey';
+  try { tab = sessionStorage.getItem('gcc_tab_' + SIM_ID) || 'journey'; } catch {}
+  switchInnerTab(tab);
+}
+
+// ── Journey data update helpers ───────────────────────────────────────────
+function _updateJourneyNumbers(numbers) {
+  const actual = numbers.total_actual || 0;
+  const projected = numbers.total_projected || 0;
+  const el = document.getElementById('jrnIncomeActual');
+  if (el) el.textContent = fmt(actual);
+  const projEl = document.getElementById('jrnIncomeProjected');
+  if (projEl) {
+    const diff = actual - projected;
+    projEl.innerHTML = `<span class="${diff >= 0 ? 'jrn-trend-up' : 'jrn-trend-dn'}">${diff >= 0 ? '+' : ''}${fmt(diff)}</span>`;
+  }
+  // L3 income from layer list
+  (numbers.layers || []).forEach(l => {
+    if (l.layer_number === 3) {
+      const m3 = document.getElementById('jrn-metric-3');
+      if (m3) m3.textContent = fmt(l.actual_income || 0);
+    }
+    // update status summary (action count)
+    const done = l.completed_count || 0;
+    if (done) {
+      const sumEl = document.getElementById('jrn-summary-' + l.layer_number);
+      if (sumEl && !sumEl.dataset.updated) {
+        sumEl.textContent = `${done} action${done !== 1 ? 's' : ''} complete`;
+      }
+    }
+  });
+}
+
+function _updateJourneyMomentum(m) {
+  if (!m) return;
+  JOURNEY_LAYERS.forEach(l => {
+    if (l.metricKey === '_l3_income') return;
+    const v = m[l.metricKey];
+    const el = document.getElementById('jrn-metric-' + l.n);
+    if (el) el.textContent = l.metricFmt(v != null ? v : null);
+    // append metric to summary if we have a value
+    if (v != null) {
+      const sumEl = document.getElementById('jrn-summary-' + l.n);
+      if (sumEl && !sumEl.dataset.updated) {
+        const cur = sumEl.textContent;
+        const metricStr = ' · ' + l.metricFmt(v) + ' ' + l.metricLabel.toLowerCase();
+        if (!cur.includes('·')) sumEl.textContent = cur + metricStr;
+        sumEl.dataset.updated = '1';
+      }
+    }
+  });
+  const portEl = document.getElementById('jrnPortfolio');
+  if (portEl && m.investment_balance != null) portEl.textContent = fmt(m.investment_balance);
+}
+
+function _updateJourneyActions(actions) {
+  // Escalation badges per layer
+  const escByLayer = {};
+  (actions.escalations || []).forEach(e => {
+    escByLayer[e.source_layer] = (escByLayer[e.source_layer] || 0) + 1;
+  });
+  JOURNEY_LAYERS.forEach(l => {
+    const badge = document.getElementById('jrn-esc-' + l.n);
+    if (!badge) return;
+    const count = escByLayer[l.n] || 0;
+    badge.textContent = count;
+    badge.classList.toggle('visible', count > 0);
+  });
+  // Footer escalation alert
+  const totalEsc = (actions.escalations || []).length;
+  const alert = document.getElementById('jrnEscAlert');
+  if (alert) {
+    alert.classList.toggle('visible', totalEsc > 0);
+    const alertText = document.getElementById('jrnEscAlertText');
+    if (alertText && totalEsc > 0)
+      alertText.textContent = `${totalEsc} action${totalEsc !== 1 ? 's' : ''} need your approval before agents can continue.`;
+  }
+  // Footer pill row
+  const pillRow = document.getElementById('jrnPillRow');
+  if (!pillRow) return;
+  const log = actions.recent_log || [];
+  if (!log.length) {
+    pillRow.innerHTML = '<span style="font-size:0.72rem;color:var(--muted)">No agent actions yet</span>';
+    return;
+  }
+  const dotClass = {dispatched:'running', complete:'complete', escalated:'escalated', queued:'queued', failed:'error', error:'error'};
+  const orderMap = {dispatched:0, escalated:1, failed:1, queued:2, complete:3, error:1};
+  const sorted = [...log].sort((a, b) => (orderMap[a.status]||3) - (orderMap[b.status]||3));
+  pillRow.innerHTML = sorted.slice(0, 12).map(a => {
+    const dc = dotClass[a.status] || 'queued';
+    const label = a.status === 'escalated'
+      ? `! ${a.action_type.replaceAll('_',' ')}`
+      : a.action_type.replaceAll('_',' ');
+    return `<button class="jrn-pill" onclick="openToolChip('${a.action_type}')">
+      <span class="jrn-pill-dot ${dc}"></span>
+      ${label}
+      <span class="jrn-pill-layer">L${a.source_layer}</span>
+    </button>`;
+  }).join('');
+}
+
+// ── Step artifact panel ───────────────────────────────────────────────────
+const _layerStepData = {}; // {n: [stepObj, ...]}
+
+function openStepPanel(n, i) {
+  const steps = _layerStepData[n];
+  if (!steps) return;
+  const step = steps[i];
+  if (!step) return;
+  const layer = JOURNEY_LAYERS.find(l => l.n === n);
+
+  const panel  = document.getElementById(`jrn-ap-${n}`);
+  if (!panel) return;
+
+  const isDone = step.status === 'complete';
+  const actionEl = document.getElementById(`jrn-ap-action-${n}`);
+  const nameEl   = document.getElementById(`jrn-ap-name-${n}`);
+  const verEl    = document.getElementById(`jrn-ap-ver-${n}`);
+  const fieldsEl = document.getElementById(`jrn-ap-fields-${n}`);
+  const editBtn  = document.getElementById(`jrn-ap-edit-${n}`);
+  const rerunBtn = document.getElementById(`jrn-ap-rerun-${n}`);
+
+  if (actionEl) actionEl.textContent = isDone
+    ? `Completed action — ${step.label}`
+    : `Queued action — ${step.label} (edit inputs before it runs)`;
+  if (nameEl) nameEl.textContent = step.label;
+  if (verEl)  verEl.textContent  = isDone ? `v${step.artifact_version || 1}` : '—';
+
+  const fields = step.artifact_fields || [];
+  if (fieldsEl) {
+    fieldsEl.innerHTML = (fields.length ? fields : [['Status', '—']]).map(([k, v]) =>
+      `<div class="jrn-kv"><span class="jrn-kk">${k}</span><span class="jrn-kv-val" title="${v}">${v}</span></div>`
+    ).join('');
+  }
+
+  if (editBtn)  editBtn.onclick  = () => openToolChip(step.type);
+  if (rerunBtn) {
+    rerunBtn.onclick = () => openToolChip(step.type);
+    if (layer) { rerunBtn.style.borderColor = layer.color; rerunBtn.style.color = layer.color; }
+    rerunBtn.onmouseenter = function() { this.style.background = layer ? layer.color : ''; this.style.color = '#fff'; };
+    rerunBtn.onmouseleave = function() { this.style.background = ''; this.style.color = layer ? layer.color : ''; };
+  }
+
+  panel.classList.add('show');
+}
+
+function closeStepPanel(n) {
+  const panel = document.getElementById(`jrn-ap-${n}`);
+  if (panel) panel.classList.remove('show');
+}
+
+// ── Advisor: coaching notes ───────────────────────────────────────────────
+
+function _renderNotes(layerN, notes) {
+  const listEl = document.getElementById(`jrn-notes-list-${layerN}`);
+  const countEl = document.getElementById(`jrn-coaching-count-${layerN}`);
+  if (!listEl) return;
+  const privateNotes = notes.filter(n => !n.is_shared || n.suggestion_type !== 'next_step');
+  if (countEl) countEl.textContent = privateNotes.length;
+  if (!privateNotes.length) {
+    listEl.innerHTML = '<div style="font-size:.75rem;color:#94a3b8;padding:.25rem 0">No notes yet.</div>';
+    return;
+  }
+  listEl.innerHTML = privateNotes.map(n => {
+    const date = new Date(n.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    return `<div class="jrn-note-item">
+      <div>
+        <div>${n.note_text}</div>
+        <div class="jrn-note-meta">${date}</div>
+      </div>
+      <button class="jrn-note-delete" title="Delete note" onclick="deleteCoachingNote('${n.id}', ${layerN})">×</button>
+    </div>`;
+  }).join('');
+}
+
+function _loadNotesForLayer(layerN) {
+  const existing = (window.__advisorNotesByLayer || {})[layerN] || [];
+  _renderNotes(layerN, existing);
+  // Refresh from server
+  const simId = SIM_ID;
+  fetch(`${ROOT}/api/advisor/notes/${simId}?layer=${layerN}`)
+    .then(r => r.ok ? r.json() : [])
+    .then(notes => {
+      if (!window.__advisorNotesByLayer) window.__advisorNotesByLayer = {};
+      window.__advisorNotesByLayer[layerN] = notes;
+      _renderNotes(layerN, notes);
+    })
+    .catch(() => {});
+}
+
+function saveCoachingNote(layerN) {
+  const inputEl = document.getElementById(`jrn-coaching-input-${layerN}`);
+  const btn = inputEl ? inputEl.closest('.jrn-coaching').querySelector('.jrn-coaching-save') : null;
+  const text = inputEl ? inputEl.value.trim() : '';
+  if (!text) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  fetch(`${ROOT}/api/advisor/notes`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({simulation_id: SIM_ID, layer_number: layerN, note_text: text}),
+  })
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(note => {
+    if (!window.__advisorNotesByLayer) window.__advisorNotesByLayer = {};
+    if (!window.__advisorNotesByLayer[layerN]) window.__advisorNotesByLayer[layerN] = [];
+    window.__advisorNotesByLayer[layerN].unshift(note);
+    _renderNotes(layerN, window.__advisorNotesByLayer[layerN]);
+    if (inputEl) { inputEl.value = ''; }
+    const cc = document.getElementById(`jrn-coaching-cc-${layerN}`);
+    if (cc) cc.textContent = '0/500';
+  })
+  .catch(() => {})
+  .finally(() => { if (btn) { btn.disabled = false; btn.textContent = 'Save note'; } });
+}
+
+function deleteCoachingNote(noteId, layerN) {
+  fetch(`${ROOT}/api/advisor/notes/${noteId}`, {method: 'DELETE'})
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(() => {
+    if (window.__advisorNotesByLayer && window.__advisorNotesByLayer[layerN]) {
+      window.__advisorNotesByLayer[layerN] = window.__advisorNotesByLayer[layerN].filter(n => n.id !== noteId);
+      _renderNotes(layerN, window.__advisorNotesByLayer[layerN]);
+    }
+  })
+  .catch(() => {});
+}
+
+function openSuggestionInput(layerN) {
+  const el = document.getElementById(`jrn-suggestion-input-${layerN}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function publishSuggestion(layerN) {
+  const textEl = document.getElementById(`jrn-suggestion-text-${layerN}`);
+  const urgentEl = document.getElementById(`jrn-sug-urgent-${layerN}`);
+  const text = textEl ? textEl.value.trim() : '';
+  if (!text) return;
+  const btn = textEl ? textEl.closest('.jrn-suggest-footer').querySelector('.jrn-coaching-save') : null;
+  if (btn) { btn.disabled = true; btn.textContent = 'Publishing…'; }
+  fetch(`${ROOT}/api/advisor/suggestions`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      simulation_id: SIM_ID,
+      layer_number: layerN,
+      message: text,
+      is_urgent: urgentEl ? urgentEl.checked : false,
+    }),
+  })
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(() => {
+    if (textEl) textEl.value = '';
+    const inputDiv = document.getElementById(`jrn-suggestion-input-${layerN}`);
+    if (inputDiv) inputDiv.style.display = 'none';
+    if (btn) { btn.disabled = false; btn.textContent = 'Published ✓'; setTimeout(() => { if (btn) btn.textContent = 'Publish'; }, 2000); }
+  })
+  .catch(() => { if (btn) { btn.disabled = false; btn.textContent = 'Publish'; } });
+}
+
+// ── Client: suggestion callouts ───────────────────────────────────────────
+
+function _renderSuggestionCallouts() {
+  if (window.__advisorMode) return;
+  (window.__activeSuggestions || []).forEach(s => {
+    const el = document.getElementById(`jrn-suggestion-callout-${s.layer_number}`);
+    if (!el) return;
+    const urgentCls = s.is_urgent ? ' is-urgent' : '';
+    const partnerLabel = s.partner_name ? `${s.partner_name} suggests:` : 'Your advisor suggests:';
+    el.className = `jrn-suggestion-callout${urgentCls}`;
+    el.innerHTML = `<span class="jrn-suggestion-label">${partnerLabel}</span>
+      <span style="flex:1">${s.note_text}</span>
+      <button class="jrn-suggestion-dismiss" title="Dismiss" onclick="dismissSuggestion('${s.id}', ${s.layer_number})">×</button>`;
+    el.style.display = 'flex';
+  });
+}
+
+function dismissSuggestion(noteId, layerN) {
+  const el = document.getElementById(`jrn-suggestion-callout-${layerN}`);
+  if (el) el.style.display = 'none';
+  // Suggestions are dismissed on the partner side (they un-share them)
+  // Client just hides locally
+}
+
+// ── Advisor: flag modal ───────────────────────────────────────────────────
+
+let _flagTargetLayer = null;
+let _flagTargetStep = null;
+
+function openFlagModal(layerN) {
+  _flagTargetLayer = layerN;
+  const steps = _layerStepData[layerN];
+  _flagTargetStep = steps ? steps.find(s => s.status !== 'pending') : null;
+  const modal = document.getElementById('flagModalOverlay');
+  const titleEl = document.getElementById('flagModalTitle');
+  const layer = JOURNEY_LAYERS.find(l => l.n === layerN);
+  if (titleEl) titleEl.textContent = `Flag action for client${layer ? ' — ' + layer.name : ''}`;
+  const msgEl = document.getElementById('flagModalMsg');
+  if (msgEl) msgEl.value = '';
+  if (modal) modal.classList.add('show');
+}
+
+function closeFlagModal() {
+  const modal = document.getElementById('flagModalOverlay');
+  if (modal) modal.classList.remove('show');
+}
+
+function sendFlag() {
+  const msgEl = document.getElementById('flagModalMsg');
+  const btn = document.getElementById('flagModalSendBtn');
+  const msg = msgEl ? msgEl.value.trim() : '';
+  const step = _flagTargetStep;
+  const layerN = _flagTargetLayer;
+  if (!step && !layerN) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  fetch(`${ROOT}/api/advisor/flags`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      simulation_id: SIM_ID,
+      action_type: step ? step.type : '',
+      action_id: step ? step.action_id : null,
+      message: msg,
+    }),
+  })
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(() => {
+    closeFlagModal();
+    if (btn) { btn.textContent = 'Flag sent ✓'; setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = 'Send flag'; } }, 2000); }
+  })
+  .catch(() => { if (btn) { btn.disabled = false; btn.textContent = 'Send flag'; } });
+}
+
+// ── Client: flag badges on step circles ──────────────────────────────────
+
+function _applyFlagBadges() {
+  if (window.__advisorMode) return;
+  (window.__activeFlags || []).forEach(f => {
+    // Find which layer and step index matches this action_type
+    JOURNEY_LAYERS.forEach(l => {
+      const seqs = LAYER_STEP_SEQS[l.n] || [];
+      seqs.forEach(([atype], idx) => {
+        if (atype === f.action_type) {
+          const circle = document.getElementById(`jrn-sc-${l.n}-${idx}`);
+          if (circle) {
+            circle.classList.add('has-flag');
+            circle.title = (f.partner_name || 'Your advisor') + ' flagged this: ' + (f.message || '');
+          }
+        }
+      });
+    });
+  });
+}
+
+// ── Journey per-layer data ────────────────────────────────────────────────
+async function loadJourneyData() {
+  try {
+    const data = await apiFetch(`${API}/journey`);
+    JOURNEY_LAYERS.forEach(l => {
+      if (data[String(l.n)]) populateLayerData(l.n, data[String(l.n)]);
+    });
+  } catch {}
+}
+
+function populateLayerData(n, data) {
+  const layer = JOURNEY_LAYERS.find(l => l.n === n);
+  if (!layer) return;
+
+  // Blocked / unlock note
+  const unlockEl = document.getElementById(`jrn-unlock-${n}`);
+  const zonesEl  = document.getElementById(`jrn-zones-${n}`);
+  if (data.is_blocked) {
+    if (unlockEl) { unlockEl.textContent = data.unlock_note || ''; unlockEl.style.display = 'block'; }
+    if (zonesEl) zonesEl.style.display = 'none';
+    return;
+  }
+  if (unlockEl) unlockEl.style.display = 'none';
+  if (zonesEl) zonesEl.style.display = 'block';
+
+  // Suggested action button
+  const sugBtn = document.getElementById(`jrn-suggest-${n}`);
+  if (sugBtn && data.suggested) {
+    const s = data.suggested;
+    sugBtn.textContent = s.label;
+    sugBtn.disabled = false;
+    sugBtn.className = 'jrn-suggest-btn';
+    sugBtn.style.background = layer.color;
+    sugBtn.onclick = null;
+    if (s.state === 'all_complete') {
+      sugBtn.className = 'jrn-suggest-btn btn-success';
+      sugBtn.disabled = true;
+    } else if (s.state === 'escalated') {
+      sugBtn.style.background = '#d97706';
+      sugBtn.onclick = () => switchInnerTab('actions');
+    } else if (s.type) {
+      sugBtn.onclick = () => openToolChip(s.type);
+    }
+  } else if (sugBtn) {
+    sugBtn.textContent = 'No actions pending';
+    sugBtn.disabled = true;
+  }
+
+  // Progress bar + done count
+  const total  = data.total_count || 1;
+  const done   = data.completed_count || 0;
+  const pct    = Math.round((done / total) * 100);
+  const fillEl = document.getElementById(`jrn-fill-${n}`);
+  const doneEl = document.getElementById(`jrn-done-${n}`);
+  if (fillEl) fillEl.style.width = pct + '%';
+  if (doneEl) doneEl.textContent = done;
+
+  // Step circles
+  const steps = data.steps || [];
+  _layerStepData[n] = steps;
+  steps.forEach((step, i) => {
+    const circle = document.getElementById(`jrn-sc-${n}-${i}`);
+    const lbl    = document.getElementById(`jrn-sl-${n}-${i}`);
+    const conn   = document.getElementById(`jrn-conn-${n}-${i}`);
+    if (!circle) return;
+    const cls = { complete: 's-complete', running: 's-running', queued: 's-active', pending: 's-pending' }[step.status] || 's-pending';
+    circle.className = `jrn-step-circle ${cls}`;
+    if (step.status === 'complete') {
+      circle.style.cssText = `background:${layer.color};border-color:${layer.color};color:#fff`;
+      circle.textContent = '✓';
+      const idx = i;
+      circle.onclick = () => openStepPanel(n, idx);
+    } else if (step.status === 'running' || step.status === 'queued') {
+      circle.style.cssText = `background:${layer.light};border-color:${layer.color};color:${layer.color}`;
+      circle.textContent = i + 1;
+      const idx = i;
+      circle.onclick = () => openStepPanel(n, idx);
+    } else {
+      circle.style.cssText = '';
+      circle.textContent = i + 1;
+      circle.onclick = null;
+    }
+    if (lbl) lbl.className = `jrn-step-label${step.status === 'complete' ? ' lbl-complete' : ''}`;
+    if (conn) {
+      conn.className = `jrn-step-conn${step.status === 'complete' ? ' conn-done' : ''}`;
+      conn.style.color = step.status === 'complete' ? layer.color : '';
+    }
+  });
+
+  // Next pending run line
+  const nextRun  = document.getElementById(`jrn-next-run-${n}`);
+  const nextText = document.getElementById(`jrn-next-text-${n}`);
+  const runNow   = document.getElementById(`jrn-run-now-${n}`);
+  if (nextRun && data.next_pending) {
+    const np = data.next_pending;
+    if (nextText) nextText.textContent = `Next: ${np.label} · ${np.eta}`;
+    if (runNow)   runNow.onclick = () => openToolChip(np.type);
+    nextRun.style.display = 'flex';
+  } else if (nextRun) {
+    nextRun.style.display = 'none';
+  }
+}
+
+// ── GCC SSE — Journey tab DOM updates ────────────────────────────────────
+let _gccSse = null;
+
+function _initGCCSSE() {
+  if (_gccSse) return;
+  _gccSse = new EventSource(`${API}/stream`);
+  _gccSse.onmessage = ev => {
+    let d; try { d = JSON.parse(ev.data); } catch { return; }
+    const type = d.type || d.event || '';
+    if (type === 'cycle_complete') {
+      loadDashboard();
+      loadJourneyData();
+      const cycle = d.cycle || (d.data && d.data.cycle);
+      if (cycle) {
+        const pb = document.getElementById('jrnPhaseBadge');
+        if (pb) pb.textContent = `${cycle.phase || 'Explore'} · Cycle ${cycle.cycle_number || ''}`;
+        const rt = document.getElementById('jrnReasoningText');
+        if (rt && cycle.orchestrator_reasoning) rt.textContent = cycle.orchestrator_reasoning;
+      }
+    } else if (type === 'escalation_added') {
+      const action = d.action || (d.data && d.data.action);
+      if (action) {
+        const badge = document.getElementById('jrn-esc-' + action.source_layer);
+        if (badge) { badge.textContent = parseInt(badge.textContent||0) + 1; badge.classList.add('visible'); }
+        const alert = document.getElementById('jrnEscAlert');
+        if (alert) alert.classList.add('visible');
+      }
+    } else if (type === 'harvest_complete') {
+      const m = (d.data && d.data.momentum) || d.momentum;
+      if (m) _updateJourneyMomentum(m);
+    } else if (type === 'dispatch') {
+      const action = (d.data && d.data.action) || d.action;
+      if (action) {
+        const dot = document.getElementById('jrn-dot-' + action.source_layer);
+        if (dot) dot.className = 'jrn-dot dot-running';
+      }
+    } else if (type === 'action_complete') {
+      const action = (d.data && d.data.action) || d.action;
+      if (action) {
+        const dot = document.getElementById('jrn-dot-' + action.source_layer);
+        if (dot) dot.className = 'jrn-dot dot-complete';
+        // Briefly pulse accent bar of downstream stale layers amber (3 s)
+        const stale = (d.data && d.data.stale_downstream) || d.stale_downstream || [];
+        stale.forEach(ln => {
+          const bar = document.querySelector(`#jrn-row-${ln} .jrn-accent-bar`);
+          if (!bar) return;
+          const orig = bar.style.background;
+          bar.style.background = '#d97706';
+          setTimeout(() => { bar.style.background = orig; }, 3000);
+        });
+        loadDashboard();
+        loadJourneyData();
+      }
+    } else if (type === 'log_write') {
+      const logEvt = d.event || (d.data && d.data.event);
+      if (!logEvt) return;
+      const dot = document.getElementById('jrn-dot-' + logEvt.source_layer);
+      if (dot) dot.className = 'jrn-dot ' + (logEvt.event_type === 'dispatched' ? 'dot-running' : 'dot-complete');
+    } else if (type === 'step_running') {
+      const step = d.step || (d.data && d.data.step);
+      const pb = document.getElementById('jrnPhaseBadge');
+      if (pb && step) {
+        const labels = {harvest:'Harvest · collecting', score:'Score · ranking', schedule:'Schedule · dispatching', report:'Report · updating'};
+        pb.textContent = labels[step] || step;
+      }
+    }
+  };
+  _gccSse.onerror = () => { if (_gccSse) { _gccSse.close(); _gccSse = null; } };
+}
+
+// ── Inner tab row clicks + keyboard nav ───────────────────────────────────
+document.querySelectorAll('.gcc-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchInnerTab(btn.dataset.tab));
+  btn.addEventListener('keydown', e => {
+    const tabs = [...document.querySelectorAll('.gcc-tab-btn')];
+    const i = tabs.indexOf(btn);
+    if (e.key === 'ArrowRight' && i < tabs.length - 1) { tabs[i+1].focus(); tabs[i+1].click(); }
+    if (e.key === 'ArrowLeft' && i > 0) { tabs[i-1].focus(); tabs[i-1].click(); }
+  });
+});
 
 // ── Tab switching ─────────────────────────────────────────────────────────
 document.querySelectorAll('.action-tab').forEach(tab => {
@@ -574,23 +1796,23 @@ async function rejectEsc(id) {
 }
 
 // ── Run cycle ─────────────────────────────────────────────────────────────
-document.getElementById('runCycleBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('runCycleBtn');
-  btn.disabled = true; btn.textContent = 'Running…';
+const _runCycleBtn = document.getElementById('runCycleBtn');
+if (_runCycleBtn) _runCycleBtn.addEventListener('click', async () => {
+  _runCycleBtn.disabled = true; _runCycleBtn.textContent = 'Running…';
   try {
     await apiFetch(`${API}/run`, {method:'POST'});
     await loadDashboard();
   } catch (e) {
     alert('Cycle error: ' + e.message);
   } finally {
-    btn.disabled = false; btn.textContent = 'Run Cycle';
+    _runCycleBtn.disabled = false; _runCycleBtn.textContent = 'Run Cycle';
   }
 });
 
 // ── Pause / Resume ────────────────────────────────────────────────────────
-document.getElementById('togglePauseBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('togglePauseBtn');
-  const endpoint = btn.textContent.trim() === 'Pause' ? 'pause' : 'resume';
+const _togglePauseBtn = document.getElementById('togglePauseBtn');
+if (_togglePauseBtn) _togglePauseBtn.addEventListener('click', async () => {
+  const endpoint = _togglePauseBtn.textContent.trim() === 'Pause' ? 'pause' : 'resume';
   await apiFetch(`${API}/${endpoint}`, {method:'POST'});
   const cfg = await apiFetch(`${API}/config`);
   showDashboard(cfg);
@@ -635,7 +1857,8 @@ document.getElementById('activateBtn')?.addEventListener('click', () => {
   document.getElementById('setupOverlay').style.display = 'flex';
 });
 
-document.getElementById('configBtn').addEventListener('click', async () => {
+const _configBtn = document.getElementById('configBtn');
+if (_configBtn) _configBtn.addEventListener('click', async () => {
   try {
     await apiFetch(`${API}/config`);
     currentStep = 1;
@@ -643,7 +1866,6 @@ document.getElementById('configBtn').addEventListener('click', async () => {
     showStep(1);
     document.getElementById('setupOverlay').style.display = 'flex';
   } catch {
-    // not set up yet
     document.getElementById('activateBtn')?.click();
   }
 });
@@ -693,8 +1915,27 @@ async function submitSetup() {
 // ── Boot ──────────────────────────────────────────────────────────────────
 init();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"
-        integrity="sha512-M7nHCiNUOwFt6Us3r8alutZLm9qMt4s9951uo8jqO4UwJ1hziseL6O3ndFyigx6+LREfZqnhHxYjKRJ8ZQ69A=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/orchestrator_diagram.js') }}"></script>
+<script src="{{ url_for('static', filename='js/swimlane.js') }}"></script>
+<script src="{{ url_for('static', filename='js/agent_network.js') }}"></script>
+<script>
+// ── Agent Network modal ───────────────────────────────────────────────────
+let _anvInitialized = false;
+const ANV_API = `${window.ROOT}/api/simulations/${SIM_ID}/layer6`;
+
+function openAgentNetwork() {
+  document.getElementById('anv-modal').classList.add('open');
+  if (!_anvInitialized && window.initAgentNetwork) {
+    window.initAgentNetwork(SIM_ID, ANV_API);
+    _anvInitialized = true;
+  }
+}
+
+document.getElementById('agentNetworkBtn')?.addEventListener('click', openAgentNetwork);
+
+document.getElementById('anv-modal')?.addEventListener('click', function(e) {
+  if (e.target === this && window.closeAgentNetwork) window.closeAgentNetwork();
+});
+</script>
 {% endblock %}

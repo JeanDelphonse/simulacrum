@@ -13,13 +13,15 @@ from app.models.artifact import (
 )
 from app.models.partner import (
     ReferralPartner, ReferralSignup, Commission, PartnerPayout,
-    AdvisorAccess, AdvisorNote, ReferralInvitation,
+    AdvisorAccess, AdvisorNote, AdvisorFlag, ReferralInvitation,
 )
 from app.models.layer6 import (
     Layer6Config, Layer6Cycle, Layer6ActionQueue,
     Layer6Outcome, Layer6Momentum, Layer6ExecutionLog, Layer6ShareToken,
 )
 from app.models.profile import UserProfile, SimulationVisibility, ProfileInquiry, UserSession
+from app.models.feedback import UserFeedback
+from app.models.resume_consent import ResumeConsent
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -28,8 +30,10 @@ __all__ = [
     'PrefillCorrection', 'ArtifactVersion', 'ArtifactBundle',
     'ArtifactDependency', 'BundleTypeConfig',
     'ReferralPartner', 'ReferralSignup', 'Commission', 'PartnerPayout',
-    'AdvisorAccess', 'AdvisorNote', 'ReferralInvitation',
+    'AdvisorAccess', 'AdvisorNote', 'AdvisorFlag', 'ReferralInvitation',
     'Layer6Config', 'Layer6Cycle', 'Layer6ActionQueue',
     'Layer6Outcome', 'Layer6Momentum', 'Layer6ExecutionLog', 'Layer6ShareToken',
     'UserProfile', 'SimulationVisibility', 'ProfileInquiry', 'UserSession',
+    'UserFeedback',
+    'ResumeConsent',
 ]

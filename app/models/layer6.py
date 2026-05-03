@@ -146,6 +146,7 @@ class Layer6ActionQueue(db.Model):
     STATUS_COMPLETE = 'complete'
     STATUS_ESCALATED = 'escalated'
     STATUS_REJECTED = 'rejected'
+    STATUS_FAILED = 'failed'
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     simulation_id = db.Column(
@@ -194,6 +195,15 @@ class Layer6ActionQueue(db.Model):
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'outcome_summary': self.outcome_summary,
             'created_at': self.created_at.isoformat(),
+        }
+
+    def to_pill_dict(self):
+        return {
+            'id': self.id,
+            'action_type': self.action_type,
+            'source_layer': self.source_layer,
+            'status': self.status,
+            'dispatched_at': self.dispatched_at.isoformat() if self.dispatched_at else None,
         }
 
 
@@ -307,6 +317,7 @@ class Layer6ExecutionLog(db.Model):
     event_type = db.Column(db.String(30), nullable=False)
     actor = db.Column(db.String(20), nullable=False, default=ACTOR_ORCHESTRATOR)
     reasoning = db.Column(db.Text, nullable=True)
+    model_tier = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self):
@@ -318,6 +329,7 @@ class Layer6ExecutionLog(db.Model):
             'event_type': self.event_type,
             'actor': self.actor,
             'reasoning': self.reasoning,
+            'model_tier': self.model_tier,
             'created_at': self.created_at.isoformat(),
         }
 

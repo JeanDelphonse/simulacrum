@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Privacy Policy{% endblock %}
+{% block content %}
+<div class="page-container legal-page">
+  <div class="legal-header">
+    <h1>Privacy Policy</h1>
+    <p class="legal-meta">Version {{ pp_version }} &nbsp;·&nbsp; Effective Date: May 1, 2025 &nbsp;·&nbsp; Last Updated: May 1, 2025</p>
+    <p class="legal-meta">Bay Area Experiences Ventures &nbsp;·&nbsp; simulacrum.io &nbsp;·&nbsp; Santa Clara, California</p>
+  </div>
+
+  <div class="legal-body">
+
+    <h2>1. Introduction</h2>
+    <p>Bay Area Experiences Ventures ("Company," "we," "us," or "our") operates Simulacrum at simulacrum.io (the "Service"). This Privacy Policy explains how we collect, use, store, and protect your personal information, with particular focus on the resume data you upload to the Service.</p>
+    <p>By using the Service, you agree to the collection and use of information in accordance with this policy. This policy is incorporated into and subject to our <a href="{{ url_for('pages.legal_terms') }}">Terms of Service</a>.</p>
+
+    <h2>2. Information We Collect When You Upload a Resume</h2>
+    <p>When you choose to upload a resume or import your LinkedIn profile, we collect the following categories of personal information:</p>
+    <ul>
+      <li><strong>Resume file:</strong> The raw document you upload (PDF or DOCX), stored in our file storage system.</li>
+      <li><strong>Extracted Data:</strong> Structured data extracted from your resume, including employment history, education, skills, professional accomplishments, compensation history (if present), and contact details.</li>
+      <li><strong>Generated Content:</strong> AI-generated analysis of your Extracted Data, including Expertise Zones, income projections across five layers, agent action recommendations, and Growth Command Center outputs.</li>
+      <li><strong>Consent Record:</strong> A timestamp, IP address, and record of the specific consent you provided before the upload, including the version of this Privacy Policy and our Terms of Service you agreed to.</li>
+      <li><strong>Metadata:</strong> File type, upload timestamp, and usage data (which features you interact with).</li>
+    </ul>
+
+    <h2>3. How We Use Your Resume Data</h2>
+    <p>We use your resume data exclusively for the following purposes and do not use it for any other purpose without your explicit consent:</p>
+    <ul>
+      <li>Generating your Simulacrum wealth simulation — extracting Expertise Zones, mapping income streams across Layers 1 through 5, and generating AI agent action recommendations.</li>
+      <li>Powering AI agent actions — resume content informs the prefill inputs for all 49 agent actions across the five income layers.</li>
+      <li>Personalizing your Growth Command Center — your Expertise Zones and Simulation progress are displayed in your GCC dashboard.</li>
+      <li>Enabling advisor visibility — if you explicitly grant an advisor or partner access to your Simulation via Settings / Visibility, your Simulation data (but not your raw resume file) becomes visible to that advisor in read-only mode.</li>
+    </ul>
+
+    <h2>4. Sub-Processors — Resume Data</h2>
+    <p>The following third-party service providers process your resume data on our behalf. Each is bound by contractual data processing obligations consistent with applicable privacy law:</p>
+
+    <table class="legal-table">
+      <thead>
+        <tr>
+          <th>Sub-Processor</th>
+          <th>Purpose</th>
+          <th>Data Transferred</th>
+          <th>Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Anthropic, PBC</td>
+          <td>AI analysis of resume content — Expertise Zone extraction, income projections, agent action generation</td>
+          <td>Full resume text and structured extraction</td>
+          <td>United States</td>
+        </tr>
+        <tr>
+          <td>SendGrid (Twilio)</td>
+          <td>Transactional email delivery (account verification, notifications, retention warnings)</td>
+          <td>Email address, name</td>
+          <td>United States</td>
+        </tr>
+        <tr>
+          <td>Stripe</td>
+          <td>Payment processing (optional, only if you purchase a simulation)</td>
+          <td>Payment card data (processed directly by Stripe, not stored by us)</td>
+          <td>United States</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Anthropic is our primary sub-processor for resume data. Anthropic is contractually prohibited from using your resume content to train AI models. For details, see <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">Anthropic's Privacy Policy</a> and their API data processing terms.</p>
+
+    <h2>5. Data Retention</h2>
+    <p>Your resume file, Extracted Data, and Generated Content are retained for up to <strong>15 months</strong> from the date of your last sign-in to Simulacrum. If you do not sign in for 15 consecutive months:</p>
+    <ol>
+      <li>You will receive an email notification at your registered address <strong>30 days before</strong> scheduled deletion.</li>
+      <li>If you sign in within 30 days of that notification, your retention window resets and no data is deleted.</li>
+      <li>If you do not sign in, all account data (resume files, Extracted Data, Simulation records, agent action outputs, GCC data, and advisor access records) will be permanently deleted.</li>
+    </ol>
+    <p><strong>Consent records are permanently retained</strong> as a legal audit trail, even after account deletion, as required by applicable law.</p>
+    <p>Data requested for deletion by the user will be permanently deleted within 90 days of the request, regardless of the last sign-in date.</p>
+
+    <h2>6. Your Rights</h2>
+
+    <h3>6.1 All Users</h3>
+    <ul>
+      <li><strong>Access:</strong> You may request a copy of your personal data by contacting privacy@simulacrum.io.</li>
+      <li><strong>Deletion:</strong> You may delete your resume and all associated Simulation data at any time from your account settings. Full account deletion is available in Settings / Account.</li>
+      <li><strong>Correction:</strong> You may update your resume text and profile information directly in the Service.</li>
+      <li><strong>Consent withdrawal:</strong> You may withdraw your consent for data processing by deleting your resume. Note that withdrawal will result in deletion of all Simulations generated from that resume.</li>
+    </ul>
+
+    <h3>6.2 California Residents (CCPA)</h3>
+    <p>If you are a California resident, you have the following additional rights under the California Consumer Privacy Act:</p>
+    <ul>
+      <li>Right to know what personal information we collect and how we use it.</li>
+      <li>Right to delete personal information we have collected about you (subject to certain exceptions).</li>
+      <li>Right to opt out of the sale of personal information. <strong>We do not sell your personal information.</strong></li>
+      <li>Right to non-discrimination for exercising your CCPA rights.</li>
+    </ul>
+    <p>To exercise your CCPA rights, contact us at privacy@simulacrum.io or use the deletion tools in your account settings.</p>
+
+    <h3>6.3 EEA / UK Residents (GDPR / UK GDPR)</h3>
+    <p>If you are located in the European Economic Area or the United Kingdom, you have additional rights under the GDPR / UK GDPR, including the right to data portability and the right to lodge a complaint with your local supervisory authority. To exercise your rights, contact privacy@simulacrum.io. Our legal basis for processing your resume data is your explicit consent, which you provide through the consent gate before uploading.</p>
+
+    <h2>7. Security</h2>
+    <p>We implement industry-standard security measures to protect your personal information, including encrypted storage of sensitive tokens (LinkedIn access tokens), HTTPS for all data in transit, and access controls limiting who can view your resume data. However, no method of transmission over the internet or method of electronic storage is 100% secure.</p>
+
+    <h2>8. Children's Privacy</h2>
+    <p>The Service is not directed to individuals under the age of 18. We do not knowingly collect personal information from children. If you become aware that a child has provided us with personal information, please contact privacy@simulacrum.io.</p>
+
+    <h2>9. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. When we make material changes, we will notify you by email at your registered address and update the "Last Updated" date at the top of this page. If the changes affect how we process your resume data, you may be asked to provide renewed consent before your next upload.</p>
+
+    <h2>10. Contact</h2>
+    <p>For privacy-related questions, data access requests, or deletion requests:<br>
+    <a href="mailto:privacy@simulacrum.io">privacy@simulacrum.io</a><br>
+    Bay Area Experiences Ventures &nbsp;·&nbsp; Santa Clara, California</p>
+
+    <div class="legal-notice">
+      <strong>Note:</strong> This document is a draft pending review by qualified legal counsel. It is provided for informational purposes and does not constitute legal advice. Do not publish or rely upon this draft until it has been reviewed and approved by a licensed attorney.
+    </div>
+  </div>
+</div>
+{% endblock %}

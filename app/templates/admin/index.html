@@ -5,6 +5,7 @@
   <nav class="admin-subnav">
     <a href="{{ url_for('pages.admin_view') }}" class="subnav-link active">Overview</a>
     <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
   </nav>
   <h1>Admin Panel</h1>
 
@@ -57,15 +58,25 @@
   <section class="admin-section">
     <h2>Users (Top 50)</h2>
     <table class="admin-table" id="usersTable">
-      <thead><tr><th>Name</th><th>Email</th><th>Simulations</th><th>Spend</th><th>Joined</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th>Simulations</th><th>Spend</th><th>Joined</th><th>Public Profile</th></tr></thead>
       <tbody>
         {% for u in users %}
+        {% set profile = profiles.get(u.id) %}
         <tr>
           <td>{{ u.full_name }}</td>
           <td>{{ u.email }}</td>
           <td>{{ u.simulation_count }}</td>
           <td>${{ "%.2f"|format(u.total_spend / 100) }}</td>
           <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+          <td>
+            {% if profile and profile.username and profile.is_published %}
+            <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" style="color:#0e7490;font-size:.82rem">/u/{{ profile.username }} ↗</a>
+            {% elif profile and profile.username %}
+            <span style="font-size:.78rem;color:rgba(255,255,255,.3)">{{ profile.username }} (private)</span>
+            {% else %}
+            <span style="font-size:.78rem;color:rgba(255,255,255,.2)">—</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

@@ -9,6 +9,7 @@ Priority chain (highest wins):
   6. Platform defaults + heuristics
 """
 from __future__ import annotations
+from typing import Optional
 import json
 import logging
 import re
@@ -44,7 +45,7 @@ class PrefillField:
 
 # ---------------------------------------------------------------------------
 # Per-field rules:  field_key → (value_fn, confidence, source, tooltip)
-# value_fn receives the PrefillEngine instance and returns str | None
+# value_fn receives the PrefillEngine instance and returns Optional[str]
 # A None return means "no value from this source — fall through"
 # ---------------------------------------------------------------------------
 
@@ -718,7 +719,7 @@ class PrefillEngine:
     # Source 1: Bayesian correction model
     # -------------------------------------------------------------------------
 
-    def _from_bayesian(self, key: str) -> PrefillField | None:
+    def _from_bayesian(self, key: str) -> Optional[PrefillField]:
         try:
             from app.models.artifact import PrefillCorrection
             corrections = PrefillCorrection.query.filter_by(
@@ -759,7 +760,7 @@ class PrefillEngine:
     # Source 2: Upstream artifact dependency
     # -------------------------------------------------------------------------
 
-    def _from_upstream_artifact(self, key: str) -> PrefillField | None:
+    def _from_upstream_artifact(self, key: str) -> Optional[PrefillField]:
         try:
             from app.models.artifact import ArtifactDependency, ArtifactVersion
             from app.models.agent_action import AgentAction
@@ -798,7 +799,7 @@ class PrefillEngine:
     # Source 3: Prior AgentContext
     # -------------------------------------------------------------------------
 
-    def _from_prior_context(self, key: str) -> PrefillField | None:
+    def _from_prior_context(self, key: str) -> Optional[PrefillField]:
         try:
             from app.models.agent_context import AgentContext
             ctx = AgentContext.get_for_layer(self.simulation.id, self.layer_number)
@@ -867,7 +868,7 @@ class PrefillEngine:
         except Exception:
             return {}
 
-    def _zone_rate(self) -> str | None:
+    def _zone_rate(self) -> Optional[str]:
         rate = self._zone_data.get('estimated_hourly_rate')
         if rate:
             return str(rate)
@@ -878,16 +879,16 @@ class PrefillEngine:
                 return f'${m.group(1)}–${m.group(2)}/hr'
         return None
 
-    def _zone_summary(self) -> str | None:
+    def _zone_summary(self) -> Optional[str]:
         return self._zone_data.get('summary') or (self._expertise_zone or None)
 
-    def _zone_deliverables_str(self) -> str | None:
+    def _zone_deliverables_str(self) -> Optional[str]:
         deliverables = self._zone_data.get('deliverables', [])
         if deliverables and isinstance(deliverables, list):
             return '; '.join(str(d) for d in deliverables[:3])
         return self._expertise_zone or None
 
-    def _resume_company_size(self) -> str | None:
+    def _resume_company_size(self) -> Optional[str]:
         if not self._parsed_text:
             return None
         text = self._parsed_text.lower()
@@ -904,7 +905,7 @@ class PrefillEngine:
             return 'SMB (10–500 employees)'
         return 'mid-market'
 
-    def _resume_geography(self) -> str | None:
+    def _resume_geography(self) -> Optional[str]:
         if not self._parsed_text:
             return None
         text = self._parsed_text.lower()
@@ -923,7 +924,7 @@ class PrefillEngine:
                 return region
         return None
 
-    def _min_monthly_rate(self) -> str | None:
+    def _min_monthly_rate(self) -> Optional[str]:
         rate = self._zone_rate()
         if not rate:
             return None
@@ -934,7 +935,7 @@ class PrefillEngine:
             return f'${monthly:,}'
         return None
 
-    def _keynote_fee(self) -> str | None:
+    def _keynote_fee(self) -> Optional[str]:
         rate = self._zone_rate()
         if not rate:
             return None
@@ -945,7 +946,7 @@ class PrefillEngine:
             return f'${keynote:,}'
         return None
 
-    def _cohort_price(self) -> str | None:
+    def _cohort_price(self) -> Optional[str]:
         rate = self._zone_rate()
         if not rate:
             return None
@@ -957,7 +958,7 @@ class PrefillEngine:
             return f'${price:,}'
         return None
 
-    def _course_price(self) -> str | None:
+    def _course_price(self) -> Optional[str]:
         rate = self._zone_rate()
         if not rate:
             return None
@@ -969,7 +970,7 @@ class PrefillEngine:
             return f'${price:,}'
         return None
 
-    def _course_title(self) -> str | None:
+    def _course_title(self) -> Optional[str]:
         if not self._expertise_zone:
             return None
         zone = self._expertise_zone
@@ -978,24 +979,24 @@ class PrefillEngine:
             return f'The {zone} Masterclass'
         return f'{zone}: A Complete Practitioner Course'
 
-    def _community_name(self) -> str | None:
+    def _community_name(self) -> Optional[str]:
         if not self._expertise_zone:
             return None
         return f'The {self._expertise_zone} Circle'
 
-    def _program_name(self) -> str | None:
+    def _program_name(self) -> Optional[str]:
         if not self._expertise_zone:
             return None
         return f'{self._expertise_zone} Accelerator'
 
-    def _product_name_price(self) -> str | None:
+    def _product_name_price(self) -> Optional[str]:
         title = self._course_title()
         price = self._course_price()
         if title and price:
             return f'{title} — {price}'
         return title
 
-    def _target_student(self) -> str | None:
+    def _target_student(self) -> Optional[str]:
         zone = self._expertise_zone
         company_size = self._resume_company_size()
         if zone and company_size:
@@ -1010,7 +1011,7 @@ class PrefillEngine:
             return 'executive'
         return 'practitioner'
 
-    def _funnel_goal(self) -> str | None:
+    def _funnel_goal(self) -> Optional[str]:
         title = self._course_title()
         if title:
             return f'Enrolment in {title}'

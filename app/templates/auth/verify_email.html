@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}{% if status == 'success' %}Email Verified{% elif status == 'expired' %}Link Expired{% else %}Invalid Link{% endif %} — Simulacrum{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card text-center">
+
+    {% if status == 'success' %}
+      <div class="auth-icon">✅</div>
+      <h1 class="auth-title">You're verified!</h1>
+      <p class="auth-sub">Your email address has been confirmed. Your account is now active.</p>
+      <a href="{{ url_for('pages.login_page') }}" class="btn btn-primary btn-full">Continue to sign in →</a>
+
+    {% elif status == 'expired' %}
+      <div class="auth-icon">⏱</div>
+      <h1 class="auth-title">Link expired</h1>
+      <p class="auth-sub">This verification link is more than 24 hours old. Request a new one and we'll send it right away.</p>
+      {% if user_email %}
+      <button class="btn btn-primary btn-full" id="resendBtn" onclick="resendVerification('{{ user_email }}')">
+        Resend verification email
+      </button>
+      <p id="resendMsg" style="display:none;margin-top:1rem;color:#9ca3af;font-size:0.88rem"></p>
+      {% else %}
+      <a href="{{ url_for('pages.register_page') }}" class="btn btn-primary btn-full">Back to sign up</a>
+      {% endif %}
+      <p class="auth-hint">Already verified? <a href="{{ url_for('pages.login_page') }}">Sign in</a></p>
+
+    {% else %}
+      <div class="auth-icon">❌</div>
+      <h1 class="auth-title">Invalid link</h1>
+      <p class="auth-sub">This verification link is not recognised. It may have already been used or the URL was copied incorrectly.</p>
+      <a href="{{ url_for('pages.login_page') }}" class="btn btn-primary btn-full">Go to sign in</a>
+      <p class="auth-hint">Need a new link? <a href="{{ url_for('pages.register_page') }}">Register again</a></p>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if status == 'expired' and user_email %}
+<script>
+async function resendVerification(email) {
+  const btn = document.getElementById('resendBtn');
+  const msg = document.getElementById('resendMsg');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const res = await fetch(window.ROOT + '/api/auth/verify/resend', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email}),
+    });
+    const data = await res.json();
+    btn.style.display = 'none';
+    msg.textContent = res.ok
+      ? 'Verification email sent — check your inbox.'
+      : (data.error || 'Could not send email. Please try again.');
+    msg.style.display = 'block';
+  } catch {
+    btn.disabled = false;
+    btn.textContent = 'Resend verification email';
+  }
+}
+</script>
+{% endif %}
+{% endblock %}

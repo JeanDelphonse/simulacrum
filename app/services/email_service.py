@@ -57,7 +57,8 @@ def send_verification_email(user_email: str, user_name: str, token: str):
             ),
         )
     except Exception as e:
-        logger.error(f'Failed to send verification email to {user_email}: {e}')
+        logger.error('Failed to send verification email to %s: %s', user_email, e, exc_info=True)
+        raise
 
 
 def send_password_reset_email(user_email: str, user_name: str, token: str):
@@ -284,6 +285,117 @@ def send_profile_inquiry_email(owner_email: str, owner_name: str, visitor_name: 
         )
     except Exception as e:
         logger.error(f'Failed to send profile inquiry email to {owner_email}: {e}')
+
+
+def send_feedback_received_email(user_email: str, user_name: str):
+    try:
+        _send(
+            subject='Your Simulacrum story has been received.',
+            recipients=[user_email],
+            body=(
+                f'Hi {user_name},\n\n'
+                f'Your Simulacrum feedback has been received. Our team will review it within 2 business days.\n\n'
+                f'If approved, it will appear on our home page — we will notify you.\n\n'
+                f'Thank you for sharing your experience.\n\n— Simulacrum'
+            ),
+        )
+    except Exception as e:
+        logger.error(f'Failed to send feedback received email to {user_email}: {e}')
+
+
+def send_admin_new_feedback_email(admin_email: str, submitter_name: str, star_rating: int,
+                                   quote_text: str, outcome_text: str, layers: list):
+    layer_str = ', '.join(l['label'] for l in layers) if layers else 'None'
+    stars = '★' * star_rating + '☆' * (5 - star_rating)
+    try:
+        _send(
+            subject=f'New Simulacrum testimonial — pending review.',
+            recipients=[admin_email],
+            body=(
+                f'New feedback submitted by {submitter_name} — {star_rating} stars ({stars}).\n\n'
+                f'Layers attributed: {layer_str}\n\n'
+                f'Outcome:\n{outcome_text}\n\n'
+                f'Testimonial quote:\n"{quote_text}"\n\n'
+                f'Review in the admin panel.\n\n— Simulacrum'
+            ),
+        )
+    except Exception as e:
+        logger.error(f'Failed to send admin feedback notification to {admin_email}: {e}')
+
+
+def send_feedback_approved_email(user_email: str, user_name: str, is_featured: bool):
+    if is_featured:
+        body = (
+            f'Hi {user_name},\n\n'
+            f'Your Simulacrum story has been featured on our home page. '
+            f'We selected it to highlight the real results our users achieve. Thank you.\n\n'
+            f'View it live at simulacrum.io\n\n— Simulacrum'
+        )
+    else:
+        body = (
+            f'Hi {user_name},\n\n'
+            f'Your Simulacrum story has been approved and is now live on our home page. '
+            f'Thank you for sharing your experience.\n\n'
+            f'View it live at simulacrum.io\n\n— Simulacrum'
+        )
+    try:
+        _send(subject='Your Simulacrum story is live.', recipients=[user_email], body=body)
+    except Exception as e:
+        logger.error(f'Failed to send feedback approved email to {user_email}: {e}')
+
+
+def send_feedback_rejected_email(user_email: str, user_name: str, admin_note: str = None):
+    note_block = f'\n\nFeedback from our team: {admin_note}' if admin_note else ''
+    try:
+        _send(
+            subject='An update on your Simulacrum story.',
+            recipients=[user_email],
+            body=(
+                f'Hi {user_name},\n\n'
+                f'Thank you for sharing your Simulacrum story. After review, we are unable to feature '
+                f'this submission on our home page at this time.{note_block}\n\n'
+                f'You are welcome to submit new feedback at any time from your dashboard.\n\n— Simulacrum'
+            ),
+        )
+    except Exception as e:
+        logger.error(f'Failed to send feedback rejected email to {user_email}: {e}')
+
+
+def send_feedback_withdrawal_request_email(admin_email: str, submitter_name: str, feedback_id: str):
+    try:
+        _send(
+            subject=f'Testimonial withdrawal request — {submitter_name}',
+            recipients=[admin_email],
+            body=(
+                f'{submitter_name} has requested withdrawal of their approved testimonial.\n\n'
+                f'Feedback ID: {feedback_id}\n\n'
+                f'Review and unpublish in the admin feedback panel if appropriate.\n\n— Simulacrum'
+            ),
+        )
+    except Exception as e:
+        logger.error(f'Failed to send withdrawal request email to {admin_email}: {e}')
+
+
+def send_data_retention_warning_email(user_email: str, user_name: str, deletion_date: str):
+    try:
+        _send(
+            subject='Your Simulacrum data is scheduled for deletion in 30 days',
+            recipients=[user_email],
+            body=(
+                f'Hi {user_name},\n\n'
+                f'Your Simulacrum account has been inactive for an extended period.\n\n'
+                f'Your data — including all simulations, resume files, and Growth Command Center records — '
+                f'is scheduled for permanent deletion on {deletion_date}.\n\n'
+                f'To keep your account active, simply sign in before {deletion_date}:\n'
+                f'https://simulacrum.io/login\n\n'
+                f'If you would prefer to delete your data now rather than wait, you can request '
+                f'immediate deletion by emailing privacy@simulacrum.io.\n\n'
+                f'— Simulacrum\n\n'
+                f'Questions? Reply to this email or contact privacy@simulacrum.io'
+            ),
+        )
+    except Exception as e:
+        logger.error(f'Failed to send retention warning email to {user_email}: {e}')
 
 
 def send_collab_invite_email(invitee_email: str, inviter_name: str, sim_name: str, share_token: str):

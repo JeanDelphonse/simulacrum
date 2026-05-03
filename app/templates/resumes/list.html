@@ -26,8 +26,9 @@
     <div class="upload-card">
       <div class="upload-icon">💼</div>
       <h3>Import from LinkedIn</h3>
-      <p>Crawl your public profile automatically</p>
-      <button class="btn btn-primary btn-full" onclick="startLinkedIn()">Connect LinkedIn →</button>
+      <p>Connect your profile to import name and contact details</p>
+      <button class="btn btn-primary btn-full" id="linkedinBtn" onclick="startLinkedIn()">Connect LinkedIn →</button>
+      <div id="linkedinError" class="form-error hidden" style="margin-top:0.5rem"></div>
     </div>
   </div>
 
@@ -49,36 +50,268 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Consent gate modal (FR-TOS-02: cannot be closed via overlay or Escape) -->
+<div class="consent-modal-overlay" id="consentOverlay" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+  <div class="consent-modal">
+    <div class="consent-modal-header">
+      <h2 id="consentTitle">Before we process your resume</h2>
+      <p>Please review how Simulacrum uses your data before uploading.</p>
+      <div id="reconsentReason" style="display:none;margin-top:0.5rem;font-size:0.78rem;color:#fcd34d;"></div>
+    </div>
+
+    <div class="consent-summary">
+      <div class="consent-summary-row">
+        <span class="consent-summary-icon">🔒</span>
+        <span>Your resume is stored securely and used only to generate your wealth simulation.</span>
+      </div>
+      <div class="consent-summary-row">
+        <span class="consent-summary-icon">🤖</span>
+        <span>Your resume content is processed by Anthropic's Claude AI to extract Expertise Zones and income projections. Anthropic is contractually prohibited from using your data to train AI models.</span>
+      </div>
+      <div class="consent-summary-row">
+        <span class="consent-summary-icon">🗑️</span>
+        <span>You can delete your resume and all simulation data at any time from Settings. Data is automatically deleted after 15 months of inactivity.</span>
+      </div>
+      <div class="consent-summary-row">
+        <span class="consent-summary-icon">🚫</span>
+        <span>We do not sell your resume data or use it for advertising. Ever.</span>
+      </div>
+    </div>
+
+    <div class="consent-checkboxes">
+      <label class="consent-check-row">
+        <input type="checkbox" id="consentCheck1" onchange="updateConsentBtn()">
+        <span>I have read and agree to the Simulacrum <a href="{{ url_for('pages.legal_terms') }}" target="_blank" rel="noopener">Terms of Service</a> and understand how my data will be used. <em>(I agree to the terms above.)</em></span>
+      </label>
+      <label class="consent-check-row">
+        <input type="checkbox" id="consentCheck2" onchange="updateConsentBtn()">
+        <span>I consent to my resume data being processed by Anthropic's Claude AI solely to generate my Simulacrum simulation. <em>(I understand that Anthropic processes my data on Simulacrum's behalf and cannot use it to train AI models.)</em> See <a href="{{ url_for('pages.legal_privacy') }}" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+      </label>
+    </div>
+
+    <div class="consent-modal-footer">
+      <button class="consent-upload-btn" id="consentUploadBtn" disabled onclick="proceedWithUpload()">Upload resume</button>
+      <button class="consent-cancel-btn" onclick="cancelConsent()">Cancel — return without uploading</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
+
 {% block scripts %}
 <script>
+const ROOT = window.ROOT || '';
+
+// Pending upload state
+let _pendingUploadFd = null;
+let _currentTosVersion = null;
+let _currentPpVersion = null;
+
+// ── LinkedIn ────────────────────────────────────────────────
 async function startLinkedIn() {
-  const res = await fetch(ROOT + '/api/resumes/linkedin');
-  const data = await res.json();
-  if (data.auth_url) window.location.href = data.auth_url;
+  const btn = document.getElementById('linkedinBtn');
+  const errEl = document.getElementById('linkedinError');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  errEl.classList.add('hidden');
+  try {
+    const res = await fetch(ROOT + '/api/resumes/linkedin');
+    const data = await res.json();
+    if (data.consent_required) {
+      // Store intent and show consent modal
+      _pendingUploadFd = 'linkedin';
+      _currentTosVersion = data.tos_version;
+      _currentPpVersion = data.privacy_version;
+      showConsentModal(data.reason);
+      btn.disabled = false;
+      btn.textContent = 'Connect LinkedIn →';
+    } else if (data.auth_url) {
+      window.location.href = data.auth_url;
+    } else {
+      throw new Error(data.error || 'Could not start LinkedIn login');
+    }
+  } catch (e) {
+    errEl.textContent = e.message || 'LinkedIn connection failed. Please try again.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Connect LinkedIn →';
+  }
 }
 
+// Show error message returned from OAuth callback redirect
+const params = new URLSearchParams(window.location.search);
+const linkedinErr = params.get('linkedin_error');
+if (linkedinErr) {
+  const msgs = {
+    cancelled: 'LinkedIn login was cancelled.',
+    invalid_state: 'Session expired during LinkedIn login. Please try again.',
+    import_failed: 'LinkedIn import failed. Please try again or upload a resume instead.',
+  };
+  const errEl = document.getElementById('linkedinError');
+  if (errEl) {
+    errEl.textContent = msgs[linkedinErr] || 'LinkedIn connection failed.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ── Upload form ─────────────────────────────────────────────
 document.getElementById('uploadForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const btn = e.target.querySelector('button[type=submit]');
-  btn.disabled = true; btn.textContent = 'Parsing…';
   const errEl = document.getElementById('uploadError');
   errEl.classList.add('hidden');
+
+  // Check consent status first
+  try {
+    const statusRes = await fetch(ROOT + '/api/resumes/consent-status');
+    const statusData = await statusRes.json();
+    _currentTosVersion = statusData.tos_version;
+    _currentPpVersion = statusData.privacy_version;
+    if (statusData.consent_required) {
+      // Store form data and show consent modal
+      _pendingUploadFd = new FormData(e.target);
+      showConsentModal(statusData.reason);
+      return;
+    }
+  } catch (_) {
+    // If status check fails, require consent to be safe
+    _pendingUploadFd = new FormData(e.target);
+    showConsentModal('no_consent');
+    return;
+  }
+
+  // Consent already valid — upload directly (add versions for server validation)
   const fd = new FormData(e.target);
+  fd.append('checkbox_1', 'true');
+  fd.append('checkbox_2', 'true');
+  fd.append('tos_version', _currentTosVersion);
+  fd.append('privacy_version', _currentPpVersion);
+  await doUpload(fd);
+});
+
+async function doUpload(fd) {
+  const btn = document.querySelector('#uploadForm button[type=submit]');
+  const errEl = document.getElementById('uploadError');
+  if (btn) { btn.disabled = true; btn.textContent = 'Parsing…'; }
   try {
     const res = await fetch(ROOT + '/api/resumes/upload', { method: 'POST', body: fd });
     const data = await res.json();
     if (res.ok) {
       window.location.href = ROOT + '/resumes/' + data.id;
+    } else if (data.consent_required) {
+      // Server rejected — show consent modal again
+      const statusRes = await fetch(ROOT + '/api/resumes/consent-status');
+      const statusData = await statusRes.json();
+      _currentTosVersion = statusData.tos_version;
+      _currentPpVersion = statusData.privacy_version;
+      _pendingUploadFd = fd;
+      showConsentModal(statusData.reason);
     } else {
       errEl.textContent = data.error || 'Upload failed';
       errEl.classList.remove('hidden');
-      btn.disabled = false; btn.textContent = 'Upload & Parse';
     }
   } catch (err) {
     errEl.textContent = 'Upload failed. Please try again.';
     errEl.classList.remove('hidden');
-    btn.disabled = false; btn.textContent = 'Upload & Parse';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Upload & Parse'; }
+  }
+}
+
+// ── Consent modal ────────────────────────────────────────────
+function showConsentModal(reason) {
+  const reasonEl = document.getElementById('reconsentReason');
+  const msgs = {
+    tos_updated: 'Our Terms of Service or Privacy Policy have been updated since you last consented. Please review and re-consent before uploading.',
+    expired: 'Your consent is more than 12 months old. Please re-consent before uploading.',
+  };
+  if (msgs[reason]) {
+    reasonEl.textContent = msgs[reason];
+    reasonEl.style.display = 'block';
+  } else {
+    reasonEl.style.display = 'none';
+  }
+  document.getElementById('consentCheck1').checked = false;
+  document.getElementById('consentCheck2').checked = false;
+  updateConsentBtn();
+  document.getElementById('consentOverlay').classList.add('show');
+}
+
+function updateConsentBtn() {
+  const c1 = document.getElementById('consentCheck1').checked;
+  const c2 = document.getElementById('consentCheck2').checked;
+  const btn = document.getElementById('consentUploadBtn');
+  btn.disabled = !(c1 && c2);
+  btn.classList.toggle('active', c1 && c2);
+}
+
+function cancelConsent() {
+  document.getElementById('consentOverlay').classList.remove('show');
+  _pendingUploadFd = null;
+}
+
+async function proceedWithUpload() {
+  const c1 = document.getElementById('consentCheck1').checked;
+  const c2 = document.getElementById('consentCheck2').checked;
+  if (!c1 || !c2) return;
+
+  document.getElementById('consentOverlay').classList.remove('show');
+
+  if (_pendingUploadFd === 'linkedin') {
+    // Re-initiate LinkedIn OAuth now that consent is on record in session
+    _pendingUploadFd = null;
+    // Record consent via upload endpoint then redirect to OAuth
+    await _recordLinkedInConsent();
+    return;
+  }
+
+  if (_pendingUploadFd) {
+    const fd = _pendingUploadFd instanceof FormData ? _pendingUploadFd : new FormData();
+    fd.set('checkbox_1', 'true');
+    fd.set('checkbox_2', 'true');
+    fd.set('tos_version', _currentTosVersion || '1.0');
+    fd.set('privacy_version', _currentPpVersion || '1.0');
+    _pendingUploadFd = null;
+    await doUpload(fd);
+  }
+}
+
+async function _recordLinkedInConsent() {
+  // Consent is recorded server-side during the OAuth callback.
+  // We mark the session with a consent-given flag via the LinkedIn start endpoint.
+  // Re-call linkedin start — the server will now see the session has consent recorded
+  // (we stored checkbox state in session during consent modal completion).
+  // Simplest approach: store consent state in session via a lightweight endpoint,
+  // then redirect to OAuth.
+  const btn = document.getElementById('linkedinBtn');
+  const errEl = document.getElementById('linkedinError');
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
+    // Call the start endpoint again — consent is stored in session by the
+    // linkedin_oauth_start route (which now accepts an override when consent was shown)
+    const res = await fetch(ROOT + '/api/resumes/linkedin?consent_given=1');
+    const data = await res.json();
+    if (data.auth_url) {
+      window.location.href = data.auth_url;
+    } else {
+      throw new Error(data.error || 'Could not start LinkedIn login');
+    }
+  } catch (e) {
+    if (errEl) {
+      errEl.textContent = e.message || 'LinkedIn connection failed. Please try again.';
+      errEl.classList.remove('hidden');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Connect LinkedIn →'; }
+  }
+}
+
+// FR-TOS-02: Block overlay click and Escape key from closing consent modal
+document.getElementById('consentOverlay').addEventListener('click', (e) => {
+  e.stopPropagation();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('consentOverlay').classList.contains('show')) {
+    e.preventDefault();
+    e.stopPropagation();
   }
 });
 </script>

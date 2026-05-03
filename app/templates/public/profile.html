@@ -7,7 +7,7 @@
   {% if profile.noindex %}<meta name="robots" content="noindex">{% endif %}
   <meta property="og:title" content="{{ profile.display_name or 'Simulacrum Profile' }}">
   {% if profile.tagline %}<meta property="og:description" content="{{ profile.tagline }}">{% endif %}
-  {% if profile.avatar_path %}<meta property="og:image" content="/avatars/{{ profile.avatar_path }}">{% endif %}
+  {% if profile.avatar_path %}<meta property="og:image" content="{{ url_for('public.serve_avatar', filename=profile.avatar_path, _external=True) }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <style>
     body { background: #f9fafb; color: #111827; }
@@ -37,6 +37,10 @@
     .avail-available { background: #dcfce7; color: #166534; }
     .avail-limited    { background: #fef9c3; color: #854d0e; }
     .avail-unavailable { background: #f3f4f6; color: #6b7280; }
+    .zone-bio-toggle { background: none; border: none; font-size: .78rem; font-weight: 600; color: #0e7490; cursor: pointer; padding: .3rem 0 0; display: inline-flex; align-items: center; gap: .3rem; }
+    .zone-bio-toggle:hover { color: #0c6479; }
+    .zone-bio-panel { display: none; margin-top: .85rem; padding-top: .85rem; border-top: 1px solid #f3f4f6; font-size: .9rem; line-height: 1.75; color: #374151; white-space: pre-wrap; }
+    .zone-bio-panel.open { display: block; }
     .contact-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; }
     .contact-card h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 1rem; }
     .contact-group { margin-bottom: .85rem; }
@@ -53,6 +57,12 @@
     .pub-footer a { color: #6b7280; }
     .owner-banner { background: #fffbeb; border-bottom: 1px solid #fde68a; padding: .6rem 1rem; text-align: center; font-size: .82rem; color: #92400e; }
     .owner-banner a { color: #0e7490; font-weight: 600; }
+    .sim-bio-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+    .sim-bio-tab { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 20px; padding: .3rem .85rem; font-size: .82rem; font-weight: 600; color: #374151; cursor: pointer; transition: all .15s; }
+    .sim-bio-tab:hover { background: #e5e7eb; color: #111827; }
+    .sim-bio-tab.active { background: #0e7490; border-color: #0e7490; color: #fff; }
+    .sim-bio-panel { display: none; font-size: .95rem; line-height: 1.75; color: #374151; white-space: pre-wrap; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.25rem 1.5rem; }
+    .sim-bio-panel.open { display: block; }
     @media (max-width: 640px) {
       .pub-header { flex-direction: column; align-items: center; text-align: center; }
       .pub-socials { justify-content: center; }
@@ -65,7 +75,7 @@
 {% if is_owner %}
 <div class="owner-banner">
   You are viewing your public profile.
-  <a href="/settings/profile">Edit in Settings</a> ·
+  <a href="{{ url_for('pages.settings_profile') }}">Edit in Settings</a> ·
   Completeness: {{ profile.completeness }}%
 </div>
 {% endif %}
@@ -75,7 +85,7 @@
   {# ── Header ── #}
   <div class="pub-header">
     {% if profile.avatar_path %}
-    <img class="pub-avatar" src="/avatars/{{ profile.avatar_path }}" alt="{{ profile.display_name }}">
+    <img class="pub-avatar" src="{{ url_for('public.serve_avatar', filename=profile.avatar_path) }}" alt="{{ profile.display_name }}">
     {% else %}
     <div class="pub-avatar-initials">{{ (profile.display_name or user.full_name or '?')[:2].upper() }}</div>
     {% endif %}
@@ -126,6 +136,27 @@
   </div>
   {% endif %}
 
+  {# ── Simulation Bio Selector ── #}
+  {% if sim_bios %}
+  <div class="pub-section">
+    <div class="pub-section-title">Simulation Bios</div>
+    {% if sim_bios|length > 1 %}
+    <div class="sim-bio-tabs" role="tablist">
+      {% for item in sim_bios %}
+      <button class="sim-bio-tab{% if loop.first %} active{% endif %}"
+              role="tab"
+              aria-selected="{{ 'true' if loop.first else 'false' }}"
+              onclick="selectSimBio(this, 'simbio-{{ item.id }}')"
+              type="button">{{ item.label }}</button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% for item in sim_bios %}
+    <div class="sim-bio-panel{% if loop.first %} open{% endif %}" id="simbio-{{ item.id }}" role="tabpanel">{{ item.narrative }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {# ── Expertise Zone cards ── #}
   {% if zone_cards %}
   <div class="pub-section">
@@ -137,9 +168,9 @@
       <div class="zone-card">
         <p class="zone-card-name">{{ sim.expertise_zone or sim.name }}</p>
         {% if vis.zone_tagline %}<p class="zone-card-tagline">{{ vis.zone_tagline }}</p>{% endif %}
-        {% if vis.services_list %}
+        {% if item.unique_services %}
         <div class="zone-services">
-          {% for svc in vis.services_list %}<span class="zone-service-pill">{{ svc }}</span>{% endfor %}
+          {% for svc in item.unique_services %}<span class="zone-service-pill">{{ svc }}</span>{% endfor %}
         </div>
         {% endif %}
         {% if vis.availability and vis.availability != 'hidden' %}
@@ -148,6 +179,13 @@
           {% elif vis.availability == 'limited' %}Limited availability
           {% else %}Not currently taking clients{% endif %}
         </span>
+        {% endif %}
+        {% if item.narrative %}
+        <button class="zone-bio-toggle" onclick="toggleZoneBio(this)" type="button">
+          <span class="toggle-label-text">Read bio</span>
+          <span>▾</span>
+        </button>
+        <div class="zone-bio-panel">{{ item.narrative }}</div>
         {% endif %}
       </div>
       {% endfor %}
@@ -197,13 +235,33 @@
   {% endif %}
 
   <div class="pub-footer">
-    <a href="/" target="_blank" rel="noopener">Powered by Simulacrum</a> ·
-    Contact form submissions are handled per the <a href="/privacy" target="_blank">Simulacrum Privacy Policy</a>.
+    <a href="{{ url_for('pages.index') }}" target="_blank" rel="noopener">Powered by Simulacrum</a> ·
+    Contact form submissions are handled per the <a href="{{ url_for('pages.index') }}privacy" target="_blank">Simulacrum Privacy Policy</a>.
   </div>
 
 </div>
 
 <script>
+function selectSimBio(btn, panelId) {
+  document.querySelectorAll('.sim-bio-tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+  });
+  document.querySelectorAll('.sim-bio-panel').forEach(p => p.classList.remove('open'));
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  document.getElementById(panelId).classList.add('open');
+}
+
+function toggleZoneBio(btn) {
+  const panel = btn.nextElementSibling;
+  const isOpen = panel.classList.toggle('open');
+  const label = btn.querySelector('.toggle-label-text');
+  const arrow = btn.querySelector('span:last-child');
+  label.textContent = isOpen ? 'Hide bio' : 'Read bio';
+  arrow.textContent = isOpen ? '▴' : '▾';
+}
+
 async function submitContact(username, displayName) {
   const errEl = document.getElementById('contactErr');
   errEl.style.display = 'none';
@@ -215,7 +273,7 @@ async function submitContact(username, displayName) {
     message: document.getElementById('c-message').value.trim(),
   };
 
-  const res = await fetch(`/u/${username}/contact`, {
+  const res = await fetch(`{{ url_for('public.profile_page', username='__UN__') }}`.replace('__UN__', username) + '/contact', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(body),

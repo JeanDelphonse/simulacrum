@@ -37,6 +37,7 @@ def execute_agent_action_task(action_id: str):
             user_inputs=action.user_inputs,
             user_id=action.created_by,
             simulation_id=action.simulation_id,
+            dispatch_source='user_rerun',
         )
 
         action.artifact = artifact
@@ -126,7 +127,8 @@ def _generate_change_summary(action, new_version_number: int) -> str:
         if not changes:
             return f'Re-run of v{prior.version_number}.'
 
-        model = current_app.config.get('CLAUDE_MODEL', 'claude-sonnet-4-6')
+        from utils.model_router import get_model
+        model = get_model('artifact_change_summary')
         client = anthropic.Anthropic()
         changes_str = '; '.join(changes[:5])  # cap to avoid token waste
         message = client.messages.create(

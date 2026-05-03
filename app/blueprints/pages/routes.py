@@ -7,7 +7,24 @@ from app.blueprints.pages import pages_bp
 def index():
     if current_user.is_authenticated:
         return redirect(url_for('pages.dashboard'))
-    return render_template('landing.html')
+    from app.extensions import db as _db
+    from app.models.feedback import UserFeedback
+    from app.models.simulation import Simulation as _Sim
+    from sqlalchemy import func as _func
+    testimonials = UserFeedback.query.filter_by(status='approved').order_by(
+        UserFeedback.is_featured.desc(),
+        UserFeedback.display_order.asc(),
+        UserFeedback.approved_at.desc(),
+    ).limit(50).all()
+    avg_row = _db.session.query(_func.avg(UserFeedback.star_rating)).filter_by(status='approved').scalar()
+    trust_stats = {
+        'avg_rating': round(float(avg_row or 0), 1),
+        'total_simulations': _Sim.query.count(),
+        'approved_count': len(testimonials),
+    }
+    return render_template('landing.html',
+                           testimonials=[t.to_public_dict() for t in testimonials],
+                           trust_stats=trust_stats)
 
 
 @pages_bp.route('/dashboard')
@@ -127,6 +144,14 @@ def settings_security():
     return render_template('settings/index.html', active_tab='security', profile=profile)
 
 
+@pages_bp.route('/settings/testimonials')
+@login_required
+def settings_testimonials():
+    from app.models.profile import UserProfile
+    profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    return render_template('settings/index.html', active_tab='testimonials', profile=profile)
+
+
 @pages_bp.route('/resumes')
 @login_required
 def resumes_view():
@@ -177,9 +202,21 @@ def admin_view():
         abort(403)
     from app.models.platform_settings import PlatformSetting
     from app.models.user import User
+    from app.models.profile import UserProfile
     settings = {s.key: s.value for s in PlatformSetting.query.all()}
     users = User.query.order_by(User.created_at.desc()).limit(50).all()
-    return render_template('admin/index.html', settings=settings, users=users)
+    user_ids = [u.id for u in users]
+    profiles = {p.user_id: p for p in UserProfile.query.filter(UserProfile.user_id.in_(user_ids)).all()}
+    return render_template('admin/index.html', settings=settings, users=users, profiles=profiles)
+
+
+@pages_bp.route('/admin/feedback')
+@login_required
+def admin_feedback_view():
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    return render_template('admin/feedback.html')
 
 
 @pages_bp.route('/admin/partners')
@@ -250,12 +287,144 @@ def partner_advisor_view(sim_id):
                            client_name=client.full_name if client else 'Unknown')
 
 
+@pages_bp.route('/partners/clients/<client_uid>/simulations/<sim_id>/gcc')
+@login_required
+def advisor_gcc_view(client_uid, sim_id):
+    """Advisor mode GCC view — partner sees client's GCC with coaching overlay."""
+    from flask import abort
+    from datetime import datetime as _dt
+    from app.models.partner import ReferralPartner, AdvisorAccess, AdvisorNote
+    from app.models.simulation import Simulation
+    from app.models.profile import UserProfile
+    from app.models.layer6 import Layer6Config, Layer6Cycle, Layer6ActionQueue, Layer6Momentum
+    from app.models.agent_action import AgentAction
+    from app.extensions import db as _db
+    from sqlalchemy import func as _func
+
+    partner = ReferralPartner.query.filter_by(
+        user_id=current_user.id, status=ReferralPartner.STATUS_ACTIVE,
+    ).first()
+    if not partner:
+        abort(403)
+
+    # Validate access — 404 to avoid enumeration
+    access = AdvisorAccess.query.filter_by(
+        partner_id=partner.id,
+        simulation_id=sim_id,
+        revoked_at=None,
+    ).first()
+    if not access or access.granted_by != client_uid:
+        abort(404)
+
+    access.last_viewed_at = _dt.utcnow()
+    _db.session.commit()
+
+    sim = Simulation.query.get_or_404(sim_id)
+    client_profile = UserProfile.query.filter_by(user_id=client_uid).first()
+
+    # All shared sims for this partner/client pair (for banner selector)
+    all_shared_accesses = AdvisorAccess.query.filter_by(
+        partner_id=partner.id, granted_by=client_uid, revoked_at=None,
+    ).all()
+    advisor_shared_sims = []
+    for _sa in all_shared_accesses:
+        _sa_sim = Simulation.query.get(_sa.simulation_id)
+        if _sa_sim:
+            advisor_shared_sims.append({
+                'sim_id': _sa_sim.id,
+                'name': _sa_sim.name or _sa_sim.expertise_zone or 'Simulation',
+                'expertise_zone': _sa_sim.expertise_zone,
+                'is_current': _sa_sim.id == sim_id,
+            })
+
+    all_cycles = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Cycle.cycle_number.desc()
+    ).all()
+    latest_cycle = all_cycles[0] if all_cycles else None
+
+    diagram_cycle = None
+    if latest_cycle:
+        diagram_cycle = latest_cycle.to_dict()
+        actions = Layer6ActionQueue.query.filter_by(cycle_id=latest_cycle.id).order_by(
+            Layer6ActionQueue.priority_score.desc()
+        ).all()
+        diagram_cycle['action_queue'] = [a.to_dict() for a in actions]
+
+    momentum = Layer6Momentum.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Momentum.snapshot_date.desc()
+    ).first()
+
+    action_pills = Layer6ActionQueue.query.filter(
+        Layer6ActionQueue.simulation_id == sim_id,
+        Layer6ActionQueue.status.in_(['dispatched', 'complete', 'escalated']),
+    ).order_by(Layer6ActionQueue.dispatched_at.desc()).limit(20).all()
+
+    esc_rows = _db.session.query(
+        Layer6ActionQueue.source_layer,
+        _func.count(Layer6ActionQueue.id).label('cnt'),
+    ).filter_by(simulation_id=sim_id, status='escalated').group_by(
+        Layer6ActionQueue.source_layer
+    ).all()
+    escalation_by_layer = {r.source_layer: r.cnt for r in esc_rows}
+
+    done_rows = _db.session.query(
+        AgentAction.layer_number,
+        _func.count(AgentAction.id).label('cnt'),
+    ).filter_by(simulation_id=sim_id, status=AgentAction.STATUS_COMPLETE).group_by(
+        AgentAction.layer_number
+    ).all()
+    complete_by_layer = {r.layer_number: r.cnt for r in done_rows}
+
+    # Advisor notes for this access record
+    advisor_notes = AdvisorNote.query.filter_by(
+        advisor_access_id=access.id, simulation_id=sim_id,
+    ).order_by(AdvisorNote.created_at.desc()).all()
+    advisor_notes_by_layer = {}
+    for note in advisor_notes:
+        key = note.layer_number or 0
+        advisor_notes_by_layer.setdefault(key, []).append(note.to_dict())
+
+    layer6_cfg = Layer6Config.query.filter_by(simulation_id=sim_id).first()
+    advisor_dashboard = None
+    advisor_journey = None
+    try:
+        from app.services.layer6 import build_dashboard, build_journey_data
+        advisor_dashboard = build_dashboard(sim_id)
+        advisor_journey = build_journey_data(sim_id)
+    except Exception as _e:
+        import logging as _log
+        _log.getLogger(__name__).error('advisor GCC data build failed: %s', _e)
+
+    return render_template(
+        'simulations/layer6.html',
+        sim=sim,
+        diagram_cycle=diagram_cycle,
+        all_cycles=[c.to_dict_summary() for c in all_cycles],
+        momentum=momentum,
+        action_pills=[p.to_pill_dict() for p in action_pills],
+        escalation_by_layer=escalation_by_layer,
+        complete_by_layer=complete_by_layer,
+        advisor_mode=True,
+        advisor_access=access,
+        advisor_notes_by_layer=advisor_notes_by_layer,
+        client_profile=client_profile,
+        latest_cycle=latest_cycle,
+        advisor_shared_sims=advisor_shared_sims,
+        advisor_layer6_config=layer6_cfg.to_dict() if layer6_cfg else None,
+        advisor_dashboard=advisor_dashboard,
+        advisor_journey=advisor_journey,
+    )
+
+
 @pages_bp.route('/simulations/<sim_id>/layer6')
 @login_required
 def layer6_view(sim_id):
     """Growth Command Center — Layer 6 orchestrator UI."""
     from app.models.simulation import Simulation
-    from app.models.layer6 import Layer6Cycle, Layer6ActionQueue
+    from app.models.layer6 import Layer6Cycle, Layer6ActionQueue, Layer6Momentum
+    from app.models.agent_action import AgentAction
+    from app.extensions import db as _db
+    from sqlalchemy import func as _func
     sim = Simulation.query.get_or_404(sim_id)
     if sim.user_id != current_user.id:
         from flask import abort
@@ -274,11 +443,83 @@ def layer6_view(sim_id):
         ).all()
         diagram_cycle['action_queue'] = [a.to_dict() for a in actions]
 
+    momentum = Layer6Momentum.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Momentum.snapshot_date.desc()
+    ).first()
+
+    action_pills = Layer6ActionQueue.query.filter(
+        Layer6ActionQueue.simulation_id == sim_id,
+        Layer6ActionQueue.status.in_(['dispatched', 'complete', 'escalated']),
+    ).order_by(Layer6ActionQueue.dispatched_at.desc()).limit(20).all()
+
+    esc_rows = _db.session.query(
+        Layer6ActionQueue.source_layer,
+        _func.count(Layer6ActionQueue.id).label('cnt'),
+    ).filter_by(simulation_id=sim_id, status='escalated').group_by(
+        Layer6ActionQueue.source_layer
+    ).all()
+    escalation_by_layer = {r.source_layer: r.cnt for r in esc_rows}
+
+    done_rows = _db.session.query(
+        AgentAction.layer_number,
+        _func.count(AgentAction.id).label('cnt'),
+    ).filter_by(simulation_id=sim_id, status=AgentAction.STATUS_COMPLETE).group_by(
+        AgentAction.layer_number
+    ).all()
+    complete_by_layer = {r.layer_number: r.cnt for r in done_rows}
+
+    # Active partner flags and suggestions for this client's simulation
+    from app.models.partner import AdvisorAccess, AdvisorNote, AdvisorFlag
+    active_accesses = AdvisorAccess.query.filter_by(
+        simulation_id=sim_id, revoked_at=None,
+    ).filter(AdvisorAccess.granted_by == current_user.id).all()
+    access_ids = [a.id for a in active_accesses]
+
+    # Flags not dismissed
+    active_flags = []
+    if access_ids:
+        from app.models.partner import AdvisorFlag as _Flag
+        flags = _Flag.query.filter(
+            _Flag.advisor_access_id.in_(access_ids),
+            _Flag.dismissed_at.is_(None),
+        ).all()
+        for f in flags:
+            access = next((a for a in active_accesses if a.id == f.advisor_access_id), None)
+            partner_name = None
+            if access and access.partner_id:
+                from app.models.partner import ReferralPartner as _RP
+                p = _RP.query.get(access.partner_id)
+                partner_name = p.full_name if p else None
+            active_flags.append({**f.to_dict(), 'partner_name': partner_name})
+
+    # Active shared suggestions
+    active_suggestions = []
+    if access_ids:
+        suggestions = AdvisorNote.query.filter(
+            AdvisorNote.advisor_access_id.in_(access_ids),
+            AdvisorNote.is_shared == True,
+            AdvisorNote.suggestion_type == 'next_step',
+        ).all()
+        for s in suggestions:
+            access = next((a for a in active_accesses if a.id == s.advisor_access_id), None)
+            partner_name = None
+            if access and access.partner_id:
+                from app.models.partner import ReferralPartner as _RP
+                p = _RP.query.get(access.partner_id)
+                partner_name = p.full_name if p else None
+            active_suggestions.append({**s.to_dict(), 'partner_name': partner_name})
+
     return render_template(
         'simulations/layer6.html',
         sim=sim,
         diagram_cycle=diagram_cycle,
         all_cycles=[c.to_dict_summary() for c in all_cycles],
+        momentum=momentum,
+        action_pills=[p.to_pill_dict() for p in action_pills],
+        escalation_by_layer=escalation_by_layer,
+        complete_by_layer=complete_by_layer,
+        active_flags=active_flags,
+        active_suggestions=active_suggestions,
     )
 
 
@@ -321,6 +562,22 @@ def layer6_share_view(token):
         share=share,
         read_only=True,
     )
+
+
+@pages_bp.route('/legal/terms')
+def legal_terms():
+    """Terms of Service — stable URL (FR-TOS-10)."""
+    from app.models.platform_settings import PlatformSetting
+    tos_version = PlatformSetting.get('tos_version', '1.0')
+    return render_template('legal/terms.html', tos_version=tos_version)
+
+
+@pages_bp.route('/legal/privacy')
+def legal_privacy():
+    """Privacy Policy — stable URL (FR-TOS-10)."""
+    from app.models.platform_settings import PlatformSetting
+    pp_version = PlatformSetting.get('privacy_policy_version', '1.0')
+    return render_template('legal/privacy.html', pp_version=pp_version)
 
 
 @pages_bp.route('/ref/<code>')

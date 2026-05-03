@@ -1,0 +1,27 @@
+{# Advisor context banner — shown at top of GCC page in advisor mode #}
+<div class="advisor-banner" role="banner" aria-live="polite"
+     aria-label="You are viewing a client simulation in advisor mode. Client: {{ client_profile.display_name if client_profile and client_profile.display_name else 'Client' }}">
+  <span class="advisor-banner-badge">Advisor</span>
+  <span class="advisor-banner-client">
+    Viewing <span id="advisorClientName">{{ client_profile.display_name if client_profile and client_profile.display_name else 'Client' }}</span>'s wealth plan
+  </span>
+  <span class="advisor-banner-center">
+    {% if advisor_shared_sims is defined and advisor_shared_sims | length > 1 %}
+    <select class="advisor-sim-selector" onchange="window.location.href=this.value" title="Switch simulation">
+      {% for ss in advisor_shared_sims %}
+      <option value="{{ url_for('pages.advisor_gcc_view', client_uid=advisor_access.granted_by, sim_id=ss.sim_id) }}"
+              {% if ss.is_current %}selected{% endif %}>
+        {{ ss.expertise_zone or ss.name }}{% if latest_cycle %} · Cycle {{ latest_cycle.cycle_number }}{% endif %}
+      </option>
+      {% endfor %}
+    </select>
+    {% else %}
+    {{ sim.expertise_zone or '' }}
+    {% if latest_cycle %}
+    &nbsp;·&nbsp; Cycle {{ latest_cycle.cycle_number }}
+    &nbsp;·&nbsp; {{ latest_cycle.phase|title }} phase
+    {% endif %}
+    {% endif %}
+  </span>
+  <a href="{{ url_for('pages.partner_dashboard') }}" class="advisor-banner-back">← Back to my dashboard</a>
+</div>

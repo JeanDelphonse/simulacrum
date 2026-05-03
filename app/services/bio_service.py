@@ -1,6 +1,7 @@
 import json
 import logging
 from flask import current_app
+from utils.model_router import get_model
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ disruptive, synergy, leverage (as a verb), cutting-edge, best-in-class.
 def generate_wikipedia_bio(profile, resume_text: str, expertise_zones: list) -> str:
     import anthropic
     client = anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
-    model = current_app.config.get('CLAUDE_MODEL', 'claude-sonnet-4-20250514')
+    model = get_model('bio_generation')
 
     zone_summary = json.dumps([
         {
@@ -66,7 +67,7 @@ def generate_wikipedia_bio(profile, resume_text: str, expertise_zones: list) -> 
 def suggest_zone_tagline(expertise_zone: str, deliverables: list) -> str:
     import anthropic
     client = anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
-    model = current_app.config.get('CLAUDE_MODEL', 'claude-sonnet-4-20250514')
+    model = get_model('bio_generation')
 
     deliv_text = '\n'.join(f'- {d}' for d in (deliverables or [])[:10])
     response = client.messages.create(
@@ -88,7 +89,7 @@ def suggest_zone_tagline(expertise_zone: str, deliverables: list) -> str:
 def suggest_service_bullets(expertise_zone: str, l1_streams: list, l2_streams: list) -> list:
     import anthropic
     client = anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
-    model = current_app.config.get('CLAUDE_MODEL', 'claude-sonnet-4-20250514')
+    model = get_model('bio_generation')
 
     streams = (
         [s.get('name', '') for s in (l1_streams or [])[:3]] +

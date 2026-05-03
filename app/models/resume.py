@@ -9,6 +9,7 @@ class Resume(db.Model):
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     user_id = db.Column(db.String(9), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    consent_id = db.Column(db.String(9), db.ForeignKey('resume_consents.id', ondelete='SET NULL'), nullable=True, index=True)
     label = db.Column(db.String(255), nullable=False)
     file_path = db.Column(db.String(500), nullable=True)  # null for LinkedIn source
     file_type = db.Column(db.String(10), nullable=True)   # 'pdf' | 'docx' | null for LinkedIn

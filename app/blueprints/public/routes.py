@@ -9,7 +9,7 @@ from app.blueprints.public import public_bp
 from app.extensions import db
 from app.models.profile import UserProfile, SimulationVisibility, ProfileInquiry
 from app.models.user import User
-from app.models.simulation import Simulation
+from app.models.simulation import Simulation, SimulationLayer
 from utils.id_gen import generate_id
 
 _SUBJECTS = (
@@ -46,10 +46,38 @@ def profile_page(username):
     ).order_by(SimulationVisibility.display_order.asc()).all()
 
     zone_cards = []
+    sim_bios = []
+    seen_zones = set()
     for vis in vis_records:
         sim = Simulation.query.get(vis.simulation_id)
-        if sim:
-            zone_cards.append({'vis': vis, 'sim': sim})
+        if not sim:
+            continue
+        layer1 = SimulationLayer.query.filter_by(
+            simulation_id=sim.id, layer_number=1,
+        ).first()
+        if layer1 and layer1.ai_narrative:
+            sim_bios.append({
+                'id': sim.id,
+                'label': sim.expertise_zone or sim.name or 'Simulation',
+                'narrative': layer1.ai_narrative,
+            })
+        zone_key = (sim.expertise_zone or sim.name or '').strip().lower()
+        if zone_key in seen_zones:
+            continue
+        seen_zones.add(zone_key)
+        unique_services = []
+        seen_svcs = set()
+        for svc in (vis.services or []):
+            svc_key = svc.strip().lower()
+            if svc_key and svc_key not in seen_svcs:
+                seen_svcs.add(svc_key)
+                unique_services.append(svc.strip())
+        zone_cards.append({
+            'vis': vis,
+            'sim': sim,
+            'narrative': layer1.ai_narrative if layer1 else None,
+            'unique_services': unique_services,
+        })
 
     booking_url = profile.effective_booking_url()
 
@@ -62,6 +90,7 @@ def profile_page(username):
         profile=profile,
         user=user,
         zone_cards=zone_cards,
+        sim_bios=sim_bios,
         booking_url=booking_url,
         is_owner=is_owner,
         bio_sections=bio_sections,

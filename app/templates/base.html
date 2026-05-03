@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Simulacrum{% endblock %} — AI Career Wealth Platform</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% if advisor_mode is defined and advisor_mode %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/advisor_mode.css') }}">
+  {% endif %}
   {% block head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{{ 'advisor-mode' if (advisor_mode is defined and advisor_mode) else '' }} {% block body_class %}{% endblock %}" aria-label="{{ ('You are viewing a client simulation in advisor mode. Client: ' + (client_profile.display_name if client_profile and client_profile.display_name else 'Client')) if (advisor_mode is defined and advisor_mode) else '' }}">
 
 <nav class="navbar">
   <div class="nav-inner">
@@ -21,8 +24,6 @@
       <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
       {% if current_user.is_partner %}
       <a href="{{ url_for('pages.partner_dashboard') }}" class="nav-link">Partner Dashboard</a>
-      {% else %}
-      <a href="{{ url_for('pages.partner_apply_page') }}" class="nav-link">Become a Partner</a>
       {% endif %}
       {% if current_user.is_admin %}
       <a href="{{ url_for('pages.admin_view') }}" class="nav-link">Admin</a>
@@ -34,7 +35,6 @@
     {% else %}
     <div class="nav-links">
       <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
-      <a href="{{ url_for('pages.partner_apply_page') }}" class="nav-link">Become a Partner</a>
       <a href="{{ url_for('pages.login_page') }}" class="nav-link">Sign in</a>
     </div>
     {% endif %}
@@ -58,6 +58,7 @@
 <footer class="footer">
   <div class="footer-inner">
     <span>© 2026 Simulacrum — Bay Area Experiences Ventures</span>
+    <a href="{{ url_for('pages.partner_apply_page') }}" class="footer-tagline" style="text-decoration:none;color:inherit">Become a Partner</a>
     <span class="footer-tagline">Turn your resume into autonomous income</span>
   </div>
 </footer>
@@ -147,5 +148,169 @@ if (signOutBtn) {
   text-decoration: underline;
 }
 </style>
+{% if current_user.is_authenticated %}
+<!-- Feedback Modal (SIM-PRD-FBK-001) -->
+<div id="feedbackModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#fff;border-radius:12px;max-width:540px;width:100%;padding:2rem;position:relative;max-height:90vh;overflow-y:auto">
+    <button onclick="window.closeFeedbackModal()" aria-label="Close"
+      style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6b7280;line-height:1">&times;</button>
+    <div id="fbModalContent">
+      <h2 style="font-size:1.2rem;font-weight:800;color:#111827;margin:0 0 .25rem">Share Your Story</h2>
+      <p style="font-size:.85rem;color:#6b7280;margin:0 0 1.5rem">Your feedback helps others discover what Simulacrum made possible for you.</p>
+
+      <div style="margin-bottom:1rem">
+        <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#374151;margin-bottom:.5rem">Your rating *</div>
+        <div id="starRow" style="display:flex;gap:.3rem;font-size:1.75rem;cursor:pointer">
+          {% for i in [1,2,3,4,5] %}
+          <span data-val="{{ i }}" onclick="setRating({{ i }})" onmouseenter="hoverRating({{ i }})" onmouseleave="resetStarHover()" style="color:#d1d5db;transition:color .1s">★</span>
+          {% endfor %}
+        </div>
+        <div id="ratingLabel" style="font-size:.78rem;color:#6b7280;margin-top:.25rem;min-height:1em"></div>
+      </div>
+
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#374151;display:block;margin-bottom:.3rem">
+          Which layer(s) drove this result?
+        </label>
+        <div id="layerCheckboxes" style="display:flex;flex-wrap:wrap;gap:.4rem">
+          {% for n,label in [(1,'L1: Active Income'),(2,'L2: Leveraged Income'),(3,'L3: Productized'),(4,'L4: Automated Residual'),(5,'L5: Wealth Deployment'),(6,'L6: Growth Orchestrator'),(0,'General / Overall')] %}
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.8rem;color:#374151;background:#f3f4f6;border-radius:6px;padding:.25rem .6rem;cursor:pointer">
+            <input type="checkbox" value="{{ n }}" style="margin:0"> {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div style="margin-bottom:1rem">
+        <label for="fbOutcome" style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#374151;display:block;margin-bottom:.3rem">
+          What result or change did you experience? *
+        </label>
+        <textarea id="fbOutcome" maxlength="300" rows="3"
+          style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font-size:.9rem;font-family:inherit;resize:vertical;box-sizing:border-box"
+          placeholder="e.g. I landed my first consulting client within 3 weeks of running my Layer 1 cold email campaign…"
+          oninput="document.getElementById('outcomeCount').textContent=this.value.length+'/300'"></textarea>
+        <div style="font-size:.72rem;color:#9ca3af;text-align:right" id="outcomeCount">0/300</div>
+      </div>
+
+      <div style="margin-bottom:1rem">
+        <label for="fbQuote" style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#374151;display:block;margin-bottom:.3rem">
+          In your own words — what would you tell someone considering Simulacrum? *
+        </label>
+        <textarea id="fbQuote" maxlength="200" rows="3"
+          style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font-size:.9rem;font-family:inherit;resize:vertical;box-sizing:border-box"
+          placeholder="e.g. Simulacrum showed me I was sitting on 15 years of expertise I had never thought to sell…"
+          oninput="document.getElementById('quoteCount').textContent=this.value.length+'/200'"></textarea>
+        <div style="font-size:.72rem;color:#9ca3af;text-align:right" id="quoteCount">0/200</div>
+      </div>
+
+      <div style="margin-bottom:1.5rem">
+        <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#374151;margin-bottom:.4rem">
+          How should your name appear if approved? *
+        </div>
+        <div id="nameRadios" style="display:flex;flex-direction:column;gap:.3rem">
+          {% for val,label in [('full','Full name'),('first_last_initial','First name + last initial'),('first_only','First name only'),('anonymous','Anonymous')] %}
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:.875rem;color:#374151;cursor:pointer">
+            <input type="radio" name="fbNameDisplay" value="{{ val }}" {% if val == 'first_last_initial' %}checked{% endif %}>
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div id="fbError" style="font-size:.82rem;color:#991b1b;margin-bottom:.75rem;display:none"></div>
+      <input type="hidden" id="fbSimId">
+      <input type="hidden" id="fbEditId">
+      <button onclick="submitFeedback()"
+        style="background:#0d1a2e;color:#f5c842;border:none;border-radius:8px;padding:.7rem 1.75rem;font-size:.95rem;font-weight:700;cursor:pointer;width:100%">
+        Submit
+      </button>
+    </div>
+    <div id="fbSuccessContent" style="display:none;text-align:center;padding:1.5rem 0">
+      <div style="font-size:2rem;color:#0e7490;margin-bottom:.75rem">✓</div>
+      <h3 style="color:#111827;margin:0 0 .5rem">Thank you for sharing your story.</h3>
+      <p style="color:#6b7280;font-size:.9rem">Your feedback has been submitted for review. We will notify you by email once it has been approved.</p>
+      <button onclick="window.closeFeedbackModal()"
+        style="margin-top:1.25rem;background:#0d1a2e;color:#f5c842;border:none;border-radius:8px;padding:.6rem 1.5rem;font-weight:700;cursor:pointer">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _fbRating = 0;
+const _ratingLabels = {1:'Not what I expected',2:'Okay',3:'Useful',4:'Very valuable',5:'Life-changing'};
+
+window.openFeedbackModal = function(prefill) {
+  _fbRating = (prefill && prefill.star_rating) || 0;
+  document.getElementById('fbModalContent').style.display = '';
+  document.getElementById('fbSuccessContent').style.display = 'none';
+  document.getElementById('fbError').style.display = 'none';
+  document.getElementById('fbOutcome').value = (prefill && prefill.outcome_text) || '';
+  document.getElementById('fbQuote').value  = (prefill && prefill.quote_text) || '';
+  document.getElementById('outcomeCount').textContent = ((prefill&&prefill.outcome_text)||'').length+'/300';
+  document.getElementById('quoteCount').textContent   = ((prefill&&prefill.quote_text)||'').length+'/200';
+  document.getElementById('fbSimId').value  = (prefill && prefill.simulation_id) || '';
+  document.getElementById('fbEditId').value = (prefill && prefill.id) || '';
+  if (_fbRating) setRating(_fbRating);
+  const starEls = document.querySelectorAll('#starRow span');
+  if (_fbRating) { starEls.forEach((s,i) => s.style.color = i < _fbRating ? '#f5c842' : '#d1d5db'); }
+  else { starEls.forEach(s => s.style.color = '#d1d5db'); }
+  document.getElementById('ratingLabel').textContent = _fbRating ? _ratingLabels[_fbRating] : '';
+  const layerChecks = document.querySelectorAll('#layerCheckboxes input[type=checkbox]');
+  const preLayers = (prefill && prefill.layers_attributed) || [];
+  layerChecks.forEach(cb => cb.checked = preLayers.includes(parseInt(cb.value)));
+  const nameRd = document.querySelector(`input[name=fbNameDisplay][value="${(prefill&&prefill.name_display)||'first_last_initial'}"]`);
+  if (nameRd) nameRd.checked = true;
+  document.getElementById('feedbackModalOverlay').style.display = 'flex';
+};
+window.closeFeedbackModal = function() {
+  document.getElementById('feedbackModalOverlay').style.display = 'none';
+};
+document.getElementById('feedbackModalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) window.closeFeedbackModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('feedbackModalOverlay').style.display === 'flex')
+    window.closeFeedbackModal();
+});
+
+function setRating(n) {
+  _fbRating = n;
+  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < n ? '#f5c842' : '#d1d5db');
+  document.getElementById('ratingLabel').textContent = _ratingLabels[n] || '';
+}
+function hoverRating(n) {
+  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < n ? '#f5c842' : '#d1d5db');
+}
+function resetStarHover() {
+  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < _fbRating ? '#f5c842' : '#d1d5db');
+}
+
+async function submitFeedback() {
+  const errEl = document.getElementById('fbError');
+  errEl.style.display = 'none';
+  if (!_fbRating) { errEl.textContent = 'Please select a star rating.'; errEl.style.display=''; return; }
+  const outcome = document.getElementById('fbOutcome').value.trim();
+  const quote   = document.getElementById('fbQuote').value.trim();
+  if (!outcome) { errEl.textContent = 'Outcome field is required.'; errEl.style.display=''; return; }
+  if (!quote)   { errEl.textContent = 'Testimonial quote is required.'; errEl.style.display=''; return; }
+  const nameDisplay = document.querySelector('input[name=fbNameDisplay]:checked')?.value || 'first_last_initial';
+  const layers = [...document.querySelectorAll('#layerCheckboxes input:checked')].map(c => parseInt(c.value));
+  const simId  = document.getElementById('fbSimId').value || null;
+  const editId = document.getElementById('fbEditId').value || null;
+
+  const body = {star_rating:_fbRating, outcome_text:outcome, quote_text:quote, name_display:nameDisplay, layers_attributed:layers, simulation_id:simId};
+  const url  = editId ? ROOT + `/api/feedback/${editId}` : ROOT + '/api/feedback';
+  const method = editId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const data = await res.json();
+  if (!res.ok) { errEl.textContent = data.error || 'Submission failed.'; errEl.style.display=''; return; }
+  document.getElementById('fbModalContent').style.display = 'none';
+  document.getElementById('fbSuccessContent').style.display = '';
+}
+</script>
+{% endif %}
 </body>
 </html>

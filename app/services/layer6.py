@@ -128,14 +128,12 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
     blocked = set(config.blocked_actions)
     channel_approvals = config.channel_approvals
 
-    # Gather action types that are already in flight for this simulation
+    # Gather action types actively in flight (dispatched only — queued rows from prior
+    # cycles that were never selected should remain eligible for re-scoring)
     in_flight = {
         r.action_type for r in Layer6ActionQueue.query.filter(
             Layer6ActionQueue.simulation_id == simulation_id,
-            Layer6ActionQueue.status.in_([
-                Layer6ActionQueue.STATUS_QUEUED,
-                Layer6ActionQueue.STATUS_DISPATCHED,
-            ])
+            Layer6ActionQueue.status == Layer6ActionQueue.STATUS_DISPATCHED,
         ).all()
     }
 
@@ -202,6 +200,21 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
     if not config or not config.is_active:
         raise ValueError(f'Layer 6 not configured or inactive for {simulation_id}')
 
+    # Recover stale dispatched entries — anything still "dispatched" after 30 min
+    # means the previous sync execution crashed or the Celery worker never ran.
+    # Mark them failed so they become eligible for re-dispatch this cycle.
+    stale_cutoff = datetime.utcnow() - timedelta(minutes=30)
+    stale_entries = Layer6ActionQueue.query.filter(
+        Layer6ActionQueue.simulation_id == simulation_id,
+        Layer6ActionQueue.status == Layer6ActionQueue.STATUS_DISPATCHED,
+        Layer6ActionQueue.dispatched_at < stale_cutoff,
+    ).all()
+    for s in stale_entries:
+        s.status = Layer6ActionQueue.STATUS_FAILED
+        logger.warning('Recovered stale dispatched entry %s (%s)', s.id, s.action_type)
+    if stale_entries:
+        db.session.flush()
+
     # Determine phase
     phase = determine_phase(sim, config)
 
@@ -262,11 +275,17 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
 
     dispatched_count = 0
     escalated_count = 0
-    queue_entries: list[Layer6ActionQueue] = []
+    dispatch_entries: list[tuple[Layer6ActionQueue, bool]] = []
 
-    # --- SCHEDULE: select top N ---
-    for action in scored[:config.actions_per_cycle]:
-        is_within_bounds, reason = _check_autonomy_bounds(action['action_type'], config)
+    # --- SCHEDULE: persist ALL scored actions; dispatch only top N ---
+    to_dispatch = {a['action_type'] for a in scored[:config.actions_per_cycle]}
+
+    for action in scored:
+        is_top_n = action['action_type'] in to_dispatch
+        is_within_bounds, reason = (
+            _check_autonomy_bounds(action['action_type'], config) if is_top_n
+            else (False, '')
+        )
 
         entry = Layer6ActionQueue(
             simulation_id=simulation_id,
@@ -276,7 +295,9 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
             priority_score=action['priority_score'],
         )
 
-        if is_within_bounds:
+        if not is_top_n:
+            entry.status = Layer6ActionQueue.STATUS_QUEUED  # scored but not selected
+        elif is_within_bounds:
             entry.status = Layer6ActionQueue.STATUS_DISPATCHED
             entry.dispatched_at = datetime.utcnow()
             dispatched_count += 1
@@ -286,12 +307,13 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
             escalated_count += 1
 
         db.session.add(entry)
-        queue_entries.append((entry, is_within_bounds))
+        if is_top_n:
+            dispatch_entries.append((entry, is_within_bounds))
 
     db.session.flush()  # Populate entry IDs
 
-    # Write execution log entries
-    for entry, within_bounds in queue_entries:
+    # Write execution log entries for dispatched / escalated only
+    for entry, within_bounds in dispatch_entries:
         event_type = (Layer6ExecutionLog.EVENT_DISPATCHED if within_bounds
                       else Layer6ExecutionLog.EVENT_ESCALATED)
         log = Layer6ExecutionLog(
@@ -320,7 +342,7 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
     # Dispatch actions — skip Celery entirely when no Redis broker is configured
     from flask import current_app as _ca
     _has_redis = bool(_ca.config.get('REDIS_URL'))
-    for entry, within_bounds in queue_entries:
+    for entry, within_bounds in dispatch_entries:
         if within_bounds:
             if _has_redis:
                 dispatch_layer6_action.delay(entry.id)
@@ -358,6 +380,7 @@ def _execute_action_sync(entry) -> None:
     entry.agent_action_id = agent_action.id
     db.session.commit()
 
+    from utils.model_router import get_tier
     try:
         result = execute_agent_action(
             action_type=entry.action_type,
@@ -367,6 +390,7 @@ def _execute_action_sync(entry) -> None:
             user_inputs={},
             user_id=sim.user_id if sim else None,
             simulation_id=entry.simulation_id,
+            dispatch_source='orchestrator',
         )
         artifact = result.get('content') or result.get('artifact') or str(result)
         agent_action.artifact = artifact
@@ -382,12 +406,14 @@ def _execute_action_sync(entry) -> None:
             event_type=Layer6ExecutionLog.EVENT_COMPLETED,
             actor=Layer6ExecutionLog.ACTOR_ORCHESTRATOR,
             reasoning='Action completed successfully.',
+            model_tier=get_tier(entry.action_type).value,
         ))
         db.session.commit()
         logger.info('Layer 6 sync action %s (%s) completed', entry.id, entry.action_type)
     except Exception as exc:
         agent_action.status = AgentAction.STATUS_FAILED
         agent_action.error_message = str(exc)
+        entry.status = Layer6ActionQueue.STATUS_FAILED
         db.session.commit()
         logger.exception('Layer 6 sync action %s failed: %s', entry.id, exc)
 
@@ -536,6 +562,13 @@ def build_dashboard(simulation_id: str) -> dict:
         actual_by_layer[o.layer_number] = actual_by_layer.get(o.layer_number, 0) + float(o.actual_income)
         projected_by_layer[o.layer_number] = projected_by_layer.get(o.layer_number, 0) + float(o.projected_income)
 
+    from app.models.agent_action import AgentAction
+    completed_by_layer: dict[int, int] = {}
+    for a in AgentAction.query.filter_by(
+        simulation_id=simulation_id, status=AgentAction.STATUS_COMPLETE
+    ).all():
+        completed_by_layer[a.layer_number] = completed_by_layer.get(a.layer_number, 0) + 1
+
     layer_metrics = []
     for layer in layers:
         actual = actual_by_layer.get(layer.layer_number, 0)
@@ -547,6 +580,7 @@ def build_dashboard(simulation_id: str) -> dict:
             'projected_income': projected,
             'variance': actual - projected,
             'variance_pct': round((actual - projected) / projected * 100, 1) if projected else 0,
+            'completed_count': completed_by_layer.get(layer.layer_number, 0),
         })
 
     total_actual = sum(m['actual_income'] for m in layer_metrics)
@@ -592,3 +626,170 @@ def build_dashboard(simulation_id: str) -> dict:
         'actions': actions,
         'momentum': momentum,
     }
+
+
+# ---------------------------------------------------------------------------
+# Journey data — mirrors get_journey() API logic, called server-side for
+# the advisor GCC view to avoid the _get_sim_or_404 advisor check round-trip.
+# ---------------------------------------------------------------------------
+
+_LAYER_STEPS = {
+    1: [('cold_email_campaign','Cold email'),('consulting_outreach','Outreach'),
+        ('rate_card','Rate card'),('role_search','Role search'),
+        ('linkedin_optimization','LinkedIn opt.'),('booking_page','Booking page'),
+        ('consulting_proposal','Proposal'),('sow','SOW'),('agreement','Agreement'),
+        ('referral_network','Referral net.'),('negotiation_script','Negotiation')],
+    2: [('speaker_proposals','Speaking prop.'),('speaker_fee_rider','Speaker fee'),
+        ('group_coaching_program','Group coaching'),('corporate_training_pitch','Corp. training'),
+        ('workshop_curriculum','Workshop'),('waitlist_landing_page','Waitlist page'),
+        ('alumni_reactivation','Alumni reactiv.'),('roi_calculator','ROI calculator')],
+    3: [('course_curriculum','Course curric.'),('competitor_research','Competitor res.'),
+        ('product_sales_page','Sales page'),('ebook_gumroad','E-book'),
+        ('ab_test_plan','A/B test plan'),('membership_structure','Membership'),
+        ('launch_email_sequence','Launch sequence'),('affiliate_program','Affiliate prog.'),
+        ('testimonial_system','Testimonials'),('lapsed_buyer_winback','Lapsed buyer')],
+    4: [('seo_content_calendar','SEO calendar'),('lead_magnet_funnel','Lead magnet'),
+        ('newsletter_monetization','Newsletter'),('saas_product_spec','SaaS spec'),
+        ('ip_licensing','IP licensing'),('affiliate_partnerships','Affiliate part.'),
+        ('youtube_podcast_strategy','YouTube/pod.'),('community_flywheel','Community'),
+        ('programmatic_ads','Prog. ads'),('winback_campaign','Win-back')],
+    5: [('income_allocation','Income alloc.'),('compound_growth_model','Projections'),
+        ('fund_recommendations','Fund recs.'),('ips','IPS'),('real_estate','Real estate'),
+        ('tax_optimization','Tax optim.'),('entity_structure','Entity struct.'),
+        ('dca_schedule','DCA schedule'),('insurance','Insurance'),
+        ('estate_planning','Estate plan.')],
+}
+
+_LAYER_BLOCKERS = {
+    2: 'consulting_outreach',
+    3: 'group_coaching_program',
+    4: 'product_sales_page',
+    5: 'lead_magnet_funnel',
+}
+
+_UNLOCK_NOTES = {
+    2: 'Activates once your Layer 1 consulting outreach is complete.',
+    3: 'Activates once your Layer 2 group coaching program is complete.',
+    4: 'Activates once your Layer 3 course curriculum and sales page are in place.',
+    5: 'Activates once your Layer 4 lead magnet funnel is in place.',
+}
+
+
+def build_journey_data(simulation_id: str) -> dict:
+    """Build per-layer journey step data for the GCC Journey tab.
+    Mirrors get_journey() in layer6/routes.py — used server-side for advisor view."""
+    from app.models.layer6 import Layer6Config, Layer6Cycle, Layer6ActionQueue
+    from app.models.agent_action import AgentAction
+    from datetime import datetime as _dt, timedelta
+
+    completed_by_type: dict = {}
+    for a in AgentAction.query.filter_by(
+        simulation_id=simulation_id, status=AgentAction.STATUS_COMPLETE,
+    ).order_by(AgentAction.completed_at.asc()).all():
+        completed_by_type[a.action_type] = a
+    completed_types = set(completed_by_type)
+
+    queued_by_type: dict = {}
+    for q in Layer6ActionQueue.query.filter(
+        Layer6ActionQueue.simulation_id == simulation_id,
+        Layer6ActionQueue.status.in_([
+            Layer6ActionQueue.STATUS_QUEUED,
+            Layer6ActionQueue.STATUS_DISPATCHED,
+        ])
+    ).order_by(Layer6ActionQueue.created_at.asc()).all():
+        queued_by_type[q.action_type] = q
+
+    escalated_by_layer: dict = {}
+    for e in Layer6ActionQueue.query.filter_by(
+        simulation_id=simulation_id, status=Layer6ActionQueue.STATUS_ESCALATED,
+    ).all():
+        escalated_by_layer.setdefault(e.source_layer, []).append(e)
+
+    config = Layer6Config.query.filter_by(simulation_id=simulation_id).first()
+    last_cycle = Layer6Cycle.query.filter_by(simulation_id=simulation_id).order_by(
+        Layer6Cycle.cycle_started_at.desc()
+    ).first()
+    cadence_map = {'daily': 1, 'every_3_days': 3, 'weekly': 7}
+    eta_text = 'next cycle'
+    if config and last_cycle:
+        days = cadence_map.get(config.cadence, 1)
+        next_run = last_cycle.cycle_started_at + timedelta(days=days)
+        delta = next_run - _dt.utcnow()
+        if delta.total_seconds() > 0:
+            hours = delta.total_seconds() / 3600
+            eta_text = f'in {int(hours)} hrs' if hours < 48 else f'in {int(hours / 24)} days'
+
+    result = {}
+    for layer_num, seq in _LAYER_STEPS.items():
+        total = len(seq)
+        blocker = _LAYER_BLOCKERS.get(layer_num)
+        is_blocked = bool(blocker and blocker not in completed_types)
+        steps = []
+        for i, (atype, label) in enumerate(seq):
+            artifact_fields = []
+            artifact_version = None
+            if atype in completed_types:
+                status = 'complete'
+                a = completed_by_type[atype]
+                action_id = a.id
+                raw = a.user_inputs or {}
+                artifact_fields = [[k.replace('_', ' ').title(), str(v)[:80]]
+                                   for k, v in list(raw.items())[:4] if v]
+                artifact_version = 1
+            elif atype in queued_by_type:
+                q = queued_by_type[atype]
+                status = 'running' if q.status == Layer6ActionQueue.STATUS_DISPATCHED else 'queued'
+                action_id = q.agent_action_id
+            else:
+                status = 'pending'
+                action_id = None
+            steps.append({'seq': i + 1, 'type': atype, 'label': label,
+                          'status': status, 'action_id': action_id,
+                          'artifact_fields': artifact_fields,
+                          'artifact_version': artifact_version})
+
+        completed_count = sum(1 for s in steps if s['status'] == 'complete')
+        layer_esc = escalated_by_layer.get(layer_num, [])
+        suggested = None
+        if not is_blocked:
+            if layer_esc:
+                suggested = {'state': 'escalated',
+                             'label': f'{len(layer_esc)} actions need your approval',
+                             'type': None, 'action_id': None}
+            elif completed_count >= total:
+                suggested = {'state': 'all_complete',
+                             'label': 'All actions complete for this layer',
+                             'type': None, 'action_id': None}
+            else:
+                for s in steps:
+                    if s['status'] in ('queued', 'pending'):
+                        prefix = '▶ Suggested first action' if completed_count == 0 else '▶ Suggested action'
+                        suggested = {'state': 'queued',
+                                     'label': f"{prefix}: {s['label']}",
+                                     'type': s['type'], 'action_id': s['action_id']}
+                        break
+
+        latest_artifact = None
+        for s in reversed(steps):
+            if s['status'] == 'complete':
+                a = completed_by_type[s['type']]
+                raw = a.user_inputs or {}
+                latest_artifact = {
+                    'action_type': s['type'], 'label': s['label'], 'version': 1,
+                    'fields': {k.replace('_', ' ').title(): str(v)[:80]
+                               for k, v in list(raw.items())[:4] if v},
+                }
+                break
+
+        result[str(layer_num)] = {
+            'is_blocked': is_blocked,
+            'unlock_note': _UNLOCK_NOTES.get(layer_num, '') if is_blocked else '',
+            'total': total,
+            'completed_count': completed_count,
+            'steps': steps,
+            'suggested': suggested,
+            'latest_artifact': latest_artifact,
+            'next_run_eta': eta_text,
+            'escalated': len(layer_esc),
+        }
+    return result

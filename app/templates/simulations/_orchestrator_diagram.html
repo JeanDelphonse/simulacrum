@@ -417,6 +417,11 @@
         id="phaseBadgeDiag">
         {% if diagram_cycle %}{{ diagram_cycle.phase | title }}{% else %}—{% endif %}
       </span>
+      <button class="btn btn-ghost btn-sm" id="diagPhaseToggle" type="button"
+        title="Manually advance or revert the explore/exploit phase"
+        style="font-size:0.75rem;padding:0.2rem 0.55rem">
+        {% if diagram_cycle and diagram_cycle.phase == 'exploit' %}→ Explore{% else %}→ Exploit{% endif %}
+      </button>
     </div>
 
     <div class="orch-header-right">

@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization'
 LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken'
-LINKEDIN_PROFILE_URL = 'https://api.linkedin.com/v2/me'
-LINKEDIN_SCOPE = 'r_liteprofile r_emailaddress'
+LINKEDIN_USERINFO_URL = 'https://api.linkedin.com/v2/userinfo'
+LINKEDIN_SCOPE = 'openid profile email'
 
 
 def get_auth_url(state: str) -> str:
@@ -39,35 +39,24 @@ def exchange_code_for_token(code: str) -> dict:
 
 
 def crawl_profile(access_token: str) -> str:
-    """Crawl LinkedIn profile and return normalized text representation."""
+    """Fetch LinkedIn profile via OpenID Connect userinfo endpoint."""
     import requests  # lazy — avoid slow import at startup
     headers = {'Authorization': f'Bearer {access_token}'}
-    profile = requests.get(LINKEDIN_PROFILE_URL, headers=headers).json()
+    resp = requests.get(LINKEDIN_USERINFO_URL, headers=headers)
+    resp.raise_for_status()
+    profile = resp.json()
 
-    # Build text representation from available profile data
-    name = f"{profile.get('localizedFirstName', '')} {profile.get('localizedLastName', '')}".strip()
-    headline = profile.get('localizedHeadline', '')
+    given  = profile.get('given_name', '')
+    family = profile.get('family_name', '')
+    name   = profile.get('name') or f'{given} {family}'.strip()
+    email  = profile.get('email', '')
 
-    text_parts = [f"Name: {name}", f"Headline: {headline}"]
+    text_parts = [f'Name: {name}']
+    if email:
+        text_parts.append(f'Email: {email}')
 
-    # LinkedIn API v2 for positions
-    positions_url = 'https://api.linkedin.com/v2/positions?q=members&projection=(elements*(title,companyName,startMonthYear,endMonthYear,description))'
-    try:
-        positions_resp = requests.get(positions_url, headers=headers)
-        if positions_resp.ok:
-            data = positions_resp.json()
-            for pos in data.get('elements', []):
-                start = pos.get('startMonthYear', {})
-                end = pos.get('endMonthYear', {})
-                start_str = f"{start.get('month', '')}/{start.get('year', '')}" if start else ''
-                end_str = f"{end.get('month', '')}/{end.get('year', '')}" if end else 'Present'
-                text_parts.append(
-                    f"\n{pos.get('title', '')} at {pos.get('companyName', '')} ({start_str} - {end_str})"
-                )
-                if pos.get('description'):
-                    text_parts.append(pos['description'])
-    except Exception as e:
-        logger.warning(f'Could not fetch LinkedIn positions: {e}')
+    # Work history is not available via standard OAuth; user can add it manually
+    text_parts.append('\n[Work history not imported — please paste your resume text below to enrich this source.]')
 
     return '\n'.join(text_parts)
 

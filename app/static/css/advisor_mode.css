@@ -1,0 +1,412 @@
+/* advisor_mode.css — loaded only on /partners/clients/* advisor routes */
+
+body.advisor-mode {
+  background-color: #FFFBF0;
+}
+
+body.advisor-mode .navbar {
+  background-color: #7A5A16;
+  border-bottom: 2px solid #C9952A;
+}
+
+body.advisor-mode .navbar .nav-logo,
+body.advisor-mode .navbar .nav-link,
+body.advisor-mode .navbar .nav-user {
+  color: #FFFFFF;
+}
+
+body.advisor-mode .navbar .btn-ghost {
+  color: #FFFFFF;
+  border-color: rgba(255,255,255,0.4);
+}
+
+body.advisor-mode .gcc-subnav,
+body.advisor-mode .gcc-tab-row {
+  background-color: #FDF3DC;
+  border-bottom-color: #E8C96A;
+}
+
+body.advisor-mode .gcc-tab-btn.active,
+body.advisor-mode .gcc-tab-btn:hover {
+  color: #7A5A16;
+  border-bottom-color: #C9952A;
+}
+
+body.advisor-mode .gcc-subnav a.active,
+body.advisor-mode .gcc-subnav a:hover {
+  color: #7A5A16;
+  border-bottom-color: #C9952A;
+}
+
+body.advisor-mode h1 {
+  border-bottom-color: #C9952A;
+}
+
+body.advisor-mode .btn-primary {
+  background: #C9952A;
+  border-color: #C9952A;
+  color: #FFFFFF;
+}
+
+body.advisor-mode .btn-primary:hover {
+  background: #A87820;
+  border-color: #A87820;
+}
+
+body.advisor-mode a {
+  color: #7A5A16;
+}
+
+body.advisor-mode .jrn-progress-fill {
+  background: #C9952A !important;
+}
+
+/* Advisor banner */
+.advisor-banner {
+  background: #FDF3DC;
+  border-bottom: 2px solid #C9952A;
+  padding: 0 1.5rem;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.82rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.advisor-banner-badge {
+  background: #C9952A;
+  color: #FFFFFF;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.advisor-banner-client {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.advisor-banner-center {
+  flex: 1;
+  font-size: 0.78rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.advisor-banner-back {
+  font-size: 0.78rem;
+  color: #C9952A;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.advisor-banner-back:hover {
+  text-decoration: underline;
+}
+
+.advisor-sim-selector {
+  background: rgba(0,0,0,.12);
+  border: 1px solid rgba(201,149,42,.5);
+  color: #1e293b;
+  border-radius: 6px;
+  padding: .2rem .5rem;
+  font-size: .78rem;
+  font-family: inherit;
+  cursor: pointer;
+  max-width: 240px;
+}
+.advisor-sim-selector:focus { outline: none; border-color: #C9952A; }
+
+/* Coaching notes panel inside expanded layer rows */
+.jrn-coaching {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #E8C96A;
+}
+
+.jrn-coaching-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #C9952A;
+  margin-bottom: 0.5rem;
+}
+
+.jrn-coaching-count {
+  background: #C9952A;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+
+.jrn-notes-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.jrn-note-item {
+  background: #fff;
+  border: 1px solid #E8C96A;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.jrn-note-meta {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+  white-space: nowrap;
+}
+
+.jrn-note-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.jrn-note-delete:hover { color: #991b1b; }
+
+.jrn-coaching-input {
+  width: 100%;
+  border: 1px solid #E8C96A;
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 64px;
+  background: #fff;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.jrn-coaching-input:focus {
+  outline: none;
+  border-color: #C9952A;
+}
+
+.jrn-coaching-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+}
+
+.jrn-coaching-charcount {
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.jrn-coaching-save {
+  background: #C9952A;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.jrn-coaching-save:hover { background: #A87820; }
+.jrn-coaching-save:disabled { opacity: 0.6; cursor: default; }
+
+.jrn-suggest-footer {
+  margin-top: 0.5rem;
+}
+
+.jrn-suggest-add-btn {
+  background: none;
+  border: 1px solid #C9952A;
+  color: #C9952A;
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.jrn-suggest-add-btn:hover { background: rgba(201,149,42,0.08); }
+
+/* Client-facing suggestion callout */
+.jrn-suggestion-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: #FFFBF0;
+  border: 1.5px solid #C9952A;
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.82rem;
+  color: #1e293b;
+  position: relative;
+}
+
+.jrn-suggestion-callout.is-urgent {
+  background: #FEF3C7;
+  border-color: #F59E0B;
+}
+
+.jrn-suggestion-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #C9952A;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.jrn-suggestion-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.jrn-suggestion-dismiss:hover { color: #475569; }
+
+/* Flag button in step panel (advisor mode) */
+.jrn-ap-flag {
+  background: none;
+  border: 1px solid #C9952A;
+  color: #C9952A;
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.jrn-ap-flag:hover { background: rgba(201,149,42,0.1); }
+
+/* Flag badge on step circles (client view) */
+.jrn-step-circle.has-flag::after {
+  content: '⚑';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  font-size: 9px;
+  color: #D97706;
+}
+
+.jrn-step-circle {
+  position: relative;
+}
+
+/* Flag modal */
+.flag-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.flag-modal-overlay.show { display: flex; }
+
+.flag-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.flag-modal h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.75rem;
+}
+
+.flag-modal textarea {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  box-sizing: border-box;
+  color: #1e293b;
+}
+
+.flag-modal-footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  justify-content: flex-end;
+}
+
+.flag-modal-cancel {
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: #475569;
+}
+
+.flag-modal-send {
+  background: #C9952A;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+.flag-modal-send:hover { background: #A87820; }
+.flag-modal-send:disabled { opacity: 0.6; cursor: default; }

@@ -47,7 +47,26 @@
       <p id="simZoneLabel" class="sim-zone-label"></p>
       <input type="text" id="simName" placeholder="Simulation name" class="input-text">
       <textarea id="simFocusHint" placeholder="Optional: focus hint (e.g. 'Focus on SaaS products only')" class="input-textarea" rows="3"></textarea>
-      <div id="card-element" class="stripe-card-element"></div>
+      <div class="card-fields">
+        <div class="card-field-row">
+          <label class="card-field-label">Card Number</label>
+          <div id="stripe-card-number" class="stripe-field"></div>
+        </div>
+        <div class="card-field-split">
+          <div class="card-field-row">
+            <label class="card-field-label">Expiration</label>
+            <div id="stripe-card-expiry" class="stripe-field"></div>
+          </div>
+          <div class="card-field-row">
+            <label class="card-field-label">CVV</label>
+            <div id="stripe-card-cvc" class="stripe-field"></div>
+          </div>
+          <div class="card-field-row">
+            <label class="card-field-label">ZIP</label>
+            <input id="stripe-postal" class="stripe-field stripe-field-input" type="text" inputmode="numeric" placeholder="10001" maxlength="10" autocomplete="postal-code">
+          </div>
+        </div>
+      </div>
       <div id="simError" class="form-error hidden"></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -63,8 +82,21 @@
 <script>
 const stripe = Stripe('{{ stripe_pk }}');
 const elements = stripe.elements();
-const cardElement = elements.create('card');
-cardElement.mount('#card-element');
+const _elStyle = {
+  base: {
+    color: '#ffffff',
+    fontFamily: 'inherit',
+    fontSize: '15px',
+    '::placeholder': { color: 'rgba(255,255,255,0.35)' },
+  },
+  invalid: { color: '#f87171' },
+};
+const cardNumberEl = elements.create('cardNumber', { style: _elStyle, showIcon: true });
+const cardExpiryEl = elements.create('cardExpiry', { style: _elStyle });
+const cardCvcEl    = elements.create('cardCvc',    { style: _elStyle });
+cardNumberEl.mount('#stripe-card-number');
+cardExpiryEl.mount('#stripe-card-expiry');
+cardCvcEl.mount('#stripe-card-cvc');
 
 let selectedZone = null;
 let selectedResumeId = null;
@@ -157,7 +189,12 @@ async function confirmCreateSim() {
 
     // Step 2: Confirm the card payment via Stripe.js
     const { error: stripeError } = await stripe.confirmCardPayment(data.client_secret, {
-      payment_method: { card: cardElement },
+      payment_method: {
+        card: cardNumberEl,
+        billing_details: {
+          address: { postal_code: document.getElementById('stripe-postal').value.trim() },
+        },
+      },
     });
     if (stripeError) {
       errEl.textContent = stripeError.message || 'Card payment failed';

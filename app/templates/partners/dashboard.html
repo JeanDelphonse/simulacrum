@@ -47,13 +47,14 @@
     <div id="clientsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
   </section>
 
-  {# Advisor View Clients #}
+  {# Your Clients — SIM-PRD-PART-002 #}
   <section class="dashboard-section">
-    <h2 class="section-title">Advisor View Access</h2>
-    <p style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:.75rem">
-      Clients who have shared their Simulation with you for coaching.
-    </p>
-    <div id="advisorClientsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
+      <h2 class="section-title" style="margin:0">Your Clients</h2>
+      <span id="clientCountBadge" style="display:none;background:#C9952A;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:999px"></span>
+    </div>
+    <p style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:.75rem">Clients who have shared their Simulacrum plan with you.</p>
+    <div id="sharedClientsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
   </section>
 
   {# Payout History #}
@@ -139,6 +140,67 @@ async function loadAdvisorClients() {
   </table>`;
 }
 
+async function loadSharedClients() {
+  const res = await fetch(ROOT + '/api/partners/advisor-clients');
+  if (!res.ok) return;
+  const items = await res.json();
+  const el = document.getElementById('sharedClientsContainer');
+  const badge = document.getElementById('clientCountBadge');
+  if (!items.length) {
+    el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:rgba(255,255,255,.35);font-size:.85rem">
+      <p>None of your referred clients have shared their plan with you yet.</p>
+      <p style="margin-top:.5rem">Send your referral link to get started.</p>
+    </div>`;
+    return;
+  }
+  badge.textContent = items.length;
+  badge.style.display = '';
+
+  const LAYER_COLORS = ['#534AB7','#0F6E56','#D85A30','#BA7517','#185FA5'];
+
+  el.innerHTML = items.map(a => {
+    const layerDots = [1,2,3,4,5].map(n => {
+      const active = a.active_layers && a.active_layers.includes(n);
+      return `<span title="Layer ${n}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${active ? LAYER_COLORS[n-1] : 'rgba(255,255,255,.2)'};margin-right:3px"></span>`;
+    }).join('');
+    const lastCycle = a.last_cycle_at
+      ? timeAgo(new Date(a.last_cycle_at))
+      : '—';
+    const sharedDate = new Date(a.granted_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    const phase = a.phase ? `<span style="display:inline-block;padding:.1rem .45rem;border-radius:999px;font-size:.65rem;font-weight:700;background:${a.phase==='exploit'?'#dcfce7':'#fef9c3'};color:${a.phase==='exploit'?'#166534':'#854d0e'}">${a.phase.charAt(0).toUpperCase()+a.phase.slice(1)} · Cycle ${a.cycle_number||1}</span>` : '';
+    const gcUrl = `${ROOT}/partners/clients/${esc(a.client_user_id)}/simulations/${esc(a.simulation_id)}/gcc`;
+    return `<div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border:1px solid rgba(255,255,255,.1);border-radius:8px;margin-bottom:.5rem;background:rgba(255,255,255,.04)">
+      <div style="flex:1;min-width:0">
+        <a href="${gcUrl}" style="color:#C9952A;font-weight:600;font-size:.92rem;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(a.client_name||'Client')}</a>
+        <div style="font-size:.75rem;color:rgba(255,255,255,.45);margin-top:.15rem">${esc(a.expertise_zone||'—')}</div>
+      </div>
+      <div style="flex-shrink:0">${phase}</div>
+      <div style="flex-shrink:0;text-align:center">
+        <div style="margin-bottom:.2rem">${layerDots}</div>
+        <div style="font-size:.68rem;color:rgba(255,255,255,.3)">Layer activity</div>
+      </div>
+      <div style="flex-shrink:0;text-align:right;font-size:.75rem;color:rgba(255,255,255,.4)">
+        <div>Last cycle: ${lastCycle}</div>
+        <div style="margin-top:.1rem">Shared ${sharedDate}</div>
+      </div>
+      <a href="${gcUrl}" class="btn btn-primary btn-sm" style="flex-shrink:0;white-space:nowrap">View plan →</a>
+    </div>`;
+  }).join('');
+}
+
+function timeAgo(date) {
+  const s = Math.floor((Date.now() - date) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s/60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m/60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h/24);
+  if (d < 30) return `${d} day${d===1?'':'s'} ago`;
+  const mo = Math.floor(d/30);
+  return `${mo} month${mo===1?'':'s'} ago`;
+}
+
 async function loadPayouts() {
   const res = await fetch(ROOT + '/api/partners/payouts');
   const payouts = await res.json();
@@ -212,6 +274,7 @@ async function loadInvitations() {
 loadDashboard();
 loadClients();
 loadAdvisorClients();
+loadSharedClients();
 loadPayouts();
 loadInvitations();
 </script>

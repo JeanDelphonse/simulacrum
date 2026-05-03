@@ -89,7 +89,12 @@ def dispatch_layer6_action(self, queue_entry_id: str):
         agent_action.status = AgentAction.STATUS_FAILED
         agent_action.error_message = str(exc)
         db.session.commit()
-        raise self.retry(exc=exc)
+        try:
+            raise self.retry(exc=exc)
+        except self.MaxRetriesExceededError:
+            from app.models.layer6 import Layer6ActionQueue as _Q
+            entry.status = _Q.STATUS_FAILED
+            db.session.commit()
 
 
 @celery.task

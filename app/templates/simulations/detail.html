@@ -92,7 +92,7 @@
       {% if simulation.status == 'complete' %}
       <button class="btn btn-ghost" onclick="exportSim('{{ simulation.id }}')">Export PDF</button>
       <button class="btn btn-ghost" onclick="shareSimulation('{{ simulation.id }}')">Share</button>
-      <a href="{{ url_for('pages.layer6_view', sim_id=simulation.id) }}" class="btn btn-primary">⚡ Layer 6</a>
+      <a href="{{ url_for('pages.layer6_view', sim_id=simulation.id) }}" class="btn btn-primary">⚡ Growth Command Center</a>
       {% endif %}
     </div>
   </div>
@@ -157,6 +157,16 @@
     </div>
   </div>
 </div>
+
+{% if simulation.status == 'complete' and is_owner %}
+<div style="text-align:center;padding:1.5rem 0 2.5rem;border-top:1px solid rgba(255,255,255,.06);margin-top:2rem">
+  <span style="font-size:.875rem;color:rgba(255,255,255,.4)">Got results from this Simulation?</span>
+  <button class="btn btn-ghost btn-sm" style="margin-left:.75rem"
+    onclick="window.openFeedbackModal({simulation_id:'{{ simulation.id }}'})">
+    Share your results
+  </button>
+</div>
+{% endif %}
 
 {% endblock %}
 

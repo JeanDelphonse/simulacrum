@@ -229,20 +229,42 @@ def list_advisor_clients(partner):
     ).all()
     from app.models.simulation import Simulation
     from app.models.user import User
+    from app.models.layer6 import Layer6Cycle, Layer6ActionQueue
+    from sqlalchemy import func
     results = []
     for access in accesses:
         sim = Simulation.query.get(access.simulation_id)
         client = User.query.get(access.granted_by) if sim else None
+        latest_cycle = None
+        if sim:
+            latest_cycle = Layer6Cycle.query.filter_by(simulation_id=sim.id).order_by(
+                Layer6Cycle.cycle_number.desc()
+            ).first()
+        active_layers = []
+        if latest_cycle:
+            active_layer_rows = db.session.query(
+                Layer6ActionQueue.source_layer
+            ).filter_by(
+                simulation_id=sim.id, cycle_id=latest_cycle.id,
+                status='complete',
+            ).distinct().all()
+            active_layers = [r.source_layer for r in active_layer_rows if r.source_layer]
         results.append({
             'access_id': access.id,
             'simulation_id': access.simulation_id,
+            'client_user_id': access.granted_by,
             'simulation_name': sim.name if sim else None,
             'expertise_zone': sim.expertise_zone if sim else None,
             'client_name': client.full_name if client else None,
             'client_email': client.email if client else None,
             'granted_at': access.granted_at.isoformat(),
             'last_viewed_at': access.last_viewed_at.isoformat() if access.last_viewed_at else None,
+            'last_cycle_at': latest_cycle.cycle_completed_at.isoformat() if latest_cycle and latest_cycle.cycle_completed_at else None,
+            'phase': latest_cycle.phase if latest_cycle else None,
+            'cycle_number': latest_cycle.cycle_number if latest_cycle else None,
+            'active_layers': active_layers,
         })
+    results.sort(key=lambda r: r['last_cycle_at'] or '', reverse=True)
     return jsonify(results), 200
 
 

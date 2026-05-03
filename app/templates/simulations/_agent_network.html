@@ -1,0 +1,775 @@
+<!-- Agent Network Visualization Modal — SIM-PRD-VIZ-002 -->
+<style>
+/* ── Modal overlay ────────────────────────────────────────────────────────── */
+.anv-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 700;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+}
+.anv-modal-overlay.open { display: flex; }
+
+.anv-modal {
+  background: #0b1120;
+  border-radius: 12px;
+  width: min(99vw, 1500px);
+  height: min(96vh, 900px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 28px 80px rgba(0,0,0,0.65);
+  position: relative;
+  color: #e2e8f0;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.anv-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #1a2535;
+  background: #0d1626;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.anv-modal-title {
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  margin-right: 0.25rem;
+  white-space: nowrap;
+}
+.anv-modal-close {
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  line-height: 1;
+  margin-left: auto;
+}
+.anv-modal-close:hover { color: #f1f5f9; background: #1e293b; }
+
+/* Cycle select */
+#anv-cycle-select {
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.22rem 0.45rem;
+  font-size: 0.75rem;
+  max-width: 180px;
+}
+
+/* Phase badge */
+.anv-phase-badge {
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #1e293b;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+.anv-phase-explore { background: #451a03; color: #fdba74; }
+.anv-phase-exploit { background: #052e16; color: #4ade80; }
+
+/* Tier filter */
+.anv-tier-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-left: 1px solid #1e293b;
+  padding-left: 0.5rem;
+  margin-left: 0.15rem;
+}
+.anv-tier-btn {
+  padding: 0.18rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border: 1px solid #1e293b;
+  border-radius: 4px;
+  background: #0f172a;
+  color: #334155;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.anv-tier-btn.active { background: #1e293b; color: #cbd5e1; border-color: #334155; }
+.anv-tier-btn:hover  { background: #334155; color: #f1f5f9; }
+
+/* Header action buttons */
+.anv-hdr-btn {
+  padding: 0.22rem 0.6rem;
+  font-size: 0.72rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #94a3b8;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.anv-hdr-btn:hover   { background: #334155; color: #f1f5f9; }
+.anv-hdr-btn:disabled{ opacity: .45; cursor: not-allowed; }
+.anv-hdr-btn.primary { background: #1e3a8a; border-color: #1d4ed8; color: #bfdbfe; }
+.anv-hdr-btn.primary:hover { background: #1d4ed8; color: #fff; }
+
+/* Separator */
+.anv-hdr-sep {
+  width: 1px;
+  height: 18px;
+  background: #1e293b;
+  margin: 0 0.1rem;
+}
+
+/* ── Body layout ──────────────────────────────────────────────────────────── */
+.anv-modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Breadcrumb */
+#anv-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.7rem;
+  color: #475569;
+  border-bottom: 1px solid #1a2535;
+  background: #0d1626;
+  min-height: 26px;
+  flex-shrink: 0;
+}
+.anv-bc-item {
+  cursor: pointer;
+  color: #64748b;
+  padding: 0 0.15rem;
+  border-radius: 3px;
+}
+.anv-bc-item:hover { color: #f1f5f9; background: #1e293b; }
+.anv-bc-current { color: #e2e8f0; font-weight: 600; cursor: default; }
+.anv-bc-sep { color: #1e293b; padding: 0 0.1rem; }
+
+/* Canvas wrapper */
+.anv-canvas-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+#anv-canvas {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at 50% 40%, #0d1f3c 0%, #060e1c 100%);
+  display: block;
+  cursor: default;
+}
+
+/* Live banner */
+#anv-live-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(49,46,129,0.96);
+  color: #c7d2fe;
+  padding: 0.35rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  z-index: 6;
+}
+
+/* ── Inspector panel ──────────────────────────────────────────────────────── */
+#anv-inspector {
+  position: absolute;
+  top: 0;
+  right: -400px;
+  width: 380px;
+  height: 100%;
+  background: #0f172a;
+  border-left: 1px solid #1e293b;
+  transition: right 0.25s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+#anv-inspector.open { right: 0; }
+#anv-inspector::-webkit-scrollbar { width: 4px; }
+#anv-inspector::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+
+.anv-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid #1e293b;
+  position: sticky;
+  top: 0;
+  background: #0f172a;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.anv-inspector-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #334155;
+}
+.anv-inspector-close-btn {
+  background: none;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  line-height: 1;
+}
+.anv-inspector-close-btn:hover { color: #f1f5f9; background: #1e293b; }
+
+/* Inspector content */
+.insp-node-header {
+  padding: 0.9rem 0.9rem 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+.insp-node-id {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: 0.04em;
+}
+.insp-node-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 0.2rem;
+}
+.insp-status-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.35rem;
+}
+.insp-tier-label {
+  font-size: 0.68rem;
+  color: #334155;
+  margin-top: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.insp-tabs {
+  display: flex;
+  border-bottom: 1px solid #1e293b;
+  background: #0d1626;
+  flex-shrink: 0;
+}
+.insp-tab {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: #334155;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.insp-tab:hover { color: #94a3b8; }
+.insp-tab.active { color: #e2e8f0; border-bottom-color: #6366f1; }
+.insp-tab-count {
+  display: inline-block;
+  background: #1e293b;
+  color: #64748b;
+  border-radius: 999px;
+  padding: 0 0.3rem;
+  font-size: 0.62rem;
+  margin-left: 0.2rem;
+  vertical-align: middle;
+}
+
+.insp-tab-content.hidden { display: none; }
+
+.insp-kv-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.insp-kv-table tr { border-bottom: 1px solid #1a2535; }
+.insp-kv-table tr:last-child { border-bottom: none; }
+.insp-kv-key {
+  padding: 0.42rem 0.75rem;
+  color: #475569;
+  font-size: 0.72rem;
+  width: 42%;
+  vertical-align: top;
+}
+.insp-kv-val {
+  padding: 0.42rem 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.insp-payload-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.insp-payload-table th {
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #334155;
+  border-bottom: 1px solid #1e293b;
+  background: #0b1120;
+  position: sticky;
+  top: 0;
+}
+.insp-payload-table td {
+  padding: 0.32rem 0.6rem;
+  color: #cbd5e1;
+  border-bottom: 1px solid #111827;
+  vertical-align: top;
+  font-size: 0.76rem;
+}
+.insp-payload-table .insp-kv-key { color: #475569; font-size: 0.7rem; }
+
+.insp-empty {
+  padding: 1.5rem 1rem;
+  color: #334155;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.insp-copy-btn {
+  display: block;
+  width: calc(100% - 1.5rem);
+  margin: 0.5rem 0.75rem;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.7rem;
+  background: #1e293b;
+  color: #64748b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+.insp-copy-btn:hover { background: #334155; color: #f1f5f9; }
+
+.insp-trace-btn {
+  padding: 0.12rem 0.4rem;
+  font-size: 0.72rem;
+  background: #1e293b;
+  color: #64748b;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+}
+.insp-trace-btn:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
+
+.insp-collapse-toggle {
+  color: #6366f1;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-family: monospace;
+}
+.insp-collapse-toggle:hover { color: #818cf8; }
+
+.insp-error-detail {
+  margin: 0.75rem;
+  padding: 0.7rem;
+  background: #1a0c0c;
+  border: 1px solid #450a0a;
+  border-radius: 6px;
+}
+
+.insp-retry-btn {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.72rem;
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.insp-retry-btn:hover { background: #334155; color: #f1f5f9; }
+.insp-retry-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── View toggle segmented control ───────────────────────────────────────── */
+.anv-view-toggle {
+  display: flex;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.anv-view-btn {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #0f172a;
+  color: #475569;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s, color .12s;
+}
+.anv-view-btn + .anv-view-btn { border-left: 1px solid #1e293b; }
+.anv-view-btn.active { background: #1e293b; color: #e2e8f0; }
+.anv-view-btn:hover:not(.active) { background: #1a2535; color: #94a3b8; }
+
+/* ── Swimlane canvas wrapper ──────────────────────────────────────────────── */
+#anv-sl-canvas {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  background: #060e1c;
+  display: none;
+}
+
+/* ── Live Node Editor panel ───────────────────────────────────────────────── */
+#anv-node-editor {
+  position: absolute;
+  top: 0;
+  right: -360px;
+  width: 340px;
+  height: 100%;
+  background: #0f172a;
+  border-left: 1px solid #1e293b;
+  transition: right 0.25s cubic-bezier(.4,0,.2,1);
+  display: flex;
+  flex-direction: column;
+  z-index: 11;
+  overflow: hidden;
+}
+#anv-node-editor.open { right: 0; }
+
+.ned-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
+  background: #0d1626;
+}
+.ned-title {
+  flex: 1;
+  min-width: 0;
+}
+.ned-action-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  word-break: break-word;
+}
+.ned-layer-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-top: 0.2rem;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  display: inline-block;
+}
+.ned-close-btn {
+  background: none;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.ned-close-btn:hover { color: #f1f5f9; background: #1e293b; }
+
+.ned-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 0.85rem;
+}
+.ned-body::-webkit-scrollbar { width: 4px; }
+.ned-body::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+
+.ned-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #334155;
+  margin: 0.6rem 0 0.4rem;
+}
+.ned-section-label:first-child { margin-top: 0; }
+
+.ned-field {
+  margin-bottom: 0.55rem;
+}
+.ned-field-label {
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.ned-required-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #f59e0b;
+  flex-shrink: 0;
+}
+.ned-input {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-left: 3px solid #334155;
+  border-radius: 5px;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.73rem;
+  color: #e2e8f0;
+  resize: vertical;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.ned-input:focus { outline: none; border-color: #6366f1; }
+.ned-input.conf-high { border-left-color: #0d9488; }
+.ned-input.conf-low  { border-left-color: #f59e0b; }
+.ned-input.conf-none { border-left-color: #334155; }
+
+.ned-empty-state {
+  color: #334155;
+  font-size: 0.78rem;
+  text-align: center;
+  padding: 1.5rem 0.5rem;
+}
+
+.ned-artifact-box {
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 0.6rem;
+  font-size: 0.73rem;
+  color: #94a3b8;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  margin-top: 0.4rem;
+}
+.ned-artifact-box::-webkit-scrollbar { width: 3px; }
+.ned-artifact-box::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+.ned-version-badge {
+  display: inline-block;
+  background: #1e3a8a;
+  color: #bfdbfe;
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+.ned-stale-warning {
+  background: #fffaed;
+  border: 1px solid #e8b84b;
+  border-radius: 5px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.7rem;
+  color: #92400e;
+  margin-top: 0.5rem;
+}
+
+.ned-footer {
+  padding: 0.6rem 0.85rem;
+  border-top: 1px solid #1e293b;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #0d1626;
+}
+.ned-run-btn {
+  flex: 1;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #1e3a8a;
+  color: #bfdbfe;
+  border: 1px solid #1d4ed8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.ned-run-btn:hover:not(:disabled) { background: #1d4ed8; color: #fff; }
+.ned-run-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ned-run-status {
+  font-size: 0.7rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* ── Diff panel ───────────────────────────────────────────────────────────── */
+#anv-diff-panel {
+  background: #0d1626;
+  border-top: 1px solid #1e293b;
+  padding: 0.7rem 1rem;
+  flex-shrink: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+#anv-diff-panel.hidden { display: none; }
+.anv-diff-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.anv-diff-sel {
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.75rem;
+}
+.anv-diff-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+</style>
+
+<div id="anv-modal" class="anv-modal-overlay" role="dialog" aria-modal="true" aria-label="Agent Network Visualization">
+  <div class="anv-modal">
+
+    <!-- ── Header ── -->
+    <div class="anv-modal-header">
+      <span class="anv-modal-title">🕸 Agent Network</span>
+
+      <!-- View toggle: Layer actions / Agent network -->
+      <div class="anv-view-toggle" role="group" aria-label="View selector">
+        <button id="anv-view-swimlane" class="anv-view-btn active" title="Layer action swimlane (V)">Layer actions</button>
+        <button id="anv-view-network"  class="anv-view-btn"        title="Force-directed agent network (V)">Agent network</button>
+      </div>
+
+      <select id="anv-cycle-select" title="Select cycle" aria-label="Cycle selector"></select>
+
+      <span id="anv-phase-badge" class="anv-phase-badge">—</span>
+
+      <div class="anv-hdr-sep"></div>
+
+      <div id="anv-tier-filter" class="anv-tier-filter" role="group" aria-label="Tier filter"></div>
+
+      <div class="anv-hdr-sep"></div>
+
+      <button id="anv-zoom-in"      class="anv-hdr-btn" title="Zoom in  (+)">+</button>
+      <button id="anv-zoom-out"     class="anv-hdr-btn" title="Zoom out (−)">−</button>
+      <button id="anv-zoom-fit"     class="anv-hdr-btn" title="Fit to screen (0)">⊡</button>
+      <button id="anv-reset-layout" class="anv-hdr-btn" title="Reset node positions">↺ Reset</button>
+
+      <div class="anv-hdr-sep"></div>
+
+      <button id="anv-run-now" class="anv-hdr-btn primary" title="Trigger a cycle now">▶ Run Now</button>
+      <button id="anv-share"   class="anv-hdr-btn" title="Share this view">⤴ Share</button>
+      <button id="anv-diff-btn" class="anv-hdr-btn" title="Compare two cycles">⇄ Diff</button>
+
+      <button class="anv-modal-close" id="anv-modal-close-btn"
+              type="button" aria-label="Close Agent Network">&times;</button>
+    </div>
+
+    <!-- ── Body ── -->
+    <div class="anv-modal-body">
+
+      <!-- Breadcrumb trail -->
+      <nav id="anv-breadcrumb" role="navigation" aria-label="Inspector breadcrumb trail"></nav>
+
+      <!-- Canvas + overlays -->
+      <div class="anv-canvas-wrapper">
+        <!-- Force-directed network canvas -->
+        <div id="anv-canvas" role="img" aria-label="Agent Network diagram"></div>
+
+        <!-- Swimlane canvas (hidden by default) -->
+        <div id="anv-sl-canvas" role="img" aria-label="Layer action swimlane diagram"></div>
+
+        <!-- Live-cycle banner -->
+        <div id="anv-live-banner" style="display:none">
+          <span>⚡ Cycle running live — updates arriving</span>
+          <button id="anv-go-live" class="anv-hdr-btn">View latest →</button>
+        </div>
+
+        <!-- Inspector slide-in panel -->
+        <aside id="anv-inspector" role="complementary" aria-label="Node / Edge Inspector">
+          <div class="anv-inspector-header">
+            <span class="anv-inspector-title">Inspector</span>
+            <button id="anv-inspector-close" class="anv-inspector-close-btn"
+                    type="button" aria-label="Close inspector">&times;</button>
+          </div>
+          <div id="anv-inspector-content"></div>
+        </aside>
+
+        <!-- Live Node Editor (swimlane click → slide in from right) -->
+        <aside id="anv-node-editor" role="complementary" aria-label="Live Node Editor">
+          <div class="ned-header">
+            <div class="ned-title">
+              <div class="ned-action-name" id="ned-action-name">—</div>
+              <span class="ned-layer-badge" id="ned-layer-badge"></span>
+            </div>
+            <button id="ned-close-btn" class="ned-close-btn" type="button" aria-label="Close editor">&times;</button>
+          </div>
+          <div class="ned-body" id="ned-body">
+            <div class="ned-empty-state">Select an agent node to edit its inputs and re-run.</div>
+          </div>
+          <div class="ned-footer">
+            <button id="ned-run-btn" class="ned-run-btn" disabled>▶ Run Agent</button>
+            <span class="ned-run-status" id="ned-run-status"></span>
+          </div>
+        </aside>
+      </div>
+
+      <!-- Diff panel -->
+      <div id="anv-diff-panel" class="hidden" role="region" aria-label="Cycle diff comparison">
+        <div class="anv-diff-row">
+          <span class="anv-diff-label">Compare cycles:</span>
+          <select id="anv-diff-a" class="anv-diff-sel" aria-label="Cycle A"></select>
+          <span style="color:#475569;font-size:.8rem">vs</span>
+          <select id="anv-diff-b" class="anv-diff-sel" aria-label="Cycle B"></select>
+          <button id="anv-diff-compare" class="anv-hdr-btn primary">Compare →</button>
+          <button id="anv-diff-close"   class="anv-hdr-btn" style="margin-left:auto">✕ Close</button>
+        </div>
+        <div id="anv-diff-result"></div>
+      </div>
+
+    </div><!-- /.anv-modal-body -->
+
+    <!-- Accessibility live-announcements region -->
+    <div id="anv-announce" aria-live="polite" aria-atomic="true"
+         style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap"></div>
+
+  </div><!-- /.anv-modal -->
+</div><!-- /.anv-modal-overlay -->

@@ -73,6 +73,7 @@
     setupNodeClicks();
     setupRunNow();
     setupShare();
+    setupPhaseToggle();
     setupLayerFilterButtons();
     setupModalClose();
     if (cycleData) {
@@ -134,15 +135,9 @@
     populateScorePanel(cycleData);
     populateReportPanel(cycleData);
 
-    // DAG — fetch from /dag endpoint and render
-    apiFetch(API + '/dag').then(function (dagData) {
-      const queue = cycleData.action_queue || cycleData.actions || [];
-      renderDAG(dagData.nodes || [], queue);
-    }).catch(function () {
-      // Render with action_queue as fallback nodes
-      const queue = cycleData.action_queue || cycleData.actions || [];
-      renderDAG([], queue);
-    });
+    // DAG — show all queued actions for this cycle (color-coded by status)
+    const queue = cycleData.action_queue || cycleData.actions || [];
+    renderDAG([], queue);
   }
 
   // ── Phase badge ──────────────────────────────────────────────────────────
@@ -474,12 +469,26 @@
       .attr('width', width)
       .attr('height', height);
 
-    // Defs: arrowhead
+    // Node dimensions
+    const NODE_W = 120;
+    const NODE_H = 26;
+
+    // Text colour per status (light bg → dark text, dark bg → white)
+    const STATUS_TEXT_COLORS = {
+      complete:   '#1e293b',
+      dispatched: '#ffffff',
+      queued:     '#ffffff',
+      escalated:  '#1e293b',
+      blocked:    '#ffffff',
+      rejected:   '#ffffff',
+    };
+
+    // Defs: arrowhead — refX accounts for rect half-height on vertical approach
     const defs = svg.append('defs');
     defs.append('marker')
       .attr('id', 'dag-arrow')
       .attr('viewBox', '0 0 8 8')
-      .attr('refX', 14)
+      .attr('refX', 22)
       .attr('refY', 3)
       .attr('markerWidth', 6)
       .attr('markerHeight', 6)
@@ -499,10 +508,34 @@
     allNodes.forEach(function (n) {
       (n.prerequisites || []).forEach(function (prereqId) {
         if (nodeById[prereqId]) {
-          links.push({ source: prereqId, target: n.id });
+          links.push({ source: prereqId, target: n.id, explicit: true });
         }
       });
     });
+
+    // Auto-generate inter-layer edges (layer N → layer N+1)
+    var layerGroups = {};
+    allNodes.forEach(function (n) {
+      var l = n.layer || 0;
+      if (!layerGroups[l]) layerGroups[l] = [];
+      layerGroups[l].push(n.id);
+    });
+    var existingLinkKeys = {};
+    links.forEach(function (lk) { existingLinkKeys[lk.source + '->' + lk.target] = true; });
+    var sortedLayers = Object.keys(layerGroups).map(Number).sort(function (a, b) { return a - b; });
+    for (var li = 0; li < sortedLayers.length - 1; li++) {
+      var fromLayer = sortedLayers[li];
+      var toLayer   = sortedLayers[li + 1];
+      layerGroups[fromLayer].forEach(function (fromId) {
+        layerGroups[toLayer].forEach(function (toId) {
+          var key = fromId + '->' + toId;
+          if (!existingLinkKeys[key]) {
+            links.push({ source: fromId, target: toId, explicit: false });
+            existingLinkKeys[key] = true;
+          }
+        });
+      });
+    }
 
     // Swim lanes: layers 1-5, assign y based on layer
     const layerCount = 5;
@@ -521,11 +554,11 @@
 
     // D3 force simulation
     const simulation = d3.forceSimulation(allNodes)
-      .force('link', d3.forceLink(links).id(function (d) { return d.id; }).distance(90).strength(0.8))
-      .force('charge', d3.forceManyBody().strength(-120))
+      .force('link', d3.forceLink(links).id(function (d) { return d.id; }).distance(150).strength(0.6))
+      .force('charge', d3.forceManyBody().strength(-180))
       .force('x', d3.forceX(width / 2).strength(0.05))
-      .force('y', d3.forceY(function (d) { return yForLayer(d.layer); }).strength(0.6))
-      .force('collision', d3.forceCollide(20));
+      .force('y', d3.forceY(function (d) { return yForLayer(d.layer); }).strength(0.7))
+      .force('collision', d3.forceCollide(70));
 
     // Lane dividers
     for (let i = 1; i < layerCount; i++) {
@@ -538,27 +571,44 @@
     }
 
     // Lane labels
+    const LANE_LABELS = {
+      1: 'Active Income Agent',
+      2: 'Leveraged Income Agent',
+      3: 'Productized Agent',
+      4: 'Automated Residual Agent',
+      5: 'Wealth Deployment Agent',
+    };
     for (let i = 1; i <= layerCount; i++) {
+      const midY = laneHeight * (i - 0.5);
       g.append('text')
-        .attr('x', 6)
-        .attr('y', laneHeight * (i - 0.5) + 4)
-        .attr('fill', '#94a3b8')
+        .attr('x', 8)
+        .attr('y', midY - 5)
+        .attr('fill', '#64748b')
         .attr('font-size', '9px')
+        .attr('font-weight', '700')
         .attr('font-family', 'system-ui, sans-serif')
         .text('L' + i);
+      g.append('text')
+        .attr('x', 8)
+        .attr('y', midY + 7)
+        .attr('fill', '#94a3b8')
+        .attr('font-size', '8px')
+        .attr('font-family', 'system-ui, sans-serif')
+        .text(LANE_LABELS[i] || '');
     }
 
-    // Links
+    // Links — explicit deps solid, auto inter-layer dashed
     const linkSel = g.append('g').attr('class', 'dag-links')
       .selectAll('line')
       .data(links)
       .enter()
       .append('line')
-      .attr('stroke', '#cbd5e1')
-      .attr('stroke-width', 1.5)
+      .attr('stroke', function (d) { return d.explicit ? '#64748b' : '#cbd5e1'; })
+      .attr('stroke-width', function (d) { return d.explicit ? 2 : 1; })
+      .attr('stroke-dasharray', function (d) { return d.explicit ? null : '5,3'; })
       .attr('marker-end', 'url(#dag-arrow)');
 
-    // Nodes
+    // Nodes — rectangles with short labels
     const nodeGroupSel = g.append('g').attr('class', 'dag-nodes')
       .selectAll('g')
       .data(allNodes)
@@ -581,11 +631,27 @@
         })
       );
 
-    nodeGroupSel.append('circle')
-      .attr('r', function (d) { return (d.priority_score || 0) > 0.6 ? 12 : 8; })
+    nodeGroupSel.append('rect')
+      .attr('x', -(NODE_W / 2))
+      .attr('y', -(NODE_H / 2))
+      .attr('width', NODE_W)
+      .attr('height', NODE_H)
+      .attr('rx', 5)
       .attr('fill', function (d) { return STATUS_COLORS[d.status] || '#94a3b8'; })
       .attr('stroke', '#ffffff')
       .attr('stroke-width', 1.5);
+
+    nodeGroupSel.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'middle')
+      .attr('font-size', '8.5px')
+      .attr('font-family', 'system-ui, sans-serif')
+      .attr('fill', function (d) { return STATUS_TEXT_COLORS[d.status] || '#ffffff'; })
+      .attr('pointer-events', 'none')
+      .text(function (d) {
+        var lbl = d.label || '';
+        return lbl.length > 19 ? lbl.slice(0, 18) + '…' : lbl;
+      });
 
     // Tooltip interaction
     nodeGroupSel
@@ -791,6 +857,7 @@
         .then(function (data) {
           if (data && data.id) {
             activeCycleId = data.id;
+            addCycleToSelector(data);
             loadCycleData(data);
           }
         })
@@ -803,6 +870,45 @@
             btn.disabled = false;
             btn.textContent = 'Run Now';
           }, 3000);
+        });
+    });
+  }
+
+  // ── Phase toggle ─────────────────────────────────────────────────────────
+  function setupPhaseToggle() {
+    var btn = document.getElementById('diagPhaseToggle');
+    if (!btn) return;
+
+    btn.addEventListener('click', function () {
+      var badge = document.getElementById('phaseBadgeDiag');
+      var currentPhase = (badge && badge.textContent.trim().toLowerCase()) || 'explore';
+      var newPhase = currentPhase === 'exploit' ? 'explore' : 'exploit';
+
+      btn.disabled = true;
+      btn.textContent = 'Switching…';
+
+      apiFetch(API + '/phase', {
+        method: 'PUT',
+        body: JSON.stringify({ phase: newPhase }),
+      })
+        .then(function () {
+          // Update badge
+          if (badge) {
+            badge.textContent = newPhase.charAt(0).toUpperCase() + newPhase.slice(1);
+            badge.className = 'orch-phase-badge ' +
+              (newPhase === 'exploit' ? 'orch-phase-exploit' : 'orch-phase-explore');
+          }
+          btn.textContent = newPhase === 'exploit' ? '→ Explore' : '→ Exploit';
+          // Refresh phase bar
+          var cycleNum = activeCycleId ? 1 : 0;
+          updatePhaseBar(newPhase, cycleNum);
+        })
+        .catch(function (e) {
+          alert('Phase switch failed: ' + e.message);
+          btn.textContent = currentPhase === 'exploit' ? '→ Explore' : '→ Exploit';
+        })
+        .finally(function () {
+          btn.disabled = false;
         });
     });
   }

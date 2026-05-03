@@ -1,6 +1,58 @@
 {% extends 'base.html' %}
 {% block title %}Welcome{% endblock %}
 {% block body_class %}landing{% endblock %}
+
+{% block head %}
+<style>
+.social-proof { background: #f9fafb; padding: 4rem 1rem; }
+.sp-inner { max-width: 960px; margin: 0 auto; }
+.sp-heading { font-size: 1.75rem; font-weight: 800; color: #111827; margin: 0 0 .5rem; text-align: center; }
+.sp-sub { font-size: 1rem; color: #6b7280; text-align: center; margin: 0 0 1.5rem; }
+.sp-trust-bar { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.sp-trust-item { font-size: .9rem; font-weight: 700; color: #374151; }
+.sp-trust-sep { color: #d1d5db; }
+.sp-featured-card { background: #0d1a2e; border-radius: 14px; padding: 2rem 2.5rem; margin-bottom: 2rem; }
+.sp-featured-quote { font-size: 1.15rem; color: #fff; line-height: 1.7; margin-bottom: 1rem; }
+.sp-featured-quote::before { content: '\201C'; color: #f5c842; font-size: 1.5em; line-height: 0; vertical-align: -.3em; }
+.sp-featured-quote::after  { content: '\201D'; color: #f5c842; font-size: 1.5em; line-height: 0; vertical-align: -.3em; }
+.sp-featured-name { font-weight: 700; color: #f5c842; margin-bottom: .2rem; }
+.sp-featured-zone { font-size: .82rem; color: rgba(255,255,255,.5); margin-bottom: .5rem; }
+.sp-featured-stars { color: #f5c842; font-size: 1rem; }
+.sp-carousel-wrap { position: relative; display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+.sp-carousel { display: flex; gap: 1rem; overflow: hidden; flex: 1; }
+.sp-card { flex: 0 0 calc(33.333% - .67rem); background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.sp-card-stars { color: #f5c842; font-size: .95rem; margin-bottom: .5rem; }
+.sp-card-quote { font-size: .95rem; color: #111827; line-height: 1.65; margin-bottom: .6rem; min-height: 4em; }
+.sp-card-name { font-weight: 700; color: #111827; font-size: .875rem; }
+.sp-card-zone { font-size: .78rem; color: #6b7280; margin-bottom: .4rem; }
+.sp-card-meta { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin-top: .5rem; }
+.sp-layer-chip { font-size: .7rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; }
+.sp-lc-1,.sp-lc-2 { background: #ccfbf1; color: #0d9488; }
+.sp-lc-3,.sp-lc-4 { background: #fef9c3; color: #854d0e; }
+.sp-lc-5 { background: #dbeafe; color: #1e40af; }
+.sp-lc-6 { background: #ede9fe; color: #6d28d9; }
+.sp-lc-0 { background: #f3f4f6; color: #6b7280; }
+.sp-date { font-size: .72rem; color: #9ca3af; margin-left: auto; }
+.sp-chevron { background: #fff; border: 1px solid #e5e7eb; border-radius: 50%; width: 36px; height: 36px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151; flex-shrink: 0; }
+.sp-chevron:hover { background: #f9fafb; }
+.sp-dots { display: flex; justify-content: center; gap: .4rem; margin-bottom: 2rem; }
+.sp-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; cursor: pointer; border: none; padding: 0; }
+.sp-dot.active { background: #0d9488; }
+.sp-cta-row { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; border-top: 1px solid #e5e7eb; padding-top: 1.5rem; }
+.sp-cta-col { font-size: .875rem; color: #374151; display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; }
+.sp-cta-link { font-weight: 700; color: #0e7490; text-decoration: none; }
+.sp-cta-link:hover { text-decoration: underline; }
+@media (max-width: 767px) {
+  .sp-carousel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sp-card { flex: 0 0 85%; }
+  .sp-chevron { display: none; }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .sp-card { flex: 0 0 calc(50% - .5rem); }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="hero">
   <div class="hero-inner">
@@ -20,6 +72,63 @@
     <div class="pyramid-layer l1">L1 — Active Income</div>
   </div>
 </section>
+
+{% if testimonials %}
+<section class="social-proof" id="socialProof">
+  <div class="sp-inner">
+    <h2 class="sp-heading">Real results from real professionals.</h2>
+    <p class="sp-sub">Every story below came from someone who uploaded a resume and ran their first Simulation.</p>
+
+    {% if trust_stats and trust_stats.approved_count > 0 %}
+    <div class="sp-trust-bar">
+      <span class="sp-trust-item">{{ trust_stats.avg_rating }} ★ average rating</span>
+      <span class="sp-trust-sep">·</span>
+      <span class="sp-trust-item">{{ trust_stats.total_simulations }} Simulations generated</span>
+    </div>
+    {% endif %}
+
+    {% set featured = [] %}{% for t in testimonials %}{% if t.is_featured %}{% set _ = featured.append(t) %}{% endif %}{% endfor %}
+    {% if featured %}
+    {% set f = featured[0] %}
+    <div class="sp-featured-card">
+      <div class="sp-featured-quote">"{{ f.quote_text }}"</div>
+      <div class="sp-featured-name">{{ f.display_name }}</div>
+      {% if f.expertise_zone %}<div class="sp-featured-zone">{{ f.expertise_zone }}</div>{% endif %}
+      <div class="sp-featured-stars">{{ '★' * f.star_rating }}</div>
+    </div>
+    {% endif %}
+
+    {% set non_featured = [] %}{% for t in testimonials %}{% if not t.is_featured %}{% set _ = non_featured.append(t) %}{% endif %}{% endfor %}
+    {% if non_featured %}
+    <div class="sp-carousel-wrap">
+      <button class="sp-chevron sp-prev" onclick="spPrev()" aria-label="Previous">&#8249;</button>
+      <div class="sp-carousel" id="spCarousel">
+        {% for t in non_featured %}
+        <div class="sp-card">
+          <div class="sp-card-stars">{{ '★' * t.star_rating }}{{ '☆' * (5 - t.star_rating) }}</div>
+          <div class="sp-card-quote">"{{ t.quote_text }}"</div>
+          <div class="sp-card-name">{{ t.display_name }}</div>
+          {% if t.expertise_zone %}<div class="sp-card-zone">{{ t.expertise_zone }}</div>{% endif %}
+          <div class="sp-card-meta">
+            {% for layer in (t.layers or [])[:2] %}<span class="sp-layer-chip sp-lc-{{ layer.num }}">{{ layer.label }}</span>{% endfor %}
+            {% if (t.layers or [])|length > 2 %}<span class="sp-layer-chip">+{{ (t.layers|length) - 2 }} more</span>{% endif %}
+            {% if t.approved_at %}<span class="sp-date">{{ t.approved_at }}</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="sp-chevron sp-next" onclick="spNext()" aria-label="Next">&#8250;</button>
+    </div>
+    <div class="sp-dots" id="spDots"></div>
+    {% endif %}
+
+    <div class="sp-cta-row">
+      <div class="sp-cta-col">Ready to write your story? <a href="{{ url_for('pages.register_page') }}" class="sp-cta-link">Create your first Simulation →</a></div>
+      <div class="sp-cta-col">Are you a coach or advisor? <a href="{{ url_for('pages.partner_apply_page') }}" class="sp-cta-link">Join our partner program →</a></div>
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <section class="features">
   <div class="features-inner">
@@ -45,4 +154,66 @@
     </div>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+{% if testimonials %}
+<script>
+(function(){
+  const carousel = document.getElementById('spCarousel');
+  const dotsEl   = document.getElementById('spDots');
+  if (!carousel) return;
+  const cards = carousel.querySelectorAll('.sp-card');
+  if (!cards.length) return;
+  let current = 0;
+  let autoTimer = null;
+
+  function visibleCount() {
+    if (window.innerWidth >= 1200) return 3;
+    if (window.innerWidth >= 768)  return 2;
+    return 1;
+  }
+  function maxIndex() { return Math.max(0, cards.length - visibleCount()); }
+
+  function goTo(idx) {
+    current = Math.max(0, Math.min(idx, maxIndex()));
+    const cardW = cards[0].offsetWidth + 16;
+    carousel.scrollTo({left: current * cardW, behavior: 'smooth'});
+    document.querySelectorAll('.sp-dot').forEach((d,i) => d.classList.toggle('active', i === current));
+  }
+
+  function buildDots() {
+    if (!dotsEl) return;
+    dotsEl.innerHTML = '';
+    for (let i = 0; i <= maxIndex(); i++) {
+      const d = document.createElement('button');
+      d.className = 'sp-dot' + (i === 0 ? ' active' : '');
+      d.addEventListener('click', () => { goTo(i); resetAuto(); });
+      dotsEl.appendChild(d);
+    }
+  }
+
+  function startAuto() {
+    if (window.innerWidth < 768) return;
+    clearInterval(autoTimer);
+    autoTimer = setInterval(() => goTo(current >= maxIndex() ? 0 : current + 1), 6000);
+  }
+  function resetAuto() { clearInterval(autoTimer); setTimeout(startAuto, 3000); }
+
+  window.spNext = () => { goTo(current + 1); resetAuto(); };
+  window.spPrev = () => { goTo(current - 1); resetAuto(); };
+
+  carousel.addEventListener('mouseenter', () => clearInterval(autoTimer));
+  carousel.addEventListener('mouseleave', startAuto);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') spNext();
+    if (e.key === 'ArrowLeft')  spPrev();
+  });
+
+  buildDots();
+  startAuto();
+  window.addEventListener('resize', () => { buildDots(); goTo(Math.min(current, maxIndex())); });
+})();
+</script>
+{% endif %}
 {% endblock %}

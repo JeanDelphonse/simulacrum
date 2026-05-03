@@ -19,6 +19,7 @@ Endpoints:
   Artifact Dependencies
     GET  /api/simulations/<sim_id>/artifact-dependencies
 """
+from typing import Optional
 from datetime import datetime, timedelta
 
 from flask import request, jsonify, current_app
@@ -491,7 +492,7 @@ def seed_dependencies(sim_id):
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _default_bundle_name(sim, bundle_type: str, layer_number: int | None) -> str:
+def _default_bundle_name(sim, bundle_type: str, layer_number: Optional[int]) -> str:
     zone = sim.expertise_zone or 'Simulation'
     date_str = datetime.utcnow().strftime('%b %Y')
     layer_names = {1: 'Active Income', 2: 'Leveraged Income', 3: 'Productized Income',

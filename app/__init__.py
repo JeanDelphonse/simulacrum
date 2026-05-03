@@ -86,6 +86,10 @@ def create_app(config_name=None):
     app.logger.info('startup: profile_bp imported')
     from app.blueprints.public import public_bp
     app.logger.info('startup: public_bp imported')
+    from app.blueprints.feedback import feedback_bp
+    app.logger.info('startup: feedback_bp imported')
+    from app.blueprints.advisor import advisor_bp
+    app.logger.info('startup: advisor_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -98,6 +102,8 @@ def create_app(config_name=None):
     app.register_blueprint(artifacts_bp, url_prefix='/api/simulations')
     app.register_blueprint(profile_bp)
     app.register_blueprint(public_bp)
+    app.register_blueprint(feedback_bp)
+    app.register_blueprint(advisor_bp, url_prefix='/api/advisor')
 
     # Register page routes
     from app.blueprints.pages import pages_bp

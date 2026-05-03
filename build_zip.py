@@ -5,7 +5,8 @@ EXCLUDES = [
     "*.pyc", "__pycache__", ".venv", "venv", "env",
     ".git", ".gitignore", "instance", "*.db", "*.sqlite3",
     ".env", "build_zip.py", "uploads",
-    ".htaccess",  # cPanel owns this — never overwrite it
+    ".htaccess",        # cPanel owns this — never overwrite it
+    "passenger_wsgi.py", # cPanel generates this wrapper — our app lives in wsgi.py
     "*.egg-info", "dist", "build",
     "simulacrum_deploy.zip",
 ]

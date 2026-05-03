@@ -150,7 +150,8 @@ def _generate_cover(sim, user, bundle, artifacts: list) -> str:
         import anthropic
         from flask import current_app
 
-        model = current_app.config.get('CLAUDE_MODEL', 'claude-sonnet-4-6')
+        from utils.model_router import get_model
+        model = get_model('bio_generation')
         client = anthropic.Anthropic()
 
         artifact_list = '\n'.join(

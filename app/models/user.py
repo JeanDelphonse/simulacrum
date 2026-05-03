@@ -30,6 +30,9 @@ class User(UserMixin, db.Model):
     deleted_at = db.Column(db.DateTime, nullable=True)
     recovery_token = db.Column(db.String(255), nullable=True)
     recovery_token_expires = db.Column(db.DateTime, nullable=True)
+    # data retention (FR-TOS-13)
+    last_login_at = db.Column(db.DateTime, nullable=True)
+    retention_warned_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

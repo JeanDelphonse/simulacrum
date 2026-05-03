@@ -220,9 +220,14 @@ class AdvisorAccess(db.Model):
     granted_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     revoked_at = db.Column(db.DateTime, nullable=True)
     last_viewed_at = db.Column(db.DateTime, nullable=True)
+    attribution_opt_out = db.Column(db.Boolean, nullable=False, default=False)
 
     notes = db.relationship('AdvisorNote', backref='advisor_access', lazy='dynamic',
                             cascade='all, delete-orphan')
+
+    @property
+    def client_user_id(self):
+        return self.granted_by
 
     def to_dict(self):
         return {
@@ -231,10 +236,12 @@ class AdvisorAccess(db.Model):
             'partner_id': self.partner_id,
             'pending_email': self.pending_email,
             'granted_by': self.granted_by,
+            'client_user_id': self.granted_by,
             'access_level': self.access_level,
             'granted_at': self.granted_at.isoformat(),
             'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None,
             'last_viewed_at': self.last_viewed_at.isoformat() if self.last_viewed_at else None,
+            'attribution_opt_out': self.attribution_opt_out,
         }
 
 
@@ -280,6 +287,9 @@ class AdvisorNote(db.Model):
                               nullable=False, index=True)
     layer_number = db.Column(db.Integer, nullable=True)  # NULL = Simulation-level note
     note_text = db.Column(db.Text, nullable=False)
+    is_shared = db.Column(db.Boolean, nullable=False, default=False)
+    suggestion_type = db.Column(db.String(50), nullable=True)  # 'next_step' for suggestions
+    is_urgent = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
@@ -290,6 +300,35 @@ class AdvisorNote(db.Model):
             'simulation_id': self.simulation_id,
             'layer_number': self.layer_number,
             'note_text': self.note_text,
+            'is_shared': self.is_shared,
+            'suggestion_type': self.suggestion_type,
+            'is_urgent': self.is_urgent,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
+        }
+
+
+class AdvisorFlag(db.Model):
+    """Partner flags a specific action for the client's attention."""
+    __tablename__ = 'advisor_flags'
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_id)
+    advisor_access_id = db.Column(db.String(9), nullable=False, index=True)
+    simulation_id = db.Column(db.String(9), nullable=False, index=True)
+    action_type = db.Column(db.String(100), nullable=False)
+    action_id = db.Column(db.String(9), nullable=True)
+    message = db.Column(db.String(300), nullable=True)
+    dismissed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'advisor_access_id': self.advisor_access_id,
+            'simulation_id': self.simulation_id,
+            'action_type': self.action_type,
+            'action_id': self.action_id,
+            'message': self.message,
+            'dismissed_at': self.dismissed_at.isoformat() if self.dismissed_at else None,
+            'created_at': self.created_at.isoformat(),
         }

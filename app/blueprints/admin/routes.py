@@ -329,6 +329,234 @@ def list_all_payouts():
     return jsonify(result), 200
 
 
+# ---------------------------------------------------------------------------
+# Feedback Moderation (SIM-PRD-FBK-001)
+# ---------------------------------------------------------------------------
+
+@admin_bp.route('/feedback', methods=['GET'])
+@login_required
+@admin_required
+def list_feedback():
+    from app.models.feedback import UserFeedback
+    status_filter = request.args.get('status')
+    search = (request.args.get('search') or '').strip().lower()
+
+    q = UserFeedback.query
+    if status_filter in ('pending', 'approved', 'rejected'):
+        q = q.filter_by(status=status_filter)
+    records = q.order_by(UserFeedback.submitted_at.desc()).limit(500).all()
+
+    out = []
+    for fb in records:
+        row = {
+            'id':            fb.id,
+            'user_id':       fb.user_id,
+            'display_name':  fb.display_name_computed,
+            'star_rating':   fb.star_rating,
+            'quote_text':    fb.quote_text,
+            'outcome_text':  fb.outcome_text,
+            'layers':        fb.layer_names_list(),
+            'name_display':  fb.name_display,
+            'simulation_id': fb.simulation_id,
+            'expertise_zone': fb.expertise_zone_snapshot,
+            'status':        fb.status,
+            'admin_note':    fb.admin_note,
+            'is_featured':   fb.is_featured,
+            'display_order': fb.display_order,
+            'approved_at':   fb.approved_at.isoformat() if fb.approved_at else None,
+            'submitted_at':  fb.submitted_at.isoformat(),
+            'withdrawn_requested_at': fb.withdrawn_requested_at.isoformat() if fb.withdrawn_requested_at else None,
+        }
+        if search:
+            haystack = (
+                (row['display_name'] or '') + ' ' +
+                (row['quote_text'] or '') + ' ' +
+                ' '.join(l['label'] for l in row['layers'])
+            ).lower()
+            if search not in haystack:
+                continue
+        out.append(row)
+    return jsonify(out), 200
+
+
+@admin_bp.route('/feedback/stats', methods=['GET'])
+@login_required
+@admin_required
+def feedback_stats():
+    from sqlalchemy import func
+    from app.models.feedback import UserFeedback
+
+    total     = UserFeedback.query.count()
+    pending   = UserFeedback.query.filter_by(status='pending').count()
+    approved  = UserFeedback.query.filter_by(status='approved').count()
+    rejected  = UserFeedback.query.filter_by(status='rejected').count()
+    avg_row   = db.session.query(func.avg(UserFeedback.star_rating)).filter_by(status='approved').scalar()
+    avg_rating = round(float(avg_row or 0), 1)
+
+    from collections import Counter
+    layer_counts = Counter()
+    for fb in UserFeedback.query.filter_by(status='approved').all():
+        for n in (fb.layers_attributed or []):
+            layer_counts[n] += 1
+    top_layer = layer_counts.most_common(1)[0][0] if layer_counts else None
+
+    return jsonify({
+        'total': total, 'pending': pending,
+        'approved': approved, 'rejected': rejected,
+        'avg_rating': avg_rating, 'top_layer': top_layer,
+    }), 200
+
+
+@admin_bp.route('/feedback/<fb_id>/approve', methods=['PUT'])
+@login_required
+@admin_required
+def approve_feedback(fb_id):
+    from datetime import datetime
+    from app.models.feedback import UserFeedback
+    fb = UserFeedback.query.get_or_404(fb_id)
+    fb.status = 'approved'
+    fb.is_featured = False
+    fb.approved_by = current_user.id
+    fb.approved_at = datetime.utcnow()
+    db.session.commit()
+    _notify_feedback_user(fb, featured=False)
+    return jsonify({'ok': True}), 200
+
+
+@admin_bp.route('/feedback/<fb_id>/feature', methods=['PUT'])
+@login_required
+@admin_required
+def feature_feedback(fb_id):
+    from datetime import datetime
+    from app.models.feedback import UserFeedback
+    fb = UserFeedback.query.get_or_404(fb_id)
+    fb.status = 'approved'
+    fb.is_featured = True
+    fb.approved_by = current_user.id
+    fb.approved_at = datetime.utcnow()
+    db.session.commit()
+    _notify_feedback_user(fb, featured=True)
+    return jsonify({'ok': True}), 200
+
+
+@admin_bp.route('/feedback/<fb_id>/reject', methods=['PUT'])
+@login_required
+@admin_required
+def reject_feedback(fb_id):
+    from app.models.feedback import UserFeedback
+    fb = UserFeedback.query.get_or_404(fb_id)
+    data = request.get_json(force=True, silent=True) or {}
+    fb.status = 'rejected'
+    fb.admin_note = (data.get('admin_note') or '').strip()[:500] or None
+    db.session.commit()
+    try:
+        from app.models.user import User as _U
+        from app.services.email_service import send_feedback_rejected_email
+        user = _U.query.get(fb.user_id)
+        if user:
+            send_feedback_rejected_email(user.email, user.full_name, fb.admin_note)
+    except Exception:
+        pass
+    return jsonify({'ok': True}), 200
+
+
+@admin_bp.route('/feedback/<fb_id>/unpublish', methods=['PUT'])
+@login_required
+@admin_required
+def unpublish_feedback(fb_id):
+    from app.models.feedback import UserFeedback
+    fb = UserFeedback.query.get_or_404(fb_id)
+    fb.status = 'pending'
+    fb.approved_by = None
+    fb.approved_at = None
+    fb.is_featured = False
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+@admin_bp.route('/feedback/<fb_id>/display-order', methods=['PUT'])
+@login_required
+@admin_required
+def set_feedback_display_order(fb_id):
+    from app.models.feedback import UserFeedback
+    fb = UserFeedback.query.get_or_404(fb_id)
+    data = request.get_json(force=True, silent=True) or {}
+    order = data.get('display_order')
+    if order is None or not isinstance(order, int):
+        return jsonify({'error': 'display_order integer required'}), 400
+    fb.display_order = order
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+@admin_bp.route('/feedback/reorder', methods=['PUT'])
+@login_required
+@admin_required
+def reorder_feedback():
+    from app.models.feedback import UserFeedback
+    data = request.get_json(force=True, silent=True) or {}
+    items = data.get('items') or []
+    for item in items:
+        fb_id = item.get('id')
+        order = item.get('display_order')
+        if fb_id and isinstance(order, int):
+            fb = UserFeedback.query.get(fb_id)
+            if fb:
+                fb.display_order = order
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+@admin_bp.route('/feedback/bulk-approve', methods=['POST'])
+@login_required
+@admin_required
+def bulk_approve_feedback():
+    from datetime import datetime
+    from app.models.feedback import UserFeedback
+    data = request.get_json(force=True, silent=True) or {}
+    ids = data.get('ids') or []
+    now = datetime.utcnow()
+    for fb_id in ids:
+        fb = UserFeedback.query.get(fb_id)
+        if fb and fb.status == 'pending':
+            fb.status = 'approved'
+            fb.approved_by = current_user.id
+            fb.approved_at = now
+            fb.is_featured = False
+    db.session.commit()
+    return jsonify({'ok': True, 'count': len(ids)}), 200
+
+
+@admin_bp.route('/feedback/bulk-reject', methods=['POST'])
+@login_required
+@admin_required
+def bulk_reject_feedback():
+    from app.models.feedback import UserFeedback
+    data = request.get_json(force=True, silent=True) or {}
+    ids = data.get('ids') or []
+    admin_note = (data.get('admin_note') or '').strip()[:500] or None
+    for fb_id in ids:
+        fb = UserFeedback.query.get(fb_id)
+        if fb and fb.status == 'pending':
+            fb.status = 'rejected'
+            fb.admin_note = admin_note
+    db.session.commit()
+    return jsonify({'ok': True, 'count': len(ids)}), 200
+
+
+def _notify_feedback_user(fb, featured: bool):
+    try:
+        from app.models.user import User as _U
+        from app.services.email_service import send_feedback_approved_email
+        user = _U.query.get(fb.user_id)
+        if user:
+            send_feedback_approved_email(user.email, user.full_name, featured)
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+
 @admin_bp.route('/partners/<partner_id>/payout', methods=['POST'])
 @login_required
 @admin_required

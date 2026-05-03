@@ -79,6 +79,7 @@ def register():
         email=data['email'].lower(),
         password_hash=pw_hash,
         full_name=data['full_name'],
+        email_verified=True,  # TODO: revert to False once SendGrid account is unblocked
         email_verify_token=verify_token,
         email_verify_token_expires=datetime.utcnow() + timedelta(hours=24),
     )
@@ -112,30 +113,37 @@ def register():
 
     db.session.commit()
 
+    email_error = None
     try:
         from app.services.email_service import send_verification_email
         send_verification_email(user.email, user.full_name, verify_token)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error('send_verification_email failed: %s', e, exc_info=True)
+        email_error = str(e)
 
-    return jsonify({
+    resp = {
         'message': 'Registration successful. Check your email to verify your account.',
         'user_id': user.id,
-    }), 201
+    }
+    if email_error:
+        resp['_email_error'] = email_error  # visible in dev; remove once email is confirmed working
+    return jsonify(resp), 201
 
 
 @auth_bp.route('/verify/<token>', methods=['GET'])
 def verify_email(token):
+    from flask import render_template
     user = User.query.filter_by(email_verify_token=token).first()
     if not user:
-        return jsonify({'error': 'Invalid or expired verification token'}), 400
+        return render_template('auth/verify_email.html', status='invalid'), 400
     if user.email_verify_token_expires and user.email_verify_token_expires < datetime.utcnow():
-        return jsonify({'error': 'Verification link has expired. Please request a new one.'}), 400
+        return render_template('auth/verify_email.html', status='expired', user_email=user.email), 400
     user.email_verified = True
     user.email_verify_token = None
     user.email_verify_token_expires = None
     db.session.commit()
-    return jsonify({'message': 'Email verified successfully'}), 200
+    return render_template('auth/verify_email.html', status='success')
 
 
 @auth_bp.route('/verify/resend', methods=['POST'])
@@ -176,6 +184,8 @@ def login():
     login_user(user, remember=True)
     token, jti = _make_jwt(user.id)
     _create_session(user.id, jti)
+    user.last_login_at = datetime.utcnow()
+    user.retention_warned_at = None  # reset warning on sign-in (FR-TOS-13)
     AuditLog.log('user_login', user_id=user.id)
     db.session.commit()
 

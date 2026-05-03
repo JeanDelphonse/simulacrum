@@ -330,6 +330,115 @@ def ai_services(sim_id):
     return jsonify({'services': bullets})
 
 
+# ── Partner visibility (advisor access) ───────────────────────────────────
+
+@profile_bp.route('/api/settings/visibility/partners', methods=['GET'])
+@login_required
+def get_partner_visibility():
+    from app.models.partner import ReferralPartner, ReferralSignup, AdvisorAccess
+    relationships = db.session.query(ReferralPartner, ReferralSignup).join(
+        ReferralSignup, ReferralPartner.id == ReferralSignup.partner_id,
+    ).filter(ReferralSignup.referred_user_id == current_user.id).all()
+
+    sims = Simulation.query.filter_by(user_id=current_user.id).order_by(
+        Simulation.created_at.desc()
+    ).all()
+
+    active_grants = AdvisorAccess.query.filter_by(
+        granted_by=current_user.id, revoked_at=None,
+    ).all()
+    granted_pairs = {(g.partner_id, g.simulation_id) for g in active_grants}
+    last_viewed_map = {
+        (g.partner_id, g.simulation_id): g.last_viewed_at for g in active_grants
+    }
+
+    result = []
+    for partner, signup in relationships:
+        sims_data = []
+        for sim in sims:
+            key = (partner.id, sim.id)
+            lv = last_viewed_map.get(key)
+            sims_data.append({
+                'simulation_id': sim.id,
+                'simulation_name': sim.name,
+                'expertise_zone': sim.expertise_zone,
+                'created_at': sim.created_at.isoformat(),
+                'shared': key in granted_pairs,
+                'last_viewed_at': lv.isoformat() if lv else None,
+            })
+        result.append({
+            'partner_id': partner.id,
+            'partner_name': partner.full_name,
+            'partner_type': partner.partner_type,
+            'business_name': partner.business_name,
+            'simulations': sims_data,
+        })
+    return jsonify(result), 200
+
+
+@profile_bp.route('/api/settings/visibility/grant', methods=['POST'])
+@login_required
+def grant_advisor_access():
+    from app.models.partner import ReferralSignup, AdvisorAccess
+    data = request.get_json(force=True, silent=True) or {}
+    partner_id = data.get('partner_id', '').strip()
+    sim_id = data.get('simulation_id', '').strip()
+    if not partner_id or not sim_id:
+        return jsonify({'error': 'partner_id and simulation_id required'}), 400
+
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first()
+    if not sim:
+        return jsonify({'error': 'Simulation not found'}), 404
+
+    rel = ReferralSignup.query.filter_by(
+        referred_user_id=current_user.id, partner_id=partner_id,
+    ).first()
+    if not rel:
+        return jsonify({'error': 'No referral relationship with this partner'}), 403
+
+    existing = AdvisorAccess.query.filter_by(
+        partner_id=partner_id, granted_by=current_user.id, simulation_id=sim_id,
+    ).first()
+    if existing:
+        existing.revoked_at = None
+        existing.granted_at = datetime.utcnow()
+    else:
+        from utils.id_gen import generate_id as _gen
+        db.session.add(AdvisorAccess(
+            id=_gen(),
+            simulation_id=sim_id,
+            partner_id=partner_id,
+            granted_by=current_user.id,
+        ))
+    db.session.commit()
+    return jsonify({'status': 'granted'}), 200
+
+
+@profile_bp.route('/api/settings/visibility/revoke', methods=['POST'])
+@login_required
+def revoke_advisor_access():
+    from app.models.partner import ReferralPartner, AdvisorAccess
+    data = request.get_json(force=True, silent=True) or {}
+    partner_id = data.get('partner_id', '').strip()
+    sim_id = data.get('simulation_id', '').strip()
+
+    grant = AdvisorAccess.query.filter_by(
+        partner_id=partner_id, granted_by=current_user.id,
+        simulation_id=sim_id, revoked_at=None,
+    ).first()
+    if not grant:
+        return jsonify({'error': 'No active grant found'}), 404
+
+    grant.revoked_at = datetime.utcnow()
+    db.session.commit()
+
+    partner = ReferralPartner.query.get(partner_id)
+    return jsonify({
+        'status': 'revoked',
+        'partner_name': partner.full_name if partner else 'Partner',
+    }), 200
+
+
 # ── Security settings ──────────────────────────────────────────────────────
 
 @profile_bp.route('/api/settings/security/password', methods=['PUT'])

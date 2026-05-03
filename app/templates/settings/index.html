@@ -74,9 +74,10 @@
 <div class="settings-layout">
   <nav class="settings-nav">
     <div class="settings-nav-title">Settings</div>
-    <a href="/settings/profile" class="settings-nav-link {% if active_tab == 'profile' %}active{% endif %}">Profile &amp; Bio</a>
-    <a href="/settings/visibility" class="settings-nav-link {% if active_tab == 'visibility' %}active{% endif %}">Simulation Visibility</a>
-    <a href="/settings/security" class="settings-nav-link {% if active_tab == 'security' %}active{% endif %}">Security</a>
+    <a href="{{ url_for('pages.settings_profile') }}" class="settings-nav-link {% if active_tab == 'profile' %}active{% endif %}">Profile &amp; Bio</a>
+    <a href="{{ url_for('pages.settings_visibility') }}" class="settings-nav-link {% if active_tab == 'visibility' %}active{% endif %}">Simulation Visibility</a>
+    <a href="{{ url_for('pages.settings_testimonials') }}" class="settings-nav-link {% if active_tab == 'testimonials' %}active{% endif %}">Testimonials</a>
+    <a href="{{ url_for('pages.settings_security') }}" class="settings-nav-link {% if active_tab == 'security' %}active{% endif %}">Security</a>
   </nav>
 
   <div class="settings-panel">
@@ -90,7 +91,7 @@
         <div class="avatar-row">
           <div id="avatarDisplay">
             {% if profile and profile.avatar_path %}
-            <img class="avatar-preview" src="/avatars/{{ profile.avatar_path }}" alt="Avatar">
+            <img class="avatar-preview" src="{{ url_for('public.serve_avatar', filename=profile.avatar_path) }}" alt="Avatar">
             {% else %}
             <div class="avatar-initials" id="avatarInitials">{{ (profile.display_name or current_user.full_name or '?')[:2].upper() }}</div>
             {% endif %}
@@ -194,7 +195,7 @@
           <div class="bio-actions-row">
             <button class="btn btn-ghost btn-sm" onclick="toggleBioEdit()">Edit</button>
             <button class="btn btn-ghost btn-sm" id="regenBtn" onclick="regenerateBio()">Regenerate{% if profile.bio_edited %} (replaces your edits){% endif %}</button>
-            <a href="/u/{{ profile.username }}" target="_blank" class="btn btn-ghost btn-sm">Preview profile ↗</a>
+            <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" class="btn btn-ghost btn-sm">Preview profile ↗</a>
           </div>
           <textarea class="input-text" id="bioEditor" rows="12" style="display:none;margin-top:.75rem">{{ profile.bio }}</textarea>
         </div>
@@ -230,7 +231,7 @@
           </div>
           <div class="settings-hint">
             {% if profile.is_published %}Your public page is live at
-              <a href="/u/{{ profile.username }}" target="_blank" style="color:#f5c842">/u/{{ profile.username }}</a>
+              <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" style="color:#f5c842">/u/{{ profile.username }}</a>
             {% else %}Your profile URL is not yet publicly visible{% endif %}
           </div>
         </div>
@@ -240,6 +241,46 @@
       </div>
 
       <div id="visCards">
+        <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+      </div>
+
+      {# Partner Access sub-section (FR-PCV-15–21) #}
+      <div class="settings-section" style="margin-top:2.5rem">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.3rem">
+          <div class="settings-section-title" style="margin:0;border:none;padding:0">Partner Access</div>
+          <button onclick="showPartnerHelp()" style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.5);border-radius:50%;width:18px;height:18px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0" title="What can a partner see?">?</button>
+        </div>
+        <p class="settings-hint" style="margin-bottom:1rem">Control which of your advisors and coaches can view your Simulacrum plan.</p>
+        <div id="partnerAccessContainer">
+          <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+        </div>
+      </div>
+
+      {# Partner help modal #}
+      <div id="partnerHelpOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:1rem">
+        <div style="background:#1a2235;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:1.5rem;max-width:420px;width:100%">
+          <h3 style="font-size:.95rem;font-weight:700;color:#e8eaf0;margin:0 0 .75rem">What can a partner see?</h3>
+          <ul style="font-size:.82rem;color:rgba(255,255,255,.7);line-height:1.7;padding-left:1.1rem;margin:0 0 1rem">
+            <li>View your Simulation and Growth Command Center in <strong>read-only mode</strong></li>
+            <li>Add private <strong>coaching notes</strong> per layer (invisible to you unless shared)</li>
+            <li><strong>Flag actions</strong> for your attention — you'll see an amber badge</li>
+            <li>Publish <strong>suggestions</strong> that appear in your Journey tab</li>
+          </ul>
+          <p style="font-size:.78rem;color:rgba(255,255,255,.4);margin:0 0 1rem">Partners cannot run agents, edit your inputs, or access your account settings.</p>
+          <button onclick="document.getElementById('partnerHelpOverlay').style.display='none'" class="btn btn-ghost btn-sm">Got it</button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Testimonials tab ──────────────────────────────────────────── #}
+    {% if active_tab == 'testimonials' %}
+    <div id="testimonialsTab">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+        <div class="settings-section-title" style="margin-bottom:0;border:none;padding:0">My Testimonials</div>
+        <button class="btn btn-primary btn-sm" onclick="window.openFeedbackModal()">Submit new feedback</button>
+      </div>
+      <div id="myTestimonialsList">
         <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
       </div>
     </div>
@@ -349,7 +390,7 @@ async function uploadAvatar(input) {
     toast('Avatar updated');
     const data = await res.json();
     const display = document.getElementById('avatarDisplay');
-    display.innerHTML = `<img class="avatar-preview" src="/avatars/${data.avatar_path}?t=${Date.now()}" alt="Avatar">`;
+    display.innerHTML = `<img class="avatar-preview" src="${ROOT2}/avatars/${data.avatar_path}?t=${Date.now()}" alt="Avatar">`;
   } else {
     const data = await res.json();
     toast(data.error || 'Upload failed');
@@ -448,7 +489,7 @@ async function regenerateBio() {
 function renderVisCards(sims) {
   const container = document.getElementById('visCards');
   if (!sims.length) {
-    container.innerHTML = '<p style="font-size:.875rem;color:rgba(255,255,255,.4)">No completed Simulations yet. <a href="/dashboard" style="color:#f5c842">Create your first Simulation →</a></p>';
+    container.innerHTML = '<p style="font-size:.875rem;color:rgba(255,255,255,.4)">No completed Simulations yet. <a href="' + ROOT2 + '/dashboard" style="color:#f5c842">Create your first Simulation →</a></p>';
     return;
   }
   container.innerHTML = sims.map(s => visCardHtml(s)).join('');
@@ -610,6 +651,88 @@ async function saveVis(simId) {
   }
 }
 
+// ── Partner Access ─────────────────────────────────────────────────────────
+(async () => {
+  const res = await fetch(ROOT2 + '/api/settings/visibility/partners');
+  if (!res.ok) return;
+  renderPartnerAccess(await res.json());
+})();
+
+function renderPartnerAccess(partners) {
+  const el = document.getElementById('partnerAccessContainer');
+  if (!el) return;
+  if (!partners.length) {
+    el.innerHTML = `<div style="font-size:.85rem;color:rgba(255,255,255,.4);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:1rem">
+      You have no advisors connected to your account. If a life coach, career coach, or financial advisor referred you to Simulacrum, ask them for their referral link to get connected.
+    </div>`;
+    return;
+  }
+  el.innerHTML = partners.map(p => {
+    const simRows = (p.simulations || []).map(s => {
+      const lastViewedHtml = s.shared
+        ? `<div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-top:.1rem">${s.last_viewed_at ? 'Last viewed: ' + timeAgoSettings(new Date(s.last_viewed_at)) : 'Not yet viewed'}</div>`
+        : '';
+      return `<div class="toggle-row" style="padding:.5rem 0">
+        <div style="flex:1">
+          <div class="toggle-label">${esc(s.expertise_zone || s.simulation_name)}</div>
+          <div class="toggle-desc">${esc(s.simulation_name)}</div>
+          ${lastViewedHtml}
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${s.shared ? 'checked' : ''}
+            onchange="togglePartnerAccess('${esc(p.partner_id)}','${esc(s.simulation_id)}','${esc(p.partner_name)}',this)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>`;
+    }).join('');
+    return `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
+      <div style="margin-bottom:.5rem">
+        <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">${esc(p.partner_name)}</div>
+        <div style="font-size:.78rem;color:rgba(255,255,255,.45);margin-top:.1rem">${esc(p.partner_type || '')}${p.business_name ? ' · ' + esc(p.business_name) : ''}</div>
+      </div>
+      ${simRows || '<div style="font-size:.82rem;color:rgba(255,255,255,.35)">No simulations to share yet.</div>'}
+    </div>`;
+  }).join('');
+}
+
+async function togglePartnerAccess(partnerId, simId, partnerName, checkbox) {
+  const granting = checkbox.checked;
+  checkbox.disabled = true;
+  const res = await fetch(ROOT2 + (granting ? '/api/settings/visibility/grant' : '/api/settings/visibility/revoke'), {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ partner_id: partnerId, simulation_id: simId }),
+  });
+  checkbox.disabled = false;
+  if (!res.ok) {
+    checkbox.checked = !granting;
+    toast('Failed to update access');
+    return;
+  }
+  toast(granting ? `${partnerName} can now view this plan.` : `Access removed. ${partnerName} can no longer view this plan.`);
+  const reload = await fetch(ROOT2 + '/api/settings/visibility/partners');
+  if (reload.ok) renderPartnerAccess(await reload.json());
+}
+
+function timeAgoSettings(date) {
+  const s = Math.floor((Date.now() - date) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+function showPartnerHelp() {
+  document.getElementById('partnerHelpOverlay').style.display = 'flex';
+}
+
+document.getElementById('partnerHelpOverlay').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
 async function togglePublish() {
   const res = await fetch(ROOT2 + '/api/settings/visibility/publish', {
     method: 'PUT',
@@ -712,5 +835,71 @@ async function initiateDeleteAccount() {
 {% endif %}
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Testimonials ───────────────────────────────────────────────────────────
+{% if active_tab == 'testimonials' %}
+(async () => {
+  const res = await fetch(ROOT2 + '/api/feedback/mine');
+  const list = document.getElementById('myTestimonialsList');
+  if (!res.ok) { list.innerHTML = '<div style="color:rgba(255,255,255,.4)">Failed to load.</div>'; return; }
+  const items = await res.json();
+  if (!items.length) {
+    list.innerHTML = '<div style="font-size:.875rem;color:rgba(255,255,255,.4)">No submissions yet. Share your story to get started.</div>';
+    return;
+  }
+  const statusColors = {pending:'#f5c842',approved:'#86efac',rejected:'#fca5a5'};
+  const statusLabels = {pending:'Pending',approved:'Approved',rejected:'Rejected'};
+  list.innerHTML = items.map(f => {
+    const statusColor = statusColors[f.status] || '#9ca3af';
+    const statusLabel = statusLabels[f.status] || f.status;
+    const noteHtml = (f.status === 'rejected' && f.admin_note)
+      ? `<div style="font-size:.75rem;color:#fca5a5;margin-top:.3rem">Reason: ${esc(f.admin_note)}</div>` : '';
+    const liveHtml = (f.status === 'approved')
+      ? `<a href="${ROOT2}/" style="font-size:.72rem;color:#86efac;margin-left:.5rem">Live on home page ↗</a>` : '';
+    const editBtn = (f.status === 'pending')
+      ? `<button class="btn btn-ghost btn-sm" onclick="editTestimonial('${f.id}')">Edit</button>` : '';
+    const withdrawBtn = (f.status === 'approved' && !f.withdrawn_requested_at)
+      ? `<button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.4)" onclick="withdrawTestimonial('${f.id}',this)">Withdraw</button>` : '';
+    const withdrawFlag = f.withdrawn_requested_at
+      ? `<span style="font-size:.72rem;color:#fca5a5">Withdrawal requested</span>` : '';
+    return `
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.85rem 1rem;margin-bottom:.6rem">
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.35rem">
+        <span style="color:#f5c842">${'★'.repeat(f.star_rating)}${'☆'.repeat(5-f.star_rating)}</span>
+        <span style="font-size:.75rem;color:${statusColor};font-weight:700">${statusLabel}</span>
+        ${liveHtml}
+        <span style="font-size:.72rem;color:rgba(255,255,255,.35);margin-left:auto">${(f.submitted_at||'').slice(0,10)}</span>
+      </div>
+      <div style="font-size:.875rem;color:rgba(255,255,255,.75);font-style:italic;margin-bottom:.25rem">"${esc((f.quote_text||'').slice(0,80))}${f.quote_text&&f.quote_text.length>80?'…':''}"</div>
+      ${noteHtml}
+      ${withdrawFlag}
+      <div style="margin-top:.6rem;display:flex;gap:.4rem">${editBtn}${withdrawBtn}</div>
+    </div>`;
+  }).join('');
+})();
+
+async function editTestimonial(id) {
+  const res = await fetch(ROOT2 + '/api/feedback/mine');
+  const items = await res.json();
+  const f = items.find(x => x.id === id);
+  if (!f) return;
+  window.openFeedbackModal({
+    id: f.id,
+    star_rating: f.star_rating,
+    outcome_text: f.outcome_text,
+    quote_text: f.quote_text,
+    name_display: f.name_display,
+    layers_attributed: f.layers_attributed,
+    simulation_id: f.simulation_id,
+    edit_mode: true,
+  });
+}
+
+async function withdrawTestimonial(id, btn) {
+  if (!confirm('Request withdrawal of this testimonial from the home page?')) return;
+  const res = await fetch(ROOT2 + `/api/feedback/${id}/withdraw`, {method:'POST'});
+  if (res.ok) { btn.textContent = 'Withdrawal requested'; btn.disabled = true; }
+}
+{% endif %}
 </script>
 {% endblock %}

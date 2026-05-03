@@ -2,6 +2,7 @@ import json
 from flask import current_app
 from app.extensions import db
 from app.models.ai_interaction import AIInteraction
+from utils.model_router import get_model, get_tier
 
 
 def _client():
@@ -13,14 +14,14 @@ def _model():
     return current_app.config['CLAUDE_MODEL']
 
 
-def _log_interaction(interaction_type, user_id, simulation_id, usage):
+def _log_interaction(interaction_type, user_id, simulation_id, usage, model=None):
     record = AIInteraction(
         user_id=user_id,
         simulation_id=simulation_id,
         interaction_type=interaction_type,
         prompt_tokens=usage.input_tokens if usage else None,
         completion_tokens=usage.output_tokens if usage else None,
-        model=_model(),
+        model=model or _model(),
     )
     db.session.add(record)
     db.session.commit()
@@ -51,12 +52,13 @@ Example format:
   }}
 ]"""
 
+    model = get_model('expertise_zone_extraction')
     response = _client().messages.create(
-        model=_model(),
+        model=model,
         max_tokens=2000,
         messages=[{'role': 'user', 'content': prompt}],
     )
-    _log_interaction(AIInteraction.TYPE_ZONE_EXTRACT, user_id, None, response.usage)
+    _log_interaction(AIInteraction.TYPE_ZONE_EXTRACT, user_id, None, response.usage, model=model)
 
     raw = response.content[0].text.strip()
     # Strip any accidental markdown fences
@@ -772,6 +774,7 @@ def execute_agent_action(
     user_inputs: dict,
     user_id: str,
     simulation_id: str,
+    dispatch_source: str = 'orchestrator',
 ) -> str:
     """Execute an agent action for a simulation layer. Returns the generated artifact text."""
     layer_name, _, layer_desc = LAYER_DEFINITIONS[layer_number]
@@ -798,12 +801,13 @@ PROFESSIONAL BACKGROUND (excerpt):
 
 Generate the complete artifact for this action. Be specific and draw directly from the professional's background, expertise zone, and deliverables. Write in a professional, immediately usable format. Do not include meta-commentary or instructions — only the artifact itself."""
 
+    model = get_model(action_type)
     response = _client().messages.create(
-        model=_model(),
+        model=model,
         max_tokens=3000,
         messages=[{'role': 'user', 'content': prompt}],
     )
-    _log_interaction(AIInteraction.TYPE_AGENT_ACTION, user_id, simulation_id, response.usage)
+    _log_interaction(AIInteraction.TYPE_AGENT_ACTION, user_id, simulation_id, response.usage, model=model)
     return response.content[0].text.strip()
 
 
