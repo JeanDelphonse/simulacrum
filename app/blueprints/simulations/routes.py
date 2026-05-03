@@ -135,8 +135,22 @@ def confirm_simulation_payment(sim_id):
             return jsonify({'error': 'Payment not confirmed'}), 402
 
         sim.stripe_charge_id = payment.get('charge_id')
-        sim.status = Simulation.STATUS_PROCESSING  # cron will pick this up
+        sim.status = Simulation.STATUS_PROCESSING
         db.session.commit()
+
+        # Kick off generation immediately in a background thread.
+        # Cron remains as a fallback in case this thread dies.
+        import threading
+        from flask import current_app as _app
+        _app_obj = _app._get_current_object()
+        _sim_id  = sim_id
+
+        def _run_generation():
+            with _app_obj.app_context():
+                from app.tasks.simulation import generate_simulation_task
+                generate_simulation_task.apply(args=[_sim_id])
+
+        threading.Thread(target=_run_generation, daemon=True).start()
 
         return jsonify({
             'simulation_id': sim_id,
