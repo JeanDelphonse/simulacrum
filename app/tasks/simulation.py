@@ -1,75 +1,21 @@
 from celery_worker import celery
 from flask import current_app
 import logging
-import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
-
-
-def _generate_single_layer(app_obj, simulation_id, layer_num, expertise_zone,
-                            focus_hint, parsed_text, user_id, fintech_enabled):
-    """Generate one layer in its own app context + DB session (safe for threading)."""
-    with app_obj.app_context():
-        from app.extensions import db
-        from app.models.simulation import SimulationLayer, IncomeStream
-        from app.services.claude import generate_simulation_layer
-
-        layer_data = generate_simulation_layer(
-            layer_number=layer_num,
-            expertise_zone=expertise_zone,
-            focus_hint=focus_hint,
-            parsed_text=parsed_text,
-            user_id=user_id,
-            simulation_id=simulation_id,
-            fintech_enabled=fintech_enabled,
-        )
-
-        sim_layer = SimulationLayer(
-            simulation_id=simulation_id,
-            layer_number=layer_data.get('layer_number', layer_num),
-            layer_name=layer_data.get('layer_name', f'Layer {layer_num}'),
-            income_type=layer_data.get('income_type', ''),
-            ai_narrative=layer_data.get('ai_narrative', ''),
-            priority_score=layer_data.get('priority_score'),
-        )
-        db.session.add(sim_layer)
-        db.session.flush()
-
-        for stream_data in layer_data.get('income_streams', []):
-            low = stream_data.get('est_monthly_low')
-            high = stream_data.get('est_monthly_high')
-            if low is not None and high is not None and low > high:
-                low, high = high, low
-            stream = IncomeStream(
-                layer_id=sim_layer.id,
-                name=stream_data.get('name', ''),
-                description=stream_data.get('description', ''),
-                platform=stream_data.get('platform', ''),
-                est_monthly_low=low,
-                est_monthly_high=high,
-                ai_reasoning=stream_data.get('ai_reasoning', ''),
-                automation_level=stream_data.get('automation_level', ''),
-                launch_timeline_weeks=stream_data.get('launch_timeline_weeks'),
-            )
-            stream.deliverable_refs = stream_data.get('deliverable_refs', [])
-            db.session.add(stream)
-
-        db.session.commit()
-        logger.info('Simulation %s layer %d complete', simulation_id, layer_num)
-        return layer_num
 
 
 @celery.task(bind=True, max_retries=2, default_retry_delay=10)
 def generate_simulation_task(self, simulation_id: str):
     """
-    Generate all 5 layers for a simulation — runs 5 Claude calls in parallel.
+    Generate all 5 layers for a simulation sequentially.
     Triggered by confirm-payment (background thread) or cron fallback.
     On failure after retries, issues automatic Stripe refund.
     """
     from app.extensions import db
-    from app.models.simulation import Simulation, SimulationLayer
+    from app.models.simulation import Simulation, SimulationLayer, IncomeStream
     from app.models.resume import Resume
+    from app.services.claude import generate_simulation_layer
     from app.services.fintech import is_fintech_enabled
 
     try:
@@ -89,35 +35,55 @@ def generate_simulation_task(self, simulation_id: str):
         parsed_text = resume.parsed_text if resume else ''
         fintech_enabled = is_fintech_enabled()
 
-        app_obj = current_app._get_current_object()
+        for layer_num in range(1, 6):
+            try:
+                layer_data = generate_simulation_layer(
+                    layer_number=layer_num,
+                    expertise_zone=sim.expertise_zone,
+                    focus_hint=sim.focus_hint or '',
+                    parsed_text=parsed_text,
+                    user_id=sim.user_id,
+                    simulation_id=simulation_id,
+                    fintech_enabled=fintech_enabled,
+                )
 
-        # Run all 5 Claude calls in parallel — reduces wall time from ~150s to ~30s
-        errors = []
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {
-                executor.submit(
-                    _generate_single_layer,
-                    app_obj, simulation_id, layer_num,
-                    sim.expertise_zone, sim.focus_hint or '',
-                    parsed_text, sim.user_id, fintech_enabled,
-                ): layer_num
-                for layer_num in range(1, 6)
-            }
-            for future in as_completed(futures):
-                layer_num = futures[future]
-                try:
-                    future.result()
-                except Exception as layer_err:
-                    logger.error('Layer %d failed for simulation %s: %s', layer_num, simulation_id, layer_err)
-                    errors.append((layer_num, layer_err))
+                sim_layer = SimulationLayer(
+                    simulation_id=simulation_id,
+                    layer_number=layer_data.get('layer_number', layer_num),
+                    layer_name=layer_data.get('layer_name', f'Layer {layer_num}'),
+                    income_type=layer_data.get('income_type', ''),
+                    ai_narrative=layer_data.get('ai_narrative', ''),
+                    priority_score=layer_data.get('priority_score'),
+                )
+                db.session.add(sim_layer)
+                db.session.flush()
 
-        if errors:
-            raise RuntimeError(f'Layer generation failed: {errors}')
+                for stream_data in layer_data.get('income_streams', []):
+                    low = stream_data.get('est_monthly_low')
+                    high = stream_data.get('est_monthly_high')
+                    if low is not None and high is not None and low > high:
+                        low, high = high, low
+                    stream = IncomeStream(
+                        layer_id=sim_layer.id,
+                        name=stream_data.get('name', ''),
+                        description=stream_data.get('description', ''),
+                        platform=stream_data.get('platform', ''),
+                        est_monthly_low=low,
+                        est_monthly_high=high,
+                        ai_reasoning=stream_data.get('ai_reasoning', ''),
+                        automation_level=stream_data.get('automation_level', ''),
+                        launch_timeline_weeks=stream_data.get('launch_timeline_weeks'),
+                    )
+                    stream.deliverable_refs = stream_data.get('deliverable_refs', [])
+                    db.session.add(stream)
 
-        # Verify all 5 layers were created
-        layer_count = SimulationLayer.query.filter_by(simulation_id=simulation_id).count()
-        if layer_count < 5:
-            raise RuntimeError(f'Expected 5 layers but only {layer_count} were created')
+                db.session.commit()
+                logger.info('Simulation %s layer %d complete', simulation_id, layer_num)
+
+            except Exception as layer_err:
+                db.session.rollback()
+                logger.error('Layer %d failed for simulation %s: %s', layer_num, simulation_id, layer_err)
+                raise
 
         sim = Simulation.query.get(simulation_id)
         sim.status = Simulation.STATUS_COMPLETE
