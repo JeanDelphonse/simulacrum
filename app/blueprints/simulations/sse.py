@@ -1,59 +1,49 @@
-import json
-import time
+"""
+sse.py — simulation generation recovery helper.
+
+The SSE streaming approach was replaced with client-side polling (sse.js) to avoid
+holding a Passenger worker thread open for the entire generation duration, which
+blocked navigation on shared hosting.
+
+This module now exposes only the recovery trigger used by the polling client.
+"""
+import logging
 import threading
-from flask import Response, stream_with_context, current_app
-from app.models.simulation import Simulation, SimulationLayer
+from flask import current_app
+
+logger = logging.getLogger(__name__)
 
 
-def sse_event(event_type: str, data: dict, event_id: str = None) -> str:
-    lines = []
-    if event_id:
-        lines.append(f'id: {event_id}')
-    lines.append(f'event: {event_type}')
-    lines.append(f'data: {json.dumps(data)}')
-    lines.append('')
-    lines.append('')
-    return '\n'.join(lines)
-
-
-def sse_keepalive() -> str:
-    """SSE comment — invisible to JS but prevents proxy/server from closing an idle connection."""
-    return ': keepalive\n\n'
-
-
-def _start_generation_if_needed(simulation_id: str, app_obj):
+def start_generation_if_needed(simulation_id: str, app_obj):
     """
     Restart generation if the confirm-payment background thread died and left the
     simulation stuck in STATUS_PROCESSING.  Uses an atomic SQL UPDATE as a mutex
-    so only one thread ever generates for a given simulation at a time.
+    (PROCESSING → STREAMING) so only one thread ever generates for a given simulation.
     """
-    import logging
-    logger = logging.getLogger(__name__)
-
     with app_obj.app_context():
         from app.extensions import db
-        from app.models.simulation import Simulation as Sim, SimulationLayer, IncomeStream
+        from app.models.simulation import Simulation, SimulationLayer, IncomeStream
         from app.models.resume import Resume
-        from flask import current_app
+        from flask import current_app as _app
 
-        # Atomic mutex: only the thread that transitions PROCESSING → STREAMING proceeds.
+        # Atomic mutex: only the thread that bumps PROCESSING → STREAMING proceeds.
         try:
             rows = db.session.execute(
                 db.text(
                     "UPDATE simulations SET status = :new WHERE id = :sid AND status = :old"
                 ),
-                {'new': Sim.STATUS_STREAMING, 'sid': simulation_id, 'old': Sim.STATUS_PROCESSING},
+                {'new': Simulation.STATUS_STREAMING, 'sid': simulation_id,
+                 'old': Simulation.STATUS_PROCESSING},
             )
             db.session.commit()
             if rows.rowcount == 0:
-                return  # another thread already claimed it
+                return  # already streaming/complete/error — nothing to do
         except Exception as e:
             db.session.rollback()
-            logger.error('SSE mutex failed for %s: %s', simulation_id, e)
+            logger.error('Recovery mutex failed for %s: %s', simulation_id, e)
             return
 
-        # We own generation — run the 5 layers sequentially inline.
-        sim = Sim.query.get(simulation_id)
+        sim = Simulation.query.get(simulation_id)
         if not sim:
             return
 
@@ -106,11 +96,11 @@ def _start_generation_if_needed(simulation_id: str, app_obj):
                     db.session.add(stream)
 
                 db.session.commit()
-                logger.info('SSE recovery: simulation %s layer %d complete', simulation_id, layer_num)
+                logger.info('Recovery: simulation %s layer %d complete', simulation_id, layer_num)
 
-            sim = Sim.query.get(simulation_id)
-            sim.status = Sim.STATUS_COMPLETE
-            charged = sim.amount_charged_cents or current_app.config['SIMULATION_PRICE_CENTS']
+            sim = Simulation.query.get(simulation_id)
+            sim.status = Simulation.STATUS_COMPLETE
+            charged = sim.amount_charged_cents or _app.config['SIMULATION_PRICE_CENTS']
             from app.models.user import User
             user = User.query.get(sim.user_id)
             if user:
@@ -122,106 +112,23 @@ def _start_generation_if_needed(simulation_id: str, app_obj):
                 from app.services.email_service import send_invoice_email
                 send_invoice_email(user.email, user.full_name, sim.name, sim.id, charged)
             except Exception as email_err:
-                logger.error('Invoice email failed (SSE recovery) %s: %s', simulation_id, email_err)
+                logger.error('Invoice email failed (recovery) %s: %s', simulation_id, email_err)
 
         except Exception as exc:
-            logger.error('SSE recovery generation failed for %s: %s', simulation_id, exc)
+            logger.error('Recovery generation failed for %s: %s', simulation_id, exc)
             db.session.rollback()
-            sim = Sim.query.get(simulation_id)
+            sim = Simulation.query.get(simulation_id)
             if sim:
-                sim.status = Sim.STATUS_ERROR
+                sim.status = Simulation.STATUS_ERROR
                 db.session.commit()
 
 
-def stream_simulation(simulation_id: str, user_id: str):
+def trigger_recovery(simulation_id: str):
+    """Start the recovery thread. Returns immediately — generation runs in background."""
     app_obj = current_app._get_current_object()
-
-    def generate():
-        sim = Simulation.query.get(simulation_id)
-        if not sim or sim.user_id != user_id:
-            yield sse_event('simulation_error', {'error': 'Simulation not found'})
-            return
-
-        yield sse_event('simulation_start', {
-            'simulation_id': simulation_id,
-            'name': sim.name,
-            'expertise_zone': sim.expertise_zone,
-        })
-
-        # If the generation thread from confirm-payment died, restart it here.
-        # The atomic SQL UPDATE acts as a mutex — only one SSE connection wins.
-        if sim.status == Simulation.STATUS_PROCESSING:
-            t = threading.Thread(
-                target=_start_generation_if_needed,
-                args=(simulation_id, app_obj),
-                daemon=True,
-            )
-            t.start()
-
-        sent_layers = set()
-        timeout      = 600   # 10 min — 5 Claude calls can take 2+ min total
-        start_time   = time.time()
-        poll_interval = 2.0
-        last_keepalive = time.time()
-
-        while time.time() - start_time < timeout:
-            sim = Simulation.query.get(simulation_id)
-            if not sim:
-                break
-
-            if sim.status == Simulation.STATUS_ERROR:
-                yield sse_event('simulation_error', {
-                    'error': sim.error_message or 'Generation failed',
-                    'simulation_id': simulation_id,
-                })
-                return
-
-            if sim.status == Simulation.STATUS_REFUNDED:
-                yield sse_event('simulation_error', {
-                    'error': 'Generation failed — payment refunded',
-                    'simulation_id': simulation_id,
-                    'refunded': True,
-                })
-                return
-
-            layers = SimulationLayer.query.filter_by(
-                simulation_id=simulation_id
-            ).order_by(SimulationLayer.layer_number).all()
-
-            for layer in layers:
-                if layer.id not in sent_layers:
-                    yield sse_event('layer_start', {
-                        'layer_number': layer.layer_number,
-                        'layer_name': layer.layer_name,
-                    }, event_id=f'layer-{layer.layer_number}')
-                    yield sse_event('layer_data', layer.to_dict(),
-                                    event_id=f'layer-data-{layer.layer_number}')
-                    sent_layers.add(layer.id)
-                    last_keepalive = time.time()
-
-            if sim.status == Simulation.STATUS_COMPLETE:
-                yield sse_event('simulation_complete', {
-                    'simulation_id': simulation_id,
-                    'total_layers': len(layers),
-                })
-                return
-
-            # Send keepalive every 15 s so Apache/Passenger don't close the connection
-            if time.time() - last_keepalive >= 15:
-                yield sse_keepalive()
-                last_keepalive = time.time()
-
-            time.sleep(poll_interval)
-
-        yield sse_event('simulation_error', {'error': 'Stream timeout — refresh to check status'})
-
-    return Response(
-        stream_with_context(generate()),
-        mimetype='text/event-stream',
-        headers={
-            'Cache-Control':     'no-cache',
-            'X-Accel-Buffering': 'no',      # nginx
-            'X-Content-Type-Options': 'nosniff',
-            'Connection':        'keep-alive',
-        },
+    t = threading.Thread(
+        target=start_generation_if_needed,
+        args=(simulation_id, app_obj),
+        daemon=True,
     )
+    t.start()

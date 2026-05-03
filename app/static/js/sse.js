@@ -1,66 +1,90 @@
 /**
- * Simulacrum SSE Client
- * Handles real-time streaming of simulation layers via Server-Sent Events.
+ * Simulacrum Simulation Poller
+ * Polls GET /api/simulations/<id> every 3 s instead of holding an SSE connection open.
+ * A long-lived SSE connection would monopolize Passenger's worker thread and block
+ * navigation. Short polling releases the worker between requests.
  */
 
+let _pollTimer = null;
+let _seenLayerNums = new Set();
+
 function startSSEStream(simulationId) {
-  const statusEl = document.getElementById('streamStatus');
+  const statusEl  = document.getElementById('streamStatus');
   const statusText = document.getElementById('streamStatusText');
   const container = document.getElementById('layersContainer');
 
-  const evtSource = new EventSource((window.ROOT || '') + `/api/simulations/${simulationId}/stream`);
-  let reconnectAttempts = 0;
+  // Kick a recovery request immediately so the server restarts generation
+  // if the confirm-payment background thread died (STATUS_PROCESSING stuck).
+  fetch((window.ROOT || '') + `/api/simulations/${simulationId}/recover`, { method: 'POST' })
+    .catch(() => {});  // fire-and-forget — failures are non-fatal
 
-  evtSource.addEventListener('simulation_start', (e) => {
-    const data = JSON.parse(e.data);
-    if (statusText) statusText.textContent = `Generating "${data.name}"…`;
-  });
+  // Poll immediately, then every 3 s.
+  _pollOnce(simulationId, statusEl, statusText, container);
+  _pollTimer = setInterval(
+    () => _pollOnce(simulationId, statusEl, statusText, container),
+    3000,
+  );
+}
 
-  evtSource.addEventListener('layer_start', (e) => {
-    const data = JSON.parse(e.data);
-    const skeleton = document.getElementById(`layer-skeleton-${data.layer_number}`);
-    if (skeleton) {
-      skeleton.querySelector('.skeleton-text').textContent = `Generating ${data.layer_name}…`;
+async function _pollOnce(simulationId, statusEl, statusText, container) {
+  let data;
+  try {
+    const res = await fetch((window.ROOT || '') + `/api/simulations/${simulationId}`);
+    if (!res.ok) return;
+    data = await res.json();
+  } catch (_) {
+    return;  // network blip — try again next tick
+  }
+
+  // Render any newly arrived layers
+  for (const layer of (data.layers || [])) {
+    if (!_seenLayerNums.has(layer.layer_number)) {
+      _seenLayerNums.add(layer.layer_number);
+
+      // Remove the matching skeleton placeholder
+      const skeleton = document.getElementById(`layer-skeleton-${layer.layer_number}`);
+      if (skeleton) skeleton.remove();
+
+      if (statusText) {
+        statusText.textContent = `Generated Layer ${layer.layer_number}: ${layer.layer_name}…`;
+      }
+
+      const html = buildLayerHTML(layer);
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const el = tmp.firstElementChild;
+      el.classList.add('layer-appear');
+      container.appendChild(el);
     }
-    if (statusText) statusText.textContent = `Generating Layer ${data.layer_number}: ${data.layer_name}…`;
-  });
+  }
 
-  evtSource.addEventListener('layer_data', (e) => {
-    const layer = JSON.parse(e.data);
-    const skeleton = document.getElementById(`layer-skeleton-${layer.layer_number}`);
-    if (skeleton) skeleton.remove();
-
-    const html = buildLayerHTML(layer);
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-    const layerEl = tempDiv.firstElementChild;
-    layerEl.classList.add('layer-appear');
-    container.appendChild(layerEl);
-  });
-
-  evtSource.addEventListener('simulation_complete', (e) => {
-    evtSource.close();
+  if (data.status === 'complete') {
+    _stopPolling();
     if (statusEl) statusEl.classList.add('hidden');
-    // Update status badge without reload
     const badge = document.querySelector('.status-badge');
     if (badge) { badge.textContent = 'Complete'; badge.className = 'status-badge status-complete'; }
-  });
+    // Show header actions (Export / Share / GCC) without a full reload
+    const headerActions = document.querySelector('.header-actions');
+    if (headerActions && !headerActions.querySelector('.btn-primary')) {
+      headerActions.innerHTML = `
+        <button class="btn btn-ghost" onclick="exportSim('${simulationId}')">Export PDF</button>
+        <button class="btn btn-ghost" onclick="shareSimulation('${simulationId}')">Share</button>
+        <a href="${window.ROOT || ''}/simulations/${simulationId}/layer6" class="btn btn-primary">⚡ Growth Command Center</a>
+      `;
+    }
+    return;
+  }
 
-  evtSource.addEventListener('simulation_error', (e) => {
-    const data = JSON.parse(e.data);
-    evtSource.close();
+  if (data.status === 'error' || data.status === 'refunded') {
+    _stopPolling();
     if (statusEl) {
-      statusEl.innerHTML = `<span class="stream-error">Generation failed: ${data.error}${data.refunded ? ' — payment refunded automatically.' : ''}</span>`;
+      statusEl.innerHTML = `<span class="stream-error">Generation failed.${data.status === 'refunded' ? ' Payment refunded automatically.' : ' Please contact support.'}</span>`;
     }
-  });
+  }
+}
 
-  evtSource.onerror = () => {
-    reconnectAttempts++;
-    if (reconnectAttempts > 5) {
-      evtSource.close();
-      if (statusText) statusText.textContent = 'Connection lost. Refresh to check status.';
-    }
-  };
+function _stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
 }
 
 function buildLayerHTML(layer) {
@@ -103,7 +127,7 @@ function buildLayerHTML(layer) {
         ${layer.ai_narrative ? `<p class="layer-narrative">${escapeHtml(layer.ai_narrative)}</p>` : ''}
         <div class="income-streams">${streams}</div>
         <div class="layer-refine">
-          <button class="btn btn-ghost btn-sm" onclick="showRefine(${layer.layer_number}, '${escapeHtml(layer.simulation_id || '')}')">Refine this layer →</button>
+          <button class="btn btn-ghost btn-sm" onclick="showRefine(${layer.layer_number}, '${escapeHtml(layer.id || '')}')">Refine this layer →</button>
         </div>
       </div>
     </div>

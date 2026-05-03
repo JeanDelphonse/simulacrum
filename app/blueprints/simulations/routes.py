@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from flask import request, jsonify, current_app
 from flask_login import login_required, current_user
 from app.blueprints.simulations import simulations_bp
-from app.blueprints.simulations.sse import stream_simulation
+from app.blueprints.simulations.sse import trigger_recovery
 from app.extensions import db
 from app.models.simulation import Simulation, SimulationLayer, IncomeStream
 from app.models.agent_action import AgentAction
@@ -185,23 +185,25 @@ def get_simulation(sim_id):
     return jsonify(sim.to_dict()), 200
 
 
-@simulations_bp.route('/<sim_id>/stream', methods=['GET'])
+@simulations_bp.route('/<sim_id>/recover', methods=['POST'])
 @login_required
-def stream_simulation_route(sim_id):
-    """SSE endpoint — streams layer generation in real time."""
-    sim = Simulation.query.get(sim_id)
+def recover_simulation(sim_id):
+    """Fire-and-forget recovery trigger — restarts generation if stuck in STATUS_PROCESSING."""
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first()
     if not sim:
-        return jsonify({'error': 'Not found'}), 404
-    # Check ownership or collaboration
-    if sim.user_id != current_user.id:
         from app.models.collaboration import Collaboration
         collab = Collaboration.query.filter_by(
             simulation_id=sim_id,
             invitee_email=current_user.email,
         ).filter(Collaboration.accepted_at.isnot(None)).first()
         if not collab:
-            return jsonify({'error': 'Forbidden'}), 403
-    return stream_simulation(sim_id, sim.user_id)
+            return jsonify({'error': 'Not found'}), 404
+        sim = Simulation.query.get(sim_id)
+
+    if sim and sim.status == Simulation.STATUS_PROCESSING:
+        trigger_recovery(sim_id)
+
+    return jsonify({'status': sim.status if sim else 'unknown'}), 200
 
 
 @simulations_bp.route('/<sim_id>/name', methods=['PUT'])
