@@ -1,30 +1,56 @@
-from flask import render_template, redirect, url_for
+import time
+from flask import render_template, redirect, url_for, jsonify
 from flask_login import current_user, login_required
 from app.blueprints.pages import pages_bp
 
+# ── Landing page cache (avoids DB queries on every unauthenticated hit) ──────
+_landing_cache = {'data': None, 'ts': 0.0}
+_LANDING_TTL   = 300  # 5 minutes
 
-@pages_bp.route('/')
-def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('pages.dashboard'))
+
+def _get_landing_data():
+    now = time.monotonic()
+    if _landing_cache['data'] and now - _landing_cache['ts'] < _LANDING_TTL:
+        return _landing_cache['data']
+
     from app.extensions import db as _db
     from app.models.feedback import UserFeedback
     from app.models.simulation import Simulation as _Sim
     from sqlalchemy import func as _func
+
     testimonials = UserFeedback.query.filter_by(status='approved').order_by(
         UserFeedback.is_featured.desc(),
         UserFeedback.display_order.asc(),
         UserFeedback.approved_at.desc(),
     ).limit(50).all()
     avg_row = _db.session.query(_func.avg(UserFeedback.star_rating)).filter_by(status='approved').scalar()
-    trust_stats = {
-        'avg_rating': round(float(avg_row or 0), 1),
-        'total_simulations': _Sim.query.count(),
-        'approved_count': len(testimonials),
+    data = {
+        'testimonials': [t.to_public_dict() for t in testimonials],
+        'trust_stats': {
+            'avg_rating':        round(float(avg_row or 0), 1),
+            'total_simulations': _Sim.query.count(),
+            'approved_count':    len(testimonials),
+        },
     }
+    _landing_cache['data'] = data
+    _landing_cache['ts']   = now
+    return data
+
+
+@pages_bp.route('/ping')
+def ping():
+    """Lightweight keepalive — no DB queries. Hit by cron to keep Passenger warm."""
+    return jsonify({'ok': True}), 200
+
+
+@pages_bp.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('pages.dashboard'))
+    data = _get_landing_data()
     return render_template('landing.html',
-                           testimonials=[t.to_public_dict() for t in testimonials],
-                           trust_stats=trust_stats)
+                           testimonials=data['testimonials'],
+                           trust_stats=data['trust_stats'])
 
 
 @pages_bp.route('/dashboard')

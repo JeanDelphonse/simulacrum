@@ -11,8 +11,12 @@ from app.models.resume import Resume
 from app.models.audit_log import AuditLog
 from app.services.stripe_service import create_payment_intent, confirm_payment_intent
 from app.models.platform_settings import PlatformSetting
-from app.services.claude import refine_simulation_layer, AGENT_ACTION_TYPES
 from utils.id_gen import generate_id
+
+
+def _agent_action_types():
+    from app.services.claude import AGENT_ACTION_TYPES
+    return AGENT_ACTION_TYPES
 
 
 @simulations_bp.route('/price', methods=['GET'])
@@ -241,6 +245,7 @@ def refine_layer(sim_id, layer_num):
     parsed_text = resume.parsed_text if resume else ''
 
     try:
+        from app.services.claude import refine_simulation_layer
         new_data = refine_simulation_layer(
             layer_number=layer_num,
             expertise_zone=sim.expertise_zone,
@@ -528,7 +533,7 @@ def seed_simulation(sim_id):
 @login_required
 def get_agent_action_types():
     """Return available agent action types per layer (prompt_form schemas included)."""
-    return jsonify(AGENT_ACTION_TYPES), 200
+    return jsonify(_agent_action_types()), 200
 
 
 # ---------------------------------------------------------------------------
@@ -569,7 +574,7 @@ def list_agent_actions(sim_id, layer_num):
     # Return stored context so the frontend can pre-fill forms
     stored_context = AgentContext.get_for_layer(sim_id, layer_num)
 
-    layer_action_types = AGENT_ACTION_TYPES.get(layer_num, {})
+    layer_action_types = _agent_action_types().get(layer_num, {})
     return jsonify({
         'available_action_types': [
             {
@@ -604,13 +609,13 @@ def create_agent_action(sim_id, layer_num):
     action_type = data.get('action_type') if data else None
     if not action_type:
         return jsonify({'error': 'action_type is required'}), 400
-    if action_type not in AGENT_ACTION_TYPES.get(layer_num, {}):
+    if action_type not in _agent_action_types().get(layer_num, {}):
         return jsonify({'error': f'Invalid action_type for layer {layer_num}'}), 400
 
     user_inputs = data.get('user_inputs', {}) or {}
 
     # Validate required fields from prompt_form schema
-    action_schema = AGENT_ACTION_TYPES[layer_num][action_type]
+    action_schema = _agent_action_types()[layer_num][action_type]
     missing_required = [
         f['key'] for f in action_schema.get('prompt_form', [])
         if f.get('required') and not user_inputs.get(f['key'], '').strip()
