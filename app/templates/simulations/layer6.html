@@ -169,8 +169,83 @@
 .gcc-tab-panel.active { display: block; }
 .tab-zone-wrap { padding: 2rem; }
 
-/* ── Journey tab dark wrapper ────────────────────────────────────────────── */
-#tab-journey { background: #0D1B3E; }
+/* ── All inner tabs — dark navy ──────────────────────────────────────────── */
+#tab-journey,
+#tab-numbers,
+#tab-actions,
+#tab-momentum { background: #0D1B3E; }
+
+/* Zone card */
+#tab-numbers .zone-card,
+#tab-actions .zone-card,
+#tab-momentum .zone-card {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.1);
+}
+#tab-numbers .zone-card h2,
+#tab-actions .zone-card h2,
+#tab-momentum .zone-card h2 {
+  color: rgba(255,255,255,.45);
+  border-bottom-color: rgba(255,255,255,.08);
+}
+
+/* Numbers — layer rows */
+#tab-numbers .layer-row {
+  border-bottom-color: rgba(255,255,255,.07);
+}
+#tab-numbers .layer-label { color: rgba(255,255,255,.85); }
+#tab-numbers .layer-sub   { color: rgba(255,255,255,.4);  }
+#tab-numbers .layer-actual { color: #fff; }
+#tab-numbers .var-pos { background: rgba(15,123,114,.2);  color: #5DCAA5; }
+#tab-numbers .var-neg { background: rgba(216,90,48,.2);   color: #F0997B; }
+#tab-numbers .var-neu { background: rgba(255,255,255,.06); color: rgba(255,255,255,.4); }
+#tab-numbers .totals-row {
+  border-top-color: rgba(255,255,255,.12);
+  color: rgba(255,255,255,.85);
+}
+#tab-numbers .velocity-card {
+  border-top-color: rgba(255,255,255,.08);
+}
+#tab-numbers .big-metric { color: #fff; }
+#tab-numbers .big-label  { color: rgba(255,255,255,.45); }
+
+/* Actions — sub-tabs */
+#tab-actions .action-tabs { border-bottom-color: rgba(255,255,255,.1); }
+#tab-actions .action-tab  { color: rgba(255,255,255,.45); }
+#tab-actions .action-tab.active {
+  color: #fff;
+  border-bottom-color: #13A89E;
+}
+#tab-actions .action-tab:hover:not(.active) { color: rgba(255,255,255,.75); }
+
+/* Log entries */
+#tab-actions .log-entry {
+  border-bottom-color: rgba(255,255,255,.07);
+  color: rgba(255,255,255,.75);
+}
+#tab-actions .log-entry .action-name { color: #fff; }
+#tab-actions .log-entry .log-meta    { color: rgba(255,255,255,.4); }
+
+/* Status badges — dark variants */
+#tab-actions .s-complete  { background: rgba(15,123,114,.2);   color: #5DCAA5;  border: 1px solid rgba(15,123,114,.3); }
+#tab-actions .s-dispatch  { background: rgba(24,95,165,.2);    color: #85B7EB;  border: 1px solid rgba(24,95,165,.3); }
+#tab-actions .s-escalated { background: rgba(201,149,42,.2);   color: #C9952A;  border: 1px solid rgba(201,149,42,.3); }
+#tab-actions .s-rejected  { background: rgba(216,90,48,.2);    color: #F0997B;  border: 1px solid rgba(216,90,48,.3); }
+#tab-actions .s-queued    { background: rgba(255,255,255,.06); color: rgba(255,255,255,.4); border: 1px solid rgba(255,255,255,.1); }
+#tab-actions .s-failed    { background: rgba(216,90,48,.2);    color: #F0997B;  border: 1px solid rgba(216,90,48,.3); }
+
+/* Escalation items */
+#tab-actions .escalation-item { border-bottom-color: rgba(255,255,255,.07); }
+#tab-actions .escalation-item .action-name { color: #fff; }
+#tab-actions .escalation-reason { color: rgba(255,255,255,.45); }
+
+/* Momentum cells */
+#tab-momentum .momentum-cell {
+  border-bottom-color: rgba(255,255,255,.07);
+  border-right-color:  rgba(255,255,255,.07);
+}
+#tab-momentum .momentum-value { color: #fff; }
+#tab-momentum .momentum-label { color: rgba(255,255,255,.4); }
 
 /* ── Journey Stages ──────────────────────────────────────────────────────── */
 .jrn-rows { padding: 1.5rem 2rem 1rem; display: flex; flex-direction: column; gap: 2rem; }
