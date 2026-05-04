@@ -40,13 +40,6 @@ def execute_agent_action_task(action_id: str):
             dispatch_source='user_rerun',
         )
 
-        # Re-fetch to honour a stop request that arrived during execution
-        db.session.expire(action)
-        action = AgentAction.query.get(action_id)
-        if action.status == AgentAction.STATUS_FAILED and action.error_message == 'Stopped by user':
-            logger.info('AgentAction %s was stopped during execution — discarding result', action_id)
-            return
-
         action.artifact = artifact
         action.status = AgentAction.STATUS_COMPLETE
         action.completed_at = datetime.utcnow()
