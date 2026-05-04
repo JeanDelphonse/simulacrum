@@ -446,6 +446,90 @@
 .jrn-metric-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,.4); }
 .jrn-metric-value { font-size: 0.875rem; font-weight: 600; color: #fff; }
 
+/* ── 12-Month Impact Card ────────────────────────────────────────────────── */
+.jrn-impact {
+  margin: 0 2rem 1.5rem;
+  border: 1px solid rgba(201,149,42,.2);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+  overflow: hidden;
+}
+.jrn-impact-stage-label {
+  font-family: monospace; font-size: 0.65rem; letter-spacing: 0.12em;
+  color: #C9952A; text-transform: uppercase;
+  padding: 1.25rem 1.5rem 0;
+}
+.jrn-impact-title {
+  font-size: 1.25rem; font-weight: 700; color: #fff; line-height: 1.3;
+  padding: 0.4rem 1.5rem 0.2rem;
+}
+.jrn-impact-sub {
+  font-size: 0.78rem; color: rgba(255,255,255,.45); padding: 0 1.5rem 1.25rem;
+  font-family: monospace;
+}
+.jrn-impact-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem; padding: 0 1.5rem 1.25rem;
+}
+.jrn-impact-cell {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px; padding: 1rem 1.1rem; text-align: center;
+}
+.jrn-impact-num {
+  font-size: 1.75rem; font-weight: 700; line-height: 1; margin-bottom: 0.35rem;
+}
+.jrn-impact-desc {
+  font-size: 0.7rem; color: rgba(255,255,255,.45); line-height: 1.5;
+}
+.jrn-impact-orc {
+  margin: 0 1.5rem 1.25rem;
+  background: rgba(15,123,114,.07);
+  border: 1px solid rgba(15,123,114,.25);
+  border-radius: 8px; padding: 0.875rem 1rem;
+}
+.jrn-impact-orc-hdr {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.68rem; font-weight: 600; color: #13A89E;
+  margin-bottom: 0.5rem; font-family: monospace;
+}
+.jrn-impact-orc-text {
+  font-size: 0.78rem; color: rgba(255,255,255,.65); line-height: 1.7;
+}
+.jrn-impact-layers {
+  padding: 0 1.5rem 1.25rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.jrn-impact-layer-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  font-size: 0.76rem; color: rgba(255,255,255,.6);
+}
+.jrn-impact-layer-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.jrn-impact-layer-name { flex: 1; }
+.jrn-impact-layer-done { font-weight: 600; color: #fff; font-family: monospace; font-size: 0.7rem; }
+.jrn-impact-layer-income { font-family: monospace; font-size: 0.7rem; color: #5DCAA5; }
+.jrn-impact-closing {
+  margin: 0 1.5rem 1.5rem;
+  font-size: 0.78rem; color: rgba(255,255,255,.45); line-height: 1.8;
+  padding: 0.875rem 1rem;
+  border: 1px solid rgba(255,255,255,.07);
+  border-left: 3px solid #C9952A;
+  border-radius: 4px; font-style: italic;
+}
+@media (max-width: 600px) {
+  .jrn-impact { margin: 0 1rem 1.25rem; }
+  .jrn-impact-grid { grid-template-columns: 1fr 1fr; }
+  .jrn-impact-stage-label,
+  .jrn-impact-title,
+  .jrn-impact-sub { padding-left: 1rem; padding-right: 1rem; }
+  .jrn-impact-grid,
+  .jrn-impact-orc,
+  .jrn-impact-layers,
+  .jrn-impact-closing { margin-left: 1rem; margin-right: 1rem; padding-left: 0; padding-right: 0; }
+}
+
 /* ── Journey Footer ──────────────────────────────────────────────────────── */
 .jrn-footer {
   margin: 0 2rem 2rem; background: rgba(255,255,255,.03);
@@ -831,6 +915,37 @@
   <!-- JOURNEY TAB -->
   <div id="tab-journey" class="gcc-tab-panel active" role="tabpanel">
     <div class="jrn-rows" id="jrnRows"></div>
+
+    <!-- 12-Month Impact Card -->
+    <div class="jrn-impact" id="jrnImpact">
+      <div class="jrn-impact-stage-label">12-month impact</div>
+      <div class="jrn-impact-title" id="jrnImpactTitle">From one salary to a compounding wealth engine</div>
+      <div class="jrn-impact-sub" id="jrnImpactSub">— cycles · — agents fired · — in new income</div>
+      <div class="jrn-impact-grid">
+        <div class="jrn-impact-cell">
+          <div class="jrn-impact-num" id="jrnImpactNewIncome" style="color:#5DCAA5">—</div>
+          <div class="jrn-impact-desc">New income generated on top of active salary</div>
+        </div>
+        <div class="jrn-impact-cell">
+          <div class="jrn-impact-num" id="jrnImpactTotalIncome" style="color:#AFA9EC">—</div>
+          <div class="jrn-impact-desc">Total income across all five layers</div>
+        </div>
+        <div class="jrn-impact-cell">
+          <div class="jrn-impact-num" id="jrnImpactPortfolio" style="color:#85B7EB">—</div>
+          <div class="jrn-impact-desc">Portfolio balance · compounding</div>
+        </div>
+      </div>
+      <div class="jrn-impact-orc" id="jrnImpactOrc" style="display:none">
+        <div class="jrn-impact-orc-hdr">
+          <span class="jrn-orc-pulse"></span>
+          <span id="jrnImpactOrcHdr">Orchestrator · GCC summary</span>
+        </div>
+        <div class="jrn-impact-orc-text" id="jrnImpactOrcText"></div>
+      </div>
+      <div class="jrn-impact-layers" id="jrnImpactLayers"></div>
+      <div class="jrn-impact-closing" id="jrnImpactClosing" style="display:none"></div>
+    </div>
+
     <div class="jrn-footer">
       <div class="jrn-footer-hdr">
         <div>
@@ -1560,7 +1675,11 @@ function _initTabState() {
 }
 
 // ── Journey data update helpers ───────────────────────────────────────────
+const _impactState = { numbers: null, actions: null, momentum: null };
+
 function _updateJourneyNumbers(numbers) {
+  _impactState.numbers = numbers;
+  _renderImpactCard();
   const actual = numbers.total_actual || 0;
   const projected = numbers.total_projected || 0;
   const el = document.getElementById('jrnIncomeActual');
@@ -1587,8 +1706,88 @@ function _updateJourneyNumbers(numbers) {
   });
 }
 
+// ── 12-Month Impact Card ─────────────────────────────────────────────────
+function _renderImpactCard() {
+  const { numbers, actions, momentum } = _impactState;
+
+  // --- Stats ---
+  const totalActual    = (numbers && numbers.total_actual)    || 0;
+  const totalProjected = (numbers && numbers.total_projected) || 0;
+  const portfolio      = (momentum && momentum.investment_balance) || 0;
+  const layers         = (numbers && numbers.layers) || [];
+  const totalAgents    = layers.reduce((s, l) => s + (l.completed_count || 0), 0);
+  const lastCycle      = actions && actions.last_cycle;
+  const cycleNum       = lastCycle ? (lastCycle.cycle_number || 0) : 0;
+  const phase          = lastCycle ? (lastCycle.phase || 'explore') : 'explore';
+
+  // Sub-heading
+  const subEl = document.getElementById('jrnImpactSub');
+  if (subEl) subEl.textContent =
+    `${cycleNum} cycle${cycleNum !== 1 ? 's' : ''} · ${totalAgents} agent${totalAgents !== 1 ? 's' : ''} fired · ${fmt(totalActual)} in new income`;
+
+  // Impact grid
+  const ni = document.getElementById('jrnImpactNewIncome');
+  const ti = document.getElementById('jrnImpactTotalIncome');
+  const pi = document.getElementById('jrnImpactPortfolio');
+  if (ni) ni.textContent = totalActual  ? fmt(totalActual)    : '—';
+  if (ti) ti.textContent = totalProjected ? fmt(totalProjected) : '—';
+  if (pi) pi.textContent = portfolio    ? fmt(portfolio)       : '—';
+
+  // Orchestrator summary box
+  if (lastCycle) {
+    const orcBox = document.getElementById('jrnImpactOrc');
+    const orcHdr = document.getElementById('jrnImpactOrcHdr');
+    const orcTxt = document.getElementById('jrnImpactOrcText');
+    if (orcHdr) orcHdr.textContent =
+      `Orchestrator · Cycle ${cycleNum} · GCC summary · ${phase.charAt(0).toUpperCase() + phase.slice(1)} phase`;
+    if (orcTxt) {
+      const esc  = (actions.escalations || []).length;
+      const done = totalAgents;
+      const running = (actions.recent_log || []).filter(a => a.status === 'dispatched').length;
+      orcTxt.innerHTML =
+        `${done} agent action${done !== 1 ? 's' : ''} complete across 5 layers.` +
+        (running ? ` ${running} agent${running !== 1 ? 's' : ''} running.` : '') +
+        (esc ? ` <strong>${esc} escalation${esc !== 1 ? 's' : ''} pending your approval.</strong>` : ' No escalations pending.') +
+        ` Phase: <strong>${phase.charAt(0).toUpperCase() + phase.slice(1)}</strong>.`;
+    }
+    if (orcBox) orcBox.style.display = 'block';
+  }
+
+  // Per-layer breakdown
+  const layerColors = { 1:'#534AB7', 2:'#0F7B72', 3:'#D85A30', 4:'#BA7517', 5:'#185FA5' };
+  const layerNames  = { 1:'Active', 2:'Leveraged', 3:'Productized', 4:'Automated', 5:'Wealth' };
+  const layersEl = document.getElementById('jrnImpactLayers');
+  if (layersEl && layers.length) {
+    layersEl.innerHTML = layers.map(l => {
+      const color  = layerColors[l.layer_number] || '#334155';
+      const name   = layerNames[l.layer_number]  || `Layer ${l.layer_number}`;
+      const done   = l.completed_count || 0;
+      const income = l.actual_income   || 0;
+      return `<div class="jrn-impact-layer-row">
+        <div class="jrn-impact-layer-dot" style="background:${color}"></div>
+        <div class="jrn-impact-layer-name">Layer ${l.layer_number} · ${name}</div>
+        <div class="jrn-impact-layer-done">${done} action${done !== 1 ? 's' : ''}</div>
+        ${income ? `<div class="jrn-impact-layer-income">${fmt(income)}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // Closing narrative (shown once at least one cycle has run)
+  if (cycleNum > 0) {
+    const closingEl = document.getElementById('jrnImpactClosing');
+    if (closingEl) {
+      const name = (document.querySelector('.l6-pc-name') || {}).textContent || 'You';
+      closingEl.textContent =
+        `${name.split(' ')[0]} did not quit their job. The orchestrator identified where their expertise could generate income beyond their salary, dispatched agents to build the tools, and kept compounding the signals as each layer confirmed demand.`;
+      closingEl.style.display = 'block';
+    }
+  }
+}
+
 function _updateJourneyMomentum(m) {
   if (!m) return;
+  _impactState.momentum = m;
+  _renderImpactCard();
   JOURNEY_LAYERS.forEach(l => {
     if (l.metricKey === '_l3_income') return;
     const v = m[l.metricKey];
@@ -1610,6 +1809,8 @@ function _updateJourneyMomentum(m) {
 }
 
 function _updateJourneyActions(actions) {
+  _impactState.actions = actions;
+  _renderImpactCard();
   // Escalation badges per layer
   const escByLayer = {};
   (actions.escalations || []).forEach(e => {
