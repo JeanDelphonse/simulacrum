@@ -196,6 +196,16 @@ def resume_detail(resume_id):
     return render_template('resumes/detail.html', resume=resume, stripe_pk=stripe_pk)
 
 
+@pages_bp.route('/samples/marcus')
+def sample_marcus():
+    return render_template('samples/simulacrum_usecase_marcus.html')
+
+
+@pages_bp.route('/samples/maya')
+def sample_maya():
+    return render_template('samples/simulacrum_usecase_maya.html')
+
+
 @pages_bp.route('/login')
 def login_page():
     if current_user.is_authenticated:

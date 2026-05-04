@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maya Chen — Simulacrum Use Case</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0D1B3E;--navy-mid:#1B3A6B;--teal:#0F7B72;--teal-lt:#13A89E;
+  --gold:#C9952A;--gold-lt:#FDF3DC;--gold-dk:#7A5A16;
+  --white:#FFFFFF;--off:#F8F9FB;--muted:#64748B;--dark:#0F172A;
+  --l1:#534AB7;--l1l:#EEEDFE;--l2:#0F6E56;--l2l:#E1F5EE;
+  --l3:#D85A30;--l3l:#FAECE7;--l4:#BA7517;--l4l:#FAEEDA;
+  --l5:#185FA5;--l5l:#E6F1FB;
+  --font-display:'DM Serif Display',serif;
+  --font-body:'DM Sans',sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --radius:10px;--radius-sm:6px;
+}
+
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-height:100vh;line-height:1.6}
+
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.hero{padding:72px 24px 56px;text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.08)}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(201,149,42,.12) 0%,transparent 70%);pointer-events:none}
+.hero-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;display:inline-flex;align-items:center;gap:8px}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:inline-block;width:28px;height:1px;background:var(--gold);opacity:.6}
+.hero-title{font-family:var(--font-display);font-size:clamp(36px,6vw,64px);line-height:1.1;margin-bottom:12px;letter-spacing:-.02em}
+.hero-title span{color:var(--gold);font-style:italic}
+.hero-sub{font-size:16px;color:rgba(255,255,255,.6);max-width:520px;margin:0 auto 32px}
+.hero-meta{display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
+.meta-pill{font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
+
+/* ── Progress nav ─────────────────────────────────────────────────── */
+.progress-wrap{position:sticky;top:0;z-index:100;background:rgba(13,27,62,.96);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px}
+.progress-inner{max-width:900px;margin:0 auto;display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none}
+.progress-inner::-webkit-scrollbar{display:none}
+.prog-step{flex:1;min-width:90px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.prog-step:hover{background:rgba(255,255,255,.04)}
+.prog-step.active{border-bottom-color:var(--gold)}
+.prog-step.done{border-bottom-color:var(--teal)}
+.prog-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .2s}
+.prog-step.active .prog-dot{background:var(--gold)}
+.prog-step.done .prog-dot{background:var(--teal)}
+.prog-label{font-size:11px;color:rgba(255,255,255,.45);font-family:var(--font-mono)}
+.prog-step.active .prog-label{color:var(--gold)}
+.prog-step.done .prog-label{color:var(--teal)}
+
+/* ── Stages ───────────────────────────────────────────────────────── */
+.stages{max-width:900px;margin:0 auto;padding:48px 24px 80px}
+.stage{display:none;animation:fadeUp .35s ease forwards}
+.stage.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Section labels ───────────────────────────────────────────────── */
+.stage-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.stage-label::after{content:'';flex:1;height:1px;background:rgba(201,149,42,.25)}
+.stage-title{font-family:var(--font-display);font-size:clamp(26px,4vw,40px);line-height:1.2;margin-bottom:6px;letter-spacing:-.02em}
+.stage-sub{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:32px}
+
+/* ── Profile card ─────────────────────────────────────────────────── */
+.profile-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:28px;margin-bottom:24px}
+.profile-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:24px}
+.avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;flex-shrink:0;font-family:var(--font-body)}
+.profile-name{font-family:var(--font-display);font-size:22px;margin-bottom:3px}
+.profile-role{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:10px}
+.profile-bio{font-size:13px;color:rgba(255,255,255,.65);line-height:1.7}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+.stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);padding:14px}
+.stat-label{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-family:var(--font-mono)}
+.stat-val{font-size:22px;font-weight:500}
+
+/* ── Orchestrator box ─────────────────────────────────────────────── */
+.orc{background:rgba(15,123,114,.08);border:1px solid rgba(15,123,114,.3);border-radius:var(--radius);padding:18px 20px;margin-bottom:24px}
+.orc-header{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--teal-lt);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.orc-text{font-size:13px;color:rgba(255,255,255,.7);line-height:1.7}
+.orc-text strong{color:var(--white);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.chip{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5)}
+.chip.sel{border-color:rgba(15,164,158,.5);color:var(--teal-lt);background:rgba(15,123,114,.15)}
+
+/* ── Agent cards ──────────────────────────────────────────────────── */
+.agent{border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);overflow:hidden;margin-bottom:14px}
+.agent-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.layer-badge{font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;font-family:var(--font-mono)}
+.agent-title{font-size:13px;font-weight:500;flex:1}
+.model-tag{font-family:var(--font-mono);font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)}
+.model-tag.opus{background:rgba(83,74,183,.2);color:#AFA9EC}
+.agent-body{padding:16px}
+.agent-body p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;margin-bottom:14px}
+
+/* ── Artifact box ─────────────────────────────────────────────────── */
+.artifact{background:rgba(255,255,255,.04);border-radius:var(--radius-sm);padding:14px 16px}
+.artifact-top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.artifact-name{font-size:12px;font-weight:500;flex:1}
+.ver{font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px;background:var(--teal);color:var(--white)}
+.fchip{font-size:10px;padding:2px 9px;border-radius:10px;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5)}
+.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.kv{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.kv:nth-last-child(-n+2){border-bottom:none}
+.kk{font-size:10px;color:rgba(255,255,255,.35);margin-bottom:2px;font-family:var(--font-mono)}
+.kv-val{font-size:12px;color:rgba(255,255,255,.8)}
+.kv-val.hi{color:var(--white);font-weight:500}
+
+/* ── Impact section ───────────────────────────────────────────────── */
+.impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.impact-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:20px;text-align:center}
+.impact-num{font-family:var(--font-display);font-size:32px;margin-bottom:4px;line-height:1}
+.impact-desc{font-size:12px;color:rgba(255,255,255,.5);line-height:1.5}
+
+.timeline{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.tl-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);font-family:var(--font-mono);margin-bottom:16px}
+.tl-item{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start}
+.tl-item:last-child{margin-bottom:0}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.tl-text{font-size:13px;color:rgba(255,255,255,.6);line-height:1.6}
+.tl-text strong{color:var(--white);font-weight:500}
+
+.closing{font-size:13px;color:rgba(255,255,255,.5);line-height:1.8;padding:16px 20px;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);border-left:3px solid var(--gold);font-style:italic}
+
+/* ── Nav buttons ──────────────────────────────────────────────────── */
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08)}
+.btn{padding:10px 22px;font-size:13px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-body);transition:all .15s;border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.6)}
+.btn:hover{background:rgba(255,255,255,.06);color:var(--white)}
+.btn:disabled{opacity:.25;cursor:not-allowed}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:500}
+.btn.primary:hover{background:#D4A030;border-color:#D4A030}
+.step-count{font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.3)}
+
+/* ── Footer ───────────────────────────────────────────────────────── */
+.footer{text-align:center;padding:40px 24px;border-top:1px solid rgba(255,255,255,.06)}
+.footer p{font-size:12px;color:rgba(255,255,255,.3);font-family:var(--font-mono)}
+.footer a{color:var(--gold);text-decoration:none}
+
+@media(max-width:640px){
+  .stats,.impact-grid{grid-template-columns:1fr 1fr}
+  .kv-grid{grid-template-columns:1fr}
+  .hero-meta{gap:10px}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-eyebrow">Simulacrum use case</div>
+  <h1 class="hero-title">From <span>one salary</span><br>to five income layers</h1>
+  <p class="hero-sub">Watch how Simulacrum turned 12 years of graphic design experience into a $73,400 income expansion — in 12 months, without quitting her job.</p>
+  <div class="hero-meta">
+    <span class="meta-pill">Senior graphic designer</span>
+    <span class="meta-pill">San Francisco, CA</span>
+    <span class="meta-pill">12 years experience</span>
+    <span class="meta-pill">$0 side income → $73,400</span>
+  </div>
+</header>
+
+<nav class="progress-wrap">
+  <div class="progress-inner" id="progress">
+    <div class="prog-step active" onclick="goTo(0)"><div class="prog-dot"></div><div class="prog-label">Profile</div></div>
+    <div class="prog-step" onclick="goTo(1)"><div class="prog-dot"></div><div class="prog-label">L1 Active</div></div>
+    <div class="prog-step" onclick="goTo(2)"><div class="prog-dot"></div><div class="prog-label">L2 Leveraged</div></div>
+    <div class="prog-step" onclick="goTo(3)"><div class="prog-dot"></div><div class="prog-label">L3 Productized</div></div>
+    <div class="prog-step" onclick="goTo(4)"><div class="prog-dot"></div><div class="prog-label">L4 Automated</div></div>
+    <div class="prog-step" onclick="goTo(5)"><div class="prog-dot"></div><div class="prog-label">L5 Wealth</div></div>
+    <div class="prog-step" onclick="goTo(6)"><div class="prog-dot"></div><div class="prog-label">Impact</div></div>
+  </div>
+</nav>
+
+<main class="stages">
+
+<!-- S0 -->
+<div class="stage active" id="s0">
+  <div class="stage-label">The client</div>
+  <h2 class="stage-title">Meet Maya Chen</h2>
+  <p class="stage-sub">Senior graphic designer · 12 years · Adobe, Airbnb, two Series B startups</p>
+  <div class="profile-card">
+    <div class="profile-top">
+      <div class="avatar" style="background:#2D2560;color:#AFA9EC">MC</div>
+      <div>
+        <div class="profile-name">Maya Chen</div>
+        <div class="profile-role">Senior Brand Designer · San Francisco, CA</div>
+        <div class="profile-bio">Maya has built brand systems used by millions of users, led design teams of 8, and delivered packaging redesigns that drove double-digit sales lifts. She earns $145,000/year as an employee. She has never charged a client directly, taught a course, or invested beyond her 401(k). She uploaded her resume to Simulacrum on a Tuesday evening.</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Annual salary</div><div class="stat-val">$145k</div></div>
+      <div class="stat"><div class="stat-label">Side income</div><div class="stat-val" style="color:rgba(255,255,255,.3)">$0</div></div>
+      <div class="stat"><div class="stat-label">Expertise zones</div><div class="stat-val" style="color:var(--gold)">4 found</div></div>
+    </div>
+  </div>
+  <div class="orc">
+    <div class="orc-header"><span class="pulse"></span>Orchestrator · Expertise zone extraction · Haiku 4.5</div>
+    <div class="orc-text">Resume analysis complete. Four expertise zones identified from 12 years of career deliverables: <strong>Brand identity systems</strong> (confidence 0.92), <strong>Packaging design</strong> (0.87), <strong>Design systems & UI</strong> (0.81), <strong>Creative direction</strong> (0.76). Primary zone selected: Brand identity systems. Layer 1 agents dispatched. Explore phase active — minimum 1 action per layer for first 3 cycles.</div>
+  </div>
+  <div class="nav-row">
+    <button class="btn" disabled>← Back</button>
+    <span class="step-count">1 / 7</span>
+    <button class="btn primary" onclick="goTo(1)">Layer 1: Active income →</button>
+  </div>
+</div>
+
+<!-- S1 -->
+<div class="stage" id="s1">
+  <div class="stage-label">Layer 1 · Active income</div>
+  <h2 class="stage-title">Turn expertise into<br>consulting income — now</h2>
+  <p class="stage-sub">How do I land the first client and price 12 years of design experience correctly?</p>
+  <div class="orc">
+    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 1 · Score & Schedule · Explore phase</div>
+    <div class="orc-text">Bayesian model initialized. Brand identity consulting posterior mean: <strong>$185/hr</strong> (range $140–$240 based on SF market comps). Top 3 Layer 1 actions dispatched via Batch API.</div>
+    <div class="chips">
+      <span class="chip sel">Rate card — score 0.94</span>
+      <span class="chip sel">LinkedIn optimization — score 0.88</span>
+      <span class="chip sel">Booking page — score 0.82</span>
+      <span class="chip">Cold email — score 0.71 · queued cycle 2</span>
+      <span class="chip">Proposal — blocked · needs rate card first</span>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#2D2560;color:#AFA9EC">L1 · Rate card</span>
+      <span class="agent-title">Pricing document + capability one-pager</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent read Maya's resume, identified her expertise zones, cross-referenced brand identity consulting rates in San Francisco, and generated a rate card anchored to her 12 years of experience and her most-cited deliverable: the Airbnb brand system refresh.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Maya Chen — Brand Design Rate Card</span><span class="ver">v1</span><span class="fchip">PDF</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Hourly rate</div><div class="kv-val hi">$185/hr</div></div>
+          <div class="kv"><div class="kk">Brand identity project</div><div class="kv-val hi">$8,500–$18,000</div></div>
+          <div class="kv"><div class="kk">Packaging project</div><div class="kv-val">$6,000–$12,000</div></div>
+          <div class="kv"><div class="kk">Design system audit</div><div class="kv-val">$4,500–$9,000</div></div>
+          <div class="kv"><div class="kk">Creative direction retainer</div><div class="kv-val">$4,200/month</div></div>
+          <div class="kv"><div class="kk">Anchor deliverable</div><div class="kv-val">Airbnb brand refresh</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#2D2560;color:#AFA9EC">L1 · LinkedIn</span>
+      <span class="agent-title">Rewritten headline + About + Featured</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent rewrote Maya's LinkedIn from an employee-framed history into a consultant-framed positioning statement leading with her most commercially valuable expertise and specific outcomes.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">LinkedIn optimization</span><span class="ver">v1</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">New headline</div><div class="kv-val hi">Brand Identity Designer · Systems that scale · Adobe · Airbnb</div></div>
+          <div class="kv"><div class="kk">About opening</div><div class="kv-val">I build brand identities that hold up at 10 users and 10 million...</div></div>
+          <div class="kv"><div class="kk">Featured (1)</div><div class="kv-val">Airbnb brand system case study PDF</div></div>
+          <div class="kv"><div class="kk">Featured (2)</div><div class="kv-val">Booking page link</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#2D2560;color:#AFA9EC">L1 · Booking page</span>
+      <span class="agent-title">Cal.com booking page — live</span>
+      <span class="model-tag">haiku-4-5</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent configured Maya's booking page with two session types priced from the rate card and linked it to her LinkedIn Featured section.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Cal.com booking page</span><span class="ver">v1</span><span class="fchip">LIVE URL</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Discovery call</div><div class="kv-val">30 min · Free</div></div>
+          <div class="kv"><div class="kk">Strategy session</div><div class="kv-val hi">90 min · $275</div></div>
+          <div class="kv"><div class="kk">Timezone</div><div class="kv-val">America/Los_Angeles</div></div>
+          <div class="kv"><div class="kk">Buffer time</div><div class="kv-val">30 min between sessions</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="btn" onclick="goTo(0)">← Back</button>
+    <span class="step-count">2 / 7</span>
+    <button class="btn primary" onclick="goTo(2)">Layer 2: Leveraged →</button>
+  </div>
+</div>
+
+<!-- S2 -->
+<div class="stage" id="s2">
+  <div class="stage-label">Layer 2 · Leveraged income</div>
+  <h2 class="stage-title">Reach many people<br>with one session</h2>
+  <p class="stage-sub">How do I build workshops, group coaching, and corporate training on top of my consulting proof?</p>
+  <div class="orc">
+    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 3 · Score & Schedule</div>
+    <div class="orc-text">Harvest: Cal.com shows <strong>3 confirmed discovery calls in 10 days</strong>. Demand signal strong. Rate card artifact routed immediately to Layer 2 — output_type=pricing condition met. Top 3 Layer 2 actions dispatched.</div>
+    <div class="chips">
+      <span class="chip sel">Workshop curriculum — score 0.91</span>
+      <span class="chip sel">Speaking proposals — score 0.85</span>
+      <span class="chip sel">Waitlist landing page — score 0.78</span>
+      <span class="chip">Corporate training — score 0.62 · queued cycle 4</span>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#0A3D2E;color:#5DCAA5">L2 · Workshop</span>
+      <span class="agent-title">Facilitator guide + participant workbook</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent built a full-day workshop using Maya's Airbnb brand system work as the live case study. Positioned for senior designers and marketing directors — the exact audience her consulting outreach targets.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Brand Systems Masterclass — 1-day workshop</span><span class="ver">v1</span><span class="fchip">DOCX</span><span class="fchip">Workbook</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Workshop title</div><div class="kv-val hi">Brand Systems That Scale</div></div>
+          <div class="kv"><div class="kk">Session count</div><div class="kv-val">4 × 90-min sessions</div></div>
+          <div class="kv"><div class="kk">Session 1</div><div class="kv-val">Brand architecture and naming</div></div>
+          <div class="kv"><div class="kk">Session 4</div><div class="kv-val">Rollout, governance, team enablement</div></div>
+          <div class="kv"><div class="kk">Price</div><div class="kv-val hi">$1,800/person · $12,000 corporate buy-out</div></div>
+          <div class="kv"><div class="kk">Target audience</div><div class="kv-val">Senior designers, brand leads, marketing directors</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#0A3D2E;color:#5DCAA5">L2 · Speaking</span>
+      <span class="agent-title">10 conference + podcast proposals</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent generated 10 tailored proposals for design conferences and podcasts, each anchoring the pitch to Maya's Airbnb case study. LinkedIn bio artifact routed here via skip — rewritten bio feeds speaker bio section directly.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Speaking proposal set</span><span class="ver">v1</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Talk title</div><div class="kv-val hi">How to build a brand system 10 designers can actually use</div></div>
+          <div class="kv"><div class="kk">Targets (sample)</div><div class="kv-val">AIGA Design Conference, Brand New Conference, Design Matters podcast</div></div>
+          <div class="kv"><div class="kk">Speaker fee</div><div class="kv-val">$2,500–$5,000</div></div>
+          <div class="kv"><div class="kk">Talk length</div><div class="kv-val">45 minutes + Q&A</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#0A3D2E;color:#5DCAA5">L2 · Waitlist</span>
+      <span class="agent-title">Landing page copy + 5-email nurture sequence</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent created a waitlist page for the first workshop cohort and a 5-email sequence delivering one brand design insight per week to keep subscribers warm until launch.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Workshop waitlist — live</span><span class="ver">v1</span><span class="fchip">ConvertKit LIVE</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Headline</div><div class="kv-val hi">The brand system workshop — next cohort in 6 weeks</div></div>
+          <div class="kv"><div class="kk">Email 1</div><div class="kv-val">Why most brand guidelines fail</div></div>
+          <div class="kv"><div class="kk">Email 3</div><div class="kv-val">The Airbnb brand story — what I actually built</div></div>
+          <div class="kv"><div class="kk">Email 5</div><div class="kv-val">Early access: the workshop opens Thursday</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="btn" onclick="goTo(1)">← Back</button>
+    <span class="step-count">3 / 7</span>
+    <button class="btn primary" onclick="goTo(3)">Layer 3: Productized →</button>
+  </div>
+</div>
+
+<!-- S3 -->
+<div class="stage" id="s3">
+  <div class="stage-label">Layer 3 · Productized income</div>
+  <h2 class="stage-title">Build once,<br>sell many times</h2>
+  <p class="stage-sub">How do I package my knowledge into products that generate revenue while I sleep?</p>
+  <div class="orc">
+    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 6 · Score & Schedule · Deferred route triggered</div>
+    <div class="orc-text">Harvest: waitlist at <strong>73 subscribers</strong>. Deferred route fired — subscriber_count ≥ 50 condition met. L2 waitlist artifact → L3 launch sequence. Workshop curriculum (6 modules documented) meets L3 course curriculum condition. Bayesian update: demand signal elevated.</div>
+    <div class="chips">
+      <span class="chip sel">Course curriculum — score 0.93</span>
+      <span class="chip sel">Sales page — score 0.89</span>
+      <span class="chip sel">Launch email sequence — score 0.86 · deferred route triggered</span>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#4A1B0C;color:#F0997B">L3 · Course</span>
+      <span class="agent-title">Brand Systems for Designers — 8-module course</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent built the full self-paced course from the workshop curriculum. Eight modules, each with a video outline, hands-on exercise, and a real-world case study from Maya's career. Platform: Maven to reach the same technical design audience.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Brand Systems for Designers</span><span class="ver">v1</span><span class="fchip">PPTX</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Platform</div><div class="kv-val">Maven</div></div>
+          <div class="kv"><div class="kk">Module count</div><div class="kv-val">8 modules · 24 lessons</div></div>
+          <div class="kv"><div class="kk">Module 1</div><div class="kv-val">Brand architecture fundamentals</div></div>
+          <div class="kv"><div class="kk">Module 7</div><div class="kv-val">Rollout at scale — the Airbnb playbook</div></div>
+          <div class="kv"><div class="kk">Price</div><div class="kv-val hi">$997 self-paced · $1,800 live cohort</div></div>
+          <div class="kv"><div class="kk">Competitor gap</div><div class="kv-val">No comparable course from credentialed designer</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#4A1B0C;color:#F0997B">L3 · Sales page</span>
+      <span class="agent-title">Deployable HTML sales page</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent built the course sales page using competitor research (no comparable course at this depth) as the positioning anchor. Headline addresses the specific objection surfaced by the competitor data.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Course sales page</span><span class="ver">v1</span><span class="fchip">HTML</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Headline</div><div class="kv-val hi">Build brand systems that survive the handoff</div></div>
+          <div class="kv"><div class="kk">Subhead</div><div class="kv-val">The practical course from someone who built the Airbnb brand system</div></div>
+          <div class="kv"><div class="kk">Primary CTA</div><div class="kv-val">Join the waitlist — opens Thursday</div></div>
+          <div class="kv"><div class="kk">Competitor gap</div><div class="kv-val">Closest competitor: $497 with 3 modules</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#4A1B0C;color:#F0997B">L3 · Launch</span>
+      <span class="agent-title">7-email launch sequence — live in ConvertKit</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent built the full launch sequence from value to story to social proof to cart open to close — timed from the waitlist milestone and live in ConvertKit immediately.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">7-email launch sequence</span><span class="ver">v1</span><span class="fchip">ConvertKit LIVE</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Email 1 (Day 1)</div><div class="kv-val">The brand system mistake I made at Airbnb</div></div>
+          <div class="kv"><div class="kk">Email 5 (Day 8)</div><div class="kv-val hi">Cart open — Brand Systems for Designers is live</div></div>
+          <div class="kv"><div class="kk">Email 7 (Day 10)</div><div class="kv-val">Last call — closes tonight at midnight</div></div>
+          <div class="kv"><div class="kk">Sequence status</div><div class="kv-val" style="color:var(--teal-lt)">Live · scheduled 6 weeks from waitlist activation</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="btn" onclick="goTo(2)">← Back</button>
+    <span class="step-count">4 / 7</span>
+    <button class="btn primary" onclick="goTo(4)">Layer 4: Automated →</button>
+  </div>
+</div>
+
+<!-- S4 -->
+<div class="stage" id="s4">
+  <div class="stage-label">Layer 4 · Automated income</div>
+  <h2 class="stage-title">Income systems that run<br>without you</h2>
+  <p class="stage-sub">How do I generate revenue while I'm not actively working?</p>
+  <div class="orc">
+    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 9 · Exploit phase begins · Diversity constraint removed</div>
+    <div class="orc-text">Phase transition: month 4. Exploit phase active — all dispatch budget concentrated on highest-scoring actions. Harvest: ConvertKit list <strong>847 subscribers</strong>. Sales page keywords extracted → SEO calendar route fires immediately. Course methodology (8 modules) meets deferred SaaS spec condition. Skip route: L3 sales page → L5 income allocation (deferred, periodic — product revenue signal incoming).</div>
+    <div class="chips">
+      <span class="chip sel">SEO calendar — score 0.95</span>
+      <span class="chip sel">Lead magnet funnel — score 0.91</span>
+      <span class="chip sel">Newsletter monetization — score 0.87 · 847 subscriber list</span>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#412402;color:#EF9F27">L4 · SEO</span>
+      <span class="agent-title">90-day content calendar + 5 draft articles</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent built a 90-day calendar targeting keywords extracted directly from the L3 sales page — terms Maya already has authority on. Five draft articles lead with her career deliverables as evidence.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">90-day SEO calendar + 5 draft articles</span><span class="ver">v1</span><span class="fchip">XLSX</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Primary cluster</div><div class="kv-val hi">brand design system, brand identity system designer</div></div>
+          <div class="kv"><div class="kk">Article 1</div><div class="kv-val">How to build a brand design system (that survives a rebrand)</div></div>
+          <div class="kv"><div class="kk">Cadence</div><div class="kv-val">2 per week · Tues + Thurs</div></div>
+          <div class="kv"><div class="kk">CTA</div><div class="kv-val">Lead magnet → course on every article</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#412402;color:#EF9F27">L4 · Lead magnet</span>
+      <span class="agent-title">Free checklist + 5-email nurture funnel</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent created the lead magnet using the primary objection from the L3 sales page as the topic. The nurture sequence warms subscribers toward the $997 course offer over 10 days.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Lead magnet + nurture sequence</span><span class="ver">v1</span><span class="fchip">PDF</span><span class="fchip">ConvertKit LIVE</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Lead magnet</div><div class="kv-val hi">The 20-point brand system checklist</div></div>
+          <div class="kv"><div class="kk">Funnel length</div><div class="kv-val">5 emails over 10 days</div></div>
+          <div class="kv"><div class="kk">Funnel CTA</div><div class="kv-val">Brand Systems for Designers — $997</div></div>
+          <div class="kv"><div class="kk">Conversion target</div><div class="kv-val">8–12% of checklist downloads → course</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#412402;color:#EF9F27">L4 · Newsletter</span>
+      <span class="agent-title">Monetization strategy + 4 sponsor pitches</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent built a newsletter monetization strategy for Maya's 847-subscriber list and drafted cold pitches to four design tool companies — Figma, Fontdue, Readymag, Framer — at a CPM that makes sense at her list size.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Brand Systems Weekly — monetization</span><span class="ver">v1</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Sponsorship CPM</div><div class="kv-val">$42 · $356/issue at current size</div></div>
+          <div class="kv"><div class="kk">Target sponsors</div><div class="kv-val">Figma, Fontdue, Readymag, Framer</div></div>
+          <div class="kv"><div class="kk">Revenue at 2,000 subs</div><div class="kv-val hi">$840/issue · $3,360/month</div></div>
+          <div class="kv"><div class="kk">Growth rate</div><div class="kv-val">+120 subscribers/month (SEO + lead magnet)</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="btn" onclick="goTo(3)">← Back</button>
+    <span class="step-count">5 / 7</span>
+    <button class="btn primary" onclick="goTo(5)">Layer 5: Wealth →</button>
+  </div>
+</div>
+
+<!-- S5 -->
+<div class="stage" id="s5">
+  <div class="stage-label">Layer 5 · Wealth deployment</div>
+  <h2 class="stage-title">Put the money to work</h2>
+  <p class="stage-sub">Where does the income go so money compounds without Maya's continued effort?</p>
+  <div class="orc">
+    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 11 · Multiple skip routes active</div>
+    <div class="orc-text">Skip routes triggered: L1 Rate Card → L5 Income Allocation — <strong>consulting revenue confirmed 2+ months</strong>. L4 Lead Magnet → L5 Income Allocation — funnel active, conversion recorded. Entity structure and tax optimization dispatched to <strong>Opus 4.6</strong> — multi-factor California legal and tax reasoning required. Standard agents cannot reliably produce the precision needed for an IPS and tax strategy.</div>
+    <div class="chips">
+      <span class="chip sel">Income allocation — score 0.96</span>
+      <span class="chip sel">Entity structure — score 0.91 · Opus 4.6</span>
+      <span class="chip sel">Tax optimization — score 0.89 · Opus 4.6</span>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#042C53;color:#85B7EB">L5 · Allocation</span>
+      <span class="agent-title">Asset class allocation breakdown</span>
+      <span class="model-tag">sonnet-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Agent built Maya's allocation from confirmed multi-layer income. Monthly investable surplus of $3,800 available after living costs — sourced from 2 months of confirmed consulting revenue plus first course cohort proceeds.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Income allocation strategy</span><span class="ver">v1</span><span class="fchip">XLSX</span><span class="fchip">Infographic</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Monthly surplus</div><div class="kv-val hi">$3,800/month investable</div></div>
+          <div class="kv"><div class="kk">US equities (VTI)</div><div class="kv-val">55% · $2,090/month</div></div>
+          <div class="kv"><div class="kk">International (VXUS)</div><div class="kv-val">20% · $760/month</div></div>
+          <div class="kv"><div class="kk">Real estate (VNQ)</div><div class="kv-val">15% · $570/month</div></div>
+          <div class="kv"><div class="kk">Cash reserve</div><div class="kv-val">10% · $380/month</div></div>
+          <div class="kv"><div class="kk">Risk profile</div><div class="kv-val">Moderate · 10-year horizon</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#042C53;color:#85B7EB">L5 · Entity</span>
+      <span class="agent-title">Business entity recommendation</span>
+      <span class="model-tag opus">opus-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Opus 4.6 dispatched — multi-factor legal analysis across Maya's revenue stage, California domicile, solo operator status, and liability exposure. Recommendation: S-Corp election when consulting revenue crosses $60k/year.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Entity structure recommendation</span><span class="ver">v1</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Recommendation</div><div class="kv-val hi">S-Corp election when consulting revenue ≥ $60k/year</div></div>
+          <div class="kv"><div class="kk">SE tax saving at $120k</div><div class="kv-val hi">$7,400/year via salary + distribution split</div></div>
+          <div class="kv"><div class="kk">State of formation</div><div class="kv-val">California</div></div>
+          <div class="kv"><div class="kk">Attorney review</div><div class="kv-val">Recommended before S-Corp election</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="agent">
+    <div class="agent-head">
+      <span class="layer-badge" style="background:#042C53;color:#85B7EB">L5 · Tax</span>
+      <span class="agent-title">Tax optimization strategy — California</span>
+      <span class="model-tag opus">opus-4-6</span>
+    </div>
+    <div class="agent-body">
+      <p>Opus 4.6 dispatched — California S-Corp, QBI deduction eligibility, SEP-IRA maximization, and home office deduction across W-2 + 1099 + digital product income streams.</p>
+      <div class="artifact">
+        <div class="artifact-top"><span class="artifact-name">Tax optimization strategy — CA 2026</span><span class="ver">v1</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">SEP-IRA contribution</div><div class="kv-val">$8,400/year (25% of consulting net)</div></div>
+          <div class="kv"><div class="kk">QBI deduction</div><div class="kv-val">$6,720 deduction on consulting income</div></div>
+          <div class="kv"><div class="kk">Home office</div><div class="kv-val">Dedicated studio — fully deductible</div></div>
+          <div class="kv"><div class="kk">Est. tax saved yr 1</div><div class="kv-val hi">~$11,200 vs no optimization</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="btn" onclick="goTo(4)">← Back</button>
+    <span class="step-count">6 / 7</span>
+    <button class="btn primary" onclick="goTo(6)">See Maya's impact →</button>
+  </div>
+</div>
+
+<!-- S6 -->
+<div class="stage" id="s6">
+  <div class="stage-label">12-month impact</div>
+  <h2 class="stage-title">From one salary<br>to a compounding wealth engine</h2>
+  <p class="stage-sub">11 cycles · 15 agents fired · $0 to $73,400 in new income</p>
+  <div class="impact-grid">
+    <div class="impact-card"><div class="impact-num" style="color:var(--teal-lt)">$73,400</div><div class="impact-desc">New income generated in 12 months on top of $145k salary</div></div>
+    <div class="impact-card"><div class="impact-num" style="color:#AFA9EC">$218,400</div><div class="impact-desc">Total year 1 income across all five layers</div></div>
+    <div class="impact-card"><div class="impact-num" style="color:#85B7EB">$41,800</div><div class="impact-desc">Invested by month 12 · compounding at 8% annualized</div></div>
+  </div>
+  <div class="orc" style="margin-bottom:24px">
+    <div class="orc-header"><span class="pulse"></span>Orchestrator · Month 12 · Cycle 11 · GCC summary</div>
+    <div class="orc-text">15 agent actions complete across 5 layers. 3 agents running: affiliate partnerships, YouTube strategy, DCA schedule. Bayesian model: brand identity consulting <strong>0.94</strong> (strongest signal), course revenue <strong>0.88</strong>, newsletter <strong>0.72</strong> (growing). Phase: Exploit. Next cycle in 3 days. No escalations pending.</div>
+  </div>
+  <div class="timeline">
+    <div class="tl-title">Month-by-month timeline</div>
+    <div class="tl-item"><div class="tl-dot" style="background:#2D2560;border:1.5px solid #534AB7"></div><div class="tl-text"><strong>Month 1</strong> — Rate card, LinkedIn, booking page live. 0 clients. Waitlist at 23 subscribers.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#534AB7"></div><div class="tl-text"><strong>Month 2</strong> — First consulting client. $4,200 retainer. Waitlist at 73 subscribers.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#534AB7"></div><div class="tl-text"><strong>Month 3</strong> — 3 consulting clients, $9,800. Workshop sold out (8 seats × $1,800). Course sales page live.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#0F6E56"></div><div class="tl-text"><strong>Month 4</strong> — Course launch: <strong>14 sales × $997 = $13,958 in one week.</strong> SEO calendar deployed.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#0F6E56"></div><div class="tl-text"><strong>Month 6</strong> — Newsletter at 1,240 subscribers. First Figma sponsorship: $520. Consulting: $8,400/month.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#185FA5"></div><div class="tl-text"><strong>Month 9</strong> — S-Corp election filed. SEP-IRA opened. $8,400/year sheltered. DCA active: $2,090/month into VTI.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#185FA5"></div><div class="tl-text"><strong>Month 12</strong> — $73,400 new income. $41,800 invested. Tax savings ~$11,200. Portfolio building.</div></div>
+  </div>
+  <div class="closing">Maya did not quit her job. She did not work nights building something from scratch. She uploaded a resume. The orchestrator identified where her 12 years of expertise could generate income beyond her salary, dispatched agents to build the tools, and kept compounding the signals as each layer confirmed demand. By month 12 she earns 50% more than her salary without working 50% more.</div>
+  <div class="nav-row">
+    <button class="btn" onclick="goTo(5)">← Back</button>
+    <span class="step-count">7 / 7</span>
+    <a href="{{ url_for('pages.login_page') }}" class="btn primary">Start your simulation →</a>
+  </div>
+</div>
+
+</main>
+
+<footer class="footer">
+  <p>Simulacrum · <a href="https://simulacrum.io">simulacrum.io</a> · Bay Area Experiences Ventures · © 2026</p>
+</footer>
+
+<script>
+let cur=0;
+function goTo(n){
+  document.getElementById('s'+cur).classList.remove('active');
+  cur=n;
+  document.getElementById('s'+cur).classList.add('active');
+  const steps=document.querySelectorAll('.prog-step');
+  steps.forEach((s,i)=>{
+    s.classList.toggle('active',i===n);
+    s.classList.toggle('done',i<n);
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

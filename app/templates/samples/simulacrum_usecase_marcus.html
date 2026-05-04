@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marcus Webb — Simulacrum Use Case</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Syne:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#080F1E;--navy-mid:#111D38;--navy-card:#131F3A;
+  --amber:#E8A020;--amber-lt:#FEF3DC;--amber-dk:#8B5E0A;
+  --amber-dim:rgba(232,160,32,.12);
+  --white:#FFFFFF;--off:#F7F8FA;
+  --muted:rgba(255,255,255,.45);--faint:rgba(255,255,255,.1);
+  --l1:#6C3BCC;--l1d:rgba(108,59,204,.15);
+  --l2:#0E7A60;--l2d:rgba(14,122,96,.15);
+  --l3:#C44B20;--l3d:rgba(196,75,32,.15);
+  --l4:#B86A10;--l4d:rgba(184,106,16,.15);
+  --l5:#1B6AB5;--l5d:rgba(27,106,181,.15);
+  --teal:#13A89E;
+  --font-display:'Playfair Display',serif;
+  --font-ui:'Syne',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+  --r:10px;--r-sm:6px;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-ui);background:var(--navy);color:var(--white);min-height:100vh;line-height:1.6}
+
+/* ── Hero ────────────────────────────────────────────────────────── */
+.hero{padding:80px 24px 60px;text-align:center;position:relative;overflow:hidden}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% -10%,rgba(232,160,32,.18) 0%,transparent 65%),
+    radial-gradient(ellipse 40% 30% at 80% 80%,rgba(232,160,32,.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.hero::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(232,160,32,.3),transparent);
+}
+.hero-eyebrow{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;
+  color:var(--amber);text-transform:uppercase;margin-bottom:18px;
+  display:inline-flex;align-items:center;gap:10px;
+}
+.hero-eyebrow::before,.hero-eyebrow::after{
+  content:'';display:inline-block;width:32px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--amber));
+}
+.hero-eyebrow::after{background:linear-gradient(270deg,transparent,var(--amber))}
+.hero-title{
+  font-family:var(--font-display);
+  font-size:clamp(38px,6.5vw,72px);
+  line-height:1.05;margin-bottom:14px;letter-spacing:-.02em;
+  font-weight:700;
+}
+.hero-title em{color:var(--amber);font-style:italic;font-weight:400}
+.hero-sub{font-size:15px;color:var(--muted);max-width:540px;margin:0 auto 34px;line-height:1.7}
+.hero-tags{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.tag{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;
+  padding:5px 14px;border-radius:20px;
+  border:1px solid rgba(232,160,32,.25);color:rgba(232,160,32,.7);
+  background:rgba(232,160,32,.06);
+}
+
+/* ── Progress nav ─────────────────────────────────────────────────── */
+.nav-bar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(8,15,30,.94);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(232,160,32,.12);
+}
+.nav-inner{
+  max-width:920px;margin:0 auto;
+  display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none;
+}
+.nav-inner::-webkit-scrollbar{display:none}
+.nav-step{
+  flex:1;min-width:80px;padding:13px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .2s;position:relative;
+}
+.nav-step:hover{background:rgba(232,160,32,.04)}
+.nav-step.active{border-bottom-color:var(--amber)}
+.nav-step.done{border-bottom-color:var(--teal)}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.15);transition:all .2s}
+.nav-step.active .nav-dot{background:var(--amber);box-shadow:0 0 8px rgba(232,160,32,.5)}
+.nav-step.done .nav-dot{background:var(--teal)}
+.nav-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.05em;color:rgba(255,255,255,.35)}
+.nav-step.active .nav-lbl{color:var(--amber)}
+.nav-step.done .nav-lbl{color:var(--teal)}
+
+/* ── Stages ───────────────────────────────────────────────────────── */
+.stages{max-width:920px;margin:0 auto;padding:52px 24px 96px}
+.stage{display:none;animation:rise .38s ease forwards}
+.stage.active{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+.stage-eyebrow{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;
+  color:var(--amber);text-transform:uppercase;margin-bottom:10px;
+  display:flex;align-items:center;gap:10px;
+}
+.stage-eyebrow::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(232,160,32,.25),transparent)}
+.stage-title{
+  font-family:var(--font-display);
+  font-size:clamp(28px,4.5vw,46px);
+  line-height:1.15;margin-bottom:8px;font-weight:700;letter-spacing:-.02em;
+}
+.stage-sub{font-size:13px;color:var(--muted);margin-bottom:34px;line-height:1.6}
+
+/* ── Profile card ─────────────────────────────────────────────────── */
+.profile{
+  background:var(--navy-card);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:var(--r);padding:28px;margin-bottom:22px;
+  position:relative;overflow:hidden;
+}
+.profile::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--amber),rgba(232,160,32,.2),transparent);
+}
+.profile-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:22px}
+.avatar{
+  width:54px;height:54px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:700;flex-shrink:0;
+  font-family:var(--font-ui);border:2px solid rgba(232,160,32,.3);
+}
+.profile-name{font-family:var(--font-display);font-size:24px;margin-bottom:3px;font-weight:700}
+.profile-role{font-size:12px;color:rgba(232,160,32,.7);margin-bottom:10px;font-family:var(--font-mono);letter-spacing:.04em}
+.profile-bio{font-size:13px;color:rgba(255,255,255,.62);line-height:1.75}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  border-radius:var(--r-sm);padding:14px 12px;
+}
+.stat-lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:5px}
+.stat-val{font-size:22px;font-weight:700;font-family:var(--font-display)}
+
+/* ── Insight box (replaces diff-box for profile stage) ─────────────── */
+.insight{
+  background:rgba(232,160,32,.06);border:1px solid rgba(232,160,32,.2);
+  border-radius:var(--r);padding:18px 20px;margin-bottom:22px;
+}
+.insight-hdr{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+  color:rgba(232,160,32,.8);text-transform:uppercase;margin-bottom:10px;
+}
+.insight-row{display:flex;gap:12px;font-size:12px;color:rgba(255,255,255,.6);margin-bottom:7px;line-height:1.6}
+.insight-row:last-child{margin-bottom:0}
+.insight-lbl{min-width:100px;color:rgba(232,160,32,.6);flex-shrink:0;font-family:var(--font-mono);font-size:10px;padding-top:2px}
+
+/* ── Orchestrator box ─────────────────────────────────────────────── */
+.orc{
+  background:rgba(19,168,158,.06);border:1px solid rgba(19,168,158,.2);
+  border-radius:var(--r);padding:18px 20px;margin-bottom:22px;
+}
+.orc-hdr{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+  color:var(--teal);text-transform:uppercase;margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
+}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 1.5s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.orc-text{font-size:13px;color:rgba(255,255,255,.65);line-height:1.75}
+.orc-text strong{color:var(--white);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.chip{
+  font-family:var(--font-mono);font-size:10px;
+  padding:4px 12px;border-radius:20px;
+  border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);
+}
+.chip.on{
+  border-color:rgba(19,168,158,.4);color:rgba(19,168,158,.9);
+  background:rgba(19,168,158,.08);
+}
+
+/* ── Agent cards ──────────────────────────────────────────────────── */
+.agent{
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:var(--r);overflow:hidden;margin-bottom:14px;
+  background:var(--navy-card);
+}
+.agent-hd{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.05);
+}
+.lbadge{font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;padding:3px 10px;border-radius:20px;white-space:nowrap;font-weight:400}
+.atitle{font-size:13px;font-weight:500;flex:1}
+.mtag{font-family:var(--font-mono);font-size:9px;padding:2px 9px;border-radius:10px;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);letter-spacing:.03em}
+.mtag.opus{background:rgba(108,59,204,.2);color:#B09CF0}
+.agent-bd{padding:16px}
+.agent-bd p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.75;margin-bottom:14px}
+
+/* ── Artifact ─────────────────────────────────────────────────────── */
+.art{background:rgba(255,255,255,.03);border-radius:var(--r-sm);padding:14px 16px}
+.art-top{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.art-name{font-size:12px;font-weight:500;flex:1;min-width:120px}
+.ver{font-family:var(--font-mono);font-size:9px;padding:2px 8px;border-radius:10px;background:var(--teal);color:var(--navy);font-weight:700}
+.fchip{font-family:var(--font-mono);font-size:9px;padding:2px 9px;border-radius:10px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45)}
+.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.kv{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.kv:nth-last-child(-n+2){border-bottom:none}
+.kk{font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,.3);letter-spacing:.04em;margin-bottom:2px}
+.kv-val{font-size:12px;color:rgba(255,255,255,.78)}
+.kv-val.hi{color:var(--white);font-weight:500}
+.kv-val.amber{color:var(--amber);font-weight:500}
+
+/* ── Impact ───────────────────────────────────────────────────────── */
+.impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.imp-card{
+  background:var(--navy-card);border:1px solid rgba(255,255,255,.07);
+  border-radius:var(--r);padding:22px 18px;text-align:center;
+  position:relative;overflow:hidden;
+}
+.imp-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:currentColor;opacity:.25}
+.imp-num{font-family:var(--font-display);font-size:34px;margin-bottom:5px;line-height:1;font-weight:700}
+.imp-desc{font-size:11px;color:var(--muted);line-height:1.55}
+
+.timeline{
+  background:var(--navy-card);border:1px solid rgba(255,255,255,.07);
+  border-radius:var(--r);padding:22px;margin-bottom:22px;
+}
+.tl-hdr{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:18px}
+.tl-item{display:flex;gap:14px;margin-bottom:13px;align-items:flex-start}
+.tl-item:last-child{margin-bottom:0}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.tl-text{font-size:13px;color:rgba(255,255,255,.58);line-height:1.65}
+.tl-text strong{color:var(--white);font-weight:500}
+
+.closing{
+  font-family:var(--font-display);font-size:15px;font-style:italic;
+  color:rgba(255,255,255,.6);line-height:1.8;
+  padding:20px 24px;
+  border:1px solid rgba(232,160,32,.2);border-radius:var(--r);
+  border-left:3px solid var(--amber);
+  background:rgba(232,160,32,.04);
+}
+
+/* ── Nav buttons ──────────────────────────────────────────────────── */
+.btn-row{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-top:36px;padding-top:24px;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.btn{
+  padding:10px 22px;font-size:12px;font-family:var(--font-ui);font-weight:500;
+  border-radius:var(--r-sm);cursor:pointer;
+  border:1px solid rgba(255,255,255,.12);background:transparent;
+  color:rgba(255,255,255,.55);transition:all .18s;letter-spacing:.02em;
+}
+.btn:hover:not(:disabled){background:rgba(255,255,255,.06);color:var(--white);border-color:rgba(255,255,255,.2)}
+.btn:disabled{opacity:.2;cursor:not-allowed}
+.btn.primary{
+  background:var(--amber);border-color:var(--amber);
+  color:var(--navy);font-weight:700;
+}
+.btn.primary:hover{background:#EFB030;border-color:#EFB030}
+.page-count{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:rgba(255,255,255,.25)}
+
+/* ── Footer ───────────────────────────────────────────────────────── */
+.footer{
+  text-align:center;padding:40px 24px;
+  border-top:1px solid rgba(255,255,255,.05);
+  font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.25);
+}
+.footer a{color:rgba(232,160,32,.6);text-decoration:none}
+
+@media(max-width:600px){
+  .stats,.impact-grid,.kv-grid{grid-template-columns:1fr 1fr}
+  .profile-top{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Hero ──────────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-eyebrow">Simulacrum use case</div>
+  <h1 class="hero-title">14 years on NFL sidelines.<br><em>Five income layers</em> in 12 months.</h1>
+  <p class="hero-sub">Watch how Simulacrum turned a former NFL strength coach's expertise into $168,200 in new income — without leaving Atlanta, without a social media following, and without starting from zero.</p>
+  <div class="hero-tags">
+    <span class="tag">Former NFL S&amp;C Coach</span>
+    <span class="tag">Atlanta, GA</span>
+    <span class="tag">14 years experience</span>
+    <span class="tag">$112k → $280k year 1</span>
+  </div>
+</header>
+
+<!-- ── Progress nav ──────────────────────────────────────────────── -->
+<nav class="nav-bar">
+  <div class="nav-inner" id="nav">
+    <div class="nav-step active" onclick="go(0)"><div class="nav-dot"></div><div class="nav-lbl">Profile</div></div>
+    <div class="nav-step" onclick="go(1)"><div class="nav-dot"></div><div class="nav-lbl">L1 Active</div></div>
+    <div class="nav-step" onclick="go(2)"><div class="nav-dot"></div><div class="nav-lbl">L2 Leveraged</div></div>
+    <div class="nav-step" onclick="go(3)"><div class="nav-dot"></div><div class="nav-lbl">L3 Productized</div></div>
+    <div class="nav-step" onclick="go(4)"><div class="nav-dot"></div><div class="nav-lbl">L4 Automated</div></div>
+    <div class="nav-step" onclick="go(5)"><div class="nav-dot"></div><div class="nav-lbl">L5 Wealth</div></div>
+    <div class="nav-step" onclick="go(6)"><div class="nav-dot"></div><div class="nav-lbl">Impact</div></div>
+  </div>
+</nav>
+
+<main class="stages">
+
+<!-- ══ S0: Profile ═══════════════════════════════════════════════════ -->
+<div class="stage active" id="s0">
+  <div class="stage-eyebrow">The client</div>
+  <h2 class="stage-title">Meet Marcus Webb</h2>
+  <p class="stage-sub">Former NFL Strength &amp; Conditioning Coach · Atlanta Falcons (8 yrs) · Carolina Panthers (6 yrs) · CSCS certified</p>
+
+  <div class="profile">
+    <div class="profile-top">
+      <div class="avatar" style="background:rgba(184,106,16,.2);color:var(--amber)">MW</div>
+      <div>
+        <div class="profile-name">Marcus Webb</div>
+        <div class="profile-role">Former NFL S&amp;C Coach · Now private trainer · Atlanta, GA</div>
+        <div class="profile-bio">Marcus coached elite athletes for 14 years — two Super Bowl rosters, 12 Pro Bowlers, and multiple players with 10+ year careers. He retired from the league to spend more time with his family in Atlanta and now trains 6 private clients at $300/session. He has never charged more than $300 for anything, never built an online audience, and does not know that his NFL pedigree is a sellable asset at a scale far beyond 6 clients. He uploaded his resume on a Saturday morning.</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-lbl">Current income</div><div class="stat-val">$112k</div></div>
+      <div class="stat"><div class="stat-lbl">Private clients</div><div class="stat-val">6</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--amber)">5</div><div class="stat-lbl" style="margin-top:4px">Expertise zones found</div></div>
+    </div>
+  </div>
+
+  <div class="orc">
+    <div class="orc-hdr"><span class="pulse"></span>Orchestrator · Expertise zone extraction · Haiku 4.5</div>
+    <div class="orc-text">Resume analysis complete. Five expertise zones identified: <strong>Elite athlete performance programming</strong> (0.96), <strong>NFL-level injury prevention protocols</strong> (0.91), <strong>Speed and power development</strong> (0.88), <strong>High-performance nutrition systems</strong> (0.79), <strong>Coaching and staff development</strong> (0.74). Critical signal: NFL pedigree with verifiable Pro Bowl outcomes is an exceptionally rare credential in the private coaching market. Current rate ($300/session) is 55–75% below market ceiling. Rate card is top-priority Layer 1 action. Explore phase active.</div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-hdr">Why Marcus's routing differs from a typical creative professional</div>
+    <div class="insight-row"><span class="insight-lbl">Credential type</span><span>Verifiable elite outcomes (named athletes, Super Bowls) — not a portfolio. Changes every marketing surface: email subject lines, sales page hooks, speaking pitch angles.</span></div>
+    <div class="insight-row"><span class="insight-lbl">L2 path</span><span>Corporate B2B wellness (CPO buyers, $22k/year contracts) instead of speaking circuits. The B2B signal arrived from cold email reply rates in Cycle 3 — orchestrator routes to ROI calculator immediately.</span></div>
+    <div class="insight-row"><span class="insight-lbl">L3 medium</span><span>Video-hosted digital program (Kajabi) not written course (Maven). Physical methodology requires demonstration — the orchestrator selects platform by expertise zone content type.</span></div>
+    <div class="insight-row"><span class="insight-lbl">L5 complexity</span><span>NFL deferred compensation distributions + Georgia state tax treatment requires Opus 4.6 earlier in the cycle. Tax situation is materially more complex than a solo consultant's Schedule C.</span></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" disabled>← Back</button>
+    <span class="page-count">1 / 7</span>
+    <button class="btn primary" onclick="go(1)">Layer 1: Active income →</button>
+  </div>
+</div>
+
+<!-- ══ S1: L1 ══════════════════════════════════════════════════════ -->
+<div class="stage" id="s1">
+  <div class="stage-eyebrow">Layer 1 · Active income</div>
+  <h2 class="stage-title">Price 14 years of NFL<br>expertise correctly</h2>
+  <p class="stage-sub">How do I turn what I did on NFL sidelines into consulting income — and charge what it's actually worth?</p>
+
+  <div class="orc">
+    <div class="orc-hdr"><span class="pulse"></span>Orchestrator · Cycle 1 · Score &amp; Schedule · Explore phase</div>
+    <div class="orc-text">Bayesian model initialized. Elite performance coaching posterior mean: <strong>$680/hr</strong> (range $500–$1,200 — comparable NFL-credentialed coaches in major metros). Current pricing ($300/session) flagged as severely below market. Rate card is critical path — Consulting Proposal blocked until rate card exists. Cold email targets corporate wellness buyers and HNW executives via Apollo.</div>
+    <div class="chips">
+      <span class="chip on">Rate card — score 0.97 · critical path</span>
+      <span class="chip on">Cold email campaign — score 0.89</span>
+      <span class="chip on">LinkedIn optimization — score 0.85</span>
+      <span class="chip">Booking page — score 0.76 · cycle 2</span>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l1d);color:#B09CF0">L1 · Rate card</span>
+      <span class="atitle">Pricing document + capability one-pager</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent identified the severe underpricing and rebuilt Marcus's rate card anchored to his NFL outcomes. The capability one-pager leads with verifiable athlete results — 12 Pro Bowlers, Super Bowl rosters — because in this market, named elite outcomes are the primary buying signal for high-net-worth clients.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Marcus Webb — Elite Performance Rate Card</span><span class="ver">v1</span><span class="fchip">PDF</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Private session (1:1)</div><div class="kv-val amber">$650/session · min 4 sessions/month</div></div>
+          <div class="kv"><div class="kk">Performance assessment</div><div class="kv-val hi">$1,800 · 3-hr deep dive + written program</div></div>
+          <div class="kv"><div class="kk">Annual athlete program</div><div class="kv-val">$28,000/year</div></div>
+          <div class="kv"><div class="kk">Corporate wellness day</div><div class="kv-val">$6,500 · on-site · up to 20 executives</div></div>
+          <div class="kv"><div class="kk">Previous rate (retired)</div><div class="kv-val" style="color:rgba(255,255,255,.25);text-decoration:line-through">$300/session</div></div>
+          <div class="kv"><div class="kk">Credential anchor</div><div class="kv-val">12 Pro Bowl athletes · 2 Super Bowl rosters</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l1d);color:#B09CF0">L1 · Cold email</span>
+      <span class="atitle">25-prospect list + 3-step sequence</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent identified 25 targets across two audiences: Atlanta-based corporate wellness buyers (VP HR, CPO at 500+ employee firms) and HNW executives known to prioritize physical performance. Each sequence opens with a specific NFL outcome — not a generic pitch.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Corporate wellness cold email campaign</span><span class="ver">v1</span><span class="fchip">XLSX</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Segment 1</div><div class="kv-val">VP HR / CPO · Atlanta firms 500+ employees</div></div>
+          <div class="kv"><div class="kk">Segment 2</div><div class="kv-val">HNW executives · athletes · entertainment</div></div>
+          <div class="kv"><div class="kk">Email 1 subject</div><div class="kv-val amber">I kept 12 Pro Bowl players on the field. Here's what I do differently.</div></div>
+          <div class="kv"><div class="kk">Email 3 CTA</div><div class="kv-val">30-min performance assessment call — no commitment</div></div>
+          <div class="kv"><div class="kk">Send tool</div><div class="kv-val">Apollo · 20/day limit</div></div>
+          <div class="kv"><div class="kk">Target reply rate</div><div class="kv-val">≥10% · trip B2B routing if hit</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l1d);color:#B09CF0">L1 · LinkedIn</span>
+      <span class="atitle">Rewritten headline + About + Featured</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent rewrote Marcus's LinkedIn from a resume-format coaching history into a credential-forward positioning statement. In this market, named results from elite athletes carry more weight than any certification or methodology description.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">LinkedIn optimization</span><span class="ver">v1</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">New headline</div><div class="kv-val amber">NFL Strength Coach · 12 Pro Bowl athletes · 14 years · Now private</div></div>
+          <div class="kv"><div class="kk">About opening</div><div class="kv-val">For 14 years I kept elite NFL athletes performing at the highest level...</div></div>
+          <div class="kv"><div class="kk">Featured (1)</div><div class="kv-val">Performance assessment results (anonymized case study)</div></div>
+          <div class="kv"><div class="kk">Featured (2)</div><div class="kv-val">Corporate wellness day overview PDF</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="go(0)">← Back</button>
+    <span class="page-count">2 / 7</span>
+    <button class="btn primary" onclick="go(2)">Layer 2: Leveraged →</button>
+  </div>
+</div>
+
+<!-- ══ S2: L2 ══════════════════════════════════════════════════════ -->
+<div class="stage" id="s2">
+  <div class="stage-eyebrow">Layer 2 · Leveraged income</div>
+  <h2 class="stage-title">Coach many — not one<br>at a time</h2>
+  <p class="stage-sub">How do I reach executives, companies, and groups without giving up more of my time than I give private clients?</p>
+
+  <div class="orc">
+    <div class="orc-hdr"><span class="pulse"></span>Orchestrator · Cycle 4 · Score &amp; Schedule</div>
+    <div class="orc-text">Harvest: <strong>3 corporate wellness day inquiries</strong> from cold email (reply rate 14.8% — strong B2B signal). Rate card artifact routed to corporate training pitch — output_type=pricing condition met. ROI calculator dispatched: corporate buyers require quantified return-on-investment. LinkedIn bio artifact → speaking proposals via skip route.</div>
+    <div class="chips">
+      <span class="chip on">Corporate training pitch — score 0.94 · 3 inbound inquiries</span>
+      <span class="chip on">Group coaching program — score 0.88</span>
+      <span class="chip on">ROI calculator — score 0.83 · B2B buyer requirement</span>
+      <span class="chip">Speaking proposals — score 0.79 · cycle 5</span>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l2d);color:#5DCAA5">L2 · Corporate</span>
+      <span class="atitle">Corporate wellness pitch + 15 target companies</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent built the full corporate wellness pitch deck and a list of 15 Atlanta-area targets — companies with 500+ employees and a culture that skews toward physical performance (tech, finance, law). Pitch price anchored to the rate card corporate wellness day rate.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">NFL Performance Method — Executive Edition</span><span class="ver">v1</span><span class="fchip">XLSX</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Format</div><div class="kv-val">Quarterly on-site day · 20 executives · 6 hrs</div></div>
+          <div class="kv"><div class="kk">Price</div><div class="kv-val amber">$6,500/day · $22,000/year (4 days)</div></div>
+          <div class="kv"><div class="kk">Top targets</div><div class="kv-val">Cox Enterprises, NCR Voyix, Invesco</div></div>
+          <div class="kv"><div class="kk">Buyer title</div><div class="kv-val">Chief People Officer / VP Talent &amp; Culture</div></div>
+          <div class="kv"><div class="kk">Decision timeline</div><div class="kv-val">6–10 weeks · Q4 budget cycle</div></div>
+          <div class="kv"><div class="kk">Annual contract value</div><div class="kv-val hi">$22,000 per company</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l2d);color:#5DCAA5">L2 · Group coaching</span>
+      <span class="atitle">Semi-private program — curriculum + pricing</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent designed a semi-private model: 4 clients per session, 3 sessions per week. Marcus earns 4× his private rate per hour while maintaining the high-touch feel his market expects. Curriculum built from his NFL off-season methodology adapted for civilian athletes.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Webb Performance Group — semi-private program</span><span class="ver">v1</span><span class="fchip">PPTX</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Format</div><div class="kv-val">4 clients/session · 3 sessions/week · 12-week blocks</div></div>
+          <div class="kv"><div class="kk">Price per client</div><div class="kv-val">$2,400/month</div></div>
+          <div class="kv"><div class="kk">Marcus revenue</div><div class="kv-val amber">$9,600/month · same 3 hrs/week</div></div>
+          <div class="kv"><div class="kk">Cohort size</div><div class="kv-val">8 clients max · 2 groups of 4</div></div>
+          <div class="kv"><div class="kk">Phase 1</div><div class="kv-val">Movement assessment · power baseline · injury audit</div></div>
+          <div class="kv"><div class="kk">Target client</div><div class="kv-val">Ex-college athletes · triathletes · serious amateurs</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l2d);color:#5DCAA5">L2 · ROI calculator</span>
+      <span class="atitle">Corporate wellness ROI model</span>
+      <span class="mtag">haiku-4-5</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent built an interactive ROI model for the corporate wellness pitch. Corporate buyers need the financial case before approving a $22,000/year program. Inputs validated against published wellness ROI benchmarks.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Corporate wellness ROI model</span><span class="ver">v1</span><span class="fchip">XLSX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Sick day reduction</div><div class="kv-val">2.3 days/employee/year · $920 savings</div></div>
+          <div class="kv"><div class="kk">Healthcare claim reduction</div><div class="kv-val">$1,100/employee/year (published benchmark)</div></div>
+          <div class="kv"><div class="kk">ROI at 20 executives</div><div class="kv-val amber">$40,400 return on $22,000 · 84% ROI</div></div>
+          <div class="kv"><div class="kk">Payback period</div><div class="kv-val">7.4 months</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="go(1)">← Back</button>
+    <span class="page-count">3 / 7</span>
+    <button class="btn primary" onclick="go(3)">Layer 3: Productized →</button>
+  </div>
+</div>
+
+<!-- ══ S3: L3 ══════════════════════════════════════════════════════ -->
+<div class="stage" id="s3">
+  <div class="stage-eyebrow">Layer 3 · Productized income</div>
+  <h2 class="stage-title">Package the NFL method<br>and sell it at scale</h2>
+  <p class="stage-sub">How do I turn 14 years of professional methodology into a product that generates revenue while I'm not coaching?</p>
+
+  <div class="orc">
+    <div class="orc-hdr"><span class="pulse"></span>Orchestrator · Cycle 7 · Score &amp; Schedule · Deferred route triggered</div>
+    <div class="orc-text">Harvest: first corporate wellness day booked ($6,500). Group coaching: <strong>6 of 8 slots filled in 3 weeks</strong>. Deferred route: cohort_completed ≥ 1 approaching (week 8 of 12) — L2 group curriculum (6 modules documented) meets L3 course condition. Competitor research: <strong>zero comparable programs from NFL-credentialed staff at any price point</strong> — blue ocean confirmed. Course + digital program dispatched.</div>
+    <div class="chips">
+      <span class="chip on">Course curriculum — score 0.95 · L2 group program as framework</span>
+      <span class="chip on">Sales page — score 0.91 · NFL pedigree is the hook</span>
+      <span class="chip on">E-book — score 0.84 · low-barrier entry product</span>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l3d);color:#F0997B">L3 · Course</span>
+      <span class="atitle">NFL Performance Method — 12-week digital program</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent built the 12-week program from Marcus's group coaching curriculum. Each week maps to a phase of NFL off-season preparation, adapted for civilian athletes. Platform: Kajabi — chosen for video hosting and community features required by a movement-based program.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">NFL Performance Method: Train Like a Pro</span><span class="ver">v1</span><span class="fchip">PPTX</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Platform</div><div class="kv-val">Kajabi (video + community + assessments)</div></div>
+          <div class="kv"><div class="kk">Week 1–3</div><div class="kv-val">Movement foundation · baseline · injury audit</div></div>
+          <div class="kv"><div class="kk">Week 4–7</div><div class="kv-val">Power development · speed mechanics · NFL drill library</div></div>
+          <div class="kv"><div class="kk">Week 8–12</div><div class="kv-val">Sport-specific application · recovery · maintenance</div></div>
+          <div class="kv"><div class="kk">Price</div><div class="kv-val amber">$497 self-paced · $1,200 with group check-in calls</div></div>
+          <div class="kv"><div class="kk">Competitor gap</div><div class="kv-val">0 comparable programs from NFL staff — any price</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l3d);color:#F0997B">L3 · Sales page</span>
+      <span class="atitle">Deployable HTML sales page</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent built the sales page leading with Marcus's NFL credential as the primary hook. Competitor research confirmed a blue ocean: dozens of "train like an athlete" programs — none from an actual NFL staff member.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Program sales page</span><span class="ver">v1</span><span class="fchip">HTML</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Headline</div><div class="kv-val amber">The program I used to build Pro Bowl athletes — now available to you</div></div>
+          <div class="kv"><div class="kk">Subhead</div><div class="kv-val">14 years on NFL sidelines. The method that kept 12 Pro Bowlers healthy.</div></div>
+          <div class="kv"><div class="kk">Competitor gap</div><div class="kv-val">0 comparable programs · closest at $197, no methodology depth</div></div>
+          <div class="kv"><div class="kk">Primary CTA</div><div class="kv-val">Start the NFL Performance Method — $497</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l3d);color:#F0997B">L3 · E-book</span>
+      <span class="atitle">The NFL Injury Prevention Playbook</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent designed a lower-priced entry product capturing a specific deliverable from Marcus's career. The e-book builds his email list and warms cold audiences toward the $497 program. Gumroad for instant distribution — no platform setup required.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">The NFL Injury Prevention Playbook</span><span class="ver">v1</span><span class="fchip">PDF</span><span class="fchip">Gumroad</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Subtitle</div><div class="kv-val">The pre-season protocol that kept 12 Pro Bowl players on the field</div></div>
+          <div class="kv"><div class="kk">Chapter count</div><div class="kv-val">7 chapters · 48 pages</div></div>
+          <div class="kv"><div class="kk">Price</div><div class="kv-val">$39</div></div>
+          <div class="kv"><div class="kk">Upsell</div><div class="kv-val amber">NFL Performance Method — $497</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="go(2)">← Back</button>
+    <span class="page-count">4 / 7</span>
+    <button class="btn primary" onclick="go(4)">Layer 4: Automated →</button>
+  </div>
+</div>
+
+<!-- ══ S4: L4 ══════════════════════════════════════════════════════ -->
+<div class="stage" id="s4">
+  <div class="stage-eyebrow">Layer 4 · Automated income</div>
+  <h2 class="stage-title">Systems that generate income<br>between training sessions</h2>
+  <p class="stage-sub">How do I build audiences, affiliate revenue, and automated funnels that work while Marcus is on the training floor?</p>
+
+  <div class="orc">
+    <div class="orc-hdr"><span class="pulse"></span>Orchestrator · Cycle 10 · Exploit phase · Diversity constraint removed</div>
+    <div class="orc-text">Phase transition: month 4. Exploit phase active. Harvest: <strong>34 e-book sales ($1,326)</strong>, <strong>18 digital program signups ($8,946)</strong>. ConvertKit list: 612 subscribers. Skip route triggered: L1 outreach reply rate 18.2% (&gt;15% threshold) → affiliate partnerships dispatched immediately. Video content is the primary discovery channel for performance training (not SEO text) — YouTube dispatched first.</div>
+    <div class="chips">
+      <span class="chip on">YouTube strategy — score 0.96 · video is primary channel</span>
+      <span class="chip on">Affiliate partnerships — score 0.92 · skip route from L1 niche signal</span>
+      <span class="chip on">Lead magnet funnel — score 0.88</span>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l4d);color:#EF9F27">L4 · YouTube</span>
+      <span class="atitle">YouTube content strategy + 3 episode scripts</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent built a YouTube strategy centered on Marcus's behind-the-scenes NFL knowledge — content no other creator can produce authentically. The three scripted episodes lead with specific, verifiable NFL moments to establish credibility in the first 30 seconds.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">NFL Performance Secrets — YouTube channel</span><span class="ver">v1</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Channel positioning</div><div class="kv-val amber">Training content only an NFL coach can give you</div></div>
+          <div class="kv"><div class="kk">Episode 1</div><div class="kv-val">What NFL players do in the off-season that civilians never hear about</div></div>
+          <div class="kv"><div class="kk">Episode 2</div><div class="kv-val">The injury I prevented 3 times — and the drill that stopped it</div></div>
+          <div class="kv"><div class="kk">Episode 3</div><div class="kv-val">I tested 12 training protocols on Pro Bowl players. Here's what worked.</div></div>
+          <div class="kv"><div class="kk">Cadence</div><div class="kv-val">Bi-weekly · Tuesdays 8am EST</div></div>
+          <div class="kv"><div class="kk">Monetization</div><div class="kv-val">AdSense + program CTA + affiliate links</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l4d);color:#EF9F27">L4 · Affiliates</span>
+      <span class="atitle">20 partner list + outreach emails</span>
+      <span class="mtag">haiku-4-5</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent identified 20 sports supplement, recovery equipment, and performance tracking companies whose products Marcus actually used with NFL athletes. NFL usage is the affiliate pitch — an authenticity no influencer can claim.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Affiliate partner pipeline</span><span class="ver">v1</span><span class="fchip">XLSX</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Supplements</div><div class="kv-val">Momentous, Thorne, Klean Athlete</div></div>
+          <div class="kv"><div class="kk">Recovery</div><div class="kv-val">Hyperice, Therabody, Normatec</div></div>
+          <div class="kv"><div class="kk">Tracking</div><div class="kv-val">WHOOP, Garmin, Athos</div></div>
+          <div class="kv"><div class="kk">Commission range</div><div class="kv-val">12–22% per sale</div></div>
+          <div class="kv"><div class="kk">Pitch hook</div><div class="kv-val amber">NFL staff-used products — authentic endorsement no influencer can claim</div></div>
+          <div class="kv"><div class="kk">Est. at 1,000 subs</div><div class="kv-val">$800–$2,400/month</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l4d);color:#EF9F27">L4 · Lead magnet</span>
+      <span class="atitle">Free movement assessment + 5-email nurture</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent built a free movement assessment — the same baseline Marcus uses with private clients, compressed into a 10-question self-assessment. Five emails deliver one NFL career insight each, ending with the $497 program offer.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">NFL Movement Audit + nurture sequence</span><span class="ver">v1</span><span class="fchip">PDF</span><span class="fchip">ConvertKit LIVE</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Lead magnet</div><div class="kv-val amber">The NFL Movement Audit — 10 questions to find your performance gaps</div></div>
+          <div class="kv"><div class="kk">Email 1</div><div class="kv-val">Your movement audit results — what the NFL would say about you</div></div>
+          <div class="kv"><div class="kk">Email 5 CTA</div><div class="kv-val">NFL Performance Method — $497 · limited cohort spots</div></div>
+          <div class="kv"><div class="kk">Conversion target</div><div class="kv-val">8–12% of completers → program purchase</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="go(3)">← Back</button>
+    <span class="page-count">5 / 7</span>
+    <button class="btn primary" onclick="go(5)">Layer 5: Wealth →</button>
+  </div>
+</div>
+
+<!-- ══ S5: L5 ══════════════════════════════════════════════════════ -->
+<div class="stage" id="s5">
+  <div class="stage-eyebrow">Layer 5 · Wealth deployment</div>
+  <h2 class="stage-title">Put the money to work<br>— permanently</h2>
+  <p class="stage-sub">Where does the income go so Marcus stops trading time for money and starts building a wealth base toward his own performance facility?</p>
+
+  <div class="orc">
+    <div class="orc-hdr"><span class="pulse"></span>Orchestrator · Cycle 12 · Multiple skip routes · Opus 4.6 dispatched</div>
+    <div class="orc-text">Skip routes triggered: L1 consulting revenue confirmed 2+ months → Income Allocation fires. L2 speaking confirmed → Income Allocation fires periodically. L3 IP asset created (e-book) → IPS fires. Critical: Marcus has <strong>NFL deferred compensation structure and prior 403(b)</strong> — tax situation is materially more complex than a standard 1099 consultant. Tax optimization and IPS dispatched to <strong>Opus 4.6</strong> — multi-factor legal/financial reasoning required.</div>
+    <div class="chips">
+      <span class="chip on">Income allocation — score 0.97 · multi-stream confirmed</span>
+      <span class="chip on">Tax optimization — score 0.94 · Opus 4.6 · NFL deferred comp</span>
+      <span class="chip on">Investment Policy Statement — score 0.90 · Opus 4.6</span>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l5d);color:#85B7EB">L5 · Allocation</span>
+      <span class="atitle">Asset class allocation breakdown</span>
+      <span class="mtag">sonnet-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Agent built Marcus's allocation from confirmed multi-layer income. Monthly investable surplus of $4,600. Allocation weighted toward real estate given Marcus's long-term goal: owning a Webb Performance facility within 5 years.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Income allocation strategy</span><span class="ver">v1</span><span class="fchip">XLSX</span><span class="fchip">Infographic</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Monthly surplus</div><div class="kv-val amber">$4,600/month investable</div></div>
+          <div class="kv"><div class="kk">US equities (VTI)</div><div class="kv-val">45% · $2,070/month</div></div>
+          <div class="kv"><div class="kk">Real estate (VNQ + direct)</div><div class="kv-val">30% · $1,380/month (facility fund)</div></div>
+          <div class="kv"><div class="kk">International (VXUS)</div><div class="kv-val">15% · $690/month</div></div>
+          <div class="kv"><div class="kk">Cash reserve</div><div class="kv-val">10% · $460/month</div></div>
+          <div class="kv"><div class="kk">Long-term goal</div><div class="kv-val hi">Webb Performance facility · 5-year horizon</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l5d);color:#85B7EB">L5 · Tax</span>
+      <span class="atitle">Tax optimization — NFL deferred comp + Georgia</span>
+      <span class="mtag opus">opus-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Opus 4.6 dispatched — Marcus's tax situation requires multi-factor reasoning: NFL deferred compensation distributions, transition from W-2 to self-employed, multiple 1099 streams, and Georgia state tax treatment of coaching income vs digital product royalties.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Tax optimization — NFL deferred comp + Georgia</span><span class="ver">v1</span><span class="fchip">DOCX</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">NFL deferred comp</div><div class="kv-val amber">Distribute in low-income years · stagger over 5 years · avoid bracket exposure</div></div>
+          <div class="kv"><div class="kk">SEP-IRA</div><div class="kv-val">$14,375/year (25% of consulting net)</div></div>
+          <div class="kv"><div class="kk">Digital royalties</div><div class="kv-val">Georgia treats e-book royalties as intangible income — favorable vs service income</div></div>
+          <div class="kv"><div class="kk">Home office</div><div class="kv-val">Dedicated studio · fully deductible</div></div>
+          <div class="kv"><div class="kk">Est. tax saved yr 1</div><div class="kv-val amber">~$18,400 vs unoptimized filing</div></div>
+          <div class="kv"><div class="kk">CPA referral</div><div class="kv-val">Required · deferred comp timing is high-stakes</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-hd">
+      <span class="lbadge" style="background:var(--l5d);color:#85B7EB">L5 · IPS</span>
+      <span class="atitle">Investment Policy Statement</span>
+      <span class="mtag opus">opus-4-6</span>
+    </div>
+    <div class="agent-bd">
+      <p>Opus 4.6 dispatched — the IPS must account for Marcus's unusual profile: irregular NFL deferred comp distributions, high-volatility year-1 self-employment income, and a long-term capital goal (facility). The IPS documents decision criteria so Marcus doesn't react emotionally to market swings in a volatile income year.</p>
+      <div class="art">
+        <div class="art-top"><span class="art-name">Investment Policy Statement</span><span class="ver">v1</span><span class="fchip">DOCX</span><span class="fchip">PDF</span></div>
+        <div class="kv-grid">
+          <div class="kv"><div class="kk">Risk profile</div><div class="kv-val">Moderate-aggressive · 12-year horizon</div></div>
+          <div class="kv"><div class="kk">Liquidity requirement</div><div class="kv-val">12-month emergency fund · income volatility buffer</div></div>
+          <div class="kv"><div class="kk">Rebalancing trigger</div><div class="kv-val">±8% drift OR annually</div></div>
+          <div class="kv"><div class="kk">Facility fund rule</div><div class="kv-val amber">Real estate allocation untouchable for 5 years</div></div>
+          <div class="kv"><div class="kk">Emotional guardrail</div><div class="kv-val hi">No allocation changes in any month with deferred comp distribution</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="go(4)">← Back</button>
+    <span class="page-count">6 / 7</span>
+    <button class="btn primary" onclick="go(6)">See Marcus's impact →</button>
+  </div>
+</div>
+
+<!-- ══ S6: Impact ══════════════════════════════════════════════════ -->
+<div class="stage" id="s6">
+  <div class="stage-eyebrow">12-month impact</div>
+  <h2 class="stage-title">From 6 clients at $300<br>to a five-layer wealth engine</h2>
+  <p class="stage-sub">12 cycles · 15 agents fired · $112k to $280k total year-1 income</p>
+
+  <div class="impact-grid">
+    <div class="imp-card" style="color:var(--teal)">
+      <div class="imp-num">$168,200</div>
+      <div class="imp-desc">New income generated in 12 months on top of $112k salary</div>
+    </div>
+    <div class="imp-card" style="color:var(--amber)">
+      <div class="imp-num">$280,200</div>
+      <div class="imp-desc">Total year 1 income across all five layers</div>
+    </div>
+    <div class="imp-card" style="color:#85B7EB">
+      <div class="imp-num">$55,200</div>
+      <div class="imp-desc">Invested by month 12 · facility fund building</div>
+    </div>
+  </div>
+
+  <div class="orc" style="margin-bottom:24px">
+    <div class="orc-hdr"><span class="pulse"></span>Orchestrator · Month 12 · Cycle 12 · GCC summary</div>
+    <div class="orc-text">15 agent actions complete. 4 running: SaaS product spec (athlete performance app), IP licensing framework, DCA schedule, estate planning. Bayesian model: corporate wellness <strong>0.96</strong> (3 annual contracts signed · strongest signal), digital program <strong>0.91</strong>, YouTube <strong>0.83</strong> (growing rapidly). Next cycle: IP licensing inquiry from regional gym chain received — orchestrator evaluating L4 dispatch.</div>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-hdr">Month-by-month progression</div>
+    <div class="tl-item"><div class="tl-dot" style="background:rgba(108,59,204,.3);border:1.5px solid var(--l1)"></div><div class="tl-text"><strong>Month 1</strong> — Rate card repriced. 3 existing clients accept $650/session. 3 decline. Net: same session count, +$1,050/month immediately.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:var(--l1)"></div><div class="tl-text"><strong>Month 2</strong> — First corporate wellness day: $6,500. Group coaching: 6 of 8 slots filled ($14,400/month). Cold email reply rate 18.2%.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:var(--l2)"></div><div class="tl-text"><strong>Month 4</strong> — Digital program launch: <strong>18 signups × $497 = $8,946.</strong> E-book: 34 sales · $1,326. Second corporate day booked.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:var(--l2)"></div><div class="tl-text"><strong>Month 6</strong> — YouTube: 3,400 subscribers. First affiliate payment: $1,240 (Momentous + Hyperice). First speaking engagement: $3,500.</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:var(--l5)"></div><div class="tl-text"><strong>Month 9</strong> — Corporate annual contracts: <strong>3 companies × $22,000 = $66,000 booked.</strong> SEP-IRA open. Deferred comp deferred to year 3 (low-income year planned).</div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:var(--l5)"></div><div class="tl-text"><strong>Month 12</strong> — $168,200 new income. $55,200 invested (facility fund: $16,560). YouTube: 12,400 subscribers. IP licensing inquiry from regional gym chain received.</div></div>
+  </div>
+
+  <div class="closing">Marcus didn't discover anything new about himself. He already knew he could keep elite athletes performing. What he didn't know was that 14 years of NFL sideline experience was worth $280,000 in year one when properly routed across five income layers — not just 6 sessions a week at $300 each.</div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="go(5)">← Back</button>
+    <span class="page-count">7 / 7</span>
+    <a href="{{ url_for('pages.login_page') }}" class="btn primary">Start your simulation →</a>
+  </div>
+</div>
+
+</main>
+
+<footer class="footer">
+  <p>Simulacrum · <a href="https://simulacrum.io">simulacrum.io</a> · Bay Area Experiences Ventures · © 2026</p>
+</footer>
+
+<script>
+let cur=0;
+function go(n){
+  document.getElementById('s'+cur).classList.remove('active');
+  cur=n;
+  document.getElementById('s'+cur).classList.add('active');
+  const steps=document.querySelectorAll('.nav-step');
+  steps.forEach((s,i)=>{
+    s.classList.toggle('active',i===n);
+    s.classList.toggle('done',i<n);
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
