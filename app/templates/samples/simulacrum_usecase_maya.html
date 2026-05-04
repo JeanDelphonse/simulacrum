@@ -1,14 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maya Chen — Simulacrum Use Case</title>
+{% extends 'base.html' %}
+{% block title %}Maya Chen — Simulacrum Use Case{% endblock %}
+
+{% block head %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
+.uc{
   --navy:#0D1B3E;--navy-mid:#1B3A6B;--teal:#0F7B72;--teal-lt:#13A89E;
   --gold:#C9952A;--gold-lt:#FDF3DC;--gold-dk:#7A5A16;
   --white:#FFFFFF;--off:#F8F9FB;--muted:#64748B;--dark:#0F172A;
@@ -19,133 +16,134 @@
   --font-body:'DM Sans',sans-serif;
   --font-mono:'DM Mono',monospace;
   --radius:10px;--radius-sm:6px;
+  font-family:var(--font-body);
+  background:var(--navy);
+  color:var(--white);
+  min-height:100vh;
+  line-height:1.6;
+  box-sizing:border-box;
 }
-
-html{scroll-behavior:smooth}
-body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-height:100vh;line-height:1.6}
+.uc *{box-sizing:border-box;margin:0;padding:0}
 
 /* ── Hero ─────────────────────────────────────────────────────────── */
-.hero{padding:72px 24px 56px;text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.08)}
-.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(201,149,42,.12) 0%,transparent 70%);pointer-events:none}
-.hero-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;display:inline-flex;align-items:center;gap:8px}
-.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:inline-block;width:28px;height:1px;background:var(--gold);opacity:.6}
-.hero-title{font-family:var(--font-display);font-size:clamp(36px,6vw,64px);line-height:1.1;margin-bottom:12px;letter-spacing:-.02em}
-.hero-title span{color:var(--gold);font-style:italic}
-.hero-sub{font-size:16px;color:rgba(255,255,255,.6);max-width:520px;margin:0 auto 32px}
-.hero-meta{display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
-.meta-pill{font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
+.uc .hero{padding:72px 24px 56px;text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.08)}
+.uc .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(201,149,42,.12) 0%,transparent 70%);pointer-events:none}
+.uc .hero-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;display:inline-flex;align-items:center;gap:8px}
+.uc .hero-eyebrow::before,.uc .hero-eyebrow::after{content:'';display:inline-block;width:28px;height:1px;background:var(--gold);opacity:.6}
+.uc .hero-title{font-family:var(--font-display);font-size:clamp(36px,6vw,64px);line-height:1.1;margin-bottom:12px;letter-spacing:-.02em}
+.uc .hero-title span{color:var(--gold);font-style:italic}
+.uc .hero-sub{font-size:16px;color:rgba(255,255,255,.6);max-width:520px;margin:0 auto 32px}
+.uc .hero-meta{display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
+.uc .meta-pill{font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
 
 /* ── Progress nav ─────────────────────────────────────────────────── */
-.progress-wrap{position:sticky;top:0;z-index:100;background:rgba(13,27,62,.96);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px}
-.progress-inner{max-width:900px;margin:0 auto;display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none}
-.progress-inner::-webkit-scrollbar{display:none}
-.prog-step{flex:1;min-width:90px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
-.prog-step:hover{background:rgba(255,255,255,.04)}
-.prog-step.active{border-bottom-color:var(--gold)}
-.prog-step.done{border-bottom-color:var(--teal)}
-.prog-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .2s}
-.prog-step.active .prog-dot{background:var(--gold)}
-.prog-step.done .prog-dot{background:var(--teal)}
-.prog-label{font-size:11px;color:rgba(255,255,255,.45);font-family:var(--font-mono)}
-.prog-step.active .prog-label{color:var(--gold)}
-.prog-step.done .prog-label{color:var(--teal)}
+.uc .progress-wrap{position:sticky;top:56px;z-index:90;background:rgba(13,27,62,.96);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px}
+.uc .progress-inner-uc{max-width:900px;margin:0 auto;display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none}
+.uc .progress-inner-uc::-webkit-scrollbar{display:none}
+.uc .prog-step{flex:1;min-width:90px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.uc .prog-step:hover{background:rgba(255,255,255,.04)}
+.uc .prog-step.active{border-bottom-color:var(--gold)}
+.uc .prog-step.done{border-bottom-color:var(--teal)}
+.uc .prog-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .2s}
+.uc .prog-step.active .prog-dot{background:var(--gold)}
+.uc .prog-step.done .prog-dot{background:var(--teal)}
+.uc .prog-label{font-size:11px;color:rgba(255,255,255,.45);font-family:var(--font-mono)}
+.uc .prog-step.active .prog-label{color:var(--gold)}
+.uc .prog-step.done .prog-label{color:var(--teal)}
 
 /* ── Stages ───────────────────────────────────────────────────────── */
-.stages{max-width:900px;margin:0 auto;padding:48px 24px 80px}
-.stage{display:none;animation:fadeUp .35s ease forwards}
-.stage.active{display:block}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.uc .stages{max-width:900px;margin:0 auto;padding:48px 24px 80px}
+.uc .stage{display:none;animation:uc-fadeUp .35s ease forwards}
+.uc .stage.active{display:block}
+@keyframes uc-fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── Section labels ───────────────────────────────────────────────── */
-.stage-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.stage-label::after{content:'';flex:1;height:1px;background:rgba(201,149,42,.25)}
-.stage-title{font-family:var(--font-display);font-size:clamp(26px,4vw,40px);line-height:1.2;margin-bottom:6px;letter-spacing:-.02em}
-.stage-sub{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:32px}
+.uc .stage-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.uc .stage-label::after{content:'';flex:1;height:1px;background:rgba(201,149,42,.25)}
+.uc .stage-title{font-family:var(--font-display);font-size:clamp(26px,4vw,40px);line-height:1.2;margin-bottom:6px;letter-spacing:-.02em}
+.uc .stage-sub{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:32px}
 
 /* ── Profile card ─────────────────────────────────────────────────── */
-.profile-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:28px;margin-bottom:24px}
-.profile-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:24px}
-.avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;flex-shrink:0;font-family:var(--font-body)}
-.profile-name{font-family:var(--font-display);font-size:22px;margin-bottom:3px}
-.profile-role{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:10px}
-.profile-bio{font-size:13px;color:rgba(255,255,255,.65);line-height:1.7}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
-.stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);padding:14px}
-.stat-label{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-family:var(--font-mono)}
-.stat-val{font-size:22px;font-weight:500}
+.uc .profile-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:28px;margin-bottom:24px}
+.uc .profile-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:24px}
+.uc .avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;flex-shrink:0;font-family:var(--font-body)}
+.uc .profile-name{font-family:var(--font-display);font-size:22px;margin-bottom:3px}
+.uc .profile-role{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:10px}
+.uc .profile-bio{font-size:13px;color:rgba(255,255,255,.65);line-height:1.7}
+.uc .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+.uc .stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);padding:14px}
+.uc .stat-label{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-family:var(--font-mono)}
+.uc .stat-val{font-size:22px;font-weight:500}
 
 /* ── Orchestrator box ─────────────────────────────────────────────── */
-.orc{background:rgba(15,123,114,.08);border:1px solid rgba(15,123,114,.3);border-radius:var(--radius);padding:18px 20px;margin-bottom:24px}
-.orc-header{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--teal-lt);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite;flex-shrink:0}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-.orc-text{font-size:13px;color:rgba(255,255,255,.7);line-height:1.7}
-.orc-text strong{color:var(--white);font-weight:500}
-.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
-.chip{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5)}
-.chip.sel{border-color:rgba(15,164,158,.5);color:var(--teal-lt);background:rgba(15,123,114,.15)}
+.uc .orc{background:rgba(15,123,114,.08);border:1px solid rgba(15,123,114,.3);border-radius:var(--radius);padding:18px 20px;margin-bottom:24px}
+.uc .orc-header{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--teal-lt);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.uc .uc-pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:uc-pulse 1.4s ease-in-out infinite;flex-shrink:0}
+@keyframes uc-pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.uc .orc-text{font-size:13px;color:rgba(255,255,255,.7);line-height:1.7}
+.uc .orc-text strong{color:var(--white);font-weight:500}
+.uc .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.uc .chip{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5)}
+.uc .chip.sel{border-color:rgba(15,164,158,.5);color:var(--teal-lt);background:rgba(15,123,114,.15)}
 
 /* ── Agent cards ──────────────────────────────────────────────────── */
-.agent{border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);overflow:hidden;margin-bottom:14px}
-.agent-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
-.layer-badge{font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;font-family:var(--font-mono)}
-.agent-title{font-size:13px;font-weight:500;flex:1}
-.model-tag{font-family:var(--font-mono);font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)}
-.model-tag.opus{background:rgba(83,74,183,.2);color:#AFA9EC}
-.agent-body{padding:16px}
-.agent-body p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;margin-bottom:14px}
+.uc .agent{border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);overflow:hidden;margin-bottom:14px}
+.uc .agent-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.uc .layer-badge{font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;font-family:var(--font-mono)}
+.uc .agent-title{font-size:13px;font-weight:500;flex:1}
+.uc .model-tag{font-family:var(--font-mono);font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)}
+.uc .model-tag.opus{background:rgba(83,74,183,.2);color:#AFA9EC}
+.uc .agent-body{padding:16px}
+.uc .agent-body p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;margin-bottom:14px}
 
 /* ── Artifact box ─────────────────────────────────────────────────── */
-.artifact{background:rgba(255,255,255,.04);border-radius:var(--radius-sm);padding:14px 16px}
-.artifact-top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.artifact-name{font-size:12px;font-weight:500;flex:1}
-.ver{font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px;background:var(--teal);color:var(--white)}
-.fchip{font-size:10px;padding:2px 9px;border-radius:10px;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5)}
-.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.kv{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}
-.kv:nth-last-child(-n+2){border-bottom:none}
-.kk{font-size:10px;color:rgba(255,255,255,.35);margin-bottom:2px;font-family:var(--font-mono)}
-.kv-val{font-size:12px;color:rgba(255,255,255,.8)}
-.kv-val.hi{color:var(--white);font-weight:500}
+.uc .artifact{background:rgba(255,255,255,.04);border-radius:var(--radius-sm);padding:14px 16px}
+.uc .artifact-top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.uc .artifact-name{font-size:12px;font-weight:500;flex:1}
+.uc .ver{font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px;background:var(--teal);color:var(--white)}
+.uc .fchip{font-size:10px;padding:2px 9px;border-radius:10px;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5)}
+.uc .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.uc .kv{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.uc .kv:nth-last-child(-n+2){border-bottom:none}
+.uc .kk{font-size:10px;color:rgba(255,255,255,.35);margin-bottom:2px;font-family:var(--font-mono)}
+.uc .kv-val{font-size:12px;color:rgba(255,255,255,.8)}
+.uc .kv-val.hi{color:var(--white);font-weight:500}
 
 /* ── Impact section ───────────────────────────────────────────────── */
-.impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
-.impact-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:20px;text-align:center}
-.impact-num{font-family:var(--font-display);font-size:32px;margin-bottom:4px;line-height:1}
-.impact-desc{font-size:12px;color:rgba(255,255,255,.5);line-height:1.5}
+.uc .impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.uc .impact-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:20px;text-align:center}
+.uc .impact-num{font-family:var(--font-display);font-size:32px;margin-bottom:4px;line-height:1}
+.uc .impact-desc{font-size:12px;color:rgba(255,255,255,.5);line-height:1.5}
 
-.timeline{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:20px;margin-bottom:20px}
-.tl-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);font-family:var(--font-mono);margin-bottom:16px}
-.tl-item{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start}
-.tl-item:last-child{margin-bottom:0}
-.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.tl-text{font-size:13px;color:rgba(255,255,255,.6);line-height:1.6}
-.tl-text strong{color:var(--white);font-weight:500}
+.uc .timeline{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.uc .tl-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);font-family:var(--font-mono);margin-bottom:16px}
+.uc .tl-item{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start}
+.uc .tl-item:last-child{margin-bottom:0}
+.uc .tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.uc .tl-text{font-size:13px;color:rgba(255,255,255,.6);line-height:1.6}
+.uc .tl-text strong{color:var(--white);font-weight:500}
 
-.closing{font-size:13px;color:rgba(255,255,255,.5);line-height:1.8;padding:16px 20px;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);border-left:3px solid var(--gold);font-style:italic}
+.uc .closing{font-size:13px;color:rgba(255,255,255,.5);line-height:1.8;padding:16px 20px;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);border-left:3px solid var(--gold);font-style:italic}
 
 /* ── Nav buttons ──────────────────────────────────────────────────── */
-.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08)}
-.btn{padding:10px 22px;font-size:13px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-body);transition:all .15s;border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.6)}
-.btn:hover{background:rgba(255,255,255,.06);color:var(--white)}
-.btn:disabled{opacity:.25;cursor:not-allowed}
-.btn.primary{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:500}
-.btn.primary:hover{background:#D4A030;border-color:#D4A030}
-.step-count{font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.3)}
-
-/* ── Footer ───────────────────────────────────────────────────────── */
-.footer{text-align:center;padding:40px 24px;border-top:1px solid rgba(255,255,255,.06)}
-.footer p{font-size:12px;color:rgba(255,255,255,.3);font-family:var(--font-mono)}
-.footer a{color:var(--gold);text-decoration:none}
+.uc .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08)}
+.uc .uc-btn{padding:10px 22px;font-size:13px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-body);transition:all .15s;border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.6);text-decoration:none;display:inline-block}
+.uc .uc-btn:hover{background:rgba(255,255,255,.06);color:var(--white)}
+.uc .uc-btn:disabled{opacity:.25;cursor:not-allowed}
+.uc .uc-btn.primary{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:500}
+.uc .uc-btn.primary:hover{background:#D4A030;border-color:#D4A030}
+.uc .step-count{font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.3)}
 
 @media(max-width:640px){
-  .stats,.impact-grid{grid-template-columns:1fr 1fr}
-  .kv-grid{grid-template-columns:1fr}
-  .hero-meta{gap:10px}
+  .uc .stats,.uc .impact-grid{grid-template-columns:1fr 1fr}
+  .uc .kv-grid{grid-template-columns:1fr}
+  .uc .hero-meta{gap:10px}
 }
 </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
+<div class="uc">
 
 <header class="hero">
   <div class="hero-eyebrow">Simulacrum use case</div>
@@ -160,7 +158,7 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
 </header>
 
 <nav class="progress-wrap">
-  <div class="progress-inner" id="progress">
+  <div class="progress-inner-uc" id="progress">
     <div class="prog-step active" onclick="goTo(0)"><div class="prog-dot"></div><div class="prog-label">Profile</div></div>
     <div class="prog-step" onclick="goTo(1)"><div class="prog-dot"></div><div class="prog-label">L1 Active</div></div>
     <div class="prog-step" onclick="goTo(2)"><div class="prog-dot"></div><div class="prog-label">L2 Leveraged</div></div>
@@ -194,13 +192,13 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
     </div>
   </div>
   <div class="orc">
-    <div class="orc-header"><span class="pulse"></span>Orchestrator · Expertise zone extraction · Haiku 4.5</div>
-    <div class="orc-text">Resume analysis complete. Four expertise zones identified from 12 years of career deliverables: <strong>Brand identity systems</strong> (confidence 0.92), <strong>Packaging design</strong> (0.87), <strong>Design systems & UI</strong> (0.81), <strong>Creative direction</strong> (0.76). Primary zone selected: Brand identity systems. Layer 1 agents dispatched. Explore phase active — minimum 1 action per layer for first 3 cycles.</div>
+    <div class="orc-header"><span class="uc-pulse"></span>Orchestrator · Expertise zone extraction · Haiku 4.5</div>
+    <div class="orc-text">Resume analysis complete. Four expertise zones identified from 12 years of career deliverables: <strong>Brand identity systems</strong> (confidence 0.92), <strong>Packaging design</strong> (0.87), <strong>Design systems &amp; UI</strong> (0.81), <strong>Creative direction</strong> (0.76). Primary zone selected: Brand identity systems. Layer 1 agents dispatched. Explore phase active — minimum 1 action per layer for first 3 cycles.</div>
   </div>
   <div class="nav-row">
-    <button class="btn" disabled>← Back</button>
+    <button class="uc-btn" disabled>← Back</button>
     <span class="step-count">1 / 7</span>
-    <button class="btn primary" onclick="goTo(1)">Layer 1: Active income →</button>
+    <button class="uc-btn primary" onclick="goTo(1)">Layer 1: Active income →</button>
   </div>
 </div>
 
@@ -210,7 +208,7 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
   <h2 class="stage-title">Turn expertise into<br>consulting income — now</h2>
   <p class="stage-sub">How do I land the first client and price 12 years of design experience correctly?</p>
   <div class="orc">
-    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 1 · Score & Schedule · Explore phase</div>
+    <div class="orc-header"><span class="uc-pulse"></span>Orchestrator · Cycle 1 · Score &amp; Schedule · Explore phase</div>
     <div class="orc-text">Bayesian model initialized. Brand identity consulting posterior mean: <strong>$185/hr</strong> (range $140–$240 based on SF market comps). Top 3 Layer 1 actions dispatched via Batch API.</div>
     <div class="chips">
       <span class="chip sel">Rate card — score 0.94</span>
@@ -280,9 +278,9 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
     </div>
   </div>
   <div class="nav-row">
-    <button class="btn" onclick="goTo(0)">← Back</button>
+    <button class="uc-btn" onclick="goTo(0)">← Back</button>
     <span class="step-count">2 / 7</span>
-    <button class="btn primary" onclick="goTo(2)">Layer 2: Leveraged →</button>
+    <button class="uc-btn primary" onclick="goTo(2)">Layer 2: Leveraged →</button>
   </div>
 </div>
 
@@ -292,7 +290,7 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
   <h2 class="stage-title">Reach many people<br>with one session</h2>
   <p class="stage-sub">How do I build workshops, group coaching, and corporate training on top of my consulting proof?</p>
   <div class="orc">
-    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 3 · Score & Schedule</div>
+    <div class="orc-header"><span class="uc-pulse"></span>Orchestrator · Cycle 3 · Score &amp; Schedule</div>
     <div class="orc-text">Harvest: Cal.com shows <strong>3 confirmed discovery calls in 10 days</strong>. Demand signal strong. Rate card artifact routed immediately to Layer 2 — output_type=pricing condition met. Top 3 Layer 2 actions dispatched.</div>
     <div class="chips">
       <span class="chip sel">Workshop curriculum — score 0.91</span>
@@ -361,9 +359,9 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
     </div>
   </div>
   <div class="nav-row">
-    <button class="btn" onclick="goTo(1)">← Back</button>
+    <button class="uc-btn" onclick="goTo(1)">← Back</button>
     <span class="step-count">3 / 7</span>
-    <button class="btn primary" onclick="goTo(3)">Layer 3: Productized →</button>
+    <button class="uc-btn primary" onclick="goTo(3)">Layer 3: Productized →</button>
   </div>
 </div>
 
@@ -373,7 +371,7 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
   <h2 class="stage-title">Build once,<br>sell many times</h2>
   <p class="stage-sub">How do I package my knowledge into products that generate revenue while I sleep?</p>
   <div class="orc">
-    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 6 · Score & Schedule · Deferred route triggered</div>
+    <div class="orc-header"><span class="uc-pulse"></span>Orchestrator · Cycle 6 · Score &amp; Schedule · Deferred route triggered</div>
     <div class="orc-text">Harvest: waitlist at <strong>73 subscribers</strong>. Deferred route fired — subscriber_count ≥ 50 condition met. L2 waitlist artifact → L3 launch sequence. Workshop curriculum (6 modules documented) meets L3 course curriculum condition. Bayesian update: demand signal elevated.</div>
     <div class="chips">
       <span class="chip sel">Course curriculum — score 0.93</span>
@@ -441,9 +439,9 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
     </div>
   </div>
   <div class="nav-row">
-    <button class="btn" onclick="goTo(2)">← Back</button>
+    <button class="uc-btn" onclick="goTo(2)">← Back</button>
     <span class="step-count">4 / 7</span>
-    <button class="btn primary" onclick="goTo(4)">Layer 4: Automated →</button>
+    <button class="uc-btn primary" onclick="goTo(4)">Layer 4: Automated →</button>
   </div>
 </div>
 
@@ -453,7 +451,7 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
   <h2 class="stage-title">Income systems that run<br>without you</h2>
   <p class="stage-sub">How do I generate revenue while I'm not actively working?</p>
   <div class="orc">
-    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 9 · Exploit phase begins · Diversity constraint removed</div>
+    <div class="orc-header"><span class="uc-pulse"></span>Orchestrator · Cycle 9 · Exploit phase begins · Diversity constraint removed</div>
     <div class="orc-text">Phase transition: month 4. Exploit phase active — all dispatch budget concentrated on highest-scoring actions. Harvest: ConvertKit list <strong>847 subscribers</strong>. Sales page keywords extracted → SEO calendar route fires immediately. Course methodology (8 modules) meets deferred SaaS spec condition. Skip route: L3 sales page → L5 income allocation (deferred, periodic — product revenue signal incoming).</div>
     <div class="chips">
       <span class="chip sel">SEO calendar — score 0.95</span>
@@ -519,9 +517,9 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
     </div>
   </div>
   <div class="nav-row">
-    <button class="btn" onclick="goTo(3)">← Back</button>
+    <button class="uc-btn" onclick="goTo(3)">← Back</button>
     <span class="step-count">5 / 7</span>
-    <button class="btn primary" onclick="goTo(5)">Layer 5: Wealth →</button>
+    <button class="uc-btn primary" onclick="goTo(5)">Layer 5: Wealth →</button>
   </div>
 </div>
 
@@ -531,7 +529,7 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
   <h2 class="stage-title">Put the money to work</h2>
   <p class="stage-sub">Where does the income go so money compounds without Maya's continued effort?</p>
   <div class="orc">
-    <div class="orc-header"><span class="pulse"></span>Orchestrator · Cycle 11 · Multiple skip routes active</div>
+    <div class="orc-header"><span class="uc-pulse"></span>Orchestrator · Cycle 11 · Multiple skip routes active</div>
     <div class="orc-text">Skip routes triggered: L1 Rate Card → L5 Income Allocation — <strong>consulting revenue confirmed 2+ months</strong>. L4 Lead Magnet → L5 Income Allocation — funnel active, conversion recorded. Entity structure and tax optimization dispatched to <strong>Opus 4.6</strong> — multi-factor California legal and tax reasoning required. Standard agents cannot reliably produce the precision needed for an IPS and tax strategy.</div>
     <div class="chips">
       <span class="chip sel">Income allocation — score 0.96</span>
@@ -599,9 +597,9 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
     </div>
   </div>
   <div class="nav-row">
-    <button class="btn" onclick="goTo(4)">← Back</button>
+    <button class="uc-btn" onclick="goTo(4)">← Back</button>
     <span class="step-count">6 / 7</span>
-    <button class="btn primary" onclick="goTo(6)">See Maya's impact →</button>
+    <button class="uc-btn primary" onclick="goTo(6)">See Maya's impact →</button>
   </div>
 </div>
 
@@ -616,7 +614,7 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
     <div class="impact-card"><div class="impact-num" style="color:#85B7EB">$41,800</div><div class="impact-desc">Invested by month 12 · compounding at 8% annualized</div></div>
   </div>
   <div class="orc" style="margin-bottom:24px">
-    <div class="orc-header"><span class="pulse"></span>Orchestrator · Month 12 · Cycle 11 · GCC summary</div>
+    <div class="orc-header"><span class="uc-pulse"></span>Orchestrator · Month 12 · Cycle 11 · GCC summary</div>
     <div class="orc-text">15 agent actions complete across 5 layers. 3 agents running: affiliate partnerships, YouTube strategy, DCA schedule. Bayesian model: brand identity consulting <strong>0.94</strong> (strongest signal), course revenue <strong>0.88</strong>, newsletter <strong>0.72</strong> (growing). Phase: Exploit. Next cycle in 3 days. No escalations pending.</div>
   </div>
   <div class="timeline">
@@ -631,31 +629,32 @@ body{font-family:var(--font-body);background:var(--navy);color:var(--white);min-
   </div>
   <div class="closing">Maya did not quit her job. She did not work nights building something from scratch. She uploaded a resume. The orchestrator identified where her 12 years of expertise could generate income beyond her salary, dispatched agents to build the tools, and kept compounding the signals as each layer confirmed demand. By month 12 she earns 50% more than her salary without working 50% more.</div>
   <div class="nav-row">
-    <button class="btn" onclick="goTo(5)">← Back</button>
+    <button class="uc-btn" onclick="goTo(5)">← Back</button>
     <span class="step-count">7 / 7</span>
-    <a href="{{ url_for('pages.login_page') }}" class="btn primary">Start your simulation →</a>
+    <a href="{{ url_for('pages.login_page') }}" class="uc-btn primary">Start your simulation →</a>
   </div>
 </div>
 
 </main>
 
-<footer class="footer">
-  <p>Simulacrum · <a href="https://simulacrum.io">simulacrum.io</a> · Bay Area Experiences Ventures · © 2026</p>
-</footer>
+</div>{# end .uc #}
+{% endblock %}
 
+{% block scripts %}
 <script>
-let cur=0;
-function goTo(n){
-  document.getElementById('s'+cur).classList.remove('active');
-  cur=n;
-  document.getElementById('s'+cur).classList.add('active');
-  const steps=document.querySelectorAll('.prog-step');
-  steps.forEach((s,i)=>{
-    s.classList.toggle('active',i===n);
-    s.classList.toggle('done',i<n);
-  });
-  window.scrollTo({top:0,behavior:'smooth'});
-}
+(function(){
+  var cur=0;
+  window.goTo=function(n){
+    document.getElementById('s'+cur).classList.remove('active');
+    cur=n;
+    document.getElementById('s'+cur).classList.add('active');
+    var steps=document.querySelectorAll('.uc .prog-step');
+    steps.forEach(function(s,i){
+      s.classList.toggle('active',i===n);
+      s.classList.toggle('done',i<n);
+    });
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+})();
 </script>
-</body>
-</html>
+{% endblock %}
