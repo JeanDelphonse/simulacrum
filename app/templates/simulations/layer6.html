@@ -172,27 +172,32 @@
 /* ── Journey tab dark wrapper ────────────────────────────────────────────── */
 #tab-journey { background: #0D1B3E; }
 
-/* ── Journey Accordion ───────────────────────────────────────────────────── */
-.jrn-rows { padding: 1.25rem 2rem 0.75rem; display: flex; flex-direction: column; gap: 0.75rem; }
-.jrn-row {
-  border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
-  background: rgba(255,255,255,.04); overflow: hidden;
+/* ── Journey Stages ──────────────────────────────────────────────────────── */
+.jrn-rows { padding: 1.5rem 2rem 1rem; display: flex; flex-direction: column; gap: 2rem; }
+.jrn-row { border: none; background: none; overflow: visible; }
+
+/* Stage-label header (click to expand) */
+.jrn-stage-header {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding-bottom: 0.5rem; cursor: pointer; user-select: none;
+  border-bottom: 1px solid rgba(201,149,42,.25); margin-bottom: 1rem;
 }
-.jrn-header {
-  display: flex; align-items: center; gap: 0.6rem; height: 52px;
-  padding-right: 1rem; cursor: pointer; user-select: none;
-  border-bottom: 1px solid transparent; transition: border-color 0.2s;
+.jrn-stage-eyebrow {
+  font-family: monospace; font-size: 0.65rem; letter-spacing: 0.1em;
+  color: #C9952A; text-transform: uppercase; flex: 1;
 }
-.jrn-row.expanded .jrn-header { border-bottom-color: rgba(255,255,255,.06); }
-.jrn-accent-bar { width: 4px; align-self: stretch; flex-shrink: 0; }
-.jrn-badge {
-  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
-  padding: 0.2rem 0.55rem; border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+.jrn-stage-meta {
+  font-size: 0.72rem; color: rgba(255,255,255,.4); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 200px;
 }
-.jrn-status-summary {
-  font-size: 0.75rem; color: rgba(255,255,255,.5); flex: 1; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-}
+/* Chevron rotates when expanded — override old selector */
+.jrn-row.expanded .jrn-stage-header .jrn-chevron { transform: rotate(90deg); }
+
+/* Keep accent-bar hidden; still referenced by SSE for stale pulse */
+.jrn-accent-bar { display: none; }
+/* Legacy badge + summary kept for JS ID refs but not shown in new header */
+.jrn-badge { display: none; }
+.jrn-status-summary { display: none; }
 .jrn-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: rgba(255,255,255,.2);
 }
@@ -211,16 +216,77 @@
 .jrn-chevron { font-size: 0.7rem; color: rgba(255,255,255,.3); flex-shrink: 0; transition: transform 0.2s; }
 .jrn-row.expanded .jrn-chevron { transform: rotate(90deg); }
 .jrn-content { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease, opacity 0.2s ease 0.05s; }
-.jrn-row.expanded .jrn-content { max-height: 2400px; opacity: 1; }
-.jrn-content-inner { padding: 0.75rem 1rem 1rem 1.25rem; }
-.jrn-question { font-size: 0.875rem; font-style: italic; color: rgba(255,255,255,.65); margin-bottom: 0.75rem; }
-.jrn-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.75rem; }
+.jrn-row.expanded .jrn-content { max-height: 4000px; opacity: 1; }
+.jrn-content-inner { padding: 0; }
+
+/* Orchestrator box */
+.jrn-orc-box {
+  background: rgba(15,123,114,.08); border: 1px solid rgba(15,123,114,.3);
+  border-radius: 10px; padding: 1rem 1.125rem; margin-bottom: 1rem;
+}
+.jrn-orc-box-header {
+  font-family: monospace; font-size: 0.6rem; letter-spacing: 0.1em; color: #13A89E;
+  text-transform: uppercase; margin-bottom: 0.65rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.jrn-orc-pulse {
+  width: 6px; height: 6px; border-radius: 50%; background: #0F7B72;
+  animation: jrn-pulse 1.4s ease-in-out infinite; flex-shrink: 0;
+}
+.jrn-question {
+  font-size: 0.82rem; color: rgba(255,255,255,.7); line-height: 1.7; margin-bottom: 0.75rem;
+  font-style: normal;
+}
+.jrn-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.75rem; }
 .jrn-chip {
-  font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+  font-size: 0.68rem; padding: 0.18rem 0.55rem; border-radius: 20px;
   border: 1px solid rgba(255,255,255,.12); cursor: pointer; transition: opacity 0.15s;
   white-space: nowrap; background: none; color: rgba(255,255,255,.5);
 }
 .jrn-chip:hover { opacity: 0.75; }
+.jrn-chip.sel { border-color: rgba(15,164,158,.5); color: #13A89E; background: rgba(15,123,114,.15); }
+
+/* Agent cards for steps */
+.jrn-steps { display: flex; flex-direction: column; gap: 0.5rem; padding: 0; margin-bottom: 0.75rem; }
+.jrn-step {
+  border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+  background: rgba(255,255,255,.04); overflow: hidden; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.jrn-step:hover { border-color: rgba(255,255,255,.2); }
+.jrn-step[data-status="pending"] { opacity: 0.55; cursor: default; }
+.jrn-step[data-status="pending"]:hover { border-color: rgba(255,255,255,.1); }
+.jrn-step-head {
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem;
+  border-bottom: 1px solid transparent; transition: border-color 0.2s;
+}
+.jrn-step[data-status="complete"] .jrn-step-head,
+.jrn-step[data-status="running"]  .jrn-step-head { border-bottom-color: rgba(255,255,255,.06); }
+.jrn-layer-badge {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 0.18rem 0.5rem; border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+}
+.jrn-agent-title {
+  font-size: 0.8rem; font-weight: 500; flex: 1; color: rgba(255,255,255,.85);
+}
+.jrn-agent-status {
+  font-size: 0.58rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px;
+  flex-shrink: 0; font-family: monospace; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.jrn-ast-complete  { background: rgba(15,123,114,.2);  color: #5DCAA5; border: 1px solid rgba(15,123,114,.3); }
+.jrn-ast-running   { background: rgba(15,123,114,.12); color: #13A89E; border: 1px solid rgba(15,123,114,.25); }
+.jrn-ast-queued    { background: rgba(201,149,42,.12); color: #C9952A; border: 1px solid rgba(201,149,42,.25); }
+.jrn-ast-pending   { background: rgba(255,255,255,.04); color: rgba(255,255,255,.25); border: 1px solid rgba(255,255,255,.08); }
+.jrn-model-tag {
+  font-family: monospace; font-size: 0.6rem; padding: 0.1rem 0.45rem; border-radius: 999px;
+  background: rgba(255,255,255,.06); color: rgba(255,255,255,.35); flex-shrink: 0;
+}
+/* Step-circles hidden (kept for JS state; status shown via .jrn-agent-status) */
+.jrn-step-circle { display: none !important; }
+.jrn-step-conn   { display: none; }
+.jrn-hint        { display: none; }
+.jrn-steps-wrap  { padding: 0; }
+
 .jrn-metric { display: flex; gap: 0.5rem; align-items: baseline; }
 .jrn-metric-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,.4); }
 .jrn-metric-value { font-size: 0.875rem; font-weight: 600; color: #fff; }
@@ -1000,6 +1066,15 @@ const LAYER_STEP_SEQS = {
       ['dca_schedule','DCA schedule'],['insurance','Insurance'],['estate_planning','Estate plan.']],
 };
 
+// Dark badge styles per layer (Maya-style colored pills)
+const LAYER_BADGE_STYLE = {
+  1: { bg:'rgba(83,74,183,.2)',   color:'#AFA9EC' },
+  2: { bg:'rgba(15,110,86,.2)',   color:'#5DCAA5' },
+  3: { bg:'rgba(216,90,48,.2)',   color:'#F0997B' },
+  4: { bg:'rgba(186,117,23,.2)',  color:'#EF9F27' },
+  5: { bg:'rgba(24,95,165,.2)',   color:'#85B7EB' },
+};
+
 function _buildJourneyRows() {
   const container = document.getElementById('jrnRows');
   if (!container || container.dataset.built) return;
@@ -1007,95 +1082,106 @@ function _buildJourneyRows() {
 
   container.innerHTML = JOURNEY_LAYERS.map(l => {
     const total = (LAYER_STEP_SEQS[l.n] || []).length;
-    // Build step circles (all pending initially; populated by loadJourneyData)
-    const stepsHtml = (LAYER_STEP_SEQS[l.n] || []).map(([atype, label], i, arr) => {
-      const conn = i < arr.length - 1 ? `<div class="jrn-step-conn" id="jrn-conn-${l.n}-${i}"></div>` : '';
-      return `
-        <div class="jrn-step" id="jrn-step-${l.n}-${i}">
-          <div class="jrn-step-circle s-pending" id="jrn-sc-${l.n}-${i}"
-               data-type="${atype}" data-layer="${l.n}"
-               onclick="openToolChip('${atype}')" title="${label}">${i + 1}</div>
-          <div class="jrn-step-label" id="jrn-sl-${l.n}-${i}">${label}</div>
-        </div>${conn}`;
-    }).join('');
+    const bs = LAYER_BADGE_STYLE[l.n] || { bg: l.color + '33', color: '#fff' };
+
+    // Build agent cards (one per step — pending initially)
+    const stepsHtml = (LAYER_STEP_SEQS[l.n] || []).map(([atype, label], i) => `
+      <div class="jrn-step" id="jrn-step-${l.n}-${i}" data-status="pending" onclick="openStepPanel(${l.n}, ${i})">
+        <div class="jrn-step-head">
+          <span class="jrn-layer-badge" style="background:${bs.bg};color:${bs.color}">L${l.n} · ${l.name.toUpperCase()}</span>
+          <span class="jrn-agent-title jrn-step-label" id="jrn-sl-${l.n}-${i}">${label}</span>
+          <span class="jrn-agent-status jrn-ast-pending" id="jrn-ast-${l.n}-${i}">Pending</span>
+          <span class="jrn-model-tag" id="jrn-mt-${l.n}-${i}">agent</span>
+        </div>
+        <!-- Hidden circle kept for JS state tracking -->
+        <div class="jrn-step-circle s-pending" id="jrn-sc-${l.n}-${i}"
+             data-type="${atype}" data-layer="${l.n}"></div>
+      </div>`
+    ).join('');
+
+    // Chips from layer config
+    const chipsHtml = (l.chips || []).map(([label, type]) =>
+      `<span class="jrn-chip" onclick="event.stopPropagation();openToolChip('${type}')">${label}</span>`
+    ).join('');
 
     return `
-    <div class="jrn-row" id="jrn-row-${l.n}" data-layer="${l.n}" data-light="${l.light}">
-      <div class="jrn-header" role="button" tabindex="0"
+    <div class="jrn-row" id="jrn-row-${l.n}" data-layer="${l.n}">
+
+      <!-- Stage-label header (click to expand/collapse) -->
+      <div class="jrn-stage-header" role="button" tabindex="0"
            onclick="expandLayer(${l.n})"
            onkeydown="if(event.key==='Enter'||event.key===' ')expandLayer(${l.n})">
-        <div class="jrn-accent-bar" style="background:${l.color}"></div>
-        <span class="jrn-badge" style="color:${l.color};background:${l.light}">Layer ${l.n} · ${l.name.toUpperCase()}</span>
-        <span class="jrn-status-summary" id="jrn-summary-${l.n}">No actions run yet</span>
+        <div class="jrn-accent-bar" id="jrn-accentbar-${l.n}" style="background:${l.color}"></div>
+        <span class="jrn-badge" id="jrn-badge-${l.n}" style="color:${bs.color};background:${bs.bg}">Layer ${l.n} · ${l.name.toUpperCase()}</span>
+        <span class="jrn-stage-eyebrow">Layer ${l.n} · ${l.name.toUpperCase()}</span>
+        <span class="jrn-stage-meta" id="jrn-summary-${l.n}">No actions run yet</span>
         <span class="jrn-dot" id="jrn-dot-${l.n}"></span>
         <span class="jrn-esc-badge" id="jrn-esc-${l.n}">0</span>
         <span class="jrn-chevron">▸</span>
       </div>
+
       <div class="jrn-content" id="jrn-content-${l.n}">
         <div class="jrn-content-inner">
 
-          <!-- 1. Journey question -->
-          <div class="jrn-question">${l.question}</div>
-
-          <!-- Unlock note (shown instead of sub-zones when layer is blocked) -->
-          <div class="jrn-unlock-note" id="jrn-unlock-${l.n}" style="display:none"></div>
-
-          <!-- Sub-zones wrap (hidden when blocked) -->
-          <div id="jrn-zones-${l.n}">
-
-            <!-- 2. Suggested action button -->
-            <button class="jrn-suggest-btn" id="jrn-suggest-${l.n}"
-                    style="background:${l.color}" disabled>▶ Loading…</button>
-
-            <!-- 3. Progress bar + hint + step row -->
-            <div class="jrn-progress-wrap">
-              <div class="jrn-progress-label">
-                Progress — <span id="jrn-done-${l.n}">0</span> of ${total} actions complete
-              </div>
-              <div class="jrn-progress-bar">
-                <div class="jrn-progress-fill" id="jrn-fill-${l.n}" style="background:${l.color};width:0%"></div>
-              </div>
+          <!-- Orchestrator box -->
+          <div class="jrn-orc-box">
+            <div class="jrn-orc-box-header">
+              <span class="jrn-orc-pulse"></span>
+              Orchestrator · Layer ${l.n} · ${l.name.toUpperCase()}
             </div>
-            <p class="jrn-hint">Click any completed step (✓) to see what it produced. Click any pending step to edit inputs before it runs.</p>
-            <div class="jrn-steps" id="jrn-steps-${l.n}">${stepsHtml}</div>
-
-            <!-- 4. Inline artifact panel (opens on step click) -->
-            <div class="jrn-ap" id="jrn-ap-${l.n}">
-              <button class="jrn-ap-close" onclick="closeStepPanel(${l.n})" aria-label="Close">×</button>
-              <div class="jrn-ap-action" id="jrn-ap-action-${l.n}"></div>
-              <div class="jrn-ap-header">
-                <span class="jrn-ap-name" id="jrn-ap-name-${l.n}"></span>
-                <span class="jrn-ap-ver" id="jrn-ap-ver-${l.n}">v1</span>
+            <div class="jrn-unlock-note" id="jrn-unlock-${l.n}" style="display:none"></div>
+            <div id="jrn-zones-${l.n}">
+              <div class="jrn-question">${l.question}</div>
+              <button class="jrn-suggest-btn" id="jrn-suggest-${l.n}"
+                      style="background:${l.color}" disabled>▶ Loading…</button>
+              <div class="jrn-progress-wrap">
+                <div class="jrn-progress-label">
+                  <span id="jrn-done-${l.n}">0</span> of ${total} actions complete
+                </div>
+                <div class="jrn-progress-bar">
+                  <div class="jrn-progress-fill" id="jrn-fill-${l.n}" style="background:${l.color};width:0%"></div>
+                </div>
               </div>
-              <div class="jrn-kv-grid" id="jrn-ap-fields-${l.n}"></div>
-              <div class="jrn-ap-footer">
-                ${window.__advisorMode
-                  ? `<button class="jrn-ap-flag" id="jrn-ap-flag-${l.n}" onclick="openFlagModal(${l.n})">⚑ Flag for client</button>`
-                  : `<button class="jrn-ap-edit" id="jrn-ap-edit-${l.n}">Edit inputs</button>
-                     <button class="jrn-ap-rerun" id="jrn-ap-rerun-${l.n}" style="border-color:${l.color};color:${l.color}">Re-run ↗</button>`
-                }
-              </div>
+              <div class="jrn-chips">${chipsHtml}</div>
             </div>
+          </div>
 
-            <!-- 5. Next pending run line -->
-            <div class="jrn-next-run" id="jrn-next-run-${l.n}" style="display:none">
-              <span class="jrn-next-dot"></span>
-              <span class="jrn-next-text" id="jrn-next-text-${l.n}"></span>
-              ${window.__advisorMode ? '' : `<button class="jrn-run-now-btn" id="jrn-run-now-${l.n}">Run now</button>`}
+          <!-- Agent cards (one per action step) -->
+          <div class="jrn-steps" id="jrn-steps-${l.n}">${stepsHtml}</div>
+
+          <!-- Inline artifact panel (opens on card click) -->
+          <div class="jrn-ap" id="jrn-ap-${l.n}">
+            <button class="jrn-ap-close" onclick="closeStepPanel(${l.n})" aria-label="Close">×</button>
+            <div class="jrn-ap-action" id="jrn-ap-action-${l.n}"></div>
+            <div class="jrn-ap-header">
+              <span class="jrn-ap-name" id="jrn-ap-name-${l.n}"></span>
+              <span class="jrn-ap-ver" id="jrn-ap-ver-${l.n}">v1</span>
             </div>
+            <div class="jrn-kv-grid" id="jrn-ap-fields-${l.n}"></div>
+            <div class="jrn-ap-footer">
+              ${window.__advisorMode
+                ? `<button class="jrn-ap-flag" id="jrn-ap-flag-${l.n}" onclick="openFlagModal(${l.n})">⚑ Flag for client</button>`
+                : `<button class="jrn-ap-edit" id="jrn-ap-edit-${l.n}">Edit inputs</button>
+                   <button class="jrn-ap-rerun" id="jrn-ap-rerun-${l.n}" style="border-color:${l.color};color:${l.color}">Re-run ↗</button>`
+              }
+            </div>
+          </div>
 
-          </div><!-- /jrn-zones -->
+          <!-- Next pending run -->
+          <div class="jrn-next-run" id="jrn-next-run-${l.n}" style="display:none">
+            <span class="jrn-next-dot"></span>
+            <span class="jrn-next-text" id="jrn-next-text-${l.n}"></span>
+            ${window.__advisorMode ? '' : `<button class="jrn-run-now-btn" id="jrn-run-now-${l.n}">Run now</button>`}
+          </div>
 
-          <!-- Inline momentum metric (always shown) -->
-          <div class="jrn-metric" style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border)">
+          <!-- Momentum metric -->
+          <div class="jrn-metric" style="margin-top:0.75rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,.08)">
             <span class="jrn-metric-label">${l.metricLabel}</span>
             <span class="jrn-metric-value" id="jrn-metric-${l.n}">—</span>
           </div>
 
-          <!-- Client view: partner suggestion callout -->
           ${!window.__advisorMode ? `<div id="jrn-suggestion-callout-${l.n}" style="display:none"></div>` : ''}
 
-          <!-- Advisor view: coaching notes panel -->
           ${window.__advisorMode ? `
           <div class="jrn-coaching" id="jrn-coaching-${l.n}">
             <div class="jrn-coaching-header">
@@ -1162,19 +1248,13 @@ function _clearLightVars(el) {
 function expandLayer(n) {
   const row = document.getElementById('jrn-row-' + n);
   if (!row) return;
-  const content = row.querySelector('.jrn-content');
   const wasExpanded = _expandedLayers.has(n);
   if (wasExpanded) {
     _expandedLayers.delete(n);
     row.classList.remove('expanded');
-    if (content) _clearLightVars(content);
   } else {
     _expandedLayers.add(n);
     row.classList.add('expanded');
-    if (content && row.dataset.light) {
-      content.style.backgroundColor = row.dataset.light;
-      _applyLightVars(content);
-    }
     if (window.__advisorMode && !wasExpanded) {
       _loadNotesForLayer(n);
     }
@@ -1235,7 +1315,7 @@ function _updateJourneyNumbers(numbers) {
       const m3 = document.getElementById('jrn-metric-3');
       if (m3) m3.textContent = fmt(l.actual_income || 0);
     }
-    // update status summary (action count)
+    // update stage-meta summary (action count)
     const done = l.completed_count || 0;
     if (done) {
       const sumEl = document.getElementById('jrn-summary-' + l.layer_number);
@@ -1623,35 +1703,30 @@ function populateLayerData(n, data) {
   if (fillEl) fillEl.style.width = pct + '%';
   if (doneEl) doneEl.textContent = done;
 
-  // Step circles
+  // Step agent cards
   const steps = data.steps || [];
   _layerStepData[n] = steps;
+  const statusLabel = { complete:'Complete', running:'Running', queued:'Queued', pending:'Pending' };
+  const statusCls   = { complete:'jrn-ast-complete', running:'jrn-ast-running', queued:'jrn-ast-queued', pending:'jrn-ast-pending' };
   steps.forEach((step, i) => {
+    const card   = document.getElementById(`jrn-step-${n}-${i}`);
     const circle = document.getElementById(`jrn-sc-${n}-${i}`);
     const lbl    = document.getElementById(`jrn-sl-${n}-${i}`);
-    const conn   = document.getElementById(`jrn-conn-${n}-${i}`);
-    if (!circle) return;
-    const cls = { complete: 's-complete', running: 's-running', queued: 's-active', pending: 's-pending' }[step.status] || 's-pending';
-    circle.className = `jrn-step-circle ${cls}`;
-    if (step.status === 'complete') {
-      circle.style.cssText = `background:${layer.color};border-color:${layer.color};color:#fff`;
-      circle.textContent = '✓';
-      const idx = i;
-      circle.onclick = () => openStepPanel(n, idx);
-    } else if (step.status === 'running' || step.status === 'queued') {
-      circle.style.cssText = `background:${layer.light};border-color:${layer.color};color:${layer.color}`;
-      circle.textContent = i + 1;
-      const idx = i;
-      circle.onclick = () => openStepPanel(n, idx);
-    } else {
-      circle.style.cssText = '';
-      circle.textContent = i + 1;
-      circle.onclick = null;
+    const badge  = document.getElementById(`jrn-ast-${n}-${i}`);
+    if (card) {
+      card.dataset.status = step.status || 'pending';
+      // only clickable for complete/running/queued
+      card.style.cursor = (step.status === 'pending') ? 'default' : 'pointer';
     }
-    if (lbl) lbl.className = `jrn-step-label${step.status === 'complete' ? ' lbl-complete' : ''}`;
-    if (conn) {
-      conn.className = `jrn-step-conn${step.status === 'complete' ? ' conn-done' : ''}`;
-      conn.style.color = step.status === 'complete' ? layer.color : '';
+    if (badge) {
+      badge.textContent = statusLabel[step.status] || 'Pending';
+      badge.className = `jrn-agent-status ${statusCls[step.status] || 'jrn-ast-pending'}`;
+    }
+    if (lbl) lbl.className = `jrn-agent-title jrn-step-label${step.status === 'complete' ? ' lbl-complete' : ''}`;
+    // Update hidden circle for any downstream JS that references it
+    if (circle) {
+      const cls = { complete:'s-complete', running:'s-running', queued:'s-active', pending:'s-pending' }[step.status] || 's-pending';
+      circle.className = `jrn-step-circle ${cls}`;
     }
   });
 
