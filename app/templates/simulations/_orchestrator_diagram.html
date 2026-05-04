@@ -401,6 +401,8 @@
             Cycle {{ c.cycle_number }}
             —
             {{ c.cycle_started_at[:10] if c.cycle_started_at else 'pending' }}
+            {{ c.cycle_started_at[11:16] if c.cycle_started_at else '' }}
+            — {{ c.phase or 'explore' }}
           </option>
           {% endfor %}
         {% else %}
