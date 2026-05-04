@@ -431,6 +431,22 @@ def advisor_gcc_view(client_uid, sim_id):
         import logging as _log
         _log.getLogger(__name__).error('advisor GCC data build failed: %s', _e)
 
+    # Profile card data for client
+    from app.models.simulation import Simulation as _Sim, SimulationLayer as _SL, IncomeStream as _IS
+    from app.models.layer6 import Layer6Outcome as _Out
+    client_zone_count = _Sim.query.filter_by(user_id=client_uid).count()
+    layer_ids = [l.id for l in _SL.query.filter_by(simulation_id=sim_id).all()]
+    client_projected_annual = 0
+    if layer_ids:
+        client_projected_annual = sum(
+            (s.est_monthly_high or 0) * 12
+            for s in _IS.query.filter(_IS.layer_id.in_(layer_ids)).all()
+        )
+    client_actual_income = float(
+        _db.session.query(_db.func.sum(_Out.actual_income))
+        .filter_by(simulation_id=sim_id).scalar() or 0
+    )
+
     return render_template(
         'simulations/layer6.html',
         sim=sim,
@@ -449,6 +465,10 @@ def advisor_gcc_view(client_uid, sim_id):
         advisor_layer6_config=layer6_cfg.to_dict() if layer6_cfg else None,
         advisor_dashboard=advisor_dashboard,
         advisor_journey=advisor_journey,
+        profile=client_profile,
+        zone_count=client_zone_count,
+        projected_annual=client_projected_annual,
+        actual_income=client_actual_income,
     )
 
 
@@ -545,6 +565,24 @@ def layer6_view(sim_id):
                 partner_name = p.full_name if p else None
             active_suggestions.append({**s.to_dict(), 'partner_name': partner_name})
 
+    # Profile card data
+    from app.models.profile import UserProfile as _UP
+    from app.models.simulation import Simulation as _Sim, SimulationLayer as _SL, IncomeStream as _IS
+    from app.models.layer6 import Layer6Outcome as _Out
+    profile = _UP.query.filter_by(user_id=current_user.id).first()
+    zone_count = _Sim.query.filter_by(user_id=current_user.id).count()
+    layer_ids = [l.id for l in _SL.query.filter_by(simulation_id=sim_id).all()]
+    projected_annual = 0
+    if layer_ids:
+        projected_annual = sum(
+            (s.est_monthly_high or 0) * 12
+            for s in _IS.query.filter(_IS.layer_id.in_(layer_ids)).all()
+        )
+    actual_income = float(
+        _db.session.query(_db.func.sum(_Out.actual_income))
+        .filter_by(simulation_id=sim_id).scalar() or 0
+    )
+
     return render_template(
         'simulations/layer6.html',
         sim=sim,
@@ -556,6 +594,10 @@ def layer6_view(sim_id):
         complete_by_layer=complete_by_layer,
         active_flags=active_flags,
         active_suggestions=active_suggestions,
+        profile=profile,
+        zone_count=zone_count,
+        projected_annual=projected_annual,
+        actual_income=actual_income,
     )
 
 

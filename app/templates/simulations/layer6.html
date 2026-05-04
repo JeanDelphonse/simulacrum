@@ -169,6 +169,54 @@
 .gcc-tab-panel.active { display: block; }
 .tab-zone-wrap { padding: 2rem; }
 
+/* ── Profile Card ────────────────────────────────────────────────────────── */
+.l6-profile-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 1.5rem 1.75rem 1.25rem;
+  margin: 1.25rem 2rem 0;
+}
+.l6-pc-top {
+  display: flex; gap: 1.1rem; align-items: flex-start; margin-bottom: 1.25rem;
+}
+.l6-pc-avatar {
+  width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(83,74,183,.35); color: #AFA9EC;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 600; letter-spacing: 0.02em;
+}
+.l6-pc-name {
+  font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 0.2rem;
+}
+.l6-pc-role {
+  font-size: 0.78rem; color: #13A89E; margin-bottom: 0.55rem;
+  font-weight: 500; letter-spacing: 0.01em;
+}
+.l6-pc-bio {
+  font-size: 0.8rem; color: rgba(255,255,255,.6); line-height: 1.7;
+}
+.l6-pc-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+}
+.l6-pc-stat {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px; padding: 0.75rem 1rem;
+}
+.l6-pc-stat-label {
+  font-size: 0.62rem; color: rgba(255,255,255,.4);
+  text-transform: uppercase; letter-spacing: 0.07em;
+  font-family: monospace; margin-bottom: 0.3rem;
+}
+.l6-pc-stat-val {
+  font-size: 1.25rem; font-weight: 600; color: #fff;
+}
+@media (max-width: 600px) {
+  .l6-profile-card { margin: 1rem 1rem 0; padding: 1.1rem; }
+  .l6-pc-stats { grid-template-columns: 1fr 1fr; }
+}
+
 /* ── All inner tabs — dark navy ──────────────────────────────────────────── */
 #tab-journey,
 #tab-numbers,
@@ -736,6 +784,37 @@
   </div>
 </div>
 
+<!-- Profile Card -->
+{% set _display_name = (profile.display_name if profile and profile.display_name else current_user.full_name) %}
+{% set _name_parts = _display_name.split() %}
+{% set _initials = (_name_parts[0][0] ~ _name_parts[-1][0]) | upper if _name_parts | length >= 2 else _display_name[:2] | upper %}
+{% set _bio_raw = profile.bio if profile and profile.bio else (profile.tagline if profile and profile.tagline else '') %}
+{% set _bio = (_bio_raw[:280] ~ '…') if _bio_raw | length > 280 else _bio_raw %}
+<div class="l6-profile-card" id="l6ProfileCard" style="display:{% if advisor_mode is defined and advisor_mode %}block{% else %}none{% endif %}">
+  <div class="l6-pc-top">
+    <div class="l6-pc-avatar">{{ _initials }}</div>
+    <div>
+      <div class="l6-pc-name">{{ _display_name }}</div>
+      <div class="l6-pc-role">{{ sim.expertise_zone or sim.name }}</div>
+      {% if _bio %}<div class="l6-pc-bio">{{ _bio }}</div>{% endif %}
+    </div>
+  </div>
+  <div class="l6-pc-stats">
+    <div class="l6-pc-stat">
+      <div class="l6-pc-stat-label">Projected Annual</div>
+      <div class="l6-pc-stat-val">{% if projected_annual is defined and projected_annual %}<span style="color:#5DCAA5">${{ '{:,.0f}'.format(projected_annual) }}</span>{% else %}<span style="color:rgba(255,255,255,.3)">—</span>{% endif %}</div>
+    </div>
+    <div class="l6-pc-stat">
+      <div class="l6-pc-stat-label">Side Income</div>
+      <div class="l6-pc-stat-val">{% if actual_income is defined and actual_income %}<span style="color:#5DCAA5">${{ '{:,.0f}'.format(actual_income) }}</span>{% else %}<span style="color:rgba(255,255,255,.3)">$0</span>{% endif %}</div>
+    </div>
+    <div class="l6-pc-stat">
+      <div class="l6-pc-stat-label">Expertise Zones</div>
+      <div class="l6-pc-stat-val" style="color:#C9952A">{{ zone_count if zone_count is defined else 0 }} found</div>
+    </div>
+  </div>
+</div>
+
 <!-- Inner Tab Row -->
 <div id="gccInnerTabs" style="display:{% if advisor_mode is defined and advisor_mode %}block{% else %}none{% endif %}">
   <div class="gcc-tab-row" role="tablist">
@@ -982,6 +1061,8 @@ function showDashboard(cfg) {
   document.getElementById('gccInnerTabs').style.display = 'block';
   document.getElementById('gccTabContent').style.display = 'block';
   document.getElementById('l6Controls').style.display = 'flex';
+  const pc = document.getElementById('l6ProfileCard');
+  if (pc) pc.style.display = 'block';
   const badge = document.getElementById('phaseBadge');
   badge.textContent = cfg.is_active ? 'Active' : 'Paused';
   badge.className = 'phase-badge ' + (cfg.is_active ? 'phase-exploit' : 's-rejected');
