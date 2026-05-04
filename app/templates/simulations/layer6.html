@@ -478,6 +478,17 @@
 .jrn-stop-btn:hover { background: rgba(240,100,80,.15); color: #f06450; border-color: rgba(240,100,80,.7); }
 .jrn-stop-btn:disabled { opacity: 0.5; cursor: default; }
 .jrn-step[data-status="running"] .jrn-stop-btn { display: inline-flex; align-items: center; gap: 0.25rem; }
+.jrn-delete-btn {
+  display: none; margin-left: auto; flex-shrink: 0;
+  font-size: 0.68rem; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 4px;
+  border: 1px solid rgba(240,100,80,.35); background: transparent;
+  color: rgba(240,100,80,.55); cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.jrn-delete-btn:hover { background: rgba(240,100,80,.15); color: #f06450; border-color: rgba(240,100,80,.65); }
+.jrn-delete-btn:disabled { opacity: 0.5; cursor: default; }
+.jrn-step[data-status="complete"] .jrn-delete-btn,
+.jrn-step[data-status="queued"] .jrn-delete-btn { display: inline-flex; align-items: center; gap: 0.25rem; }
 
 /* ── Next pending run line ───────────────────────────────────────────────── */
 .jrn-next-run {
@@ -1190,6 +1201,9 @@ function _buildJourneyRows() {
           <button class="jrn-stop-btn" id="jrn-stop-${l.n}-${i}"
                   onclick="event.stopPropagation();stopAgentStep(${l.n},${i})"
                   title="Stop this agent">■ Stop</button>
+          <button class="jrn-delete-btn" id="jrn-del-${l.n}-${i}"
+                  onclick="event.stopPropagation();deleteAgentStep(${l.n},${i})"
+                  title="Delete this agent's result">✕ Delete</button>
         </div>
         <div class="jrn-agent-body" id="jrn-abody-${l.n}-${i}" style="display:none">
           <p class="jrn-agent-desc" id="jrn-adesc-${l.n}-${i}"></p>
@@ -1428,6 +1442,45 @@ async function stopAgentStep(layerN, stepIdx) {
   } catch {
     alert('Network error — please try again.');
     if (btn) { btn.disabled = false; btn.textContent = '■ Stop'; }
+  }
+}
+
+async function deleteAgentStep(layerN, stepIdx) {
+  const steps = _layerStepData[layerN] || [];
+  const step  = steps[stepIdx];
+  if (!step || !step.action_id) return;
+
+  if (!confirm(`Delete "${step.label || 'this agent'}"? The artifact will be removed and the step reset to pending.`)) return;
+
+  const btn = document.getElementById(`jrn-del-${layerN}-${stepIdx}`);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
+  try {
+    const res = await fetch(`/api/simulations/${SIM_ID}/layer6/actions/${step.action_id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(body.error || 'Could not delete — please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = '✕ Delete'; }
+      return;
+    }
+    // Reset card to pending immediately
+    const card = document.getElementById(`jrn-step-${layerN}-${stepIdx}`);
+    if (card) { card.dataset.status = 'pending'; card.style.cursor = 'default'; }
+    const badge = document.getElementById(`jrn-ast-${layerN}-${stepIdx}`);
+    if (badge) { badge.textContent = 'Pending'; badge.className = 'jrn-agent-status jrn-ast-pending'; }
+    const body  = document.getElementById(`jrn-abody-${layerN}-${stepIdx}`);
+    if (body) body.style.display = 'none';
+    const circle = document.getElementById(`jrn-sc-${layerN}-${stepIdx}`);
+    if (circle) circle.className = 'jrn-step-circle s-pending';
+    const lbl = document.getElementById(`jrn-sl-${layerN}-${stepIdx}`);
+    if (lbl) lbl.className = 'jrn-agent-title jrn-step-label';
+    loadJourneyData();
+  } catch {
+    alert('Network error — please try again.');
+    if (btn) { btn.disabled = false; btn.textContent = '✕ Delete'; }
   }
 }
 
