@@ -664,70 +664,8 @@ def get_dag(sim_id):
 
 
 # ---------------------------------------------------------------------------
-# Live Node Editor — delete / rerun an action
+# Live Node Editor — rerun an action with updated inputs
 # ---------------------------------------------------------------------------
-
-@layer6_bp.route('/<sim_id>/layer6/actions/<action_id>', methods=['DELETE'])
-@login_required
-def delete_agent_action(sim_id, action_id):
-    """Delete a completed or queued agent action, resetting the step to pending."""
-    sim, err, code = _get_sim_or_404(sim_id)
-    if err:
-        return err, code
-
-    from app.models.agent_action import AgentAction
-    action = AgentAction.query.filter_by(id=action_id, simulation_id=sim_id).first()
-    if not action:
-        return jsonify({'error': 'Action not found'}), 404
-
-    if action.status == AgentAction.STATUS_IN_PROGRESS:
-        return jsonify({'error': 'Action is currently running — pause it before deleting'}), 409
-
-    action_type = action.action_type
-
-    # Cancel any open queue entries for this action type
-    Layer6ActionQueue.query.filter(
-        Layer6ActionQueue.simulation_id == sim_id,
-        Layer6ActionQueue.action_type == action_type,
-        Layer6ActionQueue.status.in_([
-            Layer6ActionQueue.STATUS_QUEUED,
-            Layer6ActionQueue.STATUS_DISPATCHED,
-            Layer6ActionQueue.STATUS_ESCALATED,
-        ])
-    ).delete(synchronize_session=False)
-
-    db.session.delete(action)
-    db.session.commit()
-
-    AuditLog.log('layer6_action_deleted', user_id=current_user.id, resource_id=sim_id,
-                 metadata={'action_id': action_id, 'action_type': action_type})
-    return jsonify({'ok': True, 'action_type': action_type}), 200
-
-
-@layer6_bp.route('/<sim_id>/layer6/actions/<action_id>/cancel', methods=['POST'])
-@login_required
-def cancel_agent_action(sim_id, action_id):
-    """Cancel an in-progress agent action. Marks it failed so the task discards its result."""
-    sim, err, code = _get_sim_or_404(sim_id)
-    if err:
-        return err, code
-
-    from app.models.agent_action import AgentAction
-    action = AgentAction.query.filter_by(id=action_id, simulation_id=sim_id).first()
-    if not action:
-        return jsonify({'error': 'Action not found'}), 404
-
-    if action.status not in (AgentAction.STATUS_IN_PROGRESS, AgentAction.STATUS_PENDING):
-        return jsonify({'error': f'Action is {action.status} and cannot be paused'}), 409
-
-    action.status = AgentAction.STATUS_FAILED
-    action.error_message = 'Paused by user'
-    db.session.commit()
-
-    AuditLog.log('layer6_action_cancelled', user_id=current_user.id, resource_id=sim_id,
-                 metadata={'action_id': action_id, 'action_type': action.action_type})
-    return jsonify({'ok': True, 'action_type': action.action_type}), 200
-
 
 @layer6_bp.route('/<sim_id>/layer6/actions/<action_id>/rerun', methods=['POST'])
 @login_required
@@ -1674,14 +1612,6 @@ def get_journey(sim_id):
         completed_by_type[a.action_type] = a
     completed_types = set(completed_by_type)
 
-    # In-progress actions (latest per type — for pause button)
-    running_by_type: dict[str, AgentAction] = {}
-    for a in AgentAction.query.filter_by(
-        simulation_id=sim_id, status=AgentAction.STATUS_IN_PROGRESS
-    ).order_by(AgentAction.created_at.desc()).all():
-        if a.action_type not in running_by_type:
-            running_by_type[a.action_type] = a
-
     # Queued / dispatched in the action queue (latest per type)
     queued_by_type: dict[str, Layer6ActionQueue] = {}
     for q in Layer6ActionQueue.query.filter(
@@ -1739,9 +1669,6 @@ def get_journey(sim_id):
                 artifact_version = 1
                 if a.artifact:
                     artifact_summary = a.artifact[:320].strip()
-            elif atype in running_by_type:
-                status = 'running'
-                action_id = running_by_type[atype].id
             elif atype in queued_by_type:
                 q = queued_by_type[atype]
                 status = 'running' if q.status == Layer6ActionQueue.STATUS_DISPATCHED else 'queued'
