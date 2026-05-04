@@ -1595,7 +1595,14 @@ def get_journey(sim_id):
         return err, code
 
     from app.models.agent_action import AgentAction
+    from app.models.simulation import SimulationLayer as _SL
     from datetime import timedelta
+
+    # SimulationLayer narratives keyed by layer number
+    layer_narratives: dict[int, str | None] = {
+        sl.layer_number: sl.ai_narrative
+        for sl in _SL.query.filter_by(simulation_id=sim_id).all()
+    }
 
     # Completed actions (latest record per type)
     completed_by_type: dict[str, AgentAction] = {}
@@ -1651,6 +1658,7 @@ def get_journey(sim_id):
         for i, (atype, label) in enumerate(seq):
             artifact_fields = []
             artifact_version = None
+            artifact_summary = ''
             if atype in completed_types:
                 status = 'complete'
                 a = completed_by_type[atype]
@@ -1659,6 +1667,8 @@ def get_journey(sim_id):
                 artifact_fields = [[k.replace('_', ' ').title(), str(v)[:80]]
                                    for k, v in list(raw.items())[:4] if v]
                 artifact_version = 1
+                if a.artifact:
+                    artifact_summary = a.artifact[:320].strip()
             elif atype in queued_by_type:
                 q = queued_by_type[atype]
                 status = 'running' if q.status == Layer6ActionQueue.STATUS_DISPATCHED else 'queued'
@@ -1669,7 +1679,8 @@ def get_journey(sim_id):
             steps.append({'seq': i + 1, 'type': atype, 'label': label,
                           'status': status, 'action_id': action_id,
                           'artifact_fields': artifact_fields,
-                          'artifact_version': artifact_version})
+                          'artifact_version': artifact_version,
+                          'artifact_summary': artifact_summary})
 
         completed_count = sum(1 for s in steps if s['status'] == 'complete')
 
@@ -1731,6 +1742,7 @@ def get_journey(sim_id):
             'steps': steps,
             'latest_artifact': latest_artifact,
             'next_pending': next_pending,
+            'layer_narrative': layer_narratives.get(layer_num),
         }
 
     return jsonify(result), 200

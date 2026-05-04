@@ -287,6 +287,38 @@
 .jrn-hint        { display: none; }
 .jrn-steps-wrap  { padding: 0; }
 
+/* Orchestrator narrative (ai_narrative from SimulationLayer) */
+.jrn-orc-narrative {
+  font-size: 0.8rem; color: rgba(255,255,255,.75); line-height: 1.7;
+  margin-bottom: 0.65rem;
+}
+.jrn-orc-narrative strong { color: #fff; font-weight: 500; }
+
+/* Agent card body (shown for complete/running steps) */
+.jrn-agent-body {
+  padding: 0.75rem 1rem 0.875rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.jrn-agent-desc {
+  font-size: 0.8rem; color: rgba(255,255,255,.6); line-height: 1.7;
+  margin-bottom: 0.75rem;
+}
+.jrn-artifact-box {
+  background: rgba(255,255,255,.04); border-radius: 6px; padding: 0.75rem 0.875rem;
+}
+.jrn-artifact-hdr {
+  display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;
+}
+.jrn-artifact-name { font-size: 0.75rem; font-weight: 500; flex: 1; color: rgba(255,255,255,.85); }
+.jrn-fchip {
+  font-size: 0.6rem; padding: 0.1rem 0.5rem; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.4);
+}
+.jrn-card-footer {
+  display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+
 .jrn-metric { display: flex; gap: 0.5rem; align-items: baseline; }
 .jrn-metric-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,.4); }
 .jrn-metric-value { font-size: 0.875rem; font-weight: 600; color: #fff; }
@@ -1066,6 +1098,59 @@ const LAYER_STEP_SEQS = {
       ['dca_schedule','DCA schedule'],['insurance','Insurance'],['estate_planning','Estate plan.']],
 };
 
+// Fallback descriptions shown in agent card body when artifact_summary is absent
+const ACTION_DESCS = {
+  cold_email_campaign:    'Agent wrote a personalised cold outreach sequence including subject lines, follow-up cadence, and a lead-list strategy tailored to your expertise zone.',
+  consulting_outreach:    'Agent built a consulting outreach kit — target company list, LinkedIn message templates, and a positioning statement anchored to your highest-value deliverables.',
+  rate_card:              'Agent built a rate card anchored to your experience level, market comparables, and most commercially cited deliverables.',
+  role_search:            'Agent searched open roles matching your expertise, ranked by salary band and likelihood of conversion, with tailored application hooks.',
+  linkedin_optimization:  'Agent rewrote your LinkedIn profile from an employee narrative to a consultant-framed positioning statement leading with specific outcomes.',
+  booking_page:           'Agent configured a booking page with session types priced from your rate card and linked it to your LinkedIn profile.',
+  consulting_proposal:    'Agent generated a scoped project proposal template with deliverables, timeline, and pricing tiers derived from your rate card.',
+  sow:                    'Agent drafted a Statement of Work with defined deliverables, acceptance criteria, payment milestones, and IP assignment clauses.',
+  agreement:              'Agent produced a consulting agreement covering scope, confidentiality, payment terms, and termination provisions.',
+  referral_network:       'Agent built a referral outreach sequence targeting past collaborators and clients most likely to introduce new engagements.',
+  negotiation_script:     'Agent wrote a negotiation script with anchoring phrases, counter-offer language, and walk-away thresholds calibrated to your rate card.',
+  speaker_proposals:      'Agent generated tailored speaking proposals for conferences and podcasts in your expertise zone, each anchored to your strongest career deliverable.',
+  speaker_fee_rider:      'Agent produced a speaker fee sheet and rider covering travel, A/V, and host obligations, priced to market for your expertise level.',
+  group_coaching_program: 'Agent designed a group coaching programme structure with session cadence, cohort size, pricing tiers, and a waitlist landing page copy.',
+  corporate_training_pitch:'Agent built a corporate training pitch deck with a curriculum outline, ROI framing, and pricing for team buy-outs.',
+  workshop_curriculum:    'Agent built a full workshop including facilitator guide, participant workbook, and live case study drawn from your career.',
+  waitlist_landing_page:  'Agent wrote a waitlist landing page and a 5-email nurture sequence delivering one insight per week to keep subscribers warm until launch.',
+  alumni_reactivation:    'Agent drafted a reactivation sequence for past workshop or course alumni, offering an upgrade path to the next tier.',
+  roi_calculator:         'Agent built a custom ROI calculator showing prospective clients the financial return of engaging your services.',
+  course_curriculum:      'Agent built the full self-paced course from the workshop curriculum — modules, lesson outlines, exercises, and real-world case studies.',
+  competitor_research:    'Agent researched competing courses and products, identified pricing gaps, and surfaced the positioning angle with the lowest competition.',
+  product_sales_page:     'Agent built a deployable HTML sales page using competitor gaps as the positioning anchor.',
+  ebook_gumroad:          'Agent wrote the outline, chapter summaries, and sales copy for a premium e-book ready for Gumroad distribution.',
+  ab_test_plan:           'Agent designed an A/B test plan for the sales page headline, CTA, and price point, with a minimum sample size and success metric.',
+  membership_structure:   'Agent designed a tiered membership structure with access levels, pricing, and a content calendar for the first 90 days.',
+  launch_email_sequence:  'Agent built the full product launch sequence from value to story to social proof to cart open to close.',
+  affiliate_program:      'Agent drafted affiliate programme terms, commission structure, and outreach copy for 10 prospective affiliate partners.',
+  testimonial_system:     'Agent created a testimonial collection system including a post-delivery email sequence and a case study template.',
+  lapsed_buyer_winback:   'Agent wrote a win-back sequence for lapsed buyers with a time-limited offer and objection-handling copy.',
+  seo_content_calendar:   'Agent built a 90-day content calendar targeting keywords extracted from the sales page — terms already associated with your authority.',
+  lead_magnet_funnel:     'Agent created the lead magnet, landing page copy, and a 5-email nurture funnel warming subscribers toward the core product offer.',
+  newsletter_monetization:'Agent built a newsletter monetisation strategy with CPM pricing, sponsor pitch templates, and revenue projections at 1k, 2k, and 5k subscribers.',
+  saas_product_spec:      'Agent produced a lean SaaS product spec — user stories, tech stack recommendation, MVP feature set, and a no-code build path.',
+  ip_licensing:           'Agent identified licensable intellectual property from your career and drafted an outreach strategy for potential licensees.',
+  affiliate_partnerships: 'Agent identified high-fit affiliate partnership targets and wrote personalised outreach pitches for each.',
+  youtube_podcast_strategy:'Agent built a YouTube/podcast content strategy with episode titles, a publishing cadence, and a monetisation roadmap from zero to 10k subscribers.',
+  community_flywheel:     'Agent designed a community flywheel — acquisition, engagement, and monetisation mechanics — around your existing audience.',
+  programmatic_ads:       'Agent designed a programmatic ad funnel with audience targeting, creative briefs, and a daily budget structure for first-dollar testing.',
+  winback_campaign:       'Agent wrote a win-back campaign targeting inactive newsletter subscribers and past buyers with a reactivation hook.',
+  income_allocation:      'Agent built an asset allocation strategy from your confirmed multi-layer income surplus, with percentage targets per asset class.',
+  compound_growth_model:  'Agent projected compound growth scenarios across 5, 10, and 20 years based on your current investable surplus and historical market returns.',
+  fund_recommendations:   'Agent recommended a core ETF portfolio aligned to your risk profile, time horizon, and tax situation.',
+  ips:                    'Agent drafted an Investment Policy Statement defining your objectives, constraints, asset allocation, and rebalancing triggers.',
+  real_estate:            'Agent analysed real estate exposure options — REITs, direct purchase, and syndication — relative to your income stage and liquidity needs.',
+  tax_optimization:       'Agent built a tax optimisation strategy covering entity structure, retirement contributions, deductions, and estimated quarterly payments.',
+  entity_structure:       'Agent recommended a business entity structure — timing, state of formation, and estimated self-employment tax savings at your revenue stage.',
+  dca_schedule:           'Agent produced a dollar-cost averaging schedule mapping each income stream to an automatic investment cadence.',
+  insurance:              'Agent performed an insurance gap analysis covering liability, disability, and key-person coverage relative to your income structure.',
+  estate_planning:        'Agent produced an estate planning checklist covering will, beneficiary designations, power of attorney, and trust considerations.',
+};
+
 // Dark badge styles per layer (Maya-style colored pills)
 const LAYER_BADGE_STYLE = {
   1: { bg:'rgba(83,74,183,.2)',   color:'#AFA9EC' },
@@ -1086,12 +1171,31 @@ function _buildJourneyRows() {
 
     // Build agent cards (one per step — pending initially)
     const stepsHtml = (LAYER_STEP_SEQS[l.n] || []).map(([atype, label], i) => `
-      <div class="jrn-step" id="jrn-step-${l.n}-${i}" data-status="pending" onclick="openStepPanel(${l.n}, ${i})">
+      <div class="jrn-step" id="jrn-step-${l.n}-${i}" data-status="pending">
         <div class="jrn-step-head">
           <span class="jrn-layer-badge" style="background:${bs.bg};color:${bs.color}">L${l.n} · ${l.name.toUpperCase()}</span>
           <span class="jrn-agent-title jrn-step-label" id="jrn-sl-${l.n}-${i}">${label}</span>
           <span class="jrn-agent-status jrn-ast-pending" id="jrn-ast-${l.n}-${i}">Pending</span>
           <span class="jrn-model-tag" id="jrn-mt-${l.n}-${i}">agent</span>
+        </div>
+        <div class="jrn-agent-body" id="jrn-abody-${l.n}-${i}" style="display:none">
+          <p class="jrn-agent-desc" id="jrn-adesc-${l.n}-${i}"></p>
+          <div class="jrn-artifact-box" id="jrn-artbox-${l.n}-${i}" style="display:none">
+            <div class="jrn-artifact-hdr">
+              <span class="jrn-artifact-name" id="jrn-artname-${l.n}-${i}">${label}</span>
+              <span class="jrn-ap-ver" id="jrn-artver-${l.n}-${i}">v1</span>
+              <span class="jrn-fchip">Artifact</span>
+            </div>
+            <div class="jrn-kv-grid" id="jrn-artkv-${l.n}-${i}"></div>
+          </div>
+          <div class="jrn-card-footer">
+            ${window.__advisorMode
+              ? `<button class="jrn-ap-edit" onclick="event.stopPropagation();openFlagModal(${l.n})">⚑ Flag for client</button>`
+              : `<button class="jrn-ap-edit" onclick="event.stopPropagation();openToolChip('${atype}')">Edit inputs</button>
+                 <button class="jrn-ap-rerun" style="border-color:${l.color};color:${l.color}"
+                         onclick="event.stopPropagation();openToolChip('${atype}')">Re-run ↗</button>`
+            }
+          </div>
         </div>
         <!-- Hidden circle kept for JS state tracking -->
         <div class="jrn-step-circle s-pending" id="jrn-sc-${l.n}-${i}"
@@ -1129,6 +1233,7 @@ function _buildJourneyRows() {
               <span class="jrn-orc-pulse"></span>
               Orchestrator · Layer ${l.n} · ${l.name.toUpperCase()}
             </div>
+            <div class="jrn-orc-narrative" id="jrn-narrative-${l.n}" style="display:none"></div>
             <div class="jrn-unlock-note" id="jrn-unlock-${l.n}" style="display:none"></div>
             <div id="jrn-zones-${l.n}">
               <div class="jrn-question">${l.question}</div>
@@ -1703,6 +1808,12 @@ function populateLayerData(n, data) {
   if (fillEl) fillEl.style.width = pct + '%';
   if (doneEl) doneEl.textContent = done;
 
+  // Layer narrative in orchestrator box
+  if (data.layer_narrative) {
+    const narrEl = document.getElementById(`jrn-narrative-${n}`);
+    if (narrEl) { narrEl.textContent = data.layer_narrative; narrEl.style.display = 'block'; }
+  }
+
   // Step agent cards
   const steps = data.steps || [];
   _layerStepData[n] = steps;
@@ -1715,7 +1826,6 @@ function populateLayerData(n, data) {
     const badge  = document.getElementById(`jrn-ast-${n}-${i}`);
     if (card) {
       card.dataset.status = step.status || 'pending';
-      // only clickable for complete/running/queued
       card.style.cursor = (step.status === 'pending') ? 'default' : 'pointer';
     }
     if (badge) {
@@ -1723,10 +1833,33 @@ function populateLayerData(n, data) {
       badge.className = `jrn-agent-status ${statusCls[step.status] || 'jrn-ast-pending'}`;
     }
     if (lbl) lbl.className = `jrn-agent-title jrn-step-label${step.status === 'complete' ? ' lbl-complete' : ''}`;
-    // Update hidden circle for any downstream JS that references it
     if (circle) {
       const cls = { complete:'s-complete', running:'s-running', queued:'s-active', pending:'s-pending' }[step.status] || 's-pending';
       circle.className = `jrn-step-circle ${cls}`;
+    }
+    // Populate agent card body for complete steps
+    if (step.status === 'complete') {
+      const bodyEl = document.getElementById(`jrn-abody-${n}-${i}`);
+      if (bodyEl) {
+        // Description paragraph
+        const descEl = document.getElementById(`jrn-adesc-${n}-${i}`);
+        if (descEl) {
+          const text = step.artifact_summary || ACTION_DESCS[step.type] || '';
+          descEl.textContent = text;
+          descEl.style.display = text ? 'block' : 'none';
+        }
+        // Artifact kv-grid
+        const artboxEl = document.getElementById(`jrn-artbox-${n}-${i}`);
+        const kvEl     = document.getElementById(`jrn-artkv-${n}-${i}`);
+        const fields   = step.artifact_fields || [];
+        if (kvEl && fields.length) {
+          kvEl.innerHTML = fields.map(([k, v]) =>
+            `<div class="jrn-kv"><div class="jrn-kk">${k}</div><div class="jrn-kv-val hi">${v}</div></div>`
+          ).join('');
+          if (artboxEl) artboxEl.style.display = 'block';
+        }
+        bodyEl.style.display = 'block';
+      }
     }
   });
 
