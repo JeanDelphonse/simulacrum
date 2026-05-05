@@ -57,10 +57,6 @@ class Contact(db.Model):
     updated_at          = db.Column(db.DateTime, default=datetime.utcnow,
                                     onupdate=datetime.utcnow, nullable=False)
 
-    activities = db.relationship('ContactActivity', backref='contact',
-                                  lazy='dynamic', cascade='all, delete-orphan',
-                                  order_by='ContactActivity.activity_date.desc()')
-
     __table_args__ = (
         db.UniqueConstraint('user_id', 'email', name='uq_contact_email'),
     )
@@ -75,9 +71,13 @@ class Contact(db.Model):
             return None
         return int(float(self.qualifying_score) * 100)
 
-    def advance_stage(self, new_stage: str, created_by: str = 'agent',
-                      simulation_id: str = None, action_id: str = None, notes: str = None):
-        """Advance pipeline_stage (only forward). Returns True if changed."""
+    def get_activities(self, limit=50):
+        return ContactActivity.query.filter_by(contact_id=self.id).order_by(
+            ContactActivity.activity_date.desc()
+        ).limit(limit).all()
+
+    def advance_stage(self, new_stage, created_by='agent',
+                      simulation_id=None, action_id=None, notes=None):
         if new_stage == self.pipeline_stage:
             return False
         current_idx = STAGE_ORDER.index(self.pipeline_stage) if self.pipeline_stage in STAGE_ORDER else -1
@@ -136,8 +136,7 @@ class ContactActivity(db.Model):
     __tablename__ = 'contact_activities'
 
     id                  = db.Column(db.String(9), primary_key=True, default=generate_id)
-    contact_id          = db.Column(db.String(9), db.ForeignKey('contacts.id', ondelete='CASCADE'),
-                                    nullable=False, index=True)
+    contact_id          = db.Column(db.String(9), nullable=False, index=True)
     simulation_id       = db.Column(db.String(9), nullable=True, index=True)
     action_id           = db.Column(db.String(9), nullable=True, index=True)
     activity_type       = db.Column(db.String(50), nullable=False, index=True)

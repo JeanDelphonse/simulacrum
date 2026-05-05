@@ -143,7 +143,7 @@ def create_contact():
 def get_contact(contact_id):
     contact = Contact.query.filter_by(id=contact_id, user_id=current_user.id).first_or_404()
     data = contact.to_dict()
-    data['activities'] = [a.to_dict() for a in contact.activities.limit(50).all()]
+    data['activities'] = [a.to_dict() for a in contact.get_activities(50)]
     return jsonify(data)
 
 
@@ -226,7 +226,7 @@ def advance_stage(contact_id):
 @login_required
 def list_activities(contact_id):
     contact = Contact.query.filter_by(id=contact_id, user_id=current_user.id).first_or_404()
-    activities = contact.activities.all()
+    activities = contact.get_activities(limit=200)
     return jsonify([a.to_dict() for a in activities])
 
 
