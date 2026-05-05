@@ -44,9 +44,8 @@ CREATE TABLE IF NOT EXISTS contacts (
     KEY idx_c_user (user_id),
     KEY idx_c_company (company_name),
     KEY idx_c_score (qualifying_score),
-    KEY idx_c_stage (pipeline_stage),
-    CONSTRAINT fk_c_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    KEY idx_c_stage (pipeline_stage)
+) ENGINE=InnoDB;
 
 
 CREATE TABLE IF NOT EXISTS contact_activities (
@@ -65,6 +64,5 @@ CREATE TABLE IF NOT EXISTS contact_activities (
     KEY idx_ca_contact (contact_id),
     KEY idx_ca_simulation (simulation_id),
     KEY idx_ca_action (action_id),
-    KEY idx_ca_type (activity_type),
-    CONSTRAINT fk_ca_contact FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    KEY idx_ca_type (activity_type)
+) ENGINE=InnoDB;

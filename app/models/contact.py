@@ -19,8 +19,7 @@ class Contact(db.Model):
     __tablename__ = 'contacts'
 
     id                  = db.Column(db.String(9), primary_key=True, default=generate_id)
-    user_id             = db.Column(db.String(9), db.ForeignKey('users.id', ondelete='CASCADE'),
-                                    nullable=False, index=True)
+    user_id             = db.Column(db.String(9), nullable=False, index=True)
     first_name          = db.Column(db.String(100), nullable=False)
     last_name           = db.Column(db.String(100), nullable=False)
     email               = db.Column(db.String(255), nullable=False)
@@ -137,7 +136,7 @@ class ContactActivity(db.Model):
     __tablename__ = 'contact_activities'
 
     id                  = db.Column(db.String(9), primary_key=True, default=generate_id)
-    contact_id          = db.Column(db.String(9), db.ForeignKey('contacts.id', ondelete='CASCADE'),
+    contact_id          = db.Column(db.String(9),
                                     nullable=False, index=True)
     simulation_id       = db.Column(db.String(9), nullable=True, index=True)
     action_id           = db.Column(db.String(9), nullable=True, index=True)
