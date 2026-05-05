@@ -674,3 +674,126 @@ def _session_dict(s, current_jti=None):
         'created_at': s.created_at.isoformat(),
         'is_current': s.jti == current_jti if current_jti else False,
     }
+
+
+# ── My Chats API ───────────────────────────────────────────────────────────
+
+@profile_bp.route('/api/users/me/chats')
+@login_required
+def get_my_chats():
+    """Paginated list of chat sessions grouped by simulation, newest first."""
+    from app.models.chat import SimulationChatMessage
+    from app.models.simulation import Simulation
+    from sqlalchemy import func, case
+
+    page     = request.args.get('page', 1, type=int)
+    per_page = 20
+    q_str    = (request.args.get('q') or '').strip()
+
+    subq = (
+        db.session.query(
+            SimulationChatMessage.session_id,
+            SimulationChatMessage.simulation_id,
+            func.min(SimulationChatMessage.created_at).label('started_at'),
+            func.max(SimulationChatMessage.created_at).label('last_message_at'),
+            func.count(SimulationChatMessage.id).label('message_count'),
+        )
+        .filter(
+            SimulationChatMessage.user_id == current_user.id,
+            SimulationChatMessage.is_archived == False,
+            SimulationChatMessage.session_id != None,
+        )
+    )
+    if q_str and len(q_str) >= 3:
+        subq = subq.filter(SimulationChatMessage.content.ilike(f'%{q_str}%'))
+
+    rows = (
+        subq.group_by(
+            SimulationChatMessage.session_id,
+            SimulationChatMessage.simulation_id,
+        )
+        .order_by(db.desc('last_message_at'))
+        .paginate(page=page, per_page=per_page, error_out=False)
+    )
+
+    sim_ids = list({r.simulation_id for r in rows.items})
+    sims = {s.id: s for s in Simulation.query.filter(Simulation.id.in_(sim_ids)).all()}
+
+    # First user message per session as preview
+    preview_subq = (
+        db.session.query(
+            SimulationChatMessage.session_id,
+            func.min(SimulationChatMessage.id).label('first_msg_id'),
+        )
+        .filter(
+            SimulationChatMessage.user_id == current_user.id,
+            SimulationChatMessage.role == 'user',
+            SimulationChatMessage.is_archived == False,
+        )
+        .group_by(SimulationChatMessage.session_id)
+        .subquery()
+    )
+    first_msgs = {
+        m.session_id: m.content
+        for m in db.session.query(SimulationChatMessage).join(
+            preview_subq, SimulationChatMessage.id == preview_subq.c.first_msg_id
+        ).all()
+    }
+
+    sessions = []
+    for r in rows.items:
+        sim = sims.get(r.simulation_id)
+        preview = first_msgs.get(r.session_id, '')
+        sessions.append({
+            'session_id':      r.session_id,
+            'simulation_id':   r.simulation_id,
+            'simulation_name': sim.name if sim else '',
+            'expertise_zone':  sim.expertise_zone if sim else '',
+            'started_at':      r.started_at.isoformat(),
+            'last_message_at': r.last_message_at.isoformat(),
+            'message_count':   r.message_count,
+            'preview':         preview[:80] if preview else '',
+        })
+
+    return jsonify({
+        'sessions': sessions,
+        'total':    rows.total,
+        'page':     page,
+        'pages':    rows.pages,
+    })
+
+
+@profile_bp.route('/api/chats/<session_id>')
+@login_required
+def get_chat_session(session_id):
+    """Full message thread for a session (read-only)."""
+    from app.models.chat import SimulationChatMessage
+    msgs = (
+        SimulationChatMessage.query
+        .filter_by(session_id=session_id, user_id=current_user.id, is_archived=False)
+        .order_by(SimulationChatMessage.created_at.asc())
+        .all()
+    )
+    if not msgs:
+        from flask import abort
+        abort(404)
+    sim_id = msgs[0].simulation_id
+    return jsonify({'session_id': session_id, 'simulation_id': sim_id,
+                    'messages': [m.to_dict() for m in msgs]})
+
+
+@profile_bp.route('/api/chats/<session_id>', methods=['DELETE'])
+@login_required
+def delete_chat_session(session_id):
+    """Soft-delete all messages in a session (is_archived=1)."""
+    from app.models.chat import SimulationChatMessage
+    updated = (
+        SimulationChatMessage.query
+        .filter_by(session_id=session_id, user_id=current_user.id)
+        .update({'is_archived': True})
+    )
+    if updated == 0:
+        from flask import abort
+        abort(404)
+    db.session.commit()
+    return jsonify({'ok': True, 'session_id': session_id})

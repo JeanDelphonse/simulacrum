@@ -92,6 +92,16 @@ def create_app(config_name=None):
     app.logger.info('startup: advisor_bp imported')
     from app.blueprints.contacts import contacts_bp
     app.logger.info('startup: contacts_bp imported')
+    from app.blueprints.income import income_bp
+    app.logger.info('startup: income_bp imported')
+    from app.blueprints.chat import chat_bp
+    app.logger.info('startup: chat_bp imported')
+    from app.blueprints.integrations import integrations_bp
+    app.logger.info('startup: integrations_bp imported')
+    from app.blueprints.publishing import publishing_bp
+    app.logger.info('startup: publishing_bp imported')
+    from app.blueprints.notifications import notifications_bp
+    app.logger.info('startup: notifications_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -107,6 +117,11 @@ def create_app(config_name=None):
     app.register_blueprint(feedback_bp)
     app.register_blueprint(advisor_bp, url_prefix='/api/advisor')
     app.register_blueprint(contacts_bp, url_prefix='/api/contacts')
+    app.register_blueprint(income_bp, url_prefix='/api/simulations')
+    app.register_blueprint(chat_bp, url_prefix='/api/simulations')
+    app.register_blueprint(integrations_bp)
+    app.register_blueprint(publishing_bp)
+    app.register_blueprint(notifications_bp)
 
     # Register page routes
     from app.blueprints.pages import pages_bp

@@ -23,6 +23,12 @@ from app.models.profile import UserProfile, SimulationVisibility, ProfileInquiry
 from app.models.feedback import UserFeedback
 from app.models.resume_consent import ResumeConsent
 from app.models.contact import Contact, ContactActivity
+from app.models.income import LayerIncomeRecord
+from app.models.chat import SimulationChatMessage
+from app.models.integration import UserIntegration, EmailCampaign
+from app.models.signing import SigningDocument
+from app.models.published_page import PublishedPage
+from app.models.notification import Notification, NotificationPreference
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -38,4 +44,10 @@ __all__ = [
     'UserFeedback',
     'ResumeConsent',
     'Contact', 'ContactActivity',
+    'LayerIncomeRecord',
+    'SimulationChatMessage',
+    'UserIntegration', 'EmailCampaign',
+    'SigningDocument',
+    'PublishedPage',
+    'Notification', 'NotificationPreference',
 ]

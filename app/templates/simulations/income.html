@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% block title %}Income Log — {{ simulation.name }}{% endblock %}
+
+{% block content %}
+<div class="income-page" id="incPage">
+
+  <div class="income-header">
+    <div class="income-header-left">
+      <a href="{{ url_for('pages.simulation_view', sim_id=simulation.id) }}" class="income-back">← {{ simulation.name }}</a>
+      <h1 class="income-title">Income Log</h1>
+      <p class="income-sub">Record real income earned across your five wealth layers. Each entry updates your Bayesian outcome model.</p>
+    </div>
+    <button class="income-add-btn" onclick="openAddModal()">+ Log income</button>
+  </div>
+
+  <!-- Summary row -->
+  <div class="income-summary-row" id="incSummaryRow">
+    <div class="income-summary-card" id="inc-sum-total">
+      <div class="inc-sum-label">Total recorded</div>
+      <div class="inc-sum-value" id="incGrandTotal">—</div>
+    </div>
+    <div class="income-summary-card" id="inc-sum-l1">
+      <div class="inc-sum-label" style="color:#AFA9EC">L1 · Active</div>
+      <div class="inc-sum-value" id="incTotal1">—</div>
+    </div>
+    <div class="income-summary-card" id="inc-sum-l2">
+      <div class="inc-sum-label" style="color:#5DCAA5">L2 · Leveraged</div>
+      <div class="inc-sum-value" id="incTotal2">—</div>
+    </div>
+    <div class="income-summary-card" id="inc-sum-l3">
+      <div class="inc-sum-label" style="color:#F0997B">L3 · Productized</div>
+      <div class="inc-sum-value" id="incTotal3">—</div>
+    </div>
+    <div class="income-summary-card" id="inc-sum-l4">
+      <div class="inc-sum-label" style="color:#EF9F27">L4 · Automated</div>
+      <div class="inc-sum-value" id="incTotal4">—</div>
+    </div>
+    <div class="income-summary-card" id="inc-sum-l5">
+      <div class="inc-sum-label" style="color:#85B7EB">L5 · Wealth</div>
+      <div class="inc-sum-value" id="incTotal5">—</div>
+    </div>
+  </div>
+
+  <!-- Records table -->
+  <div class="income-table-wrap">
+    <div class="income-table-hdr">
+      <span>Income records</span>
+      <label class="inc-void-toggle">
+        <input type="checkbox" id="incShowVoid" onchange="loadRecords()"> Show voided
+      </label>
+    </div>
+    <table class="income-table" id="incTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Layer</th>
+          <th>Amount</th>
+          <th>Description</th>
+          <th>Source</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="incTableBody">
+        <tr><td colspan="6" class="inc-empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Add income modal -->
+<div class="inc-modal-overlay" id="incModalOverlay" style="display:none" onclick="closeAddModal()"></div>
+<div class="inc-modal" id="incModal" style="display:none">
+  <div class="inc-modal-hdr">
+    <span class="inc-modal-title">Log income</span>
+    <button class="inc-modal-close" onclick="closeAddModal()">×</button>
+  </div>
+  <div class="inc-modal-body">
+    <div class="inc-field">
+      <label class="inc-label">Layer *</label>
+      <select id="incFLayer" class="inc-input">
+        <option value="1">L1 · Active income</option>
+        <option value="2">L2 · Leveraged income</option>
+        <option value="3">L3 · Productized income</option>
+        <option value="4">L4 · Automated income</option>
+        <option value="5">L5 · Wealth platforms</option>
+      </select>
+    </div>
+    <div class="inc-field">
+      <label class="inc-label">Amount (USD) *</label>
+      <input type="number" id="incFAmount" class="inc-input" min="0.01" step="0.01" placeholder="e.g. 2500">
+    </div>
+    <div class="inc-field">
+      <label class="inc-label">Date earned *</label>
+      <input type="date" id="incFDate" class="inc-input">
+    </div>
+    <div class="inc-field">
+      <label class="inc-label">Description</label>
+      <input type="text" id="incFDesc" class="inc-input" maxlength="300" placeholder="e.g. Consulting retainer — March">
+    </div>
+    <div id="incModalErr" class="inc-modal-err" style="display:none"></div>
+  </div>
+  <div class="inc-modal-footer">
+    <button class="inc-btn-ghost" onclick="closeAddModal()">Cancel</button>
+    <button class="inc-btn-primary" id="incSubmitBtn" onclick="submitIncome()">Save record</button>
+  </div>
+</div>
+
+<style>
+.income-page { max-width: 900px; margin: 2rem auto; padding: 0 1.25rem; }
+.income-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; gap: 1rem; }
+.income-header-left { flex: 1; }
+.income-back { font-size: 0.8rem; color: var(--muted, #666); text-decoration: none; }
+.income-back:hover { color: var(--navy, #0D1B3E); }
+.income-title { font-size: 1.5rem; font-weight: 700; color: var(--navy, #0D1B3E); margin: 0.25rem 0 0.25rem; }
+.income-sub { font-size: 0.8rem; color: var(--muted, #666); margin: 0; }
+.income-add-btn { background: var(--navy, #0D1B3E); color: #fff; border: none; border-radius: 6px; padding: 0.55rem 1.1rem; font-size: 0.875rem; cursor: pointer; white-space: nowrap; }
+.income-add-btn:hover { background: #1B3A6B; }
+
+.income-summary-row { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.income-summary-card { flex: 1; min-width: 110px; background: #F8F9FA; border: 1px solid #E8E8E8; border-radius: 8px; padding: 0.75rem 1rem; }
+.inc-sum-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin-bottom: 0.25rem; }
+.inc-sum-value { font-size: 1.1rem; font-weight: 700; color: var(--navy, #0D1B3E); }
+
+.income-table-wrap { background: #fff; border: 1px solid #E8E8E8; border-radius: 8px; overflow: hidden; }
+.income-table-hdr { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #E8E8E8; font-size: 0.8rem; font-weight: 600; color: var(--navy, #0D1B3E); }
+.inc-void-toggle { display: flex; align-items: center; gap: 0.4rem; font-weight: 400; color: #888; cursor: pointer; }
+.income-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.income-table th { padding: 0.6rem 1rem; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; background: #FAFAFA; border-bottom: 1px solid #E8E8E8; }
+.income-table td { padding: 0.7rem 1rem; border-bottom: 1px solid #F0F0F0; color: #333; vertical-align: middle; }
+.income-table tr:last-child td { border-bottom: none; }
+.income-table tr.is-void td { opacity: 0.4; }
+.inc-empty { text-align: center; color: #aaa; padding: 2rem !important; }
+.inc-layer-pill { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 10px; font-weight: 600; }
+.inc-void-btn { background: none; border: 1px solid #ddd; color: #999; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; }
+.inc-void-btn:hover { border-color: #c00; color: #c00; }
+.inc-voided-badge { font-size: 0.68rem; color: #999; background: #F0F0F0; border-radius: 4px; padding: 0.1rem 0.4rem; }
+
+/* Modal */
+.inc-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1400; }
+.inc-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; border-radius: 10px; width: 420px; max-width: calc(100vw - 2rem); z-index: 1401; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+.inc-modal-hdr { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #E8E8E8; }
+.inc-modal-title { font-size: 1rem; font-weight: 700; color: var(--navy, #0D1B3E); }
+.inc-modal-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #888; padding: 0; line-height: 1; }
+.inc-modal-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.inc-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.inc-label { font-size: 0.75rem; font-weight: 600; color: #444; }
+.inc-input { border: 1px solid #D8D8D8; border-radius: 6px; padding: 0.5rem 0.7rem; font-size: 0.875rem; color: #1A1A1A; outline: none; }
+.inc-input:focus { border-color: #0D1B3E; }
+.inc-modal-err { font-size: 0.8rem; color: #c00; background: #FFF0F0; border: 1px solid #fcc; border-radius: 5px; padding: 0.5rem 0.75rem; }
+.inc-modal-footer { display: flex; justify-content: flex-end; gap: 0.6rem; padding: 0.75rem 1.25rem; border-top: 1px solid #E8E8E8; }
+.inc-btn-ghost { background: none; border: 1px solid #D8D8D8; color: #555; border-radius: 6px; padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer; }
+.inc-btn-primary { background: var(--navy, #0D1B3E); color: #fff; border: none; border-radius: 6px; padding: 0.5rem 1.1rem; font-size: 0.875rem; cursor: pointer; }
+.inc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SIM_ID = '{{ simulation.id }}';
+const CROOT  = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+const IAPI   = `${CROOT}/api/simulations/${SIM_ID}/income`;
+
+const LAYER_COLORS = {
+  1: { bg: 'rgba(83,74,183,.15)',  color: '#534AB7' },
+  2: { bg: 'rgba(15,110,86,.15)',  color: '#0F6E56' },
+  3: { bg: 'rgba(216,90,48,.15)',  color: '#D85A30' },
+  4: { bg: 'rgba(186,117,23,.15)', color: '#BA7517' },
+  5: { bg: 'rgba(24,95,165,.15)',  color: '#185FA5' },
+};
+const LAYER_NAMES = { 1:'Active', 2:'Leveraged', 3:'Productized', 4:'Automated', 5:'Wealth' };
+const fmt = v => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+async function loadSummary() {
+  try {
+    const d = await fetch(`${IAPI}/summary`).then(r => r.json());
+    document.getElementById('incGrandTotal').textContent = fmt(d.grand_total || 0);
+    for (let n = 1; n <= 5; n++) {
+      const el = document.getElementById(`incTotal${n}`);
+      if (el) el.textContent = d.by_layer && d.by_layer[n] ? fmt(d.by_layer[n].total) : '—';
+    }
+  } catch {}
+}
+
+async function loadRecords() {
+  const includeVoid = document.getElementById('incShowVoid').checked ? '1' : '0';
+  const tbody = document.getElementById('incTableBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="inc-empty">Loading…</td></tr>';
+  try {
+    const records = await fetch(`${IAPI}?limit=500&include_void=${includeVoid}`).then(r => r.json());
+    if (!records.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="inc-empty">No income records yet. Click "Log income" to add the first one.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = records.map(r => {
+      const lc = LAYER_COLORS[r.layer_number] || {};
+      const pill = `<span class="inc-layer-pill" style="background:${lc.bg};color:${lc.color}">L${r.layer_number} · ${LAYER_NAMES[r.layer_number] || ''}</span>`;
+      const action = r.is_void
+        ? `<span class="inc-voided-badge">Voided</span>`
+        : `<button class="inc-void-btn" onclick="voidRecord('${r.id}')">Void</button>`;
+      return `<tr class="${r.is_void ? 'is-void' : ''}">
+        <td>${r.income_date || '—'}</td>
+        <td>${pill}</td>
+        <td style="font-weight:600">${fmt(r.amount)}</td>
+        <td>${r.description || '<span style="color:#aaa">—</span>'}</td>
+        <td style="color:#888">${r.source === 'manual_entry' ? 'Manual' : r.source}</td>
+        <td>${action}</td>
+      </tr>`;
+    }).join('');
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="6" class="inc-empty">Failed to load records.</td></tr>';
+  }
+}
+
+async function voidRecord(id) {
+  if (!confirm('Void this income record? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`${IAPI}/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    await Promise.all([loadSummary(), loadRecords()]);
+  } catch {
+    alert('Failed to void record.');
+  }
+}
+
+function openAddModal() {
+  document.getElementById('incFDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('incFAmount').value = '';
+  document.getElementById('incFDesc').value = '';
+  document.getElementById('incModalErr').style.display = 'none';
+  document.getElementById('incSubmitBtn').disabled = false;
+  document.getElementById('incSubmitBtn').textContent = 'Save record';
+  document.getElementById('incModalOverlay').style.display = 'block';
+  document.getElementById('incModal').style.display = 'block';
+  document.getElementById('incFAmount').focus();
+}
+
+function closeAddModal() {
+  document.getElementById('incModalOverlay').style.display = 'none';
+  document.getElementById('incModal').style.display = 'none';
+}
+
+async function submitIncome() {
+  const amount = parseFloat(document.getElementById('incFAmount').value);
+  const layer  = parseInt(document.getElementById('incFLayer').value);
+  const dt     = document.getElementById('incFDate').value;
+  const desc   = document.getElementById('incFDesc').value.trim();
+  const errEl  = document.getElementById('incModalErr');
+
+  if (!amount || amount <= 0) { errEl.textContent = 'Enter a valid amount greater than zero.'; errEl.style.display = 'block'; return; }
+  if (!dt) { errEl.textContent = 'Select the date earned.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+
+  const btn = document.getElementById('incSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    const res = await fetch(IAPI, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ layer_number: layer, amount, income_date: dt, description: desc }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Failed');
+    closeAddModal();
+    await Promise.all([loadSummary(), loadRecords()]);
+  } catch (e) {
+    errEl.textContent = e.message || 'Failed to save. Try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Save record';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeAddModal();
+});
+
+loadSummary();
+loadRecords();
+</script>
+{% endblock %}

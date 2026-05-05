@@ -339,6 +339,33 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
 
     db.session.commit()
 
+    # Fire escalation notifications (best-effort, must not raise)
+    try:
+        from app.services.notification_service import send_notification as _send_notif
+        from flask import request as _req, has_request_context as _hrc
+        _base = ''
+        if _hrc():
+            _base = _req.host_url.rstrip('/')
+        for _entry, _within in dispatch_entries:
+            if not _within:
+                _action_label = _entry.action_type.replace('_', ' ').title()
+                _send_notif(
+                    user_id=sim.user_id,
+                    notification_type='escalation',
+                    title=f'{_action_label} needs your approval',
+                    body=(
+                        f'The orchestrator cannot continue until you approve or reject '
+                        f'this action: {_action_label}. '
+                        f'Reason: {_entry.escalation_reason or "autonomy boundary exceeded"}.'
+                    ),
+                    cta_url=f'{_base}/simulations/{simulation_id}/layer6',
+                    cta_label='Review in GCC →',
+                    simulation_id=simulation_id,
+                    priority='high',
+                )
+    except Exception as _ne:
+        logger.warning('Escalation notification failed: %s', _ne)
+
     # Dispatch actions — skip Celery entirely when no Redis broker is configured
     from flask import current_app as _ca
     _has_redis = bool(_ca.config.get('REDIS_URL'))
@@ -410,6 +437,25 @@ def _execute_action_sync(entry) -> None:
         ))
         db.session.commit()
         logger.info('Layer 6 sync action %s (%s) completed', entry.id, entry.action_type)
+
+        # Notify user of agent completion (best-effort)
+        try:
+            from app.services.notification_service import send_notification as _sn
+            from flask import request as _req2, has_request_context as _hrc2
+            _base2 = _req2.host_url.rstrip('/') if _hrc2() else ''
+            _label2 = entry.action_type.replace('_', ' ').title()
+            _sn(
+                user_id=sim.user_id,
+                notification_type='agent_complete',
+                title=f'Your {_label2} agent completed',
+                body=f'{_label2} is ready. {(artifact or "")[:120]}',
+                cta_url=f'{_base2}/simulations/{entry.simulation_id}/layer6',
+                cta_label='View in GCC →',
+                simulation_id=entry.simulation_id,
+            )
+        except Exception as _ne2:
+            logger.warning('Agent complete notification failed: %s', _ne2)
+
     except Exception as exc:
         agent_action.status = AgentAction.STATUS_FAILED
         agent_action.error_message = str(exc)

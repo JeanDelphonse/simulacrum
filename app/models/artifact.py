@@ -45,6 +45,7 @@ class ArtifactVersion(db.Model):
     _prefill_inputs = db.Column('prefill_inputs', db.Text, nullable=True)
     change_summary = db.Column(db.Text, nullable=True)
     is_current = db.Column(db.Boolean, default=True, nullable=False)
+    public_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     created_by = db.Column(db.String(20), default='user')  # 'user' | 'orchestrator'
 
@@ -70,6 +71,7 @@ class ArtifactVersion(db.Model):
             'prefill_inputs': self.prefill_inputs,
             'change_summary': self.change_summary,
             'is_current': self.is_current,
+            'public_url': self.public_url,
             'created_at': self.created_at.isoformat(),
             'created_by': self.created_by,
         }

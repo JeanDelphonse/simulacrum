@@ -20,8 +20,6 @@
     {% if current_user.is_authenticated %}
     <div class="nav-links">
       <a href="{{ url_for('pages.dashboard') }}" class="nav-link">Dashboard</a>
-      <a href="{{ url_for('pages.resumes_view') }}" class="nav-link">Sources</a>
-      <a href="{{ url_for('pages.contacts_list') }}" class="nav-link">Contacts</a>
       <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
       {% if current_user.is_partner %}
       <a href="{{ url_for('pages.partner_dashboard') }}" class="nav-link">Partner Dashboard</a>

@@ -342,6 +342,7 @@
 <div class="crm-toast" id="crmToast"></div>
 
 <script>
+const CROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
 let _page = 1, _stage = '', _sort = 'score', _search = '', _source = '', _selectedIds = new Set();
 let _viewMode = 'table';
 let _emailCheckTimer = null;
@@ -439,7 +440,7 @@ function loadContacts() {
   if (_search) params.set('q', _search);
   if (_source) params.set('source', _source);
 
-  fetch(`/api/contacts?${params}`)
+  fetch(`${CROOT}/api/contacts?${params}`)
     .then(r => r.json())
     .then(data => {
       renderTable(data.contacts, data.total, data.pages);
@@ -460,7 +461,7 @@ function renderTable(contacts, total, pages) {
     <tr>
       <td class="cb-col"><input type="checkbox" class="row-cb" data-id="${c.id}" ${_selectedIds.has(c.id)?'checked':''} onchange="toggleRow(this)"></td>
       <td>
-        <a class="contact-name-link" href="/contacts/${c.id}">${c.display_name}</a>
+        <a class="contact-name-link" href="${CROOT}/contacts/${c.id}">${c.display_name}</a>
         <div class="contact-sub">${c.email}</div>
       </td>
       <td>
@@ -506,7 +507,7 @@ function renderPagination(pages) {
 function gotoPage(p) { _page = p; loadContacts(); window.scrollTo(0, 0); }
 
 function loadKanban() {
-  fetch('/api/contacts?per_page=200')
+  fetch(`${CROOT}/api/contacts?per_page=200`)
     .then(r => r.json())
     .then(data => {
       const byStage = {};
@@ -516,7 +517,7 @@ function loadKanban() {
         const items = byStage[stage] || [];
         col.parentElement.querySelector('.cnt').textContent = items.length;
         col.innerHTML = items.map(c => `
-          <div class="kanban-card" onclick="location.href='/contacts/${c.id}'">
+          <div class="kanban-card" onclick="location.href='${CROOT}/contacts/${c.id}'">
             <div class="kanban-card-name">${c.display_name}</div>
             <div class="kanban-card-sub">${c.job_title || ''}${c.job_title && c.company_name ? ' · ' : ''}${c.company_name || ''}</div>
             ${scoreHtml(c.qualifying_score)}
@@ -533,7 +534,7 @@ function bulkAction(action, stage) {
   const body = { action, ids };
   if (stage) body.stage = stage;
   if (action === 'do_not_contact' && !confirm(`Mark ${ids.length} contact(s) as Do Not Contact? This is permanent.`)) return;
-  fetch('/api/contacts/bulk', {
+  fetch(`${CROOT}/api/contacts/bulk`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(body),
@@ -553,7 +554,7 @@ function checkEmailDup() {
   const email = document.getElementById('cf_email').value.trim();
   if (!email || !email.includes('@')) { document.getElementById('emailDupWarn').style.display = 'none'; return; }
   _emailCheckTimer = setTimeout(() => {
-    fetch(`/api/contacts/check-email?email=${encodeURIComponent(email)}`)
+    fetch(`${CROOT}/api/contacts/check-email?email=${encodeURIComponent(email)}`)
       .then(r => r.json())
       .then(d => {
         document.getElementById('emailDupWarn').style.display = d.exists ? 'block' : 'none';
@@ -582,7 +583,7 @@ function saveContact() {
     showToast('First name, last name, and email are required'); return;
   }
   btn.disabled = true; btn.textContent = 'Saving…';
-  fetch('/api/contacts', {
+  fetch(`${CROOT}/api/contacts`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(data),
@@ -627,7 +628,7 @@ function doImport() {
   btn.disabled = true; btn.textContent = 'Importing…';
   const fd = new FormData();
   fd.append('file', _importFile);
-  fetch('/api/contacts/import/csv', { method: 'POST', body: fd })
+  fetch(`${CROOT}/api/contacts/import/csv`, { method: 'POST', body: fd })
     .then(r => r.json())
     .then(d => {
       const resultEl = document.getElementById('importResult');

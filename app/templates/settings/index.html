@@ -67,6 +67,43 @@
 .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #1a2235; border: 1px solid rgba(245,200,66,.3); color: #f5c842; padding: .65rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity .25s; pointer-events: none; }
 .toast.show { opacity: 1; }
 @media (max-width: 640px) { .settings-layout { flex-direction: column; } .settings-nav { width: 100%; display: flex; gap: .5rem; overflow-x: auto; } .settings-nav-title { display: none; } .settings-nav-link { white-space: nowrap; } }
+/* ── My Chats ── */
+.chats-search-row { display: flex; gap: .6rem; margin-bottom: 1.25rem; align-items: center; }
+.chats-search-input { flex: 1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 7px; padding: .45rem .75rem; color: #e8eaf0; font-size: .875rem; }
+.chats-search-input::placeholder { color: rgba(255,255,255,.3); }
+.chats-search-input:focus { outline: none; border-color: rgba(19,168,158,.5); }
+.chats-sort-select { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 7px; padding: .42rem .6rem; color: #e8eaf0; font-size: .8rem; }
+.chats-group-hdr { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.35); margin: 1.1rem 0 .4rem; padding-bottom: .3rem; border-bottom: 1px solid rgba(255,255,255,.06); }
+.chat-session-row { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: .65rem 1rem; display: flex; align-items: center; gap: .85rem; margin-bottom: .35rem; cursor: pointer; transition: background .15s; }
+.chat-session-row:hover { background: rgba(255,255,255,.06); }
+.chat-session-row.active-thread { background: rgba(19,168,158,.08); border-color: rgba(19,168,158,.25); }
+.chat-session-date { font-size: .72rem; color: rgba(255,255,255,.4); white-space: nowrap; flex-shrink: 0; }
+.chat-session-preview { flex: 1; font-size: .82rem; color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-session-badge { font-size: .68rem; background: rgba(255,255,255,.08); color: rgba(255,255,255,.45); border-radius: 20px; padding: .1rem .45rem; flex-shrink: 0; }
+.chat-session-del { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.2); font-size: .95rem; padding: .2rem .3rem; border-radius: 4px; transition: color .15s; flex-shrink: 0; }
+.chat-session-del:hover { color: #fca5a5; }
+.chat-thread-view { margin-top: 1.25rem; background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; overflow: hidden; }
+.chat-thread-hdr { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1rem; border-bottom: 1px solid rgba(255,255,255,.07); font-size: .78rem; color: rgba(255,255,255,.45); }
+.chat-thread-back { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.5); font-size: .8rem; padding: 0; }
+.chat-thread-back:hover { color: #e8eaf0; }
+.chat-thread-msgs { max-height: 420px; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .6rem; }
+.chat-thread-msg { max-width: 78%; }
+.chat-thread-msg.user { align-self: flex-end; }
+.chat-thread-msg.bot  { align-self: flex-start; }
+.chat-thread-bubble { padding: .55rem .8rem; border-radius: 10px; font-size: .84rem; line-height: 1.55; }
+.chat-thread-msg.user  .chat-thread-bubble { background: #1a4a6b; color: #e0f2fe; }
+.chat-thread-msg.bot   .chat-thread-bubble { background: rgba(255,255,255,.06); color: #e8eaf0; border-left: 3px solid #13A89E; }
+.chat-thread-ts { font-size: .68rem; color: rgba(255,255,255,.3); margin-top: .2rem; }
+.chat-thread-msg.user  .chat-thread-ts { text-align: right; }
+.chat-thread-continue { display: block; text-align: center; padding: .65rem 1rem; border-top: 1px solid rgba(255,255,255,.06); font-size: .8rem; color: #13A89E; text-decoration: none; }
+.chat-thread-continue:hover { background: rgba(19,168,158,.06); }
+.chats-load-more { display: block; width: 100%; margin-top: .75rem; padding: .5rem; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 7px; color: rgba(255,255,255,.5); font-size: .82rem; cursor: pointer; text-align: center; }
+.chats-load-more:hover { background: rgba(255,255,255,.07); color: #e8eaf0; }
+.chats-empty { font-size: .875rem; color: rgba(255,255,255,.4); padding: 2rem 0; text-align: center; }
+.chats-del-confirm { display: flex; align-items: center; gap: .6rem; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 6px; padding: .45rem .75rem; margin-top: .3rem; font-size: .78rem; color: rgba(255,255,255,.7); }
+.chats-del-confirm button { background: none; border: none; cursor: pointer; font-size: .78rem; padding: 0 .3rem; }
+.chats-del-confirm .confirm-yes { color: #fca5a5; }
+.chats-del-confirm .confirm-no  { color: rgba(255,255,255,.4); }
 </style>
 {% endblock %}
 
@@ -75,8 +112,13 @@
   <nav class="settings-nav">
     <div class="settings-nav-title">Settings</div>
     <a href="{{ url_for('pages.settings_profile') }}" class="settings-nav-link {% if active_tab == 'profile' %}active{% endif %}">Profile &amp; Bio</a>
+    <a href="{{ url_for('pages.resumes_view') }}" class="settings-nav-link {% if active_tab == 'sources' %}active{% endif %}">Sources</a>
     <a href="{{ url_for('pages.settings_visibility') }}" class="settings-nav-link {% if active_tab == 'visibility' %}active{% endif %}">Simulation Visibility</a>
+    <a href="{{ url_for('pages.contacts_list') }}" class="settings-nav-link {% if active_tab == 'contacts' %}active{% endif %}">My Contacts</a>
+    <a href="{{ url_for('pages.settings_my_chats') }}" class="settings-nav-link {% if active_tab == 'my_chats' %}active{% endif %}">My Chats</a>
     <a href="{{ url_for('pages.settings_testimonials') }}" class="settings-nav-link {% if active_tab == 'testimonials' %}active{% endif %}">Testimonials</a>
+    <a href="{{ url_for('pages.settings_integrations') }}" class="settings-nav-link {% if active_tab == 'integrations' %}active{% endif %}">Integrations</a>
+    <a href="{{ url_for('pages.settings_notifications') }}" class="settings-nav-link {% if active_tab == 'notifications' %}active{% endif %}">Notifications</a>
     <a href="{{ url_for('pages.settings_security') }}" class="settings-nav-link {% if active_tab == 'security' %}active{% endif %}">Security</a>
   </nav>
 
@@ -282,6 +324,473 @@
       </div>
       <div id="myTestimonialsList">
         <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── My Chats tab ──────────────────────────────────────────────── #}
+    {% if active_tab == 'my_chats' %}
+    <div id="myChatsTab">
+      <div class="settings-section-title">My Chats</div>
+
+      <div class="chats-search-row">
+        <input type="text" class="chats-search-input" id="chatsSearch"
+               placeholder="Search your conversations…" oninput="chatsSearchDebounce(this.value)">
+        <select class="chats-sort-select" id="chatsSort" onchange="chatsLoad(1)">
+          <option value="newest">Most recent first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
+
+      <div id="chatsList"><div class="chats-empty">Loading…</div></div>
+      <button class="chats-load-more" id="chatsLoadMore" style="display:none" onclick="chatsLoadMore()">Load more</button>
+
+      <div class="chat-thread-view" id="chatThreadView" style="display:none">
+        <div class="chat-thread-hdr">
+          <button class="chat-thread-back" onclick="chatsCloseThread()">← All conversations</button>
+          <span id="chatThreadSim"></span>
+        </div>
+        <div class="chat-thread-msgs" id="chatThreadMsgs"></div>
+        <a class="chat-thread-continue" id="chatThreadContinue" href="#">
+          Continue this conversation in your GCC →
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Integrations tab ─────────────────────────────────────────── #}
+    {% if active_tab == 'integrations' %}
+    <div id="integrationsTab">
+
+      {% if apollo_connected %}
+      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
+        &#x2713; Apollo account connected successfully.
+      </div>
+      {% endif %}
+      {% if apollo_error %}
+      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
+        Apollo connection failed: {{ apollo_error | replace('_', ' ') | title }}. Please try again.
+      </div>
+      {% endif %}
+      {% if stripe_connected %}
+      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
+        &#x2713; Stripe account connected successfully. Agents can now create payment links and invoices on your behalf.
+      </div>
+      {% endif %}
+      {% if stripe_error %}
+      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
+        Stripe connection failed: {{ stripe_error | replace('_', ' ') | title }}. Please try again.
+      </div>
+      {% endif %}
+      {% if cal_connected %}
+      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
+        &#x2713; Cal.com account connected. Agents can now create booking pages and receive confirmation webhooks.
+      </div>
+      {% endif %}
+      {% if cal_error %}
+      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
+        Cal.com connection failed: {{ cal_error | replace('_', ' ') | title }}. Please try again.
+      </div>
+      {% endif %}
+      {% if pandadoc_saved %}
+      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
+        &#x2713; PandaDoc API key saved. You can now send documents for signature from the GCC.
+      </div>
+      {% endif %}
+      {% if pandadoc_error %}
+      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
+        PandaDoc error: {{ pandadoc_error | replace('_', ' ') | title }}.
+      </div>
+      {% endif %}
+      {% if ck_saved %}
+      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
+        &#x2713; ConvertKit API keys saved. Agents can now deploy landing pages and sequences to your account.
+      </div>
+      {% endif %}
+      {% if ck_error %}
+      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
+        ConvertKit error: {{ ck_error | replace('_', ' ') | title }}.
+      </div>
+      {% endif %}
+
+      <div class="settings-section">
+        <div class="settings-section-title">Apollo.io &#x2014; Email Outreach</div>
+        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
+          Connect your Apollo account to deploy email sequences directly from your Growth Command Center.
+          Simulacrum sends outreach on your behalf using your own Apollo account &#x2014; your email reputation stays yours.
+        </p>
+
+        {% set apollo_status = apollo.connection_status if apollo else 'not_connected' %}
+
+        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if apollo_status == 'connected' %}#86efac{% elif apollo_status == 'expired' %}#f5c842{% else %}rgba(255,255,255,.2){% endif %}"></div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
+              {% if apollo_status == 'connected' %}Connected
+              {% elif apollo_status == 'expired' %}Token expired &#x2014; re-authenticate
+              {% else %}Not connected{% endif %}
+            </div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
+              {% if apollo_status == 'connected' %}Your Apollo sequences will be deployed automatically when outreach agents complete.
+              {% elif apollo_status == 'expired' %}Re-connect your Apollo account to resume sequence deployment.
+              {% else %}Connect Apollo to enable automated email sequence deployment.{% endif %}
+            </div>
+          </div>
+          {% if apollo_status in ('connected', 'expired') %}
+          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="apolloDisconnect(this)">Disconnect</button>
+          {% endif %}
+          <a href="{{ url_for('integrations.apollo_connect') }}" class="btn {% if apollo_status == 'connected' %}btn-ghost{% else %}btn-primary{% endif %} btn-sm">
+            {% if apollo_status == 'expired' %}Re-connect Apollo
+            {% elif apollo_status == 'connected' %}Re-authenticate
+            {% else %}Connect Apollo{% endif %}
+          </a>
+        </div>
+
+        {% if apollo_status == 'connected' %}
+        <div class="settings-row">
+          <label class="settings-label">Daily send limit <span style="text-transform:none;letter-spacing:0;font-weight:400">(emails per day across all sequences)</span></label>
+          <div style="display:flex;gap:.6rem;align-items:center">
+            <input type="number" class="input-text" id="apolloDailyLimit" min="1" max="500" style="width:100px"
+                   value="{{ apollo.apollo_daily_limit if apollo else 30 }}">
+            <button class="btn btn-ghost btn-sm" onclick="saveApolloSettings()">Save</button>
+          </div>
+          <div class="settings-hint">Default 30/day. Cannot exceed your Apollo account-level limits.</div>
+        </div>
+        {% endif %}
+      </div>
+
+      {# ── Stripe Connect ── #}
+      <div class="settings-section">
+        <div class="settings-section-title">Stripe &#x2014; Payment Collection</div>
+        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
+          Connect your Stripe account so agents can create payment links, invoices, and checkout sessions on your behalf.
+          Funds flow directly to your Stripe account &#x2014; Simulacrum never holds or transmits money.
+        </p>
+
+        {% set stripe_status = stripe_int.connection_status if stripe_int else 'not_connected' %}
+
+        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if stripe_status == 'connected' %}#86efac{% elif stripe_status == 'expired' %}#f5c842{% else %}rgba(255,255,255,.2){% endif %}"></div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
+              {% if stripe_status == 'connected' %}Connected
+              {% elif stripe_status == 'expired' %}Token expired &#x2014; re-authenticate
+              {% else %}Not connected{% endif %}
+            </div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
+              {% if stripe_status == 'connected' %}
+                Account: <code style="font-size:.75rem;color:rgba(255,255,255,.55)">{{ stripe_int.provider_account_id or '' }}</code>
+                &#x2014; Scope: {{ stripe_int.provider_scope or 'read_write' }}
+              {% elif stripe_status == 'expired' %}
+                Re-connect to resume payment object creation.
+              {% else %}
+                Connect Stripe to enable agents to create payment links and invoices.
+              {% endif %}
+            </div>
+          </div>
+          {% if stripe_status in ('connected', 'expired') %}
+          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="stripeDisconnect(this)">Disconnect</button>
+          {% endif %}
+          <a href="{{ url_for('integrations.stripe_connect') }}" class="btn {% if stripe_status == 'connected' %}btn-ghost{% else %}btn-primary{% endif %} btn-sm">
+            {% if stripe_status == 'expired' %}Re-connect Stripe
+            {% elif stripe_status == 'connected' %}Re-authenticate
+            {% else %}Connect Stripe{% endif %}
+          </a>
+        </div>
+
+        {% if stripe_status != 'connected' %}
+        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">
+          <strong style="color:#e8eaf0">Agents blocked without Stripe:</strong>
+          rate_card &#x2022; consulting_proposal &#x2022; sow_template &#x2022; workshop_curriculum &#x2022;
+          waitlist_landing_page &#x2022; sales_page &#x2022; membership_structure &#x2022; saas_product_spec &#x2022; newsletter_monetization
+        </div>
+        {% endif %}
+      </div>
+
+      {# ── Cal.com ── #}
+      <div class="settings-section">
+        <div class="settings-section-title">Cal.com &#x2014; Booking Pages</div>
+        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
+          Connect your Cal.com account so agents can create booking pages and receive confirmation webhooks.
+          When a prospect books a call, their CRM stage advances automatically and the L1 momentum metric updates in real time.
+        </p>
+
+        {% set cal_status = cal_int.connection_status if cal_int else 'not_connected' %}
+
+        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if cal_status == 'connected' %}#86efac{% elif cal_status == 'expired' %}#f5c842{% else %}rgba(255,255,255,.2){% endif %}"></div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
+              {% if cal_status == 'connected' %}Connected
+              {% elif cal_status == 'expired' %}Token expired &#x2014; re-authenticate
+              {% else %}Not connected{% endif %}
+            </div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
+              {% if cal_status == 'connected' %}Booking confirmations will automatically advance CRM contacts and update your L1 momentum metric.
+              {% elif cal_status == 'expired' %}Re-connect to resume booking page deployment and webhook processing.
+              {% else %}Connect Cal.com to enable automated booking page creation and confirmation webhooks.{% endif %}
+            </div>
+          </div>
+          {% if cal_status in ('connected', 'expired') %}
+          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="calDisconnect(this)">Disconnect</button>
+          {% endif %}
+          <a href="{{ url_for('integrations.cal_connect') }}" class="btn {% if cal_status == 'connected' %}btn-ghost{% else %}btn-primary{% endif %} btn-sm">
+            {% if cal_status == 'expired' %}Re-connect Cal.com
+            {% elif cal_status == 'connected' %}Re-authenticate
+            {% else %}Connect Cal.com{% endif %}
+          </a>
+        </div>
+
+        {% if cal_status != 'connected' %}
+        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">
+          <strong style="color:#e8eaf0">Agents blocked without Cal.com:</strong>
+          booking_page &#x2022; consulting_proposal (call invite) &#x2022; workshop_curriculum (event scheduling)
+        </div>
+        {% endif %}
+
+        {% if cal_status == 'connected' %}
+        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.82rem;color:rgba(255,255,255,.6)">
+          <strong style="color:#e8eaf0">On booking confirmed:</strong>
+          CRM contact advances Prospect &#x2192; Active &#x2022;
+          <code style="font-size:.75rem;color:rgba(255,255,255,.55)">call_booked</code> activity logged &#x2022;
+          L1 <code style="font-size:.75rem;color:rgba(255,255,255,.55)">consulting_bookings_mo</code> increments &#x2022;
+          GCC momentum updates on next refresh
+        </div>
+        {% endif %}
+      </div>
+
+      {# ── PandaDoc ── #}
+      <div class="settings-section">
+        <div class="settings-section-title">PandaDoc &#x2014; Document Signing</div>
+        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
+          Enter your PandaDoc API key so the GCC can send contracts and agreements for e-signature.
+          When a document is signed, the contact's CRM stage advances automatically to <strong style="color:#e8eaf0">Client</strong>.
+        </p>
+
+        {% set pd_status = pandadoc_int.connection_status if pandadoc_int else 'not_connected' %}
+
+        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if pd_status == 'connected' %}#86efac{% else %}rgba(255,255,255,.2){% endif %}"></div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
+              {% if pd_status == 'connected' %}API key configured
+              {% else %}Not configured{% endif %}
+            </div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
+              {% if pd_status == 'connected' %}Documents can be sent for signature from action artifact panels in the GCC.
+              {% else %}Enter your PandaDoc workspace API key to enable document signing.{% endif %}
+            </div>
+          </div>
+          {% if pd_status == 'connected' %}
+          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="pandadocClear(this)">Remove key</button>
+          {% endif %}
+        </div>
+
+        <div class="settings-row" id="pandadocKeyRow">
+          <label class="settings-label">PandaDoc API key
+            <a href="https://app.pandadoc.com/a/#/settings/integrations/api-keys" target="_blank" rel="noopener"
+               style="margin-left:.5rem;font-size:.72rem;color:#f5c842;text-transform:none;letter-spacing:0;font-weight:400">Get API key ↗</a>
+          </label>
+          <div style="display:flex;gap:.6rem;align-items:center">
+            <input type="password" class="input-text" id="pandadocApiKey" autocomplete="off"
+                   placeholder="{% if pd_status == 'connected' %}●●●●●●●● (saved){% else %}Paste your API key{% endif %}"
+                   style="flex:1">
+            <button class="btn btn-primary btn-sm" onclick="pandadocSave(this)">
+              {% if pd_status == 'connected' %}Update key{% else %}Save key{% endif %}
+            </button>
+          </div>
+          <div class="settings-hint">Your key is encrypted at rest and never exposed to the browser after saving.</div>
+          <div id="pandadocSaveErr" style="font-size:.78rem;color:#fca5a5;margin-top:.2rem;display:none"></div>
+        </div>
+
+        {% if pd_status != 'connected' %}
+        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">
+          <strong style="color:#e8eaf0">Agents blocked without PandaDoc:</strong>
+          consulting_proposal &#x2022; coaching_agreement &#x2022; service_agreement &#x2022; retainer_agreement &#x2022; nda
+        </div>
+        {% else %}
+        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.82rem;color:rgba(255,255,255,.6)">
+          <strong style="color:#e8eaf0">On document signed:</strong>
+          CRM contact advances Active &#x2192; Client &#x2022;
+          <code style="font-size:.75rem;color:rgba(255,255,255,.55)">document_signed</code> activity logged
+        </div>
+        {% endif %}
+      </div>
+
+      {# ── ConvertKit ── #}
+      <div class="settings-section">
+        <div class="settings-section-title">ConvertKit &#x2014; Email List &amp; Landing Pages</div>
+        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
+          Connect your ConvertKit account so agents can deploy waitlist forms, lead magnet sequences,
+          and nurture email series. Subscriber counts sync back to your momentum metrics after each Harvest step.
+        </p>
+
+        {% set ck_status = ck_int.connection_status if ck_int else 'not_connected' %}
+
+        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if ck_status == 'connected' %}#86efac{% else %}rgba(255,255,255,.2){% endif %}"></div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
+              {% if ck_status == 'connected' %}API keys configured
+              {% else %}Not configured{% endif %}
+            </div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
+              {% if ck_status == 'connected' %}Landing page and sequence deployment is enabled. Subscriber count harvests automatically at each Harvest step.
+              {% else %}Enter your ConvertKit API key and secret to enable list-building automation.{% endif %}
+            </div>
+          </div>
+          {% if ck_status == 'connected' %}
+          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="ckClear(this)">Remove keys</button>
+          {% endif %}
+        </div>
+
+        <div class="settings-row">
+          <label class="settings-label">API Key (Public)
+            <a href="https://app.convertkit.com/account_settings/advanced_settings" target="_blank" rel="noopener"
+               style="margin-left:.5rem;font-size:.72rem;color:#f5c842;text-transform:none;letter-spacing:0;font-weight:400">Get API key ↗</a>
+          </label>
+          <input type="text" class="input-text" id="ckApiKey" autocomplete="off"
+                 placeholder="{% if ck_status == 'connected' %}●●●●●●●● (saved){% else %}Your ConvertKit API key{% endif %}">
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">API Secret (for subscriber reads)</label>
+          <input type="password" class="input-text" id="ckApiSecret" autocomplete="off"
+                 placeholder="{% if ck_status == 'connected' %}●●●●●●●● (saved){% else %}Your ConvertKit API secret{% endif %}">
+          <div class="settings-hint">The secret is required to read subscriber counts. Both values are encrypted at rest.</div>
+          <div id="ckSaveErr" style="font-size:.78rem;color:#fca5a5;margin-top:.2rem;display:none"></div>
+        </div>
+        <div>
+          <button class="btn btn-primary btn-sm" onclick="ckSave(this)">
+            {% if ck_status == 'connected' %}Update keys{% else %}Save keys{% endif %}
+          </button>
+        </div>
+
+        {% if ck_status != 'connected' %}
+        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;margin-top:1.25rem;font-size:.8rem;color:rgba(255,255,255,.6)">
+          <strong style="color:#e8eaf0">Agents blocked without ConvertKit:</strong>
+          waitlist_landing_page &#x2022; lead_magnet_funnel &#x2022; newsletter_monetization
+        </div>
+        {% else %}
+        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.75rem 1rem;margin-top:1.25rem;font-size:.82rem;color:rgba(255,255,255,.6)">
+          <strong style="color:#e8eaf0">On Harvest step:</strong>
+          ConvertKit subscriber count syncs to L2/L3/L4 momentum metrics &#x2022;
+          <code style="font-size:.75rem;color:rgba(255,255,255,.55)">email_list_size</code> updates in real time
+        </div>
+        {% endif %}
+      </div>
+
+      {# ── SendGrid (transactional email for notifications) ── #}
+      {% if sg_saved %}<div style="background:rgba(134,239,172,.1);border:1px solid rgba(134,239,172,.25);color:#86efac;border-radius:7px;padding:.6rem 1rem;margin-bottom:1rem;font-size:.84rem">SendGrid API key saved. Email notifications are active.</div>{% endif %}
+      {% if sg_error %}<div style="background:rgba(252,165,165,.1);border:1px solid rgba(252,165,165,.25);color:#fca5a5;border-radius:7px;padding:.6rem 1rem;margin-bottom:1rem;font-size:.84rem">SendGrid error: {{ sg_error }}</div>{% endif %}
+
+      {% set sg_status = 'connected' if sg_connected else 'not_connected' %}
+      <div class="settings-section">
+        <div class="settings-section-title" style="display:flex;align-items:center;gap:.5rem">
+          SendGrid
+          <span style="width:8px;height:8px;border-radius:50%;background:{% if sg_status == 'connected' %}#86efac{% else %}rgba(255,255,255,.2){% endif %};display:inline-block"></span>
+          {% if sg_status == 'connected' %}<span style="font-size:.72rem;color:#86efac;font-weight:500">Connected</span>{% else %}<span style="font-size:.72rem;color:rgba(255,255,255,.35);font-weight:400">Not connected</span>{% endif %}
+        </div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.55);margin-bottom:1rem">
+          Transactional email for notifications — escalation alerts, income events, contact replies. Get a free API key at
+          <a href="https://sendgrid.com" target="_blank" rel="noopener" style="color:#f5c842">sendgrid.com ↗</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+          {% if sg_status == 'connected' %}
+          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="sgClear(this)">Remove key</button>
+          {% endif %}
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">SendGrid API Key
+            <a href="https://app.sendgrid.com/settings/api_keys" target="_blank" rel="noopener"
+               style="margin-left:.5rem;font-size:.72rem;color:#f5c842;text-transform:none;letter-spacing:0;font-weight:400">Get API key ↗</a>
+          </label>
+          <input type="password" class="input-text" id="sgApiKey" autocomplete="off"
+                 placeholder="{% if sg_status == 'connected' %}●●●●●●●● (saved){% else %}SG.xxxxxx{% endif %}">
+          <div class="settings-hint">Requires <code>Mail Send</code> permission. Stored as a platform setting.</div>
+          <div id="sgSaveErr" style="font-size:.78rem;color:#fca5a5;margin-top:.2rem;display:none"></div>
+        </div>
+        <div>
+          <button class="btn btn-primary btn-sm" onclick="sgSave(this)">
+            {% if sg_status == 'connected' %}Update key{% else %}Save key{% endif %}
+          </button>
+        </div>
+        {% if sg_status != 'connected' %}
+        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;margin-top:1.25rem;font-size:.8rem;color:rgba(255,255,255,.6)">
+          <strong style="color:#e8eaf0">Email notifications disabled without SendGrid:</strong>
+          escalation alerts &#x2022; income events &#x2022; contact replies &#x2022; agent completions
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Compliance</div>
+        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:1rem 1.25rem;font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.7">
+          <p style="margin:0 0 .75rem"><strong style="color:#e8eaf0">CAN-SPAM (US)</strong> &#x2014; Every email Simulacrum deploys includes your business address (from <a href="{{ url_for('pages.settings_profile') }}" style="color:#f5c842">Settings &#x2192; Profile &rarr; Location</a>) and an Apollo-managed one-click unsubscribe link. Sequences cannot be deployed until your business address is set. Hard bounces and unsubscribes permanently block re-outreach to that contact.</p>
+          <p style="margin:0"><strong style="color:#e8eaf0">GDPR (EU contacts)</strong> &#x2014; If your target contacts are located in the European Union, consult with a legal advisor before enabling outreach. Simulacrum's lawful basis is legitimate interest for B2B outreach, but attorney review is required before sending to EU-located contacts at scale.</p>
+        </div>
+      </div>
+
+    </div>
+    {% endif %}
+
+    {# ── Notifications tab ─────────────────────────────────────────── #}
+    {% if active_tab == 'notifications' %}
+    <div id="notificationsTab">
+      <div class="settings-section">
+        <div class="settings-section-title">Email Notification Preferences</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1.25rem">
+          In-app notifications cannot be disabled — they are your system log.
+          Email can be disabled per type or batched into a daily digest.
+        </div>
+
+        {% set type_labels = {
+          'escalation':        ('Escalation alert',   'An action needs your approval before the orchestrator can continue.', False),
+          'agent_complete':    ('Agent completion',   'An autonomous agent completed a task and an artifact is ready.',     True),
+          'income':            ('Income event',       'Income was recorded for one of your simulation layers.',             False),
+          'reply':             ('Contact reply',      'A contact replied to your outreach campaign.',                       False),
+          'cycle_summary':     ('Cycle summary',      'Daily digest of what ran, completed, and what\'s next.',             True),
+          'retention_warning': ('Account warning',    'Your account data is scheduled for deletion (required — cannot disable).', False),
+          'milestone':         ('Milestone',          'First client, 100 subscribers, first sale, and other milestones.',  False),
+          'chat_action':       ('Chat action done',   'An action you confirmed in the co-pilot has been executed.',         False),
+        } %}
+
+        <div id="notifPrefsList">
+          {% for ntype, (label, desc, digest_eligible) in type_labels.items() %}
+          {% set pref = notif_prefs.get(ntype, {'email_enabled': True, 'digest_mode': False}) %}
+          {% set forced = ntype == 'retention_warning' %}
+          <div class="toggle-row" style="flex-direction:column;align-items:flex-start;padding:.85rem 0;gap:.3rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+              <div>
+                <div class="toggle-label">{{ label }}
+                  {% if forced %}<span style="font-size:.68rem;color:#fca5a5;margin-left:.4rem">Required</span>{% endif %}
+                </div>
+                <div class="toggle-desc">{{ desc }}</div>
+              </div>
+              <label class="toggle-switch" {% if forced %}title="Required by Terms of Service"{% endif %}>
+                <input type="checkbox" class="notif-email-toggle" data-type="{{ ntype }}"
+                       {% if pref.email_enabled %}checked{% endif %}
+                       {% if forced %}disabled{% endif %}
+                       onchange="saveNotifPrefs()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            {% if digest_eligible %}
+            <div style="display:flex;align-items:center;gap:.5rem;padding-left:.25rem" id="digest-row-{{ ntype }}"
+                 style="{% if not pref.email_enabled %}opacity:.4{% endif %}">
+              <label class="toggle-switch" style="width:30px;height:18px">
+                <input type="checkbox" class="notif-digest-toggle" data-type="{{ ntype }}"
+                       {% if pref.digest_mode %}checked{% endif %}
+                       onchange="saveNotifPrefs()">
+                <span class="toggle-slider" style="border-radius:18px"></span>
+              </label>
+              <span style="font-size:.75rem;color:rgba(255,255,255,.45)">Batch into daily digest (8 am)</span>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+
+        <div id="notifPrefStatus" style="font-size:.78rem;color:#86efac;margin-top:.75rem;display:none">Preferences saved.</div>
       </div>
     </div>
     {% endif %}
@@ -836,6 +1345,265 @@ async function initiateDeleteAccount() {
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// ── Integrations ───────────────────────────────────────────────────────────────
+{% if active_tab == 'integrations' %}
+async function apolloDisconnect(btn) {
+  if (!confirm('Disconnect Apollo? Active sequences will be paused.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/apollo/disconnect', { method: 'POST' });
+  if (res.ok) { toast('Apollo disconnected'); location.reload(); }
+  else { btn.disabled = false; toast('Disconnect failed — try again'); }
+}
+
+async function stripeDisconnect(btn) {
+  if (!confirm('Disconnect Stripe? Future payment agents will require re-connection before running.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/stripe/disconnect', { method: 'POST' });
+  if (res.ok) { toast('Stripe disconnected'); location.reload(); }
+  else { btn.disabled = false; toast('Disconnect failed — try again'); }
+}
+
+async function calDisconnect(btn) {
+  if (!confirm('Disconnect Cal.com? Future booking page deployments will require re-connection.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/cal/disconnect', { method: 'POST' });
+  if (res.ok) { toast('Cal.com disconnected'); location.reload(); }
+  else { btn.disabled = false; toast('Disconnect failed — try again'); }
+}
+
+async function saveApolloSettings() {
+  const limit = parseInt(document.getElementById('apolloDailyLimit')?.value, 10);
+  if (!limit || limit < 1) { toast('Enter a valid daily limit'); return; }
+  const res = await fetch(ROOT2 + '/api/integrations/apollo/settings', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ apollo_daily_limit: limit }),
+  });
+  if (res.ok) { toast('Send limit saved'); }
+  else { const d = await res.json(); toast(d.error || 'Save failed'); }
+}
+
+async function ckSave(btn) {
+  const key    = (document.getElementById('ckApiKey')?.value || '').trim();
+  const secret = (document.getElementById('ckApiSecret')?.value || '').trim();
+  const errEl  = document.getElementById('ckSaveErr');
+  errEl.style.display = 'none';
+  if (!key) { errEl.textContent = 'Paste your ConvertKit API key first.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const res = await fetch(ROOT2 + '/api/integrations/convertkit/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: key, api_secret: secret }),
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = 'Save keys';
+  if (res.ok) { toast('ConvertKit keys saved'); location.reload(); }
+  else { errEl.textContent = data.error || 'Save failed — check your API key.'; errEl.style.display = 'block'; }
+}
+
+async function ckClear(btn) {
+  if (!confirm('Remove ConvertKit keys? Landing page deployment will be disabled until you re-enter keys.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/convertkit/clear', { method: 'POST' });
+  if (res.ok) { toast('ConvertKit keys removed'); location.reload(); }
+  else { btn.disabled = false; toast('Remove failed — try again'); }
+}
+
+async function pandadocSave(btn) {
+  const key = (document.getElementById('pandadocApiKey')?.value || '').trim();
+  const errEl = document.getElementById('pandadocSaveErr');
+  errEl.style.display = 'none';
+  if (!key) { errEl.textContent = 'Paste your PandaDoc API key first.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  const res = await fetch(ROOT2 + '/api/integrations/pandadoc/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ api_key: key }),
+  });
+  const data = await res.json();
+  btn.disabled = false;
+  btn.textContent = 'Save key';
+  if (res.ok) {
+    toast('PandaDoc API key saved');
+    location.reload();
+  } else {
+    errEl.textContent = data.error || 'Save failed — check your API key and try again.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function pandadocClear(btn) {
+  if (!confirm('Remove PandaDoc API key? Document signing will be disabled until you re-enter a key.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/pandadoc/clear', { method: 'POST' });
+  if (res.ok) { toast('PandaDoc key removed'); location.reload(); }
+  else { btn.disabled = false; toast('Remove failed — try again'); }
+}
+
+async function sgSave(btn) {
+  const key   = (document.getElementById('sgApiKey')?.value || '').trim();
+  const errEl = document.getElementById('sgSaveErr');
+  errEl.style.display = 'none';
+  if (!key) { errEl.textContent = 'Paste your SendGrid API key first.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const res = await fetch(ROOT2 + '/api/integrations/sendgrid/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ api_key: key }),
+  });
+  const data = await res.json();
+  btn.disabled = false;
+  btn.textContent = 'Save key';
+  if (res.ok) { toast('SendGrid API key saved'); location.reload(); }
+  else { errEl.textContent = data.error || 'Save failed — check your API key.'; errEl.style.display = 'block'; }
+}
+
+async function sgClear(btn) {
+  if (!confirm('Remove SendGrid key? Email notifications will be disabled until you re-enter a key.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/sendgrid/clear', { method: 'POST' });
+  if (res.ok) { toast('SendGrid key removed'); location.reload(); }
+  else { btn.disabled = false; toast('Remove failed — try again'); }
+}
+{% endif %}
+
+// ── My Chats ──────────────────────────────────────────────────────────────────
+{% if active_tab == 'my_chats' %}
+let _chatsPage = 1;
+let _chatsPages = 1;
+let _chatsQ = '';
+let _chatsSearchTimer;
+
+(async () => { await chatsLoad(1); })();
+
+function chatsSearchDebounce(val) {
+  clearTimeout(_chatsSearchTimer);
+  _chatsSearchTimer = setTimeout(() => { _chatsQ = val; chatsLoad(1); }, 380);
+}
+
+async function chatsLoad(page) {
+  _chatsPage = page;
+  const list = document.getElementById('chatsList');
+  list.innerHTML = '<div class="chats-empty">Loading…</div>';
+  document.getElementById('chatsLoadMore').style.display = 'none';
+  document.getElementById('chatThreadView').style.display = 'none';
+
+  const params = new URLSearchParams({ page });
+  if (_chatsQ.length >= 3) params.set('q', _chatsQ);
+  const res = await fetch(ROOT2 + '/api/users/me/chats?' + params);
+  if (!res.ok) { list.innerHTML = '<div class="chats-empty">Failed to load.</div>'; return; }
+  const data = await res.json();
+  _chatsPages = data.pages || 1;
+
+  if (!data.sessions.length) {
+    list.innerHTML = '<div class="chats-empty">No conversations yet. Open your <a href="' + ROOT2 + '/simulations" style="color:#13A89E">Growth Command Center</a> and start chatting with your co-pilot.</div>';
+    return;
+  }
+
+  const grouped = {};
+  data.sessions.forEach(s => {
+    const key = s.simulation_id;
+    if (!grouped[key]) grouped[key] = { name: s.simulation_name, zone: s.expertise_zone, rows: [] };
+    grouped[key].rows.push(s);
+  });
+
+  let html = '';
+  Object.values(grouped).forEach(g => {
+    html += '<div class="chats-group-hdr">' + esc(g.name) + (g.zone ? ' · ' + esc(g.zone) : '') + '</div>';
+    g.rows.forEach(s => {
+      const dt = new Date(s.last_message_at);
+      const dateStr = dt.toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'});
+      html += '<div class="chat-session-row" id="sr-' + s.session_id + '" onclick="chatsOpenThread(\'' + s.session_id + '\',\'' + s.simulation_id + '\',\'' + esc(s.simulation_name) + '\')">'
+        + '<div class="chat-session-date">' + dateStr + '</div>'
+        + '<div class="chat-session-preview">' + esc(s.preview || '(no messages)') + '</div>'
+        + '<span class="chat-session-badge">' + s.message_count + ' msg' + (s.message_count !== 1 ? 's' : '') + '</span>'
+        + '<button class="chat-session-del" onclick="event.stopPropagation();chatsConfirmDelete(\'' + s.session_id + '\')" title="Delete">\u{1F5D1}</button>'
+        + '</div>'
+        + '<div id="del-' + s.session_id + '" style="display:none"></div>';
+    });
+  });
+  list.innerHTML = html;
+  if (_chatsPage < _chatsPages) document.getElementById('chatsLoadMore').style.display = 'block';
+}
+
+async function chatsLoadMore() {
+  _chatsPage++;
+  const params = new URLSearchParams({ page: _chatsPage });
+  if (_chatsQ.length >= 3) params.set('q', _chatsQ);
+  const res = await fetch(ROOT2 + '/api/users/me/chats?' + params);
+  if (!res.ok) return;
+  const data = await res.json();
+  _chatsPages = data.pages || 1;
+  const list = document.getElementById('chatsList');
+  data.sessions.forEach(s => {
+    const dt = new Date(s.last_message_at);
+    const dateStr = dt.toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'});
+    list.insertAdjacentHTML('beforeend',
+      '<div class="chat-session-row" id="sr-' + s.session_id + '" onclick="chatsOpenThread(\'' + s.session_id + '\',\'' + s.simulation_id + '\',\'' + esc(s.simulation_name) + '\')">'
+      + '<div class="chat-session-date">' + dateStr + '</div>'
+      + '<div class="chat-session-preview">' + esc(s.preview || '(no messages)') + '</div>'
+      + '<span class="chat-session-badge">' + s.message_count + ' msg' + (s.message_count !== 1 ? 's' : '') + '</span>'
+      + '<button class="chat-session-del" onclick="event.stopPropagation();chatsConfirmDelete(\'' + s.session_id + '\')" title="Delete">\u{1F5D1}</button>'
+      + '</div>'
+      + '<div id="del-' + s.session_id + '" style="display:none"></div>');
+  });
+  document.getElementById('chatsLoadMore').style.display = _chatsPage < _chatsPages ? 'block' : 'none';
+}
+
+async function chatsOpenThread(sessionId, simId, simName) {
+  document.querySelectorAll('.chat-session-row').forEach(r => r.classList.remove('active-thread'));
+  const row = document.getElementById('sr-' + sessionId);
+  if (row) row.classList.add('active-thread');
+  const tv = document.getElementById('chatThreadView');
+  const msgs = document.getElementById('chatThreadMsgs');
+  document.getElementById('chatThreadSim').textContent = simName;
+  document.getElementById('chatThreadContinue').href = ROOT2 + '/simulations/' + simId + '/gcc';
+  tv.style.display = 'block';
+  msgs.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:.82rem;padding:.5rem">Loading…</div>';
+  tv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  const res = await fetch(ROOT2 + '/api/chats/' + sessionId);
+  if (!res.ok) { msgs.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:.82rem;padding:.5rem">Failed to load.</div>'; return; }
+  const data = await res.json();
+  msgs.innerHTML = '';
+  data.messages.forEach(m => {
+    const isUser = m.role === 'user';
+    const ts = new Date(m.created_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-thread-msg ' + (isUser ? 'user' : 'bot');
+    wrap.innerHTML = '<div class="chat-thread-bubble">' + esc(m.content) + '</div><div class="chat-thread-ts">' + ts + '</div>';
+    msgs.appendChild(wrap);
+  });
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function chatsCloseThread() {
+  document.getElementById('chatThreadView').style.display = 'none';
+  document.querySelectorAll('.chat-session-row').forEach(r => r.classList.remove('active-thread'));
+}
+
+function chatsConfirmDelete(sessionId) {
+  const el = document.getElementById('del-' + sessionId);
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = '<div class="chats-del-confirm">Delete this conversation? <button class="confirm-yes" onclick="chatsDeleteSession(\'' + sessionId + '\')">Delete</button> <button class="confirm-no" onclick="document.getElementById(\'del-' + sessionId + '\').style.display=\'none\'">Cancel</button></div>';
+}
+
+async function chatsDeleteSession(sessionId) {
+  const res = await fetch(ROOT2 + '/api/chats/' + sessionId, { method: 'DELETE' });
+  if (res.ok) {
+    const row = document.getElementById('sr-' + sessionId);
+    const conf = document.getElementById('del-' + sessionId);
+    if (row) row.remove();
+    if (conf) conf.remove();
+    if (document.getElementById('chatThreadView').style.display !== 'none') chatsCloseThread();
+  } else {
+    toast('Delete failed');
+  }
+}
+{% endif %}
+
 // ── Testimonials ───────────────────────────────────────────────────────────
 {% if active_tab == 'testimonials' %}
 (async () => {
@@ -899,6 +1667,36 @@ async function withdrawTestimonial(id, btn) {
   if (!confirm('Request withdrawal of this testimonial from the home page?')) return;
   const res = await fetch(ROOT2 + `/api/feedback/${id}/withdraw`, {method:'POST'});
   if (res.ok) { btn.textContent = 'Withdrawal requested'; btn.disabled = true; }
+}
+{% endif %}
+
+// ── Notifications ────────────────────────────────────────────────────────────
+{% if active_tab == 'notifications' %}
+let _notifSaveTimer;
+function saveNotifPrefs() {
+  clearTimeout(_notifSaveTimer);
+  _notifSaveTimer = setTimeout(async () => {
+    const prefs = [];
+    document.querySelectorAll('.notif-email-toggle').forEach(el => {
+      const ntype = el.dataset.type;
+      const digestEl = document.querySelector(`.notif-digest-toggle[data-type="${ntype}"]`);
+      prefs.push({
+        notification_type: ntype,
+        email_enabled: el.checked,
+        digest_mode: digestEl ? digestEl.checked : false,
+      });
+    });
+    const res = await fetch(ROOT2 + '/api/notifications/preferences', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ preferences: prefs }),
+    });
+    const statusEl = document.getElementById('notifPrefStatus');
+    if (res.ok && statusEl) {
+      statusEl.style.display = 'block';
+      setTimeout(() => { statusEl.style.display = 'none'; }, 2500);
+    }
+  }, 600);
 }
 {% endif %}
 </script>

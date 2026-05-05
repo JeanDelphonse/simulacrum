@@ -316,6 +316,7 @@
 
 <script>
 const CONTACT_ID = '{{ contact.id }}';
+const CROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
 
 function showToast(msg, d=3000) {
   const t = document.getElementById('crmToast');
@@ -324,7 +325,7 @@ function showToast(msg, d=3000) {
 }
 
 function setStage(stage) {
-  fetch(`/api/contacts/${CONTACT_ID}/stage`, {
+  fetch(`${CROOT}/api/contacts/${CONTACT_ID}/stage`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ stage, notes: '' }),
@@ -353,7 +354,7 @@ function saveAllFields() {
     const el = document.getElementById(elId);
     if (el) payload[key] = el.textContent.trim();
   }
-  fetch(`/api/contacts/${CONTACT_ID}`, {
+  fetch(`${CROOT}/api/contacts/${CONTACT_ID}`, {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(payload),
@@ -366,7 +367,7 @@ function saveAllFields() {
 }
 
 function toggleDNC(cb) {
-  fetch(`/api/contacts/${CONTACT_ID}`, {
+  fetch(`${CROOT}/api/contacts/${CONTACT_ID}`, {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ do_not_contact: cb.checked }),
@@ -383,7 +384,7 @@ function openAddNote() {
 function addNote() {
   const note = document.getElementById('noteInput').value.trim();
   if (!note) return;
-  fetch(`/api/contacts/${CONTACT_ID}/activities`, {
+  fetch(`${CROOT}/api/contacts/${CONTACT_ID}/activities`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ activity_type: 'note_added', notes: note }),

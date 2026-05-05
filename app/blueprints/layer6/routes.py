@@ -1654,11 +1654,14 @@ def get_journey(sim_id):
         is_blocked = bool(blocker and blocker not in completed_types)
 
         # Build steps
+        from app.models.artifact import ArtifactVersion as _AV
         steps = []
         for i, (atype, label) in enumerate(seq):
             artifact_fields = []
             artifact_version = None
             artifact_summary = ''
+            artifact_version_id = None
+            public_url = None
             if atype in completed_types:
                 status = 'complete'
                 a = completed_by_type[atype]
@@ -1669,6 +1672,10 @@ def get_journey(sim_id):
                 artifact_version = 1
                 if a.artifact:
                     artifact_summary = a.artifact[:320].strip()
+                av = _AV.query.filter_by(action_id=a.id, is_current=True).first()
+                if av:
+                    artifact_version_id = av.id
+                    public_url = av.public_url
             elif atype in queued_by_type:
                 q = queued_by_type[atype]
                 status = 'running' if q.status == Layer6ActionQueue.STATUS_DISPATCHED else 'queued'
@@ -1678,9 +1685,11 @@ def get_journey(sim_id):
                 action_id = None
             steps.append({'seq': i + 1, 'type': atype, 'label': label,
                           'status': status, 'action_id': action_id,
+                          'artifact_version_id': artifact_version_id,
                           'artifact_fields': artifact_fields,
                           'artifact_version': artifact_version,
-                          'artifact_summary': artifact_summary})
+                          'artifact_summary': artifact_summary,
+                          'public_url': public_url})
 
         completed_count = sum(1 for s in steps if s['status'] == 'complete')
 
@@ -1767,6 +1776,7 @@ def layer6_stream(sim_id):
         last_cycle_id = None
         last_log_count = 0
         last_esc_count = 0
+        last_income_count = 0
         start = time.time()
         while time.time() - start < 300:
             cycle = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
@@ -1808,6 +1818,18 @@ def layer6_stream(sim_id):
                         yield sse_event('step_running', {'step': 'schedule'})
                     else:
                         yield sse_event('step_running', {'step': 'score'})
+
+            # New income records
+            try:
+                from app.models.income import LayerIncomeRecord
+                income_count = LayerIncomeRecord.query.filter_by(
+                    simulation_id=sim_id, is_void=False
+                ).count()
+                if income_count > last_income_count:
+                    last_income_count = income_count
+                    yield sse_event('income_recorded', {'count': income_count})
+            except Exception:
+                pass
 
             yield sse_keepalive()
             time.sleep(5)

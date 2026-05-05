@@ -29,6 +29,14 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5000/api/auth/google/callback')
     ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')  # AES-256 for OAuth tokens
+    APOLLO_CLIENT_ID = os.environ.get('APOLLO_CLIENT_ID')
+    APOLLO_CLIENT_SECRET = os.environ.get('APOLLO_CLIENT_SECRET')
+    APOLLO_REDIRECT_URI = os.environ.get('APOLLO_REDIRECT_URI', 'http://localhost:5000/api/integrations/apollo/callback')
+    BASE_URL = os.environ.get('BASE_URL', 'http://localhost:5000')
+    STRIPE_CLIENT_ID = os.environ.get('STRIPE_CLIENT_ID')                          # ca_xxxx (Connect app client ID)
+    STRIPE_CONNECT_WEBHOOK_SECRET = os.environ.get('STRIPE_CONNECT_WEBHOOK_SECRET') # whsec_xxxx for Connect events
+    CAL_CLIENT_ID = os.environ.get('CAL_CLIENT_ID')
+    CAL_CLIENT_SECRET = os.environ.get('CAL_CLIENT_SECRET')
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB
     ALLOWED_EXTENSIONS = {'pdf', 'docx'}

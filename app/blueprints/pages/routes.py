@@ -1,5 +1,5 @@
 import time
-from flask import render_template, redirect, url_for, jsonify
+from flask import render_template, redirect, url_for, jsonify, request
 from flask_login import current_user, login_required
 from app.blueprints.pages import pages_bp
 
@@ -118,6 +118,14 @@ def simulation_view(sim_id):
                            is_owner=is_owner)
 
 
+@pages_bp.route('/simulations/<sim_id>/income')
+@login_required
+def simulation_income(sim_id):
+    from app.models.simulation import Simulation
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    return render_template('simulations/income.html', simulation=sim)
+
+
 @pages_bp.route('/settings')
 @login_required
 def settings_redirect():
@@ -176,6 +184,77 @@ def settings_testimonials():
     from app.models.profile import UserProfile
     profile = UserProfile.query.filter_by(user_id=current_user.id).first()
     return render_template('settings/index.html', active_tab='testimonials', profile=profile)
+
+
+@pages_bp.route('/settings/my-chats')
+@login_required
+def settings_my_chats():
+    from app.models.profile import UserProfile
+    profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    return render_template('settings/index.html', active_tab='my_chats', profile=profile)
+
+
+@pages_bp.route('/settings/integrations')
+@login_required
+def settings_integrations():
+    from app.models.profile import UserProfile
+    from app.models.integration import UserIntegration
+    from app.models.platform_settings import PlatformSetting
+    profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    apollo = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='apollo'
+    ).first()
+    stripe_int = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='stripe'
+    ).first()
+    cal_int = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='cal'
+    ).first()
+    pandadoc_int = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='pandadoc'
+    ).first()
+    ck_int = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='convertkit'
+    ).first()
+    sg_connected = bool(PlatformSetting.get('sendgrid_api_key'))
+    return render_template(
+        'settings/index.html',
+        active_tab='integrations',
+        profile=profile,
+        apollo=apollo,
+        stripe_int=stripe_int,
+        cal_int=cal_int,
+        pandadoc_int=pandadoc_int,
+        ck_int=ck_int,
+        sg_connected=sg_connected,
+        apollo_connected=request.args.get('apollo_connected') == '1',
+        apollo_error=request.args.get('apollo_error'),
+        stripe_connected=request.args.get('stripe_connected') == '1',
+        stripe_error=request.args.get('stripe_error'),
+        cal_connected=request.args.get('cal_connected') == '1',
+        cal_error=request.args.get('cal_error'),
+        pandadoc_saved=request.args.get('pandadoc_saved') == '1',
+        pandadoc_error=request.args.get('pandadoc_error'),
+        ck_saved=request.args.get('ck_saved') == '1',
+        ck_error=request.args.get('ck_error'),
+        sg_saved=request.args.get('sg_saved') == '1',
+        sg_error=request.args.get('sg_error'),
+    )
+
+
+@pages_bp.route('/settings/notifications')
+@login_required
+def settings_notifications():
+    from app.models.profile import UserProfile
+    from app.services.notification_service import get_preferences
+    profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    prefs = get_preferences(current_user.id)
+    return render_template(
+        'settings/index.html',
+        active_tab='notifications',
+        profile=profile,
+        notif_prefs=prefs,
+    )
 
 
 @pages_bp.route('/resumes')

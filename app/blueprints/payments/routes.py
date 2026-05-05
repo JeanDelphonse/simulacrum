@@ -8,6 +8,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _stripe_connect_required(user_id: str) -> bool:
+    """Return True if the user has a connected Stripe account."""
+    from app.models.integration import UserIntegration
+    integration = UserIntegration.query.filter_by(
+        user_id=user_id, provider='stripe'
+    ).first()
+    return bool(integration and integration.is_connected)
+
+
 @payments_bp.route('/webhook', methods=['POST'])
 def stripe_webhook():
     """Handle Stripe webhook events."""
@@ -23,23 +32,33 @@ def stripe_webhook():
     from app.models.simulation import Simulation
 
     if event['type'] == 'payment_intent.succeeded':
-        # Generation is triggered by the client-side confirm-payment endpoint,
-        # not here — updating charge_id only to keep the record accurate.
         pi = event['data']['object']
-        sim_id = pi.get('metadata', {}).get('simulation_id')
-        if sim_id:
+        meta = pi.get('metadata') or {}
+        sim_id = meta.get('simulation_id')
+        connect_sim_id = meta.get('simulacrum_simulation_id')
+
+        if sim_id and not connect_sim_id:
+            # Platform payment for simulation generation — update charge_id only
             sim = Simulation.query.get(sim_id)
             if sim:
                 if not sim.stripe_charge_id:
                     sim.stripe_charge_id = pi.get('latest_charge')
                 db.session.commit()
-                # Log partner commission if this user was referred
                 try:
                     from app.blueprints.partners.routes import maybe_log_commission
                     charge_cents = pi.get('amount_received') or pi.get('amount', 0)
                     maybe_log_commission(sim_id, sim.user_id, charge_cents)
                 except Exception as exc:
                     logger.warning(f'Commission logging failed for sim {sim_id}: {exc}')
+
+        elif connect_sim_id:
+            # Connect payment with simulacrum metadata — attribute income
+            stripe_account = event.get('account')
+            try:
+                from app.services.stripe_connect_service import attribute_income_from_stripe_event
+                attribute_income_from_stripe_event(pi, stripe_account)
+            except Exception as exc:
+                logger.error('Income attribution failed for payment_intent: %s', exc, exc_info=True)
 
     elif event['type'] == 'payment_intent.payment_failed':
         pi = event['data']['object']

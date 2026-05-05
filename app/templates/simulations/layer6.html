@@ -670,6 +670,18 @@
   cursor: pointer; color: rgba(255,255,255,.6);
 }
 .jrn-ap-edit:hover { background: rgba(255,255,255,.08); color: #fff; }
+.jrn-ap-sign {
+  font-size: 0.69rem; padding: 0.2rem 0.6rem; border-radius: 4px;
+  border: 1px solid rgba(245,200,66,.35); background: rgba(245,200,66,.07);
+  cursor: pointer; color: #f5c842; font-weight: 600;
+}
+.jrn-ap-sign:hover { background: rgba(245,200,66,.15); }
+.jrn-ap-deploy {
+  font-size: 0.69rem; padding: 0.2rem 0.6rem; border-radius: 4px;
+  border: 1px solid rgba(134,239,172,.35); background: rgba(134,239,172,.07);
+  cursor: pointer; color: #86efac; font-weight: 600;
+}
+.jrn-ap-deploy:hover { background: rgba(134,239,172,.15); }
 .jrn-ap-rerun {
   font-size: 0.69rem; padding: 0.2rem 0.6rem; border-radius: 4px;
   border: 1.5px solid; background: transparent; cursor: pointer; font-weight: 500;
@@ -787,6 +799,207 @@
   border-radius: 4px;
 }
 .diagram-modal-close:hover { color: #1e293b; background: #f1f5f9; }
+
+/* ── Chat Co-pilot Panel ─────────────────────────────────────────────────── */
+.jrn-journey-wrap { display: flex; align-items: flex-start; gap: 0; }
+.jrn-left-col { flex: 1; min-width: 0; }
+.jrn-chat-col {
+  width: 340px; flex-shrink: 0; display: none;
+  padding: 1.5rem 1.25rem 1.5rem 0;
+  position: sticky; top: 60px; max-height: calc(100vh - 80px);
+  align-self: flex-start;
+}
+.jrn-chat-col.open { display: flex; flex-direction: column; }
+.chat-panel {
+  display: flex; flex-direction: column;
+  height: calc(100vh - 140px); min-height: 400px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px; overflow: hidden;
+}
+.chat-panel-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  flex-shrink: 0;
+}
+.chat-panel-title { font-size: 0.8rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 0.4rem; }
+.chat-panel-dot { width: 7px; height: 7px; border-radius: 50%; background: #13A89E; animation: jrn-pulse 2s ease-in-out infinite; }
+.chat-panel-hdr-btns { display: flex; align-items: center; gap: 0.5rem; }
+.chat-hdr-btn {
+  background: none; border: none; cursor: pointer; color: rgba(255,255,255,.4);
+  font-size: 0.75rem; padding: 0.25rem 0.4rem; border-radius: 4px; transition: color 0.15s, background 0.15s;
+}
+.chat-hdr-btn:hover { color: rgba(255,255,255,.8); background: rgba(255,255,255,.07); }
+.chat-msgs {
+  flex: 1; overflow-y: auto; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.1) transparent;
+}
+.chat-msgs::-webkit-scrollbar { width: 4px; }
+.chat-msgs::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+.chat-msg { max-width: 90%; }
+.chat-msg-user { align-self: flex-end; }
+.chat-msg-bot  { align-self: flex-start; }
+.chat-bubble {
+  padding: 0.55rem 0.75rem; border-radius: 10px; font-size: 0.8rem; line-height: 1.6;
+}
+.chat-msg-user .chat-bubble {
+  background: #13A89E; color: #fff; border-bottom-right-radius: 3px;
+}
+.chat-msg-bot .chat-bubble {
+  background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); border-bottom-left-radius: 3px;
+}
+.chat-msg-meta { font-size: 0.62rem; color: rgba(255,255,255,.3); margin-top: 0.2rem; }
+.chat-msg-user .chat-msg-meta { text-align: right; }
+.chat-action-card {
+  background: rgba(201,149,42,.12);
+  border: 1px solid rgba(201,149,42,.3);
+  border-radius: 10px; padding: 0.75rem;
+  font-size: 0.78rem; color: rgba(255,255,255,.85);
+}
+.chat-action-card-hdr {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+  color: #C9952A; margin-bottom: 0.4rem;
+}
+.chat-action-btns { display: flex; gap: 0.5rem; margin-top: 0.65rem; }
+.chat-confirm-btn {
+  flex: 1; padding: 0.35rem 0; border: none; border-radius: 6px;
+  background: #13A89E; color: #fff; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+}
+.chat-confirm-btn:hover { background: #0d8f87; }
+.chat-cancel-btn {
+  padding: 0.35rem 0.75rem; border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px; background: none; color: rgba(255,255,255,.5);
+  font-size: 0.75rem; cursor: pointer;
+}
+.chat-cancel-btn:hover { background: rgba(255,255,255,.05); color: #fff; }
+.chat-typing {
+  display: none; align-self: flex-start; padding: 0.4rem 0.75rem;
+  background: rgba(255,255,255,.08); border-radius: 10px; gap: 4px;
+  align-items: center;
+}
+.chat-typing.show { display: flex; }
+.chat-typing span {
+  width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.4);
+  animation: chat-bounce 1.2s ease-in-out infinite;
+}
+.chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes chat-bounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-5px); } }
+.chat-empty-state {
+  text-align: center; padding: 2rem 1rem; color: rgba(255,255,255,.3); font-size: 0.78rem;
+}
+.chat-input-wrap { padding: 0.65rem; border-top: 1px solid rgba(255,255,255,.1); flex-shrink: 0; }
+.chat-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
+.chat-input {
+  flex: 1; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15);
+  border-radius: 8px; padding: 0.45rem 0.65rem; color: #fff; font-size: 0.8rem;
+  resize: none; outline: none; min-height: 36px; max-height: 100px;
+  font-family: inherit; line-height: 1.5;
+}
+.chat-input::placeholder { color: rgba(255,255,255,.3); }
+.chat-input:focus { border-color: rgba(19,168,158,.5); }
+.chat-send-btn {
+  width: 34px; height: 34px; border-radius: 8px; border: none;
+  background: #13A89E; color: #fff; font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.chat-send-btn:hover { background: #0d8f87; }
+.chat-send-btn:disabled { background: rgba(19,168,158,.3); cursor: not-allowed; }
+.chat-fab {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300;
+  display: none;
+  background: #13A89E; color: #fff; border: none; border-radius: 999px;
+  padding: 0.55rem 1.1rem; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(19,168,158,.4); transition: background 0.15s, box-shadow 0.15s;
+  align-items: center; gap: 0.4rem;
+}
+.chat-fab:hover { background: #0d8f87; box-shadow: 0 6px 20px rgba(19,168,158,.5); }
+.chat-fab.show { display: flex; }
+@media (max-width: 900px) {
+  .jrn-journey-wrap { flex-direction: column; }
+  .jrn-chat-col { width: 100%; padding: 0 0 1.5rem; position: static; max-height: none; }
+  .chat-panel { height: 420px; }
+  .chat-fab { display: none !important; }
+}
+
+/* ── Notification bell ───────────────────────────────────────────────────── */
+.notif-bell-btn {
+  position: relative; background: none; border: none; cursor: pointer;
+  padding: 0.3rem; color: rgba(255,255,255,.55); font-size: 1.15rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; transition: color .15s, background .15s;
+}
+.notif-bell-btn:hover { color: #fff; background: rgba(255,255,255,.07); }
+.notif-bell-badge {
+  position: absolute; top: 0; right: 0; transform: translate(30%,-30%);
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  background: #ef4444; color: #fff; font-size: 0.6rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+  pointer-events: none;
+}
+/* Slide-in notification centre */
+.notif-panel-overlay {
+  display: none; position: fixed; inset: 0; z-index: 900;
+}
+.notif-panel-overlay.open { display: block; }
+.notif-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw);
+  background: #0d1424; border-left: 1px solid rgba(255,255,255,.1);
+  display: flex; flex-direction: column;
+  box-shadow: -8px 0 32px rgba(0,0,0,.5); z-index: 901;
+  transform: translateX(100%); transition: transform .25s ease;
+}
+.notif-panel-overlay.open .notif-panel { transform: translateX(0); }
+.notif-panel-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .875rem 1rem; border-bottom: 1px solid rgba(255,255,255,.1); flex-shrink: 0;
+}
+.notif-panel-title { font-size: .9rem; font-weight: 700; color: #fff; }
+.notif-panel-actions { display: flex; align-items: center; gap: .5rem; }
+.notif-mark-all-btn {
+  font-size: .72rem; padding: .2rem .55rem; border-radius: 4px; cursor: pointer;
+  background: none; border: 1px solid rgba(255,255,255,.18); color: rgba(255,255,255,.55);
+  transition: background .15s, color .15s;
+}
+.notif-mark-all-btn:hover { background: rgba(255,255,255,.07); color: #fff; }
+.notif-panel-close {
+  background: none; border: none; cursor: pointer; color: rgba(255,255,255,.4);
+  font-size: 1.2rem; line-height: 1; padding: .2rem .3rem; border-radius: 4px;
+}
+.notif-panel-close:hover { color: #fff; }
+.notif-list { flex: 1; overflow-y: auto; }
+.notif-item {
+  padding: .85rem 1rem; border-bottom: 1px solid rgba(255,255,255,.06);
+  cursor: pointer; transition: background .12s;
+}
+.notif-item:hover { background: rgba(255,255,255,.04); }
+.notif-item.unread { background: rgba(245,200,66,.04); }
+.notif-item.unread:hover { background: rgba(245,200,66,.07); }
+.notif-item-title {
+  font-size: .82rem; font-weight: 600; color: #e8eaf0; line-height: 1.35;
+  display: flex; align-items: flex-start; gap: .5rem;
+}
+.notif-priority-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: .3rem;
+}
+.notif-priority-high { background: #ef4444; }
+.notif-priority-normal { background: #f5c842; }
+.notif-priority-low { background: rgba(255,255,255,.2); }
+.notif-item-body { font-size: .75rem; color: rgba(255,255,255,.5); margin-top: .2rem; line-height: 1.5; }
+.notif-item-footer { display: flex; align-items: center; justify-content: space-between; margin-top: .45rem; }
+.notif-item-time { font-size: .68rem; color: rgba(255,255,255,.3); }
+.notif-cta-btn {
+  font-size: .7rem; padding: .15rem .5rem; border-radius: 4px; cursor: pointer; text-decoration: none;
+  background: none; border: 1px solid rgba(255,255,255,.18); color: rgba(255,255,255,.6);
+  transition: background .12s, color .12s;
+}
+.notif-cta-btn:hover { background: rgba(255,255,255,.07); color: #fff; }
+.notif-empty {
+  padding: 2.5rem 1rem; text-align: center;
+  font-size: .84rem; color: rgba(255,255,255,.3);
+}
 </style>
 {% endblock %}
 
@@ -818,8 +1031,32 @@
     {% if not (advisor_mode is defined and advisor_mode) %}
     <button class="btn btn-primary btn-sm" id="configBtn">⚙ Settings</button>
     {% endif %}
+    {% if not (advisor_mode is defined and advisor_mode) %}
+    <button class="notif-bell-btn" id="notifBellBtn" onclick="openNotifPanel()" title="Notifications" aria-label="Notifications">
+      🔔
+      <span class="notif-bell-badge" id="notifBadge" style="display:none"></span>
+    </button>
+    {% endif %}
   </div>
 </div>
+
+<!-- Notification centre panel -->
+{% if not (advisor_mode is defined and advisor_mode) %}
+<div class="notif-panel-overlay" id="notifPanelOverlay" onclick="if(event.target===this)closeNotifPanel()">
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-panel-hdr">
+      <span class="notif-panel-title">Notifications</span>
+      <div class="notif-panel-actions">
+        <button class="notif-mark-all-btn" onclick="markAllNotifRead()">Mark all read</button>
+        <button class="notif-panel-close" onclick="closeNotifPanel()" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div class="notif-list" id="notifList">
+      <div class="notif-empty">Loading…</div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Setup overlay — shown when no config exists -->
 <div class="setup-overlay" id="setupOverlay" style="display:none">
@@ -950,6 +1187,8 @@
 
   <!-- JOURNEY TAB -->
   <div id="tab-journey" class="gcc-tab-panel active" role="tabpanel">
+  <div class="jrn-journey-wrap">
+  <div class="jrn-left-col">
     <div class="jrn-rows" id="jrnRows"></div>
 
     <!-- 12-Month Impact Card -->
@@ -1052,7 +1291,42 @@
         </div>
       </div>
     </div>
-  </div>
+  </div><!-- /jrn-left-col -->
+
+  <!-- Co-pilot chat column -->
+  <div class="jrn-chat-col" id="jrnChatCol">
+    <div class="chat-panel">
+      <div class="chat-panel-hdr">
+        <div class="chat-panel-title">
+          <span class="chat-panel-dot"></span>
+          Co-pilot
+        </div>
+        <div class="chat-panel-hdr-btns">
+          <button class="chat-hdr-btn" onclick="startNewConversation()" title="New conversation">+</button>
+          <button class="chat-hdr-btn" onclick="collapseChat()" title="Close">✕</button>
+        </div>
+      </div>
+      <div class="chat-msgs" id="chatMsgs">
+        <div class="chat-empty-state" id="chatEmptyState">
+          Ask anything about your simulation — income, agents, strategy.
+        </div>
+      </div>
+      <div class="chat-typing" id="chatTyping">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="chat-input-wrap">
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chatInput" rows="1"
+            placeholder="Ask Co-pilot…" maxlength="1000"
+            onkeydown="chatInputKeydown(event)"></textarea>
+          <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()" title="Send">↑</button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /jrn-chat-col -->
+
+  </div><!-- /jrn-journey-wrap -->
+  </div><!-- /tab-journey -->
 
   <!-- NUMBERS TAB -->
   <div id="tab-numbers" class="gcc-tab-panel" role="tabpanel">
@@ -1155,12 +1429,94 @@ document.getElementById('flagModalOverlay').addEventListener('click', function(e
 </script>
 {% endif %}
 
+<!-- Income capture modal (Journey tab) -->
+<div class="inc-jrn-overlay" id="incJrnOverlay" style="display:none" onclick="closeIncomeModal()"></div>
+<div class="inc-jrn-modal" id="incJrnModal" style="display:none" role="dialog" aria-modal="true">
+  <div class="inc-jrn-hdr">
+    <span id="incJrnTitle">Log income</span>
+    <button onclick="closeIncomeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:rgba(255,255,255,.6)">&times;</button>
+  </div>
+  <div class="inc-jrn-body">
+    <div style="margin-bottom:.75rem">
+      <label class="inc-jrn-label" for="incJrnAmount">Amount (USD)</label>
+      <input type="number" id="incJrnAmount" min="0.01" step="0.01" placeholder="e.g. 2500" class="inc-jrn-input">
+    </div>
+    <div style="margin-bottom:.75rem">
+      <label class="inc-jrn-label" for="incJrnDate">Date earned</label>
+      <input type="date" id="incJrnDate" class="inc-jrn-input">
+    </div>
+    <div>
+      <label class="inc-jrn-label" for="incJrnDesc">Description (optional)</label>
+      <input type="text" id="incJrnDesc" maxlength="200" placeholder="e.g. Consulting retainer — March" class="inc-jrn-input">
+    </div>
+    <div id="incJrnErr" style="display:none;margin-top:.6rem;font-size:.75rem;color:#F87171"></div>
+  </div>
+  <div class="inc-jrn-footer">
+    <a id="incJrnFullLink" href="#" style="font-size:.72rem;color:rgba(255,255,255,.5);text-decoration:none">View full income log →</a>
+    <div style="display:flex;gap:.5rem">
+      <button onclick="closeIncomeModal()" class="inc-jrn-btn-ghost">Cancel</button>
+      <button id="incJrnSubmit" onclick="submitLayerIncome()" class="inc-jrn-btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+<style>
+.inc-jrn-overlay { position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1400 }
+.inc-jrn-modal { position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1E2A3A;border:1px solid rgba(255,255,255,.12);border-radius:10px;width:340px;max-width:calc(100vw - 2rem);z-index:1401;padding:1.25rem }
+.inc-jrn-hdr { display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;font-size:.95rem;font-weight:700;color:#fff }
+.inc-jrn-label { display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5);margin-bottom:.3rem }
+.inc-jrn-input { width:100%;box-sizing:border-box;padding:.45rem .6rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;border-radius:5px;font-size:.875rem;outline:none }
+.inc-jrn-input:focus { border-color:rgba(255,255,255,.4) }
+.inc-jrn-footer { display:flex;justify-content:space-between;align-items:center;margin-top:.9rem }
+.inc-jrn-btn-ghost { background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);border-radius:5px;padding:.4rem .8rem;font-size:.8rem;cursor:pointer }
+.inc-jrn-btn-primary { background:#0D1B3E;color:#fff;border:none;border-radius:5px;padding:.4rem .9rem;font-size:.8rem;cursor:pointer }
+.inc-jrn-btn-primary:disabled { opacity:.5;cursor:not-allowed }
+</style>
+
+<!-- Document signing modal -->
+<div id="signModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1500" onclick="if(event.target===this)closeSignModal()"></div>
+<div id="signModal" role="dialog" aria-modal="true"
+     style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1E2A3A;border:1px solid rgba(255,255,255,.12);border-radius:10px;width:380px;max-width:calc(100vw - 2rem);z-index:1501;padding:1.4rem">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <span style="font-size:.95rem;font-weight:700;color:#fff">Send for Signature</span>
+    <button onclick="closeSignModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:rgba(255,255,255,.6)">&times;</button>
+  </div>
+  <p style="font-size:.8rem;color:rgba(255,255,255,.5);margin:0 0 1rem;line-height:1.55">
+    This will send the <strong id="signDocTitle" style="color:#e8eaf0"></strong> document via PandaDoc for e-signature.
+    The recipient will receive an email with a signing link. Their CRM stage will advance to <strong style="color:#86efac">Client</strong> once signed.
+  </p>
+  <div style="margin-bottom:.75rem">
+    <label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5);margin-bottom:.3rem">Recipient email *</label>
+    <input type="email" id="signRecipientEmail" placeholder="prospect@company.com"
+           style="width:100%;box-sizing:border-box;padding:.45rem .6rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;border-radius:5px;font-size:.875rem;outline:none">
+  </div>
+  <div style="margin-bottom:.75rem">
+    <label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5);margin-bottom:.3rem">Recipient name (optional)</label>
+    <input type="text" id="signRecipientName" placeholder="First Last"
+           style="width:100%;box-sizing:border-box;padding:.45rem .6rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;border-radius:5px;font-size:.875rem;outline:none">
+  </div>
+  <div id="signErr" style="display:none;font-size:.75rem;color:#F87171;margin-bottom:.5rem"></div>
+  <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem">
+    <button onclick="closeSignModal()" style="background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);border-radius:5px;padding:.4rem .8rem;font-size:.8rem;cursor:pointer">Cancel</button>
+    <button id="signSendBtn" onclick="sendForSignature()"
+            style="background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.4);color:#f5c842;border-radius:5px;padding:.4rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">
+      &#x270D; Send
+    </button>
+  </div>
+</div>
+
+<!-- Chat co-pilot FAB (shows when panel collapsed on desktop) -->
+<button class="chat-fab" id="chatFab" onclick="openChat()">
+  <span>&#128172;</span> Co-pilot
+</button>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-const SIM_ID = '{{ sim.id }}';
-const API = `${window.ROOT}/api/simulations/${SIM_ID}/layer6`;
+const SIM_ID     = '{{ sim.id }}';
+const API        = `${window.ROOT}/api/simulations/${SIM_ID}/layer6`;
+const INCOME_API = `${window.ROOT}/api/simulations/${SIM_ID}/income`;
+const CHAT_API   = `${window.ROOT}/api/simulations/${SIM_ID}/chat`;
 
 // Advisor mode data (injected from server)
 window.__advisorMode = {{ 'true' if (advisor_mode is defined and advisor_mode) else 'false' }};
@@ -1521,6 +1877,10 @@ function _buildJourneyRows() {
               <span class="jrn-artifact-name" id="jrn-artname-${l.n}-${i}">${label}</span>
               <span class="jrn-ap-ver" id="jrn-artver-${l.n}-${i}">v1</span>
               <span class="jrn-fchip">Artifact</span>
+              <a class="jrn-live-link" id="jrn-artlive-${l.n}-${i}" href="#" target="_blank" rel="noopener"
+                 style="display:none;font-size:.68rem;color:#86efac;text-decoration:none;margin-left:auto;flex-shrink:0">
+                View live &#x2197;
+              </a>
             </div>
             <div class="jrn-kv-grid" id="jrn-artkv-${l.n}-${i}"></div>
           </div>
@@ -1529,7 +1889,9 @@ function _buildJourneyRows() {
               ? `<button class="jrn-ap-edit" onclick="event.stopPropagation();openFlagModal(${l.n})">⚑ Flag for client</button>`
               : `<button class="jrn-ap-edit" onclick="event.stopPropagation();openToolChip('${atype}')">Edit inputs</button>
                  <button class="jrn-ap-rerun" style="border-color:${l.color};color:${l.color}"
-                         onclick="event.stopPropagation();openToolChip('${atype}')">Re-run ↗</button>`
+                         onclick="event.stopPropagation();openToolChip('${atype}')">Re-run ↗</button>
+                 <button class="jrn-ap-deploy" id="jrn-artdeploy-${l.n}-${i}" style="display:none"
+                         onclick="event.stopPropagation();deployArtifact(${l.n},${i})">&#x1F310; Publish</button>`
             }
           </div>
         </div>
@@ -1597,13 +1959,19 @@ function _buildJourneyRows() {
             <div class="jrn-ap-header">
               <span class="jrn-ap-name" id="jrn-ap-name-${l.n}"></span>
               <span class="jrn-ap-ver" id="jrn-ap-ver-${l.n}">v1</span>
+              <a class="jrn-live-link" id="jrn-ap-live-${l.n}" href="#" target="_blank" rel="noopener"
+                 style="display:none;font-size:.68rem;color:#86efac;text-decoration:none;margin-left:auto;flex-shrink:0">
+                View live &#x2197;
+              </a>
             </div>
             <div class="jrn-kv-grid" id="jrn-ap-fields-${l.n}"></div>
             <div class="jrn-ap-footer">
               ${window.__advisorMode
                 ? `<button class="jrn-ap-flag" id="jrn-ap-flag-${l.n}" onclick="openFlagModal(${l.n})">⚑ Flag for client</button>`
                 : `<button class="jrn-ap-edit" id="jrn-ap-edit-${l.n}">Edit inputs</button>
-                   <button class="jrn-ap-rerun" id="jrn-ap-rerun-${l.n}" style="border-color:${l.color};color:${l.color}">Re-run ↗</button>`
+                   <button class="jrn-ap-rerun" id="jrn-ap-rerun-${l.n}" style="border-color:${l.color};color:${l.color}">Re-run ↗</button>
+                   <button class="jrn-ap-deploy" id="jrn-ap-deploy-${l.n}" style="display:none" onclick="deployFromPanel(${l.n})">&#x1F310; Publish</button>
+                   <button class="jrn-ap-sign" id="jrn-ap-sign-${l.n}" style="display:none" onclick="openSignModal(${l.n})">&#x270D; Send for signature</button>`
               }
             </div>
           </div>
@@ -1619,6 +1987,15 @@ function _buildJourneyRows() {
           <div class="jrn-metric" style="margin-top:0.75rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,.08)">
             <span class="jrn-metric-label">${l.metricLabel}</span>
             <span class="jrn-metric-value" id="jrn-metric-${l.n}">—</span>
+          </div>
+
+          <!-- Income bar -->
+          <div style="margin-top:0.5rem;display:flex;justify-content:space-between;align-items:baseline">
+            <div class="jrn-metric">
+              <span class="jrn-metric-label">Income recorded</span>
+              <span class="jrn-metric-value" id="jrn-income-${l.n}" style="color:${l.color}">—</span>
+            </div>
+            ${!window.__advisorMode ? `<button onclick="event.stopPropagation();openIncomeModal(${l.n})" style="font-size:0.68rem;padding:0.15rem 0.5rem;border:1px solid ${l.color};color:${l.color};background:transparent;border-radius:4px;cursor:pointer;flex-shrink:0">Log +</button>` : ''}
           </div>
 
           ${!window.__advisorMode ? `<div id="jrn-suggestion-callout-${l.n}" style="display:none"></div>` : ''}
@@ -1939,8 +2316,11 @@ function openStepPanel(n, i) {
   const nameEl   = document.getElementById(`jrn-ap-name-${n}`);
   const verEl    = document.getElementById(`jrn-ap-ver-${n}`);
   const fieldsEl = document.getElementById(`jrn-ap-fields-${n}`);
-  const editBtn  = document.getElementById(`jrn-ap-edit-${n}`);
-  const rerunBtn = document.getElementById(`jrn-ap-rerun-${n}`);
+  const editBtn   = document.getElementById(`jrn-ap-edit-${n}`);
+  const rerunBtn  = document.getElementById(`jrn-ap-rerun-${n}`);
+  const signBtn   = document.getElementById(`jrn-ap-sign-${n}`);
+  const liveLink  = document.getElementById(`jrn-ap-live-${n}`);
+  const deployBtn = document.getElementById(`jrn-ap-deploy-${n}`);
 
   if (actionEl) actionEl.textContent = isDone
     ? `Completed action — ${step.label}`
@@ -1963,12 +2343,222 @@ function openStepPanel(n, i) {
     rerunBtn.onmouseleave = function() { this.style.background = ''; this.style.color = layer ? layer.color : ''; };
   }
 
+  // Show "View live →" link in panel header
+  if (liveLink) {
+    if (isDone && step.public_url) {
+      liveLink.href = step.public_url;
+      liveLink.style.display = 'inline';
+    } else {
+      liveLink.style.display = 'none';
+    }
+  }
+
+  // Show "Publish" button for publishable types
+  const PUBLISHABLE_TYPES = new Set([
+    'seo_content_calendar','sales_page','waitlist_landing_page','lead_magnet_funnel',
+    'newsletter_monetization','youtube_podcast_strategy','email_newsletter',
+    'case_study','white_paper','ebook_outline',
+  ]);
+  if (deployBtn && !window.__advisorMode) {
+    const showDeploy = isDone && PUBLISHABLE_TYPES.has(step.type);
+    deployBtn.style.display = showDeploy ? '' : 'none';
+    if (showDeploy) {
+      deployBtn.dataset.layerN            = n;
+      deployBtn.dataset.actionType        = step.type;
+      deployBtn.dataset.actionId          = step.action_id || '';
+      deployBtn.dataset.artifactVersionId = step.artifact_version_id || '';
+      deployBtn.dataset.docTitle          = step.label;
+      deployBtn.textContent = step.public_url ? '🌐 Re-publish' : '🌐 Publish';
+    }
+  }
+
+  // Show "Send for signature" only for signing-eligible completed actions
+  const SIGNING_TYPES = new Set([
+    'consulting_proposal','coaching_agreement','service_agreement',
+    'freelance_contract','nda','mou','retainer_agreement',
+  ]);
+  if (signBtn) {
+    const showSign = isDone && SIGNING_TYPES.has(step.type);
+    signBtn.style.display = showSign ? '' : 'none';
+    if (showSign) {
+      signBtn.dataset.layerN     = n;
+      signBtn.dataset.actionId   = step.action_id || '';
+      signBtn.dataset.actionType = step.type;
+      signBtn.dataset.docTitle   = step.label;
+    }
+  }
+
   panel.classList.add('show');
 }
 
 function closeStepPanel(n) {
   const panel = document.getElementById(`jrn-ap-${n}`);
   if (panel) panel.classList.remove('show');
+}
+
+// ── Artifact publishing ───────────────────────────────────────────────────────
+
+async function deployArtifact(layerN, stepIdx) {
+  const btn = document.getElementById(`jrn-artdeploy-${layerN}-${stepIdx}`);
+  if (!btn) return;
+  const steps = _layerStepData[layerN];
+  const step = steps ? steps[stepIdx] : null;
+  if (!step) return;
+  await _runDeploy(btn, step, layerN, stepIdx, false);
+}
+
+async function deployFromPanel(layerN) {
+  const btn = document.getElementById(`jrn-ap-deploy-${layerN}`);
+  if (!btn) return;
+  const steps = _layerStepData[layerN];
+  const step = steps ? steps.find(s => s.type === btn.dataset.actionType) : null;
+  if (!step) return;
+  const stepIdx = steps.indexOf(step);
+  await _runDeploy(btn, step, layerN, stepIdx, true);
+}
+
+async function _runDeploy(btn, step, layerN, stepIdx, isPanel) {
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Publishing…';
+
+  try {
+    const res = await fetch(window.ROOT + '/api/publishing/deploy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        simulation_id:        SIM_ID,
+        action_id:            step.action_id || '',
+        action_type:          step.type,
+        artifact_version_id:  step.artifact_version_id || '',
+        layer_number:         layerN,
+        title:                step.label,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      btn.disabled = false;
+      btn.textContent = origText;
+      if (data.error === 'convertkit_not_configured') {
+        alert('ConvertKit not configured.\nGo to Settings → Integrations to add your API keys.');
+      } else {
+        alert('Deploy failed: ' + (data.error || data.message || 'unknown error'));
+      }
+      return;
+    }
+
+    const publicUrl = data.public_url || data.hosted_url;
+    btn.disabled = false;
+    btn.textContent = '🌐 Re-publish';
+
+    // Update step data so the live link appears
+    if (publicUrl) {
+      step.public_url = publicUrl;
+      // Update live link in card
+      const liveEl = document.getElementById(`jrn-artlive-${layerN}-${stepIdx}`);
+      if (liveEl) { liveEl.href = publicUrl; liveEl.style.display = 'inline'; }
+      // Update live link in panel
+      const panelLive = document.getElementById(`jrn-ap-live-${layerN}`);
+      if (panelLive && isPanel) { panelLive.href = publicUrl; panelLive.style.display = 'inline'; }
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = origText;
+    alert('Network error — check your connection.');
+  }
+}
+
+// ── Document signing modal ────────────────────────────────────────────────────
+let _signLayerN = null;
+let _signActionId = null;
+let _signActionType = null;
+let _signDocTitle = null;
+let _signSimId = null;
+let _signLayerNumber = null;
+
+function openSignModal(layerN) {
+  const signBtn = document.getElementById(`jrn-ap-sign-${layerN}`);
+  if (!signBtn) return;
+  _signLayerN      = layerN;
+  _signActionId    = signBtn.dataset.actionId   || null;
+  _signActionType  = signBtn.dataset.actionType || '';
+  _signDocTitle    = signBtn.dataset.docTitle   || 'Agreement';
+  _signLayerNumber = layerN;
+  _signSimId       = SIM_ID;
+
+  const titleEl = document.getElementById('signDocTitle');
+  if (titleEl) titleEl.textContent = _signDocTitle;
+  document.getElementById('signRecipientEmail').value = '';
+  document.getElementById('signRecipientName').value  = '';
+  const errEl = document.getElementById('signErr');
+  if (errEl) errEl.style.display = 'none';
+  document.getElementById('signModalOverlay').style.display = 'block';
+  document.getElementById('signModal').style.display        = 'block';
+  setTimeout(() => document.getElementById('signRecipientEmail').focus(), 80);
+}
+
+function closeSignModal() {
+  document.getElementById('signModalOverlay').style.display = 'none';
+  document.getElementById('signModal').style.display        = 'none';
+}
+
+async function sendForSignature() {
+  const email = (document.getElementById('signRecipientEmail')?.value || '').trim();
+  const name  = (document.getElementById('signRecipientName')?.value  || '').trim();
+  const errEl = document.getElementById('signErr');
+  const btn   = document.getElementById('signSendBtn');
+
+  errEl.style.display = 'none';
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Enter a valid recipient email address.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    const res = await fetch(window.ROOT + '/api/signing/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        simulation_id:    _signSimId,
+        action_id:        _signActionId,
+        action_type:      _signActionType,
+        layer_number:     _signLayerNumber,
+        recipient_email:  email,
+        recipient_name:   name,
+        document_title:   _signDocTitle,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.error === 'pandadoc_not_configured') {
+        errEl.innerHTML = 'PandaDoc not configured. <a href="' + window.ROOT + '/settings/integrations" style="color:#f5c842">Connect in Settings → Integrations →</a>';
+      } else {
+        errEl.textContent = data.error || data.message || 'Failed to send document.';
+      }
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '✍ Send';
+      return;
+    }
+    closeSignModal();
+    // Show success in step panel via a temporary notice
+    const actionEl = document.getElementById(`jrn-ap-action-${_signLayerN}`);
+    if (actionEl) {
+      const orig = actionEl.textContent;
+      actionEl.textContent = `Document sent for signature to ${email}`;
+      actionEl.style.color = '#86efac';
+      setTimeout(() => { actionEl.textContent = orig; actionEl.style.color = ''; }, 4000);
+    }
+  } catch (exc) {
+    errEl.textContent = 'Network error — check your connection and try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '✍ Send';
+  }
 }
 
 // ── Advisor: coaching notes ───────────────────────────────────────────────
@@ -2181,6 +2771,7 @@ async function loadJourneyData() {
       if (data[String(l.n)]) populateLayerData(l.n, data[String(l.n)]);
     });
   } catch {}
+  loadIncomeData();
 }
 
 function populateLayerData(n, data) {
@@ -2271,14 +2862,42 @@ function populateLayerData(n, data) {
           descEl.style.display = text ? 'block' : 'none';
         }
         // Artifact kv-grid
-        const artboxEl = document.getElementById(`jrn-artbox-${n}-${i}`);
-        const kvEl     = document.getElementById(`jrn-artkv-${n}-${i}`);
-        const fields   = step.artifact_fields || [];
+        const artboxEl   = document.getElementById(`jrn-artbox-${n}-${i}`);
+        const kvEl       = document.getElementById(`jrn-artkv-${n}-${i}`);
+        const liveEl     = document.getElementById(`jrn-artlive-${n}-${i}`);
+        const deployBtn  = document.getElementById(`jrn-artdeploy-${n}-${i}`);
+        const fields     = step.artifact_fields || [];
         if (kvEl && fields.length) {
           kvEl.innerHTML = fields.map(([k, v]) =>
             `<div class="jrn-kv"><div class="jrn-kk">${k}</div><div class="jrn-kv-val hi">${v}</div></div>`
           ).join('');
           if (artboxEl) artboxEl.style.display = 'block';
+        }
+        // Public URL: "View live →" link
+        if (liveEl) {
+          if (step.public_url) {
+            liveEl.href = step.public_url;
+            liveEl.style.display = 'inline';
+          } else {
+            liveEl.style.display = 'none';
+          }
+        }
+        // Deploy button: show for publishable types without a URL yet
+        if (deployBtn && !window.__advisorMode) {
+          const PUBLISHABLE = new Set([
+            'seo_content_calendar','sales_page','waitlist_landing_page','lead_magnet_funnel',
+            'newsletter_monetization','youtube_podcast_strategy','email_newsletter',
+            'case_study','white_paper','ebook_outline',
+          ]);
+          deployBtn.style.display = PUBLISHABLE.has(step.type) ? '' : 'none';
+          if (PUBLISHABLE.has(step.type)) {
+            deployBtn.dataset.layerN           = n;
+            deployBtn.dataset.stepIdx          = i;
+            deployBtn.dataset.actionType       = step.type;
+            deployBtn.dataset.actionId         = step.action_id || '';
+            deployBtn.dataset.artifactVersionId = step.artifact_version_id || '';
+            deployBtn.textContent = step.public_url ? '🌐 Re-publish' : '🌐 Publish';
+          }
         }
         bodyEl.style.display = 'block';
       }
@@ -2296,6 +2915,78 @@ function populateLayerData(n, data) {
     nextRun.style.display = 'flex';
   } else if (nextRun) {
     nextRun.style.display = 'none';
+  }
+}
+
+// ── Income data loading ───────────────────────────────────────────────────
+async function loadIncomeData() {
+  try {
+    const d = await fetch(`${INCOME_API}/summary`).then(r => r.json());
+    if (!d || !d.by_layer) return;
+    for (let n = 1; n <= 5; n++) {
+      const el = document.getElementById(`jrn-income-${n}`);
+      if (!el) continue;
+      const layer = d.by_layer[String(n)];
+      el.textContent = layer ? fmt(layer.total) : '—';
+    }
+    // Update footer income actual
+    const incActEl = document.getElementById('jrnIncomeActual');
+    if (incActEl && d.grand_total) incActEl.textContent = fmt(d.grand_total);
+  } catch {}
+}
+
+// ── Income modal ──────────────────────────────────────────────────────────
+let _incomeTargetLayer = 1;
+
+function openIncomeModal(layerN) {
+  _incomeTargetLayer = layerN;
+  const LAYER_NAMES_MAP = {1:'Active',2:'Leveraged',3:'Productized',4:'Automated',5:'Wealth'};
+  const titleEl = document.getElementById('incJrnTitle');
+  if (titleEl) titleEl.textContent = `Log income — L${layerN} · ${LAYER_NAMES_MAP[layerN] || ''}`;
+  const linkEl = document.getElementById('incJrnFullLink');
+  if (linkEl) linkEl.href = `${window.ROOT}/simulations/${SIM_ID}/income`;
+  document.getElementById('incJrnDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('incJrnAmount').value = '';
+  document.getElementById('incJrnDesc').value = '';
+  document.getElementById('incJrnErr').style.display = 'none';
+  const submitBtn = document.getElementById('incJrnSubmit');
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Save'; }
+  document.getElementById('incJrnOverlay').style.display = 'block';
+  document.getElementById('incJrnModal').style.display = 'block';
+  setTimeout(() => { const a = document.getElementById('incJrnAmount'); if (a) a.focus(); }, 50);
+}
+
+function closeIncomeModal() {
+  document.getElementById('incJrnOverlay').style.display = 'none';
+  document.getElementById('incJrnModal').style.display = 'none';
+}
+
+async function submitLayerIncome() {
+  const amount = parseFloat(document.getElementById('incJrnAmount').value);
+  const dt     = document.getElementById('incJrnDate').value;
+  const desc   = document.getElementById('incJrnDesc').value.trim();
+  const errEl  = document.getElementById('incJrnErr');
+
+  if (!amount || amount <= 0) { errEl.textContent = 'Enter a valid amount.'; errEl.style.display = 'block'; return; }
+  if (!dt) { errEl.textContent = 'Select the date earned.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+
+  const btn = document.getElementById('incJrnSubmit');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  try {
+    const res = await fetch(INCOME_API, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ layer_number: _incomeTargetLayer, amount, income_date: dt, description: desc }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed'); }
+    closeIncomeModal();
+    loadIncomeData();
+  } catch (e) {
+    errEl.textContent = e.message || 'Failed to save. Try again.';
+    errEl.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
   }
 }
 
@@ -2364,6 +3055,8 @@ function _initGCCSSE() {
         const labels = {harvest:'Harvest · collecting', score:'Score · ranking', schedule:'Schedule · dispatching', report:'Report · updating'};
         pb.textContent = labels[step] || step;
       }
+    } else if (type === 'income_recorded') {
+      loadIncomeData();
     }
   };
   _gccSse.onerror = () => { if (_gccSse) { _gccSse.close(); _gccSse = null; } };
@@ -2414,8 +3107,294 @@ document.getElementById('diagramModal').addEventListener('click', function(e) {
   if (e.target === this) closeDiagramModal();
 });
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeDiagramModal();
+  if (e.key === 'Escape') {
+    closeDiagramModal();
+    closeIncomeModal();
+  }
 });
+
+// ── Chat Co-pilot ────────────────────────────────────────────────────────
+
+let _chatHistoryLoaded = false;
+let _chatStreaming = false;
+let _chatSessionId = null;  // current conversation session_id
+
+function _getSessionId() {
+  if (_chatSessionId) return _chatSessionId;
+  try { _chatSessionId = localStorage.getItem('sim_chat_session_' + SIM_ID) || null; } catch {}
+  return _chatSessionId;
+}
+
+function _saveSessionId(sid) {
+  _chatSessionId = sid;
+  try { localStorage.setItem('sim_chat_session_' + SIM_ID, sid); } catch {}
+}
+
+function openChat() {
+  const col = document.getElementById('jrnChatCol');
+  const fab = document.getElementById('chatFab');
+  col.classList.add('open');
+  fab.classList.remove('show');
+  try { localStorage.setItem('sim_chat_open_' + SIM_ID, '1'); } catch {}
+  if (!_chatHistoryLoaded) loadChatHistory();
+}
+
+function startNewConversation() {
+  if (!confirm('Start a new conversation? Your current conversation will be saved in My Chats.')) return;
+  // Clear stored session so server assigns a fresh one on next POST
+  _chatSessionId = null;
+  try { localStorage.removeItem('sim_chat_session_' + SIM_ID); } catch {}
+  _chatHistoryLoaded = false;
+  const container = document.getElementById('chatMsgs');
+  container.innerHTML = '';
+  const empty = document.createElement('div');
+  empty.className = 'chat-empty-state';
+  empty.id = 'chatEmptyState';
+  empty.textContent = 'Ask anything about your simulation — income, agents, strategy.';
+  container.appendChild(empty);
+  _chatHistoryLoaded = true;
+}
+
+function collapseChat() {
+  const col = document.getElementById('jrnChatCol');
+  const fab = document.getElementById('chatFab');
+  col.classList.remove('open');
+  fab.classList.add('show');
+  try { localStorage.removeItem('sim_chat_open_' + SIM_ID); } catch {}
+}
+
+async function loadChatHistory() {
+  _chatHistoryLoaded = true;
+  try {
+    const storedSid = _getSessionId();
+    const url = storedSid ? CHAT_API + '?session_id=' + encodeURIComponent(storedSid) : CHAT_API;
+    const data = await apiFetch(url);
+    // data is {session_id, messages} or an array (legacy fallback)
+    const msgs = Array.isArray(data) ? data : (data.messages || []);
+    const sid  = Array.isArray(data) ? null : data.session_id;
+    if (sid) _saveSessionId(sid);
+    const container = document.getElementById('chatMsgs');
+    const empty = document.getElementById('chatEmptyState');
+    if (!msgs.length) return;
+    empty.style.display = 'none';
+    msgs.forEach(m => _appendMessage(m));
+    _scrollChat();
+  } catch (e) {
+    // silently ignore — chat is optional
+  }
+}
+
+function _appendMessage(msg) {
+  const container = document.getElementById('chatMsgs');
+  const empty = document.getElementById('chatEmptyState');
+  empty.style.display = 'none';
+
+  if (msg.action_status === 'pending' || msg.action_type) {
+    container.appendChild(_buildActionCard(msg));
+    return;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg ' + (msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-bot');
+  wrap.dataset.msgId = msg.id || '';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble';
+  bubble.textContent = msg.content;
+
+  const meta = document.createElement('div');
+  meta.className = 'chat-msg-meta';
+  if (msg.created_at) {
+    const d = new Date(msg.created_at);
+    meta.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+
+  wrap.appendChild(bubble);
+  wrap.appendChild(meta);
+  container.appendChild(wrap);
+}
+
+function _buildActionCard(msg) {
+  const card = document.createElement('div');
+  card.className = 'chat-action-card';
+  card.dataset.msgId = msg.id || '';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'chat-action-card-hdr';
+  hdr.textContent = 'Suggested action';
+
+  const text = document.createElement('div');
+  text.textContent = msg.content;
+
+  const btns = document.createElement('div');
+  btns.className = 'chat-action-btns';
+
+  if (msg.action_status === 'pending') {
+    const confirm = document.createElement('button');
+    confirm.className = 'chat-confirm-btn';
+    confirm.textContent = 'Confirm';
+    confirm.onclick = () => confirmAction(msg.id, msg.action_type, msg.action_params || {});
+
+    const cancel = document.createElement('button');
+    cancel.className = 'chat-cancel-btn';
+    cancel.textContent = 'Cancel';
+    cancel.onclick = () => cancelAction(msg.id, card);
+
+    btns.appendChild(confirm);
+    btns.appendChild(cancel);
+  } else {
+    const status = document.createElement('span');
+    status.style.cssText = 'font-size:.72rem;color:rgba(255,255,255,.4)';
+    status.textContent = msg.action_status === 'executed' ? '✓ Done' : msg.action_status;
+    btns.appendChild(status);
+  }
+
+  card.appendChild(hdr);
+  card.appendChild(text);
+  card.appendChild(btns);
+  return card;
+}
+
+function _scrollChat() {
+  const container = document.getElementById('chatMsgs');
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChatMessage() {
+  if (_chatStreaming) return;
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  _chatStreaming = true;
+
+  const sendBtn = document.getElementById('chatSendBtn');
+  sendBtn.disabled = true;
+
+  _appendMessage({ role: 'user', content: msg, created_at: new Date().toISOString() });
+  _scrollChat();
+
+  const typing = document.getElementById('chatTyping');
+  typing.classList.add('show');
+  _scrollChat();
+
+  try {
+    const resp = await fetch(CHAT_API, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ message: msg, session_id: _getSessionId() }),
+    });
+
+    typing.classList.remove('show');
+    const data = await resp.json();
+
+    if (data.session_id) _saveSessionId(data.session_id);
+
+    if (!resp.ok) {
+      _appendMessage({ role: 'assistant', content: 'Error: ' + (data.error || `Server error ${resp.status}`) });
+    } else if (data.type === 'action_card') {
+      const container = document.getElementById('chatMsgs');
+      container.appendChild(_buildActionCard({
+        id: data.message_id,
+        content: data.content,
+        action_type: data.action_type,
+        action_params: data.parameters,
+        action_status: 'pending',
+      }));
+    } else if (data.type === 'error') {
+      _appendMessage({ role: 'assistant', content: 'Error: ' + (data.message || 'Something went wrong.') });
+    } else {
+      _appendMessage({ role: 'assistant', content: data.content || '' });
+    }
+    _scrollChat();
+  } catch (e) {
+    typing.classList.remove('show');
+    _appendMessage({ role: 'assistant', content: 'Network error — check your connection and try again.' });
+    _scrollChat();
+  } finally {
+    _chatStreaming = false;
+    sendBtn.disabled = false;
+    typing.classList.remove('show');
+  }
+}
+
+function chatInputKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+}
+
+async function confirmAction(msgId, actionType, params) {
+  try {
+    await apiFetch(`${CHAT_API}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ message_id: msgId, action_type: actionType, parameters: params }),
+    });
+    // Update card in UI
+    const card = document.querySelector(`.chat-action-card[data-msg-id="${msgId}"]`);
+    if (card) {
+      const btns = card.querySelector('.chat-action-btns');
+      if (btns) { btns.innerHTML = '<span style="font-size:.72rem;color:#5DCAA5">✓ Done</span>'; }
+    }
+    // Refresh income data if the action was income-related
+    if (actionType === 'log_income') loadIncomeData();
+  } catch (e) {
+    alert('Action failed: ' + e.message);
+  }
+}
+
+async function cancelAction(msgId, cardEl) {
+  try {
+    await apiFetch(`${CHAT_API}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ message_id: msgId }),
+    });
+    if (cardEl) {
+      const btns = cardEl.querySelector('.chat-action-btns');
+      if (btns) { btns.innerHTML = '<span style="font-size:.72rem;color:rgba(255,255,255,.3)">Cancelled</span>'; }
+    }
+  } catch {}
+}
+
+async function clearChatHistory() {
+  // Kept for compatibility but superseded by startNewConversation
+  if (!confirm('Archive this conversation? It will still be accessible in My Chats.')) return;
+  try {
+    const sid = _getSessionId();
+    await apiFetch(CHAT_API, {
+      method: 'DELETE',
+      body: JSON.stringify({ session_id: sid }),
+    });
+    startNewConversation();
+  } catch {}
+}
+
+// ── Chat init ─────────────────────────────────────────────────────────────
+(function _initChat() {
+  if (window.__advisorMode) return; // chat not available in advisor view
+  try {
+    const saved = localStorage.getItem('sim_chat_open_' + SIM_ID);
+    if (saved) {
+      openChat();
+    } else {
+      document.getElementById('chatFab').classList.add('show');
+    }
+  } catch {
+    document.getElementById('chatFab').classList.add('show');
+  }
+
+  // Auto-grow textarea
+  const input = document.getElementById('chatInput');
+  if (input) {
+    input.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+  }
+}());
 
 // ── Boot diagram ──────────────────────────────────────────────────────────
 window.__diagramCycle = {{ diagram_cycle | tojson if diagram_cycle else 'null' }};
@@ -2654,5 +3633,107 @@ function promoteSelected() {
 }
 
 checkPromoteBanner();
+
+// ── Notification bell ─────────────────────────────────────────────────────
+let _notifPollTimer = null;
+let _notifLoaded = false;
+
+function _notifTimeAgo(iso) {
+  const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (diff < 60) return 'just now';
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+async function _fetchUnreadCount() {
+  try {
+    const r = await fetch(`${window.ROOT}/api/notifications/unread-count`);
+    if (!r.ok) return;
+    const { count } = await r.json();
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch {}
+}
+
+function openNotifPanel() {
+  const overlay = document.getElementById('notifPanelOverlay');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  _loadNotifList();
+  clearInterval(_notifPollTimer);
+}
+
+function closeNotifPanel() {
+  const overlay = document.getElementById('notifPanelOverlay');
+  if (overlay) overlay.classList.remove('open');
+  _fetchUnreadCount();
+  _notifPollTimer = setInterval(_fetchUnreadCount, 30000);
+}
+
+async function _loadNotifList() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  try {
+    const r = await fetch(`${window.ROOT}/api/notifications?limit=40`);
+    if (!r.ok) { list.innerHTML = '<div class="notif-empty">Failed to load.</div>'; return; }
+    const items = await r.json();
+    if (!items.length) { list.innerHTML = '<div class="notif-empty">No notifications yet.</div>'; return; }
+    list.innerHTML = items.map(n => {
+      const isUnread = !n.read_at;
+      const dotClass = n.priority === 'high' ? 'notif-priority-high'
+                     : n.priority === 'low'  ? 'notif-priority-low'
+                     : 'notif-priority-normal';
+      const ctaHtml = n.cta_url && n.cta_label
+        ? `<a class="notif-cta-btn" href="${n.cta_url}" onclick="markNotifRead('${n.id}',this)">${n.cta_label}</a>`
+        : '';
+      return `
+      <div class="notif-item ${isUnread ? 'unread' : ''}" id="ni-${n.id}"
+           onclick="markNotifRead('${n.id}',this)">
+        <div class="notif-item-title">
+          <span class="notif-priority-dot ${dotClass}"></span>
+          ${n.title}
+        </div>
+        <div class="notif-item-body">${n.body.length > 120 ? n.body.slice(0,120) + '…' : n.body}</div>
+        <div class="notif-item-footer">
+          <span class="notif-item-time">${_notifTimeAgo(n.created_at)}</span>
+          ${ctaHtml}
+        </div>
+      </div>`;
+    }).join('');
+    _notifLoaded = true;
+  } catch { list.innerHTML = '<div class="notif-empty">Failed to load.</div>'; }
+}
+
+async function markNotifRead(id, el) {
+  const item = document.getElementById(`ni-${id}`);
+  if (item) item.classList.remove('unread');
+  try {
+    await fetch(`${window.ROOT}/api/notifications/${id}/read`, {method:'POST'});
+    _fetchUnreadCount();
+  } catch {}
+}
+
+async function markAllNotifRead() {
+  try {
+    await fetch(`${window.ROOT}/api/notifications/mark-all-read`, {method:'POST'});
+    document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+    const badge = document.getElementById('notifBadge');
+    if (badge) badge.style.display = 'none';
+  } catch {}
+}
+
+// Initial unread count + periodic poll
+_fetchUnreadCount();
+_notifPollTimer = setInterval(_fetchUnreadCount, 30000);
 </script>
 {% endblock %}

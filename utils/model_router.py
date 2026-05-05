@@ -44,6 +44,9 @@ _ROUTING: dict[str, ModelTier] = {
     'artifact_change_summary':     ModelTier.HAIKU,
     'resume_consent_disclosure':   ModelTier.HAIKU,
     'contact_score':               ModelTier.HAIKU,
+    'intent_classify':             ModelTier.HAIKU,
+    # ── SONNET — chat copilot conversational turns ───────────────────────
+    'chat_copilot':                ModelTier.SONNET,
     # ── OPUS — high-precision legal/financial documents ───────────────────
     'investment_policy_statement': ModelTier.OPUS,
     'tax_optimization':            ModelTier.OPUS,
