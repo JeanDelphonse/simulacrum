@@ -29,6 +29,7 @@ celery = make_celery(flask_app)
 import app.tasks.simulation  # noqa
 import app.tasks.email       # noqa
 import app.tasks.layer6      # noqa
+import app.tasks.contacts    # noqa
 
 # Celery beat schedule — Layer 6 orchestrator runs hourly and self-throttles per cadence
 celery.conf.beat_schedule = {

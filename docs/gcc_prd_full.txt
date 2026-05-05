@@ -1,0 +1,206 @@
+[TABLE]
+PRODUCT REQUIREMENTS DOCUMENTSimulacrum Growth Command CenterJourney Tab · Accordion Rows · Persistent Footer · Embedded in Existing GCC
+[/TABLE]
+[TABLE]
+Document ID | SIM-PRD-GCC-002
+Version | 1.0 — Draft for Engineering
+Change type | Additive — new Journey tab embedded within existing GCC. No existing content removed.
+Replaces | GCC default landing only — Numbers / Actions / Momentum tabs retained in full
+Route | /simulations/:id/gcc  (unchanged)
+Sub-nav | Active · Run Cycle · Pause · Agent Network · Settings  (all unchanged)
+New element | Inner tab row (Journey default · Numbers · Actions · Momentum) + accordion layer rows + persistent footer
+Platform | Flask + SQLAlchemy + MySQL · Python · Claude API · GoDaddy
+Author | Jean Moussa Delphonse  ·  PrezentEnergy Ventures
+Date | April 2026
+[/TABLE]
+[TABLE]
+This PRD specifies an additive change to the existing Growth Command Center. Nothing is removed. The existing Numbers, Actions, and Momentum content panels move into their own tabs within a new inner tab row. A new Journey tab is added as the default landing tab. The Journey tab contains five accordion layer rows (one expanded at a time) and a persistent live feed footer below them. All five sub-nav items are unchanged.
+[/TABLE]
+[TABLE]
+Design rationale: the existing GCC panels serve technical users who want to see what the system produced. The Journey tab serves non-technical users who need to see where they are in their wealth progression and what tools are available to them. Both views live within the same page, one click apart. The Journey tab is default because the majority of Simulacrum users are non-technical.
+[/TABLE]
+1. Scope — What Changes, What Is Retained
+1.1 The Three Changes
+This PRD makes exactly three structural changes to the GCC page. Everything else — routes, sub-nav, SSE connection, page header, existing panel content, Flask routes — is retained without modification.
+[TABLE]
+# | Change | Description
+1 | Add inner tab row | A secondary tab bar is inserted between the page header and the GCC content area. It contains four tabs: Journey (new, default) · Numbers · Actions · Momentum. The last three wrap the existing panel content.
+2 | Add Journey tab content | The Journey tab renders five accordion layer rows (one expanded at a time) and a persistent live feed footer panel below them.
+3 | Move existing panels to tabs | The existing Numbers, Actions, and Momentum panel HTML is wrapped in tab-content containers. Their content, data, and SSE update logic are unchanged. They are simply no longer the default view.
+[/TABLE]
+1.2 Retained Without Modification
+[TABLE]
+Element | Status
+Route /simulations/:id/gcc | Unchanged.
+Sub-nav: Active, Run Cycle, Pause, Agent Network, Settings | All five unchanged — routes, behaviors, visual treatment.
+Page header (name, cycle selector, phase badge) | Unchanged.
+Numbers panel content and data | Unchanged — moves to Numbers tab.
+Actions panel content and data | Unchanged — moves to Actions tab.
+Momentum panel content and data | Unchanged — moves to Momentum tab.
+SSE connection and all event types | Unchanged — existing handlers retained. New handlers added for Journey tab elements.
+orchestrator_reasoning, phase badge, cycle selector behavior | Unchanged.
+[/TABLE]
+2. Inner Tab Row
+2.1 Tab Row Structure
+The inner tab row sits between the page header zone and the GCC content area. It is visually and structurally separate from the sub-nav bar above it. The sub-nav bar controls page-level navigation (Active, Run Cycle, Pause, Agent Network, Settings). The inner tab row controls which content panel is shown within the GCC content area.
+[TABLE]
+Tab | Default | Content
+Journey | Active on page load (if no sessionStorage value) | Five accordion layer rows + persistent live feed footer. New content specified in Sections 3 and 4.
+Numbers | Inactive | Existing Numbers panel. No changes to content, data binding, or SSE handlers.
+Actions | Inactive | Existing Actions panel. No changes.
+Momentum | Inactive | Existing Momentum panel. No changes.
+[/TABLE]
+[TABLE]
+Tab switching is a CSS class toggle only. All four tab-content divs are rendered in the Jinja2 template on page load. Switching tabs shows the active div and hides the others — no AJAX, no re-fetch. The existing panels continue to receive SSE updates regardless of which tab is active, so data is always current when the user switches to Numbers, Actions, or Momentum.
+[/TABLE]
+2.2 Tab Row Visual Specification
+[TABLE]
+Property | Specification
+Height | 40px. Text labels only — no icons.
+Active tab | 2px bottom border, navy (#0D1B3E). Text 14px weight 500, navy. Background transparent.
+Inactive tab | No bottom border. Text 14px weight 400, muted (#666). Hover: text shifts to dark (#1A1A1A). Background transparent.
+Tab bar bottom | 1px bottom border neutral grey (#CCCCCC) spanning full content width. Active tab's 2px border overlaps this line.
+State persistence | Active tab stored in sessionStorage keyed by simulation_id. Restored on page reload. Defaults to Journey if no value stored.
+Keyboard nav | Arrow keys navigate between tabs when tab row is focused. Enter activates the focused tab.
+[/TABLE]
+3. Journey Tab — Accordion Layer Rows
+3.1 Accordion Behavior
+The Journey tab renders five layer rows as an accordion. Exactly one row is expanded at a time. Clicking a collapsed row expands it and collapses the previously expanded row. The expanded row is stored in sessionStorage keyed by simulation_id. Layer 1 (Active income) is expanded by default on first visit.
+[TABLE]
+One expanded at a time: showing all five layers simultaneously creates visual competition — the user cannot determine which layer deserves attention. The accordion forces focus onto one layer while keeping the other four scannable from their collapsed headers. The collapsed state shows enough context (layer name, completed action count, momentum metric) to navigate without expanding.
+[/TABLE]
+3.2 Collapsed Row — Element Specification
+Height: 52px. The entire row is a clickable target.
+[TABLE]
+Element | Specification
+Left accent bar | 4px vertical bar in the layer's accent color, full row height. Always visible — provides instant color identity for each layer even when collapsed.
+Layer badge | Pill: 'Layer N · Name' in 10px bold uppercase. Layer accent color text, layer light fill background.
+Status summary | 12px muted text: '[N] actions complete · [metric value]'. Example: '3 actions complete · 6 bookings this month'. If no actions run yet: 'No actions run yet'. Sourced from complete_by_layer context + layer momentum metric.
+Agent status dot | Colored dot at right edge: teal pulsing=agent running for this layer, teal solid=last action completed, amber=escalated, grey=idle. Always visible — updates via SSE regardless of expand state.
+Escalation badge | Amber pill with count, right-aligned before chevron. Hidden when count is zero. Updates via SSE on escalation_added.
+Expand chevron ▸ | ▸ at far right. Rotates to ▾ when row is expanded. Clicking the row (anywhere) toggles expand/collapse.
+[/TABLE]
+3.3 Expanded Row — Element Specification
+Height: variable, expands to fit all wrapped tool chips. Expand/collapse animates via CSS max-height transition, 200ms ease.
+[TABLE]
+Element | Specification
+Left accent bar | Same as collapsed — 4px vertical bar, layer accent color, full height.
+Layer badge + chevron | Layer badge pill at top-left. ▾ collapse chevron at top-right (clicking collapses without expanding another row).
+Journey question | The plain-language question this layer answers. 14px italic dark text, rendered below the layer badge. See Section 3.4.
+Tool chips | Horizontal wrapping row of pill chips — one per agent action for this layer. 11px text, layer light fill background, layer mid-color border. Clicking any chip opens the node editor panel (SIM-PRD-VIZ-002 §10) pre-populated with current prefill_inputs. See Section 3.5 for full chip lists.
+Inline momentum metric | One key metric below the chips: label in 10px muted uppercase + value in 14px medium weight. Updates live via SSE on harvest_complete or cycle_complete. See Section 3.6.
+Agent status dot + escalation badge | Same as collapsed — always visible, always updated via SSE.
+Row background | Layer light fill at 65% opacity when expanded (slightly more saturated than collapsed 50%) to visually emphasize the active layer.
+Expand animation | max-height: 0 → 600px, 200ms ease. Opacity: 0 → 1, 150ms ease starting 50ms after height begins. Collapse is the reverse.
+[/TABLE]
+3.4 Journey Questions — All Five Layers
+[TABLE]
+Layer 1  ·  ACTIVE INCOME  ▾  expandedHow do I turn my expertise into consulting income right now — and land the first client?Tools: Rate card  ·  Booking page  ·  Cold email campaign  ·  Consulting proposal  ·  SOW  ·  Agreement  ·  LinkedIn optimization
+[/TABLE]
+[TABLE]
+Layer 2  ·  LEVERAGED INCOME  ▾  expandedHow do I reach many people at once — workshops, group coaching, and corporate training built on my active income proof?Tools: Workshop curriculum  ·  Group coaching  ·  Corporate training pitch  ·  Speaker proposals  ·  Waitlist page  ·  ROI calculator
+[/TABLE]
+[TABLE]
+Layer 3  ·  PRODUCTIZED INCOME  ▾  expandedHow do I package my knowledge into products I build once and sell many times?Tools: Course curriculum  ·  Sales page  ·  Launch email sequence  ·  E-book  ·  Membership  ·  Competitor research
+[/TABLE]
+[TABLE]
+Layer 4  ·  AUTOMATED INCOME  ▾  expandedHow do I set up systems that generate income while I'm not working?Tools: SEO content calendar  ·  Lead magnet funnel  ·  Newsletter monetization  ·  SaaS product spec  ·  YouTube/podcast  ·  Community flywheel
+[/TABLE]
+[TABLE]
+Layer 5  ·  WEALTH PLATFORMS  ▾  expandedWhere do I put the income I'm now generating so money works for me?Tools: Income allocation  ·  ETF recommendations  ·  Investment Policy Statement  ·  Tax optimization  ·  DCA schedule  ·  Entity structure
+[/TABLE]
+3.5 Tool Chips — Full Action Catalog Per Layer
+[TABLE]
+Layer | All tool chip labels (maps to action_type in layer6_action_queue)
+L1 · Active | Rate card · Booking page · Cold email campaign · Consulting outreach · Consulting proposal · SOW · Agreement · LinkedIn optimization · Role search · Referral network · Negotiation script
+L2 · Leveraged | Workshop curriculum · Group coaching program · Corporate training pitch · Speaker proposals · Speaker fee + rider · Waitlist landing page · Alumni reactivation · ROI calculator
+L3 · Productized | Course curriculum · Sales page · Launch email sequence · E-book + Gumroad · Membership structure · Competitor research · Affiliate program · A/B test plan · Testimonial system · Lapsed buyer win-back
+L4 · Automated | SEO content calendar · Lead magnet funnel · Newsletter monetization · SaaS product spec · YouTube/podcast strategy · Community flywheel · Affiliate partnerships · IP licensing · Programmatic ads · Win-back campaign
+L5 · Wealth | Income allocation · Compound growth projections · ETF/fund recommendations · Investment Policy Statement · Real estate strategy · Tax optimization · Entity structure · DCA schedule · Insurance gap analysis · Estate planning checklist
+[/TABLE]
+3.6 Inline Momentum Metrics Per Layer
+[TABLE]
+Layer | Label | Source | SSE trigger
+L1 | Bookings this month | layer6_momentum.consulting_bookings_mo | harvest_complete (Cal.com)
+L2 | Workshop enrollments | layer6_momentum.course_enrollments | harvest_complete (ConvertKit)
+L3 | Course sales this cycle | layer6_outcomes.actual_income (L3 streams) | cycle_complete
+L4 | Funnel opt-in rate | layer6_momentum.funnel_opt_in_rate | harvest_complete (ConvertKit)
+L5 | Portfolio balance | layer6_momentum.investment_balance | harvest_complete (Plaid — when enabled)
+[/TABLE]
+4. Persistent Live Feed Footer
+4.1 Overview
+The live feed footer renders below all five accordion layer rows within the Journey tab. It scrolls with the page — it is not fixed to the viewport. It is always rendered when the Journey tab is active, regardless of which layer is expanded or whether a cycle is running. It is not shown in the Numbers, Actions, or Momentum tabs.
+The footer is the system activity zone of the Journey tab. The layer rows answer 'where am I in my wealth journey?' The footer answers 'what are the agents doing right now on my behalf?' Keeping these two concerns in separate zones — journey above, system activity below — prevents the dashboard from feeling like a cockpit.
+4.2 Footer Elements
+[TABLE]
+Element | Specification
+Footer header | Label: 'Growth Command Center — Layer 6' in 12px bold navy. Sub-label: 'What your agents are doing right now' in 11px muted. Right: phase badge (Explore/Exploit · Cycle N) and 'View Agent Network ↗' link (opens SIM-PRD-VIZ-002 modal). 1px top border separates footer from layer rows above.
+Escalation alert bar | Full-width amber alert (#FDF3DC background, #E8B84B border) when any actions are escalated. Text: 'N actions need your approval before agents can continue.' Right: 'Review escalations →' button. Hidden when no escalations pending. Updates live via SSE.
+Income summary row | Three side-by-side metrics: 'Income this cycle' (actual from layer6_outcomes with ↑/↓ trend vs prior cycle), 'vs projected' (from layer6_cycles), 'Portfolio balance' (from layer6_momentum.investment_balance). Each: 10px muted label above, 20px medium-weight value below. Updates via SSE on cycle_complete.
+Action pill row | Horizontal scrolling row of clickable pills. Each pill: colored status dot + action name in 12px + layer chip (L1–L5). Ordered: running first, queued second, complete last. Max 12 visible; older complete pills scroll off left. Updates live via SSE. Clicking any pill opens the node editor (SIM-PRD-VIZ-002 §10) for that action.
+Orchestrator reasoning | Collapsible: '▸ What the orchestrator decided this cycle' header. Expanded: orchestrator_reasoning text from layer6_cycles in 13px at 1.6 line-height. Collapse/expand state stored in localStorage keyed by simulation_id. Collapsed by default on first visit.
+Background | White (#FFFFFF). 1px top border neutral grey. Padding 16px all sides.
+[/TABLE]
+4.3 Action Pill States
+[TABLE]
+State | Dot | Behavior
+Running | Teal pulsing 1.4s | Clicking opens node editor in running state — Run button shows green.
+Queued | Amber solid | Clicking opens node editor with current prefill values — user can update before agent runs.
+Complete | Grey solid (fades after 60s) | Clicking opens node editor showing artifact output with version badge.
+Escalated | Amber solid with ! | Clicking opens escalation review for that specific action.
+Error | Red solid | Clicking opens node editor with error message and Retry button.
+[/TABLE]
+4.4 SSE Event Mapping — Journey Tab Responses
+[TABLE]
+SSE event | Journey tab DOM updates (in addition to existing panel updates)
+harvest_complete | Update inline momentum metric value for the affected layer row (expanded or collapsed — the metric span is always in the DOM).
+dispatch | Add new running pill to footer pill row. Switch agent dot on corresponding layer row to teal pulsing.
+action_complete | Update pill from running → complete (grey dot). Switch layer row agent dot to teal solid. Briefly pulse accent bar of downstream stale layers amber for 3 seconds if stale_downstream is non-empty.
+escalation_added | Increment escalation badge on affected layer row. Show footer escalation alert bar if count was previously zero. Update collapsed row status summary text.
+cycle_complete | Update footer income summary row (all three metrics + trend indicator). Update orchestrator reasoning text. Update phase badge.
+step_running | Update phase badge sub-label: 'Harvest · collecting', 'Score · ranking', 'Schedule · dispatching', 'Report · updating'.
+[/TABLE]
+5. Template & API Changes
+5.1 Template Changes
+[TABLE]
+File | Change
+gcc.html | Insert inner tab row HTML between page header and content area. Wrap existing Numbers/Actions/Momentum panel HTML in div#tab-numbers, div#tab-actions, div#tab-momentum. Add div#tab-journey containing five _gcc_layer_row.html includes and one _gcc_footer.html include. Tab switching via JS — show active div, hide others.
+_gcc_header.html | No changes.
+_gcc_subnav.html | No changes.
+_gcc_layer_row.html (new) | Partial for one accordion row. Props: layer_number, layer_name, layer_color, layer_light, journey_question, tools[], momentum_label, momentum_value, escalation_count, agent_dot_state, complete_count. Renders both collapsed header and expanded content — JS toggles max-height.
+_gcc_footer.html (new) | Partial for live feed footer. Props: phase, cycle_number, income_actual, income_projected, income_trend, portfolio_balance, action_pills[], escalation_count_total, orchestrator_reasoning. Static on render; SSE updates individual spans within.
+gcc.js | Add: inner tab click handler (sessionStorage persist). Add: accordion one-at-a-time expand/collapse (sessionStorage persist). Extend existing SSE handlers: each handler now also updates relevant Journey tab elements (layer dots, inline metrics, escalation badges, footer pills, footer income row). No existing handler logic removed.
+[/TABLE]
+5.2 Flask Route — Additional Context Variables
+[TABLE]
+# routes/gcc.py — additions only; existing context variables retained@app.route('/simulations/<sim_id>/gcc')@login_requireddef gcc_view(sim_id):    # ... existing queries (sim, latest_cycle, all_cycles) ...    # NEW: latest momentum snapshot for inline layer metrics    momentum = Layer6Momentum.query.filter_by(simulation_id=sim_id)                 .order_by(Layer6Momentum.snapshot_date.desc()).first()    # NEW: recent action pills for footer    action_pills = Layer6ActionQueue.query.filter(        Layer6ActionQueue.simulation_id==sim_id,        Layer6ActionQueue.status.in_(['dispatched','complete','escalated'])    ).order_by(Layer6ActionQueue.dispatched_at.desc()).limit(20).all()    # NEW: escalation count per layer for row badges    from sqlalchemy import func    esc = db.session.query(        Layer6ActionQueue.source_layer,        func.count(Layer6ActionQueue.id).label('cnt')    ).filter_by(simulation_id=sim_id, status='escalated')     .group_by(Layer6ActionQueue.source_layer).all()    escalation_by_layer = {r.source_layer: r.cnt for r in esc}    # NEW: completed action count per layer for collapsed row summary    done = db.session.query(        Layer6ActionQueue.source_layer,        func.count(Layer6ActionQueue.id).label('cnt')    ).filter_by(simulation_id=sim_id, status='complete')     .group_by(Layer6ActionQueue.source_layer).all()    complete_by_layer = {r.source_layer: r.cnt for r in done}    return render_template('gcc.html',        # ... existing vars ...        momentum=momentum,        action_pills=[p.to_pill_dict() for p in action_pills],        escalation_by_layer=escalation_by_layer,        complete_by_layer=complete_by_layer    )
+[/TABLE]
+6. Functional Requirements
+FR-GCC-01: The existing Numbers, Actions, and Momentum panel content is retained without modification. It is accessible via the Numbers, Actions, and Momentum tabs in the inner tab row.
+FR-GCC-02: A new inner tab row is inserted between the page header and content area. It contains four tabs: Journey (new, default) · Numbers · Actions · Momentum. Tab switching is a CSS class toggle — no data re-fetch. All four tab-content divs are rendered on page load.
+FR-GCC-03: The active inner tab is stored in sessionStorage keyed by simulation_id. On page reload the stored tab is restored. If no value is stored, the Journey tab is active by default.
+FR-GCC-04: The Journey tab contains five accordion layer rows and a persistent live feed footer. Exactly one layer row is expanded at a time. Clicking a collapsed row expands it and collapses the previously expanded row. The expanded layer is stored in sessionStorage keyed by simulation_id. Layer 1 is expanded by default on first visit.
+FR-GCC-05: Each collapsed row (height 52px) shows: left accent bar, layer badge, status summary (completed action count + momentum metric value), agent status dot, escalation badge (hidden when zero), and expand chevron. The entire row is a clickable expand target.
+FR-GCC-06: Each expanded row shows: left accent bar, layer badge, journey question in italic, tool chips for all agent actions in that layer, inline momentum metric, agent status dot, escalation badge, and collapse chevron. Expand/collapse animates via CSS max-height transition at 200ms ease.
+FR-GCC-07: Clicking any tool chip in an expanded layer row opens the node editor panel (SIM-PRD-VIZ-002 §10) for the corresponding agent action, pre-populated with current prefill_inputs. The GCC page and accordion state remain unchanged behind the slide-in panel.
+FR-GCC-08: The agent status dot and escalation badge on each layer row are always present in the DOM and always updated by SSE events, regardless of whether the row is expanded or collapsed.
+FR-GCC-09: The persistent live feed footer renders below all five layer rows within the Journey tab. It is not fixed to the viewport — it scrolls with the page. It is not shown in the Numbers, Actions, or Momentum tabs.
+FR-GCC-10: The footer income summary row shows actual income this cycle, projected income, and portfolio balance. All three update via SSE on cycle_complete without page reload.
+FR-GCC-11: The footer action pill row shows dispatched, running, queued, and recently completed agent actions as clickable pills ordered running → queued → complete. Pills update live via SSE. Clicking any pill opens the node editor for that action per SIM-PRD-VIZ-002 §10.
+FR-GCC-12: When escalations are pending, an amber alert bar appears above the footer income summary. It hides when all escalations are resolved. The orchestrator reasoning section is collapsed by default; collapse/expand state is stored in localStorage.
+FR-GCC-13: All five sub-nav items (Active, Run Cycle, Pause, Agent Network, Settings) are retained without modification in behavior, route, and visual treatment.
+FR-GCC-14: The page is mobile-responsive at 360px minimum width. Tool chips wrap within expanded rows, footer income row stacks vertically on mobile, action pill row scrolls horizontally, collapsed row status summary truncates with ellipsis.
+7. Sprint Plan — 1 Week
+[TABLE]
+Entirely additive frontend work. No existing panel content, data, or SSE handlers are changed. The sprint adds the inner tab row, two new partials, accordion JS, and Journey-tab SSE DOM updates. Shortest Job First: inner tab row (Day 1) is the structural prerequisite. Accordion rows (Days 2–3) deliver the highest user-visible value. Footer (Day 4) reuses existing SSE data. QA Day 5.
+[/TABLE]
+[TABLE]
+Day | Focus | Deliverables
+Day 1 | Tab row | Add inner tab row HTML to gcc.html. Wrap existing panel HTML in div#tab-numbers/actions/momentum. Add empty div#tab-journey. Tab click handler: show/hide divs, update active class, sessionStorage persist. Verify existing panels unchanged inside their new tab wrappers.
+Day 2 | Accordion HTML | Build _gcc_layer_row.html partial: collapsed state (accent bar, badge, status summary, dot, escalation badge, chevron). Five instances in div#tab-journey. Flask route additions (momentum, escalation_by_layer, complete_by_layer). Collapsed rows render correctly from Jinja2 context.
+Day 3 | Accordion JS | Expand/collapse JS: one-at-a-time accordion, CSS max-height 200ms ease, sessionStorage persist (Layer 1 default). Expanded row full content: journey question, tool chips (all 49 mapped to action_type), inline momentum metric. Tool chip click → openNodeEditor(action_type). Escalation badge click → escalation queue for that layer.
+Day 4 | Footer + SSE | Build _gcc_footer.html: header, escalation alert bar, income summary row, action pill row (5 states), orchestrator reasoning collapsible (localStorage). Extend gcc.js SSE handlers: dispatch/action_complete/harvest_complete/escalation_added/cycle_complete each now additionally update Journey tab DOM elements. Existing handler logic untouched.
+Day 5 | QA + Polish | Mobile responsive audit (360px, 768px). Tab keyboard navigation. WCAG AA contrast on five layer accent colors. sessionStorage/localStorage restore verification. End-to-end test: full cycle → verify SSE updates land in Journey tab elements AND existing Numbers/Actions/Momentum panels simultaneously.
+[/TABLE]
+SIM-PRD-GCC-002  ·  Growth Command Center — Journey Tab  ·  v1.0
+Jean Moussa Delphonse  ·  PrezentEnergy Ventures  ·  April 2026  ·  Confidential

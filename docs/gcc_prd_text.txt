@@ -1,0 +1,46 @@
+1. Scope — What Changes, What Is Retained
+1.1 The Three Changes
+This PRD makes exactly three structural changes to the GCC page. Everything else — routes, sub-nav, SSE connection, page header, existing panel content, Flask routes — is retained without modification.
+1.2 Retained Without Modification
+2. Inner Tab Row
+2.1 Tab Row Structure
+The inner tab row sits between the page header zone and the GCC content area. It is visually and structurally separate from the sub-nav bar above it. The sub-nav bar controls page-level navigation (Active, Run Cycle, Pause, Agent Network, Settings). The inner tab row controls which content panel is shown within the GCC content area.
+2.2 Tab Row Visual Specification
+3. Journey Tab — Accordion Layer Rows
+3.1 Accordion Behavior
+The Journey tab renders five layer rows as an accordion. Exactly one row is expanded at a time. Clicking a collapsed row expands it and collapses the previously expanded row. The expanded row is stored in sessionStorage keyed by simulation_id. Layer 1 (Active income) is expanded by default on first visit.
+3.2 Collapsed Row — Element Specification
+Height: 52px. The entire row is a clickable target.
+3.3 Expanded Row — Element Specification
+Height: variable, expands to fit all wrapped tool chips. Expand/collapse animates via CSS max-height transition, 200ms ease.
+3.4 Journey Questions — All Five Layers
+3.5 Tool Chips — Full Action Catalog Per Layer
+3.6 Inline Momentum Metrics Per Layer
+4. Persistent Live Feed Footer
+4.1 Overview
+The live feed footer renders below all five accordion layer rows within the Journey tab. It scrolls with the page — it is not fixed to the viewport. It is always rendered when the Journey tab is active, regardless of which layer is expanded or whether a cycle is running. It is not shown in the Numbers, Actions, or Momentum tabs.
+The footer is the system activity zone of the Journey tab. The layer rows answer 'where am I in my wealth journey?' The footer answers 'what are the agents doing right now on my behalf?' Keeping these two concerns in separate zones — journey above, system activity below — prevents the dashboard from feeling like a cockpit.
+4.2 Footer Elements
+4.3 Action Pill States
+4.4 SSE Event Mapping — Journey Tab Responses
+5. Template & API Changes
+5.1 Template Changes
+5.2 Flask Route — Additional Context Variables
+6. Functional Requirements
+FR-GCC-01: The existing Numbers, Actions, and Momentum panel content is retained without modification. It is accessible via the Numbers, Actions, and Momentum tabs in the inner tab row.
+FR-GCC-02: A new inner tab row is inserted between the page header and content area. It contains four tabs: Journey (new, default) · Numbers · Actions · Momentum. Tab switching is a CSS class toggle — no data re-fetch. All four tab-content divs are rendered on page load.
+FR-GCC-03: The active inner tab is stored in sessionStorage keyed by simulation_id. On page reload the stored tab is restored. If no value is stored, the Journey tab is active by default.
+FR-GCC-04: The Journey tab contains five accordion layer rows and a persistent live feed footer. Exactly one layer row is expanded at a time. Clicking a collapsed row expands it and collapses the previously expanded row. The expanded layer is stored in sessionStorage keyed by simulation_id. Layer 1 is expanded by default on first visit.
+FR-GCC-05: Each collapsed row (height 52px) shows: left accent bar, layer badge, status summary (completed action count + momentum metric value), agent status dot, escalation badge (hidden when zero), and expand chevron. The entire row is a clickable expand target.
+FR-GCC-06: Each expanded row shows: left accent bar, layer badge, journey question in italic, tool chips for all agent actions in that layer, inline momentum metric, agent status dot, escalation badge, and collapse chevron. Expand/collapse animates via CSS max-height transition at 200ms ease.
+FR-GCC-07: Clicking any tool chip in an expanded layer row opens the node editor panel (SIM-PRD-VIZ-002 §10) for the corresponding agent action, pre-populated with current prefill_inputs. The GCC page and accordion state remain unchanged behind the slide-in panel.
+FR-GCC-08: The agent status dot and escalation badge on each layer row are always present in the DOM and always updated by SSE events, regardless of whether the row is expanded or collapsed.
+FR-GCC-09: The persistent live feed footer renders below all five layer rows within the Journey tab. It is not fixed to the viewport — it scrolls with the page. It is not shown in the Numbers, Actions, or Momentum tabs.
+FR-GCC-10: The footer income summary row shows actual income this cycle, projected income, and portfolio balance. All three update via SSE on cycle_complete without page reload.
+FR-GCC-11: The footer action pill row shows dispatched, running, queued, and recently completed agent actions as clickable pills ordered running → queued → complete. Pills update live via SSE. Clicking any pill opens the node editor for that action per SIM-PRD-VIZ-002 §10.
+FR-GCC-12: When escalations are pending, an amber alert bar appears above the footer income summary. It hides when all escalations are resolved. The orchestrator reasoning section is collapsed by default; collapse/expand state is stored in localStorage.
+FR-GCC-13: All five sub-nav items (Active, Run Cycle, Pause, Agent Network, Settings) are retained without modification in behavior, route, and visual treatment.
+FR-GCC-14: The page is mobile-responsive at 360px minimum width. Tool chips wrap within expanded rows, footer income row stacks vertically on mobile, action pill row scrolls horizontally, collapsed row status summary truncates with ellipsis.
+7. Sprint Plan — 1 Week
+SIM-PRD-GCC-002  ·  Growth Command Center — Journey Tab  ·  v1.0
+Jean Moussa Delphonse  ·  PrezentEnergy Ventures  ·  April 2026  ·  Confidential

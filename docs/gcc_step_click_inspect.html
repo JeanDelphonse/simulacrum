@@ -1,0 +1,163 @@
+
+<h2 class="sr-only">Simulacrum GCC Layer 1 progress steps — clicking a completed step opens an inline artifact panel showing what that action produced.</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.wrap{border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);overflow:hidden}
+.row-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--color-background-secondary)}
+.bar{width:4px;flex-shrink:0;align-self:stretch;margin:-11px 0;background:#534AB7}
+.pill{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:20px;background:#EEEDFE;color:#3C3489}
+.summary{font-size:12px;color:var(--color-text-secondary);flex:1}
+.dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;animation:p 1.4s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+
+.body{padding:14px 16px 16px 18px;display:flex;flex-direction:column;gap:14px}
+.lbl{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-tertiary);margin-bottom:6px}
+.pbar{height:4px;border-radius:2px;background:var(--color-border-tertiary);overflow:hidden;margin-bottom:8px}
+.pfill{height:100%;border-radius:2px;background:#534AB7;width:27%}
+
+.steps{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.step{display:flex;align-items:center;gap:4px}
+.sc{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;flex-shrink:0;border:1.5px solid var(--color-border-secondary);color:var(--color-text-tertiary);position:relative}
+.sc.done{background:#534AB7;border-color:#534AB7;color:#fff;cursor:pointer}
+.sc.done:hover{background:#3C3489;transform:scale(1.1);box-shadow:0 0 0 3px rgba(83,74,183,.2)}
+.sc.active{background:#EEEDFE;border-color:#534AB7;color:#534AB7;cursor:pointer}
+.sc.active:hover{background:#DDD9FC}
+.sc.pending{cursor:default}
+.sn{font-size:10px;color:var(--color-text-secondary);white-space:nowrap}
+.sn.done{color:#534AB7;font-weight:500}
+.sn.active{color:#534AB7}
+.conn{width:12px;height:1px;background:var(--color-border-tertiary);flex-shrink:0}
+.conn.done{background:#534AB7}
+
+/* Inline artifact panel */
+.artifact-panel{background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:12px 14px;display:none;flex-direction:column;gap:8px;margin-top:4px;position:relative}
+.artifact-panel.show{display:flex}
+.ap-close{position:absolute;top:8px;right:10px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--color-text-tertiary);line-height:1}
+.ap-close:hover{color:var(--color-text-primary)}
+.ap-header{display:flex;align-items:center;gap:8px}
+.ap-name{font-size:12px;font-weight:500;flex:1}
+.ver{font-size:10px;font-weight:500;padding:1px 6px;border-radius:10px;background:#0F7B72;color:#D6F0EE}
+.fchip{font-size:10px;padding:1px 7px;border-radius:10px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+.ap-action{font-size:11px;color:var(--color-text-tertiary);margin-bottom:2px}
+.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden}
+.kv{padding:6px 9px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;gap:1px}
+.kv:nth-last-child(-n+2){border-bottom:none}
+.kk{font-size:10px;color:var(--color-text-tertiary)}
+.kv-val{font-size:12px;color:var(--color-text-primary)}
+.ap-footer{display:flex;gap:8px;margin-top:2px}
+.edit-btn{font-size:11px;padding:4px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);cursor:pointer;color:var(--color-text-secondary)}
+.rerun-btn{font-size:11px;padding:4px 10px;border-radius:var(--border-radius-md);border:0.5px solid #534AB7;background:transparent;cursor:pointer;color:#534AB7;font-weight:500}
+.rerun-btn:hover{background:#534AB7;color:#fff}
+
+.hint{font-size:11px;color:var(--color-text-tertiary);font-style:italic;margin-top:-6px}
+</style>
+
+<div class="wrap">
+  <div class="row-hdr">
+    <div class="bar"></div>
+    <span class="pill">Layer 1 · Active income</span>
+    <span class="summary">3 of 11 complete · 6 bookings this month</span>
+    <span class="dot"></span>
+  </div>
+  <div class="body">
+
+    <div>
+      <div class="lbl">Progress — 3 of 11 actions complete</div>
+      <div class="pbar"><div class="pfill"></div></div>
+      <p class="hint">Click any completed step (✓) to see what it produced. Click any pending step to edit inputs before it runs.</p>
+    </div>
+
+    <div>
+      <div class="steps" id="steps"></div>
+    </div>
+
+    <!-- Artifact inspector panel -->
+    <div class="artifact-panel" id="ap">
+      <button class="ap-close" onclick="closePanel()">×</button>
+      <div class="ap-action" id="ap-action"></div>
+      <div class="ap-header">
+        <span class="ap-name" id="ap-name"></span>
+        <span class="ver" id="ap-ver"></span>
+        <span class="fchip" id="ap-chip"></span>
+      </div>
+      <div class="kv-grid" id="ap-fields"></div>
+      <div class="ap-footer">
+        <button class="edit-btn" onclick="sendPrompt('Edit the inputs for this action and re-run it')">Edit inputs</button>
+        <button class="rerun-btn" onclick="sendPrompt('Re-run this agent action now')">Re-run ↗</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ACTIONS=[
+  {seq:1, name:"Rate card",      state:"done",    artifact:"Rate card + capability one-pager", ver:"v1", chip:"PDF",
+   fields:[["Hourly rate","$285/hr"],["Project rate","$12,000–$24,000"],["Retainer rate","$6,500/mo"],["Currency","USD"]]},
+  {seq:2, name:"LinkedIn",       state:"done",    artifact:"Rewritten headline + About + Featured", ver:"v1", chip:"DOCX",
+   fields:[["Headline focus","Enterprise Data Architecture"],["Tone","Authoritative, direct"],["Featured type","Case study + booking link"],["Profile views","↑ 42% this month"]]},
+  {seq:3, name:"Booking page",   state:"done",    artifact:"Cal.com booking page", ver:"v2", chip:"LIVE URL",
+   fields:[["Session types","Discovery (30 min) · Strategy (60 min)"],["Strategy price","$350"],["Timezone","America/Los_Angeles"],["Buffer time","15 min"],["Bookings this month","6 confirmed"]]},
+  {seq:4, name:"Cold email",     state:"active"},
+  {seq:5, name:"Outreach",       state:"pending"},
+  {seq:6, name:"Proposal",       state:"pending"},
+  {seq:7, name:"SOW",            state:"pending"},
+  {seq:8, name:"Agreement",      state:"pending"},
+  {seq:9, name:"Referral",       state:"pending"},
+  {seq:10,name:"Role search",    state:"pending"},
+  {seq:11,name:"Negotiation",    state:"pending"},
+];
+
+let activeStep=null;
+
+function renderSteps(){
+  const el=document.getElementById("steps");
+  el.innerHTML="";
+  ACTIONS.forEach((a,i)=>{
+    const step=document.createElement("div");step.className="step";
+    const dot=document.createElement("div");
+    dot.className="sc "+(a.state==="done"?"done":a.state==="active"?"active":"pending");
+    dot.textContent=a.state==="done"?"✓":a.seq;
+    dot.title=a.state==="pending"&&i>3?"Waiting on: "+ACTIONS[i-1].name:"";
+    if(a.state==="done"||a.state==="active"){
+      dot.addEventListener("click",()=>openPanel(a));
+    }
+    const lbl=document.createElement("span");
+    lbl.className="sn "+(a.state==="done"?"done":a.state==="active"?"active":"");
+    lbl.textContent=a.name;
+    step.appendChild(dot);step.appendChild(lbl);
+    el.appendChild(step);
+    if(i<ACTIONS.length-1){
+      const conn=document.createElement("div");
+      conn.className="conn"+(a.state==="done"?" done":"");
+      el.appendChild(conn);
+    }
+  });
+}
+
+function openPanel(a){
+  activeStep=a;
+  const ap=document.getElementById("ap");
+  document.getElementById("ap-action").textContent=
+    a.state==="done"?"Completed action — "+a.name:"Queued action — "+a.name+" (edit inputs before run)";
+  document.getElementById("ap-name").textContent=a.artifact||a.name;
+  document.getElementById("ap-ver").textContent=a.ver||"v1";
+  document.getElementById("ap-chip").textContent=a.chip||"DOCX";
+  const grid=document.getElementById("ap-fields");
+  grid.innerHTML="";
+  (a.fields||[["No fields","—"]]).forEach(([k,v])=>{
+    const kv=document.createElement("div");kv.className="kv";
+    kv.innerHTML=`<span class="kk">${k}</span><span class="kv-val">${v}</span>`;
+    grid.appendChild(kv);
+  });
+  ap.classList.add("show");
+}
+
+function closePanel(){
+  document.getElementById("ap").classList.remove("show");
+  activeStep=null;
+}
+
+renderSteps();
+</script>

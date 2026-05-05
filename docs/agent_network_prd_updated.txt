@@ -1,0 +1,973 @@
+﻿PRODUCT REQUIREMENTS DOCUMENT
+Simulacrum Agent Network Visualization
+Full Seven-Tier Force-Directed Diagram · Live Data Flow Animation · Node & Edge Inspector
+Document ID
+SIM-PRD-VIZ-002
+Version
+1.2 — Updated: Non-Sequential Routing + Live Node Editor (Sections 10)
+Supersedes
+SIM-PRD-VIZ-001 — Interactive Orchestrator Diagram (diagram section only)
+Feature
+Force-Directed Network · Layer 1–5 Swimlane Diagram · Live Node Editor · Non-Sequential Artifact Routing
+Parent PRD
+Simulacrum PRD v1.0 — Sections 6.8 through 6.13
+Layout Engine
+D3.js v7 — Force-directed simulation with user drag-and-reposition
+Animation
+Live SSE particle animation (active cycle) + static snapshot (past cycles)
+Inspector
+Node inspector (agent state, inputs, outputs) + Edge inspector (data payload in flight)
+Platform
+Flask + SQLAlchemy + MySQL · Python · Claude API · GoDaddy
+Author
+Jean Moussa Delphonse  ·  PrezentEnergy Ventures
+Date
+April 2026
+This PRD specifies a complete replacement of the four-step cycle diagram from SIM-PRD-VIZ-001 with a full seven-tier agent network visualization. The new diagram renders all nodes across the entire Layer 6 architecture simultaneously in a force-directed graph. Users can click any node to inspect its inputs and outputs for the selected cycle, and click any edge (connection arrow) to see the exact data payload that traveled between two agents. During active cycles, data flow is animated as traveling particles along edges in real time via SSE. Past cycles render as color-coded static snapshots.
+1. Architecture — Seven Tiers, Full Node Catalog
+1.1 Overview
+The Agent Network Visualization renders all nodes and edges of the Simulacrum Layer 6 architecture in a single interactive canvas. The force-directed D3.js simulation positions nodes automatically based on connection strength — heavily connected nodes cluster toward the center, peripheral nodes settle at the edges. The user can drag any node to a preferred position; the layout remembers repositioned nodes for the session.
+The diagram is not a schematic — it is a live operations view. Every node reflects the actual current status of that agent or component for the selected cycle. Every edge reflects whether data has flowed along that connection in the selected cycle and, when clicked, shows exactly what data flowed.
+Caching principle applied to layout: the force simulation runs once on first render and its stable state is cached in a module-level variable. On subsequent cycle switches, only node status colors and edge weights are updated — the layout does not re-simulate. This preserves spatial memory: the user builds a mental map of the diagram layout and can rely on nodes being in the same position across cycle switches.
+1.2 The Seven Tiers — Node Catalog
+The diagram contains 26 named nodes organized across seven tiers. Each node has a type, a tier assignment, a color identity, and a defined set of inputs and outputs that the inspector renders when the node is clicked.
+Tier 1 — Layer Income Agents (L1–L5)
+Node ID
+Label
+Color
+Role in Network
+L1
+Active Income Agent
+Navy #0D1B3E
+Executes Layer 1 actions: cold email campaign, consulting outreach, rate card, role search, booking page, proposal, SOW, agreement, referral network, negotiation. Sends action completion status and outcome data to L6 orchestrator. Receives action dispatch instructions from L6.
+L2
+Leveraged Income Agent
+Navy-mid #1B3A6B
+Executes Layer 2 actions: speaking proposals, speaker fee, group coaching, corporate training, workshop curriculum, waitlist page, alumni reactivation, ROI calculator. Same bidirectional relationship with L6.
+L3
+Productized Agent
+Teal #0F7B72
+Executes Layer 3 actions: course curriculum, competitor research, sales page, e-book, A/B test, membership, launch sequence, affiliate, testimonial, lapsed buyer reactivation.
+L4
+Automated Residual Agent
+Teal #0F7B72
+Executes Layer 4 actions: SEO calendar, lead magnet funnel, newsletter, SaaS spec, IP licensing, affiliate partnerships, YouTube/podcast, community flywheel, programmatic ads, win-back.
+L5
+Wealth Deployment Agent
+Gold #C9952A
+Executes Layer 5 actions: income allocation, compound growth, fund recommendations, IPS, real estate, tax optimization, entity structure, DCA schedule, insurance, estate planning.
+Tier 2 — L6 Orchestrator
+Node ID
+Label
+Color
+Role in Network
+ORC
+L6 Orchestrator
+White ring on navy — central node
+The hub of the entire network. Receives outcome data from all five layer agents and all six integration connectors. Sends dispatch instructions to layer agents. Feeds scored action rankings to the DAG. Receives phase state from the Explore/Exploit engine. Sends escalations to the Escalation Queue. Writes cycle summaries to the Audit Log. The most connected node in the graph — force simulation pulls it to center automatically.
+Tier 3 — Internal Intelligence Engines
+Node ID
+Label
+Color
+Role in Network
+DAG
+Dependency Graph
+Amber #BA7517
+Receives the current action queue from ORC. Traverses prerequisite relationships across all 49 actions. Returns the critical path and eligible action list to ORC for scheduling. Inputs: action_queue with dependency_ids. Outputs: ordered eligible action list with critical path highlighted.
+BAY
+Bayesian Outcome Model
+Amber #BA7517
+Receives raw outcome data from all integration connectors via ORC. Maintains posterior probability distributions for each income stream's expected monthly yield. Returns updated score rankings to ORC. Inputs: layer6_momentum snapshot, layer6_outcomes records. Outputs: posterior estimates per income stream, ranked action priority list.
+EXP
+Explore/Exploit Engine
+Purple #534AB7
+Tracks the current phase (Explore or Exploit) based on cycle count relative to explore_phase_end_month. Applies diversity constraint during Explore phase (minimum one action per layer). Returns phase state and diversity flags to ORC. Inputs: cycle_number, explore_phase_end_month from layer6_configs. Outputs: phase enum, diversity_required boolean, actions_per_layer minimum.
+ESC
+Escalation Queue
+Red-coral #993C1D
+Receives out-of-bounds action candidates from ORC — actions that exceed autonomy boundary settings. Holds them for user review. Returns user approval or rejection decisions to ORC for the next cycle. Inputs: action candidates + reason for escalation. Outputs: approved or rejected action IDs per user decision.
+Tier 4 — User-Facing Output
+Node ID
+Label
+Color
+Role in Network
+GCC
+Growth Command Center
+Teal-light #13A89E
+Receives the Report output from ORC after each cycle completion. Renders the Numbers zone (actual vs projected income per layer), Actions zone (execution log, escalation queue display), and Momentum zone (leading indicators per layer). Inputs: completed cycle record, layer6_momentum snapshot, action results. Outputs: SSE push to browser to refresh the dashboard.
+NUM
+Numbers Panel
+Teal-light #13A89E
+Sub-node of GCC. Renders actual vs projected income per layer, velocity gauge, projection vs reality chart. Receives income outcome data from ORC via GCC.
+ACT
+Actions Panel
+Teal-light #13A89E
+Sub-node of GCC. Renders live execution log, escalation queue cards. Receives action dispatch and completion events from ORC via GCC.
+MOM
+Momentum Panel
+Teal-light #13A89E
+Sub-node of GCC. Renders leading indicators: email list size, LinkedIn connections, course enrollments, funnel opt-in rate, SEO sessions, investment balance. Receives layer6_momentum snapshot from ORC via GCC.
+Tier 5 — External Integration Connectors
+Node ID
+Label
+Color
+Role in Network
+APO
+Apollo
+Grey #888888
+Sends email open rate, reply rate, prospects contacted to ORC (Harvest step). Receives cold email sequence dispatch from L1 agent.
+LIN
+LinkedIn OAuth
+Grey #888888
+Sends connection count, post engagement to ORC. Receives profile optimization copy from L1 agent. Used by LinkedIn OAuth for profile crawl input.
+CON
+ConvertKit
+Grey #888888
+Sends subscriber count, funnel conversion rate to ORC. Receives email sequence payloads from L2, L3, L4 agents for deployment.
+CAL
+Cal.com
+Grey #888888
+Sends confirmed booking count to ORC. Receives booking page configuration from L1 agent.
+STR
+Stripe
+Grey #888888
+Sends confirmed revenue per cycle to ORC. Receives Simulation payment charges from platform billing layer.
+FIN
+Plaid / Alpaca
+Grey #888888 (dashed border — fintech toggle)
+Sends investment balance and portfolio data to ORC when fintech toggle is enabled in platform_settings. Dashed node border indicates conditional connection.
+Tier 6 — User-Controlled Constraints
+Node ID
+Label
+Color
+Role in Network
+AUT
+Autonomy Boundary
+Navy-mid #1B3A6B (thick border)
+Sends constraint parameters to ORC before each Schedule step: approved channels, spend ceiling, contact scope, blocked action types, quiet hours window. ORC checks every candidate action against these constraints before dispatch. Actions that fail the check are sent to ESC.
+CHN
+Channels sub-node
+Navy-mid #1B3A6B
+Sub-node of AUT. Represents the channel approval list (email, LinkedIn, Cal.com, ConvertKit, etc.).
+SPD
+Spend ceiling sub-node
+Navy-mid #1B3A6B
+Sub-node of AUT. Represents the maximum autonomous spend per cycle.
+QHR
+Quiet Hours sub-node
+Navy-mid #1B3A6B
+Sub-node of AUT. Represents the time window during which no outreach actions are dispatched.
+Tier 7 — Execution Audit Log
+Node ID
+Label
+Color
+Role in Network
+LOG
+Execution Audit Log
+Dark grey #444444
+Receives a write from ORC after every action dispatch, completion, escalation, user override, and cycle summary. Immutable — no writes from other nodes. The edge from ORC to LOG is always active (every cycle writes to it). Clicking the LOG node shows the full chronological audit trail for the selected cycle.
+2. Edge Catalog — Data Contracts Between Nodes
+2.1 Overview
+Every edge in the diagram represents a defined data contract — a specific payload that travels from a source node to a destination node. The edge inspector shows this payload when the user clicks an edge. The following catalog defines every edge, its direction, and the exact fields in its payload.
+Every payload field listed in this catalog maps directly to an existing database column in the Simulacrum schema. The edge inspector does not invent data — it reads from layer6_momentum, layer6_outcomes, layer6_action_queue, layer6_cycles, layer6_execution_log, and layer6_configs. Engineering should map each payload field to its source table and column before building the inspector render function.
+2.2 Primary Edges — ORC Hub Connections
+From
+To
+Direction & Trigger
+Payload Fields
+APO
+ORC
+→ Harvest step
+open_rate (float), reply_rate (float), prospects_contacted (int), sequences_active (int), last_pulled_at (datetime)
+LIN
+ORC
+→ Harvest step
+connection_count (int), post_engagement_rate (float), profile_views_7d (int), last_pulled_at (datetime)
+CON
+ORC
+→ Harvest step
+subscriber_count (int), funnel_conversion_rate (float), emails_sent_cycle (int), open_rate (float), last_pulled_at (datetime)
+CAL
+ORC
+→ Harvest step
+bookings_confirmed_cycle (int), bookings_pending (int), next_available_slot (datetime), last_pulled_at (datetime)
+STR
+ORC
+→ Harvest step
+revenue_confirmed_cycle (decimal), refunds_cycle (decimal), active_subscriptions (int), last_pulled_at (datetime)
+FIN
+ORC
+→ Harvest step (toggled)
+investment_balance (decimal), portfolio_return_ytd (float), dca_contributions_cycle (decimal), last_pulled_at (datetime)
+ORC
+BAY
+→ Score step
+layer6_momentum snapshot (all harvest fields), layer6_outcomes array (actual_income, projected_income, variance per stream per month)
+BAY
+ORC
+← Score result
+ranked_streams array [{stream_id, posterior_mean, confidence_low, confidence_high, priority_score}], phase_recommendation (exploit or explore)
+ORC
+DAG
+→ Score step
+action_queue array [{id, action_type, source_layer, dependency_ids, status, priority_score}]
+DAG
+ORC
+← Schedule result
+eligible_actions array [{id, action_type, source_layer, score, critical_path (bool), unblocks_count (int)}], critical_path_ids (array of CHAR 9)
+ORC
+EXP
+→ Score step
+cycle_number (int), explore_phase_end_month (int) from layer6_configs
+EXP
+ORC
+← Phase state
+phase (explore | exploit), diversity_required (bool), min_per_layer (int), transition_countdown (int — cycles remaining in explore)
+ORC
+L1
+→ Schedule dispatch
+actions_dispatched array [{id, action_type, prefill_inputs (JSON), dispatch_timestamp}]
+ORC
+L2
+→ Schedule dispatch
+actions_dispatched array [{id, action_type, prefill_inputs (JSON), dispatch_timestamp}]
+ORC
+L3
+→ Schedule dispatch
+actions_dispatched array [{id, action_type, prefill_inputs (JSON), dispatch_timestamp}]
+ORC
+L4
+→ Schedule dispatch
+actions_dispatched array [{id, action_type, prefill_inputs (JSON), dispatch_timestamp}]
+ORC
+L5
+→ Schedule dispatch
+actions_dispatched array [{id, action_type, prefill_inputs (JSON), dispatch_timestamp}]
+L1
+ORC
+← Action result
+action_id (CHAR 9), status (complete | error), outcome_summary (text), artifact_ids array, completed_at (datetime)
+L2
+ORC
+← Action result
+action_id (CHAR 9), status, outcome_summary, artifact_ids array, completed_at (datetime)
+L3
+ORC
+← Action result
+action_id (CHAR 9), status, outcome_summary, artifact_ids array, completed_at (datetime)
+L4
+ORC
+← Action result
+action_id (CHAR 9), status, outcome_summary, artifact_ids array, completed_at (datetime)
+L5
+ORC
+← Action result
+action_id (CHAR 9), status, outcome_summary, artifact_ids array, completed_at (datetime)
+ORC
+ESC
+→ Out-of-bounds actions
+escalated_actions array [{id, action_type, source_layer, reason (channel | spend | contact | quiet_hours), expected_outcome}]
+ESC
+ORC
+← User decision
+approved_ids array, rejected_ids array, decision_timestamp (datetime)
+AUT
+ORC
+→ Constraint check
+approved_channels array, spend_ceiling (decimal), contact_scope (enum), blocked_action_types array, quiet_hours {start, end, timezone}
+ORC
+GCC
+→ Report step (SSE)
+cycle_summary {cycle_number, phase, actions_dispatched (int), actions_escalated (int), orchestrator_reasoning (text)}, momentum_snapshot, income_outcomes array
+GCC
+NUM
+→ Render
+income_per_layer array [{layer, actual, projected, variance, trend}], velocity_rate (float), cumulative_cash (decimal)
+GCC
+ACT
+→ Render
+execution_log_entries array, escalation_queue_items array
+GCC
+MOM
+→ Render
+email_list_size, linkedin_connections, course_enrollments, funnel_opt_in_rate, seo_organic_sessions, newsletter_subscribers, investment_balance, consulting_bookings_mo
+ORC
+LOG
+→ Every action (append)
+event_type (dispatched|completed|escalated|approved|rejected|overridden), actor (orchestrator|user), action_id, reasoning (text), created_at (datetime)
+3. Force-Directed Layout Engine
+3.1 D3 Force Configuration
+The diagram uses D3.js v7 forceSimulation. The force configuration is tuned to reflect the architectural hierarchy: the ORC node is pulled to center, tier nodes cluster around it at appropriate distances, and peripheral nodes (connectors, audit log) settle at the outer ring. User drag repositions a node permanently for the session.
+// d3_network.js — force simulation configuration
+const TIER_Y = {
+1: -280,  // L1-L5 agents — upper cluster
+2:    0,  // ORC — center
+3:  -80,  // Intelligence engines — inner ring
+4:  120,  // GCC panels — lower right
+5:  200,  // Integration connectors — outer ring
+6: -200,  // Autonomy boundary — outer left
+7:  240,  // Audit log — bottom
+};
+const simulation = d3.forceSimulation(nodes)
+.force('link', d3.forceLink(edges)
+.id(d => d.id)
+.distance(d => edgeDistance(d))   // shorter = stronger pull
+.strength(d => edgeStrength(d))
+)
+.force('charge', d3.forceManyBody()
+.strength(d => d.id === 'ORC' ? -600 : -180)  // ORC repels more
+)
+.force('center', d3.forceCenter(svgWidth/2, svgHeight/2))
+.force('tierY', d3.forceY(d => TIER_Y[d.tier] + svgHeight/2).strength(0.4))
+.force('collision', d3.forceCollide().radius(d => nodeRadius(d) + 20))
+.stop();
+// Run headlessly to stable state (300 ticks)
+for (let i = 0; i < 300; i++) simulation.tick();
+// Cache stable positions
+const nodePositions = {};
+nodes.forEach(n => { nodePositions[n.id] = { x: n.x, y: n.y }; });
+// Drag handler — updates cache on drag end
+function dragEnded(event, d) {
+nodePositions[d.id] = { x: event.x, y: event.y };
+d3.select(this).classed('dragging', false);
+}
+function edgeDistance(d) {
+// Shorter distance = stronger pull toward each other
+if (d.source.id === 'ORC' || d.target.id === 'ORC') return 120;
+if (d.source.tier === d.target.tier) return 80;
+return 160;
+}
+3.2 Node Visual Specification
+Node State
+Visual
+Description
+Idle (no cycle selected)
+Circle, muted fill (30% opacity), grey label
+Default state when diagram first opens or when no cycle is selected.
+Active — running
+Circle, full color fill, animated pulse ring at 1.2s
+The node is currently executing in the live cycle. Pulse ring uses the node's tier color.
+Active — complete
+Circle, full color fill, small ✓ badge top-right
+The node has completed its role in the selected cycle. Badge is white on teal background.
+Active — error
+Circle, red fill #CC0000, ✗ badge top-right
+The node encountered an error in the selected cycle. Clicking shows error detail in the inspector.
+Active — escalated
+Circle, amber fill, ! badge with count
+Applies to ESC node only. Badge shows count of pending escalations.
+Selected (clicked)
+Circle, full color, thick 3px white selection ring
+User has clicked this node. Inspector panel opens. Selection ring persists until user clicks elsewhere or closes inspector.
+Highlighted (edge hover)
+Circle, brightened fill, source/target highlighted
+When user hovers an edge, both endpoint nodes brighten. All other nodes dim to 20% opacity.
+ORC — central
+Larger circle (radius 36px vs 24px for others), white fill, navy border
+The orchestrator is always the largest node. Its size signals its role as the network hub.
+Fintech toggle off
+FIN node: dashed border, grey fill, locked icon
+When fintech toggle is disabled in platform_settings, the FIN node shows a locked padlock overlay and its edges are rendered as dashed grey lines.
+Sub-node
+Smaller circle (radius 16px), same tier color, no label outside — label inside only
+GCC sub-nodes (NUM, ACT, MOM) and AUT sub-nodes (CHN, SPD, QHR) are visually smaller, clustered tightly around their parent.
+3.3 Edge Visual Specification
+Edge State
+Visual
+Description
+Idle
+Thin grey line (1px), arrowhead at target
+No data has flowed on this edge in the selected cycle.
+Active — data flowed
+Colored line (2px), tier color of source node, arrowhead
+Data has been sent along this edge in the selected cycle. Color matches the source node's tier.
+Active — live (SSE)
+Animated particles traveling along path
+During live cycle: small glowing dots (5px radius) travel from source to target along the SVG path at 1.8s travel time (consistent with the animateParticle function in Section 5.1). Particle color matches edge color. Up to 3 particles visible simultaneously per edge.
+Hovered
+Line brightens to full opacity, stroke-width 3px, tooltip
+Hovering an edge shows a tooltip: 'Source → Target: [payload summary]'. Last value and timestamp shown.
+Selected (clicked)
+Stroke-width 4px, dashed highlight animation, inspector
+Clicking an edge opens the Edge Inspector panel showing full payload fields and values.
+Bidirectional
+Two separate curved arcs, one per direction
+Edges that carry data in both directions (e.g. ORC ↔ BAY) render as two curved arcs with opposite curvature so both are visible simultaneously.
+Conditional (toggle)
+Dashed line, grey color regardless of state
+FIN node edges are always dashed to indicate the conditional connection based on the fintech toggle.
+Error
+Red line, ✗ at midpoint
+If data flow on this edge produced an error (e.g. connector timeout during Harvest), the edge renders in red with an error marker at the midpoint.
+4. Data Flow Inspector — Node & Edge Detail Panels
+4.1 Inspector Panel Architecture
+The inspector panel is a fixed-position slide-in drawer from the right side of the diagram container. It is 380px wide on desktop and full-screen on mobile. It renders different content depending on whether the user has clicked a node or an edge. The panel does not navigate away from the diagram — the diagram remains fully visible and interactive behind the panel.
+The breadcrumb trail makes the inspector genuinely useful: when the user views an output value on a node panel, each output value has a small → icon. Clicking it closes the current panel, highlights the edge that carries that value, and opens the destination node's input panel showing where that value was consumed. This single interaction makes the entire data flow traceable without the user needing to memorize the topology.
+4.2 Node Inspector Panel
+The Node Inspector renders when the user clicks any node. It has four tabs: Overview, Inputs, Outputs, and History.
+Tab
+Contents
+Overview
+Node name and tier. Current status badge (Idle / Running / Complete / Error / Escalated). For layer agents: count of actions dispatched this cycle, count completed, count failed. For ORC: cycle number, phase (Explore/Exploit), actions scored, dispatched, escalated. For engine nodes: last computation timestamp and a one-line result summary. For connectors: last pulled timestamp, connection status (Live / Stale / Failed), and the name of the integration account connected.
+Inputs
+A structured key-value list of every field this node received as input for the selected cycle. Field name on the left in bold navy. Value on the right in dark text. Timestamps shown in relative format ('14 minutes ago'). If the input came from another node, a small 'From [Node ID]' chip is shown — clicking it opens that node's Output tab. Scrollable if input count is large. A 'Copy all as JSON' button at the bottom exports the full input payload.
+Outputs
+A structured key-value list of every field this node produced as output in the selected cycle. Same format as Inputs. Each output value has a small → icon — clicking it highlights the edge that carries that value outbound and opens the receiving node's Input tab, showing where the value was consumed. A 'Copy all as JSON' button at the bottom.
+History
+A timeline of this node's status across the last 10 cycles. Each cycle shown as a row: cycle number, date, status, and a mini summary (e.g. 'L1: 3 actions dispatched, 3 complete'). Clicking any row switches the diagram to that cycle's snapshot. The timeline makes it easy to identify cycles where a node behaved differently — e.g. a connector that was Stale for cycles 4 and 5 before recovering.
+4.3 Edge Inspector Panel
+The Edge Inspector renders when the user clicks any edge. It shows the full data payload that traveled between the two connected nodes for the selected cycle.
+Section
+Contents
+Edge header
+Source node name → direction arrow → target node name. Step label (which of the four cycle steps this edge is active in: Harvest, Score, Schedule, or Report). Data flow status: Active (data flowed this cycle) / Idle (no data this cycle) / Error (flow failed).
+Payload
+A structured key-value table of every field in the edge's data payload for the selected cycle. Field name (left column, bold), value (middle column), type (right column — string, int, float, datetime, array, JSON). Array and JSON values are collapsible — collapsed by default showing item count, expand to see full content. A 'Copy payload as JSON' button at the top right.
+Value trace
+Each value in the payload has a dual trace button: an ← button ('Where did this come from?') that navigates to the source node's Output tab showing how this value was produced, and a → button ('Where does this go?') that navigates to the target node's Input tab showing how this value is consumed. This makes the full data lineage traceable in a click chain.
+Payload history
+A mini timeline below the payload: this edge's last 5 cycle payloads shown as collapsed rows (cycle number + one key metric). The user can expand any prior cycle to see its full payload. Useful for spotting when a connector value changed significantly between cycles (e.g. Apollo reply rate dropped from 28% in cycle 3 to 9% in cycle 4).
+Error detail
+If the edge has Error status: the error message, timestamp, the connector's HTTP status code (for integration edges), and a 'Retry connection' button (for connector edges only — triggers a manual Harvest call for this connector).
+4.4 Breadcrumb Trail — Value Lineage Navigation
+The breadcrumb trail is the feature that makes the inspector genuinely powerful. Every value in the Node Inspector or Edge Inspector is traceable from its origin through every node it passes through to its final consumption point. The user builds this trail by clicking the ← and → trace buttons.
+// Example breadcrumb navigation sequence:
+//
+// User clicks APO node → Opens Node Inspector → Outputs tab
+// Sees: open_rate: 0.32
+// Clicks → on open_rate
+//   → Highlights APO→ORC edge
+//   → Opens Edge Inspector for APO→ORC
+//   → Shows payload including open_rate: 0.32
+// Clicks → (Where does this go?)
+//   → Opens ORC Node Inspector → Inputs tab
+//   → Shows open_rate: 0.32 received from APO
+// Clicks → on open_rate
+//   → Highlights ORC→BAY edge
+//   → Opens Edge Inspector for ORC→BAY
+//   → Shows layer6_momentum snapshot including open_rate: 0.32
+// Clicks → (Where does this go?)
+//   → Opens BAY Node Inspector → Inputs tab
+//   → Shows open_rate: 0.32 as one input to the Bayesian model
+// Clicks → on open_rate
+//   → Opens BAY → Outputs tab
+//   → Shows posterior_mean for L1 Active Income stream
+//   → User sees how the 0.32 open rate influenced the L1 score
+//
+// Full lineage: APO.output → APO→ORC edge → ORC.input
+//               → ORC→BAY edge → BAY.input → BAY.output (L1 score)
+// Breadcrumb bar: APO > APO→ORC > ORC > ORC→BAY > BAY
+// Breadcrumb bar renders at top of inspector panel:
+// [APO] > [APO→ORC] > [ORC] > [ORC→BAY] > [BAY]
+// Each item is clickable — navigates back to that point in the trail.
+// Maximum breadcrumb depth: 8 hops before trail resets.
+5. Live Animation & SSE Data Flow
+5.1 Active Cycle — Particle Animation
+When the user has the diagram open during a live orchestrator cycle, data flow is animated as particles traveling along edge paths. Each particle represents a unit of data moving from source to target. The animation is driven by SSE events published by the Celery orchestration task.
+// Particle animation — runs during live cycle
+// Triggered by existing SSE events: 'dispatch' (ORC → layer agent) and
+// 'action_complete' (layer agent → ORC). The edge to animate is derived
+// from source_layer + action_type in the payload — no separate data_flow
+// event is needed or published. Do NOT add a data_flow SSE event type.
+function animateParticle(edgePath, edgeColor, valuePreview) {
+const particle = svg.append('circle')
+.attr('r', 5)
+.attr('fill', edgeColor)
+.style('filter', 'drop-shadow(0 0 4px ' + edgeColor + ')')
+.style('opacity', 0.9);
+// Travel along the SVG path
+const pathLength = edgePath.getTotalLength();
+particle.transition()
+.duration(1800)           // 1.8s travel time
+.ease(d3.easeLinear)
+.attrTween('transform', () => t => {
+const pt = edgePath.getPointAtLength(t * pathLength);
+return `translate(${pt.x},${pt.y})`;
+})
+.on('end', () => {
+// Flash the destination node on arrival
+flashNode(edgePath.target.id);
+// Update edge inspector payload if open
+if (activeInspector?.edgeId === edgePath.id) {
+refreshEdgeInspector(edgePath.id);
+}
+particle.remove();
+});
+}
+// SSE events that trigger particle animation:
+// 'harvest_pull'    — connector → ORC (one particle per connector)
+// 'score_started'   — ORC → BAY, ORC → DAG, ORC → EXP
+// 'score_complete'  — BAY → ORC, DAG → ORC, EXP → ORC
+// 'dispatch'        — ORC → layer agent (per dispatched action)
+// 'action_complete' — layer agent → ORC (per completed action)
+// 'report_push'     — ORC → GCC (cycle summary)
+// 'log_write'       — ORC → LOG (every event)
+// NOTE: These map 1:1 to the SSE Event Specification table in Section 5.2.
+5.2 SSE Event Specification
+SSE Event Type
+Payload
+Diagram Response
+cycle_started
+cycle_number, phase, timestamp
+ORC node → Running state (pulse ring). All other nodes → Idle. Phase badge updates.
+harvest_pull
+connector_id, status (live|stale|failed), timestamp
+Connector node → Running. Edge connector→ORC → particle animation. Connector node → Complete or Error on result.
+harvest_complete
+all connector results as array
+All connector nodes → Complete (or Error). Edge colors activate. ORC receives all data.
+score_started
+timestamp
+BAY, DAG, EXP → Running. ORC→BAY, ORC→DAG, ORC→EXP edges → particle animation.
+score_complete
+ranked_streams array, eligible_actions array, phase
+BAY, DAG, EXP → Complete. BAY→ORC, DAG→ORC, EXP→ORC edges → particle animation.
+dispatch
+action_id, action_type, source_layer, prefill_inputs
+Layer agent node → Running. ORC→L[n] edge → particle animation. If out of bounds: ORC→ESC edge → particle animation.
+action_complete
+action_id, source_layer, status, outcome_summary
+Layer agent node → Complete (or Error). L[n]→ORC edge → particle animation.
+escalation_added
+action_id, reason
+ESC node → Escalated state, count badge increments. ORC→ESC edge activates.
+report_push
+cycle_summary object
+ORC→GCC edge → particle animation. GCC, NUM, ACT, MOM → Complete. ORC→LOG edge → particle animation.
+cycle_complete
+full cycle record
+All nodes → Complete state. Cycle switches to snapshot mode. Inspector panels refresh with final data.
+step_running
+step (harvest|score|schedule|report)
+The four-step indicator bar (retained from VIZ-001) updates to highlight current step.
+5.3 Past Cycle Snapshot Mode
+When viewing a past cycle (selected via the cycle selector dropdown), the diagram renders a static snapshot: node colors reflect their final status in that cycle, edge colors reflect whether data flowed, and no animation runs. The inspector panels show the stored payload data for that cycle from the database.
+Snapshot Element
+Specification
+Cycle selector
+Dropdown in diagram header showing all completed cycles for this Simulation. Format: 'Cycle 7 — Apr 26 2026 — Exploit phase'. Selecting a past cycle loads its snapshot immediately.
+Node colors
+Reflect final status at cycle end: Complete (full color + ✓ badge), Error (red), Escalated (amber badge on ESC). Idle nodes that had no role in the cycle remain muted.
+Edge colors
+Active edges (data flowed) show full color. Inactive edges remain grey. Error edges show red. The visual tells the user exactly which paths were used in that cycle.
+Payload data
+All inspector panel data is loaded from the database records for the selected cycle. layer6_momentum (Harvest inputs), layer6_outcomes (Bayesian inputs), layer6_action_queue (DAG/Schedule), layer6_execution_log (all events), layer6_cycles (cycle summary).
+Diff mode
+A 'Compare cycles' toggle allows the user to select two cycles and view a side-by-side diff of key metrics: actions dispatched per layer, connector values, income outcomes. Useful for understanding what changed between cycles.
+Live badge
+If the user is viewing the most recent cycle AND a new live cycle starts while they are viewing, a banner appears: 'New cycle starting — switch to live view?' with a 'Go live' button.
+6. Diagram Controls & Navigation
+6.1 Diagram Header Controls
+Control
+Specification
+Cycle selector
+Dropdown: all completed cycles + 'Live' option. Selecting 'Live' connects SSE and enables animation. Selecting a past cycle enters snapshot mode.
+Phase badge
+Always visible. Shows current Explore/Exploit phase and transition countdown. Clicking opens a tooltip explaining what the phase means for action selection.
+Run Now button
+Triggers POST /api/simulations/:id/layer6/run. Disabled for 60 seconds after trigger. During live cycle, replaced by 'Cycle running...' indicator.
+Tier filter
+A row of 7 toggle buttons (one per tier) allowing the user to show/hide entire tiers. Useful for reducing visual complexity. Default: all tiers visible. 'Reset' button restores all tiers.
+Reset layout
+Returns all nodes to their force-computed positions (clears drag repositioning). Layout re-simulates from scratch.
+Zoom controls
+Plus/minus buttons and a zoom-to-fit button. Mouse wheel zoom also supported. Minimum zoom: 40%. Maximum zoom: 200%.
+Share button
+Generates a read-only token URL valid for 30 days. Read-only view shows diagram with inspector panels but no Run Now, no tier filter, and no cycle selector (locked to most recent cycle).
+Close button (×)
+Closes the modal. SSE disconnects. Focus returns to 'View Agent Network' trigger button.
+6.2 Keyboard Navigation
+Key
+Action
+Escape
+Close inspector panel (if open). If no panel open: close modal.
+Tab
+Cycle focus through visible nodes. Enter/Space activates the focused node (opens inspector).
+Arrow keys (on canvas)
+Pan the diagram viewport in the arrow direction. 10px per keypress.
++ / -
+Zoom in / zoom out by 10% per keypress.
+0 (zero)
+Zoom to fit — resets zoom and pan to show all nodes.
+← / → (in inspector)
+Navigate between Inputs, Outputs, Overview, and History tabs.
+Backspace (in inspector)
+Navigate back one step in the breadcrumb trail.
+7. Functional Requirements
+FR-ANV-01: The diagram renders all 26 nodes across 7 tiers simultaneously in a force-directed D3.js simulation. The ORC node is always the largest node (radius 36px) and is pulled to the center by stronger force weights. The layout stabilizes within 300 headless simulation ticks before drawing.
+FR-ANV-02: The user can drag any node to a preferred position. Dragged positions are cached in a module-level object for the session. The Reset Layout button clears the cache and re-runs the simulation.
+FR-ANV-03: Clicking any node opens the Node Inspector panel with four tabs: Overview, Inputs, Outputs, History. The panel slides in from the right without obscuring the diagram entirely.
+FR-ANV-04: Clicking any edge opens the Edge Inspector panel showing the full data payload, value trace buttons, and payload history for the last 5 cycles.
+FR-ANV-05: Every input and output value in the Node Inspector has a trace button (← From / → To) that navigates the inspector to the adjacent node or edge in the data flow chain. A breadcrumb bar at the top of the inspector panel tracks the navigation trail up to 8 hops.
+FR-ANV-06: During a live orchestrator cycle, SSE events from the Celery task trigger particle animations along the relevant edges. Particles travel at 1.8 seconds per edge. Up to 3 particles are simultaneously visible per edge.
+FR-ANV-07: Past cycles render as static snapshots. Node colors reflect final status. Edge colors reflect whether data flowed. All inspector payload data is loaded from the database for the selected cycle.
+FR-ANV-08: A Tier Filter control allows the user to show or hide entire tiers. When a tier is hidden, its nodes and all edges connecting to those nodes are removed from the canvas. The force simulation re-runs without the hidden nodes.
+FR-ANV-09: The FIN (Plaid/Alpaca) node is visually distinct when the fintech toggle is disabled: dashed border, locked icon overlay, grey edge to ORC. When enabled, FIN behaves identically to other connector nodes.
+FR-ANV-10: The diagram is accessible. All nodes are keyboard-focusable via Tab. Enter/Space opens the inspector. Arrow keys pan the viewport. Escape closes panels. A screen reader announcement is made when the cycle state changes (via aria-live='polite').
+FR-ANV-11: The diagram modal opens via a 'View Agent Network' button in the Growth Command Center Actions zone. It uses the same modal pattern as SIM-PRD-VIZ-001: white background, × close button always visible, Escape key closes, overlay click closes. SSE connects on open and disconnects on close.
+FR-ANV-12: The Diff Mode in snapshot view allows the user to select two cycles and view a metric comparison table. Metrics compared: actions dispatched per layer, connector values (all Harvest fields), income outcomes per stream, phase, escalation count.
+FR-ANV-13: A 'Copy payload as JSON' button is present in both the Node Inspector (Inputs and Outputs tabs) and the Edge Inspector. Copying places the full JSON payload on the clipboard. A success toast confirms: 'Payload copied.'
+FR-ANV-14: The 'Retry connection' button in the Edge Inspector for failed connector edges triggers a single manual Harvest call for that specific connector via POST /api/simulations/:id/layer6/harvest/:connector_id. The button is disabled for 30 seconds after triggering.
+9. Layer 1–5 Agent Action Swimlane Diagram
+9.1 Overview
+The Agent Network Visualization (Sections 1–8) shows the full Layer 6 orchestration architecture in a force-directed node graph. The Swimlane Diagram is a complementary view that focuses exclusively on Layers 1 through 5 — rendering all 49 agent actions as nodes arranged horizontally within five labeled swimlane bands. The user can hover any node to see the required input values for that agent, and hover any edge (cross-layer connection) to see the specific artifact that flows from one agent to the next.
+The swimlane diagram is accessible from a 'View Agent Actions' toggle within the same modal used for the force-directed network diagram. The user can switch between the two views using a segmented control in the modal header. Both views share the same cycle selector, Run Now button, and share link.
+Scheduling principle: the swimlane diagram implements the dependency graph at the artifact level — not just action completion, but the specific data payload that must exist in the upstream artifact before the downstream agent can run with full pre-fill confidence. This makes the diagram a direct visual representation of the artifact-as-input dependency map from SIM-PRD-ART-001 Section 4.
+9.2 Layout Specification
+Property
+Specification
+Diagram type
+SVG rendered via D3.js v7. Horizontally scrollable container — total diagram width is approximately 1,560px to accommodate 10–11 nodes per layer without crowding.
+Swimlane orientation
+Five horizontal bands — one per layer. L1 at the top, L5 at the bottom. Each band is 100px tall.
+Layer label
+Horizontal text label in the left column of each swimlane (90px wide column). The layer name (e.g. 'L1 · Active income') renders on the first line in the layer's accent color at 11px bold. The action count ('11 actions') renders on the second line at 10px in the same color at 70% opacity. A vertical colored bar (2px, layer accent color, 70% opacity) separates the label column from the node area. Labels are never rotated — they are always horizontal and readable without tilting.
+Node dimensions
+72px wide × 42px tall, rx=5. Filled with the layer's lightest color (50-stop). Stroked with the layer's accent color at 0.8px. Top text line: action label, 10px bold, layer text color (900-stop). Bottom text line: action sub-label, 9px regular, layer accent color.
+Node distribution
+Nodes within each swimlane are evenly distributed across the available width after the label column. Spacing between nodes: 7px. The node group is centered horizontally within the content area.
+Edge style — same layer
+Solid curved path (cubic Bézier). Layer accent color. Stroke opacity 0.7. Arcs above the swimlane (control points above node tops) so they do not cross through nodes.
+Edge style — cross layer
+Dashed curved path (5 3 dash array). Source layer accent color. Stroke opacity 0.5. Arcs downward between swimlanes connecting the output of an upstream node to the input of a downstream node.
+Arrow markers
+One arrowhead marker per layer, color-matched to that layer's accent. 5×5 marker, open chevron. Applied to the target end of every edge.
+Hover — node
+Tooltip showing: node title, list of required input values (bulleted), and the artifact produced when the action completes.
+Hover — edge
+Tooltip showing: source node name, target node name, and the specific artifact that flows along that edge (e.g. 'Rate card → speaker fee baseline').
+Tooltip style
+White background card, 0.5px border, 8px radius, 10px padding, 12px font, max 240px wide, pointer-events none. Appears adjacent to the cursor. Does not clip at container edges — position is clamped to scrollWidth - 256px.
+9.3 Layer Color System — Swimlane
+Layer
+Label
+Accent color
+Light fill
+Text color
+Actions
+L1
+Active income
+#534AB7 (Purple 600)
+#EEEDFE (Purple 50)
+#26215C (Purple 900)
+11
+L2
+Leveraged income
+#0F6E56 (Teal 600)
+#E1F5EE (Teal 50)
+#04342C (Teal 900)
+8
+L3
+Productized
+#D85A30 (Coral 400)
+#FAECE7 (Coral 50)
+#4A1B0C (Coral 900)
+10
+L4
+Automated residual
+#BA7517 (Amber 400)
+#FAEEDA (Amber 50)
+#412402 (Amber 900)
+10
+L5
+Wealth deployment
+#185FA5 (Blue 600)
+#E6F1FB (Blue 50)
+#042C53 (Blue 900)
+10
+9.4 Cross-Layer Artifact Edges — Full Catalog
+The following 24 edges represent the key artifact-to-agent input relationships across all five layers. These edges are what make the swimlane diagram an artifact dependency map rather than a simple organizational chart. Each edge is drawn as a dashed cross-layer connection; hovering reveals the exact artifact flowing along it.
+From (upstream agent)
+To (downstream agent)
+Artifact flowing on this edge
+L1 · Rate card
+L2 · Speaking proposals
+Rate card → speaker fee baseline for conference and podcast proposals
+L1 · Rate card
+L2 · Corporate training
+Rate card → corporate training price point
+L1 · LinkedIn optim.
+L2 · Speaking proposals
+Rewritten professional bio → speaker bio section of all proposals
+L1 · Proposal
+L1 · SOW
+Proposal scope, deliverables, and rate → SOW core sections (same-layer dependency)
+L1 · SOW
+L1 · Agreement
+SOW deliverables and payment schedule → consulting agreement terms (same-layer)
+L1 · Booking page
+L2 · Workshop curriculum
+Cal.com booking URL → workshop booking link embedded in facilitator guide
+L2 · Group coaching
+L3 · Course curriculum
+Cohort module structure and audience seniority → course outline depth and format
+L2 · Waitlist page
+L3 · Launch email seq.
+Program name, launch date, and audience → 7-email launch sequence copy
+L2 · Workshop curric.
+L3 · Course curriculum
+Workshop facilitator guide topics → course module framework and depth calibration
+L3 · Course curriculum
+L3 · Sales page
+Course title, module highlights, and target audience → sales page copy (same-layer)
+L3 · Competitor res.
+L3 · Sales page
+Competitor positioning and price benchmarks → sales page price point and CTA (same-layer)
+L3 · Sales page
+L4 · SEO content calendar
+Sales page headline keywords and target audience → SEO topic cluster and keyword targets
+L3 · Sales page
+L4 · Lead magnet + funnel
+Product positioning and primary audience pain point → lead magnet topic and funnel angle
+L3 · Launch email seq.
+L4 · Newsletter monetiz.
+Email list growth from launch sequence → newsletter audience size for sponsorship CPM estimate
+L3 · Course curriculum
+L4 · SaaS product spec
+Repeatable course methodology → SaaS product core feature set specification
+L3 · Membership struct.
+L4 · Community flywheel
+Membership structure, access model, and platform → community activation plan
+L4 · SEO calendar
+L4 · Newsletter monetiz.
+SEO content topics → newsletter editorial plan and audience interest signals (same-layer)
+L4 · SaaS product spec
+L5 · Tax optimization
+Recommended entity type from SaaS spec → tax strategy alignment
+L4 · Lead magnet funnel
+L5 · Income allocation
+Projected funnel revenue → income allocation input capital band
+L5 · Income allocation
+L5 · Compound projections
+Asset class allocation targets → compound growth projection model inputs (same-layer)
+L5 · Income allocation
+L5 · DCA schedule
+Asset class targets and contribution amount → DCA contribution split by asset (same-layer)
+L5 · Entity structure
+L5 · Tax optimization
+Entity type recommendation → tax strategy alignment and jurisdiction (same-layer)
+L5 · Compound proj.
+L5 · Fund recommendations
+Projected capital milestones → fund allocation model and asset class sizing (same-layer)
+L5 · IPS
+L5 · DCA schedule
+Investment policy goals and time horizon → DCA schedule parameters and frequency (same-layer)
+9.5 View Toggle — Network vs Swimlane
+The modal header contains a segmented control allowing the user to switch between the two diagram views without closing and reopening the modal.
+Control
+Specification
+Segmented control
+Two-segment pill in the modal header center: 'Agent network' (force-directed, L1–L6 + all tiers) and 'Layer actions' (swimlane, L1–L5 only). Active segment has full-color background. Inactive segment is outline only. Switching views re-renders the SVG canvas in place — the modal does not close or re-open.
+State persistence
+The active view tab is stored in a module-level variable. If the user closes and reopens the modal within the same session, the last-used view is restored.
+Shared controls
+Cycle selector, phase badge, Run Now button, Share button, and × close button are shared between both views and remain visible in the header regardless of which view is active.
+View-specific controls
+Tier filter and Reset Layout are only visible in the 'Agent network' view and are hidden when 'Layer actions' swimlane is active. The swimlane view does not support tier filtering or force layout reset — its layout is always fixed.
+SSE behavior
+SSE connection is active for both views. In the swimlane view, completed agent actions pulse their node (brief opacity flash) when an action_complete event arrives. Cross-layer edges animate a brief traveling dash when data flows along them.
+Keyboard shortcut
+Pressing V while the modal is open toggles between the two views.
+9.6 Functional Requirements — Swimlane Diagram
+FR-ANV-15: The swimlane diagram renders all 49 agent actions across Layers 1–5 in five horizontal swimlane bands. Layer 1 is at the top; Layer 5 is at the bottom. Each band is 100px tall. The total diagram width is approximately 1,560px; the container is horizontally scrollable.
+FR-ANV-16: Each swimlane's layer label renders horizontally in a dedicated 90px left column. The label text is never rotated. The layer name renders on the first line in the layer's accent color at 11px bold. The action count renders on the second line at 10px at 70% opacity. A 2px vertical colored bar separates the label column from the node area.
+FR-ANV-17: Nodes within each swimlane are distributed evenly across the available width, centered horizontally within the content area. Node dimensions are 72×42px with rx=5. The label line uses the layer's 900-stop text color; the sub-label uses the layer's accent color.
+FR-ANV-18: Hovering any node opens a tooltip showing: the action name and sub-label, a bulleted list of all required input values for that agent, and the full artifact description produced when the action completes. The tooltip appears adjacent to the cursor and does not clip at the scrollable container boundary.
+FR-ANV-19: Hovering any edge opens a tooltip showing: the source node name, the target node name, and the specific artifact that flows along that edge. The artifact description matches the entry in the cross-layer artifact edge catalog in Section 9.4.
+FR-ANV-20: Same-layer edges (connecting two nodes within the same swimlane) render as solid cubic Bézier curves arcing above the node row. Cross-layer edges render as dashed cubic Bézier curves connecting the bottom of the source node to the top of the target node. All edges use the source layer's accent color and carry a matching arrowhead marker.
+FR-ANV-21: The user can switch between the force-directed network view and the swimlane view using a segmented control in the modal header labeled 'Agent network' and 'Layer actions'. The active view is stored in a module-level variable and restored on modal reopen within the same session. The keyboard shortcut V toggles between views while the modal is open.
+FR-ANV-22: During a live orchestrator cycle, SSE action_complete events cause the corresponding node in the swimlane to emit a brief opacity pulse animation (fade to 60% opacity and back over 0.4 seconds). Cross-layer edges animate a traveling dash (stroke-dashoffset animation) when the orchestrator dispatches an action along that artifact dependency path.
+10. Live Node Editor — Input Editor, Agent Re-run & Versioned Output
+10.1 Overview
+Clicking any agent action node in the swimlane diagram opens a slide-in editor panel from the right side of the diagram container. The panel shows the current input values for that agent action, pre-populated using the Pre-fill Engine (SIM-PRD-ART-001 Section 1). The user can edit any field and click Run to immediately re-execute the agent with the new values. The agent produces a new artifact version, the node receives a version badge in the diagram, and all downstream agents that depend on the updated artifact are marked stale and highlighted amber.
+The diagram remains fully visible and interactive while the editor panel is open. The layout shifts to accommodate the 340px panel — the diagram container shrinks in width but does not navigate away. The panel closes via the × button, the Escape key, or by clicking a different node (which opens the editor for that node instead).
+This feature connects three existing PRD systems: the Pre-fill Engine (SIM-PRD-ART-001 §1) provides the pre-populated field values and confidence scoring; Artifact Versioning (SIM-PRD-ART-001 §2) stores each re-run output as a new version; and Artifact-as-Input Dependency (SIM-PRD-ART-001 §4) drives the downstream stale propagation. The Node Editor is the user-facing control surface for all three systems working together.
+10.2 Non-Sequential Routing — Architectural Principle
+Agent output routing is non-sequential and data-driven. An agent action's artifact does not route exclusively to the next layer — it routes to any agent in any layer whose evaluation condition is satisfied by the output type and content. A Layer 1 Rate Card artifact can feed a Layer 3 Sales Page directly, or a Layer 5 Income Allocation agent, without passing through Layers 2 and 4. The routing decision is made by evaluating three properties of each completed artifact: output_type, evaluation condition, and timing. Artifact routing is non-exclusive — a single completed artifact may satisfy evaluation conditions for multiple downstream agents simultaneously. All satisfied downstream agents receive the routing signal in the same propagation pass, and the artifact is not consumed by the first recipient.
+Timing type
+Visual in diagram
+Routing logic
+Immediate
+Solid teal line, arrowhead at target
+Fires as soon as the agent completes and the evaluation condition is true. Example: Rate Card → Speaking Proposals fires immediately because output_type=pricing AND hourly_rate > 0.
+Deferred
+Dashed amber line, arrowhead at target
+Fires when a specific threshold or condition is met after completion. Example: Waitlist Page → Launch Sequence fires only when page_live=true AND subscriber_count ≥ 50.
+Periodic
+Dotted blue line, arrowhead at target
+Fires on each orchestrator re-run cycle while the condition holds. Example: SEO Calendar → Newsletter fires every cycle when articles_published ≥ 4.
+Skip route
+Dashed purple line, ↗ label
+Any edge crossing more than one layer boundary. Non-sequential. Evaluated identically to other timing types — skip label is visual only, indicating one or more layers bypassed.
+10.3 Slide-in Editor Panel — Layout Specification
+Element
+Specification
+Panel container
+340px wide on desktop. Full-screen (100vw) on mobile under 768px. Slides in from the right with a CSS transition (width: 0 → 340px, border-left: 0 → 1px solid #e8e8e8, 250ms ease). The diagram column shrinks simultaneously using flexbox — no content is hidden behind the panel.
+Panel header
+Layer badge (colored pill: 'L1 · Active income'), action name in 14px bold navy, output_type in 11px muted. × close button absolute top-right, 44×44px minimum tap target.
+Confidence legend
+One line above the fields: teal dot = high, amber dot = medium, grey dot = low confidence. Rendered once, not repeated per field.
+Field group
+Label row (confidence dot + field name in 10px uppercase), text input with 3px colored left border (teal/amber/grey per confidence), hint text in 10px muted below the input.
+Tab order
+Low confidence fields first, then Medium, High fields skipped unless clicked — matches Pre-fill Engine tab behavior from SIM-PRD-ART-001 §1.3.
+Artifact output area
+Hidden on open. Visible after re-run: 'Artifact produced' header + teal version badge (v2, v3...), artifact name, file type chips (PDF, DOCX, XLSX, HTML, LIVE URL), agent reasoning text at 11px 1.6 line-height.
+Stale downstream alert
+Hidden on open. Visible after re-run if downstream agents are stale. Amber background #FDF3DC, amber border #E8B84B. Title: '⚠ Downstream agents updated'. List: layer number, agent name, evaluation condition for each stale agent.
+Run button
+Full-width navy. Label: '▶ Run agent'. Running state: green, '⟳ Running agent...', disabled. Completion: navy, '▶ Run agent again'. Error: red, '✗ Error — retry'.
+Panel scroll
+Panel body (fields + artifact + stale alert) scrolls independently. Header and Run button footer are sticky — always visible.
+Close behavior
+× button, Escape key, or clicking a different node closes or replaces the panel. Last-edited field values persist in the action queue record — reopening the same node shows the updated values.
+10.4 Node Visual States — Editor Integration
+State
+Visual Behavior
+Selected (panel open)
+2px navy border (#0D1B3E). Drop-shadow: drop-shadow(0 0 4px rgba(13,27,62,.3)). Applied on click, removed on panel close.
+Running
+Selected ring retained. Teal pulse ring animation (1.2s) overlaid on the node. Run button simultaneously shows green running state in the panel.
+Complete — version badge
+Teal version badge (22×12px, rx=5, fill #0F7B72) in the top-right corner of the node. Text: v2, v3... Persists for the session. Reopening the node shows the artifact output pre-populated.
+Stale (downstream)
+Amber fill (#FFFAED). Amber border (#E8B84B, 1.5px). Applied immediately after the upstream agent's re-run completes. Clears when the user opens and re-runs this node.
+Error
+Red border (#CC0000, 1.5px). Red ✗ badge top-right. Run button shows error state with retry option in panel.
+10.5 Agent Re-run — Technical Flow
+# POST /api/simulations/:sim_id/actions/:action_id/rerun
+# Body: { prefill_inputs: { field_key: value, ... } }
+@bp.route('/api/simulations/<sim_id>/actions/<action_id>/rerun', methods=['POST'])
+@login_required
+def rerun_action(sim_id, action_id):
+action     = Layer6ActionQueue.query.get_or_404(action_id)
+new_inputs = request.get_json().get('prefill_inputs', {})
+prior      = action.prefill_inputs or {}
+# 1. Capture corrections → Bayesian feedback loop
+for field, new_val in new_inputs.items():
+if prior.get(field) != new_val:
+db.session.add(PrefillCorrection(
+id=generate_id(), simulation_id=sim_id,
+user_id=current_user.id, action_type=action.action_type,
+field_name=field, prefilled_value=str(prior.get(field)),
+corrected_value=str(new_val), confidence_level='low'
+))
+# 2. Update action queue + dispatch
+action.prefill_inputs = new_inputs
+action.status = 'dispatched'
+db.session.commit()
+task = execute_agent_action.delay(sim_id, action_id, new_inputs)
+# 3. SSE — diagram enters running state
+redis_client.publish(f'layer6:{sim_id}', json.dumps({
+'event_type': 'step_running',
+'payload': { 'step': action.action_type, 'action_id': action_id }
+}))
+return jsonify({ 'task_id': task.id }), 202
+# Celery task on completion publishes SSE:
+# { event_type: 'action_complete',
+#   payload: { action_id, action_type, version_number,
+#              artifact_name, file_types, reasoning,
+#              stale_downstream: [{ id, name, layer }] } }
+10.6 Downstream Stale Propagation — Diagram Behavior
+// diagram.js — SSE action_complete handler
+sse.addEventListener('action_complete', e => {
+const data = JSON.parse(e.data);
+// 1. Version badge + artifact panel update
+setNodeState(data.action_id, 'complete');
+updateVersionBadge(data.action_id, data.version_number);
+if (activePanel === data.action_id) {
+showArtifactInPanel({
+name: data.artifact_name, files: data.file_types,
+reasoning: data.reasoning, version: data.version_number
+});
+}
+// 2. Propagate stale to downstream nodes
+(data.stale_downstream || []).forEach(d => {
+setNodeStale(d.id);        // amber fill + border
+addStaleAlertItem(d);      // amber list in panel
+});
+// 3. Animate edges carrying the updated artifact
+animateActiveEdges(data.action_id, data.stale_downstream);
+});
+function setNodeStale(nodeId) {
+nodeGroups[nodeId]?.select('rect')
+.attr('fill', '#FFFAED').attr('stroke', '#E8B84B')
+.attr('stroke-width', 1.5);
+}
+function clearStale(nodeId) {
+const agent = AGENTS.find(a => a.id === nodeId);
+nodeGroups[nodeId]?.select('rect')
+.attr('fill', LAYER_LIGHT[agent.layer])
+.attr('stroke', LAYER_COLOR[agent.layer])
+.attr('stroke-width', 0.9);
+}
+10.7 Functional Requirements — Live Node Editor
+FR-ANV-23: Clicking any agent action node in the swimlane diagram opens a 340px slide-in editor panel from the right. The diagram column shrinks via flexbox to accommodate the panel — no diagram content is obscured. On mobile under 768px, the panel opens full-screen.
+FR-ANV-24: The editor panel pre-populates all input fields from the current prefill_inputs stored in layer6_action_queue. If no prior run exists, the Pre-fill Engine generates values from the Expertise Zone, resume, and prior action outputs. Each field shows a confidence left-border (teal/amber/grey) and a source hint below the input. Unsaved field edits are held in a module-level object keyed by action_id for the duration of the browser session. If the user closes and reopens the same node's panel without clicking Run, their unsaved edits are restored from this session cache. The cache is cleared when the user navigates away from the page or closes the modal.
+FR-ANV-25: All input fields are editable regardless of confidence level. Tab order lands on Low confidence fields first, then Medium, skipping High unless explicitly clicked — per FR-PF-02 from SIM-PRD-ART-001.
+FR-ANV-26: Clicking Run dispatches POST /api/simulations/:id/actions/:action_id/rerun immediately with the current field values. The Run button shows a green running state and is disabled during execution to prevent double-submission. If the Celery task does not publish an action_complete SSE event within 90 seconds of dispatch, the Run button returns to its idle state and a toast notification appears: 'Agent is taking longer than expected — check back shortly.' The Celery task continues running in the background and will update the diagram and artifact record when it completes.
+FR-ANV-27: Any field value differing from the prior prefill_inputs is written to prefill_corrections before the re-run dispatches, feeding the Bayesian correction model per FR-PF-04 from SIM-PRD-ART-001.
+FR-ANV-28: On re-run completion, the agent creates a new artifact_versions record with version_number incremented by 1 per FR-AV-01 from SIM-PRD-ART-001. The is_current flag is set to True on the new record and False on all prior versions for that artifact, per FR-AV-05. A teal version badge (v2, v3...) appears on the node in the diagram immediately, sourced from the version_number field of the new artifact_versions record. The badge persists for the session.
+FR-ANV-29: The artifact output section becomes visible after re-run, showing the artifact name, file type chips, and agent reasoning text. Reopening a previously run node pre-populates the artifact output from the stored artifact_versions record.
+FR-ANV-30: After re-run, all downstream agents whose prefill_inputs depend on the updated artifact are marked stale: amber fill (#FFFAED), amber border (#E8B84B, 1.5px). The panel shows an alert listing each stale agent by layer, name, and evaluation condition. Stale clears when the user opens and re-runs that agent.
+FR-ANV-31: Agent output routing is non-sequential and data-driven. Artifacts from any layer can route to any agent in any layer when the evaluation condition is satisfied. Skip routes (crossing ≥ 2 layer boundaries) render in purple dashed lines with an ↗ indicator. Filter controls allow isolation of skip, sequential, immediate, deferred, or periodic routes.
+FR-ANV-32: Stale propagation is breadth-first and cascades up to 5 levels deep per FR-AD-06 from SIM-PRD-ART-001. Re-running a stale node propagates staleness to its own downstream agents in the same pass.
+11. Sprint Plan — 5 Weeks
+Shortest Job First: force-directed layout (Week 1) is the foundation. Inspector panels (Week 2) add data visibility. SSE animation (Week 3) is the highest-risk build — goes before swimlane to surface unknowns early. Swimlane diagram (Week 4) is independently buildable once the modal and SSE infrastructure exists. Node Editor (Week 5) connects three already-specced systems (Pre-fill Engine, Artifact Versioning, Artifact Dependency) and is the highest user-value feature — it goes last because it depends on all prior weeks being stable.
+Sprint
+Days
+Deliverables
+Week 1 — Layout
+Day 1–2
+D3.js force simulation: 26 nodes, tier Y-force, ORC center pull, collision avoidance. Edge rendering: directed arrows, bidirectional curved arcs, color by tier. Static snapshot mode from database data.
+Week 1 — Layout
+Day 3–4
+Node visual states: idle, complete, error, escalated, selected, highlighted. Edge states: idle, active, hovered, error. FIN node dashed/locked. Sub-node clustering (GCC, AUT sub-nodes).
+Week 1 — Layout
+Day 5
+Diagram controls: cycle selector, tier filter, zoom, reset layout, drag-to-reposition. Modal wrapper (white bg, × close, Escape, overlay click). Keyboard nav. Segmented control (Agent network / Layer actions placeholder).
+Week 2 — Inspector
+Day 6–7
+Node Inspector: Overview, Inputs, Outputs tabs. Data from layer6_momentum, layer6_action_queue, layer6_cycles. Field-value rendering with type display.
+Week 2 — Inspector
+Day 8
+Node Inspector History tab (last 10 cycles). Edge Inspector: payload, payload history (5 cycles). Copy as JSON on all panels.
+Week 2 — Inspector
+Day 9–10
+Breadcrumb trail: ← From / → To trace buttons, breadcrumb bar, Backspace nav, 8-hop max. Retry connector button for error edges.
+Week 3 — Animation
+Day 11–12
+SSE subscription on modal open. Particle animation: SVG path travel, glow effect, node flash, inspector refresh. Events: harvest_pull, score_started, dispatch, action_complete.
+Week 3 — Animation
+Day 13–14
+All SSE events: report_push, escalation_added, log_write, cycle_complete. Live badge (new cycle during view). Diff mode: two-cycle comparison table.
+Week 3 — Polish
+Day 15
+Phase badge + countdown. Run Now. Share link. WCAG AA audit. SSE reconnect on drop. Performance: < 2s layout, < 150ms inspector open. E2E test: live cycle 26 nodes.
+Week 4 — Swimlane
+Day 16–17
+Swimlane SVG: 5 horizontal bands, horizontal layer labels in 90px column, 2px vertical separator, 49 nodes distributed evenly. Layer color system from Section 9.3.
+Week 4 — Swimlane
+Day 18–19
+Node hover tooltip (inputs + artifact). Same-layer edges (solid Bézier). Cross-layer edges (dashed Bézier). All 38 edges (24 sequential + skip routes). Edge hover tooltip. Filter controls: All / Sequential / Skip / Immediate / Deferred / Periodic.
+Week 4 — Swimlane
+Day 20
+Segmented control wired: Agent network ↔ Layer actions, V keyboard shortcut, view state session persistence. SSE node pulse on action_complete. Traveling dash on active cross-layer edges. E2E test: all edge types and tooltips verified.
+Week 5 — Node Editor
+Day 21
+Slide-in panel container only: flexbox shell (diagram shrinks to accommodate 340px panel, transitions 250ms ease). Panel header: layer badge, action name, output_type sub-label, × close button (44×44px tap target). Modal open/close mechanics. Mobile breakpoint: full-screen under 768px. Browser compatibility verified (Chrome, Firefox, Safari, Edge).
+Week 5 — Node Editor
+Day 22
+Field renderer: read prefill_inputs from layer6_action_queue. Render each field with confidence left-border (teal/amber/grey), label row with confidence dot, text input, hint text below. Tab-order skip for High confidence fields. Session cache for unsaved edits (module-level object keyed by action_id, clears on modal close).
+Week 5 — Node Editor
+Day 23
+Run button: POST /api/simulations/:id/actions/:action_id/rerun. Green running state. 90-second timeout handler (toast + re-enable button). Correction capture: prefill_corrections write for changed fields. Celery task: prefill_corrections commit → action_queue update → execute_agent_action.delay() → SSE publish.
+Week 5 — Node Editor
+Day 24
+Artifact output section: visible after action_complete SSE. Version badge on node (teal pill, v2/v3...) sourced from artifact_versions.version_number. Artifact name, file type chips, reasoning text. Pre-populate artifact section when reopening a previously run node. FR-AV-01 + FR-AV-05 is_current flag management.
+Week 5 — Node Editor
+Day 25
+Stale downstream propagation: amber fill #FFFAED + amber border #E8B84B on all downstream nodes from stale_downstream SSE payload. Stale alert list in open panel. clearStale() on re-run. Cascade propagation (breadth-first, 5-level max). Non-sequential skip route rendering (purple dashed, ↗ indicator). E2E test: Rate Card re-run → v2 badge → Speaking Proposals + Sales Page (L1→L3 skip) + Income Allocation (L1→L5 skip) all go stale. Full cascade chain verified.
+SIM-PRD-VIZ-002  ·  Simulacrum Agent Network Visualization  ·  v1.2
+Jean Moussa Delphonse  ·  PrezentEnergy Ventures  ·  April 2026  ·  Confidential

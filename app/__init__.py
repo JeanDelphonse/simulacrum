@@ -90,6 +90,8 @@ def create_app(config_name=None):
     app.logger.info('startup: feedback_bp imported')
     from app.blueprints.advisor import advisor_bp
     app.logger.info('startup: advisor_bp imported')
+    from app.blueprints.contacts import contacts_bp
+    app.logger.info('startup: contacts_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -104,6 +106,7 @@ def create_app(config_name=None):
     app.register_blueprint(public_bp)
     app.register_blueprint(feedback_bp)
     app.register_blueprint(advisor_bp, url_prefix='/api/advisor')
+    app.register_blueprint(contacts_bp, url_prefix='/api/contacts')
 
     # Register page routes
     from app.blueprints.pages import pages_bp

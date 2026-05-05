@@ -22,6 +22,7 @@ from app.models.layer6 import (
 from app.models.profile import UserProfile, SimulationVisibility, ProfileInquiry, UserSession
 from app.models.feedback import UserFeedback
 from app.models.resume_consent import ResumeConsent
+from app.models.contact import Contact, ContactActivity
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -36,4 +37,5 @@ __all__ = [
     'UserProfile', 'SimulationVisibility', 'ProfileInquiry', 'UserSession',
     'UserFeedback',
     'ResumeConsent',
+    'Contact', 'ContactActivity',
 ]

@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% block title %}{{ contact.display_name }}{% endblock %}
+
+{% block head %}
+<style>
+/* ── Contact Detail ───────────────────────────────────────── */
+.cd-page { max-width: 960px; margin: 0 auto; padding: 24px 20px 60px; }
+.cd-breadcrumb { font-size: 12px; color: #9ca3af; margin-bottom: 16px; }
+.cd-breadcrumb a { color: #0D1B3E; text-decoration: none; }
+.cd-breadcrumb a:hover { text-decoration: underline; }
+
+.cd-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.cd-avatar { width: 52px; height: 52px; border-radius: 50%; background: #0D1B3E; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; flex-shrink: 0; }
+.cd-header-info { flex: 1; min-width: 0; }
+.cd-name { font-size: 22px; font-weight: 600; color: #0D1B3E; margin: 0; }
+.cd-sub { font-size: 14px; color: #6b7280; margin-top: 3px; }
+.cd-header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+
+.cd-btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; text-decoration: none; transition: background .15s; }
+.cd-btn-primary { background: #0D1B3E; color: #fff; }
+.cd-btn-primary:hover { background: #1a2e5a; }
+.cd-btn-ghost { background: transparent; color: #0D1B3E; border: 1px solid #d1d5db; }
+.cd-btn-ghost:hover { background: #f3f4f6; }
+.cd-btn-danger { background: transparent; color: #dc2626; border: 1px solid #fca5a5; }
+.cd-btn-danger:hover { background: #fef2f2; }
+
+.stage-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+.stage-badge.prospect { background: #eff6ff; color: #1d4ed8; }
+.stage-badge.active { background: #ecfdf5; color: #065f46; }
+.stage-badge.client { background: #fdf4ff; color: #7e22ce; }
+.stage-badge.closed_lost { background: #f9fafb; color: #6b7280; }
+
+/* Layout */
+.cd-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+@media (max-width: 768px) { .cd-grid { grid-template-columns: 1fr; } }
+
+.cd-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 16px; }
+.cd-card-header { padding: 14px 18px; border-bottom: 1px solid #f3f4f6; font-size: 13px; font-weight: 600; color: #374151; display: flex; justify-content: space-between; align-items: center; }
+.cd-card-body { padding: 16px 18px; }
+
+/* Fields grid */
+.cd-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+@media (max-width: 600px) { .cd-fields { grid-template-columns: 1fr; } }
+.cd-field { }
+.cd-field-label { font-size: 11px; font-weight: 500; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.cd-field-val { font-size: 13px; color: #374151; }
+.cd-field-val.editable { cursor: text; padding: 5px 7px; border: 1px solid transparent; border-radius: 4px; transition: border .15s; }
+.cd-field-val.editable:hover { border-color: #d1d5db; background: #f9fafb; }
+.cd-field-val.editable:focus { outline: none; border-color: #0D1B3E; background: #fff; }
+.cd-field-val a { color: #0D1B3E; }
+
+/* Pipeline stage selector */
+.cd-stage-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.cd-stage-opt { padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 2px solid transparent; }
+.cd-stage-opt.prospect { background: #eff6ff; color: #1d4ed8; }
+.cd-stage-opt.active { background: #ecfdf5; color: #065f46; }
+.cd-stage-opt.client { background: #fdf4ff; color: #7e22ce; }
+.cd-stage-opt.closed_lost { background: #f9fafb; color: #6b7280; }
+.cd-stage-opt.selected { border-color: #0D1B3E; }
+
+/* Score display */
+.cd-score-ring { display: flex; align-items: center; gap: 10px; }
+.cd-score-circle { width: 48px; height: 48px; border-radius: 50%; border: 3px solid #d1d5db; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+.cd-score-circle.high { border-color: #10b981; color: #059669; }
+.cd-score-circle.mid { border-color: #f59e0b; color: #d97706; }
+.cd-score-circle.low { border-color: #d1d5db; color: #9ca3af; }
+.cd-score-label { font-size: 11px; color: #9ca3af; }
+
+/* Activity timeline */
+.activity-list { list-style: none; margin: 0; padding: 0; }
+.activity-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+.activity-item:last-child { border-bottom: none; }
+.activity-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; margin-top: 6px; }
+.activity-dot.email_sent { background: #0D1B3E; }
+.activity-dot.stage_changed { background: #7c3aed; }
+.activity-dot.call_booked, .activity-dot.call_completed { background: #10b981; }
+.activity-dot.note_added { background: #f59e0b; }
+.activity-body { flex: 1; min-width: 0; }
+.activity-type { font-size: 12px; font-weight: 500; color: #374151; }
+.activity-meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.activity-notes { font-size: 12px; color: #6b7280; margin-top: 3px; font-style: italic; }
+
+/* Note input */
+.note-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.note-input-row textarea { flex: 1; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; resize: none; }
+.note-input-row button { padding: 7px 14px; background: #0D1B3E; color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+/* DNC toggle */
+.cd-dnc { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.cd-dnc input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; }
+.cd-dnc-label { color: #dc2626; font-weight: 500; }
+
+/* Toast */
+.crm-toast { position: fixed; bottom: 24px; right: 24px; background: #0D1B3E; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 9999; display: none; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set initials = (contact.first_name[0] + contact.last_name[0])|upper if contact.first_name and contact.last_name else '?' %}
+{% set score_pct = contact.score_pct %}
+{% set score_cls = 'high' if score_pct and score_pct >= 70 else ('mid' if score_pct and score_pct >= 45 else 'low') %}
+
+<div class="cd-page">
+  <div class="cd-breadcrumb">
+    <a href="/contacts">Contacts</a> / {{ contact.display_name }}
+  </div>
+
+  <div class="cd-header">
+    <div class="cd-avatar">{{ initials }}</div>
+    <div class="cd-header-info">
+      <h1 class="cd-name">{{ contact.display_name }}</h1>
+      <div class="cd-sub">
+        {% if contact.job_title %}{{ contact.job_title }}{% endif %}
+        {% if contact.job_title and contact.company_name %} · {% endif %}
+        {% if contact.company_name %}{{ contact.company_name }}{% endif %}
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="stage-badge {{ contact.pipeline_stage }}">{{ contact.pipeline_stage | title }}</span>
+        {% if contact.do_not_contact %}
+        <span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500">Do Not Contact</span>
+        {% endif %}
+        {% if contact.is_archived %}
+        <span style="background:#f9fafb;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px">Archived</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="cd-header-actions">
+      {% if contact.linkedin_url %}
+      <a class="cd-btn cd-btn-ghost" href="{{ contact.linkedin_url }}" target="_blank" rel="noopener">LinkedIn ↗</a>
+      {% endif %}
+      <button class="cd-btn cd-btn-ghost" onclick="openAddNote()">+ Note</button>
+    </div>
+  </div>
+
+  <div class="cd-grid">
+    <!-- Left column -->
+    <div>
+
+      <!-- Pipeline stage -->
+      <div class="cd-card" style="margin-bottom:16px">
+        <div class="cd-card-header">Pipeline Stage</div>
+        <div class="cd-card-body">
+          <div class="cd-stage-row">
+            {% for stage, label in [('prospect','Prospect'),('active','Active'),('client','Client'),('closed_lost','Closed Lost')] %}
+            <div class="cd-stage-opt {{ stage }} {% if contact.pipeline_stage == stage %}selected{% endif %}"
+                 onclick="setStage('{{ stage }}')">{{ label }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact fields -->
+      <div class="cd-card">
+        <div class="cd-card-header">
+          Contact Information
+          <button class="cd-btn cd-btn-ghost" style="padding:4px 10px;font-size:12px" onclick="saveAllFields()">Save changes</button>
+        </div>
+        <div class="cd-card-body">
+          <div class="cd-fields">
+            <div class="cd-field">
+              <div class="cd-field-label">First Name</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_first_name">{{ contact.first_name }}</div>
+            </div>
+            <div class="cd-field">
+              <div class="cd-field-label">Last Name</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_last_name">{{ contact.last_name }}</div>
+            </div>
+            <div class="cd-field" style="grid-column:span 2">
+              <div class="cd-field-label">Email</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_email">{{ contact.email }}</div>
+            </div>
+            <div class="cd-field">
+              <div class="cd-field-label">Job Title</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_job_title">{{ contact.job_title or '' }}</div>
+            </div>
+            <div class="cd-field">
+              <div class="cd-field-label">Company</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_company_name">{{ contact.company_name or '' }}</div>
+            </div>
+            <div class="cd-field">
+              <div class="cd-field-label">Industry</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_industry">{{ contact.industry or '' }}</div>
+            </div>
+            <div class="cd-field">
+              <div class="cd-field-label">Department</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_department">{{ contact.department or '' }}</div>
+            </div>
+            <div class="cd-field">
+              <div class="cd-field-label">Phone</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_phone">{{ contact.phone or '' }}</div>
+            </div>
+            <div class="cd-field">
+              <div class="cd-field-label">Location</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_city">{{ contact.city or '' }}{% if contact.city and contact.state_region %}, {% endif %}{{ contact.state_region or '' }}</div>
+            </div>
+            <div class="cd-field" style="grid-column:span 2">
+              <div class="cd-field-label">LinkedIn</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_linkedin_url">{{ contact.linkedin_url or '' }}</div>
+            </div>
+            <div class="cd-field" style="grid-column:span 2">
+              <div class="cd-field-label">Notes</div>
+              <div class="cd-field-val editable" contenteditable="true" id="f_notes" style="min-height:60px">{{ contact.notes or '' }}</div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid #f3f4f6">
+            <div class="cd-dnc">
+              <input type="checkbox" id="dncCheck" {% if contact.do_not_contact %}checked{% endif %} onchange="toggleDNC(this)">
+              <label class="cd-dnc-label" for="dncCheck">Do Not Contact</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right column -->
+    <div>
+
+      <!-- Score -->
+      <div class="cd-card">
+        <div class="cd-card-header">Qualifying Score</div>
+        <div class="cd-card-body">
+          <div class="cd-score-ring">
+            <div class="cd-score-circle {{ score_cls }}">
+              {% if score_pct is not none %}{{ score_pct }}%{% else %}—{% endif %}
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:500;color:#374151">
+                {% if score_pct is not none %}
+                  {% if score_pct >= 70 %}Strong fit{% elif score_pct >= 45 %}Moderate fit{% else %}Low fit{% endif %}
+                {% else %}
+                  Scoring…
+                {% endif %}
+              </div>
+              <div class="cd-score-label">Factors: seniority, company size,<br>industry, completeness, source</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick details -->
+      <div class="cd-card">
+        <div class="cd-card-header">Details</div>
+        <div class="cd-card-body">
+          <div style="display:grid;gap:10px">
+            <div>
+              <div class="cd-field-label">Source</div>
+              <div class="cd-field-val">{{ {'manual_entry':'Manual Entry','agent_generated':'Agent Generated','csv_import':'CSV Import','inbound_referral':'Inbound Referral'}.get(contact.source, contact.source) }}</div>
+            </div>
+            <div>
+              <div class="cd-field-label">Company Size</div>
+              <div class="cd-field-val">{{ contact.company_size or '—' }}</div>
+            </div>
+            <div>
+              <div class="cd-field-label">Seniority</div>
+              <div class="cd-field-val">{{ (contact.seniority or '—') | replace('_', ' ') | title }}</div>
+            </div>
+            <div>
+              <div class="cd-field-label">Country</div>
+              <div class="cd-field-val">{{ contact.country or '—' }}</div>
+            </div>
+            <div>
+              <div class="cd-field-label">Last contacted</div>
+              <div class="cd-field-val">{{ contact.last_contacted_at.strftime('%b %d, %Y') if contact.last_contacted_at else '—' }}</div>
+            </div>
+            <div>
+              <div class="cd-field-label">Added</div>
+              <div class="cd-field-val">{{ contact.created_at.strftime('%b %d, %Y') if contact.created_at else '—' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Activity Timeline -->
+  <div class="cd-card">
+    <div class="cd-card-header">
+      Activity Timeline
+      <span style="font-size:11px;color:#9ca3af">{{ activities | length }} events</span>
+    </div>
+    <div class="cd-card-body">
+      <div class="note-input-row">
+        <textarea id="noteInput" rows="2" placeholder="Add a note…"></textarea>
+        <button onclick="addNote()">Add Note</button>
+      </div>
+      <ul class="activity-list" id="activityList" style="margin-top:16px">
+        {% for a in activities %}
+        <li class="activity-item">
+          <div class="activity-dot {{ a.activity_type }}"></div>
+          <div class="activity-body">
+            <div class="activity-type">{{ a.activity_type | replace('_',' ') | title }}
+              {% if a.pipeline_stage_from and a.pipeline_stage_to %}
+              <span style="color:#9ca3af">{{ a.pipeline_stage_from }} → {{ a.pipeline_stage_to }}</span>
+              {% endif %}
+            </div>
+            <div class="activity-meta">
+              {{ a.activity_date.strftime('%b %d, %Y %H:%M') if a.activity_date else '' }}
+              · by {{ a.created_by }}
+            </div>
+            {% if a.notes %}<div class="activity-notes">{{ a.notes }}</div>{% endif %}
+          </div>
+        </li>
+        {% else %}
+        <li style="padding:20px 0;text-align:center;color:#9ca3af;font-size:13px">No activity recorded yet</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<div class="crm-toast" id="crmToast"></div>
+
+<script>
+const CONTACT_ID = '{{ contact.id }}';
+
+function showToast(msg, d=3000) {
+  const t = document.getElementById('crmToast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', d);
+}
+
+function setStage(stage) {
+  fetch(`/api/contacts/${CONTACT_ID}/stage`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ stage, notes: '' }),
+  })
+    .then(r => r.json())
+    .then(d => {
+      if (d.pipeline_stage) {
+        document.querySelectorAll('.cd-stage-opt').forEach(el => {
+          el.classList.toggle('selected', el.classList.contains(d.pipeline_stage));
+        });
+        showToast(`Stage updated to ${d.pipeline_stage}`);
+        location.reload();
+      }
+    });
+}
+
+function saveAllFields() {
+  const payload = {};
+  const map = {
+    f_first_name:'first_name', f_last_name:'last_name', f_email:'email',
+    f_job_title:'job_title', f_company_name:'company_name', f_industry:'industry',
+    f_department:'department', f_phone:'phone', f_linkedin_url:'linkedin_url',
+    f_notes:'notes',
+  };
+  for (const [elId, key] of Object.entries(map)) {
+    const el = document.getElementById(elId);
+    if (el) payload[key] = el.textContent.trim();
+  }
+  fetch(`/api/contacts/${CONTACT_ID}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+  })
+    .then(r => r.json())
+    .then(d => {
+      if (d.id) showToast('Contact saved');
+      else showToast(d.error || 'Save failed');
+    });
+}
+
+function toggleDNC(cb) {
+  fetch(`/api/contacts/${CONTACT_ID}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ do_not_contact: cb.checked }),
+  })
+    .then(r => r.json())
+    .then(() => showToast(cb.checked ? 'Marked as Do Not Contact' : 'Do Not Contact removed'));
+}
+
+function openAddNote() {
+  document.getElementById('noteInput').focus();
+  document.getElementById('noteInput').scrollIntoView({ behavior: 'smooth' });
+}
+
+function addNote() {
+  const note = document.getElementById('noteInput').value.trim();
+  if (!note) return;
+  fetch(`/api/contacts/${CONTACT_ID}/activities`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ activity_type: 'note_added', notes: note }),
+  })
+    .then(r => r.json())
+    .then(a => {
+      document.getElementById('noteInput').value = '';
+      const list = document.getElementById('activityList');
+      const li = document.createElement('li');
+      li.className = 'activity-item';
+      li.innerHTML = `
+        <div class="activity-dot note_added"></div>
+        <div class="activity-body">
+          <div class="activity-type">Note Added</div>
+          <div class="activity-meta">Just now · by user</div>
+          <div class="activity-notes">${note}</div>
+        </div>`;
+      list.prepend(li);
+      showToast('Note added');
+    });
+}
+
+// Auto-save on blur for editable fields
+document.querySelectorAll('.cd-field-val.editable').forEach(el => {
+  el.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); } });
+});
+</script>
+{% endblock %}

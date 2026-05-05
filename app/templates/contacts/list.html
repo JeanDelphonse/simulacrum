@@ -1,0 +1,651 @@
+{% extends "base.html" %}
+{% block title %}Contacts{% endblock %}
+
+{% block head %}
+<style>
+/* ── CRM Contacts List ───────────────────────────────────── */
+.crm-page { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+.crm-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.crm-header h1 { font-size: 22px; font-weight: 600; color: #0D1B3E; margin: 0; }
+.crm-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.crm-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; text-decoration: none; transition: background .15s; }
+.crm-btn-primary { background: #0D1B3E; color: #fff; }
+.crm-btn-primary:hover { background: #1a2e5a; color: #fff; }
+.crm-btn-ghost { background: transparent; color: #0D1B3E; border: 1px solid #d1d5db; }
+.crm-btn-ghost:hover { background: #f3f4f6; }
+
+/* Stage pills */
+.crm-stage-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.crm-stage-pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
+.crm-stage-pill.all { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
+.crm-stage-pill.prospect { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.crm-stage-pill.active { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+.crm-stage-pill.client { background: #fdf4ff; color: #7e22ce; border-color: #e9d5ff; }
+.crm-stage-pill.closed_lost { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+.crm-stage-pill.selected { border-color: #0D1B3E; box-shadow: 0 0 0 1px #0D1B3E; }
+.crm-stage-pill .cnt { opacity: .7; margin-left: 3px; }
+
+/* Filters row */
+.crm-filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.crm-search { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; }
+.crm-select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: #fff; color: #374151; }
+
+/* View toggle */
+.crm-view-toggle { display: flex; gap: 0; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; }
+.crm-view-btn { padding: 6px 12px; font-size: 12px; cursor: pointer; background: #fff; border: none; color: #6b7280; }
+.crm-view-btn.active { background: #0D1B3E; color: #fff; }
+
+/* Table */
+.crm-table-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.crm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.crm-table th { background: #f9fafb; padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.crm-table td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.crm-table tr:last-child td { border-bottom: none; }
+.crm-table tr:hover td { background: #f9fafb; }
+.crm-table .cb-col { width: 36px; }
+.crm-table .score-col { width: 70px; }
+.crm-table .stage-col { width: 90px; }
+.crm-table .source-col { width: 80px; }
+.crm-table .activity-col { width: 110px; }
+
+.contact-name-link { font-weight: 500; color: #0D1B3E; text-decoration: none; }
+.contact-name-link:hover { text-decoration: underline; }
+.contact-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+.stage-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+.stage-badge.prospect { background: #eff6ff; color: #1d4ed8; }
+.stage-badge.active { background: #ecfdf5; color: #065f46; }
+.stage-badge.client { background: #fdf4ff; color: #7e22ce; }
+.stage-badge.closed_lost { background: #f9fafb; color: #6b7280; }
+
+.score-bar { display: flex; align-items: center; gap: 6px; }
+.score-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.score-dot.high { background: #10b981; }
+.score-dot.mid { background: #f59e0b; }
+.score-dot.low { background: #d1d5db; }
+.score-num { font-size: 11px; color: #6b7280; }
+
+/* Kanban */
+#viewKanban { display: none; }
+.crm-kanban { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 16px; }
+.kanban-col { flex: 0 0 260px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.kanban-col-header { padding: 10px 14px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-size: 12px; font-weight: 600; color: #374151; display: flex; justify-content: space-between; }
+.kanban-col-body { padding: 8px; min-height: 100px; }
+.kanban-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; transition: box-shadow .15s; }
+.kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.kanban-card-name { font-size: 13px; font-weight: 500; color: #0D1B3E; }
+.kanban-card-sub { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+
+/* Bulk action bar */
+.crm-bulk-bar { display: none; align-items: center; gap: 10px; padding: 8px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; margin-bottom: 12px; font-size: 13px; }
+.crm-bulk-bar.visible { display: flex; }
+.bulk-count { font-weight: 600; color: #1d4ed8; }
+.bulk-sep { color: #d1d5db; }
+
+/* Empty state */
+.crm-empty { text-align: center; padding: 60px 20px; color: #9ca3af; }
+.crm-empty-icon { font-size: 40px; margin-bottom: 12px; }
+.crm-empty-title { font-size: 16px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+
+/* Pagination */
+.crm-pagination { display: flex; justify-content: center; gap: 6px; margin-top: 20px; }
+.crm-page-btn { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; cursor: pointer; background: #fff; color: #374151; }
+.crm-page-btn.active { background: #0D1B3E; color: #fff; border-color: #0D1B3E; }
+.crm-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Modals */
+.crm-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; align-items: center; justify-content: center; }
+.crm-modal-backdrop.open { display: flex; }
+.crm-modal { background: #fff; border-radius: 10px; width: min(560px, calc(100vw - 32px)); max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+.crm-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px 14px; border-bottom: 1px solid #e5e7eb; }
+.crm-modal-title { font-size: 16px; font-weight: 600; color: #0D1B3E; }
+.crm-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #9ca3af; padding: 2px 6px; }
+.crm-modal-body { padding: 20px; }
+.crm-form-row { margin-bottom: 14px; }
+.crm-form-row label { display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 5px; }
+.crm-form-row input, .crm-form-row select, .crm-form-row textarea { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+.crm-form-row input:focus, .crm-form-row select:focus { outline: none; border-color: #0D1B3E; box-shadow: 0 0 0 2px rgba(13,27,62,.1); }
+.crm-form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.crm-form-section { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 10px; border-top: 1px solid #f3f4f6; padding-top: 14px; }
+.crm-form-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid #e5e7eb; }
+.dup-warn { font-size: 12px; color: #dc2626; margin-top: 4px; display: none; }
+
+/* Import modal */
+.crm-import-drop { border: 2px dashed #d1d5db; border-radius: 8px; padding: 30px; text-align: center; cursor: pointer; margin-bottom: 16px; }
+.crm-import-drop:hover { border-color: #0D1B3E; background: #f8faff; }
+.crm-import-drop.drag-over { border-color: #0D1B3E; background: #eff6ff; }
+.import-file-name { font-size: 13px; color: #374151; margin-top: 8px; }
+.import-result { background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 6px; padding: 12px 14px; font-size: 13px; display: none; margin-top: 12px; }
+.import-result.error { background: #fef2f2; border-color: #fca5a5; }
+
+/* Toast */
+.crm-toast { position: fixed; bottom: 24px; right: 24px; background: #0D1B3E; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 9999; display: none; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="crm-page">
+
+  <!-- Header -->
+  <div class="crm-header">
+    <div>
+      <h1>Contacts{% if sim %} — {{ sim.name or sim.expertise_zone }}{% endif %}</h1>
+      <div style="font-size:13px;color:#9ca3af;margin-top:2px;">{{ total }} contact{{ 's' if total != 1 else '' }} in your pipeline</div>
+    </div>
+    <div class="crm-header-actions">
+      <button class="crm-btn crm-btn-ghost" id="btnImport">Import CSV</button>
+      <button class="crm-btn crm-btn-primary" id="btnAddContact">+ Add Contact</button>
+    </div>
+  </div>
+
+  <!-- Stage pills -->
+  <div class="crm-stage-bar" id="stagePillBar">
+    <div class="crm-stage-pill all selected" data-stage="">All <span class="cnt">({{ total }})</span></div>
+    <div class="crm-stage-pill prospect" data-stage="prospect">Prospect <span class="cnt">({{ stage_counts.get('prospect', 0) }})</span></div>
+    <div class="crm-stage-pill active" data-stage="active">Active <span class="cnt">({{ stage_counts.get('active', 0) }})</span></div>
+    <div class="crm-stage-pill client" data-stage="client">Client <span class="cnt">({{ stage_counts.get('client', 0) }})</span></div>
+    {% if stage_counts.get('closed_lost', 0) %}
+    <div class="crm-stage-pill closed_lost" data-stage="closed_lost">Closed Lost <span class="cnt">({{ stage_counts.get('closed_lost', 0) }})</span></div>
+    {% endif %}
+  </div>
+
+  <!-- Filters -->
+  <div class="crm-filters">
+    <input type="text" class="crm-search" id="searchInput" placeholder="Search name, company, email…">
+    <select class="crm-select" id="sortSelect">
+      <option value="score">Sort: Score</option>
+      <option value="activity">Sort: Last activity</option>
+      <option value="name">Sort: Name A-Z</option>
+      <option value="created">Sort: Recently added</option>
+    </select>
+    <select class="crm-select" id="sourceSelect">
+      <option value="">All sources</option>
+      <option value="manual_entry">Manual</option>
+      <option value="agent_generated">Agent</option>
+      <option value="csv_import">CSV Import</option>
+      <option value="inbound_referral">Referral</option>
+    </select>
+    <div class="crm-view-toggle">
+      <button class="crm-view-btn active" id="btnViewTable" title="Table view">&#9776;</button>
+      <button class="crm-view-btn" id="btnViewKanban" title="Kanban view">&#9635;</button>
+    </div>
+  </div>
+
+  <!-- Bulk action bar -->
+  <div class="crm-bulk-bar" id="bulkBar">
+    <span><span class="bulk-count" id="bulkCount">0</span> selected</span>
+    <span class="bulk-sep">|</span>
+    <button class="crm-btn crm-btn-ghost" onclick="bulkAction('advance_stage','active')" style="padding:5px 10px">→ Active</button>
+    <button class="crm-btn crm-btn-ghost" onclick="bulkAction('archive')" style="padding:5px 10px">Archive</button>
+    <button class="crm-btn crm-btn-ghost" onclick="bulkAction('do_not_contact')" style="padding:5px 10px;color:#dc2626">Do Not Contact</button>
+  </div>
+
+  <!-- Table view -->
+  <div id="viewTable">
+    <div class="crm-table-wrap">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th class="cb-col"><input type="checkbox" id="checkAll"></th>
+            <th>Name</th>
+            <th>Company</th>
+            <th class="stage-col">Stage</th>
+            <th class="score-col">Score</th>
+            <th class="source-col">Source</th>
+            <th class="activity-col">Last Activity</th>
+          </tr>
+        </thead>
+        <tbody id="contactsTableBody">
+          <tr><td colspan="7" class="crm-empty"><div class="crm-empty-icon">&#128100;</div><div class="crm-empty-title">Loading…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="crm-pagination" id="tablePagination"></div>
+  </div>
+
+  <!-- Kanban view -->
+  <div id="viewKanban">
+    <div class="crm-kanban" id="kanbanBoard">
+      {% for stage, label, cls in [('prospect','Prospect','prospect'),('active','Active','active'),('client','Client','client'),('closed_lost','Closed Lost','closed_lost')] %}
+      <div class="kanban-col">
+        <div class="kanban-col-header"><span>{{ label }}</span><span class="cnt">0</span></div>
+        <div class="kanban-col-body" id="kanban_{{ stage }}" data-stage="{{ stage }}"></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Add/Edit Contact Modal -->
+<div class="crm-modal-backdrop" id="addContactModal">
+  <div class="crm-modal">
+    <div class="crm-modal-header">
+      <div class="crm-modal-title">Add Contact</div>
+      <button class="crm-modal-close" onclick="closeModal('addContactModal')">&times;</button>
+    </div>
+    <div class="crm-modal-body">
+      <div class="crm-form-2col">
+        <div class="crm-form-row">
+          <label>First Name <span style="color:#dc2626">*</span></label>
+          <input type="text" id="cf_first_name" placeholder="Jane">
+        </div>
+        <div class="crm-form-row">
+          <label>Last Name <span style="color:#dc2626">*</span></label>
+          <input type="text" id="cf_last_name" placeholder="Smith">
+        </div>
+      </div>
+      <div class="crm-form-row">
+        <label>Email <span style="color:#dc2626">*</span></label>
+        <input type="email" id="cf_email" placeholder="jane@company.com" oninput="checkEmailDup()">
+        <div class="dup-warn" id="emailDupWarn">A contact with this email already exists.</div>
+      </div>
+      <div class="crm-form-section">Professional Context</div>
+      <div class="crm-form-2col">
+        <div class="crm-form-row">
+          <label>Job Title</label>
+          <input type="text" id="cf_job_title" placeholder="VP of Sales">
+        </div>
+        <div class="crm-form-row">
+          <label>Company</label>
+          <input type="text" id="cf_company_name" placeholder="Acme Corp">
+        </div>
+      </div>
+      <div class="crm-form-2col">
+        <div class="crm-form-row">
+          <label>Company Size</label>
+          <select id="cf_company_size">
+            <option value="">Select…</option>
+            <option value="solo">Solo</option>
+            <option value="2-10">2–10</option>
+            <option value="11-50">11–50</option>
+            <option value="51-200">51–200</option>
+            <option value="201-500">201–500</option>
+            <option value="501-1000">501–1,000</option>
+            <option value="1001-5000">1,001–5,000</option>
+            <option value="5000+">5,000+</option>
+          </select>
+        </div>
+        <div class="crm-form-row">
+          <label>Seniority</label>
+          <select id="cf_seniority">
+            <option value="">Select…</option>
+            <option value="individual_contributor">Individual Contributor</option>
+            <option value="manager">Manager</option>
+            <option value="director">Director</option>
+            <option value="vp">VP</option>
+            <option value="c_suite">C-Suite</option>
+            <option value="founder">Founder</option>
+            <option value="partner">Partner</option>
+          </select>
+        </div>
+      </div>
+      <div class="crm-form-row">
+        <label>Industry</label>
+        <input type="text" id="cf_industry" placeholder="Technology, Healthcare…">
+      </div>
+      <div class="crm-form-section">Contact Channels</div>
+      <div class="crm-form-2col">
+        <div class="crm-form-row">
+          <label>LinkedIn URL</label>
+          <input type="url" id="cf_linkedin_url" placeholder="https://linkedin.com/in/…">
+        </div>
+        <div class="crm-form-row">
+          <label>Phone</label>
+          <input type="tel" id="cf_phone" placeholder="+1 555 000 0000">
+        </div>
+      </div>
+      <div class="crm-form-section">Source</div>
+      <div class="crm-form-row">
+        <label>Source</label>
+        <select id="cf_source">
+          <option value="manual_entry">Manual Entry</option>
+          <option value="inbound_referral">Inbound Referral</option>
+        </select>
+      </div>
+      <div class="crm-form-row">
+        <label>Notes</label>
+        <textarea id="cf_notes" rows="3" placeholder="Internal notes…" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="crm-form-actions">
+      <button class="crm-btn crm-btn-ghost" onclick="closeModal('addContactModal')">Cancel</button>
+      <button class="crm-btn crm-btn-primary" id="saveContactBtn" onclick="saveContact()">Save Contact</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV Import Modal -->
+<div class="crm-modal-backdrop" id="importModal">
+  <div class="crm-modal">
+    <div class="crm-modal-header">
+      <div class="crm-modal-title">Import Contacts (CSV)</div>
+      <button class="crm-modal-close" onclick="closeModal('importModal')">&times;</button>
+    </div>
+    <div class="crm-modal-body">
+      <p style="font-size:13px;color:#6b7280;margin:0 0 14px">Upload a CSV file with columns: <code>first_name</code>, <code>last_name</code>, <code>email</code>. Optional: <code>job_title</code>, <code>company_name</code>, <code>company_size</code>, <code>industry</code>, <code>seniority</code>, <code>linkedin_url</code>, <code>phone</code>. Max 5,000 rows.</p>
+      <div class="crm-import-drop" id="importDropZone" onclick="document.getElementById('csvFileInput').click()">
+        <div style="font-size:28px;margin-bottom:8px">&#128196;</div>
+        <div style="font-size:13px;font-weight:500">Click or drop CSV file here</div>
+        <div class="import-file-name" id="importFileName"></div>
+      </div>
+      <input type="file" id="csvFileInput" accept=".csv,.tsv" style="display:none" onchange="handleFileSelect(this)">
+      <div class="import-result" id="importResult"></div>
+    </div>
+    <div class="crm-form-actions">
+      <button class="crm-btn crm-btn-ghost" onclick="closeModal('importModal')">Cancel</button>
+      <button class="crm-btn crm-btn-primary" id="importBtn" onclick="doImport()" disabled>Import</button>
+    </div>
+  </div>
+</div>
+
+<div class="crm-toast" id="crmToast"></div>
+
+<script>
+let _page = 1, _stage = '', _sort = 'score', _search = '', _source = '', _selectedIds = new Set();
+let _viewMode = 'table';
+let _emailCheckTimer = null;
+
+function showToast(msg, duration=3000) {
+  const t = document.getElementById('crmToast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', duration);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.getElementById('btnAddContact').onclick = () => openModal('addContactModal');
+document.getElementById('btnImport').onclick = () => openModal('importModal');
+
+// Stage pills
+document.getElementById('stagePillBar').addEventListener('click', e => {
+  const pill = e.target.closest('.crm-stage-pill');
+  if (!pill) return;
+  document.querySelectorAll('.crm-stage-pill').forEach(p => p.classList.remove('selected'));
+  pill.classList.add('selected');
+  _stage = pill.dataset.stage;
+  _page = 1;
+  loadContacts();
+});
+
+// Filters
+let _searchTimer = null;
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => { _search = e.target.value; _page = 1; loadContacts(); }, 300);
+});
+document.getElementById('sortSelect').addEventListener('change', e => { _sort = e.target.value; loadContacts(); });
+document.getElementById('sourceSelect').addEventListener('change', e => { _source = e.target.value; loadContacts(); });
+
+// View toggle
+document.getElementById('btnViewTable').onclick = () => { _viewMode = 'table'; toggleView(); };
+document.getElementById('btnViewKanban').onclick = () => { _viewMode = 'kanban'; toggleView(); };
+
+function toggleView() {
+  document.getElementById('btnViewTable').classList.toggle('active', _viewMode === 'table');
+  document.getElementById('btnViewKanban').classList.toggle('active', _viewMode === 'kanban');
+  document.getElementById('viewTable').style.display = _viewMode === 'table' ? '' : 'none';
+  document.getElementById('viewKanban').style.display = _viewMode === 'kanban' ? '' : 'none';
+  if (_viewMode === 'kanban') loadKanban();
+}
+
+// Select all
+document.getElementById('checkAll').addEventListener('change', e => {
+  document.querySelectorAll('.row-cb').forEach(cb => {
+    cb.checked = e.target.checked;
+    if (e.target.checked) _selectedIds.add(cb.dataset.id);
+    else _selectedIds.delete(cb.dataset.id);
+  });
+  updateBulkBar();
+});
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  document.getElementById('bulkCount').textContent = _selectedIds.size;
+  bar.classList.toggle('visible', _selectedIds.size > 0);
+}
+
+function stageBadge(stage) {
+  const labels = {prospect:'Prospect', active:'Active', client:'Client', closed_lost:'Closed Lost'};
+  return `<span class="stage-badge ${stage}">${labels[stage] || stage}</span>`;
+}
+
+function scoreHtml(score) {
+  if (score === null || score === undefined) return '<span class="score-num">—</span>';
+  const cls = score >= 0.7 ? 'high' : score >= 0.45 ? 'mid' : 'low';
+  return `<div class="score-bar"><div class="score-dot ${cls}"></div><span class="score-num">${Math.round(score*100)}%</span></div>`;
+}
+
+function sourceLabel(s) {
+  const m = {manual_entry:'Manual', agent_generated:'Agent', csv_import:'CSV', linkedin_import:'LinkedIn', inbound_referral:'Referral'};
+  return m[s] || s;
+}
+
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso), now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  if (diff < 86400*30) return `${Math.floor(diff/86400)}d ago`;
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function loadContacts() {
+  const params = new URLSearchParams({ page: _page, sort: _sort });
+  if (_stage) params.set('stage', _stage);
+  if (_search) params.set('q', _search);
+  if (_source) params.set('source', _source);
+
+  fetch(`/api/contacts?${params}`)
+    .then(r => r.json())
+    .then(data => {
+      renderTable(data.contacts, data.total, data.pages);
+    })
+    .catch(() => {
+      document.getElementById('contactsTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af">Failed to load contacts</td></tr>';
+    });
+}
+
+function renderTable(contacts, total, pages) {
+  const tbody = document.getElementById('contactsTableBody');
+  if (!contacts.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="crm-empty"><div class="crm-empty-icon">&#128100;</div><div class="crm-empty-title">No contacts found</div><div>Add your first contact or import a CSV</div></div></td></tr>`;
+    document.getElementById('tablePagination').innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = contacts.map(c => `
+    <tr>
+      <td class="cb-col"><input type="checkbox" class="row-cb" data-id="${c.id}" ${_selectedIds.has(c.id)?'checked':''} onchange="toggleRow(this)"></td>
+      <td>
+        <a class="contact-name-link" href="/contacts/${c.id}">${c.display_name}</a>
+        <div class="contact-sub">${c.email}</div>
+      </td>
+      <td>
+        <div>${c.company_name || '—'}</div>
+        <div class="contact-sub">${c.job_title || ''}</div>
+      </td>
+      <td>${stageBadge(c.pipeline_stage)}</td>
+      <td>${scoreHtml(c.qualifying_score)}</td>
+      <td style="color:#6b7280">${sourceLabel(c.source)}</td>
+      <td style="color:#9ca3af">${timeAgo(c.last_contacted_at || c.updated_at)}</td>
+    </tr>
+  `).join('');
+
+  // Re-sync checked states
+  document.querySelectorAll('.row-cb').forEach(cb => {
+    cb.checked = _selectedIds.has(cb.dataset.id);
+  });
+
+  renderPagination(pages);
+}
+
+function toggleRow(cb) {
+  if (cb.checked) _selectedIds.add(cb.dataset.id);
+  else _selectedIds.delete(cb.dataset.id);
+  updateBulkBar();
+}
+
+function renderPagination(pages) {
+  const el = document.getElementById('tablePagination');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  let html = `<button class="crm-page-btn" ${_page<=1?'disabled':''} onclick="gotoPage(${_page-1})">&#8249;</button>`;
+  for (let i=1; i<=pages; i++) {
+    if (i===1 || i===pages || Math.abs(i-_page)<=2) {
+      html += `<button class="crm-page-btn ${i===_page?'active':''}" onclick="gotoPage(${i})">${i}</button>`;
+    } else if (Math.abs(i-_page)===3) {
+      html += `<span style="padding:6px 4px;color:#9ca3af">…</span>`;
+    }
+  }
+  html += `<button class="crm-page-btn" ${_page>=pages?'disabled':''} onclick="gotoPage(${_page+1})">&#8250;</button>`;
+  el.innerHTML = html;
+}
+
+function gotoPage(p) { _page = p; loadContacts(); window.scrollTo(0, 0); }
+
+function loadKanban() {
+  fetch('/api/contacts?per_page=200')
+    .then(r => r.json())
+    .then(data => {
+      const byStage = {};
+      data.contacts.forEach(c => { (byStage[c.pipeline_stage] = byStage[c.pipeline_stage]||[]).push(c); });
+      ['prospect','active','client','closed_lost'].forEach(stage => {
+        const col = document.getElementById(`kanban_${stage}`);
+        const items = byStage[stage] || [];
+        col.parentElement.querySelector('.cnt').textContent = items.length;
+        col.innerHTML = items.map(c => `
+          <div class="kanban-card" onclick="location.href='/contacts/${c.id}'">
+            <div class="kanban-card-name">${c.display_name}</div>
+            <div class="kanban-card-sub">${c.job_title || ''}${c.job_title && c.company_name ? ' · ' : ''}${c.company_name || ''}</div>
+            ${scoreHtml(c.qualifying_score)}
+          </div>
+        `).join('') || '<div style="font-size:12px;color:#9ca3af;padding:8px">No contacts</div>';
+      });
+    });
+}
+
+// Bulk actions
+function bulkAction(action, stage) {
+  if (!_selectedIds.size) return;
+  const ids = [..._selectedIds];
+  const body = { action, ids };
+  if (stage) body.stage = stage;
+  if (action === 'do_not_contact' && !confirm(`Mark ${ids.length} contact(s) as Do Not Contact? This is permanent.`)) return;
+  fetch('/api/contacts/bulk', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body),
+  })
+    .then(r => r.json())
+    .then(d => {
+      showToast(`${d.updated} contact(s) updated`);
+      _selectedIds.clear();
+      updateBulkBar();
+      loadContacts();
+    });
+}
+
+// Email duplicate check
+function checkEmailDup() {
+  clearTimeout(_emailCheckTimer);
+  const email = document.getElementById('cf_email').value.trim();
+  if (!email || !email.includes('@')) { document.getElementById('emailDupWarn').style.display = 'none'; return; }
+  _emailCheckTimer = setTimeout(() => {
+    fetch(`/api/contacts/check-email?email=${encodeURIComponent(email)}`)
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('emailDupWarn').style.display = d.exists ? 'block' : 'none';
+      });
+  }, 400);
+}
+
+// Save contact
+function saveContact() {
+  const btn = document.getElementById('saveContactBtn');
+  const data = {
+    first_name: document.getElementById('cf_first_name').value.trim(),
+    last_name: document.getElementById('cf_last_name').value.trim(),
+    email: document.getElementById('cf_email').value.trim(),
+    phone: document.getElementById('cf_phone').value.trim(),
+    job_title: document.getElementById('cf_job_title').value.trim(),
+    company_name: document.getElementById('cf_company_name').value.trim(),
+    company_size: document.getElementById('cf_company_size').value,
+    seniority: document.getElementById('cf_seniority').value,
+    industry: document.getElementById('cf_industry').value.trim(),
+    linkedin_url: document.getElementById('cf_linkedin_url').value.trim(),
+    source: document.getElementById('cf_source').value,
+    notes: document.getElementById('cf_notes').value.trim(),
+  };
+  if (!data.first_name || !data.last_name || !data.email) {
+    showToast('First name, last name, and email are required'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  fetch('/api/contacts', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data),
+  })
+    .then(r => r.json().then(d => ({ok: r.ok, data: d})))
+    .then(({ok, data}) => {
+      if (ok) {
+        closeModal('addContactModal');
+        showToast('Contact saved — scoring in background');
+        loadContacts();
+        // Reset form
+        ['cf_first_name','cf_last_name','cf_email','cf_phone','cf_job_title','cf_company_name','cf_industry','cf_linkedin_url','cf_notes'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('cf_company_size').value = '';
+        document.getElementById('cf_seniority').value = '';
+      } else {
+        showToast(data.error || 'Save failed');
+      }
+    })
+    .finally(() => { btn.disabled = false; btn.textContent = 'Save Contact'; });
+}
+
+// CSV import
+let _importFile = null;
+function handleFileSelect(input) {
+  _importFile = input.files[0];
+  document.getElementById('importFileName').textContent = _importFile ? _importFile.name : '';
+  document.getElementById('importBtn').disabled = !_importFile;
+  document.getElementById('importResult').style.display = 'none';
+}
+const dropZone = document.getElementById('importDropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) { _importFile = file; document.getElementById('importFileName').textContent = file.name; document.getElementById('importBtn').disabled = false; }
+});
+
+function doImport() {
+  if (!_importFile) return;
+  const btn = document.getElementById('importBtn');
+  btn.disabled = true; btn.textContent = 'Importing…';
+  const fd = new FormData();
+  fd.append('file', _importFile);
+  fetch('/api/contacts/import/csv', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      const resultEl = document.getElementById('importResult');
+      resultEl.style.display = 'block';
+      if (d.error) {
+        resultEl.className = 'import-result error';
+        resultEl.textContent = d.error;
+      } else {
+        resultEl.className = 'import-result';
+        resultEl.innerHTML = `<strong>${d.created} added · ${d.updated} updated · ${d.skipped} skipped</strong>${d.errors && d.errors.length ? '<br><small style="color:#dc2626">' + d.errors.slice(0,3).join('; ') + '</small>' : ''}`;
+        showToast(`${d.created} contacts imported`);
+        loadContacts();
+      }
+    })
+    .finally(() => { btn.disabled = false; btn.textContent = 'Import'; });
+}
+
+// Init
+loadContacts();
+</script>
+{% endblock %}

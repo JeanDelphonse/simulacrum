@@ -658,6 +658,55 @@ def legal_privacy():
     return render_template('legal/privacy.html', pp_version=pp_version)
 
 
+@pages_bp.route('/contacts')
+@login_required
+def contacts_list():
+    from app.models.contact import Contact
+    from app.extensions import db as _db
+    from sqlalchemy import func as _func
+    stage_counts = dict(
+        _db.session.query(Contact.pipeline_stage, _func.count(Contact.id))
+        .filter_by(user_id=current_user.id, is_archived=False)
+        .group_by(Contact.pipeline_stage).all()
+    )
+    total = sum(stage_counts.values())
+    return render_template('contacts/list.html', stage_counts=stage_counts, total=total)
+
+
+@pages_bp.route('/contacts/<contact_id>')
+@login_required
+def contact_detail(contact_id):
+    from app.models.contact import Contact, ContactActivity
+    contact = Contact.query.filter_by(id=contact_id, user_id=current_user.id).first_or_404()
+    activities = ContactActivity.query.filter_by(contact_id=contact_id).order_by(
+        ContactActivity.activity_date.desc()
+    ).limit(100).all()
+    return render_template('contacts/detail.html', contact=contact, activities=activities)
+
+
+@pages_bp.route('/simulations/<sim_id>/contacts')
+@login_required
+def sim_contacts_view(sim_id):
+    """Contact list with simulation context — shows contacts associated via agent actions."""
+    from app.models.simulation import Simulation
+    from app.models.contact import Contact, ContactActivity
+    from app.extensions import db as _db
+    from sqlalchemy import func as _func
+
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+
+    stage_counts = dict(
+        _db.session.query(Contact.pipeline_stage, _func.count(Contact.id))
+        .filter_by(user_id=current_user.id, is_archived=False)
+        .group_by(Contact.pipeline_stage).all()
+    )
+    total = sum(stage_counts.values())
+    return render_template('contacts/list.html',
+                           stage_counts=stage_counts,
+                           total=total,
+                           sim=sim)
+
+
 @pages_bp.route('/ref/<code>')
 def referral_redirect(code):
     """Capture referral click, store in session, redirect to register."""

@@ -693,6 +693,42 @@
 /* ── Unlock note ─────────────────────────────────────────────────────────── */
 .jrn-unlock-note { font-size: 0.8rem; font-style: italic; color: rgba(255,255,255,.45); padding: 0.5rem 0 0.25rem; }
 
+/* ── Promote to Contacts Banner ─────────────────────────────────────────── */
+.jrn-promote-banner {
+  margin: 0 2rem 1rem; background: rgba(13,107,89,.25);
+  border: 1px solid rgba(93,202,165,.3); border-radius: 8px; overflow: hidden;
+}
+.jrn-promote-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; flex-wrap: wrap;
+}
+.jrn-promote-title { font-size: 0.82rem; font-weight: 600; color: #5DCAA5; }
+.jrn-promote-sub { font-size: 0.75rem; color: rgba(255,255,255,.5); margin-top: 2px; }
+.jrn-promote-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.jrn-promote-btn-primary { padding: 6px 14px; background: #5DCAA5; color: #0D1B3E; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.jrn-promote-btn-primary:hover { background: #4bbf9a; }
+.jrn-promote-btn-ghost { padding: 6px 14px; background: transparent; color: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.15); border-radius: 6px; font-size: 12px; cursor: pointer; }
+.jrn-promote-btn-ghost:hover { background: rgba(255,255,255,.06); color: #fff; }
+
+.jrn-promote-panel {
+  margin: 0 2rem 1rem; background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 8px; overflow: hidden;
+}
+.jrn-pp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.jrn-pp-title { font-size: 0.85rem; font-weight: 600; color: #fff; }
+.jrn-pp-close { background: none; border: none; color: rgba(255,255,255,.4); font-size: 18px; cursor: pointer; padding: 2px 6px; }
+.jrn-pp-body { padding: 14px 16px; max-height: 300px; overflow-y: auto; }
+.jrn-pp-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 16px; border-top: 1px solid rgba(255,255,255,.08); }
+.jrn-pp-contact-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.jrn-pp-contact-row:last-child { border-bottom: none; }
+.jrn-pp-contact-info { flex: 1; min-width: 0; }
+.jrn-pp-contact-name { font-size: 0.8rem; font-weight: 500; color: #fff; }
+.jrn-pp-contact-sub { font-size: 0.72rem; color: rgba(255,255,255,.4); margin-top: 2px; }
+.jrn-pp-existing { font-size: 0.68rem; padding: 2px 6px; background: rgba(93,202,165,.15); color: #5DCAA5; border-radius: 8px; white-space: nowrap; }
+
 @media (max-width: 768px) {
   .jrn-rows, .jrn-footer { margin-left: 1rem; margin-right: 1rem; }
   .jrn-rows { padding-left: 1rem; padding-right: 1rem; }
@@ -944,6 +980,35 @@
       </div>
       <div class="jrn-impact-layers" id="jrnImpactLayers"></div>
       <div class="jrn-impact-closing" id="jrnImpactClosing" style="display:none"></div>
+    </div>
+
+    <!-- Promote to Contacts Banner (shown 24h after action_complete with prospect list) -->
+    <div class="jrn-promote-banner" id="jrnPromoteBanner" style="display:none">
+      <div class="jrn-promote-inner">
+        <div class="jrn-promote-left">
+          <div class="jrn-promote-title">&#128100; New prospects generated</div>
+          <div class="jrn-promote-sub" id="jrnPromoteSub">Your agent found new contacts. Add them to your CRM.</div>
+        </div>
+        <div class="jrn-promote-actions">
+          <button class="jrn-promote-btn-ghost" onclick="dismissPromoteBanner()">Dismiss</button>
+          <button class="jrn-promote-btn-primary" onclick="openPromotePanel()">Review &amp; Add →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Promote Panel (slide-in) -->
+    <div class="jrn-promote-panel" id="jrnPromotePanel" style="display:none">
+      <div class="jrn-pp-header">
+        <div class="jrn-pp-title">Promote to Contacts</div>
+        <button class="jrn-pp-close" onclick="closePromotePanel()">&times;</button>
+      </div>
+      <div class="jrn-pp-body" id="jrnPromotePanelBody">
+        <div style="color:rgba(255,255,255,.4);text-align:center;padding:30px">Loading…</div>
+      </div>
+      <div class="jrn-pp-footer">
+        <button class="jrn-promote-btn-ghost" onclick="closePromotePanel()">Cancel</button>
+        <button class="jrn-promote-btn-primary" id="jrnPromoteAllBtn" onclick="promoteSelected()">Add Selected</button>
+      </div>
     </div>
 
     <div class="jrn-footer">
@@ -2508,5 +2573,86 @@ document.getElementById('agentNetworkBtn')?.addEventListener('click', openAgentN
 document.getElementById('anv-modal')?.addEventListener('click', function(e) {
   if (e.target === this && window.closeAgentNetwork) window.closeAgentNetwork();
 });
+
+// ── Promote-to-Contacts Banner ────────────────────────────────────────────
+let _pendingPromoteContacts = [];
+let _pendingPromoteActionId = null;
+
+function checkPromoteBanner() {
+  const key = `promote_action_${SIM_ID}`;
+  const raw = sessionStorage.getItem(key);
+  if (!raw) return;
+  try {
+    const obj = JSON.parse(raw);
+    if (!obj.ts || Date.now() - obj.ts > 86400000) { sessionStorage.removeItem(key); return; }
+    _pendingPromoteContacts = obj.contacts || [];
+    _pendingPromoteActionId = obj.action_id || null;
+    if (_pendingPromoteContacts.length) {
+      document.getElementById('jrnPromoteSub').textContent =
+        `${_pendingPromoteContacts.length} prospect${_pendingPromoteContacts.length!==1?'s':''} generated by your agent. Add them to your CRM.`;
+      document.getElementById('jrnPromoteBanner').style.display = '';
+    }
+  } catch { sessionStorage.removeItem(key); }
+}
+
+function dismissPromoteBanner() {
+  document.getElementById('jrnPromoteBanner').style.display = 'none';
+  sessionStorage.removeItem(`promote_action_${SIM_ID}`);
+}
+
+function openPromotePanel() {
+  document.getElementById('jrnPromoteBanner').style.display = 'none';
+  const panel = document.getElementById('jrnPromotePanel');
+  const body = document.getElementById('jrnPromotePanelBody');
+  panel.style.display = '';
+  if (!_pendingPromoteContacts.length) {
+    body.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:30px">No contacts to promote.</div>';
+    return;
+  }
+  body.innerHTML = _pendingPromoteContacts.map((c, i) => `
+    <div class="jrn-pp-contact-row">
+      <input type="checkbox" id="pc_${i}" checked style="flex-shrink:0">
+      <div class="jrn-pp-contact-info">
+        <div class="jrn-pp-contact-name">${c.first_name || ''} ${c.last_name || ''}</div>
+        <div class="jrn-pp-contact-sub">${c.job_title||''}${c.job_title&&c.company_name?' · ':''}${c.company_name||''} ${c.email?'· '+c.email:''}</div>
+      </div>
+      ${c._existing ? `<span class="jrn-pp-existing">Already in contacts · ${c._existing}</span>` : ''}
+    </div>
+  `).join('');
+}
+
+function closePromotePanel() {
+  document.getElementById('jrnPromotePanel').style.display = 'none';
+}
+
+function promoteSelected() {
+  const selected = _pendingPromoteContacts.filter((_, i) => {
+    const cb = document.getElementById(`pc_${i}`);
+    return cb && cb.checked;
+  });
+  if (!selected.length) { closePromotePanel(); return; }
+  const btn = document.getElementById('jrnPromoteAllBtn');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  fetch('/api/contacts/promote-batch', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      contacts: selected,
+      action_id: _pendingPromoteActionId,
+      simulation_id: SIM_ID,
+    }),
+  })
+    .then(r => r.json())
+    .then(d => {
+      closePromotePanel();
+      sessionStorage.removeItem(`promote_action_${SIM_ID}`);
+      _pendingPromoteContacts = [];
+      const msg = `${d.created} contact${d.created!==1?'s':''} added${d.updated?' · '+d.updated+' already existed':''}`;
+      console.log('Promote result:', msg);
+    })
+    .finally(() => { btn.disabled = false; btn.textContent = 'Add Selected'; });
+}
+
+checkPromoteBanner();
 </script>
 {% endblock %}
