@@ -136,7 +136,7 @@ class ContactActivity(db.Model):
     __tablename__ = 'contact_activities'
 
     id                  = db.Column(db.String(9), primary_key=True, default=generate_id)
-    contact_id          = db.Column(db.String(9),
+    contact_id          = db.Column(db.String(9), db.ForeignKey('contacts.id', ondelete='CASCADE'),
                                     nullable=False, index=True)
     simulation_id       = db.Column(db.String(9), nullable=True, index=True)
     action_id           = db.Column(db.String(9), nullable=True, index=True)
