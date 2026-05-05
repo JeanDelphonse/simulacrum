@@ -4,8 +4,8 @@
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS contacts (
-    id                  CHAR(9)         NOT NULL,
-    user_id             CHAR(9)         NOT NULL,
+    id                  VARCHAR(9)      NOT NULL,
+    user_id             VARCHAR(9)      NOT NULL,
     first_name          VARCHAR(100)    NOT NULL,
     last_name           VARCHAR(100)    NOT NULL,
     email               VARCHAR(255)    NOT NULL,
@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS contacts (
     country             VARCHAR(100)    NULL DEFAULT 'United States',
     timezone            VARCHAR(100)    NULL,
     source              VARCHAR(50)     NOT NULL DEFAULT 'manual_entry',
-    source_action_id    CHAR(9)         NULL,
-    source_artifact_id  CHAR(9)         NULL,
+    source_action_id    VARCHAR(9)      NULL,
+    source_artifact_id  VARCHAR(9)      NULL,
     source_notes        VARCHAR(500)    NULL,
     qualifying_score    DECIMAL(4,3)    NULL DEFAULT NULL,
     pipeline_stage      ENUM('prospect','active','client','closed_lost') NOT NULL DEFAULT 'prospect',
@@ -50,10 +50,10 @@ CREATE TABLE IF NOT EXISTS contacts (
 
 
 CREATE TABLE IF NOT EXISTS contact_activities (
-    id                  CHAR(9)         NOT NULL,
-    contact_id          CHAR(9)         NOT NULL,
-    simulation_id       CHAR(9)         NULL,
-    action_id           CHAR(9)         NULL,
+    id                  VARCHAR(9)      NOT NULL,
+    contact_id          VARCHAR(9)      NOT NULL,
+    simulation_id       VARCHAR(9)      NULL,
+    action_id           VARCHAR(9)      NULL,
     activity_type       VARCHAR(50)     NOT NULL,
     activity_date       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     notes               TEXT            NULL,

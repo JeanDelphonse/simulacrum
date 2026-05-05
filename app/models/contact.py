@@ -18,8 +18,8 @@ SOURCE_OPTIONS = [
 class Contact(db.Model):
     __tablename__ = 'contacts'
 
-    id                  = db.Column(db.CHAR(9), primary_key=True, default=generate_id)
-    user_id             = db.Column(db.CHAR(9), db.ForeignKey('users.id', ondelete='CASCADE'),
+    id                  = db.Column(db.String(9), primary_key=True, default=generate_id)
+    user_id             = db.Column(db.String(9), db.ForeignKey('users.id', ondelete='CASCADE'),
                                     nullable=False, index=True)
     first_name          = db.Column(db.String(100), nullable=False)
     last_name           = db.Column(db.String(100), nullable=False)
@@ -42,8 +42,8 @@ class Contact(db.Model):
     country             = db.Column(db.String(100), nullable=True, default='United States')
     timezone            = db.Column(db.String(100), nullable=True)
     source              = db.Column(db.String(50), nullable=False, default='manual_entry')
-    source_action_id    = db.Column(db.CHAR(9), nullable=True)
-    source_artifact_id  = db.Column(db.CHAR(9), nullable=True)
+    source_action_id    = db.Column(db.String(9), nullable=True)
+    source_artifact_id  = db.Column(db.String(9), nullable=True)
     source_notes        = db.Column(db.String(500), nullable=True)
     qualifying_score    = db.Column(db.Numeric(4, 3), nullable=True, index=True)
     pipeline_stage      = db.Column(
@@ -136,11 +136,11 @@ class Contact(db.Model):
 class ContactActivity(db.Model):
     __tablename__ = 'contact_activities'
 
-    id                  = db.Column(db.CHAR(9), primary_key=True, default=generate_id)
-    contact_id          = db.Column(db.CHAR(9), db.ForeignKey('contacts.id', ondelete='CASCADE'),
+    id                  = db.Column(db.String(9), primary_key=True, default=generate_id)
+    contact_id          = db.Column(db.String(9), db.ForeignKey('contacts.id', ondelete='CASCADE'),
                                     nullable=False, index=True)
-    simulation_id       = db.Column(db.CHAR(9), nullable=True, index=True)
-    action_id           = db.Column(db.CHAR(9), nullable=True, index=True)
+    simulation_id       = db.Column(db.String(9), nullable=True, index=True)
+    action_id           = db.Column(db.String(9), nullable=True, index=True)
     activity_type       = db.Column(db.String(50), nullable=False, index=True)
     activity_date       = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     notes               = db.Column(db.Text, nullable=True)
