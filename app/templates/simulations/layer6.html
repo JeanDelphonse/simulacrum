@@ -1877,8 +1877,13 @@ function _buildJourneyRows() {
               <span class="jrn-artifact-name" id="jrn-artname-${l.n}-${i}">${label}</span>
               <span class="jrn-ap-ver" id="jrn-artver-${l.n}-${i}">v1</span>
               <span class="jrn-fchip">Artifact</span>
+              <a class="jrn-art-open" id="jrn-artopen-${l.n}-${i}" href="#"
+                 style="display:none;font-size:.68rem;color:#5cc1cf;text-decoration:none;margin-left:auto;flex-shrink:0"
+                 onclick="event.stopPropagation()">
+                Open full artifact &#x2197;
+              </a>
               <a class="jrn-live-link" id="jrn-artlive-${l.n}-${i}" href="#" target="_blank" rel="noopener"
-                 style="display:none;font-size:.68rem;color:#86efac;text-decoration:none;margin-left:auto;flex-shrink:0">
+                 style="display:none;font-size:.68rem;color:#86efac;text-decoration:none;margin-left:8px;flex-shrink:0">
                 View live &#x2197;
               </a>
             </div>
@@ -2865,6 +2870,7 @@ function populateLayerData(n, data) {
         const artboxEl   = document.getElementById(`jrn-artbox-${n}-${i}`);
         const kvEl       = document.getElementById(`jrn-artkv-${n}-${i}`);
         const liveEl     = document.getElementById(`jrn-artlive-${n}-${i}`);
+        const openEl     = document.getElementById(`jrn-artopen-${n}-${i}`);
         const deployBtn  = document.getElementById(`jrn-artdeploy-${n}-${i}`);
         const fields     = step.artifact_fields || [];
         if (kvEl && fields.length) {
@@ -2872,6 +2878,15 @@ function populateLayerData(n, data) {
             `<div class="jrn-kv"><div class="jrn-kk">${k}</div><div class="jrn-kv-val hi">${v}</div></div>`
           ).join('');
           if (artboxEl) artboxEl.style.display = 'block';
+        }
+        // SIM-PRD-VIEW-001 — link to Full View page when an action_id exists
+        if (openEl && !window.__advisorMode) {
+          if (step.action_id) {
+            openEl.href = ROOT + '/simulations/' + SIM_ID + '/artifacts/' + step.action_id;
+            openEl.style.display = 'inline';
+          } else {
+            openEl.style.display = 'none';
+          }
         }
         // Public URL: "View live →" link
         if (liveEl) {

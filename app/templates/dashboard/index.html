@@ -41,11 +41,14 @@
   </section>
   {% endif %}
 
+  {% set complete_sims = simulations | selectattr('status', 'equalto', 'complete') | list %}
+  {% set pending_sims = simulations | rejectattr('status', 'equalto', 'complete') | list %}
+
   <section class="dashboard-section">
-    <h2 class="section-title">My Simulations</h2>
-    {% if simulations %}
+    <h2 class="section-title">Complete</h2>
+    {% if complete_sims %}
     <div class="sim-grid">
-      {% for sim in simulations %}
+      {% for sim in complete_sims %}
       <div class="sim-card status-{{ sim.status }}">
         <div class="sim-card-header">
           <h3 class="sim-name">{{ sim.name }}</h3>
@@ -54,22 +57,48 @@
         <p class="sim-zone">{{ sim.expertise_zone }}</p>
         <p class="sim-meta">{{ sim.created_at.strftime('%b %d, %Y') }} · {{ sim.layers|length }} layer{{ 's' if sim.layers|length != 1 else '' }}</p>
         <div class="sim-actions">
-          {% if sim.status == 'complete' %}
           <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}" class="btn btn-primary btn-sm">View →</a>
-          {% elif sim.status in ('processing', 'streaming') %}
-          <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}" class="btn btn-ghost btn-sm">Watch live →</a>
-          {% elif sim.status == 'refunded' %}
-          <span class="sim-notice">Refund issued — generation failed</span>
-          {% elif sim.status == 'error' %}
-          <span class="sim-notice sim-notice-error">Generation failed</span>
-          {% endif %}
         </div>
       </div>
       {% endfor %}
     </div>
     {% else %}
     <div class="empty-state">
-      <p>No simulations yet. Upload your resume or connect LinkedIn to get started.</p>
+      <p>No completed simulations yet.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="dashboard-section">
+    <h2 class="section-title">Pending</h2>
+    {% if pending_sims %}
+    <div class="sim-grid">
+      {% for sim in pending_sims %}
+      <div class="sim-card status-{{ sim.status }}">
+        <div class="sim-card-header">
+          <h3 class="sim-name">{{ sim.name }}</h3>
+          <span class="status-badge status-{{ sim.status }}">{{ sim.status.title() }}</span>
+        </div>
+        <p class="sim-zone">{{ sim.expertise_zone }}</p>
+        <p class="sim-meta">{{ sim.created_at.strftime('%b %d, %Y') }} · {{ sim.layers|length }} layer{{ 's' if sim.layers|length != 1 else '' }}</p>
+        <div class="sim-actions">
+          {% if sim.status in ('processing', 'streaming') %}
+          <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}" class="btn btn-ghost btn-sm">Watch live →</a>
+          {% elif sim.status == 'refunded' %}
+          <span class="sim-notice">Refund issued — generation failed</span>
+          {% elif sim.status == 'error' %}
+          <span class="sim-notice sim-notice-error">Generation failed</span>
+          {% endif %}
+          <form method="post" action="{{ url_for('pages.simulation_delete', sim_id=sim.id) }}" style="display:inline" onsubmit="return confirm('Permanently remove this simulation? This cannot be undone.')">
+            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>No pending simulations.</p>
     </div>
     {% endif %}
   </section>

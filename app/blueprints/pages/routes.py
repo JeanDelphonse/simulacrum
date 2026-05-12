@@ -90,6 +90,20 @@ def dashboard():
                            show_partner_welcome=show_partner_welcome)
 
 
+@pages_bp.route('/simulations/<sim_id>/delete', methods=['POST'])
+@login_required
+def simulation_delete(sim_id):
+    from app.models.simulation import Simulation
+    from app.extensions import db
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    if sim.status == Simulation.STATUS_COMPLETE:
+        from flask import abort
+        abort(400)
+    db.session.delete(sim)
+    db.session.commit()
+    return redirect(url_for('pages.dashboard'))
+
+
 @pages_bp.route('/simulations/<sim_id>/confirmed')
 @login_required
 def simulation_confirmed(sim_id):

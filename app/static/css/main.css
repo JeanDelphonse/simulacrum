@@ -203,6 +203,18 @@ img {
   border-color: #374151;
 }
 
+.btn-danger {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #7f1d1d;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #ef4444;
+}
+
 .btn-sm {
   padding: 0.35rem 0.8rem;
   font-size: 0.8rem;

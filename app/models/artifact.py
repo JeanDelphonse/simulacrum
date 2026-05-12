@@ -27,6 +27,10 @@ class PrefillCorrection(db.Model):
 class ArtifactVersion(db.Model):
     __tablename__ = 'artifact_versions'
 
+    EDITED_BY_AGENT    = 'agent'
+    EDITED_BY_USER     = 'user'
+    EDITED_BY_COPILOT  = 'co-pilot'
+
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     action_id = db.Column(
         db.String(9), db.ForeignKey('agent_actions.id', ondelete='CASCADE'),
@@ -41,13 +45,20 @@ class ArtifactVersion(db.Model):
     version_number = db.Column(db.Integer, nullable=False, default=1)
     version_label = db.Column(db.String(100), nullable=True)
     content = db.Column(db.Text, nullable=True)
+    # SIM-PRD-VIEW-001: edited_by, edit_summary, parent_version_id, draft fields
+    edited_by         = db.Column(db.String(20), nullable=False, default=EDITED_BY_AGENT)
+    edit_summary      = db.Column(db.String(255), nullable=True)
+    parent_version_id = db.Column(db.String(9), nullable=True)
+    draft_content     = db.Column(db.Text, nullable=True)
+    edited_at         = db.Column(db.DateTime, nullable=True)
+    draft_updated_at  = db.Column(db.DateTime, nullable=True)
     file_type = db.Column(db.String(20), nullable=True, default='text')
     _prefill_inputs = db.Column('prefill_inputs', db.Text, nullable=True)
     change_summary = db.Column(db.Text, nullable=True)
     is_current = db.Column(db.Boolean, default=True, nullable=False)
     public_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    created_by = db.Column(db.String(20), default='user')  # 'user' | 'orchestrator'
+    created_by = db.Column(db.String(20), default='user')  # legacy: 'user' | 'orchestrator'
 
     @property
     def prefill_inputs(self):
@@ -56,6 +67,20 @@ class ArtifactVersion(db.Model):
     @prefill_inputs.setter
     def prefill_inputs(self, value):
         self._prefill_inputs = json.dumps(value) if value is not None else None
+
+    @classmethod
+    def current_for(cls, action_id: str):
+        return (cls.query
+                .filter_by(action_id=action_id, is_current=True)
+                .order_by(cls.version_number.desc())
+                .first())
+
+    @classmethod
+    def history_for(cls, action_id: str):
+        return (cls.query
+                .filter_by(action_id=action_id)
+                .order_by(cls.version_number.desc())
+                .all())
 
     def to_dict(self):
         return {
@@ -70,6 +95,12 @@ class ArtifactVersion(db.Model):
             'file_type': self.file_type,
             'prefill_inputs': self.prefill_inputs,
             'change_summary': self.change_summary,
+            'edited_by':         self.edited_by,
+            'edit_summary':      self.edit_summary,
+            'parent_version_id': self.parent_version_id,
+            'edited_at':         self.edited_at.isoformat() if self.edited_at else None,
+            'has_draft':         bool(self.draft_content),
+            'draft_updated_at':  self.draft_updated_at.isoformat() if self.draft_updated_at else None,
             'is_current': self.is_current,
             'public_url': self.public_url,
             'created_at': self.created_at.isoformat(),

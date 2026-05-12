@@ -1,0 +1,444 @@
+{% extends 'base.html' %}
+{% block title %}{{ artifact_name }}{% endblock %}
+
+{% block head %}
+<style>
+.av-page { background: #f7f8fb; min-height: calc(100vh - 60px); padding-bottom: 80px; }
+.av-header {
+  position: sticky; top: 0; z-index: 30;
+  background: #fff; border-bottom: 1px solid #e2e8f0;
+  height: 60px; display: flex; align-items: center;
+  padding: 0 24px; gap: 16px;
+}
+.av-back { display: inline-flex; align-items: center; gap: 6px; color: #64748b; font-size: 13px; text-decoration: none; }
+.av-back:hover { color: #0d8395; }
+.av-title { font-weight: 700; color: #0f172a; font-size: 16px; line-height: 1.2; }
+.av-meta { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.av-spacer { flex: 1; }
+.av-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #f1f5f9; color: #475569;
+  border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600;
+  border: none; cursor: pointer;
+}
+.av-pill:hover { background: #e2e8f0; }
+.av-pill.has-prior { background: #ecfeff; color: #0d8395; }
+.av-status {
+  display: inline-flex; align-items: center;
+  background: #f1f5f9; color: #64748b;
+  border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600;
+}
+.av-status.live    { background: #dcfce7; color: #166534; }
+.av-status.draft   { background: #f1f5f9; color: #475569; }
+.av-status.archived{ background: #fef3c7; color: #92400e; }
+
+.av-body { max-width: 760px; margin: 32px auto; padding: 0 24px; }
+.av-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  padding: 32px 36px; box-shadow: 0 1px 2px rgba(15,23,42,.04);
+}
+.av-summary { font-size: 13px; color: #64748b; margin-bottom: 16px; }
+.av-content {
+  width: 100%; min-height: 320px;
+  font-family: 'Inter', system-ui, sans-serif; font-size: 15px;
+  line-height: 1.7; color: #0f172a;
+  border: 1px solid transparent; border-radius: 8px;
+  padding: 14px 16px; background: #fff;
+  white-space: pre-wrap; resize: vertical;
+  outline: none; transition: border-color .15s, background .15s;
+}
+.av-content:hover { border-color: #e2e8f0; }
+.av-content:focus { border-color: #0d8395; background: #fbfeff; }
+.av-content[readonly] { background: #f8fafc; color: #475569; cursor: default; }
+
+.av-actionbar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #fff; border-top: 1px solid #e2e8f0;
+  height: 60px; display: flex; align-items: center;
+  padding: 0 24px; gap: 12px; z-index: 20;
+}
+.av-savestate { color: #64748b; font-size: 13px; }
+.av-savestate.dirty { color: #b45309; }
+.av-savestate.saving { color: #0d8395; }
+.av-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid #e2e8f0; background: #fff;
+  color: #0f172a; font-weight: 500; font-size: 13px;
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  transition: background .15s;
+}
+.av-btn:hover { background: #f1f5f9; }
+.av-btn.primary {
+  background: #0d1a2e; border-color: #0d1a2e; color: #fff;
+}
+.av-btn.primary:hover { background: #1e3760; }
+.av-btn.danger { color: #b91c1c; }
+.av-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.av-banner {
+  background: #ecfeff; border: 1px solid #cfe9ee; color: #0d8395;
+  border-radius: 10px; padding: 12px 16px; font-size: 14px;
+  margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
+}
+.av-banner button { margin-left: auto; }
+
+.av-sidebar {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
+  background: #fff; border-left: 1px solid #e2e8f0;
+  z-index: 50; transform: translateX(100%); transition: transform .2s ease-out;
+  display: flex; flex-direction: column;
+}
+.av-sidebar.open { transform: translateX(0); }
+.av-sidebar-head {
+  padding: 18px 20px; border-bottom: 1px solid #e2e8f0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.av-sidebar-head h3 { margin: 0; font-size: 14px; font-weight: 700; color: #0f172a; }
+.av-sidebar-close { background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 18px; }
+.av-version-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+.av-version {
+  padding: 12px 20px; border-bottom: 1px solid #f1f5f9;
+  cursor: default;
+}
+.av-version.current { border-left: 3px solid #0d8395; padding-left: 17px; }
+.av-version-row1 { display: flex; align-items: center; gap: 8px; }
+.av-version-num { font-weight: 700; color: #0f172a; font-size: 14px; }
+.av-version-by { font-size: 12px; color: #64748b; }
+.av-version-when { font-size: 12px; color: #94a3b8; margin-left: auto; }
+.av-version-summary { font-size: 13px; color: #475569; margin-top: 4px; }
+.av-version-actions { display: flex; gap: 6px; margin-top: 8px; }
+.av-version-actions .av-btn { font-size: 12px; padding: 4px 10px; }
+.av-version-tag { font-size: 10px; color: #0d8395; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+
+@media (max-width: 600px) {
+  .av-card { padding: 20px; border-radius: 8px; }
+  .av-body { padding: 0 12px; margin: 16px auto; }
+  .av-sidebar { width: 100%; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="av-page">
+  <header class="av-header">
+    <a class="av-back" href="{{ url_for('pages.layer6_view', sim_id=sim.id) }}">
+      ← Back to your simulation
+    </a>
+    <div>
+      <div class="av-title">{{ artifact_name }}</div>
+      <div class="av-meta">
+        Layer {{ action.layer_number }} ·
+        Version <span id="avVerNum">{{ current.version_number }}</span> ·
+        <span id="avEditedAt">edited {{ (current.edited_at or current.created_at).strftime('%b %d, %Y') }}</span>
+      </div>
+    </div>
+    <div class="av-spacer"></div>
+    <button type="button" class="av-pill {% if history|length > 1 %}has-prior{% endif %}" id="avVersionsBtn">
+      v{{ current.version_number }}{% if history|length > 1 %} · {{ history|length - 1 }} prior{% endif %}
+    </button>
+    <span class="av-status {% if action.archived_at %}archived{% else %}draft{% endif %}" id="avStatus">
+      {% if action.archived_at %}Archived{% else %}Draft{% endif %}
+    </span>
+  </header>
+
+  <main class="av-body">
+    <div id="avDraftBanner" class="av-banner" style="display:none;">
+      <span>You have unsaved changes from a previous session.</span>
+      <button type="button" class="av-btn" id="avRestoreDraft">Restore</button>
+      <button type="button" class="av-btn" id="avDiscardDraft">Discard</button>
+    </div>
+
+    <div id="avReadonlyBanner" class="av-banner" style="display:none;">
+      <span>Viewing version <strong id="avRoVer"></strong> — this is not your current version.</span>
+      <button type="button" class="av-btn primary" id="avBackToCurrent">Back to current</button>
+    </div>
+
+    <div class="av-card">
+      {% if current.edit_summary %}
+      <div class="av-summary">{{ current.edit_summary }}</div>
+      {% endif %}
+      <textarea
+        id="avContent"
+        class="av-content"
+        spellcheck="true"
+        aria-label="Artifact content — click to edit"
+      >{{ current.content or '' }}</textarea>
+    </div>
+  </main>
+
+  <div class="av-actionbar">
+    <span class="av-savestate" id="avSaveState">Saved</span>
+    <div class="av-spacer"></div>
+    <button type="button" class="av-btn" id="avDiscardBtn" style="display:none;">Discard changes</button>
+    <button type="button" class="av-btn" id="avRerunBtn">Re-run</button>
+    {% if action.archived_at %}
+    <button type="button" class="av-btn" id="avUnarchiveBtn">Restore from archive</button>
+    {% else %}
+    <button type="button" class="av-btn" id="avArchiveBtn">Archive</button>
+    {% endif %}
+    <button type="button" class="av-btn primary" id="avSaveBtn" disabled>Save as new version</button>
+  </div>
+
+  <aside class="av-sidebar" id="avSidebar" aria-hidden="true">
+    <div class="av-sidebar-head">
+      <h3>Version history</h3>
+      <button type="button" class="av-sidebar-close" id="avSidebarClose" aria-label="Close">×</button>
+    </div>
+    <div class="av-version-list" id="avVersionList"></div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  const ARTIFACT_ID = '{{ action.id }}';
+  const SIM_ID      = '{{ sim.id }}';
+  const ROUTES = {
+    api:       ROOT + '/api/artifacts/' + ARTIFACT_ID,
+    save:      ROOT + '/api/artifacts/' + ARTIFACT_ID + '/save',
+    draft:     ROOT + '/api/artifacts/' + ARTIFACT_ID + '/draft',
+    versions:  ROOT + '/api/artifacts/' + ARTIFACT_ID + '/versions',
+    rerun:     ROOT + '/api/artifacts/' + ARTIFACT_ID + '/rerun',
+    archive:   ROOT + '/api/artifacts/' + ARTIFACT_ID + '/archive',
+    unarchive: ROOT + '/api/artifacts/' + ARTIFACT_ID + '/unarchive',
+    backTo:    '{{ url_for("pages.layer6_view", sim_id=sim.id) }}',
+  };
+
+  const $content = document.getElementById('avContent');
+  const $saveBtn = document.getElementById('avSaveBtn');
+  const $saveState = document.getElementById('avSaveState');
+  const $discardBtn = document.getElementById('avDiscardBtn');
+  const $rerunBtn = document.getElementById('avRerunBtn');
+  const $archive = document.getElementById('avArchiveBtn');
+  const $unarchive = document.getElementById('avUnarchiveBtn');
+  const $verBtn = document.getElementById('avVersionsBtn');
+  const $sidebar = document.getElementById('avSidebar');
+  const $sidebarClose = document.getElementById('avSidebarClose');
+  const $verList = document.getElementById('avVersionList');
+  const $banner = document.getElementById('avDraftBanner');
+  const $restoreDraft = document.getElementById('avRestoreDraft');
+  const $discardDraft = document.getElementById('avDiscardDraft');
+  const $roBanner = document.getElementById('avReadonlyBanner');
+  const $roVer = document.getElementById('avRoVer');
+  const $backToCurrent = document.getElementById('avBackToCurrent');
+
+  const ORIGINAL_TEXT = $content.value;
+  let savedText = ORIGINAL_TEXT;
+  let dirty = false;
+  let saveTimer = null;
+  let viewingHistorical = null; // version_number being viewed in read-only
+
+  // Detect existing draft on page load
+  (async function () {
+    try {
+      const r = await fetch(ROUTES.api);
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.draft_payload && d.draft_payload !== d.current_payload) {
+        $banner.draftText = d.draft_payload;
+        $banner.style.display = 'flex';
+      }
+    } catch (e) { /* non-fatal */ }
+  })();
+
+  $restoreDraft.addEventListener('click', () => {
+    $content.value = $banner.draftText || $content.value;
+    $banner.style.display = 'none';
+    markDirty();
+  });
+  $discardDraft.addEventListener('click', async () => {
+    await fetch(ROUTES.draft, {method: 'DELETE'});
+    $banner.style.display = 'none';
+  });
+
+  function markDirty() {
+    dirty = $content.value !== savedText;
+    $saveBtn.disabled = !dirty;
+    $discardBtn.style.display = dirty ? '' : 'none';
+    $saveState.className = 'av-savestate' + (dirty ? ' dirty' : '');
+    $saveState.textContent = dirty ? 'Editing — unsaved changes' : 'Saved';
+  }
+
+  $content.addEventListener('input', () => {
+    markDirty();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(autoSaveDraft, 30000);
+  });
+
+  async function autoSaveDraft() {
+    if (!dirty || viewingHistorical) return;
+    $saveState.className = 'av-savestate saving';
+    $saveState.textContent = 'Saving draft...';
+    try {
+      await fetch(ROUTES.draft, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({payload: $content.value}),
+      });
+      $saveState.className = 'av-savestate dirty';
+      $saveState.textContent = 'Draft saved';
+    } catch (e) {
+      $saveState.textContent = 'Could not save draft';
+    }
+  }
+
+  $saveBtn.addEventListener('click', async () => {
+    if (viewingHistorical) return;
+    $saveBtn.disabled = true;
+    $saveState.className = 'av-savestate saving';
+    $saveState.textContent = 'Saving...';
+    try {
+      const r = await fetch(ROUTES.save, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({payload: $content.value}),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error || 'Save failed.');
+      savedText = $content.value;
+      document.getElementById('avVerNum').textContent = d.version_number;
+      document.getElementById('avEditedAt').textContent = 'edited just now';
+      markDirty();
+    } catch (e) {
+      $saveState.textContent = e.message;
+    }
+  });
+
+  $discardBtn.addEventListener('click', async () => {
+    if (!confirm('Discard your unsaved changes?')) return;
+    $content.value = savedText;
+    await fetch(ROUTES.draft, {method: 'DELETE'});
+    markDirty();
+  });
+
+  $rerunBtn.addEventListener('click', async () => {
+    if (!confirm('Re-run this artifact? It will overwrite the current version with a fresh agent run.')) return;
+    $rerunBtn.disabled = true;
+    try {
+      const r = await fetch(ROUTES.rerun, {method: 'POST'});
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error);
+      alert('Re-run dispatched. Refresh in a few seconds to see the new version.');
+    } catch (e) {
+      alert('Re-run failed: ' + e.message);
+    } finally {
+      $rerunBtn.disabled = false;
+    }
+  });
+
+  if ($archive) {
+    $archive.addEventListener('click', async () => {
+      if (!confirm('Archive this artifact? It will be hidden from your default view.')) return;
+      const r = await fetch(ROUTES.archive, {method: 'POST'});
+      if (r.ok) window.location.reload();
+    });
+  }
+  if ($unarchive) {
+    $unarchive.addEventListener('click', async () => {
+      const r = await fetch(ROUTES.unarchive, {method: 'POST'});
+      if (r.ok) window.location.reload();
+    });
+  }
+
+  // ── Version history sidebar ─────────────────────────────────────────────
+  $verBtn.addEventListener('click', openSidebar);
+  $sidebarClose.addEventListener('click', closeSidebar);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $sidebar.classList.contains('open')) closeSidebar();
+  });
+
+  async function openSidebar() {
+    $sidebar.classList.add('open');
+    $sidebar.setAttribute('aria-hidden', 'false');
+    await loadVersions();
+  }
+  function closeSidebar() {
+    $sidebar.classList.remove('open');
+    $sidebar.setAttribute('aria-hidden', 'true');
+  }
+
+  async function loadVersions() {
+    $verList.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;">Loading…</div>';
+    try {
+      const r = await fetch(ROUTES.versions);
+      const d = await r.json();
+      $verList.innerHTML = '';
+      d.versions.forEach(v => {
+        const node = document.createElement('div');
+        node.className = 'av-version' + (v.is_current ? ' current' : '');
+        const byLabel = v.edited_by === 'agent' ? 'Agent' : (v.edited_by === 'co-pilot' ? 'Co-pilot' : 'You');
+        node.innerHTML = `
+          <div class="av-version-row1">
+            <span class="av-version-num">v${v.version_number}</span>
+            <span class="av-version-by">${byLabel}</span>
+            <span class="av-version-when">${relTime(v.edited_at)}</span>
+          </div>
+          ${v.is_current ? '<div class="av-version-tag">Current</div>' : ''}
+          <div class="av-version-summary">${escapeHtml(v.edit_summary || '')}</div>
+          <div class="av-version-actions"></div>
+        `;
+        const actions = node.querySelector('.av-version-actions');
+        if (!v.is_current) {
+          const view = document.createElement('button');
+          view.className = 'av-btn'; view.textContent = 'View';
+          view.addEventListener('click', () => viewVersion(v.version_number));
+          const restore = document.createElement('button');
+          restore.className = 'av-btn'; restore.textContent = 'Restore';
+          restore.addEventListener('click', () => restoreVersion(v.version_number));
+          actions.appendChild(view); actions.appendChild(restore);
+        }
+        $verList.appendChild(node);
+      });
+    } catch (e) {
+      $verList.innerHTML = '<div style="padding:20px;color:#b91c1c;font-size:13px;">Failed to load versions.</div>';
+    }
+  }
+
+  async function viewVersion(n) {
+    const r = await fetch(ROUTES.versions + '/' + n);
+    if (!r.ok) return;
+    const d = await r.json();
+    viewingHistorical = n;
+    $content.value = d.payload;
+    $content.setAttribute('readonly', 'readonly');
+    $saveBtn.style.display = 'none';
+    $discardBtn.style.display = 'none';
+    $rerunBtn.style.display = 'none';
+    $roVer.textContent = 'v' + n;
+    $roBanner.style.display = 'flex';
+    closeSidebar();
+  }
+
+  $backToCurrent.addEventListener('click', () => {
+    window.location.reload();
+  });
+
+  async function restoreVersion(n) {
+    if (!confirm('Restore version ' + n + ' as your new current version? Versions after stay in your history.')) return;
+    const r = await fetch(ROUTES.versions + '/' + n + '/restore', {method: 'POST'});
+    if (r.ok) window.location.reload();
+  }
+
+  function relTime(iso) {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    const diff = (Date.now() - t) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.round(diff/60) + ' min ago';
+    if (diff < 86400) return Math.round(diff/3600) + ' h ago';
+    return Math.round(diff/86400) + ' d ago';
+  }
+
+  function escapeHtml(s) {
+    return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // Warn before nav-away with unsaved edits
+  window.addEventListener('beforeunload', e => {
+    if (dirty && !viewingHistorical) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+})();
+</script>
+{% endblock %}

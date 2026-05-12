@@ -1,0 +1,198 @@
+﻿=== PARAGRAPHS ===
+1. Three-Tier Viewing Architecture
+1.1 Tier Overview
+Artifacts are surfaced at three increasing levels of detail. The user moves down the hierarchy as their attention deepens: from glancing at the Journey tab, to expanding a layer row for context, to opening a dedicated page for editing.
+1.2 Tier Transitions
+Glance to Preview: click anywhere on the Glance card. Smooth height transition (150ms). Other Preview cards in the same layer row collapse — only one Preview open per layer at a time.
+Preview to Full View: click 'Open full artifact'. Browser navigation to /simulations/:id/artifacts/:artifact_id. The GCC scroll position and Preview state are stored in sessionStorage.
+Full View back to GCC: click 'Back to your simulation' in the Full View header. Restores GCC scroll position and re-opens the Preview that was open.
+2. Tier 1 — Glance Card
+2.1 Layout
+The Glance card sits inline within the GCC layer row alongside the action description from SIM-PRD-GCC-002. Approximately 84 pixels tall, full row width, with a left accent border in the layer's color (purple for L1, teal for L2).
+2.2 Multiple Artifacts Per Layer Row
+As cycles accumulate, a layer row can have many artifacts. The GCC presents only the most current artifact per action_type by default. A 'Show prior artifacts (N)' link at the bottom of the layer row reveals archived artifacts grouped by action_type.
+Default view: latest artifact_version per action_type, chronological by created_at desc.
+Archived view: collapsed by action_type. Click action_type group to expand list of past artifacts.
+Limit: never more than 8 Glance cards in default view. If there are more, the bottom card becomes 'Show 4 more' which expands inline.
+3. Tier 2 — Preview
+3.1 The Artifact-Aware Preview
+The Preview is what makes the GCC feel like a real wealth dashboard rather than a list of completed tasks. Instead of generic JSON, each artifact type renders in its natural visual format. The user sees a rate card as a rate card. They see a cold email as a sequence.
+The implementation is a Jinja2 template selected by artifact.action_type. Each template renders artifact.payload (JSON) into the appropriate visual layout.
+3.2 Preview Common Structure
+4. Per-Artifact Preview Formats — Layer 1
+Each Layer 1 artifact type has a dedicated Preview template. The template renders artifact.payload into the visual format that matches what the artifact represents.
+5. Per-Artifact Preview Formats — Layer 2
+6. Tier 3 — Full View Page
+6.1 Page Layout
+The Full View page at /simulations/:id/artifacts/:artifact_id is where the user does deep work on an artifact. The page is structured as a focused single-column workspace — no GCC layer rows, no chat panel — to encourage uninterrupted reading and editing.
+6.2 Inline Editing
+Every editable field is click-to-edit. There is no separate 'Edit mode' toggle. The user clicks any field and it becomes editable. This pattern matches modern document editing (Notion, Linear).
+6.3 Save as New Version
+Clicking 'Save as new version' creates a new artifact_versions record with the edited payload. The previous version is preserved with is_current=0. The new version becomes current with version_number incremented.
+7. Version History — Count Badge with Click-Through
+7.1 Default View — Current Version Only
+The Full View page defaults to showing the current version only. The version count badge in the header — 'v3 · 2 prior' — is the only indicator that prior versions exist. Most users never click it. The default UX is clean and uncluttered.
+7.2 Version History Sidebar
+Clicking the version count badge slides in a right-side panel (320px wide) listing all versions of this artifact in reverse chronological order.
+7.3 Auto-Generated Edit Summaries
+Each version stores an edit_summary that describes the changes — short text generated automatically when a version is saved. This avoids the engineering complexity of full structured JSON diffs while giving users meaningful context.
+8. Data Model — Extensions to artifact_versions
+8.1 Schema Additions
+The existing artifact_versions table is extended with three new columns to support the editing and versioning UX. No new tables are introduced.
+8.2 Auto-Save Draft Mechanism
+While the user is editing, a separate draft is persisted every 30 seconds without creating new versions. Drafts use a sessionStorage key on the client and a corresponding server-side cache (Redis) keyed by artifact_id and user_id.
+9. API Routes
+10. Functional Requirements
+FR-VIEW-01: Every Layer 1 and Layer 2 agent-generated artifact is viewable through three tiers: Glance card in the GCC Journey tab layer row, Preview on inline expand within the layer row, Full View at /simulations/:id/artifacts/:artifact_id. Users move between tiers with single-click navigation.
+FR-VIEW-02: The Glance card displays artifact icon, plain-English artifact name (never the action_type string), status badge (Draft / Scheduled / Deployed / Live / Archived), one-line summary, primary action button with status-aware label, and version count badge if version_number > 1.
+FR-VIEW-03: A layer row displays only the latest artifact_version per action_type by default. Prior artifacts are accessible via 'Show prior artifacts' link grouped by action_type. The default view is capped at 8 Glance cards per layer row with 'Show N more' expansion.
+FR-VIEW-04: The Preview tier renders artifacts in artifact-aware visual formats per Sections 4 and 5. Each of the 19 L1 and L2 agent action_types has a dedicated Jinja2 preview template that renders artifact.payload into the appropriate visual layout. Only one Preview is open per layer row at a time.
+FR-VIEW-05: The Preview action bar provides three buttons: 'Open full artifact' (primary), 'Edit' (secondary), 'Re-run' (secondary). Plus contextual deploy buttons based on artifact type and current status.
+FR-VIEW-06: The Full View page renders the artifact in a focused single-column workspace at max-width 760px. Header is sticky and shows: Back link, artifact name, layer label, version count badge, status badge, primary action button. Action bar is sticky at bottom with Save / Discard / Re-run / Archive / Download.
+FR-VIEW-07: All editable fields in Full View are inline click-to-edit. There is no separate Edit mode toggle. Field types include plain text, multi-line text, currency, number, date, list (with add/delete/reorder), URL, and rich-text email body. Read-only computed fields render in muted color.
+FR-VIEW-08: Edits are auto-saved as drafts to Redis every 30 seconds while editing. Drafts persist for 24 hours and do not create new versions. Full View page checks for an existing draft on load and offers to restore unsaved changes.
+FR-VIEW-09: Clicking 'Save as new version' creates a new artifact_versions record with the edited payload, increments version_number, sets is_current=1 on new version and is_current=0 on prior, sets edited_by='user', auto-generates edit_summary, sets parent_version_id, and clears the draft.
+FR-VIEW-10: Version history is exposed via a count badge in Full View header showing 'v[N] · [N-1] prior'. Clicking opens a 320px right-side panel listing all versions in reverse chronological order. Each row shows version number, edited-by indicator, relative timestamp, and edit_summary.
+FR-VIEW-11: From the version history sidebar, clicking 'View' on a prior version loads that version's payload into Full View body in read-only mode with a banner indicating non-current state. Clicking 'Restore' creates a new artifact_version with the prior version's payload.
+FR-VIEW-12: Auto-generated edit_summary follows fixed format rules: 'Generated by [agent_name] in cycle [N]' for agent versions, 'You changed [field name]' for single-field user edits, 'You edited [N] fields' for multi-field user edits, 'Restored from version [N]' for restorations, 'Co-pilot updated [field name] at your request' for chat co-pilot edits.
+FR-VIEW-13: The Full View page is reachable from: GCC Preview 'Open full artifact' button, chat co-pilot artifact references (clickable links), notification CTAs (notification_type='agent_complete'), direct URL navigation.
+FR-VIEW-14: Re-run dispatches the originating agent action_type with optional custom_prefill_inputs. On completion a new artifact_version is created with edited_by='agent'. The agent action's metadata embedding (per SIM-ENG-MODEL-001) is preserved.
+FR-VIEW-15: Archive sets the artifact status to 'archived' and removes it from the GCC layer row default view. Archived artifacts remain accessible via 'Show prior artifacts' and via direct URL. Archive is reversible — a 'Restore from archive' link in Full View restores the artifact to default view.
+11. Sprint Plan — 2 Weeks
+SIM-PRD-VIEW-001  ·  Artifact Viewer  ·  v1.0  ·  April 2026
+Jean Moussa Delphonse  ·  Bay Area Experiences Ventures  ·  Confidential
+
+=== TABLE 0 ===
+PRODUCT REQUIREMENTS DOCUMENT / Simulacrum Artifact Viewer / Three-Tier Viewing · Glance · Preview · Full View · Inline Editing · Version Tracking
+
+=== TABLE 1 ===
+Document ID | SIM-PRD-VIEW-001
+Version | 1.0 — Draft for Engineering
+Scope | Three-tier artifact viewing architecture for all Layer 1 and Layer 2 agent-generated artifacts. Glance card in the GCC Journey tab layer row · Preview on inline expand · Full View at /simulations/:id/artifacts/:artifact_id with inline editing. Version history surfaced as a count badge with click-through. Per-artifact preview formats specified for all 19 L1/L2 agents.
+Gap closed | Currently artifacts are stored in artifact_versions and referenced in the GCC layer rows but the viewing surface is thin. Users cannot meaningfully read, edit, or manage their generated artifacts. This PRD specifies the complete viewing experience.
+Design decisions | (1) Three-tier architecture keeps users in the GCC for routine review while providing a dedicated page for deep work. (2) Inline editing on the Full View page creates new versions on save — no separate edit mode. (3) Version history is hidden behind a count badge by default — current version is always front-and-centre.
+Integrates with | SIM-PRD-GCC-002 · SIM-PRD-CHAT-001 · SIM-PRD-EMAIL-001 · SIM-PRD-STRIPE-001 · SIM-PRD-CAL-001 · SIM-PRD-SIGN-001 · SIM-PRD-PUB-001 · SIM-PRD-KAJABI-001
+Author | Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date | April 2026
+
+=== TABLE 2 ===
+Artifacts are what users actually use, share, and earn from. The rate card a user sends to a prospect, the email sequence Apollo sends on their behalf, the workshop curriculum they teach. Without a clear viewing experience, users cannot meaningfully review what the agents produced. This PRD makes every L1 and L2 artifact viewable, editable, and manageable from inside the GCC.
+
+=== TABLE 3 ===
+Tier | Where it lives | Trigger | What the user sees
+Glance | GCC Journey tab layer row | Always visible after action_complete | Compact card: artifact name, status badge, one-line summary, primary action button (View live / Send for signature / Copy link).
+Preview | Inline expand within layer row | Click the Glance card | Artifact-aware visual format. Rate card shows tiers with prices. Email sequence shows three numbered emails. Workshop shows agenda by hour. Plus three buttons: Open full artifact, Edit, Re-run.
+Full View | Dedicated page | Click 'Open full artifact' | Complete artifact rendered editable. Inline edit on every field. Save creates new version. Version count badge. Deploy / Re-run / Archive.
+
+=== TABLE 4 ===
+Element | Specification
+Card body | Layer-colored left accent border (4px). White fill. Subtle shadow. 16px padding.
+Artifact icon | Top-left corner (24x24). Different icon per artifact category — simple line style, not decorative.
+Artifact name | 15px bold navy. Plain English, never the action_type string. 'Your rate card' not 'rate_card'.
+Status badge | Top right corner. Pill shape. Five states: Draft (light grey), Scheduled (amber), Deployed (teal), Live (green), Archived (muted grey).
+One-line summary | 13px muted. Artifact-specific. 'Three tiers — $1,500, $4,500, $12,000' for rate card. '3-step sequence to 25 prospects' for cold email.
+Primary action button | Bottom right corner. Status-aware label: rate card draft to 'Review and publish' · rate card live to 'View live page' · proposal draft to 'Send for signature'.
+Version count | If artifact_versions count > 1, a small 'v3' badge appears next to the artifact name. Click navigates to Full View with version history opened.
+Click target | Entire card minus action button is the click target for expand-to-Preview.
+
+=== TABLE 5 ===
+Element | Specification
+Container | Expanded inline within layer row. Full row width. White fill, 24px padding, 1px subtle border. Smooth height transition on expand (150ms ease-out).
+Artifact body | Rendered by the per-artifact preview template. See Sections 4 and 5.
+Action bar | Sticky at bottom. Three buttons: 'Open full artifact' (primary), 'Edit' (secondary), 'Re-run' (secondary). Plus contextual deploy buttons based on artifact type.
+Metadata footer | Small muted text: 'Created [relative time] · Version [N] · From cycle [N]'. Click 'Version [N]' to navigate to Full View with version history opened.
+Collapse | Click anywhere on layer row outside Preview to collapse. Click the Glance card again to collapse. Press Escape with focus inside Preview to collapse.
+
+=== TABLE 6 ===
+Artifact (action_type) | Preview format
+rate_card | Three to five tier cards horizontally. Each card: tier name (16px bold), one-sentence outcome, price (24px bold navy), three to five deliverable bullets, duration. The user's positioning paragraph above the tiers (60ch max-width). Action button shows 'View live page' if deployed.
+linkedin_optimization | Side-by-side comparison columns. Left: 'Current' label, current headline, current About excerpt. Right: 'Proposed' label, new headline (highlighted teal), new About excerpt. Below: list of three to five Featured items recommendations. Per-section 'Copy' buttons.
+booking_page | Three to four session-type cards horizontally. Each card: session name, duration in minutes, price (or Free), pre-call questions count badge. Below: the public Cal.com URL with Copy button. Action button 'View on Cal.com'.
+cold_email_campaign | Email sequence rendered as numbered thread (1, 2, 3). Each email: subject line (14px bold), 'Sends [N] days after step [N-1]', body preview (first 240 characters with fade). Below: prospect count badge, match-criteria summary, Apollo deployment status.
+consulting_outreach | Numbered list of 10 named-prospect emails. Each row: prospect name plus company, subject line, body preview (first 180 chars). Per-email status: Draft / Sent / Replied / Bounced. Per-email Send and Skip buttons inline.
+role_search | Compact table view with first 5 prospects shown: Name · Title · Company · Score (visual indicator). 'View all 25 prospects' link expands to full table within Preview. Bulk-promote-to-contacts button.
+consulting_proposal | Document outline as section headers with collapsed body. Headers: Executive Summary · Situation · Approach · Deliverables · Timeline · Investment · Team · Terms. Each header click expands its body. Investment section shows the proposed fee prominently. PandaDoc status badge if sent.
+sow_template | Filled-in scope summary at top. Below: collapsed sections (Project Overview · Scope · Deliverables · Milestones · Schedule · Fees · Change Orders · IP). Click each to expand. The fee section is prominent. 'Generate from this template' button.
+agreement_template | Section list (Parties · Services · Fees · IP · Confidentiality · Warranties · Indemnification · Term · Governing Law · Signatures). Each section shows first sentence as preview. Click expands. Industry-specific clauses highlighted with badge: 'Customised for [industry]'.
+referral_network | Compact contact card grid. 15 cards in a 3-column grid. Each card: name, title, company, why-this-fits one-liner, mutual-connection indicator. Below: referral program structure (commission %, tracking method) as small card. 'Send introduction emails' deploy button.
+negotiation_script | Three collapsible sections: Anchoring / Objections / Walk-away. Each section opens to show scripts as numbered list items. Each item: situation prefix in italic, response in regular weight. Reading-friendly typography (16px body, 1.7 line-height).
+
+=== TABLE 7 ===
+Artifact (action_type) | Preview format
+workshop_curriculum | Workshop title and learning outcomes at top. Below: agenda rendered as a vertical timeline with hour blocks. Each hour block: time range, session title, 1-line description, exercise indicator badge. Bottom: capacity, suggested price, materials count. Kajabi deployment status badge if synced.
+corporate_training_pitch | Three program tier cards (half-day · full-day · multi-week) horizontally. Each card: tier name, duration, key outcomes (3 bullets), price range. Above: target company name and decision-maker (e.g. 'For Notion · CPO Sarah Chen'). Below: ROI calculator inputs preview. Apollo email status badge.
+speaking_proposals | 10 conference and podcast pitches as numbered cards. Each card: event name, audience size, three to four talk topic options as soft buttons, pitch sent date if deployed, response status. Click event name to expand to full pitch text.
+speaker_fee_rider | Fee tier table — Corporate Keynote / Conference / Nonprofit / Workshop with min and standard fees. Below: collapsible sections — Travel · AV · Recording Rights · Content Licensing. Each section summary line, expands. PDF download button prominent.
+group_coaching_curriculum | Program theme and duration at top (e.g. '12-week intensive — Brand Strategy for Agencies'). Below: weekly module list as numbered rows. Each row: week number, theme, between-session work indicator, call structure. Click any week to expand. Bottom: cohort dates if scheduled, Kajabi deployment status.
+waitlist_landing_page | Mini live preview of the landing page rendered at 60% scale within the Preview container. Headline, subheadline, three to five benefit bullets, social proof, value-exchange offer, email capture form (non-interactive in Preview). Below: subscriber count badge if live, ConvertKit form ID. 'Open landing page' deep link.
+alumni_reactivation | Past-attendee segments shown as cards: '2024 workshop alumni (32 contacts)', 'Course graduates (47 contacts)'. Each segment card: contact count, segment-specific email sequence preview, reply-rate metric if previously deployed. Per-segment Send button. Apollo deployment status.
+roi_calculator | Compact rendering of the calculator UI: input fields (team size, current state, target state, hourly cost) with example values. Below the inputs: example output card. 'Open live calculator' link. If deployed: lead capture count badge ('14 prospects calculated their ROI this month').
+
+=== TABLE 8 ===
+Element | Specification
+Header | Sticky top header (60px tall). Left: 'Back to your simulation' link with chevron. Center: artifact name (16px bold), one-line metadata ('Layer 1 · Active income · Version 3 · Last edited 2 days ago'). Right: status badge, primary action button (Deploy / View live / Send for signature).
+Versions badge | In header next to artifact name. Small pill: 'v3 · 2 prior'. Click opens version history sidebar.
+Body — full content | Below header. Max-width 760px, centered. Artifact rendered in full. All editable fields are inline-editable.
+Action bar | 60px tall sticky bottom bar. Left: 'Discard changes' (only when there are unsaved edits). Center: muted save state ('Saved' or 'Editing — unsaved changes' or 'Saving...'). Right: 'Save as new version' primary button. Plus secondary actions: Re-run · Archive · Download (.docx or .pdf).
+Auto-save behavior | Edits persisted to draft version automatically every 30 seconds while editing. Draft does not become a new version until user clicks 'Save as new version' or navigates away (which prompts confirmation).
+Page width | Body max-width 760px for reading-optimized typography. Page itself fills viewport — sidebars and header use full viewport width but body stays centered and reading-width.
+
+=== TABLE 9 ===
+Field type | Edit behavior
+Plain text field | Click to edit. Inline input replaces rendered text. Enter to save. Escape to cancel. Blur to save.
+Multi-line text field | Click to edit. Inline textarea replaces text. Auto-grows. Cmd+Enter to save. Escape to cancel.
+Currency field | Click to edit. Inline number input with currency prefix. Auto-formats with commas on blur. Validates positive integer.
+Number field | Click to edit. Inline number input. Validates integer.
+Date field | Click to open date picker. Native browser date input. Saves on selection.
+List item — add | An 'Add item' link below the last list item. Click adds a new editable row at the end. Empty rows on save are removed.
+List item — delete | Hover any list item to reveal a small X icon on the right. Click to delete with inline confirmation: 'Delete this item?' with Yes/No.
+List item — reorder | Drag handle (six dots) on left edge of each list item. Drag to reorder. Drop to commit.
+URL field | Click to edit. Validates URL format on blur (must start with http:// or https://). Saves valid URLs only.
+Email body — formatted | For email artifacts — rich-text editor with bold, italic, link, bullet list. No advanced formatting (no images, no tables, no custom HTML).
+Read-only field | Some fields are not editable: prospect count (computed), Apollo sent count (from webhook), version number, created_at. These render in muted color and do not respond to click.
+
+=== TABLE 10 ===
+@bp.route('/api/artifacts/<artifact_id>/save', methods=['POST']) / @login_required / def save_artifact_version(artifact_id): /     edited_payload = request.json.get('payload') /     artifact = Artifact.query.get_or_404(artifact_id) /     if artifact.user_id != current_user.id: /         abort(403) /     current = ArtifactVersion.get_current(artifact_id) /     current.is_current = 0 /     new_version = ArtifactVersion( /         id=generate_id(), /         artifact_id=artifact_id, /         version_number=current.version_number + 1, /         payload=edited_payload, /         is_current=1, /         edited_by='user', /         edited_at=datetime.utcnow(), /         parent_version_id=current.id, /     ) /     db.session.add(new_version) /     db.session.commit() /     return jsonify({'version_number': new_version.version_number, /                     'edited_at': new_version.edited_at.isoformat()})
+
+=== TABLE 11 ===
+Element | Specification
+Sidebar layout | 320px wide right-side panel. Slides in from right (200ms ease-out). Slides out on close icon click or click outside. Full View body stays editable underneath the sidebar.
+Version list rows | One row per version. Most recent at top. Each row: version number ('v3'), edited-by indicator ('You' for user-edited, 'Agent' for agent-generated), relative timestamp ('2 hours ago'), edit summary.
+Current version row | Highlighted with teal left border. Tag 'Current'. Cannot be 'restored' — already current.
+Per-row actions | Hover reveals two buttons: 'View' and 'Restore'. View loads that version into Full View body in read-only mode. Restore creates a new version with the prior version's payload.
+Restore confirmation | Restore opens an inline confirm: 'Restore version 2 as your new current version? Versions 3 onwards stay in your history.' Confirm creates new version 4 with version 2's payload.
+Read-only viewing mode | When viewing a non-current version, all editable fields are disabled. A teal banner: 'Viewing version 2 — created [date] by Agent. This is not your current version.' with a 'Back to current' button.
+
+=== TABLE 12 ===
+Source of version | Edit summary format
+Agent-generated (initial or re-run) | 'Generated by [agent_name] in cycle [N]'
+User-edited single field | 'You changed [field name]' — derived from which payload key changed
+User-edited multiple fields | 'You edited [N] fields' — count of changed payload keys
+User restored from version | 'Restored from version [N]'
+Chat co-pilot edited | 'Co-pilot updated [field name] at your request'
+
+=== TABLE 13 ===
+ALTER TABLE artifact_versions /     ADD COLUMN edited_by         VARCHAR(20)  NOT NULL DEFAULT 'agent' /         AFTER payload, /     -- 'agent' | 'user' | 'co-pilot' /  /     ADD COLUMN edit_summary      VARCHAR(255) NULL /         AFTER edited_by, /     -- Auto-generated short description of what changed. /  /     ADD COLUMN parent_version_id CHAR(9)      NULL /         AFTER edit_summary, /     -- For user-edited and restored versions: the artifact_version_id this /     -- version was derived from. NULL for agent-generated initial versions. /  /     ADD CONSTRAINT fk_av_parent_version FOREIGN KEY (parent_version_id) /         REFERENCES artifact_versions(id) ON DELETE SET NULL;
+
+=== TABLE 14 ===
+DRAFT_TTL_SECONDS = 24 * 60 * 60 /  / def save_draft(artifact_id, user_id, payload): /     key = f'artifact_draft:{artifact_id}:{user_id}' /     redis.setex(key, DRAFT_TTL_SECONDS, json.dumps(payload)) /  / def get_draft(artifact_id, user_id): /     key = f'artifact_draft:{artifact_id}:{user_id}' /     raw = redis.get(key) /     return json.loads(raw) if raw else None /  / def clear_draft(artifact_id, user_id): /     redis.delete(f'artifact_draft:{artifact_id}:{user_id}')
+
+=== TABLE 15 ===
+GET  /simulations/<sim_id>/artifacts/<artifact_id> /   -> Renders Full View HTML page. Loads current version + checks for active draft. /   -> Returns 404 if artifact does not belong to current_user. /  / GET  /api/artifacts/<artifact_id> /   -> JSON: artifact_id, action_type, current_version, all_versions_count, /           current_payload, draft_payload (if exists), status /  / POST /api/artifacts/<artifact_id>/save /   body: { payload: {...} } /   -> Creates new artifact_version with is_current=1, prior current set to 0. /   -> Auto-generates edit_summary from payload diff. Clears draft. /  / POST /api/artifacts/<artifact_id>/draft /   body: { payload: {...} } /   -> Persists draft to Redis with 24h TTL. No version created. /  / GET  /api/artifacts/<artifact_id>/versions /   -> JSON list: version_number, edited_by, edited_at, edit_summary, is_current /  / GET  /api/artifacts/<artifact_id>/versions/<version_number> /   -> JSON: version_number, payload, edited_by, edited_at, edit_summary /  / POST /api/artifacts/<artifact_id>/versions/<version_number>/restore /   -> Creates new artifact_version with the prior version's payload. /   -> edit_summary set to 'Restored from version N'. /  / POST /api/artifacts/<artifact_id>/rerun /   body: { custom_prefill_inputs?: {...} } /   -> Dispatches the originating agent action_type as Celery task. /   -> On completion creates new artifact_version with edited_by='agent'.
+
+=== TABLE 16 ===
+Days 1-2 establish the data model extensions and Tier 1 Glance cards. Days 3-5 build the Tier 2 Preview tier with all 19 per-artifact templates. Days 6-8 build the Tier 3 Full View page with inline editing and auto-save drafts. Day 9 builds version history with sidebar and restore. Day 10 covers integration with Chat Co-pilot, Re-run, Archive, and end-to-end testing.
+
+=== TABLE 17 ===
+Day | Focus | Deliverables
+Day 1 | Data + Glance shell | ALTER artifact_versions to add edited_by, edit_summary, parent_version_id columns. FK constraint. Migration script. Glance card component scaffolding in GCC layer row template — empty card with status badge, name, action button. Wire artifact data into the layer row SSE feed.
+Day 2 | Glance complete | Glance card per-artifact icon, plain-English name resolver, one-line summary generator, status badge color logic, action button label per status. Click-to-expand Preview transition (150ms height animation). 'Show prior artifacts' grouping logic. 8-card cap with 'Show N more'.
+Day 3 | Preview L1 part 1 | Jinja2 preview templates for 6 of 11 L1 artifacts: rate_card, linkedin_optimization, booking_page, cold_email_campaign, consulting_outreach, role_search.
+Day 4 | Preview L1 part 2 | Remaining 5 L1 templates: consulting_proposal, sow_template, agreement_template, referral_network, negotiation_script. First 4 L2 templates: workshop_curriculum, corporate_training_pitch, speaking_proposals, speaker_fee_rider.
+Day 5 | Preview L2 done | Final 4 L2 templates: group_coaching_curriculum, waitlist_landing_page (mini live preview), alumni_reactivation, roi_calculator. Action bar at bottom of Preview with Open full / Edit / Re-run buttons. Metadata footer.
+Day 6 | Full View scaffold | /simulations/:id/artifacts/:artifact_id route. Sticky header with back link, artifact name, version count badge. Body container max-width 760px. Render artifact payload using Full View templates. Sticky bottom action bar.
+Day 7 | Inline editing | Click-to-edit for all field types: plain text, multi-line, currency, number, date, URL. List item add/delete/reorder with drag handles. Rich-text email body editor (lightweight). Read-only field handling. Field validation on blur.
+Day 8 | Auto-save + Save | Redis-backed draft persistence with 24h TTL. Auto-save every 30 seconds while editing. Draft restore prompt on Full View load. POST /api/artifacts/:id/save creating new artifact_version with edited_by='user'. Auto-generated edit_summary from payload diff.
+Day 9 | Version history | Version count badge in Full View header. 320px right-side sliding sidebar listing all versions reverse-chronologically. Per-version View and Restore actions. Read-only viewing mode with non-current banner. Restore confirmation flow.
+Day 10 | Re-run + QA | Re-run from Preview and Full View — Celery dispatch with optional custom prefill_inputs. Archive/Restore from archive. Chat co-pilot artifact reference clickable links navigate to Full View. Notification CTAs for agent_complete navigate to Full View. E2E tests: full edit-save-restore lifecycle for rate_card and one L2 artifact.
+
