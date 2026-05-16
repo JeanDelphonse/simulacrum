@@ -358,8 +358,8 @@ class ActionItem(db.Model):
     ]
 
     id               = db.Column(db.String(9), primary_key=True, default=generate_id)
-    simulation_id    = db.Column(db.String(9), db.ForeignKey('simulations.id', ondelete='CASCADE'), nullable=False, index=True)
-    user_id          = db.Column(db.String(9), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    simulation_id    = db.Column(db.String(9), nullable=False, index=True)
+    user_id          = db.Column(db.String(9), nullable=False, index=True)
     item_type        = db.Column(db.String(50), nullable=False)
     urgency_tier     = db.Column(db.SmallInteger, nullable=False)
     title            = db.Column(db.String(200), nullable=False)
@@ -367,7 +367,7 @@ class ActionItem(db.Model):
     layer_number     = db.Column(db.SmallInteger, nullable=True)
     action_label     = db.Column(db.String(50), nullable=False)
     action_url       = db.Column(db.String(500), nullable=False)
-    source_action_id = db.Column(db.String(9), db.ForeignKey('layer6_action_queue.id', ondelete='SET NULL'), nullable=True)
+    source_action_id = db.Column(db.String(9), nullable=True)
     source_artifact_id = db.Column(db.String(9), nullable=True)
     source_contact_id  = db.Column(db.String(9), nullable=True)
     source_income_id   = db.Column(db.String(9), nullable=True)

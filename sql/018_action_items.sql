@@ -23,8 +23,5 @@ CREATE TABLE IF NOT EXISTS action_items (
     created_at          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     INDEX idx_ai_user_active (user_id, simulation_id, status, urgency_tier, created_at),
-    INDEX ix_action_items_simulation_id (simulation_id),
-    CONSTRAINT fk_ai_simulation FOREIGN KEY (simulation_id) REFERENCES simulations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ai_user       FOREIGN KEY (user_id)       REFERENCES users(id)       ON DELETE CASCADE,
-    CONSTRAINT fk_ai_source_action FOREIGN KEY (source_action_id) REFERENCES layer6_action_queue(id) ON DELETE SET NULL
+    INDEX ix_action_items_simulation_id (simulation_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
