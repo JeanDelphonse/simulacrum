@@ -565,9 +565,163 @@ def advisor_gcc_view(client_uid, sim_id):
     )
 
 
+@pages_bp.route('/simulations/<sim_id>/gcc')
+@login_required
+def gcc_view(sim_id):
+    """Growth Command Center v2.0 — 4-tab action-first layout."""
+    from flask import request as _req, redirect, url_for
+    from app.models.simulation import Simulation, SimulationLayer
+    from app.models.layer6 import (
+        ActionItem, Layer6Cycle, Layer6Momentum, Layer6Outcome,
+    )
+    from app.models.agent_action import AgentAction
+    from app.extensions import db as _db
+    from sqlalchemy import func as _func
+
+    sim = Simulation.query.get_or_404(sim_id)
+    if sim.user_id != current_user.id:
+        from flask import abort
+        abort(403)
+
+    # Active action items for Action Queue
+    active_items = ActionItem.query.filter_by(
+        simulation_id=sim_id,
+        user_id=current_user.id,
+        status=ActionItem.STATUS_ACTIVE,
+    ).order_by(ActionItem.urgency_tier.asc(), ActionItem.created_at.desc()).all()
+
+    # Latest orchestrator cycle (for phase badge + Momentum tab)
+    latest_cycle = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Cycle.cycle_number.desc()
+    ).first()
+
+    # Latest momentum snapshot
+    momentum = Layer6Momentum.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Momentum.snapshot_date.desc()
+    ).first()
+
+    # Per-layer income totals (My Layers + Income tab)
+    outcome_rows = _db.session.query(
+        Layer6Outcome.layer_number,
+        _func.sum(Layer6Outcome.actual_income).label('total'),
+    ).filter_by(simulation_id=sim_id).group_by(Layer6Outcome.layer_number).all()
+    income_by_layer = {r.layer_number: float(r.total or 0) for r in outcome_rows}
+    total_income = sum(income_by_layer.values())
+
+    # This month's income
+    from datetime import date
+    this_month = date.today().strftime('%Y-%m')
+    month_rows = _db.session.query(
+        _func.sum(Layer6Outcome.actual_income).label('total'),
+    ).filter_by(simulation_id=sim_id, reporting_month=this_month).scalar()
+    income_this_month = float(month_rows or 0)
+
+    # Completed action count per layer (My Layers status dot)
+    done_rows = _db.session.query(
+        AgentAction.layer_number,
+        _func.count(AgentAction.id).label('cnt'),
+    ).filter_by(simulation_id=sim_id, status=AgentAction.STATUS_COMPLETE).group_by(
+        AgentAction.layer_number
+    ).all()
+    complete_by_layer = {r.layer_number: r.cnt for r in done_rows}
+
+    # Layers with active tier-1 or tier-2 items (amber dot in My Layers)
+    urgent_layers = set(
+        i.layer_number for i in active_items
+        if i.urgency_tier in (1, 2) and i.layer_number
+    )
+
+    # Recent income events (Income tab — last 20)
+    recent_income = Layer6Outcome.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Outcome.created_at.desc()
+    ).limit(20).all()
+
+    # SimulationLayer names for My Layers tab
+    sim_layers = SimulationLayer.query.filter_by(simulation_id=sim_id).order_by(
+        SimulationLayer.layer_number
+    ).all()
+
+    # Profile for header
+    from app.models.profile import UserProfile as _UP
+    profile = _UP.query.filter_by(user_id=current_user.id).first()
+
+    tab = _req.args.get('tab', 'queue')
+
+    return render_template(
+        'simulations/layer6.html',
+        sim=sim,
+        active_items=[i.to_dict() for i in active_items],
+        active_item_count=len(active_items),
+        latest_cycle=latest_cycle,
+        momentum=momentum,
+        income_by_layer=income_by_layer,
+        total_income=total_income,
+        income_this_month=income_this_month,
+        complete_by_layer=complete_by_layer,
+        urgent_layers=list(urgent_layers),
+        recent_income=[r.to_dict() for r in recent_income],
+        sim_layers=sim_layers,
+        profile=profile,
+        active_tab=tab,
+        # legacy vars kept for backward compat with any shared partials
+        diagram_cycle=None,
+        all_cycles=[],
+        action_pills=[],
+        escalation_by_layer={},
+        active_flags=[],
+        active_suggestions=[],
+        zone_count=0,
+        projected_annual=0,
+        actual_income=total_income,
+    )
+
+
+@pages_bp.route('/simulations/<sim_id>/layers/<int:layer_number>')
+@login_required
+def layer_detail_view(sim_id, layer_number):
+    """Layer detail page — all Glance cards for one income layer."""
+    from app.models.simulation import Simulation, SimulationLayer
+    from app.models.agent_action import AgentAction
+
+    sim = Simulation.query.get_or_404(sim_id)
+    if sim.user_id != current_user.id:
+        from flask import abort
+        abort(403)
+
+    if layer_number not in range(1, 6):
+        from flask import abort
+        abort(404)
+
+    sim_layer = SimulationLayer.query.filter_by(
+        simulation_id=sim_id, layer_number=layer_number
+    ).first()
+
+    artifacts = AgentAction.query.filter_by(
+        simulation_id=sim_id,
+        layer_number=layer_number,
+        status=AgentAction.STATUS_COMPLETE,
+    ).order_by(AgentAction.completed_at.desc()).all()
+
+    layer_names = {
+        1: 'Active income', 2: 'Leveraged income', 3: 'Productized income',
+        4: 'Automated income', 5: 'Wealth deployment',
+    }
+
+    return render_template(
+        'simulations/layer_detail.html',
+        sim=sim,
+        sim_layer=sim_layer,
+        layer_number=layer_number,
+        layer_name=layer_names.get(layer_number, f'Layer {layer_number}'),
+        artifacts=artifacts,
+    )
+
+
 @pages_bp.route('/simulations/<sim_id>/layer6')
 @login_required
 def layer6_view(sim_id):
+    """Growth Command Center — Layer 6 orchestrator UI."""
+    from app.models.simulation import Simulation
     """Growth Command Center — Layer 6 orchestrator UI."""
     from app.models.simulation import Simulation
     from app.models.layer6 import Layer6Cycle, Layer6ActionQueue, Layer6Momentum

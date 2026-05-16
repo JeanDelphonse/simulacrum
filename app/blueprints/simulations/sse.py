@@ -123,6 +123,15 @@ def start_generation_if_needed(simulation_id: str, app_obj):
                 db.session.commit()
 
 
+def push_sse_event(simulation_id: str, payload: dict):
+    """
+    Placeholder for real-time SSE push. Currently a no-op — the app uses
+    client-side polling. Replace with a real event bus (Redis pub/sub, etc.)
+    when SSE streaming is re-introduced.
+    """
+    logger.debug('SSE event queued (no-op): sim=%s type=%s', simulation_id, payload.get('event_type'))
+
+
 def trigger_recovery(simulation_id: str):
     """Start the recovery thread. Returns immediately — generation runs in background."""
     app_obj = current_app._get_current_object()

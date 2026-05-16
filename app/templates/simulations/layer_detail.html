@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ layer_name }} — {{ sim.name }}{% endblock %}
+
+{% block head %}
+<style>
+:root {
+  --ld-teal:   #14b8a6;
+  --ld-card:   #111827;
+  --ld-border: #1f2937;
+  --ld-muted:  #9ca3af;
+  --ld-navy:   #e8eaf0;
+  --ld-surface:#1a2234;
+}
+
+.ld-header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 1.75rem;
+  background: var(--ld-card); border-bottom: 1px solid var(--ld-border);
+}
+.ld-back {
+  color: var(--ld-muted); font-size: 0.85rem; text-decoration: none;
+  display: flex; align-items: center; gap: 0.4rem;
+  transition: color 0.15s;
+}
+.ld-back:hover { color: var(--ld-teal); }
+.ld-title { font-size: 1.1rem; font-weight: 700; color: var(--ld-navy); }
+.ld-sim-name { font-size: 0.8rem; color: var(--ld-muted); margin-left: 0.5rem; }
+
+.ld-body { padding: 1.5rem 1.75rem; max-width: 900px; }
+
+.ld-layer-card {
+  background: var(--ld-card); border: 1px solid var(--ld-border); border-radius: 10px;
+  padding: 1.25rem; margin-bottom: 1.5rem;
+}
+.ld-layer-name { font-size: 1rem; font-weight: 700; color: var(--ld-navy); margin-bottom: 0.4rem; }
+.ld-layer-desc { font-size: 0.85rem; color: var(--ld-muted); line-height: 1.5; }
+
+.ld-section-title {
+  font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--ld-muted); margin-bottom: 0.75rem;
+}
+
+.ld-artifact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+
+.ld-artifact-card {
+  background: var(--ld-card); border: 1px solid var(--ld-border); border-radius: 8px;
+  padding: 1rem; text-decoration: none; color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.ld-artifact-card:hover { border-color: var(--ld-teal); background: var(--ld-surface); }
+
+.ld-artifact-type { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ld-muted); }
+.ld-artifact-name { font-size: 0.9rem; font-weight: 600; color: var(--ld-navy); }
+.ld-artifact-date { font-size: 0.75rem; color: var(--ld-muted); margin-top: auto; }
+.ld-artifact-status {
+  display: inline-flex; align-items: center;
+  font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px;
+}
+.ld-status-complete { background: rgba(20,184,166,0.15); color: var(--ld-teal); }
+.ld-status-pending  { background: rgba(245,158,11,0.15); color: #f59e0b; }
+
+.ld-empty {
+  text-align: center; padding: 3rem 1rem; color: var(--ld-muted);
+}
+.ld-empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.4; }
+.ld-empty-msg  { font-size: 0.875rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ld-header">
+  <a class="ld-back" href="{{ url_for('pages.gcc_view', sim_id=sim.id) }}?tab=layers">← Back to my layers</a>
+  <div>
+    <span class="ld-title">{{ layer_name }}</span>
+    <span class="ld-sim-name">{{ sim.name }}</span>
+  </div>
+</div>
+
+<div class="ld-body">
+  {% if sim_layer %}
+  <div class="ld-layer-card">
+    <div class="ld-layer-name">{{ sim_layer.layer_name }}</div>
+    {% if sim_layer.ai_narrative %}
+    <div class="ld-layer-desc">{{ sim_layer.ai_narrative[:400] }}{% if sim_layer.ai_narrative|length > 400 %}…{% endif %}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="ld-section-title">Artifacts &amp; completed actions</div>
+
+  {% if artifacts %}
+    <div class="ld-artifact-grid">
+      {% for art in artifacts %}
+      <a class="ld-artifact-card"
+         href="{{ url_for('artifact_view.page_full_view', sim_id=sim.id, artifact_id=art.id) if art.artifact else '#' }}">
+        <div class="ld-artifact-type">{{ art.action_type | replace('_', ' ') }}</div>
+        <div class="ld-artifact-name">{{ art.action_type | replace('_', ' ') | title }}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto">
+          <span class="ld-artifact-status ld-status-complete">Complete</span>
+          <span class="ld-artifact-date">
+            {% if art.completed_at %}{{ art.completed_at.strftime('%b %d, %Y') }}{% endif %}
+          </span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="ld-empty">
+      <div class="ld-empty-icon">📋</div>
+      <div class="ld-empty-msg">No completed artifacts yet for this layer. Your agents will produce artifacts here as they work through cycles.</div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

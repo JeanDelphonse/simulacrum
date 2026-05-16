@@ -334,6 +334,75 @@ class Layer6ExecutionLog(db.Model):
         }
 
 
+class ActionItem(db.Model):
+    """Priority-sorted action items surfaced in the GCC Action Queue tab."""
+    __tablename__ = 'action_items'
+
+    TIER_CRITICAL = 1  # blocking the system
+    TIER_ACTION   = 2  # needs user decision
+    TIER_REVIEW   = 3  # something happened
+    TIER_INFORM   = 4  # good to know
+
+    STATUS_ACTIVE    = 'active'
+    STATUS_RESOLVED  = 'resolved'
+    STATUS_DISMISSED = 'dismissed'
+
+    ITEM_TYPES = [
+        'agent_complete', 'agent_approval_required', 'escalation_tool_missing',
+        'escalation_tool_expired', 'agent_failure', 'webhook_reply',
+        'webhook_booking', 'webhook_signed', 'webhook_payment',
+        'webhook_purchase', 'income_missing', 'blog_review',
+        'blog_published', 'stale_artifact', 'cycle_ready',
+        'first_cycle', 'orchestrator_recommendation', 'milestone',
+        'waitlist_threshold', 'contact_promote',
+    ]
+
+    id               = db.Column(db.String(9), primary_key=True, default=generate_id)
+    simulation_id    = db.Column(db.String(9), db.ForeignKey('simulations.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id          = db.Column(db.String(9), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    item_type        = db.Column(db.String(50), nullable=False)
+    urgency_tier     = db.Column(db.SmallInteger, nullable=False)
+    title            = db.Column(db.String(200), nullable=False)
+    description      = db.Column(db.String(500), nullable=True)
+    layer_number     = db.Column(db.SmallInteger, nullable=True)
+    action_label     = db.Column(db.String(50), nullable=False)
+    action_url       = db.Column(db.String(500), nullable=False)
+    source_action_id = db.Column(db.String(9), db.ForeignKey('layer6_action_queue.id', ondelete='SET NULL'), nullable=True)
+    source_artifact_id = db.Column(db.String(9), nullable=True)
+    source_contact_id  = db.Column(db.String(9), nullable=True)
+    source_income_id   = db.Column(db.String(9), nullable=True)
+    status           = db.Column(db.String(20), nullable=False, default=STATUS_ACTIVE)
+    resolved_at      = db.Column(db.DateTime, nullable=True)
+    dismissed_at     = db.Column(db.DateTime, nullable=True)
+    is_dismissable   = db.Column(db.Boolean, nullable=False, default=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.Index('idx_ai_user_active', 'user_id', 'simulation_id', 'status', 'urgency_tier', 'created_at'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'simulation_id': self.simulation_id,
+            'user_id': self.user_id,
+            'item_type': self.item_type,
+            'urgency_tier': self.urgency_tier,
+            'title': self.title,
+            'description': self.description,
+            'layer_number': self.layer_number,
+            'action_label': self.action_label,
+            'action_url': self.action_url,
+            'source_action_id': self.source_action_id,
+            'source_artifact_id': self.source_artifact_id,
+            'source_contact_id': self.source_contact_id,
+            'source_income_id': self.source_income_id,
+            'status': self.status,
+            'is_dismissable': self.is_dismissable,
+            'created_at': self.created_at.isoformat(),
+        }
+
+
 class Layer6ShareToken(db.Model):
     """Read-only share link token for the orchestrator diagram (30-day expiry)."""
     __tablename__ = 'layer6_share_tokens'

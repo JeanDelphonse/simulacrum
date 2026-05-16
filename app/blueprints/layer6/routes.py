@@ -1843,3 +1843,63 @@ def layer6_stream(sim_id):
             'Connection': 'keep-alive',
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Action Items — GCC Action Queue
+# ---------------------------------------------------------------------------
+
+@layer6_bp.route('/<sim_id>/action-items', methods=['GET'])
+@login_required
+def list_action_items(sim_id):
+    """Return active action items for the Action Queue, sorted by urgency then recency."""
+    sim, err, code = _get_sim_or_404(sim_id)
+    if err:
+        return err, code
+
+    from app.models.layer6 import ActionItem
+    items = ActionItem.query.filter_by(
+        simulation_id=sim_id,
+        user_id=current_user.id,
+        status=ActionItem.STATUS_ACTIVE,
+    ).order_by(
+        ActionItem.urgency_tier.asc(),
+        ActionItem.created_at.desc(),
+    ).all()
+    return jsonify({'items': [i.to_dict() for i in items], 'count': len(items)})
+
+
+@layer6_bp.route('/<sim_id>/action-items/<item_id>/dismiss', methods=['POST'])
+@login_required
+def dismiss_action_item_route(sim_id, item_id):
+    """Dismiss a dismissable action item (tier 3 or 4 only)."""
+    from app.models.layer6 import ActionItem
+    item = ActionItem.query.filter_by(
+        id=item_id, simulation_id=sim_id, user_id=current_user.id,
+    ).first_or_404()
+
+    if not item.is_dismissable:
+        return jsonify({'error': 'This item must be resolved, not dismissed'}), 400
+    if item.status != ActionItem.STATUS_ACTIVE:
+        return jsonify({'error': 'Item is already resolved or dismissed'}), 409
+
+    from utils.action_items import dismiss_action_item
+    dismiss_action_item(item_id)
+    return jsonify({'ok': True})
+
+
+@layer6_bp.route('/<sim_id>/action-items/<item_id>/resolve', methods=['POST'])
+@login_required
+def resolve_action_item_route(sim_id, item_id):
+    """Mark an action item resolved after the user completes the required action."""
+    from app.models.layer6 import ActionItem
+    item = ActionItem.query.filter_by(
+        id=item_id, simulation_id=sim_id, user_id=current_user.id,
+    ).first_or_404()
+
+    if item.status != ActionItem.STATUS_ACTIVE:
+        return jsonify({'error': 'Item is already resolved or dismissed'}), 409
+
+    from utils.action_items import resolve_action_item
+    resolve_action_item(item_id)
+    return jsonify({'ok': True})
