@@ -109,6 +109,16 @@ ACTION_ITEM_TEMPLATES = {
         'action_label': 'Promote contacts',
         'is_dismissable': True,
     },
+    'bio_chat_started': {
+        'urgency_tier': 3,
+        'action_label': 'View chat',
+        'is_dismissable': True,
+    },
+    'bio_page_review': {
+        'urgency_tier': 3,
+        'action_label': 'Review and publish',
+        'is_dismissable': True,
+    },
 }
 
 LAYER_NAMES = {

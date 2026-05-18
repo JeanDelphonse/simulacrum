@@ -47,6 +47,11 @@ _ROUTING: dict[str, ModelTier] = {
     'intent_classify':             ModelTier.HAIKU,
     # ── SONNET — chat copilot conversational turns ───────────────────────
     'chat_copilot':                ModelTier.SONNET,
+    # ── HAIKU — bio chat classification and simple questions ─────────────
+    'bio_chat_classify':           ModelTier.HAIKU,
+    'bio_chat_simple':             ModelTier.HAIKU,
+    # ── SONNET — bio chat complex questions ──────────────────────────────
+    'bio_chat_complex':            ModelTier.SONNET,
     # ── OPUS — high-precision legal/financial documents ───────────────────
     'investment_policy_statement': ModelTier.OPUS,
     'tax_optimization':            ModelTier.OPUS,

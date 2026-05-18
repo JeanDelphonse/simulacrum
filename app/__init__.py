@@ -104,6 +104,10 @@ def create_app(config_name=None):
     app.logger.info('startup: notifications_bp imported')
     from app.blueprints.artifact_view import artifact_view_bp
     app.logger.info('startup: artifact_view_bp imported')
+    from app.blueprints.bio import bio_bp
+    app.logger.info('startup: bio_bp imported')
+    from app.blueprints.bio_chat import bio_chat_bp
+    app.logger.info('startup: bio_chat_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -125,6 +129,8 @@ def create_app(config_name=None):
     app.register_blueprint(publishing_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(artifact_view_bp)
+    app.register_blueprint(bio_bp)
+    app.register_blueprint(bio_chat_bp)
 
     # Register page routes
     from app.blueprints.pages import pages_bp

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ ctx.full_name }} — {{ ctx.professional_title or 'Professional' }}</title>
+  <meta name="description" content="{{ (ctx.positioning or ctx.about_text or '')[:160] }}">
+  {% if bio_page.sections.get('visibility', {}).get('noindex') %}
+  <meta name="robots" content="noindex">
+  {% endif %}
+  <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/u/{{ slug }}">
+  <meta property="og:type" content="profile">
+  <meta property="og:title" content="{{ ctx.full_name }}">
+  <meta property="og:description" content="{{ (ctx.positioning or '')[:160] }}">
+  <meta property="og:url" content="{{ request.url_root.rstrip('/') }}/u/{{ slug }}">
+  {% if ctx.hero_image_url %}
+  <meta property="og:image" content="{{ request.url_root.rstrip('/') }}/avatars/{{ ctx.hero_image_url }}">
+  {% endif %}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ ctx.full_name }}">
+  <meta name="twitter:description" content="{{ (ctx.positioning or '')[:160] }}">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "{{ ctx.full_name | replace('"', '\\"') }}",
+    "jobTitle": "{{ (ctx.professional_title or '') | replace('"', '\\"') }}",
+    "description": "{{ (ctx.positioning or '')[:200] | replace('"', '\\"') }}",
+    "url": "{{ request.url_root.rstrip('/') }}/u/{{ slug }}"
+    {% if ctx.linkedin_url %},"sameAs": ["{{ ctx.linkedin_url }}"]{% endif %}
+  }
+  </script>
+  <style>
+    /* ── Reset & base ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    /* ── Themes ────────────────────────────────────────────────────── */
+    :root {
+      --bg: #ffffff; --bg2: #f9fafb; --text: #111827; --muted: #6b7280;
+      --accent: #0e7490; --accent-hover: #0c6480; --border: #e5e7eb;
+      --card-bg: #ffffff; --card-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .theme-dark {
+      --bg: #0f172a; --bg2: #1e293b; --text: #f1f5f9; --muted: #94a3b8;
+      --accent: #38bdf8; --accent-hover: #0ea5e9; --border: #334155;
+      --card-bg: #1e293b; --card-shadow: 0 1px 4px rgba(0,0,0,.4);
+    }
+    .theme-warm {
+      --bg: #fefce8; --bg2: #fef9c3; --text: #1c1917; --muted: #78716c;
+      --accent: #b45309; --accent-hover: #92400e; --border: #d6d3d1;
+      --card-bg: #ffffff; --card-shadow: 0 1px 4px rgba(0,0,0,.06);
+      --heading-font: Georgia, 'Times New Roman', serif;
+    }
+
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--body-font, system-ui, -apple-system, sans-serif);
+      line-height: 1.7; font-size: 17px;
+    }
+    h1, h2, h3 { font-family: var(--heading-font, inherit); line-height: 1.25; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
+    img { max-width: 100%; height: auto; display: block; }
+
+    /* ── Layout ────────────────────────────────────────────────────── */
+    .bio-wrap { max-width: 800px; margin: 0 auto; padding: 0 1.5rem; }
+    section { padding: 4rem 0; border-bottom: 1px solid var(--border); }
+    section:last-child { border-bottom: none; }
+
+    /* ── Owner bar ─────────────────────────────────────────────────── */
+    .owner-bar {
+      background: var(--accent); color: #fff; text-align: center;
+      padding: .5rem 1rem; font-size: .85rem;
+    }
+    .owner-bar a { color: #fff; font-weight: 600; margin-left: .5rem; }
+
+    /* ── Hero ──────────────────────────────────────────────────────── */
+    #hero { padding: 5rem 0 4rem; }
+    .hero-inner { display: flex; gap: 3rem; align-items: center; }
+    .hero-photo {
+      width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
+      flex-shrink: 0; background: var(--border);
+    }
+    .hero-photo-placeholder {
+      width: 120px; height: 120px; border-radius: 50%; flex-shrink: 0;
+      background: var(--bg2); border: 2px dashed var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 2rem;
+    }
+    .hero-text h1 { font-size: 2rem; font-weight: 800; margin-bottom: .25rem; }
+    .hero-text .title { color: var(--accent); font-weight: 600; font-size: 1.05rem; margin-bottom: 1rem; }
+    .hero-text .positioning { color: var(--muted); max-width: 540px; }
+    .hero-cta { margin-top: 1.5rem; }
+    .btn {
+      display: inline-block; padding: .75rem 1.75rem; border-radius: 8px;
+      font-weight: 600; font-size: .95rem; cursor: pointer; border: none;
+      transition: background .15s, color .15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); color: #fff; }
+    .btn-outline {
+      background: transparent; color: var(--accent);
+      border: 2px solid var(--accent); margin-left: .75rem;
+    }
+    .btn-outline:hover { background: var(--accent); color: #fff; }
+
+    /* ── Section headings ──────────────────────────────────────────── */
+    .section-heading {
+      font-size: 1.35rem; font-weight: 700; margin-bottom: 1.5rem;
+      color: var(--text);
+    }
+
+    /* ── About ─────────────────────────────────────────────────────── */
+    #about p { max-width: 720px; color: var(--text); margin-bottom: 1rem; font-size: 1.06rem; line-height: 1.75; }
+
+    /* ── Services grid ─────────────────────────────────────────────── */
+    .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; }
+    .service-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow);
+    }
+    .service-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; }
+    .service-card .svc-desc { font-size: .9rem; color: var(--muted); margin-bottom: .75rem; }
+    .service-card .svc-price { font-size: .9rem; font-weight: 600; color: var(--accent); }
+    .services-cta { margin-top: 1.25rem; font-size: .9rem; color: var(--muted); }
+    .services-cta a { color: var(--accent); font-weight: 600; }
+
+    /* ── Testimonials ──────────────────────────────────────────────── */
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 1.25rem; }
+    .testimonial-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow);
+    }
+    .testimonial-quote { font-size: .95rem; font-style: italic; margin-bottom: 1rem; color: var(--text); }
+    .testimonial-author { font-size: .85rem; font-weight: 600; }
+    .testimonial-role { font-size: .8rem; color: var(--muted); }
+
+    /* ── Contact form ──────────────────────────────────────────────── */
+    #contact { background: var(--bg2); }
+    .contact-form { max-width: 520px; }
+    .form-row { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; margin-bottom: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1rem; }
+    label { font-size: .85rem; font-weight: 600; color: var(--muted); }
+    input, textarea, select {
+      padding: .65rem .9rem; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--card-bg); color: var(--text); font-size: .95rem;
+      transition: border-color .15s;
+    }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 100px; }
+    .form-msg { font-size: .85rem; margin-top: .5rem; }
+    .form-msg.success { color: #059669; }
+    .form-msg.error { color: #dc2626; }
+
+    /* ── Footer ────────────────────────────────────────────────────── */
+    #footer { padding: 2.5rem 0; text-align: center; color: var(--muted); font-size: .85rem; }
+    .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: .75rem; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); }
+    .footer-links a:hover { color: var(--accent); }
+    .powered-by { margin-top: .5rem; font-size: .8rem; }
+
+    /* ── Chat widget ───────────────────────────────────────────────── */
+    #bio-chat-btn {
+      position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: #fff; border: 2px solid var(--accent);
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    #bio-chat-btn:hover { background: var(--accent); }
+    #bio-chat-btn:hover svg path { stroke: #fff; }
+    #bio-chat-btn svg { width: 26px; height: 26px; }
+    #bio-chat-btn svg path { stroke: var(--accent); transition: stroke .15s; }
+    #bio-chat-tooltip {
+      position: fixed; bottom: 88px; right: 24px; z-index: 1000;
+      background: var(--text); color: var(--bg); padding: .5rem .9rem;
+      border-radius: 8px; font-size: .85rem; white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    #bio-chat-tooltip::after {
+      content: ''; position: absolute; top: 100%; right: 20px;
+      border: 6px solid transparent; border-top-color: var(--text);
+    }
+    #bio-chat-panel {
+      position: fixed; bottom: 92px; right: 24px; z-index: 1000;
+      width: 380px; height: 520px;
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      display: none; flex-direction: column; overflow: hidden;
+    }
+    #bio-chat-panel.open { display: flex; }
+    .chat-panel-header {
+      background: var(--accent); color: #fff;
+      padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between;
+    }
+    .chat-panel-header h4 { font-size: .95rem; font-weight: 700; margin: 0; }
+    .chat-panel-header .powered { font-size: .7rem; opacity: .75; }
+    .chat-close-btn {
+      background: none; border: none; color: #fff; cursor: pointer;
+      font-size: 1.25rem; line-height: 1; padding: 0 .25rem;
+    }
+    .chat-body { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+    .chat-bubble {
+      max-width: 85%; padding: .65rem .9rem; border-radius: 12px; font-size: .9rem; line-height: 1.5;
+    }
+    .chat-bubble.assistant { background: #f3f4f6; color: #111827; border-bottom-left-radius: 4px; }
+    .chat-bubble.visitor { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .chat-bubble.typing { color: var(--muted); font-style: italic; }
+    .chat-gate { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+    .chat-gate input {
+      padding: .6rem .8rem; border: 1px solid #d1d5db; border-radius: 8px;
+      font-size: .9rem; width: 100%;
+    }
+    .chat-gate .privacy-line { font-size: .75rem; color: #9ca3af; text-align: center; }
+    .chat-input-row {
+      padding: .75rem 1rem; border-top: 1px solid #e5e7eb;
+      display: flex; gap: .5rem; align-items: flex-end;
+    }
+    .chat-input-row textarea {
+      flex: 1; padding: .6rem .8rem; border: 1px solid #d1d5db; border-radius: 8px;
+      font-size: .9rem; resize: none; max-height: 100px; min-height: 40px;
+    }
+    .chat-send-btn {
+      background: var(--accent); border: none; color: #fff; border-radius: 8px;
+      padding: .6rem .9rem; cursor: pointer; font-size: .9rem; font-weight: 600;
+    }
+    .chat-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .hero-inner { flex-direction: column; gap: 1.5rem; text-align: center; }
+      .hero-photo, .hero-photo-placeholder { margin: 0 auto; }
+      .form-row { grid-template-columns: 1fr; }
+      #bio-chat-panel { width: calc(100vw - 16px); right: 8px; height: 70vh; bottom: 80px; }
+      .services-grid { grid-template-columns: 1fr; }
+      .testimonials-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body class="theme-{{ bio_page.theme }}">
+
+{% if is_owner %}
+<div class="owner-bar">
+  You are viewing your own bio page.
+  <a href="/u/{{ slug }}/edit">Edit bio page →</a>
+</div>
+{% endif %}
+
+<div class="bio-wrap">
+
+  <!-- ── 1. Hero ─────────────────────────────────────────────────────── -->
+  <section id="hero">
+    <div class="hero-inner">
+      {% if ctx.hero_image_url %}
+      <img
+        class="hero-photo"
+        src="/avatars/{{ ctx.hero_image_url }}"
+        alt="{{ ctx.full_name }}"
+        width="120" height="120" loading="eager">
+      {% elif ctx.avatar_path %}
+      <img
+        class="hero-photo"
+        src="/avatars/{{ ctx.avatar_path }}"
+        alt="{{ ctx.full_name }}"
+        width="120" height="120" loading="eager">
+      {% else %}
+      <div class="hero-photo-placeholder">{{ ctx.full_name[0] if ctx.full_name else '?' }}</div>
+      {% endif %}
+
+      <div class="hero-text">
+        <h1>{{ ctx.full_name }}</h1>
+        {% if ctx.professional_title %}
+        <div class="title">{{ ctx.professional_title }}</div>
+        {% endif %}
+        {% if ctx.positioning %}
+        <p class="positioning">{{ ctx.positioning }}</p>
+        {% endif %}
+        <div class="hero-cta">
+          {% if ctx.booking_url %}
+          <a class="btn btn-primary" href="{{ ctx.booking_url }}?utm_source=simulacrum_bio&utm_medium=bio_page&utm_campaign={{ slug }}" target="_blank" rel="noopener" id="hero-cta-btn">
+            {{ ctx.cta_label or 'Book a call' }}
+          </a>
+          {% else %}
+          <a class="btn btn-primary" href="#contact" id="hero-cta-btn">Get in touch</a>
+          {% endif %}
+          {% if ctx.linkedin_url %}
+          <a class="btn btn-outline" href="{{ ctx.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2. About ────────────────────────────────────────────────────── -->
+  {% set visibility = bio_page.sections.get('visibility', {}) %}
+  {% if ctx.about_text %}
+  <section id="about">
+    <h2 class="section-heading">About</h2>
+    {% for para in ctx.about_text.split('\n\n') %}
+    {% if para.strip() %}
+    <p>{{ para.strip() }}</p>
+    {% endif %}
+    {% endfor %}
+    {% if not ctx.about_text.strip().count('\n') %}
+    {# Single-paragraph about — already rendered above #}
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- ── 3. Services ────────────────────────────────────────────────── -->
+  {% if visibility.get('services', True) and ctx.get('_rate_card_raw') %}
+  <section id="services">
+    <h2 class="section-heading">Services</h2>
+    <div class="services-grid">
+      <div class="service-card">
+        <div class="svc-desc" style="white-space:pre-line;max-height:300px;overflow:hidden;">{{ ctx._rate_card_raw[:800] }}</div>
+      </div>
+    </div>
+    {% if ctx.rate_card_url %}
+    <p class="services-cta">See full details → <a href="{{ ctx.rate_card_url }}">View rate card</a></p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- ── 7. Testimonials ────────────────────────────────────────────── -->
+  {% if visibility.get('testimonials', True) and bio_page.custom_testimonials %}
+  <section id="testimonials">
+    <h2 class="section-heading">What people say</h2>
+    <div class="testimonials-grid">
+      {% for t in bio_page.custom_testimonials | sort(attribute='order') %}
+      <div class="testimonial-card">
+        <p class="testimonial-quote">"{{ t.quote }}"</p>
+        <div class="testimonial-author">{{ t.name }}</div>
+        {% if t.title or t.company %}
+        <div class="testimonial-role">{{ t.title }}{% if t.title and t.company %}, {% endif %}{{ t.company }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── 8. Footer / Contact ────────────────────────────────────────── -->
+  <section id="contact">
+    <h2 class="section-heading">Get in touch</h2>
+    <div class="contact-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cf-name">Name *</label>
+          <input id="cf-name" type="text" placeholder="Your name" required>
+        </div>
+        <div class="form-group">
+          <label for="cf-email">Email *</label>
+          <input id="cf-email" type="email" placeholder="you@example.com" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="cf-message">Message *</label>
+        <textarea id="cf-message" placeholder="Tell {{ ctx.full_name.split()[0] if ctx.full_name else 'them' }} what you're working on..." required></textarea>
+      </div>
+      <button class="btn btn-primary" id="cf-submit">Send message</button>
+      <div class="form-msg" id="cf-msg"></div>
+    </div>
+  </section>
+
+</div><!-- /bio-wrap -->
+
+<!-- ── Footer ────────────────────────────────────────────────────────────── -->
+<footer id="footer">
+  <div class="footer-links">
+    {% if ctx.linkedin_url %}<a href="{{ ctx.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
+    {% if ctx.twitter_url %}<a href="{{ ctx.twitter_url }}" target="_blank" rel="noopener">Twitter / X</a>{% endif %}
+    {% if ctx.website_url %}<a href="{{ ctx.website_url }}" target="_blank" rel="noopener">Website</a>{% endif %}
+    {% if ctx.booking_url %}<a href="{{ ctx.booking_url }}" target="_blank" rel="noopener">Book a call</a>{% endif %}
+  </div>
+  <div class="powered-by">Powered by <a href="/" style="color:var(--muted)">Simulacrum</a></div>
+</footer>
+
+<!-- ── Chat widget ─────────────────────────────────────────────────────── -->
+{% if bio_page.chat_enabled %}
+<div id="bio-chat-tooltip" style="display:none;">
+  Ask me anything about {{ ctx.full_name.split()[0] if ctx.full_name else 'their' }}'s work
+</div>
+
+<button id="bio-chat-btn" aria-label="Open chat" title="Chat with {{ ctx.full_name.split()[0] if ctx.full_name else 'us' }}">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+
+<div id="bio-chat-panel" role="dialog" aria-label="Chat with {{ ctx.full_name.split()[0] if ctx.full_name else 'us' }}">
+  <div class="chat-panel-header">
+    <div>
+      <h4>{{ ctx.full_name.split()[0] if ctx.full_name else '' }}'s assistant</h4>
+      <div class="powered">Powered by Simulacrum</div>
+    </div>
+    <button class="chat-close-btn" id="bio-chat-close" aria-label="Close chat">✕</button>
+  </div>
+
+  <!-- Gate view -->
+  <div id="chat-gate-view" class="chat-gate">
+    <div class="chat-bubble assistant">
+      Hi! I'm {{ ctx.full_name.split()[0] if ctx.full_name else '' }}'s assistant. I can answer questions about their services, expertise, and availability.
+      Before we start, could I get your name and email so {{ ctx.full_name.split()[0] if ctx.full_name else 'they' }} knows who they're talking to?
+    </div>
+    <input id="gate-name"  type="text"  placeholder="Your name *"  required autocomplete="name">
+    <input id="gate-email" type="email" placeholder="Your email *" required autocomplete="email">
+    <input id="gate-phone" type="tel"   placeholder="Phone (optional)" autocomplete="tel">
+    <button class="btn btn-primary" id="gate-start" style="width:100%">Start chatting</button>
+    <div class="privacy-line">
+      Your information is shared only with {{ ctx.full_name.split()[0] if ctx.full_name else 'them' }}.
+      We never sell your data.
+    </div>
+    <div id="gate-err" style="color:#dc2626;font-size:.85rem;text-align:center;display:none;"></div>
+  </div>
+
+  <!-- Conversation view (hidden until gate cleared) -->
+  <div id="chat-convo-view" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+    <div class="chat-body" id="chat-messages"></div>
+    <div class="chat-input-row">
+      <textarea id="chat-input" placeholder="Ask a question…" rows="1"
+                aria-label="Type your message"></textarea>
+      <button class="chat-send-btn" id="chat-send">Send</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function () {
+  'use strict';
+  var SLUG = {{ slug | tojson }};
+  var FIRST = {{ (ctx.full_name.split()[0] if ctx.full_name else '') | tojson }};
+  var chatEnabled = {{ 'true' if bio_page.chat_enabled else 'false' }};
+
+  if (!chatEnabled) return;
+
+  var btn   = document.getElementById('bio-chat-btn');
+  var panel = document.getElementById('bio-chat-panel');
+  var tip   = document.getElementById('bio-chat-tooltip');
+  var closeBtn = document.getElementById('bio-chat-close');
+
+  // Contact form
+  var cfSubmit = document.getElementById('cf-submit');
+  var cfMsg    = document.getElementById('cf-msg');
+  if (cfSubmit) {
+    cfSubmit.addEventListener('click', function () {
+      var name    = (document.getElementById('cf-name').value || '').trim();
+      var email   = (document.getElementById('cf-email').value || '').trim();
+      var message = (document.getElementById('cf-message').value || '').trim();
+      if (!name || !email || !message) {
+        cfMsg.textContent = 'Name, email, and message are required.';
+        cfMsg.className = 'form-msg error';
+        return;
+      }
+      cfSubmit.disabled = true;
+      fetch('/u/' + SLUG + '/contact', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name, email: email, subject: 'General inquiry', message: message}),
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.ok) {
+          cfMsg.textContent = d.message || 'Message sent!';
+          cfMsg.className = 'form-msg success';
+          document.getElementById('cf-name').value = '';
+          document.getElementById('cf-email').value = '';
+          document.getElementById('cf-message').value = '';
+        } else {
+          cfMsg.textContent = d.error || 'Something went wrong.';
+          cfMsg.className = 'form-msg error';
+          cfSubmit.disabled = false;
+        }
+      })
+      .catch(function () {
+        cfMsg.textContent = 'Network error. Please try again.';
+        cfMsg.className = 'form-msg error';
+        cfSubmit.disabled = false;
+      });
+    });
+  }
+
+  // CTA click tracking
+  var heroBtn = document.getElementById('hero-cta-btn');
+  if (heroBtn) {
+    heroBtn.addEventListener('click', function () {
+      fetch('/u/' + SLUG + '/cta-click', {method: 'POST'}).catch(function(){});
+    });
+  }
+
+  if (!btn) return;
+
+  // Show tooltip on first load
+  var tooltipShown = sessionStorage.getItem('bio_chat_tip_' + SLUG);
+  if (!tooltipShown && tip) {
+    tip.style.display = 'block';
+    setTimeout(function () {
+      if (tip) tip.style.display = 'none';
+    }, 5000);
+    sessionStorage.setItem('bio_chat_tip_' + SLUG, '1');
+  }
+
+  btn.addEventListener('click', function () {
+    if (tip) tip.style.display = 'none';
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) {
+      var saved = _loadGate();
+      if (saved) {
+        document.getElementById('gate-name').value  = saved.name  || '';
+        document.getElementById('gate-email').value = saved.email || '';
+      }
+    }
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function () {
+      panel.classList.remove('open');
+    });
+  }
+
+  // ── Gate ──────────────────────────────────────────────────────────────
+  var sessionId = null;
+
+  function _loadGate() {
+    try { return JSON.parse(localStorage.getItem('bio_gate_' + SLUG)); } catch(e) { return null; }
+  }
+  function _saveGate(name, email) {
+    try { localStorage.setItem('bio_gate_' + SLUG, JSON.stringify({name: name, email: email})); } catch(e) {}
+  }
+
+  var gateStart = document.getElementById('gate-start');
+  var gateErr   = document.getElementById('gate-err');
+
+  if (gateStart) {
+    gateStart.addEventListener('click', function () {
+      var name  = (document.getElementById('gate-name').value  || '').trim();
+      var email = (document.getElementById('gate-email').value || '').trim();
+      var phone = (document.getElementById('gate-phone').value || '').trim();
+      if (name.length < 2) { _showGateErr('Please enter your name.'); return; }
+      if (!email || email.indexOf('@') < 0) { _showGateErr('Please enter a valid email.'); return; }
+
+      gateStart.disabled = true;
+      gateErr.style.display = 'none';
+
+      fetch('/api/bio-chat/' + SLUG + '/session', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name, email: email, phone: phone || undefined}),
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.session_id) {
+          sessionId = d.session_id;
+          _saveGate(name, email);
+          _showConvo(d.welcome_message);
+        } else {
+          _showGateErr(d.error || 'Failed to start chat.');
+          gateStart.disabled = false;
+        }
+      })
+      .catch(function () {
+        _showGateErr('Network error. Please try again.');
+        gateStart.disabled = false;
+      });
+    });
+  }
+
+  function _showGateErr(msg) {
+    gateErr.textContent = msg;
+    gateErr.style.display = 'block';
+  }
+
+  function _showConvo(welcomeMsg) {
+    document.getElementById('chat-gate-view').style.display = 'none';
+    var convo = document.getElementById('chat-convo-view');
+    convo.style.display = 'flex';
+    convo.style.flexDirection = 'column';
+    if (welcomeMsg) _appendBubble('assistant', welcomeMsg);
+    document.getElementById('chat-input').focus();
+  }
+
+  // ── Messaging ──────────────────────────────────────────────────────────
+  var chatInput = document.getElementById('chat-input');
+  var chatSend  = document.getElementById('chat-send');
+  var chatMsgs  = document.getElementById('chat-messages');
+
+  function _appendBubble(role, text) {
+    var div = document.createElement('div');
+    div.className = 'chat-bubble ' + role;
+    div.textContent = text;
+    chatMsgs.appendChild(div);
+    chatMsgs.scrollTop = chatMsgs.scrollHeight;
+    return div;
+  }
+
+  if (chatSend) {
+    chatSend.addEventListener('click', _sendMsg);
+  }
+  if (chatInput) {
+    chatInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _sendMsg(); }
+    });
+    chatInput.addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+  }
+
+  function _sendMsg() {
+    if (!sessionId || !chatInput) return;
+    var text = chatInput.value.trim();
+    if (!text) return;
+
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    chatSend.disabled = true;
+
+    _appendBubble('visitor', text);
+    var typing = _appendBubble('assistant typing', '…');
+
+    var url = '/api/bio-chat/sessions/' + sessionId + '/message';
+    fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text}),
+    })
+    .then(function (r) {
+      typing.remove();
+      var responseBubble = _appendBubble('assistant', '');
+      var reader = r.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+
+      function read() {
+        reader.read().then(function (result) {
+          if (result.done) { chatSend.disabled = false; return; }
+          buf += decoder.decode(result.value, {stream: true});
+          var lines = buf.split('\n');
+          buf = lines.pop();
+          lines.forEach(function (line) {
+            if (!line.startsWith('data: ')) return;
+            try {
+              var d = JSON.parse(line.slice(6));
+              if (d.text) {
+                responseBubble.textContent += d.text;
+                chatMsgs.scrollTop = chatMsgs.scrollHeight;
+              }
+              if (d.done) { chatSend.disabled = false; }
+              if (d.error) {
+                responseBubble.textContent = "Sorry, I ran into an issue. Please try again.";
+                chatSend.disabled = false;
+              }
+            } catch(e) {}
+          });
+          read();
+        });
+      }
+      read();
+    })
+    .catch(function () {
+      typing.remove();
+      _appendBubble('assistant', 'Network error — please try again.');
+      chatSend.disabled = false;
+    });
+  }
+
+  // End session when page unloads
+  window.addEventListener('beforeunload', function () {
+    if (sessionId) {
+      navigator.sendBeacon('/api/bio-chat/sessions/' + sessionId + '/end');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

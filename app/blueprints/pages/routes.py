@@ -163,6 +163,25 @@ def settings_profile():
     )
 
 
+@pages_bp.route('/u/<slug>/edit')
+@login_required
+def bio_editor(slug: str):
+    """Bio page editor — authenticated owner only."""
+    from flask import abort
+    from app.models.profile import UserProfile
+    from app.models.bio_page import BioPage
+    profile = UserProfile.query.filter_by(username=slug.lower(), user_id=current_user.id).first()
+    if not profile:
+        abort(403)
+    bio_page = BioPage.query.filter_by(user_id=current_user.id).first()
+    return render_template(
+        'public/bio_editor.html',
+        profile=profile,
+        bio_page=bio_page,
+        slug=slug,
+    )
+
+
 @pages_bp.route('/settings/visibility')
 @login_required
 def settings_visibility():
@@ -572,7 +591,8 @@ def gcc_view(sim_id):
     from flask import request as _req, redirect, url_for
     from app.models.simulation import Simulation, SimulationLayer
     from app.models.layer6 import (
-        ActionItem, Layer6Cycle, Layer6Momentum, Layer6Outcome,
+        ActionItem, Layer6Cycle, Layer6ActionQueue, Layer6Config,
+        Layer6Momentum, Layer6Outcome,
     )
     from app.models.agent_action import AgentAction
     from app.extensions import db as _db
@@ -590,10 +610,20 @@ def gcc_view(sim_id):
         status=ActionItem.STATUS_ACTIVE,
     ).order_by(ActionItem.urgency_tier.asc(), ActionItem.created_at.desc()).all()
 
-    # Latest orchestrator cycle (for phase badge + Momentum tab)
-    latest_cycle = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
+    # All orchestrator cycles (Cycle + Visuals tabs) — latest first
+    all_cycle_objs = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
         Layer6Cycle.cycle_number.desc()
-    ).first()
+    ).all()
+    latest_cycle = all_cycle_objs[0] if all_cycle_objs else None
+
+    # Build diagram_cycle payload (latest cycle + its action queue)
+    diagram_cycle = None
+    if latest_cycle:
+        diagram_cycle = latest_cycle.to_dict()
+        dq_actions = Layer6ActionQueue.query.filter_by(cycle_id=latest_cycle.id).order_by(
+            Layer6ActionQueue.priority_score.desc()
+        ).all()
+        diagram_cycle['action_queue'] = [a.to_dict() for a in dq_actions]
 
     # Latest momentum snapshot
     momentum = Layer6Momentum.query.filter_by(simulation_id=sim_id).order_by(
@@ -636,10 +666,18 @@ def gcc_view(sim_id):
         Layer6Outcome.created_at.desc()
     ).limit(20).all()
 
+    # All agent actions across layers (Layer Actions tab)
+    layer_actions = AgentAction.query.filter_by(
+        simulation_id=sim_id,
+    ).order_by(AgentAction.created_at.desc()).all()
+
     # SimulationLayer names for My Layers tab
     sim_layers = SimulationLayer.query.filter_by(simulation_id=sim_id).order_by(
         SimulationLayer.layer_number
     ).all()
+
+    # Layer 6 config (for settings modal)
+    layer6_config = Layer6Config.query.filter_by(simulation_id=sim_id).first()
 
     # Profile for header
     from app.models.profile import UserProfile as _UP
@@ -663,9 +701,10 @@ def gcc_view(sim_id):
         sim_layers=sim_layers,
         profile=profile,
         active_tab=tab,
-        # legacy vars kept for backward compat with any shared partials
-        diagram_cycle=None,
-        all_cycles=[],
+        diagram_cycle=diagram_cycle,
+        all_cycles=[c.to_dict_summary() for c in all_cycle_objs],
+        layer_actions=[a.to_dict() for a in layer_actions],
+        layer6_config=layer6_config.to_dict() if layer6_config else None,
         action_pills=[],
         escalation_by_layer={},
         active_flags=[],

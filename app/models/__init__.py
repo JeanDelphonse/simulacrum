@@ -29,6 +29,7 @@ from app.models.integration import UserIntegration, EmailCampaign
 from app.models.signing import SigningDocument
 from app.models.published_page import PublishedPage
 from app.models.notification import Notification, NotificationPreference
+from app.models.bio_page import BioPage, BioChatSession, BioChatMessage
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -50,4 +51,5 @@ __all__ = [
     'SigningDocument',
     'PublishedPage',
     'Notification', 'NotificationPreference',
+    'BioPage', 'BioChatSession', 'BioChatMessage',
 ]

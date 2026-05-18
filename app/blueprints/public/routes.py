@@ -29,7 +29,8 @@ def serve_avatar(filename):
 
 @public_bp.route('/u/<username>')
 def profile_page(username):
-    profile = UserProfile.query.filter_by(username=username.lower()).first()
+    slug = username.lower()
+    profile = UserProfile.query.filter_by(username=slug).first()
 
     if not profile:
         return render_template('public/profile_unpublished.html', username=username), 200
@@ -38,6 +39,34 @@ def profile_page(username):
     if not user or user.deleted_at:
         return render_template('public/profile_unpublished.html', username=username), 200
 
+    # ── Bio page (SIM-PRD-BIO-001): if the user has a published bio page, render it ──
+    from app.models.bio_page import BioPage
+    bio_page = BioPage.query.filter_by(user_id=profile.user_id, slug=slug).first()
+    if bio_page and bio_page.status == BioPage.STATUS_PUBLISHED:
+        from app.blueprints.bio.routes import _assemble_context
+        ctx = _assemble_context(profile.user_id, bio_page)
+
+        is_owner = current_user.is_authenticated and current_user.id == profile.user_id
+
+        # Track view (skip owner's own views)
+        if not is_owner:
+            try:
+                bio_page.view_count = (bio_page.view_count or 0) + 1
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        return render_template(
+            'public/bio_page.html',
+            bio_page=bio_page,
+            profile=profile,
+            user=user,
+            ctx=ctx,
+            is_owner=is_owner,
+            slug=slug,
+        )
+
+    # ── Fallback: legacy profile page ────────────────────────────────────
     if not profile.is_published:
         return render_template('public/profile_unpublished.html', username=username), 200
 
@@ -80,9 +109,7 @@ def profile_page(username):
         })
 
     booking_url = profile.effective_booking_url()
-
     is_owner = current_user.is_authenticated and current_user.id == profile.user_id
-
     bio_sections = _parse_bio(profile.bio) if profile.bio else None
 
     return render_template(
@@ -96,6 +123,37 @@ def profile_page(username):
         bio_sections=bio_sections,
         subjects=_SUBJECTS,
     )
+
+
+@public_bp.route('/u/<username>/cta-click', methods=['POST'])
+def bio_cta_click(username: str):
+    """Track CTA button clicks on the bio page."""
+    from app.models.bio_page import BioPage
+    slug = username.lower()
+    bp = BioPage.query.filter_by(slug=slug, status=BioPage.STATUS_PUBLISHED).first()
+    if bp:
+        try:
+            bp.cta_click_count = (bp.cta_click_count or 0) + 1
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    return jsonify({'ok': True})
+
+
+@public_bp.route('/u/<username>/bio-page.json')
+def bio_page_json(username: str):
+    """Public JSON endpoint for the bio page editor live preview (same-origin fetch)."""
+    from app.models.bio_page import BioPage
+    from app.blueprints.bio.routes import _assemble_context
+    slug = username.lower()
+    bio_page = BioPage.query.filter_by(slug=slug).first()
+    if not bio_page:
+        return jsonify({'error': 'Not found'}), 404
+    ctx = _assemble_context(bio_page.user_id, bio_page)
+    return jsonify({
+        'bio_page': bio_page.to_dict(),
+        'context': ctx,
+    })
 
 
 @public_bp.route('/u/<username>/contact', methods=['POST'])

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Edit bio page — Simulacrum</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f9fafb; color: #111827; font-family: system-ui, sans-serif; height: 100vh; overflow: hidden; }
+
+    /* ── Top bar ── */
+    .editor-topbar {
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .75rem 1.5rem; height: 56px; position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 1rem; }
+    .topbar-left a { color: #6b7280; font-size: .85rem; }
+    .topbar-left a:hover { color: #111827; }
+    .topbar-title { font-weight: 700; font-size: .95rem; }
+    .topbar-right { display: flex; align-items: center; gap: .75rem; }
+    .badge {
+      display: inline-block; padding: .2rem .6rem; border-radius: 999px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .badge-draft { background: #fef3c7; color: #92400e; }
+    .badge-published { background: #d1fae5; color: #065f46; }
+    .badge-unpublished { background: #fee2e2; color: #991b1b; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .5rem 1.1rem; border-radius: 7px; font-size: .88rem; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent; transition: background .12s;
+    }
+    .btn-primary { background: #0e7490; color: #fff; border-color: #0e7490; }
+    .btn-primary:hover { background: #0c6480; }
+    .btn-outline { background: #fff; color: #374151; border-color: #d1d5db; }
+    .btn-outline:hover { background: #f3f4f6; }
+    .btn-danger { background: #fff; color: #dc2626; border-color: #fca5a5; }
+    .btn-danger:hover { background: #fef2f2; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Layout ── */
+    .editor-layout {
+      display: grid; grid-template-columns: 380px 1fr;
+      height: calc(100vh - 56px); margin-top: 56px;
+    }
+    .editor-panel {
+      background: #fff; border-right: 1px solid #e5e7eb;
+      overflow-y: auto; padding: 0;
+    }
+    .preview-pane {
+      background: #f3f4f6; overflow: hidden; position: relative;
+    }
+    .preview-pane iframe {
+      width: 100%; height: 100%; border: none;
+      transform-origin: top left;
+    }
+
+    /* ── Accordion tabs ── */
+    .editor-section { border-bottom: 1px solid #e5e7eb; }
+    .editor-section-header {
+      width: 100%; background: none; border: none; padding: .9rem 1.25rem;
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; font-size: .9rem; font-weight: 600; color: #111827;
+      text-align: left;
+    }
+    .editor-section-header:hover { background: #f9fafb; }
+    .editor-section-body { padding: 1rem 1.25rem 1.25rem; display: none; }
+    .editor-section-body.open { display: block; }
+
+    /* ── Form controls ── */
+    .form-group { margin-bottom: .9rem; }
+    .form-group label { display: block; font-size: .8rem; font-weight: 600; color: #6b7280; margin-bottom: .3rem; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: .55rem .75rem; border: 1px solid #d1d5db; border-radius: 7px;
+      font-size: .88rem; color: #111827; background: #fff; transition: border-color .12s;
+    }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #0e7490; }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .custom-toggle {
+      display: flex; align-items: center; gap: .5rem; margin-top: .4rem;
+      font-size: .78rem; color: #6b7280; cursor: pointer;
+    }
+    .custom-toggle input[type=checkbox] { cursor: pointer; }
+    .section-visibility-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .5rem 0; border-bottom: 1px solid #f3f4f6; font-size: .88rem;
+    }
+    .section-visibility-row:last-child { border-bottom: none; }
+
+    /* ── Theme picker ── */
+    .theme-options { display: flex; gap: .75rem; margin-top: .25rem; }
+    .theme-btn {
+      flex: 1; padding: .5rem; border-radius: 8px; border: 2px solid #e5e7eb;
+      cursor: pointer; font-size: .8rem; font-weight: 600; text-align: center;
+      transition: border-color .12s;
+    }
+    .theme-btn.active { border-color: #0e7490; }
+    .theme-default { background: #fff; color: #111827; }
+    .theme-dark { background: #0f172a; color: #f1f5f9; }
+    .theme-warm { background: #fefce8; color: #1c1917; }
+
+    /* ── Testimonials ── */
+    .testimonial-item {
+      background: #f9fafb; border-radius: 8px; padding: .75rem; margin-bottom: .75rem;
+      position: relative;
+    }
+    .testimonial-item .t-quote { font-size: .85rem; font-style: italic; margin-bottom: .3rem; }
+    .testimonial-item .t-name { font-size: .8rem; font-weight: 600; }
+    .t-delete {
+      position: absolute; top: .5rem; right: .5rem;
+      background: none; border: none; color: #9ca3af; cursor: pointer; font-size: .9rem;
+    }
+    .t-delete:hover { color: #dc2626; }
+
+    /* ── Add testimonial form ── */
+    .add-t-form { margin-top: .75rem; }
+    .add-t-toggle { color: #0e7490; background: none; border: none; font-size: .88rem; font-weight: 600; cursor: pointer; }
+
+    /* ── Saving indicator ── */
+    #save-status { font-size: .8rem; color: #6b7280; }
+    #save-status.saved { color: #059669; }
+    #save-status.error { color: #dc2626; }
+
+    /* ── Upload ── */
+    .upload-area {
+      border: 2px dashed #d1d5db; border-radius: 8px; padding: 1rem;
+      text-align: center; font-size: .85rem; color: #6b7280; cursor: pointer;
+      transition: border-color .12s;
+    }
+    .upload-area:hover { border-color: #0e7490; }
+    .upload-area input[type=file] { display: none; }
+
+    @media (max-width: 900px) {
+      .editor-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .editor-panel { height: 50vh; overflow-y: auto; }
+      .preview-pane { height: 50vh; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<header class="editor-topbar">
+  <div class="topbar-left">
+    <a href="/u/{{ slug }}" target="_blank">← View page</a>
+    <span class="topbar-title">Bio page editor</span>
+    {% if bio_page %}
+    <span class="badge badge-{{ bio_page.status }}" id="status-badge">{{ bio_page.status | title }}</span>
+    {% else %}
+    <span class="badge badge-draft" id="status-badge">Draft</span>
+    {% endif %}
+  </div>
+  <div class="topbar-right">
+    <span id="save-status"></span>
+    {% if bio_page and bio_page.status == 'published' %}
+    <button class="btn btn-outline btn-danger" id="unpublish-btn">Unpublish</button>
+    {% else %}
+    <button class="btn btn-primary" id="publish-btn">Publish bio page</button>
+    {% endif %}
+  </div>
+</header>
+
+<div class="editor-layout">
+  <!-- LEFT: editing panel -->
+  <aside class="editor-panel" id="editor-panel">
+
+    <!-- ── Hero section ── -->
+    <div class="editor-section">
+      <button class="editor-section-header" data-section="hero">
+        Hero <span>›</span>
+      </button>
+      <div class="editor-section-body" id="hero-body">
+        <div class="form-group">
+          <label>Professional title</label>
+          <input type="text" id="hero-title" placeholder="e.g. Brand strategist & advisor" maxlength="200">
+          <label class="custom-toggle">
+            <input type="checkbox" id="hero-title-custom"> Use custom title (overrides LinkedIn artifact)
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Positioning / tagline</label>
+          <textarea id="hero-positioning" placeholder="One-sentence pitch..." maxlength="400"></textarea>
+          <label class="custom-toggle">
+            <input type="checkbox" id="hero-pos-custom"> Use custom positioning (overrides rate card)
+          </label>
+        </div>
+        <div class="form-group">
+          <label>CTA button URL</label>
+          <input type="url" id="hero-cta-url" placeholder="Leave blank to use booking page or contact form">
+        </div>
+        <div class="form-group">
+          <label>CTA button label</label>
+          <input type="text" id="hero-cta-label" placeholder="Book a call" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label>Hero photo</label>
+          <div class="upload-area" id="hero-upload-area">
+            <input type="file" id="hero-image-input" accept="image/jpeg,image/png,image/webp">
+            Click to upload hero photo (JPEG/PNG/WebP, max 5MB)
+          </div>
+          <div id="hero-img-preview" style="margin-top:.5rem;font-size:.8rem;color:#059669;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── About section ── -->
+    <div class="editor-section">
+      <button class="editor-section-header" data-section="about">
+        About <span>›</span>
+      </button>
+      <div class="editor-section-body" id="about-body">
+        <div class="form-group">
+          <label>Custom bio text</label>
+          <textarea id="about-bio" placeholder="Your extended professional bio..." style="min-height:160px;" maxlength="2000"></textarea>
+          <label class="custom-toggle">
+            <input type="checkbox" id="about-custom"> Use custom bio (overrides LinkedIn About section)
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section visibility ── -->
+    <div class="editor-section">
+      <button class="editor-section-header" data-section="visibility">
+        Section visibility <span>›</span>
+      </button>
+      <div class="editor-section-body" id="visibility-body">
+        <div class="section-visibility-row">
+          <span>Services</span>
+          <input type="checkbox" id="vis-services" checked>
+        </div>
+        <div class="section-visibility-row">
+          <span>Testimonials</span>
+          <input type="checkbox" id="vis-testimonials" checked>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Testimonials ── -->
+    <div class="editor-section">
+      <button class="editor-section-header" data-section="testimonials">
+        Testimonials <span>›</span>
+      </button>
+      <div class="editor-section-body" id="testimonials-body">
+        <div id="testimonials-list"></div>
+        <button class="add-t-toggle" id="add-t-btn">+ Add testimonial</button>
+        <div class="add-t-form" id="add-t-form" style="display:none;">
+          <div class="form-group" style="margin-top:.75rem">
+            <label>Quote *</label>
+            <textarea id="t-quote" placeholder="Their testimonial..." maxlength="500"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="t-name" placeholder="Jane Smith" maxlength="100">
+          </div>
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="t-title" placeholder="CEO at Acme" maxlength="100">
+          </div>
+          <div class="form-group">
+            <label>Company</label>
+            <input type="text" id="t-company" placeholder="Acme Corp" maxlength="100">
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:.25rem">
+            <button class="btn btn-primary" id="t-save-btn" style="flex:1">Save testimonial</button>
+            <button class="btn btn-outline" id="t-cancel-btn">Cancel</button>
+          </div>
+          <div id="t-err" style="color:#dc2626;font-size:.8rem;margin-top:.4rem;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Theme ── -->
+    <div class="editor-section">
+      <button class="editor-section-header" data-section="theme">
+        Visual theme <span>›</span>
+      </button>
+      <div class="editor-section-body" id="theme-body">
+        <div class="theme-options">
+          <button class="theme-btn theme-default active" data-theme="default">Default</button>
+          <button class="theme-btn theme-dark" data-theme="dark">Dark</button>
+          <button class="theme-btn theme-warm" data-theme="warm">Warm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Chat widget ── -->
+    <div class="editor-section">
+      <button class="editor-section-header" data-section="chat">
+        Chat widget <span>›</span>
+      </button>
+      <div class="editor-section-body" id="chat-body">
+        <div class="section-visibility-row">
+          <span>Chat widget enabled</span>
+          <input type="checkbox" id="chat-enabled" checked>
+        </div>
+        <div class="section-visibility-row">
+          <span>Live takeover enabled</span>
+          <input type="checkbox" id="chat-takeover">
+        </div>
+        <div class="form-group" style="margin-top:.75rem">
+          <label>Daily session limit</label>
+          <input type="number" id="chat-limit" value="50" min="1" max="500">
+        </div>
+        <div class="form-group">
+          <label>Custom welcome message (optional)</label>
+          <textarea id="chat-welcome" placeholder="Leave blank for the default welcome message..." maxlength="300"></textarea>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- RIGHT: preview -->
+  <main class="preview-pane">
+    <iframe id="preview-frame" src="/u/{{ slug }}" title="Bio page preview" sandbox="allow-scripts allow-same-origin"></iframe>
+  </main>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  var SLUG = {{ slug | tojson }};
+  var bioPage = null;
+  var saveTimer = null;
+  var saveStatus = document.getElementById('save-status');
+
+  // ── Load bio page data ─────────────────────────────────────────────
+  fetch('/api/bio').then(r => r.json()).then(function(d) {
+    bioPage = d;
+    _populate(d);
+  }).catch(function(e) {
+    console.error('Failed to load bio page', e);
+  });
+
+  function _populate(d) {
+    var sections = d.sections || {};
+    var hero = sections.hero || {};
+    var about = sections.about || {};
+    var visibility = sections.visibility || {};
+    var chatSettings = d.chat_settings || {};
+
+    var el = function(id) { return document.getElementById(id); };
+
+    if (el('hero-title'))    el('hero-title').value     = hero.professional_title || '';
+    if (el('hero-title-custom')) el('hero-title-custom').checked = !!hero.is_custom_title;
+    if (el('hero-positioning'))  el('hero-positioning').value   = hero.positioning || '';
+    if (el('hero-pos-custom'))   el('hero-pos-custom').checked  = !!hero.is_custom_positioning;
+    if (el('hero-cta-url'))  el('hero-cta-url').value   = hero.cta_url || '';
+    if (el('hero-cta-label')) el('hero-cta-label').value = hero.cta_label || '';
+
+    if (el('about-bio'))    el('about-bio').value       = (about.bio_text || '');
+    if (el('about-custom')) el('about-custom').checked  = !!about.is_custom;
+
+    if (el('vis-services'))     el('vis-services').checked     = visibility.services !== false;
+    if (el('vis-testimonials')) el('vis-testimonials').checked = visibility.testimonials !== false;
+
+    if (el('chat-enabled'))  el('chat-enabled').checked  = chatSettings.enabled !== false;
+    if (el('chat-takeover')) el('chat-takeover').checked = !!chatSettings.live_takeover_enabled;
+    if (el('chat-limit'))    el('chat-limit').value      = chatSettings.daily_session_limit || 50;
+    if (el('chat-welcome'))  el('chat-welcome').value    = chatSettings.custom_welcome || '';
+
+    // Theme
+    document.querySelectorAll('.theme-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.theme === (d.theme || 'default'));
+    });
+
+    _renderTestimonials(d.custom_testimonials || []);
+  }
+
+  // ── Accordion ──────────────────────────────────────────────────────
+  document.querySelectorAll('.editor-section-header').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var sec = this.dataset.section;
+      var body = document.getElementById(sec + '-body');
+      if (body) body.classList.toggle('open');
+    });
+  });
+  // Open hero by default
+  var heroBody = document.getElementById('hero-body');
+  if (heroBody) heroBody.classList.add('open');
+
+  // ── Auto-save on input ─────────────────────────────────────────────
+  document.getElementById('editor-panel').addEventListener('input', _scheduleSave);
+  document.getElementById('editor-panel').addEventListener('change', _scheduleSave);
+
+  function _scheduleSave() {
+    clearTimeout(saveTimer);
+    saveStatus.textContent = 'Unsaved…';
+    saveStatus.className = '';
+    saveTimer = setTimeout(_save, 1200);
+  }
+
+  function _buildPayload() {
+    var el = function(id) { return document.getElementById(id); };
+    return {
+      sections: {
+        hero: {
+          professional_title: (el('hero-title') && el('hero-title').value.trim()) || null,
+          is_custom_title: !!(el('hero-title-custom') && el('hero-title-custom').checked),
+          positioning: (el('hero-positioning') && el('hero-positioning').value.trim()) || null,
+          is_custom_positioning: !!(el('hero-pos-custom') && el('hero-pos-custom').checked),
+          cta_url: (el('hero-cta-url') && el('hero-cta-url').value.trim()) || null,
+          cta_label: (el('hero-cta-label') && el('hero-cta-label').value.trim()) || null,
+        },
+        about: {
+          bio_text: (el('about-bio') && el('about-bio').value.trim()) || null,
+          is_custom: !!(el('about-custom') && el('about-custom').checked),
+        },
+        visibility: {
+          services: !!(el('vis-services') && el('vis-services').checked),
+          testimonials: !!(el('vis-testimonials') && el('vis-testimonials').checked),
+        },
+      },
+      chat_settings: {
+        enabled: !!(el('chat-enabled') && el('chat-enabled').checked),
+        live_takeover_enabled: !!(el('chat-takeover') && el('chat-takeover').checked),
+        daily_session_limit: parseInt((el('chat-limit') && el('chat-limit').value) || '50', 10),
+        custom_welcome: (el('chat-welcome') && el('chat-welcome').value.trim()) || null,
+      },
+    };
+  }
+
+  function _save() {
+    var payload = _buildPayload();
+    fetch('/api/bio', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(function(d) {
+      bioPage = d;
+      saveStatus.textContent = 'Saved';
+      saveStatus.className = 'saved';
+      _refreshPreview();
+    })
+    .catch(function() {
+      saveStatus.textContent = 'Save failed';
+      saveStatus.className = 'error';
+    });
+  }
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  document.querySelectorAll('.theme-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      fetch('/api/bio', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({theme: this.dataset.theme}),
+      })
+      .then(r => r.json())
+      .then(function() { _refreshPreview(); });
+    });
+  });
+
+  // ── Hero image upload ──────────────────────────────────────────────
+  var uploadArea = document.getElementById('hero-upload-area');
+  var imageInput = document.getElementById('hero-image-input');
+  if (uploadArea && imageInput) {
+    uploadArea.addEventListener('click', function() { imageInput.click(); });
+    imageInput.addEventListener('change', function() {
+      if (!this.files || !this.files[0]) return;
+      var fd = new FormData();
+      fd.append('image', this.files[0]);
+      fetch('/api/bio/hero-image', {method: 'POST', body: fd})
+        .then(r => r.json())
+        .then(function(d) {
+          if (d.hero_image_url) {
+            document.getElementById('hero-img-preview').textContent = 'Hero image uploaded ✓';
+            _refreshPreview();
+          }
+        });
+    });
+  }
+
+  // ── Publish / unpublish ────────────────────────────────────────────
+  var publishBtn   = document.getElementById('publish-btn');
+  var unpublishBtn = document.getElementById('unpublish-btn');
+  if (publishBtn) {
+    publishBtn.addEventListener('click', function() {
+      publishBtn.disabled = true;
+      fetch('/api/bio/publish', {method: 'POST'})
+        .then(r => r.json())
+        .then(function(d) {
+          document.getElementById('status-badge').textContent = 'Published';
+          document.getElementById('status-badge').className = 'badge badge-published';
+          publishBtn.textContent = 'Published ✓';
+        })
+        .catch(function() { publishBtn.disabled = false; });
+    });
+  }
+  if (unpublishBtn) {
+    unpublishBtn.addEventListener('click', function() {
+      if (!confirm('Unpublish your bio page? Visitors will no longer see it.')) return;
+      fetch('/api/bio/unpublish', {method: 'POST'})
+        .then(r => r.json())
+        .then(function() {
+          document.getElementById('status-badge').textContent = 'Unpublished';
+          document.getElementById('status-badge').className = 'badge badge-unpublished';
+        });
+    });
+  }
+
+  // ── Preview refresh ────────────────────────────────────────────────
+  function _refreshPreview() {
+    var frame = document.getElementById('preview-frame');
+    if (frame) { frame.src = frame.src; }
+  }
+
+  // ── Testimonials ───────────────────────────────────────────────────
+  function _renderTestimonials(items) {
+    var list = document.getElementById('testimonials-list');
+    if (!list) return;
+    list.innerHTML = '';
+    (items || []).forEach(function(t) {
+      var div = document.createElement('div');
+      div.className = 'testimonial-item';
+      div.innerHTML =
+        '<p class="t-quote">"' + _esc(t.quote) + '"</p>' +
+        '<div class="t-name">' + _esc(t.name) + (t.title ? ', ' + _esc(t.title) : '') + '</div>' +
+        '<button class="t-delete" data-id="' + t.id + '" title="Delete">✕</button>';
+      list.appendChild(div);
+    });
+    list.querySelectorAll('.t-delete').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (!confirm('Delete this testimonial?')) return;
+        var tid = this.dataset.id;
+        fetch('/api/bio/testimonials/' + tid, {method: 'DELETE'})
+          .then(r => r.json())
+          .then(function() {
+            var updated = (bioPage.custom_testimonials || []).filter(function(t) { return t.id !== tid; });
+            bioPage.custom_testimonials = updated;
+            _renderTestimonials(updated);
+            _refreshPreview();
+          });
+      });
+    });
+  }
+
+  var addTBtn    = document.getElementById('add-t-btn');
+  var addTForm   = document.getElementById('add-t-form');
+  var tSaveBtn   = document.getElementById('t-save-btn');
+  var tCancelBtn = document.getElementById('t-cancel-btn');
+
+  if (addTBtn) {
+    addTBtn.addEventListener('click', function() { addTForm.style.display = 'block'; addTBtn.style.display = 'none'; });
+  }
+  if (tCancelBtn) {
+    tCancelBtn.addEventListener('click', function() { addTForm.style.display = 'none'; addTBtn.style.display = 'inline'; });
+  }
+  if (tSaveBtn) {
+    tSaveBtn.addEventListener('click', function() {
+      var quote   = (document.getElementById('t-quote').value   || '').trim();
+      var name    = (document.getElementById('t-name').value    || '').trim();
+      var title   = (document.getElementById('t-title').value   || '').trim();
+      var company = (document.getElementById('t-company').value || '').trim();
+      var tErr = document.getElementById('t-err');
+      if (!quote || !name) { tErr.textContent = 'Quote and name are required.'; return; }
+      tErr.textContent = '';
+      tSaveBtn.disabled = true;
+      fetch('/api/bio/testimonials', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({quote: quote, name: name, title: title || null, company: company || null}),
+      })
+      .then(r => r.json())
+      .then(function(t) {
+        tSaveBtn.disabled = false;
+        if (t.id) {
+          bioPage.custom_testimonials = (bioPage.custom_testimonials || []).concat([t]);
+          _renderTestimonials(bioPage.custom_testimonials);
+          addTForm.style.display = 'none';
+          addTBtn.style.display = 'inline';
+          ['t-quote','t-name','t-title','t-company'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+          });
+          _refreshPreview();
+        } else {
+          tErr.textContent = t.error || 'Failed to save.';
+        }
+      })
+      .catch(function() { tSaveBtn.disabled = false; tErr.textContent = 'Network error.'; });
+    });
+  }
+
+  function _esc(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
+</script>
+
+</body>
+</html>
