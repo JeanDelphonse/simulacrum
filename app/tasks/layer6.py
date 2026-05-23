@@ -60,6 +60,7 @@ def dispatch_layer6_action(self, queue_entry_id: str):
             user_inputs={},
             user_id=sim.user_id,
             simulation_id=entry.simulation_id,
+            action_id=agent_action.id,
         )
 
         artifact = result.get('content') or result.get('artifact') or str(result)

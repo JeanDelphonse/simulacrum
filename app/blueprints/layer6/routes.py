@@ -2,6 +2,7 @@
 Layer 6 API — Autonomous Growth Orchestrator endpoints.
 All routes are mounted under /api/simulations/<sim_id>/layer6/
 """
+from __future__ import annotations
 from datetime import datetime, timedelta
 from flask import request, jsonify, Response, stream_with_context
 from flask_login import login_required, current_user
@@ -1831,7 +1832,10 @@ def layer6_stream(sim_id):
             except Exception:
                 pass
 
-            yield sse_keepalive()
+            try:
+                yield sse_keepalive()
+            except GeneratorExit:
+                return
             time.sleep(5)
 
     return Response(

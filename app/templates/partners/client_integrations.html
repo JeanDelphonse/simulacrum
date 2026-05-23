@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}{{ client.full_name or 'Client' }} — Integrations{% endblock %}
+
+{% block head %}
+<style>
+.advisor-banner { background: rgba(245,200,66,.08); border-bottom: 1px solid rgba(245,200,66,.15); padding: .6rem 1.5rem; display: flex; align-items: center; gap: 1rem; font-size: .82rem; color: rgba(255,255,255,.6); }
+.advisor-banner strong { color: #f5c842; }
+.advisor-banner a { color: rgba(255,255,255,.5); text-decoration: none; margin-left: auto; font-size: .78rem; }
+.advisor-banner a:hover { color: #e8eaf0; }
+.integ-page { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; }
+.integ-page-header { margin-bottom: 1.75rem; }
+.integ-page-header h1 { font-size: 1.25rem; font-weight: 700; color: #e8eaf0; margin: 0 0 .3rem; }
+.integ-page-header p { font-size: .875rem; color: rgba(255,255,255,.45); margin: 0; }
+.integ-coverage { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1.75rem; display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+.integ-coverage-stat { text-align: center; }
+.integ-coverage-stat .num { font-size: 1.75rem; font-weight: 800; color: #f5c842; line-height: 1; }
+.integ-coverage-stat .lbl { font-size: .72rem; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .05em; margin-top: .15rem; }
+.integ-blocked-note { flex: 1; font-size: .82rem; color: rgba(255,255,255,.5); line-height: 1.6; }
+.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.35); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(255,255,255,.07); }
+.integ-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: .75rem; }
+.integ-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 1.25rem; min-height: 160px; display: flex; flex-direction: column; gap: .5rem; }
+.integ-card-top { display: flex; align-items: flex-start; gap: .75rem; }
+.integ-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 800; flex-shrink: 0; }
+.integ-card-info { flex: 1; }
+.integ-card-name { font-weight: 700; font-size: .95rem; color: #e8eaf0; line-height: 1.2; }
+.integ-card-desc { font-size: .78rem; color: rgba(255,255,255,.4); margin-top: .1rem; }
+.integ-badge { font-size: .68rem; font-weight: 700; padding: .18rem .6rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
+.integ-badge.connected { background: rgba(134,239,172,.15); color: #86efac; }
+.integ-badge.not_connected { background: rgba(255,255,255,.07); color: rgba(255,255,255,.4); }
+.integ-badge.expired { background: rgba(245,200,66,.15); color: #f5c842; }
+.integ-badge.linked { background: rgba(134,239,172,.15); color: #86efac; }
+.integ-badge.legal { background: rgba(245,200,66,.08); color: #f5c842; }
+.integ-health-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: .3rem; flex-shrink: 0; }
+.integ-health-dot.healthy { background: #86efac; }
+.integ-health-dot.intermittent { background: #f5c842; }
+.integ-health-dot.failing { background: #fca5a5; }
+.integ-details { font-size: .78rem; color: rgba(255,255,255,.4); margin-top: .1rem; line-height: 1.5; }
+.integ-agents { font-size: .72rem; color: rgba(255,255,255,.3); margin-top: auto; padding-top: .5rem; }
+.integ-reauth-btn { margin-top: auto; padding-top: .5rem; }
+.masked-email { font-style: italic; }
+@media (max-width: 640px) { .integ-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="advisor-banner">
+  <strong>Advisor mode</strong> — viewing integrations for {{ client.full_name or client.email }}
+  <a href="javascript:history.back()">&#x2190; Back</a>
+</div>
+
+<div class="integ-page">
+  <div class="integ-page-header">
+    <h1>{{ client.full_name or client.email }} — Integrations</h1>
+    <p>Read-only view. You can see connection status and trigger re-authentication links for expired connections.</p>
+  </div>
+
+  <div class="integ-coverage">
+    <div class="integ-coverage-stat">
+      <div class="num">{{ connected_count }}</div>
+      <div class="lbl">of {{ total_possible }} connected</div>
+    </div>
+    <div class="integ-blocked-note">
+      {% set blocked = total_possible - connected_count %}
+      {% if blocked == 0 %}
+        All integrations are connected. Agent execution is fully enabled.
+      {% else %}
+        <strong style="color:#e8eaf0">{{ blocked }} integration{{ 's' if blocked != 1 else '' }} not connected.</strong>
+        Agents that rely on disconnected platforms will be escalated rather than executed automatically.
+        Coach your client to connect these from their Settings &#x2192; Integrations page.
+      {% endif %}
+    </div>
+  </div>
+
+  {% set groups = [
+    ('Revenue & outreach', ['apollo', 'stripe', 'cal', 'pandadoc']),
+    ('Audience & products', ['kajabi', 'convertkit', 'linkedin']),
+    ('Financial', ['plaid', 'alpaca']),
+  ] %}
+
+  {% set logos = {
+    'apollo':     ('#f97316', 'AP'),
+    'stripe':     ('#6366f1', 'ST'),
+    'cal':        ('#111827', 'CA'),
+    'pandadoc':   ('#16a34a', 'PD'),
+    'kajabi':     ('#2563eb', 'KJ'),
+    'convertkit': ('#dc2626', 'CK'),
+    'linkedin':   ('#0a66c2', 'LI'),
+    'plaid':      ('#111827', 'PL'),
+    'alpaca':     ('#d97706', 'ALC'),
+  } %}
+
+  {% set descriptions = {
+    'apollo':     'Email outreach and sequences',
+    'stripe':     'Payment collection',
+    'cal':        'Booking and scheduling',
+    'pandadoc':   'E-signature and contracts',
+    'kajabi':     'Courses and memberships',
+    'convertkit': 'Email list and sequences',
+    'linkedin':   'Profile and content distribution',
+    'plaid':      'Financial account linking',
+    'alpaca':     'Brokerage trade execution',
+  } %}
+
+  {% set agent_map = {
+    'apollo':     'cold_email_campaign · consulting_outreach · speaking_proposals',
+    'stripe':     'rate_card · consulting_proposal · workshop_curriculum · sales_page',
+    'cal':        'booking_page · consulting_proposal (call invite)',
+    'pandadoc':   'consulting_proposal · coaching_agreement · service_agreement · nda',
+    'kajabi':     'course_curriculum · membership_structure · group_coaching_curriculum',
+    'convertkit': 'waitlist_landing_page · lead_magnet_funnel · newsletter_monetization',
+    'linkedin':   'content distribution (pending legal review)',
+    'plaid':      'dca_schedule · income_allocation · compound_projections',
+    'alpaca':     'dca_schedule (trade execution) · income_allocation',
+  } %}
+
+  {% for group_name, providers in groups %}
+  <div class="integ-group-title">{{ group_name }}</div>
+  <div class="integ-grid">
+    {% for provider in providers %}
+      {% set rec = integrations.get(provider) %}
+      {% if provider == 'linkedin' %}
+        {% set status = 'legal' %}
+      {% elif rec %}
+        {% set status = rec.connection_status %}
+      {% else %}
+        {% set status = 'not_connected' %}
+      {% endif %}
+
+      {% set logo_color, logo_initials = logos[provider] %}
+
+    <div class="integ-card">
+      <div class="integ-card-top">
+        <div class="integ-logo" style="background:{{ logo_color }}20;color:{{ logo_color }}">{{ logo_initials }}</div>
+        <div class="integ-card-info">
+          <div class="integ-card-name">
+            {% if provider == 'cal' %}Cal.com
+            {% elif provider == 'pandadoc' %}PandaDoc
+            {% elif provider == 'convertkit' %}ConvertKit
+            {% else %}{{ provider | title }}{% endif %}
+          </div>
+          <div class="integ-card-desc">{{ descriptions[provider] }}</div>
+        </div>
+        <span class="integ-badge {{ status if status != 'legal' else 'legal' }}">
+          {% if status == 'connected' %}Connected
+          {% elif status == 'expired' %}Expired
+          {% elif status == 'legal' %}Legal review
+          {% elif provider in ('plaid', 'alpaca') and status == 'connected' %}Linked
+          {% else %}Not connected{% endif %}
+        </span>
+      </div>
+
+      {% if rec and rec.is_connected %}
+      <div class="integ-details">
+        {% if rec.provider_account_id %}
+          <span class="masked-email">
+            {% if '@' in (rec.provider_account_id or '') %}
+              {% set em = rec.provider_account_id %}
+              {{ em[0] }}***{{ em.split('@')[1] if '@' in em else '' }}
+            {% else %}
+              {{ rec.provider_account_id | truncate(20) }}
+            {% endif %}
+          </span>
+          &nbsp;&mdash;&nbsp;
+        {% endif %}
+        {% if rec.health_status and rec.health_status != 'healthy' %}
+          <span class="integ-health-dot {{ rec.health_status }}"></span>
+          {{ rec.health_status | capitalize }}
+        {% else %}
+          <span class="integ-health-dot healthy"></span>Healthy
+        {% endif %}
+        {% if rec.connected_at %}
+          &nbsp;&mdash;&nbsp;Connected {{ rec.connected_at.strftime('%b %d, %Y') }}
+        {% endif %}
+        {% if rec.last_api_success_at %}
+          &nbsp;&mdash;&nbsp;Last active {{ rec.last_api_success_at.strftime('%b %d') }}
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="integ-agents" style="font-size:.72rem;color:rgba(255,255,255,.3)">
+        Used by: {{ agent_map[provider] }}
+      </div>
+
+      {% if status == 'expired' %}
+      <div class="integ-reauth-btn">
+        <button class="btn btn-ghost btn-sm" style="width:100%;font-size:.78rem;color:#f5c842;border-color:rgba(245,200,66,.3)"
+                onclick="sendReauthLink('{{ client.id }}', '{{ provider }}', this)">
+          Send re-authentication link
+        </button>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ROOT2 = window.ROOT || '';
+function toast(msg) {
+  const el = document.getElementById('toastEl');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+async function sendReauthLink(targetUid, provider, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  const res = await fetch(ROOT2 + '/api/integrations/reauth-link', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ target_user_id: targetUid, provider }),
+  });
+  btn.disabled = false;
+  if (res.ok) {
+    btn.textContent = 'Link sent ✓';
+    toast('Re-authentication email sent to your client');
+  } else {
+    btn.textContent = 'Send re-authentication link';
+    toast('Failed to send — try again');
+  }
+}
+</script>
+{% endblock %}

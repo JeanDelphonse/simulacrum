@@ -22,6 +22,7 @@ class SigningDocument(db.Model):
     viewed_at               = db.Column(db.DateTime, nullable=True)
     signed_at               = db.Column(db.DateTime, nullable=True)
     declined_at             = db.Column(db.DateTime, nullable=True)
+    declined_reason         = db.Column(db.String(500), nullable=True)
     created_at              = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def to_dict(self):

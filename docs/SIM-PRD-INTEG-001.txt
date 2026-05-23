@@ -1,0 +1,1034 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Unified Integration & Signal Specification
+9 Platforms · Bayesian Signal Taxonomy · Feedback Loop Architecture · Revenue Attribution
+Document ID
+SIM-PRD-INTEG-001
+Version
+1.0 — Comprehensive integration specification
+Scope
+Nine integration platforms, each with: connection architecture, deployment functions, webhook/signal capture, Bayesian signal taxonomy with weights and update formulas, and functional requirements. Plus a unified cross-integration signal taxonomy in Section 10.
+The nine platforms
+1. Apollo (email outreach) · 2. Stripe Connect (payments) · 3. Cal.com (bookings) · 4. PandaDoc (e-signatures) · 5. Kajabi (courses/memberships) · 6. ConvertKit (email lists) · 7. LinkedIn (profile/content/connections) · 8. Plaid (financial accounts) · 9. Alpaca (brokerage/trade execution)
+Core principle
+Every integration has a feedback loop. Signals flow from webhooks into the Bayesian orchestrator's posterior updates. The orchestrator uses these signals to decide which agents to dispatch in the next cycle. No integration is connect-and-forget — every one contributes data that makes the system smarter.
+Revenue chain
+Apollo sends emails → replies advance contacts → Cal.com books calls → PandaDoc sends proposals → Stripe collects payment → income captured → Bayesian model updated → next cycle dispatches more of what worked. Every integration is a link in this chain.
+Companion doc
+This document specifies per-integration signals. SIM-PRD-SIGNAL-001 (Section 10 of this document) is the unified cross-integration signal taxonomy that the orchestrator references for all Bayesian updates.
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+April 2026
+This is the largest single PRD in the Simulacrum suite. It specifies every external integration the platform touches, with a consistent structure per integration: how the user connects it, how agents deploy through it, what signals it sends back, and exactly how those signals update the Bayesian model. Section 10 brings all signals together into a unified taxonomy — the orchestrator's single source of truth for every posterior update across every integration.
+1. Apollo — Email Outreach
+Purpose: Send cold email campaigns, consulting outreach, speaking pitches, corporate training pitches, alumni reactivation, and referral network introductions via Apollo sequences.
+Primary income layer: Layer 1 (Active income) and Layer 2 (Leveraged income)
+1.1 Connection Architecture
+User connects their own Apollo account via OAuth 2.0 from Settings → Integrations. Simulacrum receives a scoped access token to create contacts, sequences, and webhooks on the user's Apollo account. Emails are sent from the user's email address via Apollo — not from a Simulacrum-managed account.
+# Apollo OAuth scopes requested:
+scopes: sequences:write, contacts:write, emailer_campaigns:write, webhooks:write
+# Stored in user_integrations:
+integration_type = 'apollo'
+auth_type        = 'oauth'
+access_token     = encrypt(apollo_access_token)
+refresh_token    = encrypt(apollo_refresh_token)
+account_id       = apollo_account_id
+status           = 'connected' | 'expired' | 'disconnected'
+1.2 Deployment Functions
+Agent action_type
+Apollo action
+Detail
+cold_email_campaign
+Create sequence + add 25 contacts
+3-step sequence with configurable delays. Contacts upserted with simulacrum_contact_id custom field. Daily send limit from user settings (default 30).
+consulting_outreach
+Individual sends (10 emails)
+Not sequenced — 10 individual personalized emails. Each sent as a one-off via Apollo, not as a sequence. Per-email Send/Skip in GCC.
+speaking_proposals
+Individual sends (10 pitches)
+10 pitch emails to event coordinators. Individual sends, not sequenced.
+corporate_training_pitch
+Individual send (1 email)
+One decision-maker outreach email per target company. High personalization.
+alumni_reactivation
+Create segmented sequences
+Multiple sequences — one per attendee segment (workshop alumni, course graduates, coaching clients). Contacts loaded from CRM l2_eligibility tags.
+referral_network
+Create intro sequence
+15-contact introduction email sequence to referral partners.
+1.3 Webhook Signal Capture
+# Apollo webhook events registered per sequence:
+events: ['email_sent', 'email_opened', 'email_replied',
+         'email_bounced', 'email_unsubscribed',
+         'email_clicked']
+# Handler: POST /webhooks/apollo/:user_id
+# Each event creates:
+#   1. contact_activities record (activity_type per event)
+#   2. email_campaigns counter increment (sent/reply/bounce/unsub)
+#   3. Bayesian signal dispatch to orchestrator
+#   4. GCC action item (tier 3 for replies, no item for opens)
+#   5. Notification (reply and bounce only)
+1.4 Bayesian Signal Taxonomy — Apollo
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+email_sent
+0.1
++
+outreach_volume[action_type]
+Increment sent count. No posterior update — sending is not a conversion signal. Tracked for denominator calculations.
+email_opened
+0.15
++
+open_rate[action_type]
+open_rate = opens / sent. Updated with EMA(alpha=0.3). Open rate above 40% is a positive signal for subject line quality.
+email_replied
+0.5
++
+reply_rate[action_type]
+reply_rate = replies / sent. Updated with EMA(alpha=0.3). This is the primary L1/L2 conversion signal. Weight 0.5 means a reply shifts the posterior meaningfully.
+email_bounced (hard)
+0.2
+-
+deliverability[action_type]
+Hard bounce rate above 5% triggers deliverability warning. Negative signal reduces confidence in the prospect list quality.
+email_bounced (soft)
+0.05
+-
+deliverability[action_type]
+Soft bounces are transient — low weight. Tracked but does not shift posterior significantly.
+email_unsubscribed
+0.3
+-
+unsubscribe_rate[action_type]
+Unsubscribe rate above 2% is a negative signal for email content quality or targeting. Reduces the action_type's dispatch probability.
+email_clicked
+0.2
++
+engagement_rate[action_type]
+Link click in email body. Indicates interest beyond opening. Updates engagement_rate posterior.
+reply → booking
+0.7
++
+reply_to_booking_rate
+When a replied contact subsequently books via Cal.com, this compound signal fires. High weight — it validates the full outreach-to-call pipeline.
+reply → client
+1.0
++
+outreach_conversion_rate
+When a replied contact reaches pipeline_stage='client', the full conversion is confirmed. Maximum weight. Updates the action_type's ROI posterior.
+sequence step attribution
+0.2
++
+step_effectiveness[step_n]
+Which step in the sequence triggered the reply? Step 1 reply = strong subject line. Step 3 reply = persistence works. Updates per-step weighting for future sequence generation.
+1.5 Functional Requirements — Apollo
+FR-APOLLO-01: User connects Apollo via OAuth 2.0. Access token encrypted in user_integrations. Token refresh handled automatically. Expired tokens trigger escalation action item (tier 1) in the GCC.
+FR-APOLLO-02: Six agent action_types deploy through Apollo per Section 1.2. cold_email_campaign creates a 3-step sequence. consulting_outreach, speaking_proposals, and corporate_training_pitch send individual emails. alumni_reactivation creates segmented sequences. referral_network creates an intro sequence.
+FR-APOLLO-03: Apollo webhooks are registered per sequence/send on deployment. Six event types are handled: email_sent, email_opened, email_replied, email_bounced, email_unsubscribed, email_clicked. Each event creates a contact_activities record and updates the relevant email_campaigns counter.
+FR-APOLLO-04: Ten Bayesian signals are captured from Apollo events per Section 1.4. Each signal has an explicit weight, direction (+/-), posterior target, and EMA update formula. The orchestrator's Score step reads these posteriors to weight future Apollo-dependent action dispatches.
+FR-APOLLO-05: Per-step attribution: when a reply arrives, the system records which sequence step triggered it (step 1, 2, or 3). This feeds the step_effectiveness posterior, which informs future sequence generation (e.g., if step 3 replies dominate, the agent generates more aggressive follow-up copy).
+FR-APOLLO-06: Compound signals: reply → booking and reply → client are tracked as cross-integration signals linking Apollo reply events to Cal.com booking events and Stripe payment events via the contact_id join. These carry the highest weights (0.7 and 1.0 respectively).
+FR-APOLLO-07: Daily send limit is configurable per user in Settings → Integrations (default 30). Apollo sequence daily_limit parameter is set at sequence creation. New Apollo account warmup: limit starts at 10/day for the first week, 20/day for week 2, full limit from week 3. Warmup cadence is enforced by Simulacrum, not by Apollo.
+FR-APOLLO-08: CAN-SPAM compliance: physical business address appended to every email footer. One-click unsubscribe link managed by Apollo. Subject line deceptive pattern check before deployment. GDPR legitimate interest basis for EU contacts (attorney review required).
+2. Stripe Connect — Payment Collection
+Purpose: Create payment links, invoices, products, prices, and subscriptions on the user's Stripe account. Capture income with full agent attribution via metadata.
+Primary income layer: All layers (L1 consulting fees, L2 workshop tickets, L3 course sales, L4 sponsorships, L5 investment returns)
+2.1 Connection Architecture
+Stripe Connect Standard via OAuth. User connects their existing Stripe account. Simulacrum receives a scoped access token. Funds flow directly to the user's Stripe account. Simulacrum never holds or transmits funds — no money transmitter license required.
+# Stripe Connect Standard OAuth
+scopes: read_write
+# Stored in user_integrations:
+integration_type = 'stripe'
+auth_type        = 'oauth'
+access_token     = encrypt(stripe_access_token)
+account_id       = 'acct_xxxx'  # Stripe Connected Account ID
+2.2 Deployment Functions
+Agent action_type
+Stripe objects created
+Metadata embedded
+rate_card
+Product + Price + Payment Link per tier
+simulacrum_simulation_id, layer_number:1, action_type:rate_card, income_type:consulting_fee
+consulting_proposal
+Invoice (draft, activated on PandaDoc signature)
+layer_number:1, action_type:consulting_proposal, income_type:project_fee, contact_email
+sow_template
+Invoice (draft)
+layer_number:1, action_type:sow_template, income_type:project_fee
+workshop_curriculum
+Handled by Kajabi — NOT Stripe Connect
+Kajabi manages its own payments. No Stripe object created by Simulacrum for Kajabi sales.
+corporate_training_pitch
+Invoice for accepted engagements
+layer_number:2, action_type:corporate_training_pitch, income_type:training_fee
+newsletter_monetization
+Invoice template for sponsor payments
+layer_number:4, action_type:newsletter_monetization, income_type:sponsorship
+saas_product_spec
+Product + tiered Prices
+layer_number:4, action_type:saas_product_spec, income_type:saas_subscription
+2.3 Webhook Signal Capture
+# Stripe webhook events handled:
+events: ['payment_intent.succeeded', 'invoice.paid',
+         'charge.refunded', 'charge.dispute.created',
+         'customer.subscription.created',
+         'customer.subscription.deleted',
+         'invoice.payment_failed']
+# Handler: POST /webhooks/stripe/:user_id
+# Stripe signature verification required on every webhook.
+# Metadata is read from the payment object to attribute income
+# to the originating simulation, layer, action_type, and action_id.
+2.4 Bayesian Signal Taxonomy — Stripe
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+payment_intent.succeeded
+1.0
++
+income_confirmed[layer][action_type]
+Highest weight signal. Confirmed revenue attributed to a specific agent action. Creates layer_income_records entry. Updates the action_type's ROI posterior with actual dollar amount.
+invoice.paid
+1.0
++
+income_confirmed[layer][action_type]
+Same as payment_intent.succeeded for invoice-based payments. Full attribution via metadata.
+charge.refunded
+0.8
+-
+refund_rate[layer][action_type]
+Refund reverses a prior positive signal. Weight 0.8 (not 1.0) because the original conversion was real — the refund indicates product/service issue, not targeting issue.
+charge.dispute.created
+0.9
+-
+dispute_rate[action_type]
+Disputes are more serious than refunds — they indicate possible trust or quality issue. High negative weight.
+subscription.created
+0.8
++
+subscription_starts[action_type]
+New subscription signals recurring revenue intent. Slightly lower than one-time payment because churn may follow.
+subscription.deleted
+0.6
+-
+churn_rate[action_type]
+Subscription cancellation. Moderate negative weight. Feeds churn_rate posterior — high churn reduces the action_type's dispatch priority.
+invoice.payment_failed
+0.3
+-
+payment_failure_rate
+Failed payment is a weak negative — often a card issue, not a quality signal. Low weight.
+revenue_velocity
+0.4
++
+days_contact_to_payment
+Computed signal: calendar days from first contact (contact.created_at) to payment (payment.created). Shorter velocity = stronger pipeline. Not a webhook — calculated at payment time.
+payment_plan_completion
+0.5
++
+payment_plan_completion_rate
+For multi-installment invoices: did the customer complete all payments? Full completion = 1.0, partial = pro-rated. Feeds product pricing quality signal.
+avg_transaction_value
+0.3
++
+avg_deal_size[layer]
+Running average of payment amounts per layer. Used to calibrate the rate_card agent's pricing recommendations in future cycles.
+2.5 Functional Requirements — Stripe
+FR-STRIPE-01: User connects Stripe via Connect Standard OAuth. Access token and connected account ID encrypted in user_integrations. Disconnection does not affect existing payment links — they remain active in the user's Stripe account.
+FR-STRIPE-02: Seven agent action_types create Stripe objects per Section 2.2. Every Stripe object includes the full metadata set: simulacrum_simulation_id, layer_number, action_type, action_id, artifact_id, income_type, user_id.
+FR-STRIPE-03: Seven webhook events are handled per Section 2.3. Stripe signature verification is required on every webhook. Metadata is read from the payment object to attribute income.
+FR-STRIPE-04: Ten Bayesian signals are captured per Section 2.4. payment_intent.succeeded and invoice.paid carry weight 1.0 — the highest in the system. Refunds carry weight 0.8 negative. Disputes carry weight 0.9 negative.
+FR-STRIPE-05: Revenue velocity is a computed compound signal: days from first CRM contact creation to first Stripe payment for that contact's email. Shorter velocity increases the action_type's ROI posterior.
+FR-STRIPE-06: Subscription churn (subscription.deleted) feeds the churn_rate posterior per action_type. An action_type with churn_rate above 15% in the trailing 90 days gets its dispatch probability reduced by 30%.
+FR-STRIPE-07: Average transaction value is tracked per layer as a running EMA(alpha=0.2). Used by the rate_card agent as a pricing anchor input — if actual transaction values consistently exceed the rate card's suggested prices, the agent recommends a rate increase.
+3. Cal.com — Booking & Scheduling
+Purpose: Create booking pages, event types, and session schedules. Capture booking confirmations, cancellations, and no-shows. Feed booking-to-conversion pipeline into the Bayesian model.
+Primary income layer: Layer 1 (discovery calls, consulting sessions) and Layer 2 (workshop scheduling, group coaching sessions)
+3.1 Connection Architecture
+Cal.com OAuth 2.0. User connects their Cal.com account. Simulacrum creates event types and registers webhooks on the user's account. Bookings are managed in Cal.com — Simulacrum receives confirmation webhooks only.
+# Cal.com OAuth scopes:
+scopes: bookings:read, event_types:write, webhooks:write
+# Stored in user_integrations:
+integration_type = 'cal'
+auth_type        = 'oauth'
+access_token     = encrypt(cal_access_token)
+refresh_token    = encrypt(cal_refresh_token)
+3.2 Deployment Functions
+Agent action_type
+Cal.com action
+Detail
+booking_page
+Create 3-4 event types
+Session name, duration, price, buffer time, pre-call questionnaire. Webhook registered per event type.
+workshop_curriculum
+Create event (optional)
+If user prefers Cal.com scheduling over Kajabi's built-in scheduling. Live workshop date/time event.
+group_coaching_curriculum
+Create recurring events
+Weekly coaching session event type with recurring schedule for cohort duration.
+3.3 Webhook Signal Capture
+# Cal.com webhook events:
+events: ['BOOKING_CREATED', 'BOOKING_CANCELLED',
+         'BOOKING_RESCHEDULED', 'MEETING_ENDED']
+# MEETING_ENDED requires Cal.com integration with Google Calendar
+# or manual marking in Cal.com. Used for no-show detection:
+# If BOOKING_CREATED exists but no MEETING_ENDED within 24 hours
+# after the scheduled time, the booking is flagged as a no-show.
+3.4 Bayesian Signal Taxonomy — Cal.com
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+BOOKING_CREATED
+0.6
++
+booking_rate[session_type]
+A booking is a strong conversion signal — someone committed their time. Weight 0.6 because a booking is not yet revenue. Updates booking_rate per session type for session-type performance comparison.
+BOOKING_CANCELLED
+0.4
+-
+cancellation_rate[session_type]
+Cancellation reduces confidence in that session type's value proposition. Moderate negative weight.
+BOOKING_RESCHEDULED
+0.1
++
+reschedule_rate
+Rescheduling is a weak positive — the person still intends to meet. Very low weight, tracked for pattern detection.
+No-show detected
+0.5
+-
+noshow_rate[session_type]
+Computed signal: BOOKING_CREATED with no MEETING_ENDED 24 hours after scheduled time. Significant negative signal — wasted user time.
+MEETING_ENDED
+0.3
++
+meeting_completion_rate
+Meeting actually happened. Positive signal — confirms the booking was legitimate.
+booking → proposal
+0.7
++
+booking_to_proposal_rate
+Compound signal: booked contact subsequently receives a consulting_proposal. High weight — validates the discovery call pipeline.
+booking → client
+1.0
++
+booking_to_client_rate
+Compound signal: booked contact reaches pipeline_stage='client'. Maximum weight — confirms the full call-to-conversion pipeline.
+time_of_day_performance
+0.2
++
+optimal_booking_hour
+Computed: which booking time slots have the highest completion and conversion rates. Informs booking page event type configuration.
+session_type_comparison
+0.3
++
+session_type_conversion[type]
+Computed: which session types (15-min discovery vs 60-min deep-dive) produce higher booking-to-client conversion. Informs booking_page agent configuration.
+3.5 Functional Requirements — Cal.com
+FR-CAL-01: User connects Cal.com via OAuth 2.0. Three agent action_types deploy through Cal.com per Section 3.2. Webhooks registered per event type for four event types: BOOKING_CREATED, BOOKING_CANCELLED, BOOKING_RESCHEDULED, MEETING_ENDED.
+FR-CAL-02: BOOKING_CREATED advances the attendee's CRM contact from pipeline_stage='prospect' to 'active'. Creates contact_activities record. Increments layer6_momentum.consulting_bookings_mo. Publishes harvest_complete SSE to GCC.
+FR-CAL-03: BOOKING_CANCELLED creates a contact_activities record with activity_type='booking_cancelled'. Decrements the momentum metric. Updates cancellation_rate posterior with weight 0.4 negative.
+FR-CAL-04: No-show detection: if no MEETING_ENDED event arrives within 24 hours of a BOOKING_CREATED event's scheduled time, the system flags the booking as a no-show. Creates contact_activities record with activity_type='no_show'. Updates noshow_rate posterior with weight 0.5 negative.
+FR-CAL-05: Nine Bayesian signals captured per Section 3.4 including three compound signals (booking→proposal, booking→client, time_of_day_performance) that require cross-integration joins with PandaDoc and Stripe via contact_id.
+FR-CAL-06: Session type performance comparison: each Cal.com event type tracks its own booking_rate, cancellation_rate, noshow_rate, and booking_to_client_rate independently. The booking_page agent uses these to recommend which session types to keep, modify, or remove.
+4. PandaDoc — Document Signing
+Purpose: Deliver proposals, SOWs, agreements, and speaker fee riders for e-signature. Capture view, sign, and decline events for pipeline tracking and conversion analytics.
+Primary income layer: Layer 1 (consulting proposals, SOWs, MSAs) and Layer 2 (speaker fee riders)
+4.1 Connection Architecture
+PandaDoc API key stored in platform settings (workspace model for v1). Future: per-user PandaDoc OAuth. Documents are created via the PandaDoc API from DOCX artifact content with Simulacrum metadata embedded.
+# PandaDoc workspace model (v1):
+integration_type = 'pandadoc'
+auth_type        = 'api_key'
+access_token     = encrypt(PANDADOC_API_KEY)  # platform-level, not per-user
+# Future: per-user OAuth for PandaDoc Business+ plans
+4.2 Deployment Functions
+Agent action_type
+PandaDoc action
+Detail
+consulting_proposal
+Create document + send for signature
+DOCX artifact converted to PandaDoc document. Recipient mapped from CRM contact. Metadata embedded. Sent with cover message.
+sow_template
+Create fillable template
+Template sent when populated for a specific client. Fillable fields for project-specific details.
+agreement_template
+Create document + send
+MSA sent for countersignature. Industry-specific clauses from agent. Attorney review flag.
+speaker_fee_rider
+Create document (optional)
+Sent for countersignature when the user wants formal agreement on speaking terms.
+4.3 Webhook Signal Capture
+# PandaDoc webhook events:
+events: ['document_state_changed']
+# States: 'document.draft', 'document.sent', 'document.viewed',
+#         'document.waiting_approval', 'document.completed',  # signed
+#         'document.voided', 'document.declined',
+#         'document.external_review'
+4.4 Bayesian Signal Taxonomy — PandaDoc
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+document.sent
+0.1
++
+proposal_volume[action_type]
+Sending a proposal is a pipeline activity signal. Low weight — sending is not converting. Tracked for volume denominator.
+document.viewed
+0.3
++
+view_rate[action_type]
+Recipient opened and viewed the document. Moderate positive — indicates engagement. view_rate = viewed / sent.
+document.completed
+0.9
++
+proposal_win_rate[action_type]
+Document signed. High weight — confirmed conversion from proposal to agreement. Advances CRM to 'client'. Creates income nudge if no prior payment.
+document.declined
+0.6
+-
+decline_rate[action_type]
+Recipient explicitly declined. Moderate-high negative — indicates misalignment in proposal content, pricing, or timing.
+document.voided
+0.2
+-
+void_rate
+Document voided (usually by the user, not the recipient). Low negative weight — may indicate user changed their mind, not a quality signal.
+time_to_view
+0.2
++
+avg_time_to_view_days
+Computed: days from document.sent to document.viewed. Shorter = higher engagement. Informs follow-up timing for future proposals.
+time_to_sign
+0.3
++
+avg_time_to_sign_days
+Computed: days from document.sent to document.completed. Shorter = stronger proposal. Informs pricing confidence and urgency calibration.
+viewed_not_signed
+0.4
+-
+stall_rate[action_type]
+Computed: document.viewed 7+ days ago with no document.completed. The prospect read it but did not sign. Stall signal — may need follow-up or revised terms.
+proposal_win_rate
+0.5
++
+win_rate_by_tier
+Computed: signed / sent by rate_card tier. Which pricing tier produces the highest close rate? Informs rate_card agent's tier recommendations.
+4.5 Functional Requirements — PandaDoc
+FR-PANDADOC-01: PandaDoc API key stored encrypted in platform_settings (workspace model for v1). Four agent action_types deploy through PandaDoc per Section 4.2. Every document includes Simulacrum metadata for attribution.
+FR-PANDADOC-02: document.completed webhooks advance the signatory contact from pipeline_stage='active' to 'client' in the CRM. Create contact_activities record with activity_type='contract_signed'. Publish income_record_missing SSE event if no prior income record.
+FR-PANDADOC-03: document.declined webhooks create contact_activities record with activity_type='proposal_declined'. Capture decline reason if available from PandaDoc response. Update decline_rate posterior.
+FR-PANDADOC-04: Nine Bayesian signals captured per Section 4.4 including three computed signals (time_to_view, time_to_sign, viewed_not_signed) that require timestamp arithmetic from PandaDoc event history.
+FR-PANDADOC-05: Proposal win rate is tracked per rate_card tier: which pricing tier (e.g. $1,500 vs $4,500 vs $12,000) has the highest signed/sent ratio. This feeds the rate_card agent's pricing recommendations.
+FR-PANDADOC-06: Stall detection: documents viewed 7+ days ago without signing trigger an action item (tier 4, Inform) in the GCC: '[Contact name] viewed your proposal 7 days ago but has not signed. Consider following up.'
+5. Kajabi — Courses & Memberships
+Purpose: Create courses and membership products on the user's Kajabi account. Capture enrollment, purchase, subscription lifecycle, and engagement signals.
+Primary income layer: Layer 3 (Productized income — courses and memberships)
+5.1 Connection Architecture
+Kajabi API key model (OAuth not yet available from Kajabi). User provides their Kajabi API key in Settings → Integrations. Key stored encrypted. Site subdomain stored as account_id.
+integration_type = 'kajabi'
+auth_type        = 'api_key'
+access_token     = encrypt(kajabi_api_key)
+account_id       = 'maya-design.kajabi.com'  # site subdomain
+5.2 Deployment Functions
+Agent action_type
+Kajabi action
+Detail
+course_curriculum
+Create Product (course) + Categories + Lessons + Offer
+8-12 module course with drip schedule. One-time or payment plan pricing. Checkout URL returned.
+membership_structure
+Create Product (membership) + Community + Offer
+Recurring monthly/annual membership. Drip-released weekly content. Community attached.
+group_coaching_curriculum
+Create Product (course w/ cohort) or membership
+Cohort-based with start/end dates and community.
+workshop_curriculum
+Create Product (course as workshop)
+Single-day or multi-day workshop structured as a course with session blocks.
+5.3 Webhook Signal Capture
+# Kajabi webhook events:
+events: ['purchase.completed', 'purchase.refunded',
+         'subscription.renewed', 'subscription.cancelled',
+         'subscription.payment_failed',
+         'enrollment.created', 'enrollment.completed',
+         'lesson.completed']
+5.4 Bayesian Signal Taxonomy — Kajabi
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+purchase.completed
+1.0
++
+course_sales[product_id]
+Confirmed course or membership sale. Maximum weight. Creates layer_income_records with layer_number=3 and action attribution.
+subscription.renewed
+0.9
++
+renewal_rate[product_id]
+Recurring revenue confirmed. High weight — renewals are the strongest L3 signal because they validate ongoing value.
+subscription.cancelled
+0.6
+-
+churn_rate[product_id]
+Member cancelled. Moderate negative. Feeds churn_rate per product — high churn (above 10% monthly) reduces L3 dispatch priority.
+subscription.payment_failed
+0.2
+-
+payment_failure_rate[product_id]
+Card declined on renewal. Low negative — usually transient. Tracked for retry logic.
+purchase.refunded
+0.8
+-
+refund_rate[product_id]
+Refund reverses a prior positive signal. High negative weight — indicates content quality or expectation mismatch.
+enrollment.completed
+0.4
++
+completion_rate[product_id]
+Student completed the entire course. Moderate positive — validates content quality and engagement. High completion rates increase L3 dispatch confidence.
+lesson.completed
+0.1
++
+lesson_engagement[product_id]
+Individual lesson completed. Very low weight per event but accumulated across lessons. Feeds engagement curve analytics.
+cohort_fill_rate
+0.5
++
+cohort_fill[product_id]
+Computed: enrolled / capacity for cohort courses. Higher fill rate = stronger demand signal. Below 30% fill suggests the orchestrator should delay the next cohort launch.
+upsell_conversion
+0.7
++
+upsell_rate[from_product][to_product]
+Computed: course buyer subsequently purchases a membership or a higher-tier course. High weight — validates the L3 product ladder.
+time_to_complete
+0.2
++
+avg_completion_days[product_id]
+Computed: days from enrollment to course completion. Shorter = better content pacing. Informs future course_curriculum module count and drip schedule.
+5.5 Functional Requirements — Kajabi
+FR-KAJABI-01: User connects Kajabi via API key. Four agent action_types deploy through Kajabi per Section 5.2. Every Kajabi product is recorded in kajabi_products with originating action_id and artifact_id for attribution.
+FR-KAJABI-02: Eight webhook events are handled per Section 5.3. purchase.completed and subscription.renewed create layer_income_records entries with layer_number=3, capture_method='kajabi_webhook', is_verified=1.
+FR-KAJABI-03: Ten Bayesian signals captured per Section 5.4 including four computed signals (cohort_fill_rate, upsell_conversion, time_to_complete, and accumulated lesson_engagement). The orchestrator uses these to determine L3 dispatch priority.
+FR-KAJABI-04: Churn threshold: if churn_rate exceeds 10% monthly for any product, the orchestrator reduces L3 membership dispatch priority by 30% and generates a tier 4 action item recommending content improvements.
+FR-KAJABI-05: Upsell tracking: when a contact who purchased Product A subsequently purchases Product B, the upsell_conversion signal fires with weight 0.7. This validates the L3 product ladder and informs future product sequencing recommendations.
+FR-KAJABI-06: Course completion rate feeds back into the course_curriculum agent: high completion rates (above 70%) confirm the module count and pacing are correct. Low rates (below 30%) trigger a recommendation to reduce module count or add more engaging content.
+6. ConvertKit — Email List Building
+Purpose: Create opt-in forms, landing pages, nurture sequences, newsletters, and subscriber tag management. Capture subscriber growth, engagement, and conversion signals.
+Primary income layer: Layer 2 (waitlist pre-launch), Layer 3 (course launch sequences), Layer 4 (newsletter monetization, lead magnet funnels)
+6.1 Connection Architecture
+ConvertKit OAuth 2.0. User connects their ConvertKit account. Simulacrum creates forms, sequences, and tags on the user's account. Subscribers are managed in ConvertKit — Simulacrum receives webhook notifications.
+# ConvertKit OAuth scopes:
+scopes: subscribers, forms, sequences, tags, broadcasts
+# Stored in user_integrations:
+integration_type = 'convertkit'
+auth_type        = 'oauth'
+access_token     = encrypt(convertkit_access_token)
+6.2 Deployment Functions
+Agent action_type
+ConvertKit action
+Detail
+waitlist_landing_page
+Create form + nurture sequence
+Opt-in form with success message. 3-5 nurture emails with configurable delays. Form embed code and hosted URL returned.
+lead_magnet_funnel
+Create form + delivery sequence
+PDF lead magnet delivery on opt-in. 5-email nurture sequence post-delivery.
+newsletter_monetization
+Create broadcast template
+Newsletter send template for sponsor content. Tag management for segmentation.
+launch_email_sequence
+Create launch sequence
+Pre-launch → launch day → post-launch follow-up sequence for course or product launches.
+6.3 Webhook Signal Capture
+# ConvertKit webhook events:
+events: ['subscriber.subscriber_activate',    # new subscriber
+         'subscriber.subscriber_unsubscribe', # unsubscribed
+         'subscriber.form_subscribe',          # subscribed via specific form
+         'subscriber.tag_add',                 # tag added
+         'subscriber.tag_remove']              # tag removed
+# Additional signals polled via API (not webhook):
+# - Sequence completion rate (subscribers who received all emails)
+# - Email open rate and click rate per broadcast/sequence
+# - Form conversion rate (page views vs submissions)
+# Polled daily by a Celery beat task.
+6.4 Bayesian Signal Taxonomy — ConvertKit
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+subscriber_activate
+0.3
++
+subscriber_growth_rate
+New subscriber. Moderate positive — list growth is a leading indicator for L3/L4 revenue. Weight 0.3 because a subscriber is not yet a buyer.
+subscriber_unsubscribe
+0.3
+-
+unsubscribe_rate[form_id]
+Subscriber opted out. Equal negative weight to new subscriber positive. High unsub rate on a specific form indicates content-audience mismatch.
+form_subscribe
+0.4
++
+form_conversion_rate[form_id]
+Subscribed via a specific form. Slightly higher weight because it is attributable to a specific agent-created form. form_conversion_rate = subscriptions / page views for that form.
+sequence_completion
+0.5
++
+sequence_completion_rate[seq_id]
+Computed (polled daily): subscribers who received and opened all emails in a nurture sequence. High completion = engaged audience ready for a sales offer.
+email_open_rate
+0.2
++
+avg_open_rate[sequence_id]
+Polled daily. Open rate for sequence or broadcast emails. Updates content quality posterior.
+email_click_rate
+0.4
++
+avg_click_rate[sequence_id]
+Polled daily. Click rate — stronger engagement signal than opens. Indicates the CTA in the email body is working.
+subscriber → purchase
+0.8
++
+subscriber_to_buyer_rate
+Compound signal: ConvertKit subscriber subsequently purchases via Kajabi or Stripe (matched by email). High weight — validates the entire list-building → sales funnel.
+form_conversion_rate
+0.3
++
+landing_page_effectiveness[form]
+Computed: form submissions / page views. Evaluates the waitlist or lead magnet landing page copy quality.
+list_size_at_launch
+0.4
++
+launch_readiness
+Computed: total subscribers when a launch_email_sequence fires. Larger list at launch = higher expected revenue. Used by the orchestrator to decide when to trigger course launches.
+6.5 Functional Requirements — ConvertKit
+FR-CONVERTKIT-01: User connects ConvertKit via OAuth 2.0. Four agent action_types deploy through ConvertKit per Section 6.2. Forms, sequences, and tags are created on the user's ConvertKit account.
+FR-CONVERTKIT-02: Five webhook events handled per Section 6.3. subscriber_activate and form_subscribe create CRM contacts (or link existing) with source='convertkit'. Pipeline stage set to 'prospect'.
+FR-CONVERTKIT-03: Four additional signals polled daily via ConvertKit API: sequence completion rate, email open rate, email click rate, and form conversion rate. Polled by a daily Celery beat task, not webhooks.
+FR-CONVERTKIT-04: Nine Bayesian signals captured per Section 6.4 including two compound signals (subscriber→purchase via email match across ConvertKit and Stripe/Kajabi, list_size_at_launch).
+FR-CONVERTKIT-05: Subscriber-to-buyer conversion: when a ConvertKit subscriber's email matches a Stripe payment or Kajabi purchase email, the compound signal fires with weight 0.8. This is the primary validation signal for the list-building → sales funnel.
+FR-CONVERTKIT-06: Launch readiness: the orchestrator delays launch_email_sequence dispatch until the subscriber list reaches a threshold (configurable, default 100 subscribers). The list_size_at_launch signal informs future launch timing decisions.
+7. LinkedIn — Profile, Content, Connections
+Purpose: Import connection data for CRM seeding. Publish blog articles and content to LinkedIn. Capture engagement metrics (views, reactions, comments) as L4 momentum signals. Profile data enrichment.
+Primary income layer: Layer 1 (profile optimization), Layer 4 (content distribution), CRM (connection import)
+7.1 Connection Architecture
+LinkedIn OAuth 2.0 via the LinkedIn Marketing Developer Platform. ATTORNEY REVIEW REQUIRED before implementation — LinkedIn's API terms restrict programmatic connection data export for non-enterprise developers. Simulacrum must confirm compliance with current LinkedIn API terms before building this integration.
+# LinkedIn OAuth scopes (subject to legal review):
+scopes: r_liteprofile, r_emailaddress,
+        w_member_social,    # post content to LinkedIn
+        r_organization_social  # read engagement metrics
+# Connection data import may require:
+#   - LinkedIn Marketing Developer Platform access, OR
+#   - Proxycurl (third-party enrichment provider)
+integration_type = 'linkedin'
+auth_type        = 'oauth'
+access_token     = encrypt(linkedin_access_token)
+refresh_token    = encrypt(linkedin_refresh_token)
+linkedin_urn     = 'urn:li:person:xxxxx'  # user's LinkedIn URN
+7.2 Deployment Functions
+Function
+LinkedIn API call
+Detail
+Connection import
+GET /connections (or Proxycurl)
+Import 1st-degree connections matching filters (job title, company size, industry). Populate CRM contacts with linkedin_url, headline, company.
+Content publish
+POST /ugcPosts
+Publish blog articles from SIM-PRD-BLOG-001 to LinkedIn as articles or posts. Include article link, excerpt, and CTA.
+Profile data read
+GET /me
+Read the user's current LinkedIn profile data for comparison with linkedin_optimization agent output.
+Engagement metrics
+GET /organizationalEntityShareStatistics
+Read engagement on published content: views, reactions, comments, shares.
+7.3 Signal Capture — Polled (No Webhooks)
+LinkedIn does not offer webhooks for engagement metrics. All signals are polled via API. A daily Celery beat task polls engagement data for all content published via Simulacrum in the trailing 30 days.
+7.4 Bayesian Signal Taxonomy — LinkedIn
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+post_views
+0.2
++
+linkedin_reach[post_id]
+Views on a published LinkedIn post/article. Low weight per view — reach is a vanity metric without engagement. Tracked for content distribution quality.
+post_reactions
+0.3
++
+linkedin_engagement_rate
+Reactions (likes, celebrates, etc.). Moderate positive — indicates content resonance.
+post_comments
+0.5
++
+linkedin_conversation_rate
+Comments are the highest-value LinkedIn engagement — they indicate the content prompted discussion. Weight 0.5.
+post_shares
+0.4
++
+linkedin_amplification_rate
+Shares extend reach beyond the user's network. Moderate-high positive.
+connection_import_match
+0.2
++
+imported_contact_quality
+Computed: imported connections that subsequently become Active or Client in the CRM. Validates the connection import filter criteria.
+content → subscriber
+0.6
++
+linkedin_to_subscriber_rate
+Compound: LinkedIn post viewer subsequently subscribes via ConvertKit form (matched by UTM or email). High weight — validates the LinkedIn → list pipeline.
+content → booking
+0.7
++
+linkedin_to_booking_rate
+Compound: LinkedIn post viewer subsequently books via Cal.com (matched by UTM or email). High weight — validates LinkedIn → call pipeline.
+profile_view_increase
+0.3
++
+profile_visibility_trend
+Computed: profile views in trailing 7 days vs prior 7 days after linkedin_optimization agent runs. Validates the profile rewrite's impact on visibility.
+7.5 Functional Requirements — LinkedIn
+FR-LINKEDIN-01: ATTORNEY REVIEW REQUIRED before implementation. LinkedIn API terms must be confirmed compliant before connection data import or content publishing is built. Implementation blocked until legal clearance.
+FR-LINKEDIN-02: LinkedIn OAuth 2.0 with scopes: r_liteprofile, r_emailaddress, w_member_social. Connection import may require LinkedIn Marketing Developer Platform access or Proxycurl integration.
+FR-LINKEDIN-03: Content publishing: blog articles from SIM-PRD-BLOG-001 are published to LinkedIn via the ugcPosts API. Each post includes the article excerpt, a link to the Simulacrum-hosted article, and UTM parameters for attribution.
+FR-LINKEDIN-04: Eight Bayesian signals captured per Section 7.4. All signals are polled daily via API — no webhooks. Two compound signals (content→subscriber, content→booking) require cross-integration matching via UTM or email.
+FR-LINKEDIN-05: Profile visibility tracking: after the linkedin_optimization agent runs, profile views are monitored for 14 days to measure the rewrite's impact. A statistically significant increase (above 20%) validates the agent's output quality.
+8. Plaid — Financial Account Linking
+Purpose: Link bank accounts, investment accounts, and credit cards. Monitor balances, transactions, dividends, and investment returns. Enable L5 wealth deployment tracking.
+Primary income layer: Layer 5 (Wealth deployment — portfolio tracking, DCA verification, dividend capture, estate planning data)
+8.1 Connection Architecture
+Plaid Link (client-side widget) for account linking. Plaid exchanges a public_token for an access_token on the server. Simulacrum stores the access_token encrypted and polls for transactions and balances periodically.
+# Plaid Link flow:
+# 1. Client opens Plaid Link widget
+# 2. User selects bank/brokerage and authenticates
+# 3. Plaid returns public_token to client
+# 4. Client sends public_token to server
+# 5. Server exchanges: POST /item/public_token/exchange
+# 6. Receives access_token + item_id
+integration_type = 'plaid'
+auth_type        = 'link'
+access_token     = encrypt(plaid_access_token)
+account_id       = plaid_item_id
+# Plaid products requested:
+products: ['transactions', 'investments', 'liabilities']
+# transactions: bank account activity
+# investments: brokerage holdings, positions, transactions
+# liabilities: credit card, mortgage, student loan balances
+8.2 Account Type Classification
+Account type
+Plaid type
+L5 use case
+Checking/savings
+depository
+Monitor income deposits. Verify DCA transfers to brokerage. Track operating cash flow.
+Brokerage
+investment
+Portfolio balance tracking. Position monitoring. Dividend capture. Investment return calculation. DCA execution verification.
+Retirement (IRA/401k)
+investment (subtype)
+Long-term portfolio allocation monitoring. Contribution tracking. Not used for DCA — retirement accounts have different rules.
+Credit card
+credit
+Liability monitoring. Debt-to-income calculation for entity structure recommendations.
+Mortgage
+loan
+Property equity calculation for real_estate_strategy agent. Not polled frequently — quarterly.
+8.3 Polling Schedule
+Plaid does not push real-time webhooks for all data types. Most data is polled on a schedule via Celery beat tasks.
+Data type
+Frequency
+API call
+Bank transactions
+Daily
+GET /transactions/get — last 30 days. Detects income deposits, DCA transfers.
+Investment holdings
+Daily
+GET /investments/holdings/get — current positions, quantities, values.
+Investment transactions
+Daily
+GET /investments/transactions/get — buys, sells, dividends, interest.
+Account balances
+Weekly
+GET /accounts/balance/get — all linked account balances.
+Liabilities
+Monthly
+GET /liabilities/get — credit card balances, mortgage remaining.
+8.4 Bayesian Signal Taxonomy — Plaid
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+dca_transfer_detected
+0.7
++
+dca_adherence_rate
+Bank transaction matching a DCA schedule amount and destination. High weight — confirms the user is following the L5 investment plan.
+dividend_received
+0.5
++
+dividend_income[account_id]
+Investment dividend transaction detected. Creates layer_income_records with layer_number=5, income_type='dividend', capture_method='plaid_poll'.
+portfolio_return_rate
+0.4
++
+investment_return_rate[account]
+Computed: current holdings value vs cost basis. Positive return validates the fund_recommendations agent's picks.
+portfolio_allocation_drift
+0.3
+-
+allocation_drift_magnitude
+Computed: current allocation vs recommended allocation from investment_policy_statement. Drift above 10% triggers a rebalancing recommendation.
+income_deposit_detected
+0.3
++
+income_deposit_regularity
+Bank deposit matching expected consulting/course income patterns. Confirms Stripe/Kajabi income at the bank level — a secondary verification signal.
+debt_reduction_progress
+0.4
++
+debt_to_income_trend
+Computed: credit card and loan balances trending downward. Positive signal for the entity_structure and tax_optimization agents.
+emergency_fund_level
+0.3
++
+savings_adequacy
+Computed: savings account balance vs 6 months of average expenses. Feeds the income_allocation agent's recommendation for savings vs investment split.
+net_worth_trend
+0.5
++
+net_worth_growth_rate
+Computed: total assets minus total liabilities, tracked monthly. The ultimate L5 success metric.
+8.5 Functional Requirements — Plaid
+FR-PLAID-01: User connects financial accounts via Plaid Link widget. Plaid access_token and item_id stored encrypted. Account type classification per Section 8.2 determines which L5 agents receive which data.
+FR-PLAID-02: Five data types are polled on schedule per Section 8.3: bank transactions (daily), investment holdings (daily), investment transactions (daily), account balances (weekly), liabilities (monthly).
+FR-PLAID-03: DCA verification: bank transactions are scanned for transfers matching the dca_schedule agent's recommended amount and brokerage destination. Matched transfers fire the dca_transfer_detected signal with weight 0.7.
+FR-PLAID-04: Dividend capture: investment transactions with type='dividend' create layer_income_records with layer_number=5, income_type='dividend', capture_method='plaid_poll'. Amount and date from the Plaid transaction record.
+FR-PLAID-05: Eight Bayesian signals captured per Section 8.4 including five computed signals requiring multi-account arithmetic (portfolio_return_rate, allocation_drift, debt_reduction, emergency_fund, net_worth_trend).
+FR-PLAID-06: Portfolio allocation drift: if current allocation deviates from the investment_policy_statement recommendation by more than 10%, a tier 4 action item recommends rebalancing.
+FR-PLAID-07: Plaid Link re-authentication: if Plaid returns an ITEM_LOGIN_REQUIRED error during polling, a tier 1 (Critical) action item appears: 'Your bank connection needs re-authentication.' Direct link to re-run Plaid Link.
+9. Alpaca — Brokerage & Trade Execution
+Purpose: Execute DCA trades, portfolio rebalancing, and investment allocations per L5 agent recommendations. Track positions and order fills.
+Primary income layer: Layer 5 (Wealth deployment — automated trade execution)
+9.1 Connection Architecture
+Alpaca OAuth 2.0. User connects their Alpaca brokerage account. Simulacrum receives a scoped access token to place orders, read positions, and receive trade execution webhooks. Funds are in the user's Alpaca account — Simulacrum places orders on their behalf.
+# Alpaca OAuth scopes:
+scopes: account:write, trading, data
+# account:write: read account info, positions, portfolio history
+# trading: place and manage orders
+# data: market data for position valuation
+integration_type = 'alpaca'
+auth_type        = 'oauth'
+access_token     = encrypt(alpaca_access_token)
+account_id       = alpaca_account_id
+# IMPORTANT: Trade execution requires user's explicit opt-in.
+# The fintech_toggle in user_preferences must be True.
+# Default: False. Enabled in Settings → Integrations → Alpaca.
+# The user must acknowledge: 'I understand that Simulacrum will
+# place trades in my brokerage account based on my investment plan.'
+9.2 Deployment Functions
+Agent action_type
+Alpaca action
+Detail
+dca_schedule
+Place market orders per schedule
+Monthly DCA: buy $X of ETF Y on the Nth of each month. Orders placed as market orders during trading hours. Fractional shares supported.
+income_allocation
+Transfer to brokerage (if supported)
+When income_allocation recommends moving $X to investments, Alpaca ACH transfer initiated (requires ACH relationship setup).
+compound_projections
+Read positions for projection inputs
+No trade — reads current positions and returns for projection calculations.
+9.3 Webhook Signal Capture
+# Alpaca trade events (via SSE streaming or webhook):
+events: ['trade_update']
+# trade_update.event values:
+#   'fill'              — order fully filled
+#   'partial_fill'      — order partially filled
+#   'canceled'          — order canceled
+#   'rejected'          — order rejected by exchange
+#   'new'               — order accepted
+9.4 Bayesian Signal Taxonomy — Alpaca
+Webhook event
+Weight
++/−
+Posterior updated
+Update formula
+order.fill
+0.7
++
+dca_execution_rate
+DCA order filled successfully. High weight — confirms the wealth deployment pipeline is executing. Creates layer_income_records with income_type='investment_purchase' (negative income — outflow for investment).
+order.rejected
+0.5
+-
+order_rejection_rate
+Order rejected. Moderate negative — may indicate insufficient funds, invalid symbol, or market closed. Triggers action item for user review.
+order.canceled
+0.2
+-
+order_cancel_rate
+Order canceled (by user or system). Low negative — may be intentional.
+position_return
+0.4
++
+position_performance[symbol]
+Computed: current position value vs cost basis per holding. Positive return validates fund_recommendations. Negative triggers review.
+portfolio_vs_benchmark
+0.3
++
+alpha_generation
+Computed: portfolio return vs S&P 500 (or user's chosen benchmark) over trailing 90 days. Positive alpha validates the investment strategy.
+dca_consistency
+0.6
++
+dca_consistency_score
+Computed: DCA orders executed on schedule without interruption over trailing 6 months. High consistency = the L5 pipeline is working autonomously.
+rebalance_execution
+0.5
++
+rebalance_adherence
+Computed: when allocation drift triggers a rebalancing recommendation and the user approves, did the rebalancing trades execute within 48 hours?
+9.5 Functional Requirements — Alpaca
+FR-ALPACA-01: User connects Alpaca via OAuth 2.0. Trade execution requires an explicit fintech_toggle opt-in (default: False). The user must acknowledge a consent statement before any trades can be placed.
+FR-ALPACA-02: Three agent action_types interact with Alpaca per Section 9.2. dca_schedule places market orders. income_allocation initiates ACH transfers. compound_projections reads positions (no trades).
+FR-ALPACA-03: Trade execution orders are placed during market hours only (9:30 AM - 4:00 PM ET, Mon-Fri). Orders submitted outside market hours are queued for next market open. Fractional shares are supported.
+FR-ALPACA-04: Seven Bayesian signals captured per Section 9.4 including four computed signals requiring position history and benchmark comparison.
+FR-ALPACA-05: DCA consistency score: the orchestrator tracks whether monthly DCA orders execute on schedule. Six consecutive months of on-schedule execution scores 1.0. Each missed month reduces the score by 0.15.
+FR-ALPACA-06: All trade execution actions require tier 2 (Action) confirmation in the GCC Action Queue — regardless of the user's autonomy_level setting. The system never places a trade without explicit user approval. This is non-negotiable.
+FR-ALPACA-07: Order rejection triggers a tier 1 (Critical) action item: 'Your investment order was rejected — [reason].' Insufficient funds rejections include a link to the income_allocation agent for rebalancing the investment budget.
+10. Unified Cross-Integration Signal Taxonomy
+10.1 How the Orchestrator Reads Signals
+The orchestrator's Score step reads all active Bayesian posteriors from all integrations. Each posterior is a probability estimate for how well a specific action_type converts for this user. The posteriors are updated via the Exponential Moving Average (EMA) formula whenever a signal arrives from any integration.
+# Bayesian posterior update — Exponential Moving Average
+# Applied to every signal across all integrations
+def update_posterior(posterior_key, signal_value, weight, direction):
+    """
+    posterior_key: e.g. 'reply_rate:cold_email_campaign'
+    signal_value: the observed rate (e.g. 0.16 for 16% reply rate)
+    weight: per Section X.4 of each integration (e.g. 0.5 for email_replied)
+    direction: '+' or '-'
+    """
+    current = get_posterior(posterior_key)  # from layer6_outcomes
+    alpha = weight * 0.3   # EMA alpha scaled by signal weight
+    # Higher-weight signals shift the posterior more aggressively
+    if direction == '+':
+        new_value = alpha * signal_value + (1 - alpha) * current
+    else:  # negative signal
+        new_value = alpha * (1 - signal_value) + (1 - alpha) * current
+    set_posterior(posterior_key, new_value)
+    log_signal(posterior_key, signal_value, weight, direction)
+10.2 Signal Weight Summary — All Integrations
+Total signals across all nine integrations: 80. This table summarizes the weight distribution.
+Integration
+Signals
+Max weight
+Min weight
+Avg weight
+Highest-weight signal
+Apollo
+10
+1.0
+0.05
+0.35
+reply → client (1.0)
+Stripe
+10
+1.0
+0.2
+0.60
+payment.succeeded (1.0)
+Cal.com
+9
+1.0
+0.1
+0.42
+booking → client (1.0)
+PandaDoc
+9
+0.9
+0.1
+0.38
+document.completed (0.9)
+Kajabi
+10
+1.0
+0.1
+0.51
+purchase.completed (1.0)
+ConvertKit
+9
+0.8
+0.2
+0.39
+subscriber → purchase (0.8)
+LinkedIn
+8
+0.7
+0.2
+0.38
+content → booking (0.7)
+Plaid
+8
+0.7
+0.3
+0.44
+dca_transfer_detected (0.7)
+Alpaca
+7
+0.7
+0.2
+0.44
+order.fill (0.7)
+10.3 Compound Signals — Cross-Integration
+The most valuable signals are compound signals that span multiple integrations. These require joining events across platforms via contact_id or email match. Seven compound signals are defined across the suite:
+Compound signal
+Integrations joined
+Weight
+What it validates
+reply → booking
+Apollo + Cal.com
+0.7
+Outreach copy quality + booking page conversion = the full top-of-funnel pipeline.
+reply → client
+Apollo + Stripe
+1.0
+End-to-end: outreach → reply → payment. The ultimate validation of L1/L2 outreach ROI.
+booking → client
+Cal.com + Stripe
+1.0
+Discovery call → payment. Validates the call-to-close pipeline.
+subscriber → purchase
+ConvertKit + Stripe/Kajabi
+0.8
+List building → sale. Validates the L3/L4 funnel from opt-in to revenue.
+content → subscriber
+LinkedIn + ConvertKit
+0.6
+Content distribution → list growth. Validates LinkedIn as a subscriber acquisition channel.
+content → booking
+LinkedIn + Cal.com
+0.7
+Content distribution → call booking. Validates LinkedIn as a direct lead source.
+dca_transfer → order_fill
+Plaid + Alpaca
+0.8
+Bank transfer → trade execution. Validates the L5 wealth deployment pipeline is functioning end-to-end.
+10.4 The Revenue Chain
+The compound signals form a chain. When the orchestrator sees the full chain fire for a specific user — Apollo reply → Cal.com booking → PandaDoc signed → Stripe payment confirmed — it has maximum confidence in the L1 consulting pipeline and will aggressively dispatch more consulting outreach in the next cycle. When any link in the chain breaks (high reply rate but low booking rate), the orchestrator identifies the weak link and dispatches agents to fix it (regenerate the booking page with different session types, update the discovery call pre-questionnaire).
+This is what makes Simulacrum fundamentally different from a content generation tool. The system does not just generate artifacts — it observes which artifacts produce revenue and concentrates effort on the proven paths. Every integration is a sensor. Every webhook is a data point. The Bayesian model is the brain that turns data points into dispatch decisions. Without the feedback loop, the system is a template generator. With it, the system learns.
+SIM-PRD-INTEG-001  ·  Unified Integration & Signal Specification  ·  v1.0  ·  April 2026
+Jean Moussa Delphonse  ·  Bay Area Experiences Ventures  ·  Confidential

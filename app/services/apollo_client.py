@@ -120,6 +120,38 @@ class ApolloClient:
             payload['emailer_campaign_id'] = sequence_id
         return self._post('/webhooks', payload)
 
+    # ── People Search (FR-RESEARCH-02) ───────────────────────────────────────
+
+    def people_search(
+        self,
+        person_titles: list = None,
+        person_seniorities: list = None,
+        organization_num_employees_ranges: list = None,
+        organization_industry_tag_ids: list = None,
+        person_locations: list = None,
+        per_page: int = 25,
+        page: int = 1,
+    ) -> list:
+        """
+        Query Apollo's People Search API.
+        Returns a list of person dicts with verified professional emails.
+        Apollo pre-verifies emails — callers can skip Stage 4 verification.
+        """
+        payload = {'per_page': per_page, 'page': page}
+        if person_titles:
+            payload['person_titles'] = person_titles
+        if person_seniorities:
+            payload['person_seniorities'] = person_seniorities
+        if organization_num_employees_ranges:
+            payload['organization_num_employees_ranges'] = organization_num_employees_ranges
+        if organization_industry_tag_ids:
+            payload['organization_industry_tag_ids'] = organization_industry_tag_ids
+        if person_locations:
+            payload['person_locations'] = person_locations
+
+        data = self._post('/mixed_people/search', payload)
+        return data.get('people', [])
+
     # ── Sequence pause/cancel ─────────────────────────────────────────────────
 
     def pause_sequence(self, sequence_id: str):

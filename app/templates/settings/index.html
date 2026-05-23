@@ -2,6 +2,86 @@
 {% block title %}Settings{% endblock %}
 
 {% block head %}
+{% if active_tab == 'integrations' %}
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+{% endif %}
+{% if active_tab == 'integrations' %}
+<style>
+/* ── Integration card grid ── */
+.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.35); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(255,255,255,.07); }
+.integ-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+@media (max-width: 820px) { .integ-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 540px) { .integ-grid { grid-template-columns: 1fr; } }
+.integ-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 1.25rem; min-height: 180px; display: flex; flex-direction: column; gap: .45rem; position: relative; }
+.integ-card-top { display: flex; align-items: flex-start; gap: .75rem; }
+.integ-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; }
+.integ-card-info { flex: 1; min-width: 0; }
+.integ-card-name { font-weight: 700; font-size: .9rem; color: #e8eaf0; line-height: 1.25; }
+.integ-card-desc { font-size: .72rem; color: rgba(255,255,255,.38); margin-top: .1rem; }
+.integ-badge { position: absolute; top: 1rem; right: 1rem; font-size: .62rem; font-weight: 700; padding: .15rem .55rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.integ-badge.connected { background: rgba(134,239,172,.15); color: #86efac; }
+.integ-badge.not_connected { background: rgba(255,255,255,.07); color: rgba(255,255,255,.4); }
+.integ-badge.expired { background: rgba(245,200,66,.15); color: #f5c842; }
+.integ-badge.legal { background: rgba(245,200,66,.08); color: #f5c842; }
+.integ-conn-details { font-size: .72rem; color: rgba(255,255,255,.4); line-height: 1.55; }
+.integ-health { display: inline-flex; align-items: center; gap: .3rem; }
+.integ-health-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.integ-health-dot.healthy { background: #86efac; }
+.integ-health-dot.intermittent { background: #f5c842; }
+.integ-health-dot.failing, .integ-health-dot.expired { background: #fca5a5; }
+.integ-health-dot.not_connected { background: rgba(255,255,255,.2); }
+.integ-primary-btn { width: 100%; margin-top: .65rem; padding: .5rem; font-size: .8rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: opacity .15s; text-align: center; text-decoration: none; display: block; }
+.integ-primary-btn.navy { background: #1a3a5c; color: #e8eaf0; }
+.integ-primary-btn.navy:hover { opacity: .85; }
+.integ-primary-btn.outlined { background: transparent; border: 1px solid rgba(19,168,158,.4); color: #13A89E; }
+.integ-primary-btn.outlined:hover { background: rgba(19,168,158,.07); }
+.integ-primary-btn.amber { background: rgba(245,200,66,.12); border: 1px solid rgba(245,200,66,.3); color: #f5c842; }
+.integ-primary-btn.amber:hover { background: rgba(245,200,66,.18); }
+.integ-secondary-links { display: flex; gap: 1rem; margin-top: .3rem; }
+.integ-secondary-link { font-size: .72rem; color: rgba(255,255,255,.35); text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; transition: color .15s; }
+.integ-secondary-link:hover { color: rgba(255,255,255,.65); }
+.integ-secondary-link.danger { color: rgba(252,165,165,.5); }
+.integ-secondary-link.danger:hover { color: #fca5a5; }
+.integ-agents { font-size: .68rem; color: rgba(255,255,255,.25); margin-top: auto; padding-top: .4rem; line-height: 1.4; }
+/* Manage panel */
+.integ-manage-panel { background: rgba(255,255,255,.025); border-top: 1px solid rgba(255,255,255,.07); margin: .75rem -1.25rem -1.25rem; padding: 1rem 1.25rem; border-radius: 0 0 12px 12px; display: none; }
+.integ-manage-panel.open { display: block; }
+.integ-manage-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.35); margin-bottom: .75rem; display: flex; align-items: center; justify-content: space-between; }
+.integ-cfg-row { margin-bottom: .75rem; }
+.integ-cfg-label { font-size: .72rem; font-weight: 600; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; }
+.integ-cfg-input { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: .35rem .6rem; color: #e8eaf0; font-size: .8rem; width: 100%; }
+.integ-cfg-input:focus { outline: none; border-color: rgba(19,168,158,.4); }
+.integ-cfg-save-btn { margin-top: .5rem; }
+/* Activity log panel */
+.integ-activity-panel { background: rgba(255,255,255,.025); border-top: 1px solid rgba(255,255,255,.07); margin: .75rem -1.25rem -1.25rem; padding: 1rem 1.25rem; border-radius: 0 0 12px 12px; display: none; max-height: 300px; overflow-y: auto; }
+.integ-activity-panel.open { display: block; }
+.integ-activity-entry { display: flex; gap: .75rem; padding: .45rem 0; border-bottom: 1px solid rgba(255,255,255,.04); align-items: flex-start; }
+.integ-activity-entry:last-child { border-bottom: none; }
+.integ-activity-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: .25rem; flex-shrink: 0; }
+.integ-activity-dot.success { background: #86efac; }
+.integ-activity-dot.error { background: #fca5a5; }
+.integ-activity-dot.retry { background: #f5c842; }
+.integ-activity-time { font-size: .68rem; color: rgba(255,255,255,.3); white-space: nowrap; }
+.integ-activity-type { font-size: .75rem; color: rgba(255,255,255,.7); flex: 1; }
+.integ-activity-dir { font-size: .65rem; color: rgba(255,255,255,.3); }
+/* Disconnect modal */
+.integ-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.integ-modal-overlay.open { display: flex; }
+.integ-modal { background: #0f1823; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 1.75rem; max-width: 420px; width: 100%; margin: 1rem; }
+.integ-modal-title { font-size: 1.05rem; font-weight: 700; color: #e8eaf0; margin-bottom: .5rem; }
+.integ-modal-body { font-size: .875rem; color: rgba(255,255,255,.6); margin-bottom: 1rem; line-height: 1.6; }
+.integ-modal-agents { background: rgba(255,255,255,.04); border-radius: 8px; padding: .65rem .85rem; font-size: .78rem; color: rgba(255,255,255,.5); margin-bottom: 1.25rem; line-height: 1.6; }
+.integ-modal-actions { display: flex; gap: .75rem; justify-content: flex-end; }
+/* API key save modals */
+.integ-apikey-modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.integ-apikey-modal.open { display: flex; }
+.integ-apikey-box { background: #0f1823; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 1.75rem; max-width: 400px; width: 100%; margin: 1rem; }
+@media (max-width: 480px) { .integ-apikey-box, .integ-modal { max-width: 100%; margin: .5rem; } }
+.integ-flash { padding: .5rem .9rem; border-radius: 8px; font-size: .82rem; margin-bottom: .6rem; }
+.integ-flash.ok { background: rgba(134,239,172,.12); color: #86efac; }
+.integ-flash.err { background: rgba(252,165,165,.1); color: #fca5a5; }
+</style>
+{% endif %}
 <style>
 .settings-layout { display: flex; gap: 2rem; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
 .settings-nav { width: 200px; flex-shrink: 0; }
@@ -257,6 +337,37 @@
         <div id="bioGenErr" class="form-error hidden" style="margin-top:.5rem"></div>
       </div>
 
+      {% if profile and profile.username %}
+      <div class="settings-section" id="bioPageSection">
+        <div class="settings-section-title">Bio Page</div>
+        <div class="bio-panel" style="margin-bottom:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+            <div>
+              <div style="font-size:.875rem;color:#e8eaf0">
+                simulacrum.io/u/<strong>{{ profile.username }}</strong>
+              </div>
+              <div id="bioPageStatusHint" style="font-size:.78rem;margin-top:.25rem;color:rgba(255,255,255,.35)">Loading…</div>
+            </div>
+            <div style="display:flex;gap:.5rem;flex-shrink:0;flex-wrap:wrap;align-items:center">
+              <button id="bioPublishBtn" class="btn btn-primary btn-sm" style="display:none" onclick="toggleBioPublish()">Publish bio page</button>
+              <a href="/u/{{ profile.username }}/edit" class="btn btn-ghost btn-sm">Edit ↗</a>
+              <a href="/u/{{ profile.username }}" target="_blank" class="btn btn-ghost btn-sm">View ↗</a>
+            </div>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Enable chat widget</div>
+            <div class="toggle-desc">Show the AI chat widget on your public bio page so visitors can ask questions</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="bioChatEnabled" onchange="saveBioChatToggle(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="settings-actions">
         <button class="btn btn-primary" onclick="saveProfile()">Save Profile</button>
       </div>
@@ -362,374 +473,576 @@
     {% if active_tab == 'integrations' %}
     <div id="integrationsTab">
 
-      {% if apollo_connected %}
-      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
-        &#x2713; Apollo account connected successfully.
-      </div>
-      {% endif %}
-      {% if apollo_error %}
-      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
-        Apollo connection failed: {{ apollo_error | replace('_', ' ') | title }}. Please try again.
-      </div>
-      {% endif %}
-      {% if stripe_connected %}
-      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
-        &#x2713; Stripe account connected successfully. Agents can now create payment links and invoices on your behalf.
-      </div>
-      {% endif %}
-      {% if stripe_error %}
-      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
-        Stripe connection failed: {{ stripe_error | replace('_', ' ') | title }}. Please try again.
-      </div>
-      {% endif %}
-      {% if cal_connected %}
-      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
-        &#x2713; Cal.com account connected. Agents can now create booking pages and receive confirmation webhooks.
-      </div>
-      {% endif %}
-      {% if cal_error %}
-      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
-        Cal.com connection failed: {{ cal_error | replace('_', ' ') | title }}. Please try again.
-      </div>
-      {% endif %}
-      {% if pandadoc_saved %}
-      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
-        &#x2713; PandaDoc API key saved. You can now send documents for signature from the GCC.
-      </div>
-      {% endif %}
-      {% if pandadoc_error %}
-      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
-        PandaDoc error: {{ pandadoc_error | replace('_', ' ') | title }}.
-      </div>
-      {% endif %}
-      {% if ck_saved %}
-      <div style="background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#86efac;font-weight:600">
-        &#x2713; ConvertKit API keys saved. Agents can now deploy landing pages and sequences to your account.
-      </div>
-      {% endif %}
-      {% if ck_error %}
-      <div style="background:rgba(252,165,165,.08);border:1px solid rgba(252,165,165,.25);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem;color:#fca5a5">
-        ConvertKit error: {{ ck_error | replace('_', ' ') | title }}.
-      </div>
-      {% endif %}
+      {# ── Flash messages ── #}
+      {% if apollo_connected %}<div class="integ-flash ok">&#x2713; Apollo account connected.</div>{% endif %}
+      {% if apollo_error %}<div class="integ-flash err">Apollo: {{ apollo_error | replace('_', ' ') | title }}</div>{% endif %}
+      {% if stripe_connected %}<div class="integ-flash ok">&#x2713; Stripe account connected.</div>{% endif %}
+      {% if stripe_error %}<div class="integ-flash err">Stripe: {{ stripe_error | replace('_', ' ') | title }}</div>{% endif %}
+      {% if cal_connected %}<div class="integ-flash ok">&#x2713; Cal.com connected.</div>{% endif %}
+      {% if cal_error %}<div class="integ-flash err">Cal.com: {{ cal_error | replace('_', ' ') | title }}</div>{% endif %}
+      {% if pandadoc_saved %}<div class="integ-flash ok">&#x2713; PandaDoc key saved.</div>{% endif %}
+      {% if pandadoc_error %}<div class="integ-flash err">PandaDoc: {{ pandadoc_error | replace('_', ' ') | title }}</div>{% endif %}
+      {% if ck_saved %}<div class="integ-flash ok">&#x2713; ConvertKit keys saved.</div>{% endif %}
+      {% if ck_error %}<div class="integ-flash err">ConvertKit: {{ ck_error | replace('_', ' ') | title }}</div>{% endif %}
+      {% if kajabi_saved %}<div class="integ-flash ok">&#x2713; Kajabi key saved.</div>{% endif %}
+      {% if kajabi_error %}<div class="integ-flash err">Kajabi: {{ kajabi_error | replace('_', ' ') | title }}</div>{% endif %}
+      {% if sg_saved %}<div class="integ-flash ok">&#x2713; SendGrid key saved.</div>{% endif %}
+      {% if sg_error %}<div class="integ-flash err">SendGrid: {{ sg_error }}</div>{% endif %}
 
-      <div class="settings-section">
-        <div class="settings-section-title">Apollo.io &#x2014; Email Outreach</div>
-        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
-          Connect your Apollo account to deploy email sequences directly from your Growth Command Center.
-          Simulacrum sends outreach on your behalf using your own Apollo account &#x2014; your email reputation stays yours.
-        </p>
+      {# ── Variables ── #}
+      {% set apollo_status    = apollo.connection_status     if apollo     else 'not_connected' %}
+      {% set stripe_status    = stripe_int.connection_status if stripe_int else 'not_connected' %}
+      {% set cal_status       = cal_int.connection_status    if cal_int    else 'not_connected' %}
+      {% set pd_status        = pandadoc_int.connection_status if pandadoc_int else 'not_connected' %}
+      {% set kajabi_status    = kajabi_int.connection_status if kajabi_int else 'not_connected' %}
+      {% set ck_status        = ck_int.connection_status    if ck_int     else 'not_connected' %}
+      {% set plaid_status     = plaid_int.connection_status  if plaid_int  else 'not_connected' %}
+      {% set alpaca_status    = alpaca_int.connection_status if alpaca_int else 'not_connected' %}
+      {% set sg_status        = 'connected' if sg_connected else 'not_connected' %}
 
-        {% set apollo_status = apollo.connection_status if apollo else 'not_connected' %}
+      {# ════════════════════════════════════════════════════
+         GROUP 1 — Revenue & outreach
+         ════════════════════════════════════════════════════ #}
+      <div class="integ-group-title">Revenue &amp; outreach</div>
+      <div class="integ-grid">
 
-        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
-          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if apollo_status == 'connected' %}#86efac{% elif apollo_status == 'expired' %}#f5c842{% else %}rgba(255,255,255,.2){% endif %}"></div>
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
-              {% if apollo_status == 'connected' %}Connected
-              {% elif apollo_status == 'expired' %}Token expired &#x2014; re-authenticate
-              {% else %}Not connected{% endif %}
-            </div>
-            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
-              {% if apollo_status == 'connected' %}Your Apollo sequences will be deployed automatically when outreach agents complete.
-              {% elif apollo_status == 'expired' %}Re-connect your Apollo account to resume sequence deployment.
-              {% else %}Connect Apollo to enable automated email sequence deployment.{% endif %}
+        {# ─── Apollo ─── #}
+        <div class="integ-card" id="card-apollo">
+          <span class="integ-badge {{ apollo_status }}">
+            {% if apollo_status == 'connected' %}Connected
+            {% elif apollo_status == 'expired' %}Expired
+            {% else %}Not connected{% endif %}
+          </span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#f9731620;color:#f97316">AP</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">Apollo</div>
+              <div class="integ-card-desc">Email outreach and sequences</div>
             </div>
           </div>
-          {% if apollo_status in ('connected', 'expired') %}
-          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="apolloDisconnect(this)">Disconnect</button>
+          {% if apollo and apollo.is_connected %}
+          <div class="integ-conn-details">
+            <span class="integ-health"><span class="integ-health-dot {{ apollo.health_status or 'healthy' }}"></span>
+              {% if apollo.health_status == 'healthy' or not apollo.health_status %}Healthy{% else %}{{ apollo.health_status | title }}{% endif %}</span>
+            {% if apollo.connected_at %} &bull; Since {{ apollo.connected_at.strftime('%b %d, %Y') }}{% endif %}
+            {% if apollo.last_api_success_at %} &bull; Last active {{ apollo.last_api_success_at.strftime('%b %d') }}{% endif %}
+          </div>
           {% endif %}
-          <a href="{{ url_for('integrations.apollo_connect') }}" class="btn {% if apollo_status == 'connected' %}btn-ghost{% else %}btn-primary{% endif %} btn-sm">
-            {% if apollo_status == 'expired' %}Re-connect Apollo
-            {% elif apollo_status == 'connected' %}Re-authenticate
-            {% else %}Connect Apollo{% endif %}
+          <a href="{{ url_for('integrations.apollo_connect') }}"
+             class="integ-primary-btn {% if apollo_status == 'connected' %}outlined{% elif apollo_status == 'expired' %}amber{% else %}navy{% endif %}">
+            {% if apollo_status == 'expired' %}Re-authenticate{% elif apollo_status == 'connected' %}Manage{% else %}Connect Apollo{% endif %}
           </a>
-        </div>
-
-        {% if apollo_status == 'connected' %}
-        <div class="settings-row">
-          <label class="settings-label">Daily send limit <span style="text-transform:none;letter-spacing:0;font-weight:400">(emails per day across all sequences)</span></label>
-          <div style="display:flex;gap:.6rem;align-items:center">
-            <input type="number" class="input-text" id="apolloDailyLimit" min="1" max="500" style="width:100px"
-                   value="{{ apollo.apollo_daily_limit if apollo else 30 }}">
-            <button class="btn btn-ghost btn-sm" onclick="saveApolloSettings()">Save</button>
+          {% if apollo_status == 'connected' %}
+          <div class="integ-secondary-links">
+            <button class="integ-secondary-link danger" onclick="showDisconnect('apollo','Apollo','cold_email_campaign · consulting_outreach · speaking_proposals')">Disconnect</button>
+            <button class="integ-secondary-link" onclick="toggleManage('apollo')">Settings</button>
+            <button class="integ-secondary-link" onclick="toggleActivity('apollo')">Activity log</button>
           </div>
-          <div class="settings-hint">Default 30/day. Cannot exceed your Apollo account-level limits.</div>
-        </div>
-        {% endif %}
-      </div>
-
-      {# ── Stripe Connect ── #}
-      <div class="settings-section">
-        <div class="settings-section-title">Stripe &#x2014; Payment Collection</div>
-        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
-          Connect your Stripe account so agents can create payment links, invoices, and checkout sessions on your behalf.
-          Funds flow directly to your Stripe account &#x2014; Simulacrum never holds or transmits money.
-        </p>
-
-        {% set stripe_status = stripe_int.connection_status if stripe_int else 'not_connected' %}
-
-        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
-          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if stripe_status == 'connected' %}#86efac{% elif stripe_status == 'expired' %}#f5c842{% else %}rgba(255,255,255,.2){% endif %}"></div>
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
-              {% if stripe_status == 'connected' %}Connected
-              {% elif stripe_status == 'expired' %}Token expired &#x2014; re-authenticate
-              {% else %}Not connected{% endif %}
-            </div>
-            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
-              {% if stripe_status == 'connected' %}
-                Account: <code style="font-size:.75rem;color:rgba(255,255,255,.55)">{{ stripe_int.provider_account_id or '' }}</code>
-                &#x2014; Scope: {{ stripe_int.provider_scope or 'read_write' }}
-              {% elif stripe_status == 'expired' %}
-                Re-connect to resume payment object creation.
-              {% else %}
-                Connect Stripe to enable agents to create payment links and invoices.
-              {% endif %}
-            </div>
-          </div>
-          {% if stripe_status in ('connected', 'expired') %}
-          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="stripeDisconnect(this)">Disconnect</button>
           {% endif %}
-          <a href="{{ url_for('integrations.stripe_connect') }}" class="btn {% if stripe_status == 'connected' %}btn-ghost{% else %}btn-primary{% endif %} btn-sm">
-            {% if stripe_status == 'expired' %}Re-connect Stripe
-            {% elif stripe_status == 'connected' %}Re-authenticate
-            {% else %}Connect Stripe{% endif %}
-          </a>
-        </div>
-
-        {% if stripe_status != 'connected' %}
-        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">
-          <strong style="color:#e8eaf0">Agents blocked without Stripe:</strong>
-          rate_card &#x2022; consulting_proposal &#x2022; sow_template &#x2022; workshop_curriculum &#x2022;
-          waitlist_landing_page &#x2022; sales_page &#x2022; membership_structure &#x2022; saas_product_spec &#x2022; newsletter_monetization
-        </div>
-        {% endif %}
-      </div>
-
-      {# ── Cal.com ── #}
-      <div class="settings-section">
-        <div class="settings-section-title">Cal.com &#x2014; Booking Pages</div>
-        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
-          Connect your Cal.com account so agents can create booking pages and receive confirmation webhooks.
-          When a prospect books a call, their CRM stage advances automatically and the L1 momentum metric updates in real time.
-        </p>
-
-        {% set cal_status = cal_int.connection_status if cal_int else 'not_connected' %}
-
-        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
-          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if cal_status == 'connected' %}#86efac{% elif cal_status == 'expired' %}#f5c842{% else %}rgba(255,255,255,.2){% endif %}"></div>
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
-              {% if cal_status == 'connected' %}Connected
-              {% elif cal_status == 'expired' %}Token expired &#x2014; re-authenticate
-              {% else %}Not connected{% endif %}
+          <div class="integ-agents">Used by: cold_email · consulting_outreach · speaking_proposals +3</div>
+          {% if apollo_status == 'connected' %}
+          <div class="integ-manage-panel" id="manage-apollo">
+            <div class="integ-manage-title">Apollo settings <button class="integ-secondary-link" onclick="toggleManage('apollo')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Daily send limit</div>
+              <input type="number" class="integ-cfg-input" id="apolloCfgLimit" min="1" max="500"
+                     value="{{ apollo.apollo_daily_limit if apollo else 30 }}" style="width:90px">
             </div>
-            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
-              {% if cal_status == 'connected' %}Booking confirmations will automatically advance CRM contacts and update your L1 momentum metric.
-              {% elif cal_status == 'expired' %}Re-connect to resume booking page deployment and webhook processing.
-              {% else %}Connect Cal.com to enable automated booking page creation and confirmation webhooks.{% endif %}
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Warmup mode</div>
+              <label class="toggle-switch" style="width:36px;height:20px"><input type="checkbox" id="apolloWarmup"><span class="toggle-slider"></span></label>
+              <div class="settings-hint" style="font-size:.7rem;margin-top:.2rem">Auto-limits sends for new accounts</div>
             </div>
+            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveApolloConfig()">Save settings</button>
           </div>
-          {% if cal_status in ('connected', 'expired') %}
-          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="calDisconnect(this)">Disconnect</button>
+          <div class="integ-activity-panel" id="activity-apollo">
+            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('apollo')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div id="activity-apollo-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+          </div>
           {% endif %}
-          <a href="{{ url_for('integrations.cal_connect') }}" class="btn {% if cal_status == 'connected' %}btn-ghost{% else %}btn-primary{% endif %} btn-sm">
-            {% if cal_status == 'expired' %}Re-connect Cal.com
-            {% elif cal_status == 'connected' %}Re-authenticate
-            {% else %}Connect Cal.com{% endif %}
-          </a>
         </div>
 
-        {% if cal_status != 'connected' %}
-        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">
-          <strong style="color:#e8eaf0">Agents blocked without Cal.com:</strong>
-          booking_page &#x2022; consulting_proposal (call invite) &#x2022; workshop_curriculum (event scheduling)
-        </div>
-        {% endif %}
-
-        {% if cal_status == 'connected' %}
-        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.82rem;color:rgba(255,255,255,.6)">
-          <strong style="color:#e8eaf0">On booking confirmed:</strong>
-          CRM contact advances Prospect &#x2192; Active &#x2022;
-          <code style="font-size:.75rem;color:rgba(255,255,255,.55)">call_booked</code> activity logged &#x2022;
-          L1 <code style="font-size:.75rem;color:rgba(255,255,255,.55)">consulting_bookings_mo</code> increments &#x2022;
-          GCC momentum updates on next refresh
-        </div>
-        {% endif %}
-      </div>
-
-      {# ── PandaDoc ── #}
-      <div class="settings-section">
-        <div class="settings-section-title">PandaDoc &#x2014; Document Signing</div>
-        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
-          Enter your PandaDoc API key so the GCC can send contracts and agreements for e-signature.
-          When a document is signed, the contact's CRM stage advances automatically to <strong style="color:#e8eaf0">Client</strong>.
-        </p>
-
-        {% set pd_status = pandadoc_int.connection_status if pandadoc_int else 'not_connected' %}
-
-        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
-          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if pd_status == 'connected' %}#86efac{% else %}rgba(255,255,255,.2){% endif %}"></div>
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
-              {% if pd_status == 'connected' %}API key configured
-              {% else %}Not configured{% endif %}
-            </div>
-            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
-              {% if pd_status == 'connected' %}Documents can be sent for signature from action artifact panels in the GCC.
-              {% else %}Enter your PandaDoc workspace API key to enable document signing.{% endif %}
+        {# ─── Stripe ─── #}
+        <div class="integ-card" id="card-stripe">
+          <span class="integ-badge {{ stripe_status }}">
+            {% if stripe_status == 'connected' %}Connected{% elif stripe_status == 'expired' %}Expired{% else %}Not connected{% endif %}
+          </span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#6366f120;color:#6366f1">ST</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">Stripe</div>
+              <div class="integ-card-desc">Payment collection</div>
             </div>
           </div>
+          {% if stripe_int and stripe_int.is_connected %}
+          <div class="integ-conn-details">
+            <span class="integ-health"><span class="integ-health-dot {{ stripe_int.health_status or 'healthy' }}"></span>Healthy</span>
+            {% if stripe_int.provider_account_id %} &bull; {{ stripe_int.provider_account_id | truncate(16) }}{% endif %}
+            {% if stripe_int.connected_at %} &bull; Since {{ stripe_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
+          </div>
+          {% endif %}
+          <a href="{{ url_for('integrations.stripe_connect') }}"
+             class="integ-primary-btn {% if stripe_status == 'connected' %}outlined{% elif stripe_status == 'expired' %}amber{% else %}navy{% endif %}">
+            {% if stripe_status == 'expired' %}Re-authenticate{% elif stripe_status == 'connected' %}Manage{% else %}Connect Stripe{% endif %}
+          </a>
+          {% if stripe_status == 'connected' %}
+          <div class="integ-secondary-links">
+            <button class="integ-secondary-link danger" onclick="showDisconnect('stripe','Stripe','rate_card · consulting_proposal · sow_template · workshop_curriculum · sales_page')">Disconnect</button>
+            <button class="integ-secondary-link" onclick="toggleManage('stripe')">Settings</button>
+            <button class="integ-secondary-link" onclick="toggleActivity('stripe')">Activity log</button>
+          </div>
+          {% endif %}
+          <div class="integ-agents">Used by: rate_card · consulting_proposal · sow_template +6</div>
+          {% if stripe_status == 'connected' %}
+          <div class="integ-manage-panel" id="manage-stripe">
+            <div class="integ-manage-title">Stripe settings <button class="integ-secondary-link" onclick="toggleManage('stripe')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Default currency</div>
+              <select class="integ-cfg-input" id="stripeCfgCurrency" style="width:auto">
+                <option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option>
+              </select>
+            </div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Invoice payment terms</div>
+              <select class="integ-cfg-input" id="stripeCfgTerms" style="width:auto">
+                <option value="due_on_receipt">Due on receipt</option>
+                <option value="net_15">Net 15</option>
+                <option value="net_30">Net 30</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('stripe',{default_currency:document.getElementById('stripeCfgCurrency').value,invoice_payment_terms:document.getElementById('stripeCfgTerms').value})">Save</button>
+          </div>
+          <div class="integ-activity-panel" id="activity-stripe">
+            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('stripe')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div id="activity-stripe-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+          </div>
+          {% endif %}
+        </div>
+
+        {# ─── Cal.com ─── #}
+        <div class="integ-card" id="card-cal">
+          <span class="integ-badge {{ cal_status }}">
+            {% if cal_status == 'connected' %}Connected{% elif cal_status == 'expired' %}Expired{% else %}Not connected{% endif %}
+          </span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#11182720;color:#e8eaf0">CA</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">Cal.com</div>
+              <div class="integ-card-desc">Booking and scheduling</div>
+            </div>
+          </div>
+          {% if cal_int and cal_int.is_connected %}
+          <div class="integ-conn-details">
+            <span class="integ-health"><span class="integ-health-dot {{ cal_int.health_status or 'healthy' }}"></span>Healthy</span>
+            {% if cal_int.connected_at %} &bull; Since {{ cal_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
+          </div>
+          {% endif %}
+          <a href="{{ url_for('integrations.cal_connect') }}"
+             class="integ-primary-btn {% if cal_status == 'connected' %}outlined{% elif cal_status == 'expired' %}amber{% else %}navy{% endif %}">
+            {% if cal_status == 'expired' %}Re-authenticate{% elif cal_status == 'connected' %}Manage{% else %}Connect Cal.com{% endif %}
+          </a>
+          {% if cal_status == 'connected' %}
+          <div class="integ-secondary-links">
+            <button class="integ-secondary-link danger" onclick="showDisconnect('cal','Cal.com','booking_page · consulting_proposal (call invite) · workshop_curriculum')">Disconnect</button>
+            <button class="integ-secondary-link" onclick="toggleManage('cal')">Settings</button>
+            <button class="integ-secondary-link" onclick="toggleActivity('cal')">Activity log</button>
+          </div>
+          {% endif %}
+          <div class="integ-agents">Used by: booking_page · consulting_proposal · workshop_curriculum</div>
+          {% if cal_status == 'connected' %}
+          <div class="integ-manage-panel" id="manage-cal">
+            <div class="integ-manage-title">Cal.com settings <button class="integ-secondary-link" onclick="toggleManage('cal')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Buffer time between sessions (min)</div>
+              <input type="number" class="integ-cfg-input" id="calCfgBuffer" min="0" max="60" value="15" style="width:70px">
+            </div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">No-show grace period (min)</div>
+              <input type="number" class="integ-cfg-input" id="calCfgNoshow" min="5" max="60" value="15" style="width:70px">
+            </div>
+            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('cal',{buffer_minutes:+document.getElementById('calCfgBuffer').value,noshow_grace_minutes:+document.getElementById('calCfgNoshow').value})">Save</button>
+          </div>
+          <div class="integ-activity-panel" id="activity-cal">
+            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('cal')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div id="activity-cal-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+          </div>
+          {% endif %}
+        </div>
+
+        {# ─── PandaDoc ─── #}
+        <div class="integ-card" id="card-pandadoc">
+          <span class="integ-badge {{ pd_status }}">
+            {% if pd_status == 'connected' %}Connected{% else %}Not connected{% endif %}
+          </span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#16a34a20;color:#16a34a">PD</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">PandaDoc</div>
+              <div class="integ-card-desc">E-signature and contracts</div>
+            </div>
+          </div>
+          {% if pandadoc_int and pandadoc_int.is_connected %}
+          <div class="integ-conn-details">
+            <span class="integ-health"><span class="integ-health-dot {{ pandadoc_int.health_status or 'healthy' }}"></span>Healthy</span>
+            {% if pandadoc_int.connected_at %} &bull; Since {{ pandadoc_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
+          </div>
+          {% endif %}
+          <button onclick="openApiKeyModal('pandadoc')"
+                  class="integ-primary-btn {% if pd_status == 'connected' %}outlined{% else %}navy{% endif %}">
+            {% if pd_status == 'connected' %}Manage{% else %}Connect PandaDoc{% endif %}
+          </button>
           {% if pd_status == 'connected' %}
-          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="pandadocClear(this)">Remove key</button>
+          <div class="integ-secondary-links">
+            <button class="integ-secondary-link danger" onclick="showDisconnect('pandadoc','PandaDoc','consulting_proposal · coaching_agreement · service_agreement · nda')">Disconnect</button>
+            <button class="integ-secondary-link" onclick="toggleManage('pandadoc')">Settings</button>
+            <button class="integ-secondary-link" onclick="toggleActivity('pandadoc')">Activity log</button>
+          </div>
+          {% endif %}
+          <div class="integ-agents">Used by: consulting_proposal · coaching_agreement · service_agreement · nda</div>
+          {% if pd_status == 'connected' %}
+          <div class="integ-manage-panel" id="manage-pandadoc">
+            <div class="integ-manage-title">PandaDoc settings <button class="integ-secondary-link" onclick="toggleManage('pandadoc')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Signature reminder cadence</div>
+              <select class="integ-cfg-input" id="pdCfgReminder" style="width:auto">
+                <option value="3_days">3 days</option>
+                <option value="5_days">5 days</option>
+                <option value="7_days">7 days</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('pandadoc',{signature_reminder_cadence:document.getElementById('pdCfgReminder').value})">Save</button>
+          </div>
+          <div class="integ-activity-panel" id="activity-pandadoc">
+            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('pandadoc')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div id="activity-pandadoc-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+          </div>
           {% endif %}
         </div>
 
-        <div class="settings-row" id="pandadocKeyRow">
-          <label class="settings-label">PandaDoc API key
-            <a href="https://app.pandadoc.com/a/#/settings/integrations/api-keys" target="_blank" rel="noopener"
-               style="margin-left:.5rem;font-size:.72rem;color:#f5c842;text-transform:none;letter-spacing:0;font-weight:400">Get API key ↗</a>
-          </label>
-          <div style="display:flex;gap:.6rem;align-items:center">
-            <input type="password" class="input-text" id="pandadocApiKey" autocomplete="off"
-                   placeholder="{% if pd_status == 'connected' %}●●●●●●●● (saved){% else %}Paste your API key{% endif %}"
-                   style="flex:1">
-            <button class="btn btn-primary btn-sm" onclick="pandadocSave(this)">
-              {% if pd_status == 'connected' %}Update key{% else %}Save key{% endif %}
-            </button>
-          </div>
-          <div class="settings-hint">Your key is encrypted at rest and never exposed to the browser after saving.</div>
-          <div id="pandadocSaveErr" style="font-size:.78rem;color:#fca5a5;margin-top:.2rem;display:none"></div>
-        </div>
+      </div>{# end revenue grid #}
 
-        {% if pd_status != 'connected' %}
-        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:rgba(255,255,255,.6)">
-          <strong style="color:#e8eaf0">Agents blocked without PandaDoc:</strong>
-          consulting_proposal &#x2022; coaching_agreement &#x2022; service_agreement &#x2022; retainer_agreement &#x2022; nda
-        </div>
-        {% else %}
-        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:.82rem;color:rgba(255,255,255,.6)">
-          <strong style="color:#e8eaf0">On document signed:</strong>
-          CRM contact advances Active &#x2192; Client &#x2022;
-          <code style="font-size:.75rem;color:rgba(255,255,255,.55)">document_signed</code> activity logged
-        </div>
-        {% endif %}
-      </div>
+      {# ════════════════════════════════════════════════════
+         GROUP 2 — Audience & products
+         ════════════════════════════════════════════════════ #}
+      <div class="integ-group-title">Audience &amp; products</div>
+      <div class="integ-grid">
 
-      {# ── ConvertKit ── #}
-      <div class="settings-section">
-        <div class="settings-section-title">ConvertKit &#x2014; Email List &amp; Landing Pages</div>
-        <p style="font-size:.875rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;line-height:1.6">
-          Connect your ConvertKit account so agents can deploy waitlist forms, lead magnet sequences,
-          and nurture email series. Subscriber counts sync back to your momentum metrics after each Harvest step.
-        </p>
-
-        {% set ck_status = ck_int.connection_status if ck_int else 'not_connected' %}
-
-        <div style="display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
-          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if ck_status == 'connected' %}#86efac{% else %}rgba(255,255,255,.2){% endif %}"></div>
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">
-              {% if ck_status == 'connected' %}API keys configured
-              {% else %}Not configured{% endif %}
-            </div>
-            <div style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.15rem">
-              {% if ck_status == 'connected' %}Landing page and sequence deployment is enabled. Subscriber count harvests automatically at each Harvest step.
-              {% else %}Enter your ConvertKit API key and secret to enable list-building automation.{% endif %}
+        {# ─── Kajabi ─── #}
+        <div class="integ-card" id="card-kajabi">
+          <span class="integ-badge {{ kajabi_status }}">
+            {% if kajabi_status == 'connected' %}Connected{% else %}Not connected{% endif %}
+          </span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#2563eb20;color:#2563eb">KJ</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">Kajabi</div>
+              <div class="integ-card-desc">Courses and memberships</div>
             </div>
           </div>
+          {% if kajabi_int and kajabi_int.is_connected %}
+          <div class="integ-conn-details">
+            <span class="integ-health"><span class="integ-health-dot {{ kajabi_int.health_status or 'healthy' }}"></span>Healthy</span>
+            {% if kajabi_int.provider_account_id %} &bull; {{ kajabi_int.provider_account_id }}{% endif %}
+          </div>
+          {% endif %}
+          <button onclick="openApiKeyModal('kajabi')"
+                  class="integ-primary-btn {% if kajabi_status == 'connected' %}outlined{% else %}navy{% endif %}">
+            {% if kajabi_status == 'connected' %}Manage{% else %}Connect Kajabi{% endif %}
+          </button>
+          {% if kajabi_status == 'connected' %}
+          <div class="integ-secondary-links">
+            <button class="integ-secondary-link danger" onclick="showDisconnect('kajabi','Kajabi','course_curriculum · membership_structure · group_coaching_curriculum')">Disconnect</button>
+            <button class="integ-secondary-link" onclick="toggleManage('kajabi')">Settings</button>
+            <button class="integ-secondary-link" onclick="toggleActivity('kajabi')">Activity log</button>
+          </div>
+          {% endif %}
+          <div class="integ-agents">Used by: course_curriculum · membership_structure · group_coaching</div>
+          {% if kajabi_status == 'connected' %}
+          <div class="integ-manage-panel" id="manage-kajabi">
+            <div class="integ-manage-title">Kajabi settings <button class="integ-secondary-link" onclick="toggleManage('kajabi')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Default product visibility</div>
+              <select class="integ-cfg-input" id="kajabiCfgVisibility" style="width:auto">
+                <option value="draft">Draft on creation</option>
+                <option value="published">Published on creation</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('kajabi',{default_visibility:document.getElementById('kajabiCfgVisibility').value})">Save</button>
+          </div>
+          <div class="integ-activity-panel" id="activity-kajabi">
+            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('kajabi')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div id="activity-kajabi-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+          </div>
+          {% endif %}
+        </div>
+
+        {# ─── ConvertKit ─── #}
+        <div class="integ-card" id="card-convertkit">
+          <span class="integ-badge {{ ck_status }}">
+            {% if ck_status == 'connected' %}Connected{% else %}Not connected{% endif %}
+          </span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#dc262620;color:#dc2626">CK</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">ConvertKit</div>
+              <div class="integ-card-desc">Email list and sequences</div>
+            </div>
+          </div>
+          {% if ck_int and ck_int.is_connected %}
+          <div class="integ-conn-details">
+            <span class="integ-health"><span class="integ-health-dot {{ ck_int.health_status or 'healthy' }}"></span>Healthy</span>
+            {% if ck_int.connected_at %} &bull; Since {{ ck_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
+          </div>
+          {% endif %}
+          <button onclick="openApiKeyModal('convertkit')"
+                  class="integ-primary-btn {% if ck_status == 'connected' %}outlined{% else %}navy{% endif %}">
+            {% if ck_status == 'connected' %}Manage{% else %}Connect ConvertKit{% endif %}
+          </button>
           {% if ck_status == 'connected' %}
-          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="ckClear(this)">Remove keys</button>
+          <div class="integ-secondary-links">
+            <button class="integ-secondary-link danger" onclick="showDisconnect('convertkit','ConvertKit','waitlist_landing_page · lead_magnet_funnel · newsletter_monetization')">Disconnect</button>
+            <button class="integ-secondary-link" onclick="toggleManage('convertkit')">Settings</button>
+            <button class="integ-secondary-link" onclick="toggleActivity('convertkit')">Activity log</button>
+          </div>
+          {% endif %}
+          <div class="integ-agents">Used by: waitlist_landing_page · lead_magnet_funnel · newsletter</div>
+          {% if ck_status == 'connected' %}
+          <div class="integ-manage-panel" id="manage-convertkit">
+            <div class="integ-manage-title">ConvertKit settings <button class="integ-secondary-link" onclick="toggleManage('convertkit')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Default tag prefix</div>
+              <input type="text" class="integ-cfg-input" id="ckCfgTagPrefix" placeholder="simulacrum_" style="width:160px">
+            </div>
+            <div class="integ-cfg-row">
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <label class="toggle-switch" style="width:32px;height:18px"><input type="checkbox" id="ckCfgDoubleOptIn"><span class="toggle-slider"></span></label>
+                <span class="integ-cfg-label" style="margin:0">Double opt-in</span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('convertkit',{default_tag_prefix:document.getElementById('ckCfgTagPrefix').value,double_optin:document.getElementById('ckCfgDoubleOptIn').checked})">Save</button>
+          </div>
+          <div class="integ-activity-panel" id="activity-convertkit">
+            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('convertkit')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div id="activity-convertkit-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+          </div>
           {% endif %}
         </div>
 
-        <div class="settings-row">
-          <label class="settings-label">API Key (Public)
-            <a href="https://app.convertkit.com/account_settings/advanced_settings" target="_blank" rel="noopener"
-               style="margin-left:.5rem;font-size:.72rem;color:#f5c842;text-transform:none;letter-spacing:0;font-weight:400">Get API key ↗</a>
-          </label>
-          <input type="text" class="input-text" id="ckApiKey" autocomplete="off"
-                 placeholder="{% if ck_status == 'connected' %}●●●●●●●● (saved){% else %}Your ConvertKit API key{% endif %}">
-        </div>
-        <div class="settings-row">
-          <label class="settings-label">API Secret (for subscriber reads)</label>
-          <input type="password" class="input-text" id="ckApiSecret" autocomplete="off"
-                 placeholder="{% if ck_status == 'connected' %}●●●●●●●● (saved){% else %}Your ConvertKit API secret{% endif %}">
-          <div class="settings-hint">The secret is required to read subscriber counts. Both values are encrypted at rest.</div>
-          <div id="ckSaveErr" style="font-size:.78rem;color:#fca5a5;margin-top:.2rem;display:none"></div>
-        </div>
-        <div>
-          <button class="btn btn-primary btn-sm" onclick="ckSave(this)">
-            {% if ck_status == 'connected' %}Update keys{% else %}Save keys{% endif %}
-          </button>
+        {# ─── LinkedIn ─── #}
+        <div class="integ-card" id="card-linkedin">
+          <span class="integ-badge legal">Legal review</span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#0a66c220;color:#0a66c2">LI</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">LinkedIn</div>
+              <div class="integ-card-desc">Profile and content distribution</div>
+            </div>
+          </div>
+          <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
+            Pending attorney review of the LinkedIn API Terms of Service (FR-LINKEDIN-01).
+            The OAuth flow and content publishing are ready to deploy once legal clearance is received.
+          </div>
+          <button disabled class="integ-primary-btn navy" style="opacity:.35;cursor:not-allowed">Coming soon</button>
+          <div class="integ-agents">Will support: content_distribution · connection_import · profile_optimization</div>
         </div>
 
-        {% if ck_status != 'connected' %}
-        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;margin-top:1.25rem;font-size:.8rem;color:rgba(255,255,255,.6)">
-          <strong style="color:#e8eaf0">Agents blocked without ConvertKit:</strong>
-          waitlist_landing_page &#x2022; lead_magnet_funnel &#x2022; newsletter_monetization
-        </div>
-        {% else %}
-        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.75rem 1rem;margin-top:1.25rem;font-size:.82rem;color:rgba(255,255,255,.6)">
-          <strong style="color:#e8eaf0">On Harvest step:</strong>
-          ConvertKit subscriber count syncs to L2/L3/L4 momentum metrics &#x2022;
-          <code style="font-size:.75rem;color:rgba(255,255,255,.55)">email_list_size</code> updates in real time
-        </div>
-        {% endif %}
+      </div>{# end audience grid #}
+
+      {# ════════════════════════════════════════════════════
+         GROUP 3 — Financial
+         ════════════════════════════════════════════════════ #}
+      <div class="integ-group-title">Financial
+        <span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.3);margin-left:.5rem;text-transform:none;letter-spacing:0">These platforms touch your financial accounts — additional consent required.</span>
       </div>
+      <div class="integ-grid">
 
-      {# ── SendGrid (transactional email for notifications) ── #}
-      {% if sg_saved %}<div style="background:rgba(134,239,172,.1);border:1px solid rgba(134,239,172,.25);color:#86efac;border-radius:7px;padding:.6rem 1rem;margin-bottom:1rem;font-size:.84rem">SendGrid API key saved. Email notifications are active.</div>{% endif %}
-      {% if sg_error %}<div style="background:rgba(252,165,165,.1);border:1px solid rgba(252,165,165,.25);color:#fca5a5;border-radius:7px;padding:.6rem 1rem;margin-bottom:1rem;font-size:.84rem">SendGrid error: {{ sg_error }}</div>{% endif %}
-
-      {% set sg_status = 'connected' if sg_connected else 'not_connected' %}
-      <div class="settings-section">
-        <div class="settings-section-title" style="display:flex;align-items:center;gap:.5rem">
-          SendGrid
-          <span style="width:8px;height:8px;border-radius:50%;background:{% if sg_status == 'connected' %}#86efac{% else %}rgba(255,255,255,.2){% endif %};display:inline-block"></span>
-          {% if sg_status == 'connected' %}<span style="font-size:.72rem;color:#86efac;font-weight:500">Connected</span>{% else %}<span style="font-size:.72rem;color:rgba(255,255,255,.35);font-weight:400">Not connected</span>{% endif %}
-        </div>
-        <div style="font-size:.82rem;color:rgba(255,255,255,.55);margin-bottom:1rem">
-          Transactional email for notifications — escalation alerts, income events, contact replies. Get a free API key at
-          <a href="https://sendgrid.com" target="_blank" rel="noopener" style="color:#f5c842">sendgrid.com ↗</a>
-        </div>
-        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
-          {% if sg_status == 'connected' %}
-          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="sgClear(this)">Remove key</button>
+        {# ─── Plaid ─── #}
+        <div class="integ-card" id="card-plaid">
+          <span class="integ-badge {{ plaid_status }}">
+            {% if plaid_status == 'connected' %}Linked{% else %}Not linked{% endif %}
+          </span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#11182720;color:#e8eaf0">PL</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">Plaid</div>
+              <div class="integ-card-desc">Financial account linking</div>
+            </div>
+          </div>
+          {% if plaid_int and plaid_int.is_connected %}
+          <div class="integ-conn-details">
+            <span class="integ-health"><span class="integ-health-dot {{ plaid_int.health_status or 'healthy' }}"></span>Healthy</span>
+            {% if plaid_int.provider_account_id %} &bull; Item {{ plaid_int.provider_account_id | truncate(12) }}{% endif %}
+            {% if plaid_int.connected_at %} &bull; Since {{ plaid_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
+          </div>
+          {% endif %}
+          <button id="plaidLinkBtn" onclick="openPlaidLink()"
+                  class="integ-primary-btn {% if plaid_status == 'connected' %}outlined{% else %}navy{% endif %}">
+            {% if plaid_status == 'connected' %}Re-link account{% else %}Link your bank{% endif %}
+          </button>
+          {% if plaid_status == 'connected' %}
+          <div class="integ-secondary-links">
+            <button class="integ-secondary-link danger" onclick="showDisconnect('plaid','Plaid','dca_schedule · income_allocation · compound_projections · investment_policy_statement')">Disconnect</button>
+            <button class="integ-secondary-link" onclick="toggleManage('plaid')">Settings</button>
+            <button class="integ-secondary-link" onclick="toggleActivity('plaid')">Activity log</button>
+          </div>
+          {% endif %}
+          <div class="integ-agents">Used by: dca_schedule · income_allocation · compound_projections</div>
+          {% if plaid_status == 'connected' %}
+          <div class="integ-manage-panel" id="manage-plaid">
+            <div class="integ-manage-title">Plaid settings <button class="integ-secondary-link" onclick="toggleManage('plaid')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Polling frequency</div>
+              <select class="integ-cfg-input" id="plaidCfgPolling" style="width:auto">
+                <option value="daily">Daily (default)</option>
+                <option value="paused">Paused</option>
+              </select>
+            </div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">DCA source account</div>
+              <input type="text" class="integ-cfg-input" id="plaidCfgDca" placeholder="Checking account nickname" style="width:180px">
+            </div>
+            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('plaid',{polling_frequency:document.getElementById('plaidCfgPolling').value,dca_source_account:document.getElementById('plaidCfgDca').value})">Save</button>
+          </div>
+          <div class="integ-activity-panel" id="activity-plaid">
+            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('plaid')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div id="activity-plaid-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+          </div>
           {% endif %}
         </div>
-        <div class="settings-row">
-          <label class="settings-label">SendGrid API Key
-            <a href="https://app.sendgrid.com/settings/api_keys" target="_blank" rel="noopener"
-               style="margin-left:.5rem;font-size:.72rem;color:#f5c842;text-transform:none;letter-spacing:0;font-weight:400">Get API key ↗</a>
-          </label>
-          <input type="password" class="input-text" id="sgApiKey" autocomplete="off"
-                 placeholder="{% if sg_status == 'connected' %}●●●●●●●● (saved){% else %}SG.xxxxxx{% endif %}">
-          <div class="settings-hint">Requires <code>Mail Send</code> permission. Stored as a platform setting.</div>
-          <div id="sgSaveErr" style="font-size:.78rem;color:#fca5a5;margin-top:.2rem;display:none"></div>
-        </div>
-        <div>
-          <button class="btn btn-primary btn-sm" onclick="sgSave(this)">
-            {% if sg_status == 'connected' %}Update key{% else %}Save key{% endif %}
+
+        {# ─── Alpaca ─── #}
+        <div class="integ-card" id="card-alpaca">
+          <span class="integ-badge {{ alpaca_status }}">
+            {% if alpaca_status == 'connected' %}Connected{% else %}Not connected{% endif %}
+          </span>
+          <div class="integ-card-top">
+            <div class="integ-logo" style="background:#d9770620;color:#d97706">ALC</div>
+            <div class="integ-card-info">
+              <div class="integ-card-name">Alpaca</div>
+              <div class="integ-card-desc">Brokerage trade execution</div>
+            </div>
+          </div>
+          {% if alpaca_int and alpaca_int.is_connected %}
+          <div class="integ-conn-details">
+            <span class="integ-health"><span class="integ-health-dot {{ alpaca_int.health_status or 'healthy' }}"></span>
+              {% if alpaca_paper %}Paper trading{% else %}Live account{% endif %}</span>
+            {% if alpaca_int.provider_account_id %} &bull; {{ alpaca_int.provider_account_id | truncate(14) }}{% endif %}
+            <br>Auto trading:
+            <strong style="color:{% if alpaca_fintech_toggle %}#86efac{% else %}#fca5a5{% endif %}">
+              {% if alpaca_fintech_toggle %}Enabled{% else %}Disabled{% endif %}
+            </strong>
+          </div>
+          {% endif %}
+          <button onclick="openApiKeyModal('alpaca')"
+                  class="integ-primary-btn {% if alpaca_status == 'connected' %}outlined{% else %}navy{% endif %}">
+            {% if alpaca_status == 'connected' %}Manage{% else %}Connect Alpaca{% endif %}
           </button>
+          {% if alpaca_status == 'connected' %}
+          <div class="integ-secondary-links">
+            <button class="integ-secondary-link danger" onclick="showDisconnect('alpaca','Alpaca','dca_schedule (trade execution) · income_allocation (ACH) · compound_projections')">Disconnect</button>
+            <button class="integ-secondary-link" onclick="toggleManage('alpaca')">Settings</button>
+            <button class="integ-secondary-link" onclick="toggleActivity('alpaca')">Activity log</button>
+          </div>
+          {% endif %}
+          <div class="integ-agents">Used by: dca_schedule · income_allocation · compound_projections</div>
+          {% if alpaca_status == 'connected' %}
+          <div class="integ-manage-panel" id="manage-alpaca">
+            <div class="integ-manage-title">Alpaca settings <button class="integ-secondary-link" onclick="toggleManage('alpaca')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:.75rem;margin-bottom:.75rem">
+              <div style="font-size:.75rem;font-weight:600;color:#fca5a5;margin-bottom:.4rem">Automated trade execution</div>
+              <div style="font-size:.72rem;color:rgba(255,255,255,.5);margin-bottom:.5rem;font-style:italic">&#8220;I understand that Simulacrum will place trades in my brokerage account based on my investment plan.&#8221;</div>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <label class="toggle-switch" style="width:36px;height:20px">
+                  <input type="checkbox" id="fintechToggle" {% if alpaca_fintech_toggle %}checked{% endif %} onchange="alpacaFintechToggle(this.checked)">
+                  <span class="toggle-slider"></span>
+                </label>
+                <span style="font-size:.78rem;color:rgba(255,255,255,.6)">Enable automated trading</span>
+              </div>
+              <div id="fintechToggleErr" style="font-size:.72rem;color:#fca5a5;margin-top:.35rem;display:none"></div>
+            </div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">DCA amount (USD)</div>
+              <input type="number" class="integ-cfg-input" id="alpacaCfgAmount" placeholder="500" min="1" style="width:90px">
+            </div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">DCA frequency</div>
+              <select class="integ-cfg-input" id="alpacaCfgFreq" style="width:auto">
+                <option value="monthly">Monthly</option>
+                <option value="bi_weekly">Bi-weekly</option>
+              </select>
+            </div>
+            <div class="integ-cfg-row">
+              <div class="integ-cfg-label">Target ETF symbols</div>
+              <input type="text" class="integ-cfg-input" id="alpacaCfgSymbols" placeholder="VTI,VXUS" style="width:160px">
+            </div>
+            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('alpaca',{dca_amount:+document.getElementById('alpacaCfgAmount').value||0,dca_frequency:document.getElementById('alpacaCfgFreq').value,dca_symbols:document.getElementById('alpacaCfgSymbols').value})">Save</button>
+          </div>
+          <div class="integ-activity-panel" id="activity-alpaca">
+            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('alpaca')" style="font-size:.68rem">&#x2715; close</button></div>
+            <div id="activity-alpaca-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+          </div>
+          {% endif %}
         </div>
-        {% if sg_status != 'connected' %}
-        <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;margin-top:1.25rem;font-size:.8rem;color:rgba(255,255,255,.6)">
-          <strong style="color:#e8eaf0">Email notifications disabled without SendGrid:</strong>
-          escalation alerts &#x2022; income events &#x2022; contact replies &#x2022; agent completions
+
+      </div>{# end financial grid #}
+
+      {# ── SendGrid (platform-level) ── #}
+      <div class="integ-group-title">Platform email</div>
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:1.25rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-weight:700;font-size:.9rem;color:#e8eaf0;margin-bottom:.2rem">SendGrid
+            <span style="font-size:.68rem;padding:.1rem .5rem;border-radius:20px;margin-left:.4rem;background:{% if sg_status == 'connected' %}rgba(134,239,172,.15){% else %}rgba(255,255,255,.07){% endif %};color:{% if sg_status == 'connected' %}#86efac{% else %}rgba(255,255,255,.4){% endif %}">{% if sg_status == 'connected' %}Connected{% else %}Not connected{% endif %}</span>
+          </div>
+          <div style="font-size:.78rem;color:rgba(255,255,255,.4)">Transactional email for notifications — escalation alerts, income events, replies.</div>
         </div>
-        {% endif %}
+        <div style="display:flex;gap:.6rem;align-items:flex-start;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:.3rem">
+            <input type="password" class="input-text" id="sgApiKey" autocomplete="off"
+                   placeholder="{% if sg_status == 'connected' %}●●●●●●●● (saved){% else %}SG.xxxxxx{% endif %}"
+                   style="width:220px;font-size:.82rem">
+            <div id="sgSaveErr" style="font-size:.72rem;color:#fca5a5;display:none"></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="sgSave(this)">{% if sg_status == 'connected' %}Update{% else %}Save{% endif %}</button>
+          {% if sg_status == 'connected' %}<button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="sgClear(this)">Remove</button>{% endif %}
+        </div>
       </div>
 
-      <div class="settings-section">
-        <div class="settings-section-title">Compliance</div>
-        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:1rem 1.25rem;font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.7">
-          <p style="margin:0 0 .75rem"><strong style="color:#e8eaf0">CAN-SPAM (US)</strong> &#x2014; Every email Simulacrum deploys includes your business address (from <a href="{{ url_for('pages.settings_profile') }}" style="color:#f5c842">Settings &#x2192; Profile &rarr; Location</a>) and an Apollo-managed one-click unsubscribe link. Sequences cannot be deployed until your business address is set. Hard bounces and unsubscribes permanently block re-outreach to that contact.</p>
-          <p style="margin:0"><strong style="color:#e8eaf0">GDPR (EU contacts)</strong> &#x2014; If your target contacts are located in the European Union, consult with a legal advisor before enabling outreach. Simulacrum's lawful basis is legitimate interest for B2B outreach, but attorney review is required before sending to EU-located contacts at scale.</p>
-        </div>
+      {# ── Compliance ── #}
+      <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.9rem 1.25rem;margin-top:1.25rem;font-size:.78rem;color:rgba(255,255,255,.45);line-height:1.7">
+        <strong style="color:rgba(255,255,255,.7)">CAN-SPAM:</strong> Every email includes your business address and a one-click unsubscribe. Hard bounces and unsubscribes permanently block re-outreach.
+        &nbsp;&bull;&nbsp; <strong style="color:rgba(255,255,255,.7)">GDPR:</strong> Consult legal counsel before sending to EU contacts at scale. Simulacrum's lawful basis is legitimate interest for B2B outreach.
       </div>
 
+    </div>{# end integrationsTab #}
+    {% endif %}
+
+    {# ── API-key modals (PandaDoc, Kajabi, ConvertKit, Alpaca) ── #}
+    {% if active_tab == 'integrations' %}
+    <div id="apikeyModal" class="integ-apikey-modal">
+      <div class="integ-apikey-box">
+        <div style="font-size:1rem;font-weight:700;color:#e8eaf0;margin-bottom:.25rem" id="apikeyModalTitle">Connect</div>
+        <div style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:1.1rem" id="apikeyModalDesc"></div>
+        <div id="apikeyModalFields"></div>
+        <div id="apikeyModalErr" style="font-size:.78rem;color:#fca5a5;margin:.4rem 0;display:none"></div>
+        <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn btn-ghost btn-sm" onclick="closeApiKeyModal()">Cancel</button>
+          <button class="btn btn-primary btn-sm" id="apikeyModalSaveBtn" onclick="apikeyModalSave()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    {# Disconnect confirmation modal #}
+    <div id="disconnectModal" class="integ-modal-overlay">
+      <div class="integ-modal">
+        <div class="integ-modal-title" id="discModalTitle">Disconnect?</div>
+        <div class="integ-modal-body">Agents that use this platform will be escalated until you reconnect. Your existing data (income records, sent emails, signed documents) will not be deleted.</div>
+        <div class="integ-modal-agents" id="discModalAgents"></div>
+        <div class="integ-modal-actions">
+          <button class="btn btn-ghost btn-sm" onclick="closeDisconnect()">Keep connected</button>
+          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" id="discModalConfirm">Yes, disconnect</button>
+        </div>
+      </div>
     </div>
     {% endif %}
 
@@ -985,6 +1298,66 @@ async function regenerateBio() {
   _regenCooldown = true;
   setTimeout(() => { _regenCooldown = false; btn.disabled = false; }, 60000);
 }
+
+// ── Bio Page settings ──────────────────────────────────────────────────────
+{% if active_tab == 'profile' %}
+var _bioPageStatus = 'draft';
+
+(async () => {
+  const hint    = document.getElementById('bioPageStatusHint');
+  const toggle  = document.getElementById('bioChatEnabled');
+  const pubBtn  = document.getElementById('bioPublishBtn');
+  if (!hint && !toggle) return;
+  try {
+    const res = await fetch(ROOT2 + '/api/bio');
+    if (!res.ok) { if (hint) hint.textContent = ''; return; }
+    const data = await res.json();
+    const bp = data.bio_page || data;
+    _bioPageStatus = bp.status || 'draft';
+    _updateBioStatusUI(hint, pubBtn, _bioPageStatus);
+    if (toggle) toggle.checked = !!(bp.chat_settings && bp.chat_settings.enabled !== false);
+  } catch(e) { if (hint) hint.textContent = ''; }
+})();
+
+function _updateBioStatusUI(hint, pubBtn, status) {
+  if (!hint) return;
+  if (status === 'published') {
+    hint.textContent = '● Live — visitors can see your bio page and chat widget';
+    hint.style.color = '#86efac';
+    if (pubBtn) { pubBtn.textContent = 'Unpublish'; pubBtn.style.display = 'inline-block'; pubBtn.className = 'btn btn-ghost btn-sm'; }
+  } else {
+    hint.textContent = '○ Draft — your bio page is not visible at /u/' + (document.getElementById('usernamePreview') ? document.getElementById('usernamePreview').textContent : '') + ' yet. Publish to make it live.';
+    hint.style.color = '#f5c842';
+    if (pubBtn) { pubBtn.textContent = 'Publish bio page'; pubBtn.style.display = 'inline-block'; pubBtn.className = 'btn btn-primary btn-sm'; }
+  }
+}
+
+async function toggleBioPublish() {
+  const hint   = document.getElementById('bioPageStatusHint');
+  const pubBtn = document.getElementById('bioPublishBtn');
+  const action = _bioPageStatus === 'published' ? 'unpublish' : 'publish';
+  if (pubBtn) pubBtn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/bio/' + action, { method: 'POST' });
+  if (res.ok) {
+    _bioPageStatus = action === 'publish' ? 'published' : 'unpublished';
+    _updateBioStatusUI(hint, pubBtn, _bioPageStatus);
+    toast(action === 'publish' ? 'Bio page is now live!' : 'Bio page unpublished');
+  } else {
+    toast('Failed — please try again');
+  }
+  if (pubBtn) pubBtn.disabled = false;
+}
+
+async function saveBioChatToggle(enabled) {
+  const res = await fetch(ROOT2 + '/api/bio', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_settings: { enabled } }),
+  });
+  if (res.ok) toast(enabled ? 'Chat widget enabled' : 'Chat widget disabled');
+  else toast('Failed to save — please try again');
+}
+{% endif %}
 
 // ── Visibility ─────────────────────────────────────────────────────────────
 {% if active_tab == 'visibility' %}
@@ -1465,6 +1838,337 @@ async function sgClear(btn) {
   const res = await fetch(ROOT2 + '/api/integrations/sendgrid/clear', { method: 'POST' });
   if (res.ok) { toast('SendGrid key removed'); location.reload(); }
   else { btn.disabled = false; toast('Remove failed — try again'); }
+}
+
+// ── Kajabi ──
+async function kajabiSave(btn) {
+  const key    = (document.getElementById('kajabiApiKey')?.value || '').trim();
+  const domain = (document.getElementById('kajabiSubdomain')?.value || '').trim();
+  const errEl  = document.getElementById('kajabiSaveErr');
+  errEl.style.display = 'none';
+  if (!key) { errEl.textContent = 'Paste your Kajabi API key first.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const res = await fetch(ROOT2 + '/api/integrations/kajabi/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ api_key: key, site_subdomain: domain }),
+  });
+  const data = await res.json();
+  btn.disabled = false;
+  if (res.ok) { toast('Kajabi API key saved'); location.reload(); }
+  else { errEl.textContent = data.error || 'Save failed — check your API key.'; errEl.style.display = 'block'; btn.textContent = 'Save key'; }
+}
+
+async function kajabiClear(btn) {
+  if (!confirm('Remove Kajabi key? Course and membership deployment will be disabled.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/kajabi/clear', { method: 'POST' });
+  if (res.ok) { toast('Kajabi key removed'); location.reload(); }
+  else { btn.disabled = false; toast('Remove failed — try again'); }
+}
+
+// ── Plaid ──
+async function openPlaidLink() {
+  const btn = document.getElementById('plaidLinkBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+  try {
+    const tkRes = await fetch(ROOT2 + '/api/integrations/plaid/link-token', { method: 'POST' });
+    if (!tkRes.ok) {
+      const d = await tkRes.json();
+      toast(d.error || 'Failed to start Plaid Link');
+      if (btn) { btn.disabled = false; btn.textContent = 'Link account'; }
+      return;
+    }
+    const { link_token } = await tkRes.json();
+    if (!window.Plaid) {
+      toast('Plaid Link script not loaded. Check your network connection.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Link account'; }
+      return;
+    }
+    const handler = window.Plaid.create({
+      token: link_token,
+      onSuccess: async (publicToken, metadata) => {
+        const exRes = await fetch(ROOT2 + '/api/integrations/plaid/exchange', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ public_token: publicToken }),
+        });
+        if (exRes.ok) { toast('Financial accounts linked'); location.reload(); }
+        else { toast('Account linking failed — try again'); }
+      },
+      onExit: () => { if (btn) { btn.disabled = false; btn.textContent = 'Link account'; } },
+    });
+    handler.open();
+  } catch (err) {
+    toast('Plaid Link error: ' + err.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Link account'; }
+  }
+}
+
+async function plaidDisconnect(btn) {
+  if (!confirm('Disconnect your financial accounts? L5 wealth tracking will stop.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/plaid/disconnect', { method: 'POST' });
+  if (res.ok) { toast('Plaid disconnected'); location.reload(); }
+  else { btn.disabled = false; toast('Disconnect failed'); }
+}
+
+// ── Alpaca ──
+async function alpacaSave(btn) {
+  const key    = (document.getElementById('alpacaApiKey')?.value || '').trim();
+  const secret = (document.getElementById('alpacaApiSecret')?.value || '').trim();
+  const paper  = document.getElementById('alpacaPaperToggle')?.checked ?? true;
+  const errEl  = document.getElementById('alpacaSaveErr');
+  errEl.style.display = 'none';
+  if (!key || !secret) { errEl.textContent = 'Both API key and secret are required.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Connecting…';
+  const res = await fetch(ROOT2 + '/api/integrations/alpaca/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ api_key: key, api_secret: secret, paper }),
+  });
+  const data = await res.json();
+  btn.disabled = false;
+  if (res.ok) { toast('Alpaca connected'); location.reload(); }
+  else { errEl.textContent = data.error || 'Connection failed — check your credentials.'; errEl.style.display = 'block'; btn.textContent = 'Connect Alpaca'; }
+}
+
+async function alpacaClear(btn) {
+  if (!confirm('Disconnect Alpaca? Automated trading will stop and no further trades will be placed.')) return;
+  btn.disabled = true;
+  const res = await fetch(ROOT2 + '/api/integrations/alpaca/clear', { method: 'POST' });
+  if (res.ok) { toast('Alpaca disconnected'); location.reload(); }
+  else { btn.disabled = false; toast('Disconnect failed'); }
+}
+
+// ── Manage panels ─────────────────────────────────────────────────────────────
+function toggleManage(provider) {
+  const panel = document.getElementById('manage-' + provider);
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.integ-manage-panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.integ-activity-panel').forEach(p => p.classList.remove('open'));
+  if (!isOpen) panel.classList.add('open');
+}
+
+async function toggleActivity(provider) {
+  const panel = document.getElementById('activity-' + provider);
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.integ-activity-panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.integ-manage-panel').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  panel.classList.add('open');
+  const listEl = document.getElementById('activity-' + provider + '-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.78rem">Loading…</div>';
+  try {
+    const res = await fetch(ROOT2 + '/api/integrations/' + provider + '/activity');
+    if (!res.ok) { listEl.innerHTML = '<div style="color:#fca5a5;font-size:.78rem">Failed to load.</div>'; return; }
+    const data = await res.json();
+    if (!data.entries || !data.entries.length) {
+      listEl.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.78rem">No activity yet.</div>';
+      return;
+    }
+    let html = '';
+    data.entries.forEach(e => {
+      const dot = e.status === 'success' ? 'success' : e.status === 'error' ? 'error' : 'retry';
+      html += '<div class="integ-activity-entry">'
+        + '<span class="integ-activity-dot ' + dot + '"></span>'
+        + '<span class="integ-activity-time">' + esc(e.created_at || '') + '</span>'
+        + '<span class="integ-activity-type">' + esc(e.event_type || '') + '</span>'
+        + '<span class="integ-activity-dir">' + esc(e.direction || '') + '</span>'
+        + '</div>';
+    });
+    listEl.innerHTML = html;
+  } catch(err) {
+    listEl.innerHTML = '<div style="color:#fca5a5;font-size:.78rem">Error loading activity.</div>';
+  }
+}
+
+// ── API-key modal ──────────────────────────────────────────────────────────────
+let _apikeyProvider = null;
+const _apikeyDefs = {
+  pandadoc: {
+    title: 'Connect PandaDoc',
+    desc: 'Paste your PandaDoc API key. Found in Account Settings → API.',
+    fields: `<div class="integ-cfg-row">
+      <div class="integ-cfg-label">API key</div>
+      <input type="password" id="pandadocApiKey" autocomplete="off" class="integ-cfg-input" placeholder="PandaDoc API key">
+      <div id="pandadocSaveErr" style="font-size:.72rem;color:#fca5a5;margin-top:.3rem;display:none"></div>
+    </div>`,
+  },
+  kajabi: {
+    title: 'Connect Kajabi',
+    desc: 'Paste your Kajabi API key and optional subdomain. Found in Settings → API.',
+    fields: `<div class="integ-cfg-row">
+      <div class="integ-cfg-label">API key</div>
+      <input type="password" id="kajabiApiKey" autocomplete="off" class="integ-cfg-input" placeholder="Kajabi API key">
+    </div>
+    <div class="integ-cfg-row">
+      <div class="integ-cfg-label">Site subdomain (optional)</div>
+      <input type="text" id="kajabiSubdomain" autocomplete="off" class="integ-cfg-input" placeholder="yoursite.mykajabi.com">
+      <div id="kajabiSaveErr" style="font-size:.72rem;color:#fca5a5;margin-top:.3rem;display:none"></div>
+    </div>`,
+  },
+  convertkit: {
+    title: 'Connect ConvertKit',
+    desc: 'Paste your ConvertKit API key and optional secret. Found in Account → Advanced.',
+    fields: `<div class="integ-cfg-row">
+      <div class="integ-cfg-label">API key</div>
+      <input type="password" id="ckApiKey" autocomplete="off" class="integ-cfg-input" placeholder="ConvertKit public API key">
+    </div>
+    <div class="integ-cfg-row">
+      <div class="integ-cfg-label">API secret (optional)</div>
+      <input type="password" id="ckApiSecret" autocomplete="off" class="integ-cfg-input" placeholder="ConvertKit API secret">
+      <div id="ckSaveErr" style="font-size:.72rem;color:#fca5a5;margin-top:.3rem;display:none"></div>
+    </div>`,
+  },
+  alpaca: {
+    title: 'Connect Alpaca',
+    desc: 'Paste your Alpaca API credentials. Paper trading is recommended to start.',
+    fields: `<div class="integ-cfg-row">
+      <div class="integ-cfg-label">API key ID</div>
+      <input type="password" id="alpacaApiKey" autocomplete="off" class="integ-cfg-input" placeholder="Alpaca API key ID">
+    </div>
+    <div class="integ-cfg-row">
+      <div class="integ-cfg-label">API secret key</div>
+      <input type="password" id="alpacaApiSecret" autocomplete="off" class="integ-cfg-input" placeholder="Alpaca API secret key">
+      <div id="alpacaSaveErr" style="font-size:.72rem;color:#fca5a5;margin-top:.3rem;display:none"></div>
+    </div>
+    <div class="integ-cfg-row" style="display:flex;align-items:center;gap:.5rem">
+      <input type="checkbox" id="alpacaPaperToggle" checked style="width:14px;height:14px;accent-color:#f5c842">
+      <label for="alpacaPaperToggle" style="font-size:.82rem;color:rgba(255,255,255,.6)">Paper trading (recommended)</label>
+    </div>`,
+  },
+};
+
+function openApiKeyModal(provider) {
+  const def = _apikeyDefs[provider];
+  if (!def) return;
+  _apikeyProvider = provider;
+  document.getElementById('apikeyModalTitle').textContent = def.title;
+  document.getElementById('apikeyModalDesc').textContent = def.desc;
+  document.getElementById('apikeyModalFields').innerHTML = def.fields;
+  document.getElementById('apikeyModalErr').style.display = 'none';
+  const saveBtn = document.getElementById('apikeyModalSaveBtn');
+  saveBtn.disabled = false; saveBtn.textContent = 'Save';
+  document.getElementById('apikeyModal').classList.add('open');
+}
+
+function closeApiKeyModal() {
+  document.getElementById('apikeyModal').classList.remove('open');
+  _apikeyProvider = null;
+}
+
+async function apikeyModalSave() {
+  if (!_apikeyProvider) return;
+  const saveBtn = document.getElementById('apikeyModalSaveBtn');
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+  const p = _apikeyProvider;
+  if (p === 'pandadoc')   await pandadocSave(saveBtn);
+  else if (p === 'kajabi')     await kajabiSave(saveBtn);
+  else if (p === 'convertkit') await ckSave(saveBtn);
+  else if (p === 'alpaca')     await alpacaSave(saveBtn);
+  if (saveBtn.textContent === 'Saving…') { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+}
+
+document.getElementById('apikeyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeApiKeyModal();
+});
+
+// ── Disconnect modal ───────────────────────────────────────────────────────────
+const _disconnectEndpoints = {
+  apollo:     '/api/integrations/apollo/disconnect',
+  stripe:     '/api/integrations/stripe/disconnect',
+  cal:        '/api/integrations/cal/disconnect',
+  pandadoc:   '/api/integrations/pandadoc/clear',
+  kajabi:     '/api/integrations/kajabi/clear',
+  convertkit: '/api/integrations/convertkit/clear',
+  plaid:      '/api/integrations/plaid/disconnect',
+  alpaca:     '/api/integrations/alpaca/clear',
+};
+
+function showDisconnect(provider, name, agents) {
+  document.getElementById('discModalTitle').textContent = 'Disconnect ' + name + '?';
+  const agentsEl = document.getElementById('discModalAgents');
+  agentsEl.textContent = agents ? 'Affected agents: ' + agents : '';
+  const confirmBtn = document.getElementById('discModalConfirm');
+  confirmBtn.onclick = async function() {
+    confirmBtn.disabled = true; confirmBtn.textContent = 'Disconnecting…';
+    const endpoint = _disconnectEndpoints[provider] || ('/api/integrations/' + provider + '/disconnect');
+    const res = await fetch(ROOT2 + endpoint, { method: 'POST' });
+    if (res.ok) { toast(name + ' disconnected'); setTimeout(() => location.reload(), 800); }
+    else { confirmBtn.disabled = false; confirmBtn.textContent = 'Yes, disconnect'; toast('Disconnect failed — try again'); }
+  };
+  document.getElementById('disconnectModal').classList.add('open');
+}
+
+function closeDisconnect() {
+  document.getElementById('disconnectModal').classList.remove('open');
+}
+
+document.getElementById('disconnectModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDisconnect();
+});
+
+// ── Config save ────────────────────────────────────────────────────────────────
+async function saveCfg(provider, data) {
+  const res = await fetch(ROOT2 + '/api/integrations/' + provider + '/config', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data),
+  });
+  if (res.ok) { toast('Settings saved'); }
+  else { const d = await res.json().catch(() => ({})); toast(d.error || 'Save failed'); }
+}
+
+async function saveApolloConfig() {
+  const limit = parseInt(document.getElementById('apolloCfgLimit')?.value, 10) || 0;
+  const warmup = document.getElementById('apolloWarmup')?.checked ?? false;
+  await saveCfg('apollo', { daily_send_limit: limit, warmup_mode: warmup });
+}
+
+// ── ?reauth= deep-link: scroll & highlight card ────────────────────────────────
+(function() {
+  const p = new URLSearchParams(window.location.search).get('reauth');
+  if (!p) return;
+  const card = document.getElementById('card-' + p);
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.style.outline = '2px solid rgba(245,200,66,.55)';
+  setTimeout(() => { card.style.outline = ''; }, 2200);
+})();
+
+async function alpacaFintechToggle(enabled) {
+  const errEl = document.getElementById('fintechToggleErr');
+  errEl.style.display = 'none';
+  const consentText = 'I understand that Simulacrum will place trades in my brokerage account based on my investment plan.';
+  if (enabled) {
+    const confirmed = confirm(
+      'By enabling automated trading, you acknowledge:\n\n' +
+      '"' + consentText + '"\n\n' +
+      'All trades will still require your explicit approval in the GCC Action Queue. Continue?'
+    );
+    if (!confirmed) {
+      document.getElementById('fintechToggle').checked = false;
+      return;
+    }
+  }
+  const res = await fetch(ROOT2 + '/api/integrations/alpaca/fintech-toggle', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ enabled, consent_text: enabled ? consentText : '' }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    toast(enabled ? 'Automated trading enabled — trades will appear in your Action Queue' : 'Automated trading disabled');
+    location.reload();
+  } else {
+    errEl.textContent = data.error || 'Toggle failed';
+    errEl.style.display = 'block';
+    document.getElementById('fintechToggle').checked = !enabled;
+  }
 }
 {% endif %}
 

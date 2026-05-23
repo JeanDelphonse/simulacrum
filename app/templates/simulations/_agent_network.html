@@ -678,7 +678,16 @@
         <button id="anv-view-network"  class="anv-view-btn"        title="Force-directed agent network (V)">Agent network</button>
       </div>
 
-      <select id="anv-cycle-select" title="Select cycle" aria-label="Cycle selector"></select>
+      <select id="anv-cycle-select" title="Select cycle" aria-label="Cycle selector">
+        <option value="" selected>Latest cycle</option>
+        {% for c in all_cycles %}
+        <option value="{{ c.id }}">
+          Cycle {{ c.cycle_number }}
+          — {{ c.cycle_started_at[:10] if c.cycle_started_at else 'pending' }}
+          — {{ c.phase | title if c.phase else '—' }}
+        </option>
+        {% endfor %}
+      </select>
 
       <span id="anv-phase-badge" class="anv-phase-badge">—</span>
 

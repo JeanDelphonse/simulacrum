@@ -418,6 +418,7 @@ def _execute_action_sync(entry) -> None:
             user_id=sim.user_id if sim else None,
             simulation_id=entry.simulation_id,
             dispatch_source='orchestrator',
+            action_id=agent_action.id,
         )
         artifact = result.get('content') or result.get('artifact') or str(result)
         agent_action.artifact = artifact

@@ -38,6 +38,7 @@ def execute_agent_action_task(action_id: str):
             user_id=action.created_by,
             simulation_id=action.simulation_id,
             dispatch_source='user_rerun',
+            action_id=action_id,
         )
 
         action.artifact = artifact

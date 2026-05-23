@@ -14,7 +14,7 @@
   <meta property="og:description" content="{{ (ctx.positioning or '')[:160] }}">
   <meta property="og:url" content="{{ request.url_root.rstrip('/') }}/u/{{ slug }}">
   {% if ctx.hero_image_url %}
-  <meta property="og:image" content="{{ request.url_root.rstrip('/') }}/avatars/{{ ctx.hero_image_url }}">
+  <meta property="og:image" content="{{ url_for('public.serve_avatar', filename=ctx.hero_image_url, _external=True) }}">
   {% endif %}
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ ctx.full_name }}">
@@ -153,6 +153,33 @@
     .form-msg.success { color: #059669; }
     .form-msg.error { color: #dc2626; }
 
+    /* ── Simulation Bios accordion ─────────────────────────────────── */
+    .sim-bio-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; margin-bottom: .75rem;
+      box-shadow: var(--card-shadow); overflow: hidden;
+      cursor: pointer; transition: border-color .15s;
+    }
+    .sim-bio-card:hover { border-color: var(--accent); }
+    .sim-bio-card.open { border-color: var(--accent); }
+    .sim-bio-header { padding: 1.25rem 1.5rem; }
+    .sim-bio-title-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .5rem; flex-wrap: wrap; }
+    .sim-bio-label { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .sim-bio-meta { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+    .sim-bio-chevron { color: var(--muted); font-size: 1.3rem; line-height: 1; display: inline-block; transition: transform .25s; }
+    .sim-bio-card.open .sim-bio-chevron { transform: rotate(90deg); color: var(--accent); }
+    .sim-bio-preview { font-size: .88rem; color: var(--muted); line-height: 1.55; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .sim-bio-card.open .sim-bio-preview { display: none; }
+    .sim-bio-body { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+    .sim-bio-body-inner { padding: 1rem 1.5rem 1.25rem; border-top: 1px solid var(--border); }
+    .sim-bio-narrative { font-size: .95rem; line-height: 1.75; color: var(--text); }
+    .sim-bio-services { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+    .sim-bio-pill { font-size: .78rem; background: var(--bg2); border: 1px solid var(--border); color: var(--muted); border-radius: 20px; padding: .2rem .65rem; }
+    .avail-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .15rem .55rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+    .avail-available { background: rgba(5,150,105,.1); color: #059669; border: 1px solid rgba(5,150,105,.2); }
+    .avail-limited { background: rgba(217,119,6,.1); color: #d97706; border: 1px solid rgba(217,119,6,.2); }
+    .avail-unavailable { background: var(--bg2); color: var(--muted); border: 1px solid var(--border); }
+
     /* ── Footer ────────────────────────────────────────────────────── */
     #footer { padding: 2.5rem 0; text-align: center; color: var(--muted); font-size: .85rem; }
     .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: .75rem; flex-wrap: wrap; }
@@ -237,6 +264,31 @@
       .services-grid { grid-template-columns: 1fr; }
       .testimonials-grid { grid-template-columns: 1fr; }
     }
+
+    /* ── Markdown prose ──────────────────────────────────────────────── */
+    .md-prose p { margin-bottom: .75rem; }
+    .md-prose p:last-child { margin-bottom: 0; }
+    .md-prose h1, .md-prose h2, .md-prose h3, .md-prose h4 {
+      font-weight: 700; line-height: 1.3; margin: 1.25rem 0 .5rem;
+      color: var(--text);
+    }
+    .md-prose h1 { font-size: 1.3rem; }
+    .md-prose h2 { font-size: 1.15rem; }
+    .md-prose h3 { font-size: 1rem; }
+    .md-prose h4 { font-size: .95rem; }
+    .md-prose ul, .md-prose ol { padding-left: 1.4rem; margin-bottom: .75rem; }
+    .md-prose li { margin-bottom: .25rem; }
+    .md-prose strong { font-weight: 700; }
+    .md-prose em { font-style: italic; }
+    .md-prose code {
+      background: var(--bg2); border-radius: 4px;
+      padding: .1rem .35rem; font-size: .88em; font-family: monospace;
+    }
+    .md-prose blockquote {
+      border-left: 3px solid var(--accent); padding-left: 1rem;
+      color: var(--muted); margin: .75rem 0;
+    }
+    .md-prose hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
   </style>
 </head>
 
@@ -257,13 +309,13 @@
       {% if ctx.hero_image_url %}
       <img
         class="hero-photo"
-        src="/avatars/{{ ctx.hero_image_url }}"
+        src="{{ url_for('public.serve_avatar', filename=ctx.hero_image_url, _external=True) }}"
         alt="{{ ctx.full_name }}"
         width="120" height="120" loading="eager">
       {% elif ctx.avatar_path %}
       <img
         class="hero-photo"
-        src="/avatars/{{ ctx.avatar_path }}"
+        src="{{ url_for('public.serve_avatar', filename=ctx.avatar_path, _external=True) }}"
         alt="{{ ctx.full_name }}"
         width="120" height="120" loading="eager">
       {% else %}
@@ -299,24 +351,60 @@
   {% if ctx.about_text %}
   <section id="about">
     <h2 class="section-heading">About</h2>
-    {% for para in ctx.about_text.split('\n\n') %}
-    {% if para.strip() %}
-    <p>{{ para.strip() }}</p>
-    {% endif %}
-    {% endfor %}
-    {% if not ctx.about_text.strip().count('\n') %}
-    {# Single-paragraph about — already rendered above #}
-    {% endif %}
+    <div class="md-prose" data-md="{{ ctx.about_text | e }}"></div>
   </section>
   {% endif %}
 
-  <!-- ── 3. Services ────────────────────────────────────────────────── -->
+  <!-- ── 3. Simulation Bios ────────────────────────────────────────────── -->
+  {% if ctx.sim_bios %}
+  <section id="sim-bios">
+    <h2 class="section-heading">Simulation Bios</h2>
+    {% for bio in ctx.sim_bios %}
+    <div class="sim-bio-card" onclick="toggleSimBio(this)">
+      <div class="sim-bio-header">
+        <div class="sim-bio-title-row">
+          <h3 class="sim-bio-label">{{ bio.label }}</h3>
+          <div class="sim-bio-meta">
+            {% if bio.availability == 'available' %}
+            <span class="avail-badge avail-available">Available</span>
+            {% elif bio.availability == 'limited' %}
+            <span class="avail-badge avail-limited">Limited</span>
+            {% else %}
+            <span class="avail-badge avail-unavailable">Unavailable</span>
+            {% endif %}
+            <span class="sim-bio-chevron">›</span>
+          </div>
+        </div>
+        {% if bio.narrative %}
+        <p class="sim-bio-preview">{{ bio.narrative[:200] }}…</p>
+        {% endif %}
+      </div>
+      <div class="sim-bio-body">
+        <div class="sim-bio-body-inner">
+          {% if bio.narrative %}
+          <div class="md-prose sim-bio-narrative" data-md="{{ bio.narrative | e }}"></div>
+          {% endif %}
+          {% if bio.services %}
+          <div class="sim-bio-services">
+            {% for svc in bio.services %}
+            <span class="sim-bio-pill">{{ svc }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <!-- ── 4. Services ────────────────────────────────────────────────── -->
   {% if visibility.get('services', True) and ctx.get('_rate_card_raw') %}
   <section id="services">
     <h2 class="section-heading">Services</h2>
     <div class="services-grid">
       <div class="service-card">
-        <div class="svc-desc" style="white-space:pre-line;max-height:300px;overflow:hidden;">{{ ctx._rate_card_raw[:800] }}</div>
+        <div class="md-prose svc-desc" data-md="{{ ctx._rate_card_raw[:800] | e }}"></div>
       </div>
     </div>
     {% if ctx.rate_card_url %}
@@ -380,12 +468,11 @@
 </footer>
 
 <!-- ── Chat widget ─────────────────────────────────────────────────────── -->
-{% if bio_page.chat_enabled %}
 <div id="bio-chat-tooltip" style="display:none;">
   Ask me anything about {{ ctx.full_name.split()[0] if ctx.full_name else 'their' }}'s work
 </div>
 
-<button id="bio-chat-btn" aria-label="Open chat" title="Chat with {{ ctx.full_name.split()[0] if ctx.full_name else 'us' }}">
+<button id="bio-chat-btn" aria-label="Open chat" title="Chat with {{ ctx.full_name.split()[0] if ctx.full_name else 'us' }}" style="display:none;">
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -428,23 +515,32 @@
     </div>
   </div>
 </div>
-{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+<script>
+(function () {
+  marked.use({ mangle: false, headerIds: false });
+  document.querySelectorAll('[data-md]').forEach(function (el) {
+    var raw = el.getAttribute('data-md') || '';
+    el.innerHTML = marked.parse(raw);
+  });
+})();
+</script>
 
 <script>
 (function () {
   'use strict';
+  var ROOT = {{ request.script_root | tojson }};
   var SLUG = {{ slug | tojson }};
   var FIRST = {{ (ctx.full_name.split()[0] if ctx.full_name else '') | tojson }};
   var chatEnabled = {{ 'true' if bio_page.chat_enabled else 'false' }};
-
-  if (!chatEnabled) return;
 
   var btn   = document.getElementById('bio-chat-btn');
   var panel = document.getElementById('bio-chat-panel');
   var tip   = document.getElementById('bio-chat-tooltip');
   var closeBtn = document.getElementById('bio-chat-close');
 
-  // Contact form
+  // Contact form (always active, regardless of chat setting)
   var cfSubmit = document.getElementById('cf-submit');
   var cfMsg    = document.getElementById('cf-msg');
   if (cfSubmit) {
@@ -458,7 +554,7 @@
         return;
       }
       cfSubmit.disabled = true;
-      fetch('/u/' + SLUG + '/contact', {
+      fetch(ROOT + '/u/' + SLUG + '/contact', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({name: name, email: email, subject: 'General inquiry', message: message}),
@@ -485,15 +581,17 @@
     });
   }
 
-  // CTA click tracking
+  // CTA click tracking (always active)
   var heroBtn = document.getElementById('hero-cta-btn');
   if (heroBtn) {
     heroBtn.addEventListener('click', function () {
-      fetch('/u/' + SLUG + '/cta-click', {method: 'POST'}).catch(function(){});
+      fetch(ROOT + '/u/' + SLUG + '/cta-click', {method: 'POST'}).catch(function(){});
     });
   }
 
-  if (!btn) return;
+  // Show chat button only when enabled
+  if (!chatEnabled || !btn) return;
+  btn.style.display = 'flex';
 
   // Show tooltip on first load
   var tooltipShown = sessionStorage.getItem('bio_chat_tip_' + SLUG);
@@ -547,7 +645,7 @@
       gateStart.disabled = true;
       gateErr.style.display = 'none';
 
-      fetch('/api/bio-chat/' + SLUG + '/session', {
+      fetch(ROOT + '/api/bio-chat/' + SLUG + '/session', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({name: name, email: email, phone: phone || undefined}),
@@ -623,7 +721,7 @@
     _appendBubble('visitor', text);
     var typing = _appendBubble('assistant typing', '…');
 
-    var url = '/api/bio-chat/sessions/' + sessionId + '/message';
+    var url = ROOT + '/api/bio-chat/sessions/' + sessionId + '/message';
     fetch(url, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -672,10 +770,24 @@
   // End session when page unloads
   window.addEventListener('beforeunload', function () {
     if (sessionId) {
-      navigator.sendBeacon('/api/bio-chat/sessions/' + sessionId + '/end');
+      navigator.sendBeacon(ROOT + '/api/bio-chat/sessions/' + sessionId + '/end');
     }
   });
 })();
+
+function toggleSimBio(card) {
+  var body = card.querySelector('.sim-bio-body');
+  var isOpen = card.classList.contains('open');
+  document.querySelectorAll('.sim-bio-card.open').forEach(function (c) {
+    c.classList.remove('open');
+    var b = c.querySelector('.sim-bio-body');
+    if (b) b.style.maxHeight = '0';
+  });
+  if (!isOpen && body) {
+    card.classList.add('open');
+    body.style.maxHeight = body.scrollHeight + 'px';
+  }
+}
 </script>
 
 </body>

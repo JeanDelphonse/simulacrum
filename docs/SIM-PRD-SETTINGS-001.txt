@@ -1,0 +1,420 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Settings — Integrations Page
+9 Platforms · Three-Role Access · User Manages · Partner Views · Admin Overrides
+
+Document ID
+SIM-PRD-SETTINGS-001
+Version
+1.0 — Draft for Engineering
+Scope
+Settings → Integrations page at /settings/integrations. Unified card grid for all 9 integration platforms. Connection, configuration, disconnection, and monitoring UI. Three-role access model: user manages from Settings, partner advisor views from advisor mode, platform admin overrides from /admin.
+Gap closed
+The test plan (SIM-QA-TEST-001) identified this as one of three missing PRDs blocking E2E testing. Each integration PRD describes its own OAuth flow but there is no unified page layout, no connection status card grid, no error state design, and no disconnect confirmation UX.
+Platforms
+Apollo · Stripe Connect · Cal.com · PandaDoc · Kajabi · ConvertKit · LinkedIn · Plaid · Alpaca — all nine from SIM-PRD-INTEG-001
+Access model
+User: full CRUD from /settings/integrations. Partner advisor (SIM-PRD-PART-002): read-only visibility from /partners/clients/:uid/integrations with re-auth trigger capability. Platform admin: full override access from /admin/users/:id/integrations.
+Integrates with
+SIM-PRD-INTEG-001 (signal taxonomy per platform) · SIM-PRD-PART-002 (partner advisor mode) · SIM-PRD-GCC-002 v2.0 (escalation action items for expired tokens) · SIM-PRD-NOTIF-001 (connection status notifications) · SIM-PRD-ONBOARD-001 (post-onboarding integration prompts)
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+April 2026
+
+Every integration in Simulacrum has a feedback loop — signals flow from webhooks into the Bayesian orchestrator. But the user's first interaction with any integration is on this page: connecting their Apollo account, pasting their Kajabi API key, authenticating Plaid Link. If this page is confusing or unreliable, users will not connect their tools, agents will escalate instead of executing, and the entire signal taxonomy from SIM-PRD-INTEG-001 becomes theoretical. This PRD makes the connection experience clear, reliable, and monitorable across all three access roles.
+
+1. Page Architecture — Settings → Integrations
+1.1 Route and Navigation
+The Integrations page lives at /settings/integrations as a tab within the Settings page. It sits alongside the existing Settings tabs (Profile & Bio, Security, Visibility, My Contacts, My Chats, Bio Chats). Clicking the Integrations tab renders the integration card grid.
+
+Tab
+Contents
+Profile & Bio
+Existing — display name, avatar, blog slug, social links.
+Security
+Existing — email, password, sessions, account deletion.
+Visibility
+Existing — Simulation visibility, partner access.
+My Contacts
+Existing — contact database (SIM-PRD-CRM-001).
+My Chats
+Existing — Simulation co-pilot history (SIM-PRD-CHAT-001).
+Bio Chats
+Existing — bio page chat sessions (SIM-PRD-BIOCHAT-001).
+Integrations
+New — 9-platform card grid. Connection status, configuration, and monitoring.
+
+1.2 Card Grid Layout
+The nine integration platforms are displayed as a card grid: 3 columns on desktop, 2 columns on tablet, 1 column on mobile. Cards are grouped into three categories with section headers.
+
+Group
+Platforms in this group
+Revenue & outreach
+Apollo · Stripe Connect · Cal.com · PandaDoc — the platforms that send emails, collect payments, book meetings, and sign documents.
+Audience & products
+Kajabi · ConvertKit · LinkedIn — the platforms that build courses, grow email lists, and distribute content.
+Financial
+Plaid · Alpaca — the platforms that link bank accounts and execute trades. These have an additional consent gate because they touch financial data.
+
+2. Integration Card — Per-Platform UI
+2.1 Card Layout
+Each integration card is a self-contained unit showing everything the user needs to know about that platform's connection. All nine cards share the same layout template — only the content and connection flow vary per platform.
+
+Element
+Specification
+Card container
+White fill, subtle border (1px light grey), rounded corners (12px), 20px padding. Full column width within the 3-column grid. Min-height 180px.
+Platform logo
+Top-left corner. 32x32px platform logo. Apollo (orange), Stripe (purple), Cal.com (dark), PandaDoc (green), Kajabi (blue), ConvertKit (red), LinkedIn (blue), Plaid (black), Alpaca (yellow).
+Platform name
+Right of logo. 16px bold navy. 'Apollo', 'Stripe', 'Cal.com', etc.
+One-line description
+Below name. 13px muted. 'Email outreach and sequences', 'Payment collection', 'Booking and scheduling', etc.
+Connection status badge
+Top-right corner. Pill shape. Three states: 'Connected' (green fill, white text), 'Not connected' (grey fill, muted text), 'Expired' (amber fill, dark text). For Plaid/Alpaca: 'Linked' instead of 'Connected'.
+Connection details
+Below the description, visible only when connected. Shows: account name or email associated with the connection, connected date (relative time), last successful API call (relative time), and a health indicator dot (green = healthy, amber = intermittent errors, red = failing).
+Primary action button
+Bottom of card. Full card width. State-dependent label: not connected → 'Connect Apollo' (navy fill, white text). Connected → 'Manage' (outlined, teal text). Expired → 'Re-authenticate' (amber fill, white text).
+Secondary actions
+Visible only when connected. Below primary button. Text links: 'Disconnect' · 'View activity log'. Disconnect requires confirmation (see Section 2.3).
+Agents using this
+Bottom of card in 11px muted. 'Used by: cold email, consulting outreach, speaking proposals, +3 more'. Helps the user understand why this connection matters.
+
+2.2 Connection Flows — Per Platform
+Platform
+Auth method
+Connection flow
+Apollo
+OAuth 2.0
+Click 'Connect Apollo' → redirect to Apollo OAuth consent screen → user authorises → callback to /integrations/apollo/callback → access token encrypted and stored → card refreshes to 'Connected'.
+Stripe
+OAuth 2.0
+Click 'Connect Stripe' → redirect to Stripe Connect OAuth → user authorises → callback with authorization code → token exchange → connected account ID stored → card refreshes.
+Cal.com
+OAuth 2.0
+Click 'Connect Cal.com' → redirect to Cal.com OAuth → authorise → callback → tokens stored → card refreshes.
+PandaDoc
+API key
+Click 'Connect PandaDoc' → modal opens with API key input field → user pastes their PandaDoc API key → validation call to PandaDoc API → if valid: encrypted and stored → card refreshes. If invalid: error message inline.
+Kajabi
+API key
+Click 'Connect Kajabi' → modal with two fields: API key + site subdomain (e.g. maya-design.kajabi.com) → validation call → encrypted storage → card refreshes.
+ConvertKit
+OAuth 2.0
+Click 'Connect ConvertKit' → redirect to ConvertKit OAuth → authorise → callback → tokens stored → card refreshes.
+LinkedIn
+OAuth 2.0
+Click 'Connect LinkedIn' → redirect to LinkedIn OAuth → scopes: r_liteprofile, r_emailaddress, w_member_social → callback → tokens stored. ATTORNEY REVIEW flag displayed on card until legal clearance.
+Plaid
+Plaid Link
+Click 'Link your bank' → Plaid Link widget opens in-page (iframe) → user selects institution → authenticates → Plaid returns public_token → server exchanges for access_token → account type classification runs → card refreshes with linked account names.
+Alpaca
+OAuth 2.0
+Click 'Connect Alpaca' → consent acknowledgment modal first ('I understand that Simulacrum will place trades in my brokerage account based on my investment plan.') → user confirms → redirect to Alpaca OAuth → authorise → callback → tokens stored → fintech_toggle set to True.
+
+2.3 Disconnect Flow
+Disconnecting an integration requires confirmation because it affects agent execution. A disconnect does not delete historical data (income records, contact activities, artifacts) — it only revokes the access token and prevents future agent deployments through that platform.
+
+Element
+Specification
+Disconnect click
+User clicks 'Disconnect' text link on a connected card.
+Confirmation modal
+Modal opens: 'Disconnect [Platform]?' Body: 'Agents that use [Platform] will be escalated until you reconnect. Your existing data (income records, sent emails, signed documents) will not be deleted.' Shows list of affected agents.
+Affected agents list
+Inline in the modal: 'These agents will be affected: cold_email_campaign, consulting_outreach, speaking_proposals, corporate_training_pitch, alumni_reactivation, referral_network.' (Varies per platform — pulls from AGENT_INTEGRATION_MAP.)
+Confirm button
+'Yes, disconnect' — red text, outlined. Clicking revokes the token, sets status='disconnected', removes the card's connection details, and refreshes to 'Not connected' state.
+Cancel button
+'Keep connected' — primary navy. Dismisses the modal.
+Post-disconnect
+Any queued agent actions requiring this platform are escalated with reason='[platform]_disconnected'. GCC Action Queue receives tier 2 items for each affected action.
+
+2.4 Error States
+Error type
+Handling
+Token expired
+Badge changes to 'Expired' (amber). Primary button becomes 'Re-authenticate' (amber fill). GCC Action Queue receives tier 1 (Critical) item: '[Platform] connection expired — re-authenticate.' The card shows when the token expired and which agents are blocked.
+OAuth callback failure
+If the OAuth callback returns an error (user denied, network failure, invalid state token): the user stays on the Integrations page. An inline error message appears below the card: 'Connection failed — [reason]. Try again.' The card remains in 'Not connected' state.
+API key validation failure
+For PandaDoc and Kajabi API key inputs: if the validation call fails, the modal shows an inline error: 'This API key does not appear to be valid. Check that you copied the full key from your [Platform] settings.' The modal stays open.
+Plaid Link failure
+If Plaid Link exits without completing (user closes the widget, bank is unavailable): inline message below the card: 'Bank linking was not completed. You can try again anytime.' Card remains 'Not connected'.
+Intermittent API errors
+If the daily health check detects intermittent failures (3+ failed API calls in 24 hours): health indicator dot turns amber. Card shows 'Intermittent issues — last successful call [timestamp].' No escalation yet — only if failures persist for 48 hours does a tier 2 action item appear.
+Platform outage
+If the platform API returns 5xx errors consistently for 1+ hours: health indicator dot turns red. Card shows '[Platform] appears to be experiencing issues — your data is safe.' No user action required — the system retries automatically.
+
+3. Per-Platform Configuration — Manage View
+3.1 Configuration Panel
+Clicking 'Manage' on a connected card opens an inline configuration panel below the card (not a new page). The panel shows platform-specific settings that the user can adjust without disconnecting and reconnecting.
+
+Platform
+Configurable settings
+Apollo
+Daily send limit (default 30, max per Apollo plan). Warmup mode toggle (auto-limits sends for new accounts). Default sender name. Default reply-to address. Bounce handling preference (auto-remove hard bounces from CRM: on/off).
+Stripe
+Default currency (USD/EUR/GBP). Invoice payment terms (Net 15 / Net 30 / Due on receipt). Payment plan settings (2-installment / 3-installment / none). Auto-create invoice on PandaDoc signature (on/off — links to SIM-PRD-SIGN-001).
+Cal.com
+Default buffer time between sessions (minutes). Timezone display preference. Available hours (pull from Cal.com or override). Pre-call questionnaire toggle (on/off). No-show grace period (minutes before flagging as no-show).
+PandaDoc
+Default cover message template for proposals. Signature reminder cadence (3 days / 5 days / 7 days / off). Auto-send on agent completion toggle (only if autonomy_level='full_auto').
+Kajabi
+Default product visibility (published / draft on creation). Community auto-attach toggle. Drip schedule unit (days / weeks). Webhook retry count on failure (default 3).
+ConvertKit
+Default tag prefix for Simulacrum-created subscribers. Double opt-in toggle (on/off). Nurture sequence default delay between emails (days). Form style preference (inline / modal / landing page).
+LinkedIn
+Auto-publish blog articles to LinkedIn toggle (on/off). Post format preference (article / short post with link). Connection import filters (job title keywords, company size, industry).
+Plaid
+Linked accounts list (with per-account toggle: active/paused). Polling frequency override (daily is default — cannot go faster, can pause). Account nickname (user-assigned name for each linked account). DCA source account designation (which checking account funds the brokerage transfers).
+Alpaca
+Fintech toggle (must be explicitly True to enable trade execution). DCA schedule: amount, frequency (monthly/bi-weekly), target ETF/fund symbols. Trading hours preference (market open only / extended hours). Order type preference (market / limit with % threshold).
+
+3.2 Activity Log
+Each integration card has a 'View activity log' link that opens a reverse-chronological list of all API interactions for that platform. This is for troubleshooting — not daily use. The log shows the last 100 entries.
+
+Log entry fields
+Detail
+Timestamp
+When the API call or webhook was processed.
+Event type
+What happened: 'OAuth connected', 'Sequence created', 'Webhook received: email_replied', 'API error: 429 rate limit', 'Token refreshed'.
+Direction
+Outbound (Simulacrum → Platform) or Inbound (Platform → Simulacrum webhook).
+Status
+Success (green dot) / Error (red dot) / Retry (amber dot).
+Detail
+For errors: HTTP status code and error message. For webhooks: event payload summary (truncated). For OAuth: 'Token refreshed successfully' or 'Token refresh failed — re-authentication required'.
+Related agent action
+If the API call was triggered by an agent dispatch: link to the action in the GCC.
+
+4. Three-Role Access Model
+4.1 Access Matrix
+Three distinct roles can interact with a user's integration settings. Each role has different permissions scoped to protect the user's API credentials while enabling support and advisory workflows.
+
+Capability
+User
+Partner advisor
+Platform admin
+View connection status (connected/expired/not connected)
+Yes
+Yes
+Yes
+See which agents are affected by each connection
+Yes
+Yes
+Yes
+View platform account name/email
+Yes
+Yes (masked email)
+Yes
+View activity log
+Yes
+Yes (read-only)
+Yes
+View health indicator and error details
+Yes
+Yes
+Yes
+Connect a new integration (OAuth / API key)
+Yes
+No
+No — admin triggers a re-auth link instead
+Disconnect an integration
+Yes
+No
+Yes (with audit log entry)
+Modify per-platform configuration settings
+Yes
+No
+Yes (with audit log entry)
+Trigger re-authentication link (sends email to user)
+N/A (user does it directly)
+Yes
+Yes
+View stored API key / access token
+No (encrypted at rest)
+No
+No — even admin cannot view raw tokens
+Rotate / revoke a token manually
+No (disconnect and reconnect)
+No
+Yes (emergency revoke with audit trail)
+Override fintech_toggle for Alpaca
+Yes
+No
+Yes (requires two-admin approval)
+
+4.2 User View — /settings/integrations
+The user's primary integration management page. Full CRUD access to all nine platforms. This is the page described in Sections 1-3. The user connects their accounts, configures settings, monitors health, and disconnects when needed.
+
+4.3 Partner Advisor View — /partners/clients/:uid/integrations
+When a partner advisor accesses their client's Simulation via the advisor mode (SIM-PRD-PART-002), a read-only Integrations tab is available in the client view. The partner can see connection status for all nine platforms, view which agents are blocked by missing connections, and see the activity log — but cannot connect, disconnect, or modify any settings.
+
+Element
+Partner view specification
+Card grid — read-only
+Same card layout as the user view but all action buttons are replaced with status-only indicators. No 'Connect', 'Manage', or 'Disconnect' buttons. The card shows connection status, health indicator, and 'Agents affected' list.
+Masked credentials
+Account email is partially masked: m***a@frameio.com. Account name is visible. API keys are never shown.
+Activity log — read-only
+Partner can view the activity log for troubleshooting but cannot modify entries or trigger retries.
+Re-auth trigger
+A single action the partner CAN take: 'Send re-authentication link' button on expired cards. Clicking sends an email to the client with a deep link to /settings/integrations?reauth=apollo. The partner never handles the token — the client clicks the link and completes the OAuth flow themselves.
+Coaching context
+Below the card grid: a summary box showing 'Integration coverage: 6 of 9 connected. Blocked agents: 4.' This helps the partner coach the client on which connections to prioritize.
+
+4.4 Platform Admin View — /admin/users/:id/integrations
+The platform admin view is the escape hatch for support cases. Admins have full override access to any user's integrations — with audit logging on every action. The admin view mirrors the user's card grid with additional administrative capabilities.
+
+Element
+Admin view specification
+Card grid — full access
+Same card layout as the user view. All buttons are active. Admin can disconnect integrations, modify configuration settings, and trigger re-authentication links on behalf of the user.
+Audit trail
+Every admin action creates an integration_audit_log entry: admin_user_id, target_user_id, action (connected/disconnected/configured/token_revoked), timestamp, changed fields (before/after JSON). The audit log is visible to platform admins only at /admin/audit.
+Emergency token revoke
+A red 'Revoke token' button on each connected card. Clicking immediately invalidates the stored access token without going through the platform's OAuth disconnect flow. Used when a user's account may be compromised. Creates an audit entry and sends a notification to the user: 'Your [Platform] connection was revoked by a Simulacrum administrator. Please reconnect from Settings.'
+Token view prohibition
+Even admin cannot view the raw access token or API key. Tokens are encrypted at rest and decrypted only at the moment of API call execution. The admin panel shows: token exists (yes/no), token created date, token last used date, token status (valid/expired/revoked).
+User impersonation guard
+Admin actions on the Integrations page are logged as admin actions, not as user actions. The system distinguishes 'admin disconnected Apollo for user X' from 'user X disconnected Apollo.' No impersonation — the admin acts as themselves with elevated permissions.
+Fintech override
+Admin can override the fintech_toggle for Alpaca (enabling or disabling trade execution for a user). This requires two-admin approval: the requesting admin submits the override, a second admin confirms. Both admin IDs are logged in the audit trail.
+
+5. Data Model
+5.1 user_integrations — Schema Confirmation
+The existing user_integrations table (introduced across multiple PRDs) is the canonical store for all integration credentials. This PRD confirms the unified schema and adds health monitoring fields.
+
+-- Confirmed schema with health monitoring additions:
+ALTER TABLE user_integrations
+    ADD COLUMN config          JSON         NULL         AFTER scope,
+    -- Per-platform configuration from Section 3.1
+    -- e.g. {'daily_send_limit': 30, 'warmup_mode': true} for Apollo
+
+    ADD COLUMN health_status   VARCHAR(20)  NOT NULL DEFAULT 'healthy'  AFTER config,
+    -- 'healthy' | 'intermittent' | 'failing' | 'expired'
+
+    ADD COLUMN last_api_success_at  DATETIME NULL  AFTER health_status,
+    ADD COLUMN last_api_failure_at  DATETIME NULL  AFTER last_api_success_at,
+    ADD COLUMN consecutive_failures SMALLINT NOT NULL DEFAULT 0  AFTER last_api_failure_at,
+    -- 3+ failures in 24h → health_status='intermittent'
+    -- 48h of intermittent → health_status='failing'
+
+    ADD COLUMN connected_at        DATETIME NULL  AFTER consecutive_failures,
+    ADD COLUMN disconnected_at     DATETIME NULL  AFTER connected_at;
+
+5.2 integration_audit_log — New Table
+CREATE TABLE IF NOT EXISTS integration_audit_log (
+    id              CHAR(9)         NOT NULL,
+    admin_user_id   CHAR(9)         NOT NULL,      -- who performed the action
+    target_user_id  CHAR(9)         NOT NULL,      -- whose integration was affected
+    integration_type VARCHAR(30)    NOT NULL,       -- 'apollo', 'stripe', etc.
+    action          VARCHAR(50)     NOT NULL,
+    -- 'connected' | 'disconnected' | 'config_changed' | 'token_revoked'
+    -- 'reauth_link_sent' | 'fintech_toggle_overridden'
+    changes         JSON            NULL,           -- {field: {from: x, to: y}}
+    approved_by     CHAR(9)         NULL,           -- second admin for two-admin approval
+    ip_address      VARCHAR(50)     NULL,
+    created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_ial_target (target_user_id),
+    KEY idx_ial_admin (admin_user_id),
+    CONSTRAINT fk_ial_admin  FOREIGN KEY (admin_user_id)  REFERENCES users(id),
+    CONSTRAINT fk_ial_target FOREIGN KEY (target_user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+6. Health Monitoring — Proactive Issue Detection
+6.1 Health Check Schedule
+A daily Celery beat task runs at 6:00 AM UTC and checks every active integration for every user. The health check validates that the stored token is still valid, the platform API is reachable, and the account is in good standing.
+
+@celery.task
+def daily_integration_health_check():
+    integrations = UserIntegration.query.filter(
+        UserIntegration.status == 'connected').all()
+
+    for integ in integrations:
+        try:
+            client = get_client(integ.integration_type,
+                                decrypt(integ.access_token))
+            # Lightweight API call to verify token validity
+            client.verify_connection()
+            integ.last_api_success_at = datetime.utcnow()
+            integ.consecutive_failures = 0
+            integ.health_status = 'healthy'
+        except TokenExpiredError:
+            integ.health_status = 'expired'
+            integ.status = 'expired'
+            # Escalation: tier 1 action item in GCC
+            create_action_item(integ.user_id, ..., urgency_tier=1,
+                title=f'{integ.integration_type} connection expired')
+        except APIError:
+            integ.consecutive_failures += 1
+            integ.last_api_failure_at = datetime.utcnow()
+            if integ.consecutive_failures >= 3:
+                integ.health_status = 'intermittent'
+            if integ.consecutive_failures >= 6:  # ~48h of daily failures
+                integ.health_status = 'failing'
+                create_action_item(integ.user_id, ..., urgency_tier=2,
+                    title=f'{integ.integration_type} connection is failing')
+    db.session.commit()
+
+6.2 Notification on Status Change
+When an integration's health_status changes from 'healthy' to any other state, the user receives a notification per SIM-PRD-NOTIF-001. When the status returns to 'healthy' after being intermittent or failing, a positive notification is sent: '[Platform] connection is healthy again.' Partner advisors viewing the client in advisor mode see the updated health status in real time.
+
+7. Functional Requirements
+FR-SETTINGS-01: The Integrations page lives at /settings/integrations as the seventh tab in the Settings inner tab row. Nine integration platforms are displayed in a 3-column card grid grouped into three categories: Revenue & outreach (Apollo, Stripe, Cal.com, PandaDoc), Audience & products (Kajabi, ConvertKit, LinkedIn), Financial (Plaid, Alpaca).
+FR-SETTINGS-02: Each integration card shows: platform logo (32x32), name, one-line description, connection status badge (Connected green / Not connected grey / Expired amber), and a state-dependent primary action button (Connect / Manage / Re-authenticate). Connected cards additionally show account name, connected date, last successful API call, health indicator dot, and secondary actions (Disconnect, View activity log).
+FR-SETTINGS-03: Seven platforms use OAuth 2.0 for connection (Apollo, Stripe, Cal.com, ConvertKit, LinkedIn, Alpaca, with Cal.com also supporting OAuth). Two platforms use API key input (PandaDoc, Kajabi). One platform uses Plaid Link widget (Plaid). Alpaca requires an additional consent acknowledgment modal before OAuth redirect.
+FR-SETTINGS-04: Disconnect requires confirmation via a modal showing affected agents. Disconnecting revokes the stored token, sets status='disconnected', and escalates all queued agent actions requiring that platform. Historical data (income records, contact activities, artifacts) is never deleted on disconnect.
+FR-SETTINGS-05: Per-platform configuration settings (Section 3.1) are accessible from the 'Manage' panel on each connected card. Configuration changes are saved immediately and stored in user_integrations.config JSON column.
+FR-SETTINGS-06: Activity log per integration shows the last 100 API interactions: timestamp, event type, direction (outbound/inbound), status (success/error/retry), detail, and related agent action link.
+FR-SETTINGS-07: Three-role access model: User has full CRUD at /settings/integrations. Partner advisor has read-only visibility at /partners/clients/:uid/integrations with masked credentials and a 'Send re-authentication link' capability for expired connections. Platform admin has full override access at /admin/users/:id/integrations with audit logging on every action.
+FR-SETTINGS-08: No role — including platform admin — can view raw access tokens or API keys. Tokens are encrypted at rest (AES-256) and decrypted only at the moment of API call execution. The admin panel shows token existence, created date, last used date, and status — never the value.
+FR-SETTINGS-09: Admin actions create integration_audit_log entries: admin_user_id, target_user_id, integration_type, action, changes JSON, approved_by (for two-admin approvals), IP address, timestamp. The audit log is accessible at /admin/audit.
+FR-SETTINGS-10: Emergency token revocation by admin immediately invalidates the stored token and sends a notification to the user. The user must reconnect from Settings → Integrations. Revocation is logged in integration_audit_log.
+FR-SETTINGS-11: Fintech toggle override for Alpaca requires two-admin approval. The requesting admin submits the override, a second admin confirms. Both admin IDs and the override reason are logged.
+FR-SETTINGS-12: Daily health check Celery task at 6:00 AM UTC validates every active integration. Token expired → status='expired' + tier 1 action item. 3+ consecutive API failures → health_status='intermittent'. 48h+ of failures → health_status='failing' + tier 2 action item. Recovery → positive notification.
+FR-SETTINGS-13: Re-authentication deep link: when a partner or admin triggers 'Send re-authentication link', the user receives an email with a link to /settings/integrations?reauth=[platform]. Opening the link scrolls to the relevant card and opens the OAuth flow automatically.
+FR-SETTINGS-14: The Integrations page is mobile responsive. Cards stack to 1 column on mobile. OAuth redirects work on mobile browsers. Plaid Link widget renders in mobile mode. API key input modals are full-screen on mobile.
+
+8. Sprint Plan — 2 Weeks
+Day
+Focus
+Deliverables
+Day 1
+Data model + page scaffold
+ALTER user_integrations for config, health_status, failure tracking columns. integration_audit_log DDL. Settings → Integrations tab route. Card grid layout: 3 groups, 3-column responsive grid. Card component scaffold.
+Day 2
+Card UI — status + actions
+Card component: logo, name, description, status badge, primary action button (state-dependent), secondary actions (Disconnect, Activity log). Empty state for not-connected cards. Connected state with account details and health indicator.
+Day 3
+OAuth flows — batch 1
+Apollo OAuth callback. Stripe Connect OAuth callback. Cal.com OAuth callback. Token exchange, encrypted storage, card refresh on success. Error handling for denied/failed OAuth.
+Day 4
+OAuth flows — batch 2
+ConvertKit OAuth callback. LinkedIn OAuth callback (with attorney review flag). Alpaca OAuth callback with consent modal. Plaid Link widget integration. PandaDoc API key modal. Kajabi API key + subdomain modal.
+Day 5
+Disconnect + error states
+Disconnect confirmation modal with affected agents list. Token revocation on disconnect. Escalation of queued actions. Error state rendering: expired badge, OAuth failure inline message, API key validation failure, Plaid Link failure, intermittent/failing health indicators.
+Day 6
+Manage panels
+Per-platform configuration panels for all 9 platforms per Section 3.1. Inline expand below card. Save to user_integrations.config JSON. Default values per platform.
+Day 7
+Activity log
+Activity log component: reverse-chronological list, 100 entries, event type/direction/status/detail columns. Link to related agent action in GCC. Log entry creation wired into all OAuth callbacks, webhook handlers, and API call wrappers.
+Day 8
+Partner advisor view
+Read-only card grid at /partners/clients/:uid/integrations. Masked credentials. No action buttons except 'Send re-authentication link' on expired cards. Integration coverage summary box.
+Day 9
+Admin view + audit
+Admin card grid at /admin/users/:id/integrations. Full action buttons. integration_audit_log creation on every admin action. Emergency token revoke. Fintech toggle two-admin approval flow. Audit log viewer at /admin/audit.
+Day 10
+Health check + QA
+Daily health check Celery beat task. Token validation per platform. Health status transitions (healthy → intermittent → failing). Status change notifications. Re-auth deep link email. E2E tests: connect Apollo → configure daily limit → agent deploys → disconnect → agents escalate → reconnect → agents resume.
+
+
+SIM-PRD-SETTINGS-001  ·  Settings — Integrations Page  ·  v1.0  ·  April 2026
+Jean Moussa Delphonse  ·  Bay Area Experiences Ventures  ·  Confidential

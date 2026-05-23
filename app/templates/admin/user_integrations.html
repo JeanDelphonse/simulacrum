@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block title %}Admin — {{ target_user.full_name or target_user.email }} Integrations{% endblock %}
+
+{% block head %}
+<style>
+.admin-integ-page { max-width: 1040px; margin: 2rem auto; padding: 0 1.25rem; }
+.admin-integ-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+.admin-integ-header h1 { font-size: 1.2rem; font-weight: 700; color: #e8eaf0; margin: 0; }
+.admin-integ-header p { font-size: .82rem; color: rgba(255,255,255,.4); margin: 0; }
+.admin-warn { background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: .75rem 1rem; font-size: .82rem; color: rgba(255,255,255,.6); margin-bottom: 1.5rem; }
+.admin-warn strong { color: #fca5a5; }
+.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.35); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(255,255,255,.07); }
+.integ-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; margin-bottom: .75rem; }
+.integ-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: .5rem; }
+.integ-card-top { display: flex; align-items: flex-start; gap: .75rem; }
+.integ-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 800; flex-shrink: 0; }
+.integ-card-name { font-weight: 700; font-size: .95rem; color: #e8eaf0; }
+.integ-card-desc { font-size: .78rem; color: rgba(255,255,255,.4); margin-top: .1rem; }
+.integ-badge { font-size: .68rem; font-weight: 700; padding: .18rem .6rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
+.integ-badge.connected { background: rgba(134,239,172,.15); color: #86efac; }
+.integ-badge.not_connected { background: rgba(255,255,255,.07); color: rgba(255,255,255,.4); }
+.integ-badge.expired { background: rgba(245,200,66,.15); color: #f5c842; }
+.integ-badge.legal { background: rgba(245,200,66,.08); color: #f5c842; }
+.integ-details { font-size: .78rem; color: rgba(255,255,255,.4); line-height: 1.5; }
+.integ-token-info { font-size: .75rem; color: rgba(255,255,255,.3); background: rgba(255,255,255,.03); border-radius: 6px; padding: .4rem .65rem; margin-top: .3rem; }
+.integ-admin-actions { display: flex; gap: .5rem; margin-top: auto; padding-top: .75rem; flex-wrap: wrap; }
+.audit-section { margin-top: 2.5rem; }
+.audit-section h2 { font-size: 1rem; font-weight: 700; color: #e8eaf0; margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.audit-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.audit-table th { text-align: left; padding: .5rem .75rem; color: rgba(255,255,255,.4); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid rgba(255,255,255,.08); }
+.audit-table td { padding: .55rem .75rem; border-bottom: 1px solid rgba(255,255,255,.04); color: rgba(255,255,255,.7); vertical-align: top; }
+.audit-table tr:last-child td { border-bottom: none; }
+.audit-action-pill { font-size: .68rem; padding: .1rem .5rem; border-radius: 20px; font-weight: 600; background: rgba(255,255,255,.06); color: rgba(255,255,255,.5); }
+.audit-action-pill.connected { background: rgba(134,239,172,.12); color: #86efac; }
+.audit-action-pill.disconnected { background: rgba(252,165,165,.1); color: #fca5a5; }
+.audit-action-pill.token_revoked { background: rgba(239,68,68,.12); color: #fca5a5; }
+.audit-action-pill.reauth_link_sent { background: rgba(245,200,66,.1); color: #f5c842; }
+@media (max-width: 640px) { .integ-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-integ-page">
+
+  <div style="margin-bottom:1rem">
+    <a href="{{ url_for('pages.admin_view') }}" style="font-size:.82rem;color:rgba(255,255,255,.4);text-decoration:none">&larr; Admin</a>
+    <span style="color:rgba(255,255,255,.2);margin:0 .4rem">/</span>
+    <a href="{{ url_for('pages.admin_audit_log') }}" style="font-size:.82rem;color:rgba(255,255,255,.4);text-decoration:none">Audit log</a>
+  </div>
+
+  <div class="admin-integ-header">
+    <div>
+      <h1>{{ target_user.full_name or target_user.email }} — Integrations</h1>
+      <p>User ID: {{ target_user.id }} &nbsp;&bull;&nbsp; {{ target_user.email }}</p>
+    </div>
+  </div>
+
+  <div class="admin-warn">
+    <strong>Admin override mode.</strong> All actions are logged in the integration audit trail.
+    You cannot view raw API keys or access tokens — tokens are encrypted at rest (FR-SETTINGS-08).
+    Disconnecting or revoking will immediately block agent execution for this user.
+  </div>
+
+  {% set groups = [
+    ('Revenue & outreach', ['apollo', 'stripe', 'cal', 'pandadoc']),
+    ('Audience & products', ['kajabi', 'convertkit', 'linkedin']),
+    ('Financial', ['plaid', 'alpaca']),
+  ] %}
+
+  {% set logos = {
+    'apollo':     ('#f97316', 'AP'),
+    'stripe':     ('#6366f1', 'ST'),
+    'cal':        ('#111827', 'CA'),
+    'pandadoc':   ('#16a34a', 'PD'),
+    'kajabi':     ('#2563eb', 'KJ'),
+    'convertkit': ('#dc2626', 'CK'),
+    'linkedin':   ('#0a66c2', 'LI'),
+    'plaid':      ('#111827', 'PL'),
+    'alpaca':     ('#d97706', 'ALC'),
+  } %}
+
+  {% set descriptions = {
+    'apollo': 'Email outreach and sequences',
+    'stripe': 'Payment collection',
+    'cal': 'Booking and scheduling',
+    'pandadoc': 'E-signature and contracts',
+    'kajabi': 'Courses and memberships',
+    'convertkit': 'Email list and sequences',
+    'linkedin': 'Profile and content distribution',
+    'plaid': 'Financial account linking',
+    'alpaca': 'Brokerage trade execution',
+  } %}
+
+  {% for group_name, providers in groups %}
+  <div class="integ-group-title">{{ group_name }}</div>
+  <div class="integ-grid">
+    {% for provider in providers %}
+      {% set rec = integrations.get(provider) %}
+      {% if provider == 'linkedin' %}
+        {% set status = 'legal' %}
+      {% elif rec %}
+        {% set status = rec.connection_status %}
+      {% else %}
+        {% set status = 'not_connected' %}
+      {% endif %}
+
+      {% set logo_color, logo_initials = logos[provider] %}
+
+    <div class="integ-card">
+      <div class="integ-card-top">
+        <div class="integ-logo" style="background:{{ logo_color }}20;color:{{ logo_color }}">{{ logo_initials }}</div>
+        <div style="flex:1">
+          <div class="integ-card-name">
+            {% if provider == 'cal' %}Cal.com
+            {% elif provider == 'pandadoc' %}PandaDoc
+            {% elif provider == 'convertkit' %}ConvertKit
+            {% else %}{{ provider | title }}{% endif %}
+          </div>
+          <div class="integ-card-desc">{{ descriptions[provider] }}</div>
+        </div>
+        <span class="integ-badge {{ status if status != 'legal' else 'legal' }}">
+          {% if status == 'connected' %}Connected
+          {% elif status == 'expired' %}Expired
+          {% elif status == 'legal' %}Legal review
+          {% else %}Not connected{% endif %}
+        </span>
+      </div>
+
+      {% if rec %}
+      <div class="integ-details">
+        {% if rec.provider_account_id %}Account: {{ rec.provider_account_id }}<br>{% endif %}
+        {% if rec.connected_at %}Connected: {{ rec.connected_at.strftime('%b %d, %Y %H:%M') }}<br>{% endif %}
+        {% if rec.disconnected_at %}Disconnected: {{ rec.disconnected_at.strftime('%b %d, %Y %H:%M') }}<br>{% endif %}
+        Health: <span style="color:{% if rec.health_status == 'healthy' %}#86efac{% elif rec.health_status == 'intermittent' %}#f5c842{% else %}#fca5a5{% endif %}">{{ rec.health_status or 'unknown' }}</span>
+        {% if rec.consecutive_failures > 0 %} ({{ rec.consecutive_failures }} consecutive failures){% endif %}
+      </div>
+      <div class="integ-token-info">
+        Token: {{ 'exists' if rec.access_token_enc else 'none' }} &nbsp;·&nbsp;
+        Last used: {{ rec.last_api_success_at.strftime('%b %d, %Y') if rec.last_api_success_at else 'never' }} &nbsp;·&nbsp;
+        Status: {{ rec.connection_status }}
+      </div>
+      {% else %}
+      <div class="integ-details" style="color:rgba(255,255,255,.3)">No integration record.</div>
+      {% endif %}
+
+      <div class="integ-admin-actions">
+        <button class="btn btn-ghost btn-sm" style="font-size:.75rem"
+                onclick="adminSendReauth('{{ target_user.id }}', '{{ provider }}', this)">
+          Send re-auth link
+        </button>
+        {% if rec and rec.is_connected %}
+        <button class="btn btn-ghost btn-sm" style="font-size:.75rem;color:#fca5a5;border-color:rgba(252,165,165,.3)"
+                onclick="adminRevokeToken('{{ target_user.id }}', '{{ provider }}', this)">
+          Revoke token
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  {% if recent_audits %}
+  <div class="audit-section">
+    <h2>Audit log for this user
+      <a href="{{ url_for('pages.admin_audit_log') }}" style="font-size:.78rem;color:#f5c842;font-weight:400;margin-left:.75rem">View all &rarr;</a>
+    </h2>
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Integration</th>
+          <th>Action</th>
+          <th>Admin</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in recent_audits %}
+        <tr>
+          <td style="color:rgba(255,255,255,.4);white-space:nowrap">{{ entry.created_at.strftime('%b %d %H:%M') }}</td>
+          <td>{{ entry.integration_type }}</td>
+          <td><span class="audit-action-pill {{ entry.action }}">{{ entry.action | replace('_', ' ') }}</span></td>
+          <td style="color:rgba(255,255,255,.4)">{{ entry.admin_user_id }}</td>
+          <td style="color:rgba(255,255,255,.3)">{{ entry.ip_address or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+</div>
+
+<div class="toast" id="toastEl"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ROOT2 = window.ROOT || '';
+function toast(msg) {
+  const el = document.getElementById('toastEl');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+async function adminSendReauth(targetUid, provider, btn) {
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const res = await fetch(ROOT2 + '/api/integrations/reauth-link', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ target_user_id: targetUid, provider }),
+  });
+  btn.disabled = false;
+  if (res.ok) { btn.textContent = 'Sent ✓'; toast('Re-auth email sent'); }
+  else { btn.textContent = 'Send re-auth link'; toast('Failed — try again'); }
+}
+
+async function adminRevokeToken(targetUid, provider, btn) {
+  if (!confirm(`ADMIN ACTION: Revoke the ${provider} token for this user?\n\nThis will immediately disconnect their ${provider} integration and send them a notification. This action is logged.`)) return;
+  btn.disabled = true; btn.textContent = 'Revoking…';
+  const res = await fetch(ROOT2 + `/api/admin/integrations/${targetUid}/${provider}/revoke`, { method: 'POST' });
+  if (res.ok) { toast('Token revoked — page will reload'); setTimeout(() => location.reload(), 1500); }
+  else { btn.disabled = false; btn.textContent = 'Revoke token'; toast('Revoke failed'); }
+}
+</script>
+{% endblock %}

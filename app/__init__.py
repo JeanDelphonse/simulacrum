@@ -169,6 +169,9 @@ def create_app(config_name=None):
             Layer6Config, Layer6Cycle, Layer6ActionQueue,
             Layer6Outcome, Layer6Momentum, Layer6ExecutionLog,
         )
+        from app.models.bayesian import BayesianPosterior
+        from app.models.kajabi import KajabiProduct
+        from app.models.prospect_research import ProspectResearchRun
         from app.models.artifact import (
             PrefillCorrection, ArtifactVersion, ArtifactBundle,
             ArtifactDependency, BundleTypeConfig,
@@ -183,6 +186,7 @@ def create_app(config_name=None):
             PrefillCorrection=PrefillCorrection, ArtifactVersion=ArtifactVersion,
             ArtifactBundle=ArtifactBundle, ArtifactDependency=ArtifactDependency,
             BundleTypeConfig=BundleTypeConfig,
+            BayesianPosterior=BayesianPosterior, KajabiProduct=KajabiProduct,
         )
 
     return app

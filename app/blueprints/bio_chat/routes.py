@@ -71,12 +71,26 @@ Visitor name: {visitor_name}
 """
 
 
-def _get_bio_page_or_404(slug: str) -> BioPage:
+def _get_bio_page(slug: str) -> BioPage | None:
+    # Direct slug match (fast path)
     bp = BioPage.query.filter_by(slug=slug, status=BioPage.STATUS_PUBLISHED).first()
-    if not bp:
-        from flask import abort
-        abort(404)
-    return bp
+    if bp:
+        return bp
+    # Fallback: slug may have drifted from username — find via UserProfile
+    from app.models.profile import UserProfile
+    profile = UserProfile.query.filter_by(username=slug).first()
+    if profile:
+        bp = BioPage.query.filter_by(
+            user_id=profile.user_id, status=BioPage.STATUS_PUBLISHED
+        ).first()
+        if bp:
+            try:
+                bp.slug = slug
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            return bp
+    return None
 
 
 def _assemble_system_prompt(bp: BioPage) -> str:
@@ -222,30 +236,31 @@ def _create_action_item(bp: BioPage, session: BioChatSession):
 @bio_chat_bp.route('/api/bio-chat/<slug>/session', methods=['POST'])
 def start_session(slug: str):
     """Lead gate: create contact + session on first message."""
-    bp = _get_bio_page_or_404(slug)
-
-    # Daily session limit check
-    settings = bp.chat_settings
-    daily_limit = settings.get('daily_session_limit', 50)
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_count = BioChatSession.query.filter(
-        BioChatSession.bio_page_id == bp.id,
-        BioChatSession.started_at >= today_start,
-    ).count()
-    if today_count >= daily_limit:
-        return jsonify({'error': 'Chat is temporarily unavailable. Please try again tomorrow.'}), 429
-
-    data = request.get_json(force=True, silent=True) or {}
-    visitor_name  = (data.get('name') or '').strip()[:200]
-    visitor_email = (data.get('email') or '').strip()[:255]
-    visitor_phone = (data.get('phone') or '').strip()[:50] or None
-
-    if not visitor_name or len(visitor_name) < 2:
-        return jsonify({'error': 'Name is required (min 2 characters)'}), 400
-    if not visitor_email or '@' not in visitor_email:
-        return jsonify({'error': 'Valid email is required'}), 400
+    bp = _get_bio_page(slug)
+    if bp is None:
+        return jsonify({'error': 'Bio page not found or not published'}), 404
 
     try:
+        settings = bp.chat_settings
+        daily_limit = settings.get('daily_session_limit', 50)
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_count = BioChatSession.query.filter(
+            BioChatSession.bio_page_id == bp.id,
+            BioChatSession.started_at >= today_start,
+        ).count()
+        if today_count >= daily_limit:
+            return jsonify({'error': 'Chat is temporarily unavailable. Please try again tomorrow.'}), 429
+
+        data = request.get_json(force=True, silent=True) or {}
+        visitor_name  = (data.get('name') or '').strip()[:200]
+        visitor_email = (data.get('email') or '').strip()[:255]
+        visitor_phone = (data.get('phone') or '').strip()[:50] or None
+
+        if not visitor_name or len(visitor_name) < 2:
+            return jsonify({'error': 'Name is required (min 2 characters)'}), 400
+        if not visitor_email or '@' not in visitor_email:
+            return jsonify({'error': 'Valid email is required'}), 400
+
         contact_id = _create_contact(bp.user_id, visitor_name, visitor_email, visitor_phone)
         session = BioChatSession(
             id=generate_id(),
@@ -260,24 +275,21 @@ def start_session(slug: str):
         _send_notification(bp, session)
         _create_action_item(bp, session)
         db.session.commit()
+
+        from app.models.user import User
+        user = User.query.get(bp.user_id)
+        first_name = (user.full_name or '').split()[0] if user else 'your host'
+        welcome = settings.get('custom_welcome') or (
+            f"Hi {visitor_name.split()[0]}! I'm {first_name}'s assistant. "
+            f"I can answer questions about their services, expertise, and availability. "
+            f"What would you like to know?"
+        )
+        return jsonify({'session_id': session.id, 'welcome_message': welcome})
+
     except Exception as e:
         db.session.rollback()
-        logger.error('Bio chat session creation failed: %s', e)
-        return jsonify({'error': 'Failed to start chat session'}), 500
-
-    from app.models.user import User
-    user = User.query.get(bp.user_id)
-    first_name = (user.full_name or '').split()[0] if user else 'your host'
-    welcome = settings.get('custom_welcome') or (
-        f"Hi {visitor_name.split()[0]}! I'm {first_name}'s assistant. "
-        f"I can answer questions about their services, expertise, and availability. "
-        f"What would you like to know?"
-    )
-
-    return jsonify({
-        'session_id': session.id,
-        'welcome_message': welcome,
-    })
+        logger.error('Bio chat start_session failed: %s', e, exc_info=True)
+        return jsonify({'error': 'Failed to start chat. Please try again.'}), 500
 
 
 # ── POST /api/bio-chat/sessions/<session_id>/message ──────────────────────
@@ -344,6 +356,9 @@ def send_message(session_id: str):
                 final = stream.get_final_message()
                 in_tokens  = final.usage.input_tokens
                 out_tokens = final.usage.output_tokens
+        except GeneratorExit:
+            # Client disconnected — stop streaming, skip DB persist
+            return
         except Exception as e:
             logger.error('Bio chat stream error: %s', e)
             yield f'data: {json.dumps({"error": "Stream error"})}\n\n'

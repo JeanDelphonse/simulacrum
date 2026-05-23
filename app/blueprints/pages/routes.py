@@ -1,7 +1,13 @@
 import time
+import logging
+from datetime import datetime
 from flask import render_template, redirect, url_for, jsonify, request
 from flask_login import current_user, login_required
 from app.blueprints.pages import pages_bp
+from app.extensions import db
+from utils.id_gen import generate_id
+
+logger = logging.getLogger(__name__)
 
 # ── Landing page cache (avoids DB queries on every unauthenticated hit) ──────
 _landing_cache = {'data': None, 'ts': 0.0}
@@ -249,7 +255,19 @@ def settings_integrations():
     ck_int = UserIntegration.query.filter_by(
         user_id=current_user.id, provider='convertkit'
     ).first()
+    kajabi_int = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='kajabi'
+    ).first()
+    plaid_int = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='plaid'
+    ).first()
+    alpaca_int = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='alpaca'
+    ).first()
     sg_connected = bool(PlatformSetting.get('sendgrid_api_key'))
+
+    alpaca_meta = alpaca_int.get_meta() if alpaca_int else {}
+
     return render_template(
         'settings/index.html',
         active_tab='integrations',
@@ -259,6 +277,11 @@ def settings_integrations():
         cal_int=cal_int,
         pandadoc_int=pandadoc_int,
         ck_int=ck_int,
+        kajabi_int=kajabi_int,
+        plaid_int=plaid_int,
+        alpaca_int=alpaca_int,
+        alpaca_fintech_toggle=alpaca_meta.get('fintech_toggle', False),
+        alpaca_paper=alpaca_meta.get('paper', True),
         sg_connected=sg_connected,
         apollo_connected=request.args.get('apollo_connected') == '1',
         apollo_error=request.args.get('apollo_error'),
@@ -270,6 +293,8 @@ def settings_integrations():
         pandadoc_error=request.args.get('pandadoc_error'),
         ck_saved=request.args.get('ck_saved') == '1',
         ck_error=request.args.get('ck_error'),
+        kajabi_saved=request.args.get('kajabi_saved') == '1',
+        kajabi_error=request.args.get('kajabi_error'),
         sg_saved=request.args.get('sg_saved') == '1',
         sg_error=request.args.get('sg_error'),
     )
@@ -378,6 +403,114 @@ def admin_partners_view():
     return render_template('admin/partners.html', partners=partners)
 
 
+@pages_bp.route('/admin/users/<target_uid>/integrations')
+@login_required
+def admin_user_integrations(target_uid):
+    """Admin override view for a user's integration settings (FR-SETTINGS-07)."""
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    from app.models.user import User
+    from app.models.integration import UserIntegration, IntegrationAuditLog
+    target = User.query.get_or_404(target_uid)
+    integrations = {
+        rec.provider: rec
+        for rec in UserIntegration.query.filter_by(user_id=target_uid).all()
+    }
+    recent_audits = IntegrationAuditLog.query.filter_by(
+        target_user_id=target_uid,
+    ).order_by(IntegrationAuditLog.created_at.desc()).limit(50).all()
+    return render_template(
+        'admin/user_integrations.html',
+        target_user=target,
+        integrations=integrations,
+        recent_audits=recent_audits,
+    )
+
+
+@pages_bp.route('/admin/audit')
+@login_required
+def admin_audit_log():
+    """Integration audit log viewer (FR-SETTINGS-09)."""
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    from app.models.integration import IntegrationAuditLog
+    page     = request.args.get('page', 1, type=int)
+    provider = request.args.get('provider', '')
+    q = IntegrationAuditLog.query
+    if provider:
+        q = q.filter_by(integration_type=provider)
+    entries = q.order_by(IntegrationAuditLog.created_at.desc()).paginate(
+        page=page, per_page=50, error_out=False
+    )
+    return render_template('admin/audit_log.html', entries=entries, provider_filter=provider)
+
+
+# Admin API: emergency token revoke
+@pages_bp.route('/api/admin/integrations/<target_uid>/<provider>/revoke', methods=['POST'])
+@login_required
+def admin_revoke_token(target_uid, provider):
+    """Emergency token revocation (FR-SETTINGS-10)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    from app.models.integration import UserIntegration, IntegrationAuditLog
+    from app.models.user import User
+
+    integration = UserIntegration.query.filter_by(
+        user_id=target_uid, provider=provider
+    ).first()
+    if not integration:
+        return jsonify({'error': 'Integration not found'}), 404
+
+    import json as _json
+    changes = _json.dumps({
+        'access_token_enc': {'from': 'exists', 'to': 'revoked'},
+        'health_status': {'from': integration.health_status, 'to': 'revoked'},
+    })
+
+    integration.access_token_enc    = None
+    integration.refresh_token_enc   = None
+    integration.token_expires_at    = None
+    integration.health_status       = 'revoked' if hasattr(integration, '_health_revoked') else 'expired'
+    integration.disconnected_at     = datetime.utcnow()
+
+    audit = IntegrationAuditLog(
+        id=generate_id(),
+        admin_user_id=current_user.id,
+        target_user_id=target_uid,
+        integration_type=provider,
+        action='token_revoked',
+        changes=changes,
+        ip_address=request.remote_addr,
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    # Notify user
+    try:
+        from app.services.notification_service import send_notification
+        target = User.query.get(target_uid)
+        if target:
+            send_notification(
+                user_id=target_uid,
+                notification_type='escalation',
+                title=f'Your {provider.title()} connection was revoked',
+                body=(
+                    f'Your {provider.title()} connection was revoked by a Simulacrum '
+                    f'administrator. Please reconnect from Settings → Integrations.'
+                ),
+                cta_url=f'/settings/integrations?reauth={provider}',
+                cta_label='Reconnect →',
+                priority='high',
+            )
+    except Exception as exc:
+        logger.warning('Revoke notification failed: %s', exc)
+
+    return jsonify({'ok': True})
+
+
 # ---------------------------------------------------------------------------
 # Partner Program public pages
 # ---------------------------------------------------------------------------
@@ -433,6 +566,49 @@ def partner_advisor_view(sim_id):
                            layers=layers,
                            notes=notes,
                            client_name=client.full_name if client else 'Unknown')
+
+
+@pages_bp.route('/partners/clients/<client_uid>/integrations')
+@login_required
+def advisor_client_integrations(client_uid):
+    """Read-only integration status view for partner advisors (FR-SETTINGS-07)."""
+    from flask import abort
+    from app.models.partner import ReferralPartner, AdvisorAccess
+    from app.models.integration import UserIntegration
+    from app.models.user import User
+
+    partner = ReferralPartner.query.filter_by(
+        user_id=current_user.id, status=ReferralPartner.STATUS_ACTIVE,
+    ).first()
+    if not partner:
+        abort(403)
+
+    # Any shared simulation grants read access to client integrations
+    access = AdvisorAccess.query.filter_by(
+        partner_id=partner.id, granted_by=client_uid, revoked_at=None,
+    ).first()
+    if not access:
+        abort(404)
+
+    client = User.query.get_or_404(client_uid)
+    integrations = {
+        rec.provider: rec
+        for rec in UserIntegration.query.filter_by(user_id=client_uid).all()
+    }
+    total_possible = 9  # Apollo, Stripe, Cal, PandaDoc, ConvertKit, Kajabi, LinkedIn, Plaid, Alpaca
+    connected_count = sum(
+        1 for rec in integrations.values()
+        if rec.is_connected and not rec.is_expired
+    )
+    return render_template(
+        'partners/client_integrations.html',
+        client=client,
+        integrations=integrations,
+        connected_count=connected_count,
+        total_possible=total_possible,
+        partner=partner,
+        access=access,
+    )
 
 
 @pages_bp.route('/partners/clients/<client_uid>/simulations/<sim_id>/gcc')

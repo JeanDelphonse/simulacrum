@@ -90,19 +90,16 @@ def _assemble_context(user_id: str, bp: BioPage | None = None) -> dict:
             text = action.artifact
 
             if action_type == 'linkedin_optimization':
-                # Try to extract headline and about
                 import re
                 headline_m = re.search(
                     r'(?i)(?:headline|title)\s*[:\-]\s*(.+)', text
                 )
                 if headline_m and not ctx['professional_title']:
                     ctx['professional_title'] = headline_m.group(1).strip()[:200]
-                # Use first 1800 chars as about fallback
                 if not profile.bio:
                     ctx['about_text'] = text[:1800]
 
             elif action_type == 'rate_card':
-                # Surface as raw text; tiers parsed best-effort
                 ctx['_rate_card_raw'] = text[:3000]
 
             elif action_type == 'booking_page':
@@ -111,6 +108,55 @@ def _assemble_context(user_id: str, bp: BioPage | None = None) -> dict:
                     m = re.search(r'https?://cal\.com/\S+', text)
                     if m:
                         ctx['booking_url'] = m.group(0)
+
+    # ── Simulation bio zones (all public simulations) ──────────────────────
+    from app.models.simulation import SimulationLayer
+    from app.models.profile import SimulationVisibility
+
+    vis_records = SimulationVisibility.query.filter_by(
+        user_id=user_id, is_public=True,
+    ).order_by(SimulationVisibility.display_order.asc()).all()
+
+    sim_bios = []
+    sim_zones = []
+    seen_zones: set = set()
+    for vis in vis_records:
+        zone_sim = Simulation.query.get(vis.simulation_id)
+        if not zone_sim:
+            continue
+        layer1 = SimulationLayer.query.filter_by(
+            simulation_id=zone_sim.id, layer_number=1,
+        ).first()
+        unique_services: list = []
+        seen_svcs: set = set()
+        for svc in (vis.services or []):
+            svc_key = svc.strip().lower()
+            if svc_key and svc_key not in seen_svcs:
+                seen_svcs.add(svc_key)
+                unique_services.append(svc.strip())
+        availability = getattr(vis, 'availability', 'available') or 'available'
+        narrative = layer1.ai_narrative if layer1 and layer1.ai_narrative else None
+        label = zone_sim.expertise_zone or zone_sim.name or 'Expertise Area'
+        # sim_bios: every individual simulation (no dedup)
+        sim_bios.append({
+            'id': zone_sim.id,
+            'label': label,
+            'narrative': narrative,
+            'services': unique_services,
+            'availability': availability,
+        })
+        # sim_zones: deduped by zone name (for summary cards)
+        zone_key = label.strip().lower()
+        if zone_key not in seen_zones:
+            seen_zones.add(zone_key)
+            sim_zones.append({
+                'zone': label,
+                'narrative': narrative,
+                'services': unique_services,
+                'availability': availability,
+            })
+    ctx['sim_bios'] = sim_bios
+    ctx['sim_zones'] = sim_zones
 
     # Apply section overrides from bio page
     if bp:

@@ -2,6 +2,7 @@
 Content Publishing Pipeline (SIM-PRD-PUB-001).
 Handles Simulacrum-hosted artifact URLs, sales page deployment, and ConvertKit integration.
 """
+from __future__ import annotations
 import re
 import logging
 from datetime import datetime

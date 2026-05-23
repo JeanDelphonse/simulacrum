@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Admin — Integration Audit Log{% endblock %}
+
+{% block content %}
+<div style="max-width:1100px;margin:2rem auto;padding:0 1.25rem">
+
+  <div style="margin-bottom:1rem">
+    <a href="{{ url_for('pages.admin_view') }}" style="font-size:.82rem;color:rgba(255,255,255,.4);text-decoration:none">&larr; Admin</a>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem">
+    <h1 style="font-size:1.2rem;font-weight:700;color:#e8eaf0;margin:0">Integration Audit Log</h1>
+    <form method="get" style="display:flex;gap:.5rem;align-items:center">
+      <select name="provider" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:.4rem .6rem;color:#e8eaf0;font-size:.8rem">
+        <option value="" {% if not provider_filter %}selected{% endif %}>All platforms</option>
+        {% for p in ['apollo','stripe','cal','pandadoc','convertkit','kajabi','linkedin','plaid','alpaca'] %}
+        <option value="{{ p }}" {% if provider_filter == p %}selected{% endif %}>{{ p | title }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-ghost btn-sm" style="font-size:.8rem">Filter</button>
+    </form>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:.5rem .75rem;color:rgba(255,255,255,.4);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.08)">Time</th>
+        <th style="text-align:left;padding:.5rem .75rem;color:rgba(255,255,255,.4);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.08)">Platform</th>
+        <th style="text-align:left;padding:.5rem .75rem;color:rgba(255,255,255,.4);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.08)">Action</th>
+        <th style="text-align:left;padding:.5rem .75rem;color:rgba(255,255,255,.4);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.08)">Target user</th>
+        <th style="text-align:left;padding:.5rem .75rem;color:rgba(255,255,255,.4);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.08)">Admin</th>
+        <th style="text-align:left;padding:.5rem .75rem;color:rgba(255,255,255,.4);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.08)">IP</th>
+        <th style="text-align:left;padding:.5rem .75rem;color:rgba(255,255,255,.4);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.08)">Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries.items %}
+      <tr>
+        <td style="padding:.55rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(255,255,255,.4);white-space:nowrap">{{ entry.created_at.strftime('%b %d, %Y %H:%M') }}</td>
+        <td style="padding:.55rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);color:#e8eaf0">{{ entry.integration_type }}</td>
+        <td style="padding:.55rem .75rem;border-bottom:1px solid rgba(255,255,255,.04)">
+          <span style="font-size:.7rem;font-weight:600;padding:.1rem .5rem;border-radius:20px;background:{% if 'revoked' in entry.action or 'disconnected' in entry.action %}rgba(239,68,68,.12){% elif 'connected' in entry.action %}rgba(134,239,172,.12){% else %}rgba(255,255,255,.06){% endif %};color:{% if 'revoked' in entry.action or 'disconnected' in entry.action %}#fca5a5{% elif 'connected' in entry.action %}#86efac{% else %}rgba(255,255,255,.5){% endif %}">
+            {{ entry.action | replace('_', ' ') }}
+          </span>
+        </td>
+        <td style="padding:.55rem .75rem;border-bottom:1px solid rgba(255,255,255,.04)">
+          <a href="{{ url_for('pages.admin_user_integrations', target_uid=entry.target_user_id) }}" style="color:#f5c842;text-decoration:none;font-size:.78rem">{{ entry.target_user_id }}</a>
+        </td>
+        <td style="padding:.55rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(255,255,255,.4);font-size:.78rem">{{ entry.admin_user_id }}</td>
+        <td style="padding:.55rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(255,255,255,.3);font-size:.75rem">{{ entry.ip_address or '—' }}</td>
+        <td style="padding:.55rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(255,255,255,.3);font-size:.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">
+          {% if entry.changes %}{{ entry.changes | truncate(80) }}{% endif %}
+          {% if entry.approved_by %}<br><span style="color:#f5c842">Approved by: {{ entry.approved_by }}</span>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem .75rem;text-align:center;color:rgba(255,255,255,.3)">No audit entries found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if entries.pages > 1 %}
+  <div style="display:flex;gap:.5rem;margin-top:1.25rem;justify-content:center">
+    {% if entries.has_prev %}
+    <a href="?page={{ entries.prev_num }}{% if provider_filter %}&provider={{ provider_filter }}{% endif %}" class="btn btn-ghost btn-sm">&larr; Prev</a>
+    {% endif %}
+    <span style="font-size:.82rem;color:rgba(255,255,255,.4);padding:.4rem .75rem">{{ entries.page }} / {{ entries.pages }}</span>
+    {% if entries.has_next %}
+    <a href="?page={{ entries.next_num }}{% if provider_filter %}&provider={{ provider_filter }}{% endif %}" class="btn btn-ghost btn-sm">Next &rarr;</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

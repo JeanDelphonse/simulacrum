@@ -775,6 +775,7 @@ def execute_agent_action(
     user_id: str,
     simulation_id: str,
     dispatch_source: str = 'orchestrator',
+    action_id: str = None,
 ) -> str:
     """Execute an agent action for a simulation layer. Returns the generated artifact text."""
     layer_name, _, layer_desc = LAYER_DEFINITIONS[layer_number]
@@ -785,6 +786,11 @@ def execute_agent_action(
     inputs_formatted = '\n'.join(
         f'- {k}: {v}' for k, v in user_inputs.items() if v
     ) or 'None provided'
+
+    # Prospect research injection (FR-RESEARCH-01)
+    prospect_section = _get_prospect_context(
+        action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
+    )
 
     prompt = f"""You are a specialized career wealth agent executing a specific action for a professional.
 
@@ -798,7 +804,7 @@ USER-PROVIDED INPUTS:
 
 PROFESSIONAL BACKGROUND (excerpt):
 {parsed_text[:3500]}
-
+{prospect_section}
 Generate the complete artifact for this action. Be specific and draw directly from the professional's background, expertise zone, and deliverables. Write in a professional, immediately usable format. Do not include meta-commentary or instructions — only the artifact itself."""
 
     model = get_model(action_type)
@@ -809,6 +815,49 @@ Generate the complete artifact for this action. Be specific and draw directly fr
     )
     _log_interaction(AIInteraction.TYPE_AGENT_ACTION, user_id, simulation_id, response.usage, model=model)
     return response.content[0].text.strip()
+
+
+def _get_prospect_context(
+    action_type: str,
+    expertise_zone: str,
+    user_inputs: dict,
+    user_id: str,
+    simulation_id: str,
+    action_id: str,
+) -> str:
+    """
+    Run the prospect research engine and return a formatted section for injection
+    into the agent prompt. Returns empty string for non-outreach agents or on error.
+    alumni_reactivation bypasses research per FR-RESEARCH-11.
+    """
+    from app.services.prospect_research_engine import (
+        RESEARCH_ENABLED_AGENTS, build_targeting_criteria, ProspectResearchEngine,
+    )
+
+    if action_type not in RESEARCH_ENABLED_AGENTS:
+        return ''
+    if not action_id:
+        return ''
+
+    try:
+        targeting = build_targeting_criteria(action_type, expertise_zone, user_inputs)
+        engine    = ProspectResearchEngine()
+        result    = engine.research(
+            user_id=user_id,
+            simulation_id=simulation_id,
+            action_id=action_id,
+            targeting=targeting,
+            target_count=25,
+        )
+        if not result.prospects:
+            return ''
+        return f'\n\n{result.format_for_prompt()}\n'
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning(
+            'Prospect research failed for action %s user %s: %s', action_type, user_id, exc
+        )
+        return ''
 
 
 def refine_simulation_layer(

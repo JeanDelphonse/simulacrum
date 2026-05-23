@@ -1,6 +1,7 @@
 import secrets
 import logging
 from datetime import datetime, timedelta
+from typing import Optional
 
 from flask import request, jsonify, redirect, url_for, session, current_app
 from flask_login import login_required, current_user
@@ -19,38 +20,26 @@ logger = logging.getLogger(__name__)
 @integrations_bp.route('/api/integrations/status')
 @login_required
 def integrations_status():
-    apollo = UserIntegration.query.filter_by(
-        user_id=current_user.id, provider='apollo'
-    ).first()
-    stripe_int = UserIntegration.query.filter_by(
-        user_id=current_user.id, provider='stripe'
-    ).first()
-    cal_int = UserIntegration.query.filter_by(
-        user_id=current_user.id, provider='cal'
-    ).first()
-    pandadoc_int = UserIntegration.query.filter_by(
-        user_id=current_user.id, provider='pandadoc'
-    ).first()
-    ck_int = UserIntegration.query.filter_by(
-        user_id=current_user.id, provider='convertkit'
-    ).first()
-    return jsonify({
-        'apollo': apollo.to_dict() if apollo else {
-            'provider': 'apollo', 'status': 'not_connected', 'apollo_daily_limit': 30,
-        },
-        'stripe': stripe_int.to_dict() if stripe_int else {
-            'provider': 'stripe', 'status': 'not_connected',
-        },
-        'cal': cal_int.to_dict() if cal_int else {
-            'provider': 'cal', 'status': 'not_connected',
-        },
-        'pandadoc': pandadoc_int.to_dict() if pandadoc_int else {
-            'provider': 'pandadoc', 'status': 'not_connected',
-        },
-        'convertkit': ck_int.to_dict() if ck_int else {
-            'provider': 'convertkit', 'status': 'not_connected',
-        },
-    })
+    providers = ['apollo', 'stripe', 'cal', 'pandadoc', 'convertkit',
+                 'kajabi', 'plaid', 'alpaca']
+    result = {}
+    for prov in providers:
+        rec = UserIntegration.query.filter_by(
+            user_id=current_user.id, provider=prov
+        ).first()
+        if rec:
+            d = rec.to_dict()
+            if prov == 'alpaca':
+                meta = rec.get_meta()
+                d['fintech_toggle'] = meta.get('fintech_toggle', False)
+                d['paper'] = meta.get('paper', True)
+        else:
+            d = {'provider': prov, 'status': 'not_connected'}
+            if prov == 'apollo':
+                d['apollo_daily_limit'] = 30
+        result[prov] = d
+    result['linkedin'] = {'provider': 'linkedin', 'status': 'pending_legal_review'}
+    return jsonify(result)
 
 
 # ── Apollo OAuth ──────────────────────────────────────────────────────────────
@@ -109,6 +98,7 @@ def apollo_callback():
         integration.refresh_token_enc = encrypt_token(token_data['refresh_token'])
     if token_data.get('expires_in'):
         integration.token_expires_at = datetime.utcnow() + timedelta(seconds=token_data['expires_in'])
+    _mark_connected(integration, 'Apollo OAuth connected')
     db.session.commit()
 
     return redirect(url_for('pages.settings_integrations') + '?apollo_connected=1')
@@ -151,6 +141,7 @@ def apollo_disconnect():
     integration.access_token_enc = None
     integration.refresh_token_enc = None
     integration.token_expires_at = None
+    _mark_disconnected(integration)
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -212,7 +203,27 @@ def apollo_webhook(user_id):
 
 
 def _handle_apollo_event(event: str, contact: Contact, payload: dict, user_id: str):
-    if event == 'email_reply':
+    from app.services.bayesian_service import dispatch_signal
+
+    seq_id      = payload.get('emailer_campaign_id') or payload.get('sequence_id')
+    action_type = payload.get('action_type') or 'cold_email_campaign'
+    sim_id      = _sim_id_from_campaign(seq_id)
+
+    if event in ('email_sent', 'email_delivered'):
+        _increment_campaign_counter(payload, 'sent_count')
+        # email_sent is a volume counter — no posterior update (weight 0.1, not a conversion signal)
+
+    elif event == 'email_opened':
+        contact.last_contacted_at = datetime.utcnow()
+        _increment_campaign_counter(payload, 'open_count')
+        dispatch_signal(sim_id, f'open_rate:{action_type}', 1.0, 0.15, '+')
+
+    elif event == 'email_clicked':
+        contact.last_contacted_at = datetime.utcnow()
+        _increment_campaign_counter(payload, 'click_count')
+        dispatch_signal(sim_id, f'engagement_rate:{action_type}', 1.0, 0.2, '+')
+
+    elif event == 'email_reply':
         activity = ContactActivity(
             id=generate_id(),
             contact_id=contact.id,
@@ -224,11 +235,16 @@ def _handle_apollo_event(event: str, contact: Contact, payload: dict, user_id: s
         contact.last_contacted_at = datetime.utcnow()
 
         _publish_reply_sse(contact, payload)
+        dispatch_signal(sim_id, f'reply_rate:{action_type}', 1.0, 0.5, '+')
 
-        # Notify user of contact reply (best-effort)
+        # Per-step attribution (FR-APOLLO-05)
+        step_n = payload.get('sequence_step') or payload.get('step_number')
+        if step_n:
+            dispatch_signal(sim_id, f'step_effectiveness:step_{step_n}', 1.0, 0.2, '+')
+
         try:
             from app.services.notification_service import send_notification as _sn
-            _action_name = (payload.get('emailer_campaign_id') or 'outreach campaign')
+            _action_name = seq_id or 'outreach campaign'
             _sn(
                 user_id=user_id,
                 notification_type='reply',
@@ -248,6 +264,9 @@ def _handle_apollo_event(event: str, contact: Contact, payload: dict, user_id: s
         bounce_type = payload.get('bounce_type', 'hard')
         if bounce_type == 'hard':
             contact.do_not_contact = True
+            dispatch_signal(sim_id, f'deliverability:{action_type}', 1.0, 0.2, '-')
+        else:
+            dispatch_signal(sim_id, f'deliverability:{action_type}', 1.0, 0.05, '-')
         activity = ContactActivity(
             id=generate_id(),
             contact_id=contact.id,
@@ -260,6 +279,7 @@ def _handle_apollo_event(event: str, contact: Contact, payload: dict, user_id: s
 
     elif event == 'unsubscribed':
         contact.do_not_contact = True
+        dispatch_signal(sim_id, f'unsubscribe_rate:{action_type}', 1.0, 0.3, '-')
         activity = ContactActivity(
             id=generate_id(),
             contact_id=contact.id,
@@ -268,9 +288,6 @@ def _handle_apollo_event(event: str, contact: Contact, payload: dict, user_id: s
         )
         db.session.add(activity)
         _increment_campaign_counter(payload, 'unsubscribe_count')
-
-    elif event == 'email_opened':
-        contact.last_contacted_at = datetime.utcnow()
 
 
 def _increment_campaign_counter(payload: dict, field: str):
@@ -281,6 +298,24 @@ def _increment_campaign_counter(payload: dict, field: str):
     campaign = EmailCampaign.query.filter_by(apollo_sequence_id=seq_id).first()
     if campaign:
         setattr(campaign, field, (getattr(campaign, field) or 0) + 1)
+
+
+def _sim_id_from_campaign(seq_id: Optional[str]) -> Optional[str]:
+    """Resolve simulation_id from an Apollo sequence ID."""
+    if not seq_id:
+        return None
+    from app.models.integration import EmailCampaign
+    c = EmailCampaign.query.filter_by(apollo_sequence_id=seq_id).first()
+    return c.simulation_id if c else None
+
+
+def _find_user_simulation(user_id: str) -> Optional[str]:
+    """Return the most recent active simulation for a user (fallback for webhooks)."""
+    from app.models.simulation import Simulation
+    sim = Simulation.query.filter_by(
+        user_id=user_id
+    ).order_by(Simulation.created_at.desc()).first()
+    return sim.id if sim else None
 
 
 def _publish_reply_sse(contact: Contact, payload: dict):
@@ -349,6 +384,7 @@ def stripe_callback():
     integration.access_token_enc = encrypt_token(token_data['access_token'])
     integration.provider_account_id = token_data['stripe_user_id']
     integration.provider_scope = token_data.get('scope', 'read_write')
+    _mark_connected(integration, 'Stripe Connect OAuth connected')
     db.session.commit()
 
     return redirect(url_for('pages.settings_integrations') + '?stripe_connected=1')
@@ -370,6 +406,7 @@ def stripe_disconnect():
     integration.access_token_enc = None
     integration.provider_account_id = None
     integration.provider_scope = None
+    _mark_disconnected(integration)
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -399,11 +436,23 @@ def stripe_connect_webhook():
         import json
         event = json.loads(payload)
 
-    event_type = event.get('type', '')
-    stripe_account = event.get('account')     # connected account ID
-    event_obj = event.get('data', {}).get('object', {})
+    event_type     = event.get('type', '')
+    stripe_account = event.get('account')
+    event_obj      = event.get('data', {}).get('object', {})
 
-    # Events that carry payment confirmation with simulacrum metadata
+    meta = (
+        event_obj.get('metadata') or
+        (event_obj.get('payment_intent') or {}) or {}
+    )
+    if isinstance(meta, str):
+        meta = {}
+    sim_id      = meta.get('simulacrum_simulation_id')
+    action_type = meta.get('action_type') or 'unknown'
+    layer_num   = meta.get('layer_number') or '1'
+
+    from app.services.bayesian_service import dispatch_signal
+
+    # Positive income events (weight 1.0)
     if event_type in ('checkout.session.completed', 'invoice.paid',
                       'payment_intent.succeeded', 'payment_link.completed'):
         try:
@@ -411,6 +460,29 @@ def stripe_connect_webhook():
             attribute_income_from_stripe_event(event_obj, stripe_account)
         except Exception as exc:
             logger.error('Income attribution failed for event %s: %s', event_type, exc, exc_info=True)
+        dispatch_signal(sim_id, f'income_confirmed:L{layer_num}:{action_type}', 1.0, 1.0, '+')
+
+    elif event_type == 'charge.refunded':
+        dispatch_signal(sim_id, f'refund_rate:L{layer_num}:{action_type}', 1.0, 0.8, '-')
+
+    elif event_type == 'charge.dispute.created':
+        dispatch_signal(sim_id, f'dispute_rate:{action_type}', 1.0, 0.9, '-')
+
+    elif event_type == 'customer.subscription.created':
+        dispatch_signal(sim_id, f'subscription_starts:{action_type}', 1.0, 0.8, '+')
+
+    elif event_type == 'customer.subscription.deleted':
+        dispatch_signal(sim_id, f'churn_rate:{action_type}', 1.0, 0.6, '-')
+
+    elif event_type == 'invoice.payment_failed':
+        dispatch_signal(sim_id, f'payment_failure_rate', 1.0, 0.3, '-')
+
+    if sim_id:
+        try:
+            from app.extensions import db as _db
+            _db.session.commit()
+        except Exception:
+            pass
 
     return jsonify({'received': True}), 200
 
@@ -471,6 +543,7 @@ def cal_callback():
     if token_data.get('expires_in'):
         from datetime import timedelta
         integration.token_expires_at = datetime.utcnow() + timedelta(seconds=token_data['expires_in'])
+    _mark_connected(integration, 'Cal.com OAuth connected')
     db.session.commit()
 
     return redirect(url_for('pages.settings_integrations') + '?cal_connected=1')
@@ -486,6 +559,7 @@ def cal_disconnect():
         integration.access_token_enc = None
         integration.refresh_token_enc = None
         integration.token_expires_at = None
+        _mark_disconnected(integration)
         db.session.commit()
     return jsonify({'ok': True})
 
@@ -503,7 +577,8 @@ def cal_webhook(user_id):
     payload = request.get_json(silent=True) or {}
     trigger = payload.get('triggerEvent')
 
-    if trigger not in ('BOOKING_CREATED', 'BOOKING_CANCELLED'):
+    if trigger not in ('BOOKING_CREATED', 'BOOKING_CANCELLED',
+                       'BOOKING_RESCHEDULED', 'MEETING_ENDED'):
         return '', 200
 
     inner   = payload.get('payload') or {}
@@ -524,7 +599,7 @@ def cal_webhook(user_id):
 
     try:
         _handle_cal_event(trigger, user_id, attendee_email, attendee_name,
-                          simulation_id, action_id)
+                          simulation_id, action_id, payload=inner)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
@@ -535,10 +610,14 @@ def cal_webhook(user_id):
 
 
 def _handle_cal_event(trigger: str, user_id: str, attendee_email: str,
-                      attendee_name: str, simulation_id: str, action_id: str):
+                      attendee_name: str, simulation_id: str, action_id: str,
+                      payload: dict = None):
     from app.models.contact import Contact, ContactActivity
     from app.models.layer6 import Layer6Momentum
+    from app.services.bayesian_service import dispatch_signal
     from datetime import date
+
+    session_type = (payload or {}).get('eventType') or 'discovery_call'
 
     if trigger == 'BOOKING_CREATED':
         # CRM pipeline: prospect → active + log activity (FR-CAL-02)
@@ -547,7 +626,6 @@ def _handle_cal_event(trigger: str, user_id: str, attendee_email: str,
                 user_id=user_id, email=attendee_email
             ).first()
             if not contact and attendee_name:
-                # Create a contact record for this new booking attendee
                 parts = (attendee_name or '').split(' ', 1)
                 contact = Contact(
                     id=generate_id(),
@@ -577,16 +655,17 @@ def _handle_cal_event(trigger: str, user_id: str, attendee_email: str,
                 )
                 db.session.add(activity)
 
-        # Momentum: increment consulting_bookings_mo (FR-CAL-03)
         if simulation_id:
             momentum = _get_or_create_momentum(simulation_id)
             momentum.consulting_bookings_mo = (momentum.consulting_bookings_mo or 0) + 1
+            dispatch_signal(simulation_id, f'booking_rate:{session_type}', 1.0, 0.6, '+')
 
     elif trigger == 'BOOKING_CANCELLED':
         if simulation_id:
             momentum = _get_or_create_momentum(simulation_id)
             if (momentum.consulting_bookings_mo or 0) > 0:
                 momentum.consulting_bookings_mo -= 1
+            dispatch_signal(simulation_id, f'cancellation_rate:{session_type}', 1.0, 0.4, '-')
 
         if attendee_email:
             contact = Contact.query.filter_by(
@@ -599,6 +678,29 @@ def _handle_cal_event(trigger: str, user_id: str, attendee_email: str,
                     simulation_id=simulation_id,
                     action_id=action_id,
                     activity_type='booking_cancelled',
+                    created_by='webhook',
+                )
+                db.session.add(activity)
+
+    elif trigger == 'BOOKING_RESCHEDULED':
+        # Weak positive — person still intends to meet (weight 0.1)
+        dispatch_signal(simulation_id, 'reschedule_rate', 1.0, 0.1, '+')
+
+    elif trigger == 'MEETING_ENDED':
+        # Meeting completed — positive signal, also clears no-show flag (weight 0.3)
+        dispatch_signal(simulation_id, f'meeting_completion_rate:{session_type}', 1.0, 0.3, '+')
+        # Mark the booking as completed in contact activities
+        if attendee_email:
+            contact = Contact.query.filter_by(
+                user_id=user_id, email=attendee_email
+            ).first()
+            if contact:
+                activity = ContactActivity(
+                    id=generate_id(),
+                    contact_id=contact.id,
+                    simulation_id=simulation_id,
+                    action_id=action_id,
+                    activity_type='meeting_completed',
                     created_by='webhook',
                 )
                 db.session.add(activity)
@@ -654,6 +756,7 @@ def pandadoc_save():
         db.session.add(integration)
 
     integration.access_token_enc = encrypt_token(api_key)
+    _mark_connected(integration, 'PandaDoc API key saved')
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -666,6 +769,7 @@ def pandadoc_clear():
     ).first()
     if integration:
         integration.access_token_enc = None
+        _mark_disconnected(integration)
         db.session.commit()
     return jsonify({'ok': True})
 
@@ -802,6 +906,7 @@ def convertkit_save():
     integration.access_token_enc = encrypt_token(api_key)
     if api_secret:
         integration.refresh_token_enc = encrypt_token(api_secret)
+    _mark_connected(integration, 'ConvertKit API key saved')
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -815,6 +920,7 @@ def convertkit_clear():
     if integration:
         integration.access_token_enc = None
         integration.refresh_token_enc = None
+        _mark_disconnected(integration)
         db.session.commit()
     return jsonify({'ok': True})
 
@@ -866,3 +972,776 @@ def sendgrid_clear():
         _db.session.delete(setting)
         _db.session.commit()
     return jsonify({'ok': True})
+
+
+# ── ConvertKit webhook ────────────────────────────────────────────────────────
+# Handles subscriber lifecycle events pushed by ConvertKit.
+# Bayesian signals per Section 6.4 of SIM-PRD-INTEG-001.
+
+@integrations_bp.route('/webhooks/convertkit/<user_id>', methods=['POST'])
+def convertkit_webhook(user_id):
+    payload  = request.get_json(silent=True) or {}
+    event    = payload.get('type') or payload.get('event')
+    form_id  = str(payload.get('form_id') or '')
+    sim_id   = _find_user_simulation(user_id)
+
+    subscriber = payload.get('subscriber') or {}
+    email      = subscriber.get('email_address') or subscriber.get('email')
+
+    if not event:
+        return '', 200
+
+    try:
+        _handle_convertkit_event(event, user_id, email, form_id, sim_id, payload)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error('ConvertKit webhook error user=%s event=%s: %s',
+                     user_id, event, exc, exc_info=True)
+    return '', 200
+
+
+def _handle_convertkit_event(event: str, user_id: str, email: str,
+                              form_id: str, sim_id: str, payload: dict):
+    from app.services.bayesian_service import dispatch_signal
+
+    if event == 'subscriber.subscriber_activate':
+        # New subscriber — weight 0.3 positive
+        dispatch_signal(sim_id, 'subscriber_growth_rate', 1.0, 0.3, '+')
+        # Create CRM contact if not exists
+        if email:
+            _upsert_contact_from_email(user_id, email, source='convertkit')
+
+    elif event == 'subscriber.subscriber_unsubscribe':
+        dispatch_signal(sim_id, f'unsubscribe_rate:{form_id or "list"}', 1.0, 0.3, '-')
+
+    elif event == 'subscriber.form_subscribe':
+        # Subscribing via a specific form (slightly higher weight — attributable)
+        dispatch_signal(sim_id, f'form_conversion_rate:{form_id}', 1.0, 0.4, '+')
+        if email:
+            _upsert_contact_from_email(user_id, email, source='convertkit')
+
+    elif event in ('subscriber.tag_add', 'subscriber.tag_remove'):
+        pass  # Tracked for segmentation but no posterior update
+
+
+def _upsert_contact_from_email(user_id: str, email: str, source: str = 'convertkit'):
+    """Create a CRM contact from a ConvertKit subscriber if not already present."""
+    from app.models.contact import Contact
+    existing = Contact.query.filter_by(user_id=user_id, email=email).first()
+    if not existing:
+        contact = Contact(
+            id=generate_id(),
+            user_id=user_id,
+            first_name='',
+            last_name='',
+            email=email,
+            source=source,
+            pipeline_stage='prospect',
+        )
+        db.session.add(contact)
+        db.session.flush()
+
+
+# ── Kajabi — Courses & Memberships ───────────────────────────────────────────
+
+@integrations_bp.route('/api/integrations/kajabi/save', methods=['POST'])
+@login_required
+def kajabi_save():
+    """
+    Save Kajabi API key + site subdomain (FR-KAJABI-01).
+    Body: {api_key, site_subdomain}
+    """
+    data          = request.get_json(silent=True) or {}
+    api_key       = (data.get('api_key') or '').strip()
+    subdomain     = (data.get('site_subdomain') or '').strip()
+    if not api_key:
+        return jsonify({'error': 'api_key is required'}), 400
+
+    # Light validation — Kajabi API v1 endpoint
+    try:
+        import requests as _req
+        resp = _req.get(
+            'https://kajabi.com/api/v1/site',
+            headers={'Authorization': f'Bearer {api_key}',
+                     'Accept': 'application/json'},
+            timeout=10,
+        )
+        if resp.status_code not in (200, 401):
+            pass  # Accept even a 401 — key may still work for webhooks
+        elif resp.status_code == 401:
+            return jsonify({'error': 'Invalid Kajabi API key — authentication failed.'}), 422
+    except Exception as exc:
+        logger.warning('Kajabi API key validation skipped for user %s: %s', current_user.id, exc)
+
+    from app.services.token_crypto import encrypt_token
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='kajabi'
+    ).first()
+    if not integration:
+        integration = UserIntegration(
+            id=generate_id(),
+            user_id=current_user.id,
+            provider='kajabi',
+        )
+        db.session.add(integration)
+
+    integration.access_token_enc    = encrypt_token(api_key)
+    integration.provider_account_id = subdomain or None
+    _mark_connected(integration, 'Kajabi API key saved')
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@integrations_bp.route('/api/integrations/kajabi/clear', methods=['POST'])
+@login_required
+def kajabi_clear():
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='kajabi'
+    ).first()
+    if integration:
+        integration.access_token_enc    = None
+        integration.provider_account_id = None
+        _mark_disconnected(integration)
+        db.session.commit()
+    return jsonify({'ok': True})
+
+
+# ── Kajabi webhook ────────────────────────────────────────────────────────────
+
+@integrations_bp.route('/webhooks/kajabi/<user_id>', methods=['POST'])
+def kajabi_webhook(user_id):
+    """
+    Handles Kajabi purchase, subscription, enrollment, and lesson events.
+    Bayesian signals per Section 5.4 of SIM-PRD-INTEG-001.
+    """
+    payload    = request.get_json(silent=True) or {}
+    event      = payload.get('event') or payload.get('type')
+    product_id = str(payload.get('product_id') or payload.get('offer_id') or '')
+    sim_id     = _find_user_simulation(user_id)
+
+    if not event:
+        return '', 200
+
+    try:
+        _handle_kajabi_event(event, user_id, product_id, sim_id, payload)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error('Kajabi webhook error user=%s event=%s: %s',
+                     user_id, event, exc, exc_info=True)
+    return '', 200
+
+
+def _handle_kajabi_event(event: str, user_id: str, product_id: str,
+                         sim_id: str, payload: dict):
+    from app.services.bayesian_service import dispatch_signal
+    from app.models.income import LayerIncomeRecord
+    from datetime import date as _date
+    import json as _json
+
+    amount_cents = payload.get('amount_cents') or 0
+    amount_usd   = float(amount_cents) / 100.0 if amount_cents else 0.0
+
+    if event == 'purchase.completed':
+        dispatch_signal(sim_id, f'course_sales:{product_id}', 1.0, 1.0, '+')
+        if sim_id and amount_usd > 0:
+            _create_kajabi_income_record(
+                user_id, sim_id, amount_usd, payload, 'course_sale',
+            )
+
+    elif event == 'subscription.renewed':
+        dispatch_signal(sim_id, f'renewal_rate:{product_id}', 1.0, 0.9, '+')
+        if sim_id and amount_usd > 0:
+            _create_kajabi_income_record(
+                user_id, sim_id, amount_usd, payload, 'subscription_renewal',
+            )
+
+    elif event == 'subscription.cancelled':
+        dispatch_signal(sim_id, f'churn_rate:{product_id}', 1.0, 0.6, '-')
+
+    elif event == 'subscription.payment_failed':
+        dispatch_signal(sim_id, f'payment_failure_rate:{product_id}', 1.0, 0.2, '-')
+
+    elif event == 'purchase.refunded':
+        dispatch_signal(sim_id, f'refund_rate:{product_id}', 1.0, 0.8, '-')
+
+    elif event == 'enrollment.completed':
+        dispatch_signal(sim_id, f'completion_rate:{product_id}', 1.0, 0.4, '+')
+
+    elif event == 'lesson.completed':
+        dispatch_signal(sim_id, f'lesson_engagement:{product_id}', 1.0, 0.1, '+')
+
+
+def _create_kajabi_income_record(user_id: str, sim_id: str, amount_usd: float,
+                                 payload: dict, income_type: str):
+    """Create a LayerIncomeRecord from a Kajabi purchase event."""
+    try:
+        from app.models.income import LayerIncomeRecord
+        from utils.id_gen import generate_id as _gid
+        from datetime import date as _date
+        rec = LayerIncomeRecord(
+            id=_gid(),
+            simulation_id=sim_id,
+            layer_number=3,
+            amount=amount_usd,
+            currency='USD',
+            income_date=_date.today(),
+            source='kajabi_webhook',
+            source_ref=str(payload.get('purchase_id') or payload.get('id') or ''),
+            description=income_type,
+            is_void=False,
+            recorded_by='system',
+        )
+        db.session.add(rec)
+    except Exception as exc:
+        logger.warning('Could not create Kajabi income record: %s', exc)
+
+
+# ── LinkedIn (blocked — attorney review required per FR-LINKEDIN-01) ──────────
+
+@integrations_bp.route('/api/integrations/linkedin/status')
+@login_required
+def linkedin_status():
+    return jsonify({
+        'provider': 'linkedin',
+        'status': 'pending_legal_review',
+        'message': (
+            'LinkedIn integration requires attorney review of the LinkedIn API '
+            'Terms of Service before implementation. See FR-LINKEDIN-01.'
+        ),
+    }), 200
+
+
+# ── Plaid — Financial Account Linking ────────────────────────────────────────
+
+@integrations_bp.route('/api/integrations/plaid/link-token', methods=['POST'])
+@login_required
+def plaid_link_token():
+    """
+    Create a Plaid link_token for the Plaid Link client-side widget (FR-PLAID-01).
+    Returns {link_token} to the browser; browser opens Plaid Link.
+    """
+    plaid_client_id = current_app.config.get('PLAID_CLIENT_ID')
+    plaid_secret    = current_app.config.get('PLAID_SECRET')
+    plaid_env       = current_app.config.get('PLAID_ENV', 'sandbox')
+
+    if not plaid_client_id or not plaid_secret:
+        return jsonify({'error': 'Plaid integration is not configured on this server.'}), 503
+
+    try:
+        import requests as _req
+        base_url = {
+            'sandbox':     'https://sandbox.plaid.com',
+            'development': 'https://development.plaid.com',
+            'production':  'https://production.plaid.com',
+        }.get(plaid_env, 'https://sandbox.plaid.com')
+
+        resp = _req.post(f'{base_url}/link/token/create', json={
+            'client_id': plaid_client_id,
+            'secret':    plaid_secret,
+            'user':      {'client_user_id': current_user.id},
+            'client_name': 'Simulacrum',
+            'products':  ['transactions', 'investments', 'liabilities'],
+            'country_codes': ['US'],
+            'language': 'en',
+        }, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        return jsonify({'link_token': data['link_token']}), 200
+    except Exception as exc:
+        logger.error('Plaid link token creation failed for user %s: %s', current_user.id, exc)
+        return jsonify({'error': str(exc)}), 500
+
+
+@integrations_bp.route('/api/integrations/plaid/exchange', methods=['POST'])
+@login_required
+def plaid_exchange():
+    """
+    Exchange a Plaid public_token for an access_token (FR-PLAID-01 step 5-6).
+    Body: {public_token}
+    """
+    data         = request.get_json(silent=True) or {}
+    public_token = data.get('public_token', '').strip()
+    if not public_token:
+        return jsonify({'error': 'public_token is required'}), 400
+
+    plaid_client_id = current_app.config.get('PLAID_CLIENT_ID')
+    plaid_secret    = current_app.config.get('PLAID_SECRET')
+    plaid_env       = current_app.config.get('PLAID_ENV', 'sandbox')
+
+    base_url = {
+        'sandbox':     'https://sandbox.plaid.com',
+        'development': 'https://development.plaid.com',
+        'production':  'https://production.plaid.com',
+    }.get(plaid_env, 'https://sandbox.plaid.com')
+
+    try:
+        import requests as _req
+        resp = _req.post(f'{base_url}/item/public_token/exchange', json={
+            'client_id':    plaid_client_id,
+            'secret':       plaid_secret,
+            'public_token': public_token,
+        }, timeout=15)
+        resp.raise_for_status()
+        result = resp.json()
+    except Exception as exc:
+        logger.error('Plaid token exchange failed for user %s: %s', current_user.id, exc)
+        return jsonify({'error': str(exc)}), 500
+
+    from app.services.token_crypto import encrypt_token
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='plaid'
+    ).first()
+    if not integration:
+        integration = UserIntegration(
+            id=generate_id(),
+            user_id=current_user.id,
+            provider='plaid',
+        )
+        db.session.add(integration)
+
+    integration.access_token_enc    = encrypt_token(result['access_token'])
+    integration.provider_account_id = result.get('item_id')
+    _mark_connected(integration, 'Plaid Link completed')
+    db.session.commit()
+    return jsonify({'ok': True, 'item_id': result.get('item_id')}), 200
+
+
+@integrations_bp.route('/api/integrations/plaid/disconnect', methods=['POST'])
+@login_required
+def plaid_disconnect():
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='plaid'
+    ).first()
+    if integration:
+        # Optionally remove the item from Plaid
+        try:
+            if integration.is_connected:
+                plaid_client_id = current_app.config.get('PLAID_CLIENT_ID')
+                plaid_secret    = current_app.config.get('PLAID_SECRET')
+                plaid_env       = current_app.config.get('PLAID_ENV', 'sandbox')
+                base_url = {
+                    'sandbox': 'https://sandbox.plaid.com',
+                    'production': 'https://production.plaid.com',
+                }.get(plaid_env, 'https://sandbox.plaid.com')
+                import requests as _req
+                _req.post(f'{base_url}/item/remove', json={
+                    'client_id':    plaid_client_id,
+                    'secret':       plaid_secret,
+                    'access_token': integration.decrypt_access_token(),
+                }, timeout=10)
+        except Exception:
+            pass
+        integration.access_token_enc    = None
+        integration.provider_account_id = None
+        _mark_disconnected(integration)
+        db.session.commit()
+    return jsonify({'ok': True})
+
+
+# ── Alpaca — Brokerage & Trade Execution ─────────────────────────────────────
+
+@integrations_bp.route('/api/integrations/alpaca/save', methods=['POST'])
+@login_required
+def alpaca_save():
+    """
+    Save Alpaca API key + secret (FR-ALPACA-01).
+    Body: {api_key, api_secret, paper?}  paper=true for paper trading account.
+    """
+    data       = request.get_json(silent=True) or {}
+    api_key    = (data.get('api_key') or '').strip()
+    api_secret = (data.get('api_secret') or '').strip()
+    is_paper   = bool(data.get('paper', True))
+
+    if not api_key or not api_secret:
+        return jsonify({'error': 'api_key and api_secret are required'}), 400
+
+    base = 'https://paper-api.alpaca.markets' if is_paper else 'https://api.alpaca.markets'
+    try:
+        import requests as _req
+        resp = _req.get(
+            f'{base}/v2/account',
+            headers={
+                'APCA-API-KEY-ID':     api_key,
+                'APCA-API-SECRET-KEY': api_secret,
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        account_data = resp.json()
+    except Exception as exc:
+        logger.warning('Alpaca key validation failed for user %s: %s', current_user.id, exc)
+        return jsonify({'error': 'Invalid Alpaca credentials — could not authenticate.'}), 422
+
+    from app.services.token_crypto import encrypt_token
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='alpaca'
+    ).first()
+    if not integration:
+        integration = UserIntegration(
+            id=generate_id(),
+            user_id=current_user.id,
+            provider='alpaca',
+        )
+        db.session.add(integration)
+
+    integration.access_token_enc    = encrypt_token(api_key)
+    integration.refresh_token_enc   = encrypt_token(api_secret)
+    integration.provider_account_id = account_data.get('id') or account_data.get('account_number')
+    meta = integration.get_meta()
+    meta['paper'] = is_paper
+    meta['fintech_toggle'] = meta.get('fintech_toggle', False)
+    integration.set_meta(meta)
+    env_label = 'paper' if is_paper else 'live'
+    _mark_connected(integration, f'Alpaca credentials saved ({env_label})')
+    db.session.commit()
+    return jsonify({'ok': True, 'account_id': integration.provider_account_id})
+
+
+@integrations_bp.route('/api/integrations/alpaca/clear', methods=['POST'])
+@login_required
+def alpaca_clear():
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='alpaca'
+    ).first()
+    if integration:
+        integration.access_token_enc  = None
+        integration.refresh_token_enc = None
+        integration.provider_account_id = None
+        _mark_disconnected(integration)
+        db.session.commit()
+    return jsonify({'ok': True})
+
+
+@integrations_bp.route('/api/integrations/alpaca/fintech-toggle', methods=['POST'])
+@login_required
+def alpaca_fintech_toggle():
+    """
+    Enable or disable automated trade execution (FR-ALPACA-01).
+    Requires explicit user consent. fintech_toggle defaults to False.
+    Body: {enabled: bool, consent_text: str}
+    """
+    data    = request.get_json(silent=True) or {}
+    enabled = bool(data.get('enabled'))
+    consent = (data.get('consent_text') or '').strip()
+
+    expected_consent = (
+        'I understand that Simulacrum will place trades in my brokerage account '
+        'based on my investment plan.'
+    )
+    if enabled and consent != expected_consent:
+        return jsonify({
+            'error': 'Consent text does not match. You must acknowledge the risk statement exactly.',
+        }), 400
+
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='alpaca'
+    ).first()
+    if not integration:
+        return jsonify({'error': 'Alpaca not connected'}), 404
+
+    meta = integration.get_meta()
+    meta['fintech_toggle'] = enabled
+    integration.set_meta(meta)
+    db.session.commit()
+    return jsonify({'ok': True, 'fintech_toggle': enabled})
+
+
+# ── Alpaca trade webhook ──────────────────────────────────────────────────────
+
+@integrations_bp.route('/webhooks/alpaca/<user_id>', methods=['POST'])
+def alpaca_webhook(user_id):
+    """
+    Handles Alpaca trade_update events (FR-ALPACA-02 through FR-ALPACA-07).
+    All trades require tier 2 GCC action item confirmation — FR-ALPACA-06 is non-negotiable.
+    """
+    payload = request.get_json(silent=True) or {}
+    event_data = payload.get('data') or {}
+    trade_event = event_data.get('event') or payload.get('event')
+    order = event_data.get('order') or payload.get('order') or {}
+    sim_id = _find_user_simulation(user_id)
+
+    if not trade_event:
+        return '', 200
+
+    try:
+        _handle_alpaca_event(trade_event, user_id, sim_id, order, payload)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error('Alpaca webhook error user=%s event=%s: %s',
+                     user_id, trade_event, exc, exc_info=True)
+    return '', 200
+
+
+def _handle_alpaca_event(trade_event: str, user_id: str, sim_id: str,
+                         order: dict, payload: dict):
+    from app.services.bayesian_service import dispatch_signal
+    from app.models.layer6 import ActionItem
+
+    symbol      = order.get('symbol', '')
+    order_id    = order.get('id', '')
+    qty         = order.get('qty') or order.get('filled_qty') or '0'
+    filled_avg  = order.get('filled_avg_price') or '0'
+    client_id   = order.get('client_order_id') or ''
+    reject_msg  = order.get('failed_at') or payload.get('message') or 'Unknown reason'
+
+    if trade_event == 'fill':
+        dispatch_signal(sim_id, 'dca_execution_rate', 1.0, 0.7, '+')
+        dispatch_signal(sim_id, f'position_return:{symbol}', 0.5, 0.4, '+')
+        logger.info('Alpaca fill: user=%s symbol=%s qty=%s avg=%s',
+                    user_id, symbol, qty, filled_avg)
+
+    elif trade_event == 'partial_fill':
+        dispatch_signal(sim_id, 'dca_execution_rate', 0.5, 0.7, '+')
+
+    elif trade_event == 'rejected':
+        dispatch_signal(sim_id, 'order_rejection_rate', 1.0, 0.5, '-')
+        # FR-ALPACA-07: tier 1 (Critical) action item on rejection
+        if sim_id:
+            _create_alpaca_action_item(
+                user_id, sim_id,
+                urgency_tier=1,
+                title=f'Investment order rejected — {symbol}',
+                description=(
+                    f'Your trade order for {symbol} was rejected. Reason: {reject_msg}. '
+                    f'Check your account balance and order parameters.'
+                ),
+                action_url='/settings/integrations#alpaca',
+            )
+
+    elif trade_event == 'canceled':
+        dispatch_signal(sim_id, 'order_cancel_rate', 1.0, 0.2, '-')
+
+
+def _create_alpaca_action_item(user_id: str, sim_id: str, urgency_tier: int,
+                               title: str, description: str, action_url: str):
+    from app.models.layer6 import ActionItem
+    try:
+        item = ActionItem(
+            id=generate_id(),
+            simulation_id=sim_id,
+            user_id=user_id,
+            item_type='trade_rejected',
+            urgency_tier=urgency_tier,
+            title=title,
+            description=description,
+            action_label='Review',
+            action_url=action_url,
+            is_dismissable=True,
+        )
+        db.session.add(item)
+    except Exception as exc:
+        logger.warning('Could not create Alpaca action item: %s', exc)
+
+
+# ── Per-platform config (SIM-PRD-SETTINGS-001 Section 3.1) ───────────────────
+
+@integrations_bp.route('/api/integrations/<provider>/config', methods=['PUT'])
+@login_required
+def integration_config_save(provider):
+    """Save per-platform configuration to user_integrations.config JSON."""
+    allowed_providers = {
+        'apollo', 'stripe', 'cal', 'pandadoc', 'convertkit',
+        'kajabi', 'plaid', 'alpaca',
+    }
+    if provider not in allowed_providers:
+        return jsonify({'error': 'Unknown provider'}), 404
+
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({'error': 'No config data provided'}), 400
+
+    # Validate per-provider config keys (whitelist approach)
+    allowed_keys = {
+        'apollo':     {'daily_send_limit', 'warmup_mode', 'default_sender_name',
+                       'default_reply_to', 'auto_remove_hard_bounces'},
+        'stripe':     {'default_currency', 'invoice_payment_terms', 'payment_plan',
+                       'auto_invoice_on_signature'},
+        'cal':        {'buffer_minutes', 'timezone_pref', 'pre_call_questionnaire',
+                       'noshow_grace_minutes', 'available_hours_override'},
+        'pandadoc':   {'default_cover_message', 'signature_reminder_cadence',
+                       'auto_send_on_completion'},
+        'kajabi':     {'default_visibility', 'community_auto_attach',
+                       'drip_schedule_unit', 'webhook_retry_count'},
+        'convertkit': {'default_tag_prefix', 'double_optin', 'nurture_delay_days',
+                       'form_style_pref'},
+        'plaid':      {'polling_frequency', 'dca_source_account'},
+        'alpaca':     {'dca_amount', 'dca_frequency', 'dca_symbols',
+                       'trading_hours_pref', 'order_type_pref'},
+    }
+    valid_keys = allowed_keys.get(provider, set())
+    filtered = {k: v for k, v in data.items() if k in valid_keys}
+
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider=provider
+    ).first()
+    if not integration:
+        return jsonify({'error': f'{provider} is not connected'}), 404
+
+    current_cfg = integration.get_config()
+    current_cfg.update(filtered)
+    integration.set_config(current_cfg)
+    db.session.commit()
+    return jsonify({'ok': True, 'config': current_cfg})
+
+
+@integrations_bp.route('/api/integrations/<provider>/config', methods=['GET'])
+@login_required
+def integration_config_get(provider):
+    integration = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider=provider
+    ).first()
+    if not integration:
+        return jsonify({'config': {}})
+    return jsonify({'config': integration.get_config()})
+
+
+# ── Activity log (SIM-PRD-SETTINGS-001 Section 3.2) ──────────────────────────
+
+@integrations_bp.route('/api/integrations/<provider>/activity')
+@login_required
+def integration_activity(provider):
+    """Return last 100 activity log entries for a provider."""
+    from app.models.integration import IntegrationActivityLog
+    entries = IntegrationActivityLog.query.filter_by(
+        user_id=current_user.id, provider=provider
+    ).order_by(IntegrationActivityLog.created_at.desc()).limit(100).all()
+    return jsonify({'entries': [e.to_dict() for e in entries]})
+
+
+def _log_activity(user_id: str, provider: str, event_type: str,
+                  direction: str = 'outbound', status: str = 'success',
+                  detail: str = None, action_id: str = None):
+    """Write an IntegrationActivityLog entry. Best-effort — never raises."""
+    try:
+        from app.models.integration import IntegrationActivityLog
+        entry = IntegrationActivityLog(
+            id=generate_id(),
+            user_id=user_id,
+            provider=provider,
+            event_type=event_type,
+            direction=direction,
+            status=status,
+            detail=(detail or '')[:500],
+            action_id=action_id,
+        )
+        db.session.add(entry)
+        db.session.flush()
+    except Exception as exc:
+        logger.warning('Activity log write failed: %s', exc)
+
+
+def _mark_connected(integration: UserIntegration, detail: str = 'OAuth connected'):
+    """Set connected_at timestamp and log the activity."""
+    integration.connected_at = datetime.utcnow()
+    integration.disconnected_at = None
+    integration.health_status = 'healthy'
+    integration.consecutive_failures = 0
+    _log_activity(integration.user_id, integration.provider,
+                  'OAuth connected', 'outbound', 'success', detail)
+
+
+def _mark_disconnected(integration: UserIntegration):
+    """Set disconnected_at timestamp and log the activity."""
+    integration.disconnected_at = datetime.utcnow()
+    _log_activity(integration.user_id, integration.provider,
+                  'Disconnected', 'outbound', 'success', 'User disconnected')
+
+
+# ── Re-authentication link (partner/admin trigger) ────────────────────────────
+
+@integrations_bp.route('/api/integrations/reauth-link', methods=['POST'])
+@login_required
+def integration_reauth_link():
+    """
+    Send a deep-link re-authentication email to a user.
+    Partners can trigger for their clients; admins can trigger for any user.
+    Body: {target_user_id, provider}
+    """
+    from app.models.user import User
+    data     = request.get_json(silent=True) or {}
+    target_id = data.get('target_user_id', '').strip()
+    provider  = data.get('provider', '').strip()
+
+    if not target_id or not provider:
+        return jsonify({'error': 'target_user_id and provider required'}), 400
+
+    # Authorization: admin can target any user; partner can target their clients
+    if not current_user.is_admin:
+        from app.models.partner import PartnerClientAccess
+        access = PartnerClientAccess.query.filter_by(
+            partner_user_id=current_user.id,
+            client_user_id=target_id,
+            revoked_at=None,
+        ).first()
+        if not access:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+    target = User.query.get(target_id)
+    if not target:
+        return jsonify({'error': 'User not found'}), 404
+
+    try:
+        from app.services.notification_service import send_notification
+        send_notification(
+            user_id=target_id,
+            notification_type='escalation',
+            title=f'Re-connect your {provider.title()} integration',
+            body=(
+                f'Your {provider.title()} connection needs to be refreshed. '
+                f'Click below to re-authenticate from Settings.'
+            ),
+            cta_url=f'/settings/integrations?reauth={provider}',
+            cta_label='Re-authenticate →',
+            priority='high',
+        )
+    except Exception as exc:
+        logger.warning('Reauth notification failed: %s', exc)
+
+    # Audit log entry if triggered by admin
+    if current_user.is_admin:
+        from app.models.integration import IntegrationAuditLog
+        import json as _json
+        entry = IntegrationAuditLog(
+            id=generate_id(),
+            admin_user_id=current_user.id,
+            target_user_id=target_id,
+            integration_type=provider,
+            action='reauth_link_sent',
+            ip_address=request.remote_addr,
+        )
+        db.session.add(entry)
+        db.session.commit()
+
+    return jsonify({'ok': True})
+
+
+# ── Integration status — updated to include new providers ────────────────────
+
+@integrations_bp.route('/api/integrations/status/all')
+@login_required
+def integrations_status_all():
+    """Extended status endpoint including Kajabi, Plaid, Alpaca."""
+    providers = ['apollo', 'stripe', 'cal', 'pandadoc', 'convertkit',
+                 'kajabi', 'plaid', 'alpaca']
+    result = {}
+    for prov in providers:
+        rec = UserIntegration.query.filter_by(
+            user_id=current_user.id, provider=prov
+        ).first()
+        if rec:
+            d = rec.to_dict()
+            if prov == 'alpaca':
+                meta = rec.get_meta()
+                d['fintech_toggle'] = meta.get('fintech_toggle', False)
+                d['paper'] = meta.get('paper', True)
+            result[prov] = d
+        else:
+            result[prov] = {'provider': prov, 'status': 'not_connected'}
+    result['linkedin'] = {
+        'provider': 'linkedin',
+        'status': 'pending_legal_review',
+    }
+    return jsonify(result)

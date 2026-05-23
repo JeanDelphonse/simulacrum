@@ -41,7 +41,14 @@ def profile_page(username):
 
     # ── Bio page (SIM-PRD-BIO-001): if the user has a published bio page, render it ──
     from app.models.bio_page import BioPage
-    bio_page = BioPage.query.filter_by(user_id=profile.user_id, slug=slug).first()
+    bio_page = BioPage.query.filter_by(user_id=profile.user_id).first()
+    # Keep slug in sync with current username (slug may differ if username changed)
+    if bio_page and bio_page.slug != slug:
+        try:
+            bio_page.slug = slug
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     if bio_page and bio_page.status == BioPage.STATUS_PUBLISHED:
         from app.blueprints.bio.routes import _assemble_context
         ctx = _assemble_context(profile.user_id, bio_page)
