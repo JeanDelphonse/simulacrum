@@ -17,6 +17,102 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Redis lock helpers (FR-ORCH-04)
+# ---------------------------------------------------------------------------
+
+def _acquire_cycle_lock(simulation_id: str) -> bool:
+    try:
+        from flask import current_app
+        redis_url = current_app.config.get('REDIS_URL')
+        if not redis_url:
+            return True  # No Redis — allow cycle, no concurrent protection
+        import redis as _redis
+        r = _redis.from_url(redis_url)
+        result = r.set(f'l6_cycle_lock:{simulation_id}', '1', nx=True, ex=600)
+        return bool(result)
+    except Exception as exc:
+        logger.warning('Redis cycle lock acquire failed: %s', exc)
+        return True  # Fail open — don't block cycle on Redis error
+
+
+def _release_cycle_lock(simulation_id: str) -> None:
+    try:
+        from flask import current_app
+        redis_url = current_app.config.get('REDIS_URL')
+        if not redis_url:
+            return
+        import redis as _redis
+        r = _redis.from_url(redis_url)
+        r.delete(f'l6_cycle_lock:{simulation_id}')
+    except Exception as exc:
+        logger.warning('Redis cycle lock release failed: %s', exc)
+
+
+# ---------------------------------------------------------------------------
+# Adaptive dispatch window (FR-ORCH-07)
+# ---------------------------------------------------------------------------
+
+CADENCE_MINUTES = {
+    'every_12h': 720, 'daily': 1440, 'every_3_days': 4320,
+    'every_48h': 2880, 'every_72h': 4320, 'every_168h': 10080, 'weekly': 10080,
+}
+
+
+def _dispatch_window_minutes(cadence: str) -> float:
+    interval = CADENCE_MINUTES.get(cadence, 1440)
+    return max(interval * 0.8, 360)  # max(80%, 6h)
+
+
+# ---------------------------------------------------------------------------
+# Cold start (FR-ORCH-08, FR-ORCH-09)
+# ---------------------------------------------------------------------------
+
+COLD_START_PRIORS = {
+    'rate_card': 0.80, 'linkedin_optimize': 0.75, 'booking_page': 0.70,
+    'cold_email_campaign': 0.65, 'consulting_outreach': 0.60, 'outreach_email': 0.55,
+    'role_search': 0.50, 'speaking_proposals': 0.48, 'coaching_curriculum': 0.45,
+    'workshop_content': 0.42, 'course_framework': 0.40, 'sales_page': 0.38,
+    'ebook_guide': 0.35, 'seo_content_calendar': 0.33, 'launch_email_sequence': 0.30,
+    'referral_network': 0.28, 'social_proof': 0.25, 'membership_structure': 0.23,
+    'affiliate_program': 0.20, 'newsletter_monetization': 0.20, 'youtube_podcast': 0.18,
+    'saas_product_spec': 0.18, 'portfolio_analysis': 0.15, 'compound_growth': 0.15,
+    'real_estate_strategy': 0.15, 'tax_optimization': 0.15, 'entity_structure': 0.13,
+    'investment_policy_statement': 0.13, 'fund_recommendations': 0.10, 'dca_schedule': 0.05,
+}
+
+COLD_START_SEQUENCE = [
+    'rate_card', 'linkedin_optimize', 'booking_page',
+    'cold_email_campaign', 'consulting_outreach',
+]
+
+
+def seed_cold_start_priors(simulation_id: str) -> None:
+    from app.extensions import db
+    from app.models.bayesian import BayesianPosterior
+    for action_type, prior_value in COLD_START_PRIORS.items():
+        key = f'yield:{action_type}'
+        existing = BayesianPosterior.query.filter_by(
+            simulation_id=simulation_id, posterior_key=key
+        ).first()
+        if not existing:
+            db.session.add(BayesianPosterior(
+                simulation_id=simulation_id,
+                posterior_key=key,
+                value=prior_value,
+            ))
+    try:
+        db.session.commit()
+    except Exception as exc:
+        logger.warning('Cold start prior seeding failed: %s', exc)
+        db.session.rollback()
+
+
+def _is_cold_start(simulation_id: str) -> bool:
+    from app.models.layer6 import Layer6Cycle
+    return not Layer6Cycle.query.filter_by(simulation_id=simulation_id).first()
+
+
+# ---------------------------------------------------------------------------
 # Phase helpers
 # ---------------------------------------------------------------------------
 
@@ -25,12 +121,41 @@ def _months_since(created_at: datetime) -> int:
     return (now.year - created_at.year) * 12 + (now.month - created_at.month)
 
 
-def determine_phase(simulation, config) -> str:
-    from app.models.layer6 import Layer6Config
-    months = _months_since(simulation.created_at)
-    if months >= config.explore_phase_end_month:
-        return Layer6Config.PHASE_EXPLOIT if hasattr(Layer6Config, 'PHASE_EXPLOIT') else 'exploit'
-    return 'explore'
+EXPLORE_CYCLES = 19
+TRANSITION_CYCLES = 3
+
+
+def determine_phase(simulation_id: str, cycle_number: int) -> str:
+    if cycle_number <= EXPLORE_CYCLES:
+        return 'explore'
+    if cycle_number <= EXPLORE_CYCLES + TRANSITION_CYCLES:
+        return 'transition'
+    # Re-explore trigger: trailing-3-cycle yield avg < 50% of peak
+    if _should_re_explore(simulation_id):
+        return 'explore'
+    return 'exploit'
+
+
+def _should_re_explore(simulation_id: str) -> bool:
+    from app.models.layer6 import Layer6Cycle, Layer6Outcome
+    cycles = Layer6Cycle.query.filter_by(simulation_id=simulation_id).order_by(
+        Layer6Cycle.cycle_number.desc()
+    ).all()
+    if len(cycles) < 4:
+        return False
+
+    def _cycle_yield(cyc):
+        outs = Layer6Outcome.query.filter_by(simulation_id=simulation_id).filter(
+            Layer6Outcome.created_at >= cyc.cycle_started_at,
+            Layer6Outcome.created_at <= (cyc.cycle_completed_at or cyc.cycle_started_at),
+        ).all()
+        proj = sum(float(o.projected_income) for o in outs) or 1
+        actual = sum(float(o.actual_income) for o in outs)
+        return actual / proj
+
+    trailing = [_cycle_yield(c) for c in cycles[:3]]
+    peak = max(_cycle_yield(c) for c in cycles)
+    return (sum(trailing) / 3) < (peak * 0.50)
 
 
 # ---------------------------------------------------------------------------
@@ -58,23 +183,35 @@ def _compute_posterior(outcomes: list[dict]) -> tuple[float, float]:
     return alpha, beta
 
 
-def score_action(action_type: str, source_layer: int, outcomes_for_layer: list[dict],
-                 unblocks_count: int, explore_phase: bool, layer_index: int) -> float:
-    """
-    Bayesian priority score for an action.
+PHASE_WEIGHTS = {
+    'explore':    {'yield': 0.20, 'noise': 0.40, 'dependency': 0.30, 'layer': 0.10, 'cost': 0.00},
+    'transition': {'yield': 0.40, 'noise': 0.15, 'dependency': 0.25, 'layer': 0.10, 'cost': 0.10},
+    'exploit':    {'yield': 0.50, 'noise': 0.00, 'dependency': 0.25, 'layer': 0.10, 'cost': 0.15},
+}
 
-    score = posterior_mean * (1 + unblock_bonus) * phase_diversity_bonus
+
+def score_action(action_type: str, source_layer: int, outcomes_for_layer: list[dict],
+                 unblocks_count: int, phase: str, layer_index: int,
+                 _noise_seed: float = None) -> float:
     """
+    Phase-dependent Bayesian priority score for an action.
+    """
+    import random as _rnd
+    w = PHASE_WEIGHTS.get(phase, PHASE_WEIGHTS['exploit'])
     alpha, beta = _compute_posterior(outcomes_for_layer)
     posterior_mean = _beta_mean(alpha, beta)
-
-    # Weighted Shortest Job First: reward actions that unblock more downstream work
-    unblock_bonus = math.log1p(unblocks_count) * 0.2
-
-    # During exploration, add a diversity bonus to ensure all layers get sampled
-    diversity_bonus = (0.15 * (6 - layer_index)) if explore_phase else 0.0
-
-    return round(posterior_mean + unblock_bonus + diversity_bonus, 6)
+    dependency_value = min(1.0, math.log1p(unblocks_count) * 0.5)
+    layer_weight = 1.0 - (layer_index - 1) / 5.0
+    noise = (_noise_seed if _noise_seed is not None else _rnd.random())
+    cost_efficiency = 0.5  # neutral until FR-ORCH-20 cost data available
+    score = (
+        w['yield'] * posterior_mean +
+        w['noise'] * noise +
+        w['dependency'] * dependency_value +
+        w['layer'] * layer_weight +
+        w['cost'] * cost_efficiency
+    )
+    return round(score, 6)
 
 
 # ---------------------------------------------------------------------------
@@ -116,8 +253,98 @@ def _count_unblocked(action_type: str, completed_types: set[str],
     return count
 
 
+# ---------------------------------------------------------------------------
+# Integration awareness
+# ---------------------------------------------------------------------------
+
+# Which integrations meaningfully boost which action types.
+# Apollo already helps automatically via ProspectResearchEngine._has_integration();
+# these weights are applied on top of the Bayesian score so the orchestrator
+# prefers integration-enabled actions when relevant providers are connected.
+INTEGRATION_BOOST: dict[str, dict[str, float]] = {
+    'apollo':     {
+        'cold_email_campaign': 0.15, 'consulting_outreach': 0.15,
+        'outreach_email': 0.12, 'referral_network': 0.08,
+    },
+    'cal.com':    {
+        'booking_page': 0.20, 'consulting_proposal': 0.08,
+    },
+    'pandadoc':   {
+        'consulting_proposal': 0.18, 'consulting_agreement': 0.18,
+    },
+    'convertkit': {
+        'launch_email_sequence': 0.18, 'newsletter_monetization': 0.15,
+        'funnel_design': 0.12, 'waitlist_landing_page': 0.10,
+    },
+}
+
+
+def _get_active_integrations(user_id: str) -> dict:
+    """Return {provider: UserIntegration} for all connected (non-expired) integrations."""
+    try:
+        from app.models.integration import UserIntegration
+        rows = UserIntegration.query.filter_by(user_id=user_id).all()
+        return {
+            r.provider: r for r in rows
+            if r.is_connected and not r.is_expired and r.health_status != 'disabled'
+        }
+    except Exception as exc:
+        logger.warning('Could not load integrations for user %s: %s', user_id, exc)
+        return {}
+
+
+def _integration_boost_for_action(action_type: str, active_integrations: dict) -> float:
+    """Total score boost from all connected integrations for this action."""
+    total = 0.0
+    for provider, boosts in INTEGRATION_BOOST.items():
+        if provider in active_integrations and action_type in boosts:
+            total += boosts[action_type]
+    return min(total, 0.30)  # cap so integration alone can't dominate
+
+
+def _build_integration_user_inputs(action_type: str, active_integrations: dict,
+                                   sim) -> dict:
+    """
+    Inject integration-specific context into user_inputs for orchestrator-dispatched
+    actions. Agents inspect these keys to tailor their output or trigger API calls.
+    """
+    import json as _json
+    extras: dict = {}
+
+    # Cal.com — inject booking URL for booking_page and proposal agents
+    if 'cal.com' in active_integrations:
+        cal = active_integrations['cal.com']
+        booking_url = ''
+        if cal.meta_json:
+            try:
+                meta = _json.loads(cal.meta_json)
+                booking_url = meta.get('booking_url') or meta.get('username', '')
+                if booking_url and not booking_url.startswith('http'):
+                    booking_url = f'https://cal.com/{booking_url}'
+            except Exception:
+                pass
+        if booking_url:
+            extras['booking_url'] = booking_url
+            extras['calendar_platform'] = 'cal.com'
+
+    # PandaDoc — signal that document sending is available
+    if 'pandadoc' in active_integrations:
+        extras['send_via_pandadoc'] = True
+
+    # ConvertKit — signal that list/sequence push is available
+    if 'convertkit' in active_integrations:
+        extras['push_to_convertkit'] = True
+
+    # Apollo — signal availability (ProspectResearchEngine already checks natively,
+    # but agents can use this flag to tailor copy e.g. "will be sent via Apollo")
+    if 'apollo' in active_integrations:
+        extras['apollo_send_enabled'] = True
+
+    return extras
+
+
 def build_eligible_actions(simulation_id: str, config, completed_types: set[str],
-                            explore_phase: bool) -> list[dict[str, Any]]:
+                            phase: str) -> list[dict[str, Any]]:
     """
     Return all agent action types eligible for dispatch this cycle, with scores.
     Eligibility: prerequisites complete, not blocked, not already queued/running.
@@ -173,6 +400,36 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
 # Orchestrator cycle
 # ---------------------------------------------------------------------------
 
+def _dispatch_with_celery(dispatch_entries, simulation_id):
+    from celery import chain as celery_chain, group as celery_group
+    from app.tasks.layer6 import dispatch_layer6_action
+
+    within_bounds = [e for e, ok in dispatch_entries if ok]
+    if not within_bounds:
+        return
+
+    action_types_in_cycle = {e.action_type for e in within_bounds}
+
+    independent, dependent = [], []
+    for entry in within_bounds:
+        prereqs = ACTION_PREREQUISITES.get(entry.action_type, [])
+        same_cycle_prereqs = [p for p in prereqs if p in action_types_in_cycle]
+        if same_cycle_prereqs:
+            dependent.append(entry)
+        else:
+            independent.append(entry)
+
+    ind_sigs = [dispatch_layer6_action.si(e.id) for e in independent]
+    dep_sigs = [dispatch_layer6_action.si(e.id) for e in dependent]
+
+    if ind_sigs and dep_sigs:
+        celery_chain(celery_group(*ind_sigs), *dep_sigs).delay()
+    elif ind_sigs:
+        celery_group(*ind_sigs).delay()
+    elif dep_sigs:
+        celery_chain(*dep_sigs).delay()
+
+
 def run_orchestrator_cycle(simulation_id: str) -> dict:
     """
     Execute one full orchestrator cycle:
@@ -190,7 +447,6 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
         Layer6Config, Layer6Cycle, Layer6ActionQueue,
         Layer6Outcome, Layer6ExecutionLog,
     )
-    from app.tasks.layer6 import dispatch_layer6_action
 
     sim = Simulation.query.get(simulation_id)
     if not sim:
@@ -200,8 +456,13 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
     if not config or not config.is_active:
         raise ValueError(f'Layer 6 not configured or inactive for {simulation_id}')
 
+    # Acquire Redis cycle lock — skip if another worker is running this simulation
+    if not _acquire_cycle_lock(simulation_id):
+        logger.info('Cycle lock held for %s — skipping', simulation_id)
+        return {'skipped': True, 'reason': 'cycle_locked'}
+
     # Recover stale dispatched entries — anything still "dispatched" after 30 min
-    # means the previous sync execution crashed or the Celery worker never ran.
+    # means the sync execution thread died or the Celery worker never ran.
     # Mark them failed so they become eligible for re-dispatch this cycle.
     stale_cutoff = datetime.utcnow() - timedelta(minutes=30)
     stale_entries = Layer6ActionQueue.query.filter(
@@ -215,14 +476,17 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
     if stale_entries:
         db.session.flush()
 
-    # Determine phase
-    phase = determine_phase(sim, config)
-
-    # Get cycle number
+    # Get cycle number first (needed for determine_phase)
     last_cycle = Layer6Cycle.query.filter_by(simulation_id=simulation_id).order_by(
         Layer6Cycle.cycle_number.desc()
     ).first()
     cycle_number = (last_cycle.cycle_number + 1) if last_cycle else 1
+
+    # Determine phase using cycle-number-based 37% rule
+    phase = determine_phase(simulation_id, cycle_number)
+
+    # Enforce 5-8 agents per cycle (FR-ORCH-07)
+    n_to_dispatch = max(5, min(8, config.actions_per_cycle))
 
     # Create cycle record
     cycle = Layer6Cycle(
@@ -242,6 +506,10 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
         ).all()
     }
 
+    # Load active integrations once — used for scoring boost and user_input injection
+    active_integrations = _get_active_integrations(sim.user_id)
+    logger.info('Active integrations for %s: %s', simulation_id, list(active_integrations.keys()))
+
     # --- SCORE: build eligible action list with Bayesian scores ---
     outcomes = Layer6Outcome.query.filter_by(simulation_id=simulation_id).all()
     outcomes_by_layer: dict[int, list[dict]] = {}
@@ -249,36 +517,43 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
         outcomes_by_layer.setdefault(o.layer_number, []).append(o.to_dict())
 
     eligible = build_eligible_actions(
-        simulation_id, config, completed_types, explore_phase=(phase == 'explore')
+        simulation_id, config, completed_types, phase=phase
     )
 
     all_eligible_types = [e['action_type'] for e in eligible]
     scored = []
+    import hashlib as _hl
     for e in eligible:
         layer_outcomes = outcomes_by_layer.get(e['source_layer'], [])
         unblocks = _count_unblocked(e['action_type'], completed_types, all_eligible_types)
+        _seed = int(_hl.md5(f'{e["action_type"]}{cycle_number}'.encode()).hexdigest(), 16) % 10000 / 10000
         priority = score_action(
             action_type=e['action_type'],
             source_layer=e['source_layer'],
             outcomes_for_layer=layer_outcomes,
             unblocks_count=unblocks,
-            explore_phase=(phase == 'explore'),
+            phase=phase,
             layer_index=e['layer_index'],
+            _noise_seed=_seed,
         )
+        # Apply integration boost on top of Bayesian score
+        priority = round(priority + _integration_boost_for_action(
+            e['action_type'], active_integrations), 6)
         scored.append({**e, 'priority_score': priority, 'unblocks': unblocks})
 
     # Exploration: ensure at least one action per layer represented
     if phase == 'explore':
-        scored = _ensure_layer_diversity(scored, config.actions_per_cycle)
+        scored = _ensure_layer_diversity(scored, n_to_dispatch)
     else:
         scored.sort(key=lambda x: x['priority_score'], reverse=True)
+        scored = scored[:n_to_dispatch]
 
     dispatched_count = 0
     escalated_count = 0
     dispatch_entries: list[tuple[Layer6ActionQueue, bool]] = []
 
     # --- SCHEDULE: persist ALL scored actions; dispatch only top N ---
-    to_dispatch = {a['action_type'] for a in scored[:config.actions_per_cycle]}
+    to_dispatch = {a['action_type'] for a in scored[:n_to_dispatch]}
 
     for action in scored:
         is_top_n = action['action_type'] in to_dispatch
@@ -326,8 +601,8 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
         )
         db.session.add(log)
 
-    # Generate cycle reasoning summary via Claude
-    reasoning = _generate_cycle_reasoning(phase, scored[:config.actions_per_cycle],
+    # Generate cycle reasoning summary
+    reasoning = _generate_cycle_reasoning(phase, scored[:n_to_dispatch],
                                           dispatched_count, escalated_count)
 
     # Update cycle record
@@ -369,15 +644,38 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
     # Dispatch actions — skip Celery entirely when no Redis broker is configured
     from flask import current_app as _ca
     _has_redis = bool(_ca.config.get('REDIS_URL'))
-    for entry, within_bounds in dispatch_entries:
-        if within_bounds:
-            if _has_redis:
-                dispatch_layer6_action.delay(entry.id)
-            else:
-                _execute_action_sync(entry)
+    _app_obj = _ca._get_current_object()
+
+    if _has_redis:
+        _dispatch_with_celery(dispatch_entries, simulation_id)
+    else:
+        # Run in a background thread so the web response returns immediately.
+        # GoDaddy shared hosting kills long-running requests before Claude responds.
+        import threading as _threading
+        for entry, within_bounds in dispatch_entries:
+            if within_bounds:
+                _eid = entry.id
+
+                def _bg(eid=_eid, app=_app_obj):
+                    with app.app_context():
+                        from app.extensions import db as _db
+                        from app.models.layer6 import Layer6ActionQueue as _Q
+                        fresh = _db.session.get(_Q, eid)
+                        if fresh and fresh.status == _Q.STATUS_DISPATCHED:
+                            _execute_action_sync(fresh)
+
+                _threading.Thread(target=_bg, daemon=True).start()
 
     # Check for re-calibration trigger
     _check_recalibration(simulation_id, config)
+
+    # Release Redis cycle lock and seed cold start priors on first cycle
+    _release_cycle_lock(simulation_id)
+    if cycle_number == 1:
+        try:
+            seed_cold_start_priors(simulation_id)
+        except Exception as exc:
+            logger.warning('Cold start prior seeding failed: %s', exc)
 
     return cycle.to_dict()
 
@@ -408,19 +706,23 @@ def _execute_action_sync(entry) -> None:
     db.session.commit()
 
     from utils.model_router import get_tier
+    _active_integrations = _get_active_integrations(sim.user_id) if sim else {}
+    _injected_inputs = _build_integration_user_inputs(
+        entry.action_type, _active_integrations, sim
+    )
     try:
         result = execute_agent_action(
             action_type=entry.action_type,
             layer_number=entry.source_layer,
             expertise_zone=sim.expertise_zone if sim else '',
             parsed_text=parsed_text,
-            user_inputs={},
+            user_inputs=_injected_inputs,
             user_id=sim.user_id if sim else None,
             simulation_id=entry.simulation_id,
             dispatch_source='orchestrator',
             action_id=agent_action.id,
         )
-        artifact = result.get('content') or result.get('artifact') or str(result)
+        artifact = result if isinstance(result, str) else str(result)
         agent_action.artifact = artifact
         agent_action.status = AgentAction.STATUS_COMPLETE
         agent_action.completed_at = _dt.utcnow()
@@ -438,6 +740,20 @@ def _execute_action_sync(entry) -> None:
         ))
         db.session.commit()
         logger.info('Layer 6 sync action %s (%s) completed', entry.id, entry.action_type)
+
+        # Deploy artifact to integration chain (FR-WIRE-01)
+        try:
+            from app.services.wire_service import deploy_to_integration
+            deploy_to_integration(
+                user_id=sim.user_id if sim else '',
+                simulation_id=entry.simulation_id,
+                action_id=agent_action.id,
+                action_type=entry.action_type,
+                artifact=artifact,
+                layer_number=entry.source_layer,
+            )
+        except Exception as _we:
+            logger.warning('wire deploy failed for %s: %s', entry.action_type, _we)
 
         # Notify user of agent completion (best-effort)
         try:

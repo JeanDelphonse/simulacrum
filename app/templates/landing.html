@@ -1,109 +1,713 @@
-{% extends 'base.html' %}
-{% block title %}Welcome{% endblock %}
-{% block body_class %}landing{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulacrum — Upload your resume. We'll show you five ways to turn it into income.</title>
+  <meta name="description" content="Simulacrum reads your career, builds your professional bio page, and deploys AI agents to find clients, book calls, and grow your income — all from one resume upload. Free forever.">
+  <link rel="canonical" href="https://simulacrumai.io">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Simulacrum — AI-powered professional identity">
+  <meta property="og:description" content="Upload your resume. We'll show you five ways to turn it into income.">
+  <meta property="og:url" content="https://simulacrumai.io">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Simulacrum — AI-powered professional identity">
+  <meta name="twitter:description" content="Upload your resume. We'll show you five ways to turn it into income.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+  /* ── Tokens ─────────────────────────────────────────────────────── */
+  :root {
+    --navy: #0D1B3E; --navy-mid: #152A54;
+    --teal: #0F7B72; --teal-light: #13A89E;
+    --gold: #C9952A; --white: #FFFFFF;
+    --off-white: #FAFBFC; --dark: #1A1A2E; --muted: #6B7B8D;
+    --border: rgba(0,0,0,0.06); --coral: #E85D4A;
+    --nav-h: 64px; --max-w: 1200px;
+    --r: 16px; --shadow: 0 1px 3px rgba(0,0,0,.04);
+    --shadow-hover: 0 12px 40px rgba(0,0,0,.12);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--off-white); color: var(--dark); line-height: 1.65; font-size: 16px; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; line-height: 1.15; }
+  a { text-decoration: none; }
+  img { max-width: 100%; display: block; }
+  svg { display: block; }
 
-{% block head %}
-<style>
-.social-proof { background: #f9fafb; padding: 4rem 1rem; }
-.sp-inner { max-width: 960px; margin: 0 auto; }
-.sp-heading { font-size: 1.75rem; font-weight: 800; color: #111827; margin: 0 0 .5rem; text-align: center; }
-.sp-sub { font-size: 1rem; color: #6b7280; text-align: center; margin: 0 0 1.5rem; }
-.sp-trust-bar { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-bottom: 2rem; flex-wrap: wrap; }
-.sp-trust-item { font-size: .9rem; font-weight: 700; color: #374151; }
-.sp-trust-sep { color: #d1d5db; }
-.sp-featured-card { background: #0d1a2e; border-radius: 14px; padding: 2rem 2.5rem; margin-bottom: 2rem; }
-.sp-featured-quote { font-size: 1.15rem; color: #fff; line-height: 1.7; margin-bottom: 1rem; }
-.sp-featured-quote::before { content: '\201C'; color: #f5c842; font-size: 1.5em; line-height: 0; vertical-align: -.3em; }
-.sp-featured-quote::after  { content: '\201D'; color: #f5c842; font-size: 1.5em; line-height: 0; vertical-align: -.3em; }
-.sp-featured-name { font-weight: 700; color: #f5c842; margin-bottom: .2rem; }
-.sp-featured-zone { font-size: .82rem; color: rgba(255,255,255,.5); margin-bottom: .5rem; }
-.sp-featured-stars { color: #f5c842; font-size: 1rem; }
-.sp-carousel-wrap { position: relative; display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
-.sp-carousel { display: flex; gap: 1rem; overflow: hidden; flex: 1; }
-.sp-card { flex: 0 0 calc(33.333% - .67rem); background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-.sp-card-stars { color: #f5c842; font-size: .95rem; margin-bottom: .5rem; }
-.sp-card-quote { font-size: .95rem; color: #111827; line-height: 1.65; margin-bottom: .6rem; min-height: 4em; }
-.sp-card-name { font-weight: 700; color: #111827; font-size: .875rem; }
-.sp-card-zone { font-size: .78rem; color: #6b7280; margin-bottom: .4rem; }
-.sp-card-meta { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin-top: .5rem; }
-.sp-layer-chip { font-size: .7rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; }
-.sp-lc-1,.sp-lc-2 { background: #ccfbf1; color: #0d9488; }
-.sp-lc-3,.sp-lc-4 { background: #fef9c3; color: #854d0e; }
-.sp-lc-5 { background: #dbeafe; color: #1e40af; }
-.sp-lc-6 { background: #ede9fe; color: #6d28d9; }
-.sp-lc-0 { background: #f3f4f6; color: #6b7280; }
-.sp-date { font-size: .72rem; color: #9ca3af; margin-left: auto; }
-.sp-chevron { background: #fff; border: 1px solid #e5e7eb; border-radius: 50%; width: 36px; height: 36px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151; flex-shrink: 0; }
-.sp-chevron:hover { background: #f9fafb; }
-.sp-dots { display: flex; justify-content: center; gap: .4rem; margin-bottom: 2rem; }
-.sp-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; cursor: pointer; border: none; padding: 0; }
-.sp-dot.active { background: #0d9488; }
-.sp-cta-row { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; border-top: 1px solid #e5e7eb; padding-top: 1.5rem; }
-.sp-cta-col { font-size: .875rem; color: #374151; display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; }
-.sp-cta-link { font-weight: 700; color: #0e7490; text-decoration: none; }
-.sp-cta-link:hover { text-decoration: underline; }
-@media (max-width: 767px) {
-  .sp-carousel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .sp-card { flex: 0 0 85%; }
-  .sp-chevron { display: none; }
-}
-@media (min-width: 768px) and (max-width: 1199px) {
-  .sp-card { flex: 0 0 calc(50% - .5rem); }
-}
-</style>
-{% endblock %}
+  /* ── Layout ─────────────────────────────────────────────────────── */
+  .lp-c  { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+  .lp-s  { padding: 80px 0; }
+  .s-label {
+    display: block; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  .s-label.teal { color: var(--teal); }
+  .s-label.gold { color: var(--gold); }
+  .s-h2 { font-size: clamp(28px,3.5vw,40px); font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+  .s-sub { font-size: 17px; color: var(--muted); line-height: 1.7; }
 
-{% block content %}
-<section class="hero">
-  <div class="hero-inner">
-    <div class="hero-badge">AI-Powered Career Wealth Engine</div>
-    <h1 class="hero-title">Turn your resume into<br><span class="accent">autonomous income</span></h1>
-    <p class="hero-sub">Upload your resume. Our AI identifies your zones of excellence and maps them onto a 5-layer wealth automation framework — from consulting to passive investment.</p>
-    <div class="hero-ctas">
-      <a href="{{ url_for('pages.register_page') }}" class="btn btn-primary btn-lg">Start free →</a>
-      <a href="{{ url_for('pages.login_page') }}" class="btn btn-ghost btn-lg">Sign in</a>
+  /* ── Buttons ─────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 15px;
+    padding: 12px 22px; border-radius: 10px; cursor: pointer;
+    border: none; transition: all 250ms ease; white-space: nowrap;
+  }
+  .btn-teal  { background: var(--teal); color: #fff; box-shadow: 0 4px 14px rgba(15,123,114,.28); }
+  .btn-teal:hover  { background: #0c6860; transform: translateY(-1px); }
+  .btn-gold  { background: var(--gold); color: #fff; font-size: 16px; box-shadow: 0 4px 20px rgba(201,149,42,.32); }
+  .btn-gold:hover  { background: #b8851f; transform: translateY(-1px); }
+  .btn-outline { background: transparent; color: var(--dark); border: 1px solid rgba(0,0,0,.14); }
+  .btn-outline:hover { background: rgba(0,0,0,.04); }
+  .btn-ghost { background: rgba(255,255,255,.09); color: #fff; border: 1px solid rgba(255,255,255,.18); }
+  .btn-ghost:hover { background: rgba(255,255,255,.17); }
+  .btn-ghost-dk { background: transparent; color: var(--dark); border: 1px solid rgba(0,0,0,.14); }
+  .btn-ghost-dk:hover { background: rgba(0,0,0,.04); }
+
+  /* ── Nav ─────────────────────────────────────────────────────────── */
+  .lp-nav {
+    position: fixed; top: 0; inset-inline: 0; z-index: 100;
+    height: var(--nav-h);
+    background: rgba(250,251,252,.93); backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    transition: box-shadow 300ms;
+  }
+  .lp-nav.scrolled { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  .lp-nav-inner {
+    max-width: var(--max-w); margin: 0 auto; padding: 0 24px;
+    height: 100%; display: flex; align-items: center; gap: 8px;
+  }
+  .lp-logo {
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-right: 16px;
+    font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--navy);
+  }
+  .lp-logo:hover { color: var(--teal); }
+  .lp-logo-mark {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-light));
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .lp-nav-links { display: flex; align-items: center; gap: 2px; flex: 1; }
+  .lp-nav-link {
+    font-size: 14px; font-weight: 500; color: var(--muted);
+    padding: 6px 12px; border-radius: 7px; position: relative;
+    transition: color 250ms, background 250ms;
+  }
+  .lp-nav-link:hover { color: var(--navy); background: rgba(0,0,0,.04); }
+  .lp-nav-link.active { color: var(--teal); }
+  .lp-nav-link.active::after {
+    content: ''; position: absolute; bottom: 3px; left: 12px; right: 12px;
+    height: 2px; background: var(--teal); border-radius: 2px;
+  }
+  .lp-nav-ctas { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .lp-hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; }
+  .lp-hamburger span { display: block; width: 22px; height: 2px; background: var(--navy); border-radius: 2px; transition: all 300ms; }
+  .lp-mob-menu { display: none; padding: 12px 24px 20px; border-top: 1px solid rgba(0,0,0,.06); background: rgba(250,251,252,.98); }
+  .lp-mob-menu.open { display: block; }
+  .lp-mob-link { display: block; padding: 11px 0; font-size: 15px; font-weight: 500; color: var(--dark); border-bottom: 1px solid rgba(0,0,0,.05); }
+  .lp-mob-ctas { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .lp-mob-ctas .btn { justify-content: center; }
+
+  /* ── Hero ─────────────────────────────────────────────────────────── */
+  #hero {
+    padding-top: calc(var(--nav-h) + 72px); padding-bottom: 88px;
+    background: linear-gradient(135deg, #0d1b3e 0%, #152a54 52%, #0f7b72 100%);
+    position: relative; overflow: hidden;
+  }
+  #hero::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .45;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+  .hero-inner {
+    position: relative; z-index: 1;
+    max-width: var(--max-w); margin: 0 auto; padding: 0 24px;
+    display: flex; align-items: center; gap: 64px;
+  }
+  .hero-text { flex: 1; min-width: 0; }
+  .hero-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14);
+    color: rgba(255,255,255,.82); font-size: 13px; font-weight: 500;
+    padding: 5px 14px; border-radius: 999px; margin-bottom: 24px;
+  }
+  .hero-chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal-light); animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .hero-h1 { font-size: clamp(36px,5vw,56px); font-weight: 700; color: #fff; margin-bottom: 20px; line-height: 1.08; }
+  .hero-h1 em { font-style: normal; color: var(--teal-light); }
+  .hero-sub { font-size: 18px; color: rgba(255,255,255,.62); line-height: 1.72; max-width: 500px; margin-bottom: 32px; }
+  .hero-ctas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+  .hero-trust { font-size: 13px; color: rgba(255,255,255,.42); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .hero-trust-sep { color: rgba(255,255,255,.18); }
+
+  /* Bio preview card */
+  .hero-card {
+    flex-shrink: 0; width: 300px;
+    background: #fff; border-radius: 18px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.38);
+    overflow: hidden;
+  }
+  .hc-top { background: linear-gradient(135deg, var(--navy), var(--navy-mid)); padding: 24px 20px 18px; }
+  .hc-avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--teal); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 10px; }
+  .hc-name  { color: #fff; font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; }
+  .hc-title { color: var(--teal-light); font-size: 12px; font-weight: 500; margin-top: 2px; }
+  .hc-body  { padding: 14px 18px; }
+  .hc-btn   { background: var(--gold); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 7px; display: inline-block; margin-bottom: 12px; }
+  .hc-chat  { background: #f8fafc; border: 1px solid rgba(0,0,0,.07); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .hc-chat-name { font-weight: 700; color: var(--dark); font-size: 12px; margin-bottom: 3px; }
+  .hc-live  { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .hc-dot   { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+
+  /* ── Problem ─────────────────────────────────────────────────────── */
+  #problem { background: var(--white); }
+  .prob-head { text-align: center; margin-bottom: 48px; }
+  .prob-head .s-sub { margin: 0 auto; max-width: 580px; }
+  .prob-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+  .prob-card {
+    background: #fff; border: 1px solid var(--border); border-radius: var(--r);
+    padding: 32px; box-shadow: var(--shadow); text-align: center;
+    transition: transform 300ms ease, box-shadow 300ms ease;
+  }
+  .prob-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+  .prob-icon { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  .prob-icon.teal  { background: rgba(15,123,114,.1); color: var(--teal); }
+  .prob-icon.gold  { background: rgba(201,149,42,.1);  color: var(--gold); }
+  .prob-icon.coral { background: rgba(232,93,74,.1);   color: var(--coral); }
+  .prob-card h3 { font-family: 'DM Sans',sans-serif; font-size: 17px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+  .prob-card p  { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+  /* ── How It Works ────────────────────────────────────────────────── */
+  #how-it-works { background: var(--off-white); }
+  .hiw-head { text-align: center; margin-bottom: 56px; }
+  .steps-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 32px; }
+  .step { position: relative; text-align: center; padding-top: 16px; }
+  .step-num {
+    font-family: 'Playfair Display', serif; font-size: 72px; font-weight: 700;
+    color: rgba(13,27,62,.05); position: absolute; top: -12px; left: 50%;
+    transform: translateX(-50%); line-height: 1; user-select: none; z-index: 0;
+  }
+  .step-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px; position: relative; z-index: 1;
+  }
+  .step-icon.teal  { background: rgba(15,123,114,.12); color: var(--teal); }
+  .step-icon.gold  { background: rgba(201,149,42,.12);  color: var(--gold); }
+  .step-icon.navy  { background: rgba(13,27,62,.08);    color: var(--navy); }
+  .step h3 { font-family: 'DM Sans',sans-serif; font-size: 18px; font-weight: 700; color: var(--dark); margin-bottom: 10px; position: relative; z-index: 1; }
+  .step p  { font-size: 15px; color: var(--muted); line-height: 1.7; position: relative; z-index: 1; max-width: 280px; margin: 0 auto; }
+
+  /* ── Features ────────────────────────────────────────────────────── */
+  #features { background: var(--white); }
+  .feat-head { text-align: center; margin-bottom: 48px; }
+  .feat-stack { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  .feat-card-light {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 20px; padding: 40px 44px; box-shadow: var(--shadow);
+  }
+  .feat-card-dark {
+    border-radius: 20px; padding: 40px 44px;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 60%, #1a3c60 100%);
+    position: relative; overflow: hidden;
+  }
+  .feat-card-dark::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+  .feat-tier-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .feat-tier-label.teal { color: var(--teal); }
+  .feat-tier-label.teal-light { color: var(--teal-light); position: relative; z-index: 1; }
+  .feat-title { font-family: 'Playfair Display',serif; font-size: 22px; font-weight: 700; margin-bottom: 28px; }
+  .feat-title.dark-text { color: var(--navy); }
+  .feat-title.light-text { color: #fff; position: relative; z-index: 1; }
+
+  .feat-icon-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
+  .feat-item { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 9px; }
+  .feat-icon-box { width: 44px; height: 44px; border-radius: 10px; background: rgba(15,123,114,.1); color: var(--teal); display: flex; align-items: center; justify-content: center; }
+  .feat-item-name { font-size: 13px; font-weight: 600; color: var(--dark); line-height: 1.3; }
+
+  .feat-check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; position: relative; z-index: 1; }
+  .feat-check-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; }
+  .feat-check-tick { color: var(--teal-light); font-weight: 700; font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .feat-check-row span { color: rgba(255,255,255,.82); line-height: 1.4; }
+
+  /* ── Pricing ─────────────────────────────────────────────────────── */
+  #pricing { background: var(--off-white); }
+  .pricing-head { text-align: center; margin-bottom: 12px; }
+  .pricing-head-sub { text-align: center; font-size: 15px; color: var(--muted); margin-bottom: 48px; }
+  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 820px; margin: 0 auto; }
+  .price-card {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 20px; padding: 36px 32px;
+    box-shadow: var(--shadow); display: flex; flex-direction: column;
+    transition: box-shadow 300ms;
+  }
+  .price-card:hover { box-shadow: var(--shadow-hover); }
+  .price-card.featured { border: 2px solid var(--teal); }
+  .price-badge-row { min-height: 26px; margin-bottom: 18px; }
+  .price-badge { background: var(--teal); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-block; }
+  .price-tier { font-family: 'DM Sans',sans-serif; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .price-amount { font-family: 'Playfair Display',serif; font-size: 48px; font-weight: 700; color: var(--navy); line-height: 1; }
+  .price-per { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+  .price-features { display: flex; flex-direction: column; gap: 10px; flex: 1; margin-bottom: 28px; }
+  .price-feat { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--dark); }
+  .price-check { color: var(--teal); font-weight: 700; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .price-divider { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding-top: 12px; margin-top: 6px; border-top: 1px solid var(--border); }
+
+  /* ── Social Proof ────────────────────────────────────────────────── */
+  #social-proof { background: var(--white); padding: 80px 0; }
+  .sp-inner  { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+  .sp-heading { font-size: clamp(28px,3.5vw,40px); font-weight: 700; color: var(--navy); margin: 0 0 .5rem; text-align: center; }
+  .sp-sub    { font-size: 16px; color: var(--muted); text-align: center; margin: 0 0 1.5rem; }
+  .sp-trust-bar { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .sp-trust-item { font-size: .9rem; font-weight: 700; color: var(--dark); }
+  .sp-trust-sep  { color: var(--muted); opacity: .4; }
+  .sp-featured-card { background: var(--navy); border-radius: 14px; padding: 2rem 2.5rem; margin-bottom: 2rem; }
+  .sp-featured-quote { font-size: 1.1rem; color: #fff; line-height: 1.7; margin-bottom: 1rem; }
+  .sp-featured-quote::before { content: '\201C'; color: var(--gold); font-size: 1.5em; line-height: 0; vertical-align: -.3em; }
+  .sp-featured-quote::after  { content: '\201D'; color: var(--gold); font-size: 1.5em; line-height: 0; vertical-align: -.3em; }
+  .sp-featured-name  { font-weight: 700; color: var(--gold); margin-bottom: .2rem; }
+  .sp-featured-zone  { font-size: .82rem; color: rgba(255,255,255,.5); margin-bottom: .5rem; }
+  .sp-featured-stars { color: var(--gold); font-size: 1rem; }
+  .sp-carousel-wrap  { position: relative; display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+  .sp-carousel { display: flex; gap: 1rem; overflow: hidden; flex: 1; }
+  .sp-card { flex: 0 0 calc(33.333% - .67rem); background: var(--off-white); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; box-shadow: var(--shadow); }
+  .sp-card-stars { color: var(--gold); font-size: .95rem; margin-bottom: .5rem; }
+  .sp-card-quote { font-size: .95rem; color: var(--dark); line-height: 1.65; margin-bottom: .6rem; min-height: 4em; }
+  .sp-card-name  { font-weight: 700; color: var(--dark); font-size: .875rem; }
+  .sp-card-zone  { font-size: .78rem; color: var(--muted); margin-bottom: .4rem; }
+  .sp-card-meta  { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin-top: .5rem; }
+  .sp-layer-chip { font-size: .7rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; }
+  .sp-lc-1,.sp-lc-2 { background: #ccfbf1; color: #0d9488; }
+  .sp-lc-3,.sp-lc-4 { background: #fef9c3; color: #854d0e; }
+  .sp-lc-5 { background: #dbeafe; color: #1e40af; }
+  .sp-lc-6 { background: #ede9fe; color: #6d28d9; }
+  .sp-lc-0 { background: #f3f4f6; color: #6b7280; }
+  .sp-date  { font-size: .72rem; color: var(--muted); margin-left: auto; }
+  .sp-chevron { background: #fff; border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--dark); flex-shrink: 0; }
+  .sp-chevron:hover { background: var(--off-white); }
+  .sp-dots { display: flex; justify-content: center; gap: .4rem; margin-bottom: 2rem; }
+  .sp-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,.12); cursor: pointer; border: none; padding: 0; }
+  .sp-dot.active { background: var(--teal); }
+  .sp-cta-row { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+  .sp-cta-col { font-size: .875rem; color: var(--dark); display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; }
+  .sp-cta-link { font-weight: 700; color: var(--teal); }
+  .sp-cta-link:hover { text-decoration: underline; }
+
+  /* ── About ───────────────────────────────────────────────────────── */
+  #about { background: var(--off-white); }
+  .about-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+  .about-text .s-h2 { margin-bottom: 16px; }
+  .about-body { font-size: 16px; color: var(--muted); line-height: 1.75; margin-bottom: 16px; }
+  .about-stat-row { display: flex; gap: 32px; margin-top: 28px; }
+  .about-stat-num { font-family: 'Playfair Display',serif; font-size: 36px; font-weight: 700; color: var(--teal); }
+  .about-stat-label { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .about-visual {
+    background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+    border-radius: 20px; padding: 40px 36px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .about-vis-item { display: flex; align-items: center; gap: 14px; }
+  .about-vis-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .about-vis-dot.teal  { background: var(--teal-light); }
+  .about-vis-dot.gold  { background: var(--gold); }
+  .about-vis-dot.coral { background: var(--coral); }
+  .about-vis-text { font-size: 14px; color: rgba(255,255,255,.75); line-height: 1.45; }
+  .about-vis-text strong { color: #fff; font-weight: 600; }
+
+  /* ── FAQ ─────────────────────────────────────────────────────────── */
+  #faq { background: var(--white); }
+  .faq-head { text-align: center; margin-bottom: 48px; }
+  .faq-list { max-width: 720px; margin: 0 auto; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: #fff; }
+  .faq-item { border-bottom: 1px solid rgba(0,0,0,.05); }
+  .faq-item:last-child { border-bottom: none; }
+  .faq-q {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 20px 24px; background: none; border: none; cursor: pointer;
+    font-family: 'DM Sans',sans-serif; font-size: 16px; font-weight: 500; color: var(--navy);
+    text-align: left; transition: background 150ms;
+  }
+  .faq-q:hover { background: rgba(0,0,0,.018); }
+  .faq-chevron { flex-shrink: 0; width: 20px; height: 20px; transition: transform 300ms ease; color: var(--muted); }
+  .faq-item.open .faq-chevron { transform: rotate(180deg); color: var(--teal); }
+  .faq-a { max-height: 0; overflow: hidden; transition: max-height 400ms ease; }
+  .faq-a-inner { padding: 0 24px 20px; font-size: 15px; color: var(--muted); line-height: 1.75; }
+
+  /* ── CTA ─────────────────────────────────────────────────────────── */
+  #cta {
+    background: linear-gradient(135deg, #0d1b3e 0%, #152a54 52%, #0f7b72 100%);
+    padding: 96px 0; text-align: center; position: relative; overflow: hidden;
+  }
+  #cta::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+  .cta-inner { position: relative; z-index: 1; }
+  .cta-h2  { font-size: clamp(28px,4vw,44px); font-weight: 700; color: #fff; max-width: 640px; margin: 0 auto 16px; }
+  .cta-sub { font-size: 17px; color: rgba(255,255,255,.58); margin-bottom: 36px; }
+  .cta-trust { font-size: 13px; color: rgba(255,255,255,.38); margin-top: 16px; letter-spacing: .3px; }
+
+  /* ── Footer ──────────────────────────────────────────────────────── */
+  footer { background: var(--navy); padding: 60px 0 0; }
+  .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
+  .footer-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .footer-brand span { font-family: 'Playfair Display',serif; font-size: 18px; font-weight: 700; color: #fff; }
+  .footer-tagline { font-size: 14px; color: rgba(255,255,255,.32); line-height: 1.65; max-width: 230px; }
+  .footer-col h4 { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.42); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .footer-links { display: flex; flex-direction: column; gap: 10px; }
+  .footer-links a { font-size: 14px; color: rgba(255,255,255,.32); transition: color 200ms; }
+  .footer-links a:hover { color: #fff; }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,.06); padding: 20px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .footer-copy { font-size: 13px; color: rgba(255,255,255,.22); }
+
+  /* ── Fade-in ─────────────────────────────────────────────────────── */
+  .fade-up { opacity: 0; transform: translateY(28px); transition: opacity 700ms ease, transform 700ms ease; }
+  .fade-up.in { opacity: 1; transform: translateY(0); }
+  .d1 { transition-delay: .1s; } .d2 { transition-delay: .2s; } .d3 { transition-delay: .3s; }
+
+  /* ── Responsive ──────────────────────────────────────────────────── */
+  @media (max-width: 1024px) {
+    .hero-card { display: none; }
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+    .about-inner { grid-template-columns: 1fr; }
+    .about-visual { display: none; }
+  }
+  @media (max-width: 768px) {
+    .lp-s { padding: 60px 0; }
+    .lp-nav-links, .lp-nav-ctas { display: none; }
+    .lp-hamburger { display: flex; }
+    .prob-grid { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: 1fr; gap: 40px; }
+    .feat-icon-grid { grid-template-columns: repeat(2,1fr); }
+    .feat-card-light, .feat-card-dark { padding: 28px 24px; }
+    .feat-check-grid { grid-template-columns: 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+    .sp-card { flex: 0 0 85%; }
+    .sp-chevron { display: none; }
+    #hero { padding-top: calc(var(--nav-h) + 44px); padding-bottom: 56px; }
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px) {
+    .footer-grid { grid-template-columns: 1fr; }
+    .hero-ctas { flex-direction: column; align-items: flex-start; }
+    .hero-ctas .btn { width: 100%; justify-content: center; }
+    .about-stat-row { flex-wrap: wrap; gap: 20px; }
+  }
+  @media (min-width: 768px) and (max-width: 1024px) {
+    .sp-card { flex: 0 0 calc(50% - .5rem); }
+  }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────────────── -->
+<nav class="lp-nav" id="lpNav">
+  <div class="lp-nav-inner">
+    <a href="/" class="lp-logo">
+      <div class="lp-logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
+        </svg>
+      </div>
+      <span>Simulacrum</span>
+    </a>
+    <div class="lp-nav-links">
+      <a href="#how-it-works" class="lp-nav-link" data-spy="how-it-works">How it works</a>
+      <a href="#features"     class="lp-nav-link" data-spy="features">Features</a>
+      <a href="#pricing"      class="lp-nav-link" data-spy="pricing">Pricing</a>
+      <a href="#about"        class="lp-nav-link" data-spy="about">About</a>
+    </div>
+    <div class="lp-nav-ctas">
+      <button class="btn btn-ghost-dk" id="videoDemoBtn" type="button" style="font-size:14px;padding:9px 16px;">Watch Demo</button>
+      <a href="{{ url_for('pages.login_page') }}"    class="btn btn-outline" style="font-size:14px;padding:9px 16px;">Log in</a>
+      <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal"   style="font-size:14px;padding:9px 16px;">Get started free</a>
+    </div>
+    <button class="lp-hamburger" id="lpHamburger" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="lp-mob-menu" id="lpMobMenu">
+    <a href="#how-it-works" class="lp-mob-link">How it works</a>
+    <a href="#features"     class="lp-mob-link">Features</a>
+    <a href="#pricing"      class="lp-mob-link">Pricing</a>
+    <a href="#about"        class="lp-mob-link">About</a>
+    <div class="lp-mob-ctas">
+      <a href="{{ url_for('pages.login_page') }}"    class="btn btn-outline">Log in</a>
+      <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal">Get started free</a>
     </div>
   </div>
-  <div class="hero-pyramid">
-    <div class="pyramid-layer l5">L5 — Wealth Deployment</div>
-    <div class="pyramid-layer l4">L4 — Automated Systems</div>
-    <div class="pyramid-layer l3">L3 — Productized Income</div>
-    <div class="pyramid-layer l2">L2 — Leveraged Income</div>
-    <div class="pyramid-layer l1">L1 — Active Income</div>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <div class="hero-chip">
+        <span class="hero-chip-dot"></span>
+        AI-powered professional identity
+      </div>
+      <h1 class="hero-h1">Upload your resume.<br><em>We'll show you five ways<br>to turn it into income.</em></h1>
+      <p class="hero-sub">Simulacrum reads your career, builds your professional bio page, and deploys AI agents to find clients, book calls, and grow your income.</p>
+      <div class="hero-ctas">
+        <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Get your free bio page
+        </a>
+        <a href="#how-it-works" class="btn btn-ghost">See how it works</a>
+      </div>
+      <div class="hero-trust">
+        <span>Free forever</span>
+        <span class="hero-trust-sep">·</span>
+        <span>No credit card required</span>
+        <span class="hero-trust-sep">·</span>
+        <span>Bio page + AI chat included</span>
+      </div>
+    </div>
+    <!-- Bio page preview card -->
+    <div class="hero-card">
+      <div class="hc-top">
+        <div class="hc-avatar">SC</div>
+        <div class="hc-name">Sarah Chen</div>
+        <div class="hc-title">Product Strategy Consultant</div>
+      </div>
+      <div class="hc-body">
+        <div class="hc-btn">Book a call</div>
+        <div class="hc-chat">
+          <div class="hc-chat-name">Sarah's assistant</div>
+          Ask me about Sarah's services, availability, and expertise…
+        </div>
+        <div class="hc-live">
+          <span class="hc-dot"></span>
+          <span>Live 24/7 · Powered by Simulacrum</span>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
+<!-- ── PROBLEM ──────────────────────────────────────────────────────── -->
+<section id="problem" class="lp-s">
+  <div class="lp-c">
+    <div class="prob-head fade-up">
+      <span class="s-label gold">The problem</span>
+      <h2 class="s-h2">You are great at what you do.<br>Nobody can find you online.</h2>
+      <p class="s-sub">Independent professionals lose clients every day because their online presence is scattered, static, and silent.</p>
+    </div>
+    <div class="prob-grid">
+      <div class="prob-card fade-up d1">
+        <div class="prob-icon teal">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <h3>Scattered presence</h3>
+        <p>Your expertise is spread across LinkedIn, a stale PDF resume, and an outdated website that doesn't convert visitors into leads.</p>
+      </div>
+      <div class="prob-card fade-up d2">
+        <div class="prob-icon gold">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3>Invisible at 11pm</h3>
+        <p>Prospects research you outside business hours. Without an AI chat that answers questions 24/7, you lose them before the first call.</p>
+      </div>
+      <div class="prob-card fade-up d3">
+        <div class="prob-icon coral">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <h3>No lead capture</h3>
+        <p>When someone visits your profile and leaves, they're gone. No name, no email, no follow-up — just a missed opportunity.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ─────────────────────────────────────────────────── -->
+<section id="how-it-works" class="lp-s">
+  <div class="lp-c">
+    <div class="hiw-head fade-up">
+      <span class="s-label teal">How it works</span>
+      <h2 class="s-h2">Three steps. Eight minutes. Done.</h2>
+    </div>
+    <div class="steps-grid">
+      <div class="step fade-up d1">
+        <span class="step-num">1</span>
+        <div class="step-icon teal">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <h3>Upload your resume</h3>
+        <p>Upload a PDF or DOCX. Our AI reads your full career history and identifies your zones of monetizable expertise.</p>
+      </div>
+      <div class="step fade-up d2">
+        <span class="step-num">2</span>
+        <div class="step-icon gold">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 3l.5 1.5L21 5l-1.5.5L19 7l-.5-1.5L17 5l1.5-.5z"/><path d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5z"/></svg>
+        </div>
+        <h3>AI builds your bio page</h3>
+        <p>Simulacrum generates your professional bio page — SEO-optimized, theme-styled, and live with a 24/7 AI chat widget in minutes.</p>
+      </div>
+      <div class="step fade-up d3">
+        <span class="step-num">3</span>
+        <div class="step-icon navy">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3>Prospects chat, you capture leads</h3>
+        <p>Visitors ask questions. Your AI answers. Their name and email are saved to your CRM automatically — even while you sleep.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ─────────────────────────────────────────────────────── -->
+<section id="features" class="lp-s">
+  <div class="lp-c">
+    <div class="feat-head fade-up">
+      <span class="s-label gold">Features</span>
+      <h2 class="s-h2">Everything you need to be found, trusted, and hired.</h2>
+    </div>
+    <div class="feat-stack">
+      <!-- Free tier -->
+      <div class="feat-card-light fade-up">
+        <div class="feat-tier-label teal">Free — bio page</div>
+        <div class="feat-title dark-text">Your professional identity, live in minutes.</div>
+        <div class="feat-icon-grid">
+          <div class="feat-item">
+            <div class="feat-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg></div>
+            <span class="feat-item-name">AI-generated bio page</span>
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <span class="feat-item-name">24/7 AI chat widget</span>
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg></div>
+            <span class="feat-item-name">Lead capture &amp; CRM</span>
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+            <span class="feat-item-name">Analytics dashboard</span>
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
+            <span class="feat-item-name">SEO optimization</span>
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div>
+            <span class="feat-item-name">3 design themes</span>
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            <span class="feat-item-name">Booking integration</span>
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
+            <span class="feat-item-name">Auto-updates</span>
+          </div>
+        </div>
+      </div>
+      <!-- Pro tier -->
+      <div class="feat-card-dark fade-up">
+        <div class="feat-tier-label teal-light">Pro simulation — {{ sim_price_usd }}</div>
+        <div class="feat-title light-text">49 AI agents. 6 income layers. One simulation.</div>
+        <div class="feat-check-grid">
+          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Rate card &amp; speaker fees</span></div>
+          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Cold email campaign ×10 prospects</span></div>
+          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Kajabi course outline</span></div>
+          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>SEO-optimized blog post</span></div>
+          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Cal.com booking automation</span></div>
+          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Bayesian growth orchestrator</span></div>
+          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Full CRM + pipeline</span></div>
+          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Prospect research engine</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ──────────────────────────────────────────────────────── -->
+<section id="pricing" class="lp-s">
+  <div class="lp-c">
+    <div class="pricing-head fade-up">
+      <span class="s-label teal">Pricing</span>
+      <h2 class="s-h2">Start free. Upgrade when you are ready.</h2>
+    </div>
+    <p class="pricing-head-sub fade-up">The bio page is free forever. The simulation is a one-time purchase.</p>
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="price-card fade-up d1">
+        <div class="price-badge-row"></div>
+        <div class="price-tier">Free</div>
+        <div class="price-amount">$0</div>
+        <div class="price-per">forever · no credit card</div>
+        <div class="price-features">
+          <div class="price-feat"><span class="price-check">✓</span><span>AI-generated bio page</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>24/7 AI chat widget</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Lead capture &amp; CRM</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Analytics dashboard</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>SEO optimization</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>3 design themes</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Booking integration</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Auto-updates from LinkedIn</span></div>
+        </div>
+        <a href="{{ url_for('pages.register_page') }}" class="btn btn-outline" style="width:100%;justify-content:center;">Get started free</a>
+      </div>
+      <!-- Pro -->
+      <div class="price-card featured fade-up d2">
+        <div class="price-badge-row"><span class="price-badge">Most popular</span></div>
+        <div class="price-tier">Pro Simulation</div>
+        <div class="price-amount">{{ sim_price_usd }}</div>
+        <div class="price-per">per simulation · one-time</div>
+        <div class="price-features">
+          <div class="price-feat"><span class="price-check">✓</span><span>Everything in Free</span></div>
+          <div class="price-divider">Plus 49 AI agents:</div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Rate card &amp; speaker fees</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Cold email campaign ×10</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Kajabi course outline</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>SEO blog post</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Cal.com automation</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Bayesian orchestrator</span></div>
+          <div class="price-feat"><span class="price-check">✓</span><span>Prospect research engine</span></div>
+        </div>
+        <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal" style="width:100%;justify-content:center;">Start your simulation</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SOCIAL PROOF ─────────────────────────────────────────────────── -->
 {% if testimonials %}
-<section class="social-proof" id="socialProof">
+<section id="social-proof">
   <div class="sp-inner">
-    <h2 class="sp-heading">Real results from real professionals.</h2>
-    <p class="sp-sub">Every story below came from someone who uploaded a resume and ran their first Simulation.</p>
+    <h2 class="sp-heading fade-up">Real results from real professionals.</h2>
+    <p class="sp-sub fade-up">Every story below came from someone who uploaded a resume and ran their first Simulation.</p>
 
     {% if trust_stats and trust_stats.approved_count > 0 %}
-    <div class="sp-trust-bar">
+    <div class="sp-trust-bar fade-up">
       <span class="sp-trust-item">{{ trust_stats.avg_rating }} ★ average rating</span>
       <span class="sp-trust-sep">·</span>
       <span class="sp-trust-item">{{ trust_stats.total_simulations }} Simulations generated</span>
     </div>
     {% endif %}
 
-    {% set featured = [] %}{% for t in testimonials %}{% if t.is_featured %}{% set _ = featured.append(t) %}{% endif %}{% endfor %}
-    {% if featured %}
-    {% set f = featured[0] %}
-    <div class="sp-featured-card">
-      <div class="sp-featured-quote">"{{ f.quote_text }}"</div>
+    {% set featured = namespace(items=[]) %}
+    {% for t in testimonials %}{% if t.is_featured %}{% set featured.items = featured.items + [t] %}{% endif %}{% endfor %}
+    {% if featured.items %}{% set f = featured.items[0] %}
+    <div class="sp-featured-card fade-up">
+      <div class="sp-featured-quote">{{ f.quote_text }}</div>
       <div class="sp-featured-name">{{ f.display_name }}</div>
       {% if f.expertise_zone %}<div class="sp-featured-zone">{{ f.expertise_zone }}</div>{% endif %}
       <div class="sp-featured-stars">{{ '★' * f.star_rating }}</div>
     </div>
     {% endif %}
 
-    {% set non_featured = [] %}{% for t in testimonials %}{% if not t.is_featured %}{% set _ = non_featured.append(t) %}{% endif %}{% endfor %}
-    {% if non_featured %}
+    {% set non_feat = namespace(items=[]) %}
+    {% for t in testimonials %}{% if not t.is_featured %}{% set non_feat.items = non_feat.items + [t] %}{% endif %}{% endfor %}
+    {% if non_feat.items %}
     <div class="sp-carousel-wrap">
       <button class="sp-chevron sp-prev" onclick="spPrev()" aria-label="Previous">&#8249;</button>
       <div class="sp-carousel" id="spCarousel">
-        {% for t in non_featured %}
+        {% for t in non_feat.items %}
         <div class="sp-card">
           <div class="sp-card-stars">{{ '★' * t.star_rating }}{{ '☆' * (5 - t.star_rating) }}</div>
           <div class="sp-card-quote">"{{ t.quote_text }}"</div>
@@ -130,90 +734,338 @@
 </section>
 {% endif %}
 
-<section class="features">
-  <div class="features-inner">
-    <div class="feature-card">
-      <div class="feature-icon">📄</div>
-      <h3>Resume or LinkedIn</h3>
-      <p>Upload a PDF/DOCX resume or connect your LinkedIn profile. Our AI parses your full career history.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🧠</div>
-      <h3>AI Expertise Extraction</h3>
-      <p>Claude identifies your Expertise Zones — the specific areas where your experience is monetizable.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">💰</div>
-      <h3>5-Layer Wealth Blueprint</h3>
-      <p>A personalized roadmap from active consulting (Layer 1) all the way to passive wealth deployment (Layer 5).</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">⚡</div>
-      <h3>Real-Time Streaming</h3>
-      <p>Watch your wealth simulation populate layer by layer in real time as Claude generates each recommendation.</p>
+<!-- ── ABOUT ────────────────────────────────────────────────────────── -->
+<section id="about" class="lp-s">
+  <div class="lp-c">
+    <div class="about-inner">
+      <div class="about-text fade-up">
+        <span class="s-label teal">About</span>
+        <h2 class="s-h2">Built for the professionals who never stop growing.</h2>
+        <p class="about-body">Simulacrum was built by Bay Area Experiences Ventures for independent professionals — consultants, coaches, fractional executives, and creators — who have deep expertise but limited time to market it.</p>
+        <p class="about-body">We believe your career history is an asset. One resume upload should be enough to generate a professional identity, a lead-capture system, and a wealth roadmap — all at once.</p>
+        <div class="about-stat-row">
+          <div>
+            <div class="about-stat-num">49</div>
+            <div class="about-stat-label">AI agents per simulation</div>
+          </div>
+          <div>
+            <div class="about-stat-num">6</div>
+            <div class="about-stat-label">Income layers mapped</div>
+          </div>
+          <div>
+            <div class="about-stat-num">8 min</div>
+            <div class="about-stat-label">Average setup time</div>
+          </div>
+        </div>
+      </div>
+      <div class="about-visual fade-up d2">
+        <div class="about-vis-item">
+          <span class="about-vis-dot teal"></span>
+          <span class="about-vis-text"><strong>Layer 1 — Active Income</strong><br>Consulting, fractional roles, advisory</span>
+        </div>
+        <div class="about-vis-item">
+          <span class="about-vis-dot gold"></span>
+          <span class="about-vis-text"><strong>Layer 2 — Leveraged Income</strong><br>Group programs, workshops, speaking</span>
+        </div>
+        <div class="about-vis-item">
+          <span class="about-vis-dot teal"></span>
+          <span class="about-vis-text"><strong>Layer 3 — Productized Income</strong><br>Courses, templates, toolkits</span>
+        </div>
+        <div class="about-vis-item">
+          <span class="about-vis-dot coral"></span>
+          <span class="about-vis-text"><strong>Layer 4 — Automated Residual</strong><br>Content, SEO, affiliate</span>
+        </div>
+        <div class="about-vis-item">
+          <span class="about-vis-dot gold"></span>
+          <span class="about-vis-text"><strong>Layer 5 — Wealth Deployment</strong><br>Investments guided by your expertise</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
-{% endblock %}
 
-{% block scripts %}
-{% if testimonials %}
+<!-- ── FAQ ──────────────────────────────────────────────────────────── -->
+<section id="faq" class="lp-s">
+  <div class="lp-c">
+    <div class="faq-head fade-up">
+      <span class="s-label gold">FAQ</span>
+      <h2 class="s-h2">Questions? We have answers.</h2>
+    </div>
+    <div class="faq-list fade-up">
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          What does the free bio page include?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">Your free bio page is AI-generated from your resume and includes a professional bio, a 24/7 AI chat widget that answers questions from visitors on your behalf, a lead capture form that automatically saves contacts to your CRM, SEO meta tags, and three design themes. No credit card required — free forever.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          How does the AI chat work?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">When a visitor clicks "Chat with [your name]" on your bio page, they connect to an AI assistant trained on your resume, services, and expertise. It answers questions about your background and availability, and automatically captures their name and email into your CRM — even at 2am when you're not available.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          What is a simulation?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">A simulation is a complete AI-powered analysis of your career. Our Bayesian orchestrator identifies your Expertise Zone and deploys 49 specialized agents across 6 income layers — from active consulting (Layer 1) to passive wealth deployment (Layer 5). Each agent generates a specific deliverable: rate card, cold email campaign, course outline, blog post, and more.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          How is the {{ sim_price_usd }} structured?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">It is a one-time payment per simulation — not a subscription. You pay {{ sim_price_usd }} once, receive all 49 deliverables, and keep access to your results indefinitely. Want to run a second simulation on a different expertise zone or updated resume? That is another {{ sim_price_usd }}, separately.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          What happens to my data?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">Your resume and career data are processed solely to generate your bio page and simulation. We never sell your data to third parties. You can delete your account and all associated data at any time from your Settings page. Your bio page visitors' contact information is stored in your private CRM and is never shared.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Do I need all nine integrations?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">No — all integrations are optional. Simulacrum works fully without connecting any third-party tool. Connecting Cal.com, Kajabi, Apollo, or Stripe simply unlocks richer automation for each deliverable. Your bio page and AI chat are live from the moment you upload your resume.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────────────────────────────── -->
+<section id="cta">
+  <div class="lp-c cta-inner">
+    <h2 class="cta-h2 fade-up">Ready to turn your resume into a marketing platform?</h2>
+    <p class="cta-sub fade-up d1">Upload once. Get a bio page, an AI chat, and a full wealth simulation.</p>
+    <div class="fade-up d2">
+      <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold" style="font-size:16px;padding:14px 28px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Get your free bio page
+      </a>
+    </div>
+    <p class="cta-trust fade-up d3">No credit card &nbsp;·&nbsp; Free forever &nbsp;·&nbsp; Takes 8 minutes</p>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────────────────────────────────────── -->
+<footer>
+  <div class="lp-c">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">
+          <div class="lp-logo-mark" style="width:28px;height:28px;border-radius:7px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/></svg>
+          </div>
+          <span>Simulacrum</span>
+        </div>
+        <p class="footer-tagline">Turn your resume into autonomous income. Free bio page forever.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <div class="footer-links">
+          <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
+          <a href="{{ url_for('pages.register_page') }}">Bio page</a>
+          <a href="{{ url_for('pages.register_page') }}">Simulation</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <div class="footer-links">
+          <a href="#about">About</a>
+          <a href="{{ url_for('pages.partner_apply_page') }}">Partners</a>
+          <a href="{{ url_for('pages.register_page') }}">Contact</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <div class="footer-links">
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+          <a href="#">Security</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2026 Simulacrum · Bay Area Experiences Ventures · simulacrumai.io</span>
+      <span class="footer-copy">Built with Claude</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ── Video Demo Modal ──────────────────────────────────────────────── -->
+<div id="videoModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:2000;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:#fff;border-radius:14px;max-width:900px;width:100%;box-shadow:0 24px 72px rgba(0,0,0,.4);overflow:hidden;position:relative">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #e2e8f0">
+      <span style="font-weight:700;font-size:.9rem;color:#1e293b">Revenue Engine — Demo</span>
+      <button id="videoModalClose" type="button" style="background:none;border:none;cursor:pointer;font-size:1.4rem;color:#94a3b8;padding:.2rem .4rem;border-radius:4px;line-height:1">&times;</button>
+    </div>
+    <video id="demoVideo" controls muted playsinline style="width:100%;display:block;max-height:72vh;background:#000">
+      <source id="demoVideoSrc" src="" type="video/mp4">
+    </video>
+  </div>
+</div>
+
 <script>
-(function(){
-  const carousel = document.getElementById('spCarousel');
-  const dotsEl   = document.getElementById('spDots');
+window.ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+window.DEMO_VIDEO_URL = '{{ url_for("static", filename="media/Simulacrum_Revenue_Engine.mp4") }}';
+
+(function () {
+  'use strict';
+
+  /* ── Nav scroll shadow ─────────────────────────────────────────── */
+  var nav = document.getElementById('lpNav');
+  window.addEventListener('scroll', function () {
+    nav.classList.toggle('scrolled', window.scrollY > 10);
+  }, {passive: true});
+
+  /* ── Mobile hamburger ──────────────────────────────────────────── */
+  var ham  = document.getElementById('lpHamburger');
+  var menu = document.getElementById('lpMobMenu');
+  ham.addEventListener('click', function () {
+    menu.classList.toggle('open');
+  });
+  menu.querySelectorAll('a').forEach(function (a) {
+    a.addEventListener('click', function () { menu.classList.remove('open'); });
+  });
+
+  /* ── Scroll spy ────────────────────────────────────────────────── */
+  var spyLinks = document.querySelectorAll('[data-spy]');
+  var spySections = [];
+  spyLinks.forEach(function (l) {
+    var el = document.getElementById(l.dataset.spy);
+    if (el) spySections.push({el: el, link: l});
+  });
+  if (spySections.length && 'IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          spyLinks.forEach(function (l) { l.classList.remove('active'); });
+          var match = spySections.find(function (s) { return s.el === e.target; });
+          if (match) match.link.classList.add('active');
+        }
+      });
+    }, {rootMargin: '-40% 0px -55% 0px'});
+    spySections.forEach(function (s) { obs.observe(s.el); });
+  }
+
+  /* ── Fade-in on scroll ─────────────────────────────────────────── */
+  if ('IntersectionObserver' in window) {
+    var fadeObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); fadeObs.unobserve(e.target); }
+      });
+    }, {threshold: 0.12});
+    document.querySelectorAll('.fade-up').forEach(function (el) { fadeObs.observe(el); });
+  } else {
+    document.querySelectorAll('.fade-up').forEach(function (el) { el.classList.add('in'); });
+  }
+
+  /* ── FAQ accordion ─────────────────────────────────────────────── */
+  document.querySelectorAll('.faq-q').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var item   = btn.closest('.faq-item');
+      var isOpen = item.classList.contains('open');
+      // close all
+      document.querySelectorAll('.faq-item.open').forEach(function (i) {
+        i.classList.remove('open');
+        i.querySelector('.faq-a').style.maxHeight = '0';
+        i.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+      });
+      if (!isOpen) {
+        item.classList.add('open');
+        var a = item.querySelector('.faq-a');
+        a.style.maxHeight = a.scrollHeight + 'px';
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    });
+  });
+
+  /* ── Video demo modal ──────────────────────────────────────────── */
+  var overlay   = document.getElementById('videoModalOverlay');
+  var video     = document.getElementById('demoVideo');
+  var videoSrc  = document.getElementById('demoVideoSrc');
+  var closeBtn  = document.getElementById('videoModalClose');
+  var demoBtn   = document.getElementById('videoDemoBtn');
+
+  function openModal() {
+    videoSrc.src = window.DEMO_VIDEO_URL;
+    video.load();
+    overlay.style.display = 'flex';
+    video.currentTime = 0;
+    video.play().catch(function () {});
+  }
+  function closeModal() {
+    overlay.style.display = 'none';
+    video.pause();
+  }
+  if (demoBtn)  demoBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal();
+  });
+})();
+
+/* ── Social proof carousel ─────────────────────────────────────────── */
+{% if testimonials %}
+(function () {
+  var carousel = document.getElementById('spCarousel');
+  var dotsEl   = document.getElementById('spDots');
   if (!carousel) return;
-  const cards = carousel.querySelectorAll('.sp-card');
+  var cards = carousel.querySelectorAll('.sp-card');
   if (!cards.length) return;
-  let current = 0;
-  let autoTimer = null;
+  var current = 0, autoTimer = null;
 
   function visibleCount() {
     if (window.innerWidth >= 1200) return 3;
     if (window.innerWidth >= 768)  return 2;
     return 1;
   }
-  function maxIndex() { return Math.max(0, cards.length - visibleCount()); }
+  function maxIdx() { return Math.max(0, cards.length - visibleCount()); }
 
   function goTo(idx) {
-    current = Math.max(0, Math.min(idx, maxIndex()));
-    const cardW = cards[0].offsetWidth + 16;
+    current = Math.max(0, Math.min(idx, maxIdx()));
+    var cardW = cards[0].offsetWidth + 16;
     carousel.scrollTo({left: current * cardW, behavior: 'smooth'});
-    document.querySelectorAll('.sp-dot').forEach((d,i) => d.classList.toggle('active', i === current));
+    document.querySelectorAll('.sp-dot').forEach(function (d, i) { d.classList.toggle('active', i === current); });
   }
-
   function buildDots() {
     if (!dotsEl) return;
     dotsEl.innerHTML = '';
-    for (let i = 0; i <= maxIndex(); i++) {
-      const d = document.createElement('button');
-      d.className = 'sp-dot' + (i === 0 ? ' active' : '');
-      d.addEventListener('click', () => { goTo(i); resetAuto(); });
-      dotsEl.appendChild(d);
+    for (var i = 0; i <= maxIdx(); i++) {
+      (function(idx) {
+        var d = document.createElement('button');
+        d.className = 'sp-dot' + (idx === 0 ? ' active' : '');
+        d.addEventListener('click', function () { goTo(idx); resetAuto(); });
+        dotsEl.appendChild(d);
+      })(i);
     }
   }
-
   function startAuto() {
     if (window.innerWidth < 768) return;
     clearInterval(autoTimer);
-    autoTimer = setInterval(() => goTo(current >= maxIndex() ? 0 : current + 1), 6000);
+    autoTimer = setInterval(function () { goTo(current >= maxIdx() ? 0 : current + 1); }, 6000);
   }
   function resetAuto() { clearInterval(autoTimer); setTimeout(startAuto, 3000); }
-
-  window.spNext = () => { goTo(current + 1); resetAuto(); };
-  window.spPrev = () => { goTo(current - 1); resetAuto(); };
-
-  carousel.addEventListener('mouseenter', () => clearInterval(autoTimer));
+  window.spNext = function () { goTo(current + 1); resetAuto(); };
+  window.spPrev = function () { goTo(current - 1); resetAuto(); };
+  carousel.addEventListener('mouseenter', function () { clearInterval(autoTimer); });
   carousel.addEventListener('mouseleave', startAuto);
-  document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight') spNext();
-    if (e.key === 'ArrowLeft')  spPrev();
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') window.spNext();
+    if (e.key === 'ArrowLeft')  window.spPrev();
   });
-
-  buildDots();
-  startAuto();
-  window.addEventListener('resize', () => { buildDots(); goTo(Math.min(current, maxIndex())); });
+  buildDots(); startAuto();
+  window.addEventListener('resize', function () { buildDots(); goTo(Math.min(current, maxIdx())); });
 })();
-</script>
 {% endif %}
-{% endblock %}
+</script>
+</body>
+</html>

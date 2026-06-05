@@ -81,7 +81,7 @@
           placeholder="I thought you'd benefit from mapping your skills into income streams…"></textarea>
       </div>
       <div id="invError" class="form-error hidden"></div>
-      <button class="btn btn-primary" onclick="sendInvitation()">Send Invitation</button>
+      <button class="btn btn-primary" id="invSubmitBtn" onclick="sendInvitation()">Send Invitation</button>
     </div>
 
     <div style="margin-top:1.5rem">
@@ -231,26 +231,36 @@ function esc(s) {
 }
 
 async function sendInvitation() {
+  const btn = document.getElementById('invSubmitBtn');
+  if (btn.disabled) return;
   const email = document.getElementById('invEmail').value.trim();
   const firstName = document.getElementById('invFirstName').value.trim();
   const message = document.getElementById('invMessage').value.trim();
   const errEl = document.getElementById('invError');
   errEl.classList.add('hidden');
   if (!email) { errEl.textContent = 'Email is required'; errEl.classList.remove('hidden'); return; }
-  const r = await fetch(ROOT + '/api/partners/send-referral', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ recipient_email: email, recipient_first_name: firstName, personal_message: message }),
-  });
-  const d = await r.json();
-  if (r.ok) {
-    document.getElementById('invEmail').value = '';
-    document.getElementById('invFirstName').value = '';
-    document.getElementById('invMessage').value = '';
-    loadInvitations();
-  } else {
-    errEl.textContent = d.error || 'Failed to send';
-    errEl.classList.remove('hidden');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(ROOT + '/api/partners/send-referral', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ recipient_email: email, recipient_first_name: firstName, personal_message: message }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      document.getElementById('invEmail').value = '';
+      document.getElementById('invFirstName').value = '';
+      document.getElementById('invMessage').value = '';
+      loadInvitations();
+    } else {
+      errEl.textContent = d.error || 'Failed to send';
+      errEl.classList.remove('hidden');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
   }
 }
 

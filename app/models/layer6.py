@@ -11,6 +11,10 @@ class Layer6Config(db.Model):
     CADENCE_DAILY = 'daily'
     CADENCE_THREE_DAYS = 'every_3_days'
     CADENCE_WEEKLY = 'weekly'
+    CADENCE_12H = 'every_12h'
+    CADENCE_48H = 'every_48h'
+    CADENCE_72H = 'every_72h'
+    CADENCE_168H = 'every_168h'
 
     CONTACT_SCOPE_UPLOADED = 'uploaded_only'
     CONTACT_SCOPE_LINKEDIN = 'linkedin_connections'
@@ -93,6 +97,7 @@ class Layer6Cycle(db.Model):
     __tablename__ = 'layer6_cycles'
 
     PHASE_EXPLORE = 'explore'
+    PHASE_TRANSITION = 'transition'
     PHASE_EXPLOIT = 'exploit'
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)

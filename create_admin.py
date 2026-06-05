@@ -33,8 +33,8 @@ with app.app_context():
 # Seed default platform settings
 with app.app_context():
     if not PlatformSetting.get('simulation_price'):
-        PlatformSetting.set('simulation_price', '1000')
+        PlatformSetting.set('simulation_price', '69500')
         db.session.commit()
-        print('Seeded platform setting: simulation_price = 1000 cents ($10.00)')
+        print('Seeded platform setting: simulation_price = 69500 cents ($695.00)')
     else:
         print(f'simulation_price already set: {PlatformSetting.get("simulation_price")} cents')

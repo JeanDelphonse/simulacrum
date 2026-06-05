@@ -133,6 +133,65 @@
     .upload-area:hover { border-color: #0e7490; }
     .upload-area input[type=file] { display: none; }
 
+    /* ── Distribution panel ── */
+    .analytics-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-bottom: 1rem;
+    }
+    .analytics-stat {
+      background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: .6rem .75rem; text-align: center;
+    }
+    .analytics-stat .stat-val { font-size: 1.25rem; font-weight: 800; color: #111827; }
+    .analytics-stat .stat-label { font-size: .7rem; color: #9ca3af; }
+    .embed-code {
+      background: #f3f4f6; border-radius: 7px; padding: .65rem .8rem;
+      font-size: .75rem; font-family: monospace; color: #374151;
+      word-break: break-all; margin-bottom: .5rem; cursor: pointer;
+      border: 1px solid #e5e7eb; transition: background .12s;
+    }
+    .embed-code:hover { background: #e5e7eb; }
+    .embed-label { font-size: .75rem; font-weight: 600; color: #6b7280; margin-bottom: .25rem; }
+    .embed-copy-hint { font-size: .7rem; color: #9ca3af; margin-bottom .75rem; }
+    .nudge-box {
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+      padding: .75rem; margin-bottom: .75rem; font-size: .82rem; color: #1e40af;
+    }
+    .nudge-box a { color: #1d4ed8; font-weight: 600; }
+    .referrer-row { display: flex; align-items: center; justify-content: space-between; padding: .3rem 0; font-size: .82rem; }
+    .referrer-row .ref-bar {
+      height: 6px; background: #0e7490; border-radius: 3px; margin: 0 .5rem; flex: 1;
+    }
+
+    /* ── Share modal ── */
+    .share-overlay {
+      position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .share-overlay.hidden { display: none; }
+    .share-modal {
+      background: #fff; border-radius: 16px; padding: 2.5rem 2rem;
+      max-width: 460px; width: 100%; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .share-modal h2 { font-size: 1.5rem; font-weight: 800; color: #111827; margin-bottom: .5rem; }
+    .share-modal .share-sub { color: #6b7280; font-size: .95rem; margin-bottom: 1.75rem; }
+    .share-live-url {
+      background: #f3f4f6; border-radius: 8px; padding: .6rem 1rem;
+      font-size: .85rem; color: #374151; margin-bottom: 1.5rem; text-align: left;
+      font-family: monospace; border: 1px solid #e5e7eb; word-break: break-all;
+    }
+    .share-btn-row { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-bottom: .75rem; }
+    .s-btn { padding: .65rem 1.5rem; border-radius: 8px; font-size: .9rem; font-weight: 600; cursor: pointer; border: none; }
+    .s-btn-li { background: #0A66C2; color: #fff; }
+    .s-btn-li:hover { background: #004e9a; }
+    .s-btn-copy { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+    .s-btn-copy.copied { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+    .share-embed-row { display: flex; gap: .6rem; justify-content: center; margin-bottom: 1rem; flex-wrap: wrap; }
+    .s-btn-sm { background: #fff; border: 1px solid #d1d5db; color: #374151; padding: .4rem .9rem; border-radius: 7px; font-size: .8rem; font-weight: 600; cursor: pointer; }
+    .s-btn-sm:hover { background: #f3f4f6; }
+    .share-skip { background: none; border: none; color: #9ca3af; font-size: .82rem; cursor: pointer; }
+    .share-skip:hover { color: #6b7280; }
+
     @media (max-width: 900px) {
       .editor-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
       .editor-panel { height: 50vh; overflow-y: auto; }
@@ -145,7 +204,7 @@
 <!-- Top bar -->
 <header class="editor-topbar">
   <div class="topbar-left">
-    <a href="/u/{{ slug }}" target="_blank">← View page</a>
+    <a href="{{ request.url_root }}u/{{ slug }}" target="_blank">← View page</a>
     <span class="topbar-title">Bio page editor</span>
     {% if bio_page %}
     <span class="badge badge-{{ bio_page.status }}" id="status-badge">{{ bio_page.status | title }}</span>
@@ -312,11 +371,85 @@
       </div>
     </div>
 
+    <!-- ── Distribution (PLG) ── -->
+    <div class="editor-section">
+      <button class="editor-section-header" data-section="distribution">
+        Distribution &amp; analytics <span>›</span>
+      </button>
+      <div class="editor-section-body" id="distribution-body">
+
+        <!-- Analytics mini-panel -->
+        <div style="margin-bottom:1rem;">
+          <div style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.6rem;">Last 7 days</div>
+          <div class="analytics-row" id="analytics-stats">
+            <div class="analytics-stat"><div class="stat-val" id="an-views">—</div><div class="stat-label">Views</div></div>
+            <div class="analytics-stat"><div class="stat-val" id="an-chats">—</div><div class="stat-label">Chats</div></div>
+            <div class="analytics-stat"><div class="stat-val" id="an-leads">—</div><div class="stat-label">Leads</div></div>
+          </div>
+          <div id="an-referrers" style="margin-bottom:.5rem;"></div>
+          <div id="an-nudge" style="display:none;" class="nudge-box">
+            You had lots of visitors but few leads.
+            <a href="/simulations">Run a simulation →</a> to activate your outreach agents.
+          </div>
+        </div>
+
+        <!-- Badge & explore toggles -->
+        <div class="section-visibility-row">
+          <span style="font-size:.85rem;">Show Simulacrum badge <span style="font-size:.72rem;color:#9ca3af;">(free plan always on)</span></span>
+          <input type="checkbox" id="dist-show-badge" checked>
+        </div>
+        <div class="section-visibility-row" style="margin-bottom:.75rem;">
+          <span style="font-size:.85rem;">Show on Explore directory</span>
+          <input type="checkbox" id="dist-show-explore" checked>
+        </div>
+
+        <!-- Share button -->
+        <button class="btn btn-outline" id="dist-share-btn" style="width:100%;margin-bottom:1rem;">
+          Share your page →
+        </button>
+
+        <!-- Embed codes -->
+        <div style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.5rem;">Embed on your site</div>
+
+        <div class="embed-label">Floating badge (paste before &lt;/body&gt;)</div>
+        <div class="embed-code" id="embed-badge-code" title="Click to copy"></div>
+        <div class="embed-copy-hint" id="embed-badge-hint" style="font-size:.7rem;color:#9ca3af;margin-bottom:.75rem;">Click to copy</div>
+
+        <div class="embed-label">Inline card</div>
+        <div class="embed-code" id="embed-card-code" title="Click to copy"></div>
+        <div class="embed-copy-hint" id="embed-card-hint" style="font-size:.7rem;color:#9ca3af;margin-bottom:.75rem;">Click to copy</div>
+
+        <div class="embed-label">Email signature (static HTML)</div>
+        <div class="embed-code" id="embed-email-code" title="Click to copy"></div>
+        <div class="embed-copy-hint" id="embed-email-hint" style="font-size:.7rem;color:#9ca3af;"></div>
+
+      </div>
+    </div>
+
   </aside>
+
+  <!-- Share modal -->
+  <div class="share-overlay hidden" id="share-overlay">
+    <div class="share-modal">
+      <h2>Your bio page is live!</h2>
+      <p class="share-sub">Share it with your network to start capturing leads.</p>
+      <div class="share-live-url" id="share-url-display"></div>
+      <div class="share-btn-row">
+        <button class="s-btn s-btn-li" id="share-li-btn">Share on LinkedIn</button>
+        <button class="s-btn s-btn-copy" id="share-copy-btn">Copy link</button>
+      </div>
+      <div class="share-embed-row">
+        <button class="s-btn-sm" id="share-badge-btn">Website badge</button>
+        <button class="s-btn-sm" id="share-card-btn">Inline card</button>
+        <button class="s-btn-sm" id="share-email-btn">Email signature</button>
+      </div>
+      <button class="share-skip" id="share-skip-btn">Skip for now</button>
+    </div>
+  </div>
 
   <!-- RIGHT: preview -->
   <main class="preview-pane">
-    <iframe id="preview-frame" src="/u/{{ slug }}" title="Bio page preview" sandbox="allow-scripts allow-same-origin"></iframe>
+    <iframe id="preview-frame" src="{{ request.url_root }}u/{{ slug }}" title="Bio page preview" sandbox="allow-scripts allow-same-origin"></iframe>
   </main>
 </div>
 
@@ -324,14 +457,16 @@
 (function() {
   'use strict';
   var SLUG = {{ slug | tojson }};
+  var ROOT = {{ request.url_root | tojson }}.replace(/\/$/, '');
   var bioPage = null;
   var saveTimer = null;
   var saveStatus = document.getElementById('save-status');
 
   // ── Load bio page data ─────────────────────────────────────────────
-  fetch('/api/bio').then(r => r.json()).then(function(d) {
+  fetch(ROOT + '/api/bio').then(r => r.json()).then(function(d) {
     bioPage = d;
     _populate(d);
+    _initDistribution(d);
   }).catch(function(e) {
     console.error('Failed to load bio page', e);
   });
@@ -424,24 +559,38 @@
     };
   }
 
+  var _isSaving = false;
   function _save() {
+    if (_isSaving) return;
+    _isSaving = true;
     var payload = _buildPayload();
-    fetch('/api/bio', {
+    fetch(ROOT + '/api/bio', {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
       body: JSON.stringify(payload),
     })
-    .then(r => r.json())
+    .then(function(r) {
+      if (!r.ok) {
+        return r.text().then(function(body) {
+          console.error('Bio save failed — HTTP', r.status, body.slice(0, 400));
+          throw new Error('HTTP ' + r.status);
+        });
+      }
+      return r.json();
+    })
     .then(function(d) {
       bioPage = d;
       saveStatus.textContent = 'Saved';
       saveStatus.className = 'saved';
-      _refreshPreview();
+      try { _refreshPreview(); } catch(e) { console.warn('Preview refresh failed', e); }
     })
-    .catch(function() {
+    .catch(function(err) {
       saveStatus.textContent = 'Save failed';
       saveStatus.className = 'error';
-    });
+      console.error('Bio save error:', err);
+    })
+    .finally(function() { _isSaving = false; });
   }
 
   // ── Theme ──────────────────────────────────────────────────────────
@@ -449,7 +598,7 @@
     btn.addEventListener('click', function() {
       document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
-      fetch('/api/bio', {
+      fetch(ROOT + '/api/bio', {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({theme: this.dataset.theme}),
@@ -468,7 +617,7 @@
       if (!this.files || !this.files[0]) return;
       var fd = new FormData();
       fd.append('image', this.files[0]);
-      fetch('/api/bio/hero-image', {method: 'POST', body: fd})
+      fetch(ROOT + '/api/bio/hero-image', {method: 'POST', body: fd})
         .then(r => r.json())
         .then(function(d) {
           if (d.hero_image_url) {
@@ -484,26 +633,40 @@
   var unpublishBtn = document.getElementById('unpublish-btn');
   if (publishBtn) {
     publishBtn.addEventListener('click', function() {
+      if (publishBtn.disabled) return;
       publishBtn.disabled = true;
-      fetch('/api/bio/publish', {method: 'POST'})
-        .then(r => r.json())
-        .then(function(d) {
-          document.getElementById('status-badge').textContent = 'Published';
-          document.getElementById('status-badge').className = 'badge badge-published';
-          publishBtn.textContent = 'Published ✓';
+      fetch(ROOT + '/api/bio/publish', {method: 'POST'})
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+        .then(function(result) {
+          if (result.ok) {
+            document.getElementById('status-badge').textContent = 'Published';
+            document.getElementById('status-badge').className = 'badge badge-published';
+            publishBtn.textContent = 'Published ✓';
+            // Show share prompt on first publish (share_prompt_shown checked in _initDistribution
+            // but also trigger here for the publish-click flow)
+            if (bioPage && !bioPage.share_prompt_shown) {
+              _showShareModal();
+            }
+          } else {
+            publishBtn.disabled = false;
+          }
         })
         .catch(function() { publishBtn.disabled = false; });
     });
   }
   if (unpublishBtn) {
     unpublishBtn.addEventListener('click', function() {
+      if (unpublishBtn.disabled) return;
       if (!confirm('Unpublish your bio page? Visitors will no longer see it.')) return;
-      fetch('/api/bio/unpublish', {method: 'POST'})
-        .then(r => r.json())
+      unpublishBtn.disabled = true;
+      fetch(ROOT + '/api/bio/unpublish', {method: 'POST'})
+        .then(function(r) { return r.json(); })
         .then(function() {
           document.getElementById('status-badge').textContent = 'Unpublished';
           document.getElementById('status-badge').className = 'badge badge-unpublished';
-        });
+        })
+        .catch(function() {})
+        .finally(function() { unpublishBtn.disabled = false; });
     });
   }
 
@@ -531,7 +694,7 @@
       btn.addEventListener('click', function() {
         if (!confirm('Delete this testimonial?')) return;
         var tid = this.dataset.id;
-        fetch('/api/bio/testimonials/' + tid, {method: 'DELETE'})
+        fetch(ROOT + '/api/bio/testimonials/' + tid, {method: 'DELETE'})
           .then(r => r.json())
           .then(function() {
             var updated = (bioPage.custom_testimonials || []).filter(function(t) { return t.id !== tid; });
@@ -563,15 +726,15 @@
       var tErr = document.getElementById('t-err');
       if (!quote || !name) { tErr.textContent = 'Quote and name are required.'; return; }
       tErr.textContent = '';
+      if (tSaveBtn.disabled) return;
       tSaveBtn.disabled = true;
-      fetch('/api/bio/testimonials', {
+      fetch(ROOT + '/api/bio/testimonials', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({quote: quote, name: name, title: title || null, company: company || null}),
       })
       .then(r => r.json())
       .then(function(t) {
-        tSaveBtn.disabled = false;
         if (t.id) {
           bioPage.custom_testimonials = (bioPage.custom_testimonials || []).concat([t]);
           _renderTestimonials(bioPage.custom_testimonials);
@@ -586,12 +749,177 @@
           tErr.textContent = t.error || 'Failed to save.';
         }
       })
-      .catch(function() { tSaveBtn.disabled = false; tErr.textContent = 'Network error.'; });
+      .catch(function() { tErr.textContent = 'Network error.'; })
+      .finally(function() { tSaveBtn.disabled = false; });
     });
   }
 
   function _esc(s) {
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Distribution: populate after bio loads ─────────────────────────
+  function _initDistribution(d) {
+    var el = function(id) { return document.getElementById(id); };
+    var bioUrl = ROOT + '/u/' + SLUG;
+
+    // Toggles
+    if (el('dist-show-badge'))   el('dist-show-badge').checked   = d.show_badge   !== false;
+    if (el('dist-show-explore')) el('dist-show-explore').checked = d.show_on_explore !== false;
+
+    // Embed codes
+    var badgeCode  = '<script src="' + ROOT + '/embed/' + SLUG + '.js"><\/script>';
+    var cardCode   = '<div data-simulacrum-card="' + SLUG + '"></div>' +
+                     '<script src="' + ROOT + '/embed/card.js"><\/script>';
+    var emailCode  = '<a href="' + bioUrl + '" style="font-family:sans-serif;text-decoration:none;">' +
+                     '<strong style="color:#111827;">' + _esc(d.assembled && d.assembled.full_name || SLUG) + '</strong>' +
+                     ' · <span style="color:#0e7490;">View my bio page →</span></a>';
+
+    if (el('embed-badge-code')) el('embed-badge-code').textContent = badgeCode;
+    if (el('embed-card-code'))  el('embed-card-code').textContent  = cardCode;
+    if (el('embed-email-code')) el('embed-email-code').textContent = emailCode;
+
+    // Share URL display
+    if (el('share-url-display')) el('share-url-display').textContent = bioUrl;
+
+    // Analytics load
+    _loadAnalytics();
+
+    // Show share modal if first publish & not yet shown
+    if (d.status === 'published' && !d.share_prompt_shown) {
+      _showShareModal();
+    }
+  }
+
+  function _loadAnalytics() {
+    fetch(ROOT + '/api/bio/analytics', {credentials: 'same-origin'})
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var el = function(id) { return document.getElementById(id); };
+        if (el('an-views')) el('an-views').textContent = d.views_7d || 0;
+        if (el('an-chats')) el('an-chats').textContent = d.chat_sessions_7d || 0;
+        if (el('an-leads')) el('an-leads').textContent = d.leads_7d || 0;
+
+        // Top referrers
+        if (d.top_referrers && d.top_referrers.length && document.getElementById('an-referrers')) {
+          var maxCnt = Math.max.apply(null, d.top_referrers.map(function(r) { return r.count; }));
+          var html = '<div style="font-size:.75rem;font-weight:600;color:#6b7280;margin-bottom:.3rem;">Top sources (30d)</div>';
+          d.top_referrers.forEach(function(r) {
+            var pct = maxCnt ? Math.round(r.count / maxCnt * 100) : 0;
+            html += '<div class="referrer-row"><span>' + _esc(r.source) + '</span>' +
+                    '<div class="ref-bar" style="width:' + pct + '%"></div>' +
+                    '<span style="color:#374151;font-weight:600;">' + r.count + '</span></div>';
+          });
+          document.getElementById('an-referrers').innerHTML = html;
+        }
+
+        if (d.show_upgrade_nudge && document.getElementById('an-nudge')) {
+          document.getElementById('an-nudge').style.display = 'block';
+        }
+      })
+      .catch(function() {});
+  }
+
+  // Distribution toggles auto-save
+  function _saveDist() {
+    var el = function(id) { return document.getElementById(id); };
+    var payload = {
+      show_badge:       !!(el('dist-show-badge')   && el('dist-show-badge').checked),
+      show_on_explore:  !!(el('dist-show-explore') && el('dist-show-explore').checked),
+    };
+    fetch(ROOT + '/api/bio/settings', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    }).catch(function() {});
+  }
+
+  ['dist-show-badge', 'dist-show-explore'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('change', _saveDist);
+  });
+
+  // Embed code click-to-copy
+  ['embed-badge-code', 'embed-card-code', 'embed-email-code'].forEach(function(id) {
+    var el = document.getElementById(id);
+    var hintId = id.replace('-code', '-hint');
+    if (!el) return;
+    el.addEventListener('click', function() {
+      navigator.clipboard.writeText(el.textContent).then(function() {
+        var hint = document.getElementById(hintId);
+        if (hint) { hint.textContent = 'Copied!'; setTimeout(function() { hint.textContent = 'Click to copy'; }, 2000); }
+      }).catch(function() {});
+    });
+  });
+
+  // Share button (in Distribution panel)
+  var distShareBtn = document.getElementById('dist-share-btn');
+  if (distShareBtn) {
+    distShareBtn.addEventListener('click', _showShareModal);
+  }
+
+  // ── Share modal ────────────────────────────────────────────────────
+  function _showShareModal() {
+    var overlay = document.getElementById('share-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+  }
+
+  function _hideShareModal() {
+    var overlay = document.getElementById('share-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    fetch(ROOT + '/api/bio/share-prompt-shown', {method: 'POST', credentials: 'same-origin'}).catch(function() {});
+  }
+
+  var shareSkip = document.getElementById('share-skip-btn');
+  if (shareSkip) shareSkip.addEventListener('click', _hideShareModal);
+
+  var shareLi = document.getElementById('share-li-btn');
+  if (shareLi) {
+    shareLi.addEventListener('click', function() {
+      var bioUrl = ROOT + '/u/' + SLUG;
+      var liUrl = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(bioUrl);
+      window.open(liUrl, '_blank', 'noopener,width=600,height=600');
+      _hideShareModal();
+    });
+  }
+
+  var shareCopy = document.getElementById('share-copy-btn');
+  if (shareCopy) {
+    shareCopy.addEventListener('click', function() {
+      var bioUrl = ROOT + '/u/' + SLUG;
+      navigator.clipboard.writeText(bioUrl).then(function() {
+        shareCopy.textContent = 'Copied!';
+        shareCopy.classList.add('copied');
+        setTimeout(function() {
+          shareCopy.textContent = 'Copy link';
+          shareCopy.classList.remove('copied');
+        }, 2000);
+      }).catch(function() {});
+    });
+  }
+
+  // Embed shortcuts from share modal
+  function _scrollToEmbed() {
+    _hideShareModal();
+    var distBody = document.getElementById('distribution-body');
+    if (distBody) {
+      distBody.classList.add('open');
+      distBody.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
+  }
+  ['share-badge-btn','share-card-btn','share-email-btn'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', _scrollToEmbed);
+  });
+
+  // Show share modal after first successful publish
+  var origPublishHandler = publishBtn && publishBtn.onclick;
+  if (publishBtn) {
+    publishBtn.addEventListener('click', function() {
+      // After the existing publish handler fires, the modal is shown via _initDistribution
+      // checking share_prompt_shown. We also trigger it directly here post-success.
+    });
   }
 })();
 </script>

@@ -15,16 +15,44 @@ def _model():
 
 
 def _log_interaction(interaction_type, user_id, simulation_id, usage, model=None):
-    record = AIInteraction(
-        user_id=user_id,
-        simulation_id=simulation_id,
-        interaction_type=interaction_type,
-        prompt_tokens=usage.input_tokens if usage else None,
-        completion_tokens=usage.output_tokens if usage else None,
-        model=model or _model(),
-    )
-    db.session.add(record)
-    db.session.commit()
+    import logging as _logging
+    _logger = _logging.getLogger(__name__)
+
+    def _build():
+        return AIInteraction(
+            user_id=user_id,
+            simulation_id=simulation_id,
+            interaction_type=interaction_type,
+            prompt_tokens=usage.input_tokens if usage else None,
+            completion_tokens=usage.output_tokens if usage else None,
+            model=model or _model(),
+        )
+
+    try:
+        db.session.add(_build())
+        db.session.commit()
+    except Exception as exc:
+        _logger.warning('_log_interaction first attempt failed (%s): %s', type(exc).__name__, exc)
+        # Recover the session so the rest of the cycle can continue
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        # One retry — dispose the pool so the next acquire opens a fresh connection.
+        # db.engine.dispose() does not touch the session or detach any loaded objects.
+        try:
+            try:
+                db.engine.dispose()
+            except Exception:
+                pass
+            db.session.add(_build())
+            db.session.commit()
+        except Exception as exc2:
+            _logger.error('_log_interaction retry failed, skipping: %s', exc2)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
 
 
 def extract_expertise_zones(parsed_text: str, user_id: str) -> list:
@@ -245,6 +273,18 @@ AGENT_ACTION_TYPES = {
                  'options': ['net-15', 'net-30', '50% upfront'], 'required': True},
                 {'key': 'clauses', 'label': 'Include clauses (comma-separated)',
                  'type': 'text', 'required': False},
+            ],
+        },
+        'consulting_outreach': {
+            'label': 'Execute Consulting Outreach Campaign (×10)',
+            'description': '10 deeply personalized emails to senior decision-makers — each prospect researched individually across 6 signal categories.',
+            'prompt_form': [
+                {'key': 'target_industries', 'label': 'Target industries (comma-separated)',
+                 'type': 'text', 'required': True},
+                {'key': 'value_proposition', 'label': 'Your value proposition in 1-2 sentences',
+                 'type': 'textarea', 'required': True},
+                {'key': 'tone', 'label': 'Email tone', 'type': 'select',
+                 'options': ['balanced', 'conservative', 'aggressive'], 'required': False},
             ],
         },
         'referral_network': {
@@ -783,6 +823,18 @@ def execute_agent_action(
     if not action_meta:
         raise ValueError(f'Unknown action_type "{action_type}" for layer {layer_number}')
 
+    # Two-pass agents with custom execution paths
+    if action_type == 'consulting_outreach':
+        from app.services.consulting_outreach_service import execute_consulting_outreach
+        return execute_consulting_outreach(
+            user_id=user_id,
+            simulation_id=simulation_id,
+            action_id=action_id,
+            expertise_zone=expertise_zone,
+            parsed_text=parsed_text,
+            user_inputs=user_inputs,
+        )
+
     inputs_formatted = '\n'.join(
         f'- {k}: {v}' for k, v in user_inputs.items() if v
     ) or 'None provided'
@@ -840,6 +892,14 @@ def _get_prospect_context(
         return ''
 
     try:
+        # Resolve user_id from the simulation when the caller couldn't supply it
+        # (e.g. orchestrator-dispatched actions have created_by=None).
+        # record_agent_contacts requires a valid user_id to save prospects.
+        if not user_id and simulation_id:
+            from app.models.simulation import Simulation as _Sim
+            _sim = _Sim.query.get(simulation_id)
+            user_id = _sim.user_id if _sim else None
+
         targeting = build_targeting_criteria(action_type, expertise_zone, user_inputs)
         engine    = ProspectResearchEngine()
         result    = engine.research(

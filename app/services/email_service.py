@@ -78,7 +78,7 @@ def send_password_reset_email(user_email: str, user_name: str, token: str):
         logger.error(f'Failed to send reset email to {user_email}: {e}')
 
 
-def send_invoice_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int = 1000):
+def send_invoice_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int = 69500):
     from datetime import datetime
     amount_str = f'${amount_cents / 100:.2f}'
     try:

@@ -5,17 +5,17 @@
 <style>
 /* ── GCC v2.0 — Action-First Layout ──────────────────────────────────────── */
 :root {
-  --gcc-teal:   #14b8a6;
-  --gcc-teal-d: #0d9488;
-  --gcc-navy:   #e8eaf0;
-  --gcc-amber:  #f59e0b;
-  --gcc-red:    #ef4444;
-  --gcc-grey:   #6b7280;
-  --gcc-bg:     #0a0e1a;
-  --gcc-card:   #111827;
-  --gcc-border: #1f2937;
-  --gcc-muted:  #9ca3af;
-  --gcc-surface:#1a2234;
+  --gcc-teal:   #0F7B72;
+  --gcc-teal-d: #0c6860;
+  --gcc-navy:   #0D1B3E;
+  --gcc-amber:  #C9952A;
+  --gcc-red:    #dc2626;
+  --gcc-grey:   #6B7B8D;
+  --gcc-bg:     #FAFBFC;
+  --gcc-card:   #FFFFFF;
+  --gcc-border: rgba(0,0,0,0.08);
+  --gcc-muted:  #6B7B8D;
+  --gcc-surface:#F3F4F6;
 }
 
 /* ── Page shell — no extra padding, let tabs own the layout ─────────────── */
@@ -92,6 +92,209 @@
 .gcc-tab-panel { display: none; padding: 1.5rem 1.75rem; animation: gcc-fade-in 100ms ease; }
 .gcc-tab-panel.active { display: block; }
 @keyframes gcc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Journey tab ─────────────────────────────────────────────────────────── */
+.jrn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+.jrn-card {
+  background: var(--gcc-card); border: 1px solid var(--gcc-border); border-radius: 10px;
+  padding: 1.1rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;
+}
+.jrn-card.blocked { opacity: 0.6; }
+.jrn-card-header { display: flex; align-items: center; gap: 0.6rem; }
+.jrn-layer-badge {
+  font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.55rem;
+  border-radius: 999px; background: rgba(20,184,166,0.15); color: var(--gcc-teal);
+  flex-shrink: 0;
+}
+.jrn-layer-name { font-size: 0.95rem; font-weight: 600; color: var(--gcc-navy); flex: 1; }
+.jrn-progress-text { font-size: 0.78rem; color: var(--gcc-muted); flex-shrink: 0; }
+.jrn-bar-track { height: 4px; background: var(--gcc-border); border-radius: 2px; }
+.jrn-bar-fill  { height: 4px; background: var(--gcc-teal); border-radius: 2px; transition: width 0.3s; }
+.jrn-suggested {
+  background: rgba(20,184,166,0.07); border: 1px solid rgba(20,184,166,0.2);
+  border-radius: 6px; padding: 0.5rem 0.75rem;
+  font-size: 0.8rem; color: var(--gcc-teal);
+}
+.jrn-suggested.escalated { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.25); color: var(--gcc-amber); }
+.jrn-suggested.done { background: rgba(20,184,166,0.05); border-color: rgba(20,184,166,0.15); color: var(--gcc-muted); }
+.jrn-steps { display: flex; flex-direction: column; gap: 0.35rem; }
+.jrn-step { display: flex; align-items: flex-start; gap: 0.55rem; font-size: 0.8rem; }
+.jrn-step-dot {
+  flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 700; margin-top: 1px;
+}
+.jrn-step-dot.complete  { background: rgba(20,184,166,0.2); color: var(--gcc-teal); }
+.jrn-step-dot.running   { background: rgba(245,158,11,0.2); color: var(--gcc-amber); animation: jrn-pulse 1.2s ease-in-out infinite; }
+.jrn-step-dot.queued    { background: rgba(107,114,128,0.2); color: var(--gcc-muted); }
+.jrn-step-dot.pending   { background: transparent; border: 1px solid var(--gcc-border); color: var(--gcc-muted); }
+@keyframes jrn-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.jrn-step-label { color: var(--gcc-muted); line-height: 1.4; }
+.jrn-step-label.complete { color: var(--gcc-navy); }
+.jrn-step-label.running  { color: var(--gcc-amber); }
+.jrn-unlock-note { font-size: 0.78rem; color: var(--gcc-muted); font-style: italic; }
+.jrn-artifact {
+  background: var(--gcc-surface); border-radius: 6px; padding: 0.55rem 0.75rem;
+  font-size: 0.78rem; color: var(--gcc-muted);
+}
+.jrn-artifact-label { font-weight: 600; color: var(--gcc-navy); margin-bottom: 0.25rem; }
+.jrn-artifact-field { display: flex; gap: 0.4rem; }
+.jrn-artifact-key   { color: var(--gcc-muted); flex-shrink: 0; }
+.jrn-artifact-val   { color: var(--gcc-navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jrn-footer { display: flex; justify-content: flex-end; font-size: 0.72rem; color: var(--gcc-muted); margin-top: auto; }
+.jrn-loading { color: var(--gcc-muted); font-size: 0.9rem; padding: 2rem 0; text-align: center; }
+
+/* ── Journey redesign: focus bar ─────────────────────────────────────────── */
+.jrn-focus-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(15,123,114,0.08); border: 1px solid rgba(15,123,114,0.22);
+  border-radius: 10px; padding: 0.9rem 1.25rem; margin-bottom: 1.1rem; gap: 1rem;
+  flex-wrap: wrap;
+}
+.jrn-focus-left { display: flex; flex-direction: column; gap: 0.15rem; }
+.jrn-focus-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gcc-teal); }
+.jrn-focus-action { font-size: 1rem; font-weight: 700; color: var(--gcc-navy); }
+.jrn-focus-sub { font-size: 0.76rem; color: var(--gcc-muted); }
+.jrn-focus-btns { display: flex; gap: 0.55rem; flex-shrink: 0; }
+.jrn-btn-run {
+  background: var(--gcc-teal); color: #0a0e1a; border: none; border-radius: 6px;
+  padding: 0.45rem 0.9rem; font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.jrn-btn-run:hover { filter: brightness(1.1); }
+.jrn-btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+.jrn-btn-simi {
+  background: transparent; color: var(--gcc-navy); border: 1px solid var(--gcc-border);
+  border-radius: 6px; padding: 0.45rem 0.9rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.jrn-btn-simi:hover { background: var(--gcc-surface); }
+
+/* Accordion cards */
+.jrn-accordion { display: flex; flex-direction: column; gap: 0.55rem; }
+.jrn-acc-card { background: var(--gcc-card); border: 1px solid var(--gcc-border); border-radius: 10px; overflow: hidden; }
+.jrn-acc-card.jrn-acc-locked { opacity: 0.72; }
+.jrn-acc-hd {
+  width: 100%; display: flex; align-items: center; gap: 0.9rem;
+  padding: 0.75rem 1rem; background: none; border: none; cursor: pointer;
+  text-align: left; color: inherit; transition: background 0.12s;
+}
+.jrn-acc-hd:hover { background: rgba(255,255,255,0.03); }
+
+/* SVG progress ring */
+.jrn-ring-wrap { position: relative; flex-shrink: 0; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; }
+.jrn-ring-pct { position: absolute; font-size: 0.6rem; font-weight: 700; color: var(--gcc-navy); pointer-events: none; }
+
+.jrn-acc-info { flex: 1; min-width: 0; }
+.jrn-acc-meta { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.18rem; }
+.jrn-acc-badge { font-size: 0.67rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 999px; flex-shrink: 0; }
+.jrn-acc-name { font-size: 0.88rem; font-weight: 600; color: var(--gcc-navy); }
+.jrn-acc-summary { font-size: 0.74rem; color: var(--gcc-muted); }
+.jrn-acc-chevron { font-size: 1.1rem; color: var(--gcc-muted); flex-shrink: 0; transition: transform 0.18s; line-height: 1; }
+.jrn-acc-open > .jrn-acc-hd .jrn-acc-chevron { transform: rotate(90deg); }
+
+.jrn-acc-body { padding: 0 1rem 0.9rem; border-top: 1px solid var(--gcc-border); }
+.jrn-lock-note { font-size: 0.78rem; color: var(--gcc-muted); font-style: italic; padding: 0.65rem 0 0.1rem; }
+
+/* Suggested next action */
+.jrn-suggested-next {
+  display: flex; align-items: center; gap: 0.45rem;
+  background: rgba(15,123,114,0.08); border: 1px solid rgba(15,123,114,0.2);
+  border-radius: 6px; padding: 0.5rem 0.75rem; margin: 0.7rem 0 0.4rem;
+  font-size: 0.8rem; color: var(--gcc-teal); font-weight: 600; cursor: default;
+}
+.jrn-suggested-next.escalated { background: rgba(201,149,42,0.08); border-color: rgba(201,149,42,0.22); color: var(--gcc-amber); }
+.jrn-sug-icon { font-size: 0.72rem; flex-shrink: 0; }
+
+/* Agent rows */
+.jrn-agents { display: flex; flex-direction: column; }
+.jrn-agent-row {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.45rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  position: relative;
+}
+.jrn-agent-row:last-child { border-bottom: none; }
+.jrn-agent-row:hover .jrn-artifact-link { opacity: 1; }
+.jrn-st {
+  width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center;
+  justify-content: center; border-radius: 50%; font-size: 0.65rem; font-weight: 700;
+}
+.jrn-st-complete { background: rgba(20,184,166,0.15); color: #14b8a6; }
+.jrn-st-running  { background: rgba(245,158,11,0.15); color: #f59e0b; animation: jrn-pulse 1.2s ease-in-out infinite; }
+.jrn-st-queued,.jrn-st-pending { background: transparent; border: 1px solid var(--gcc-border); color: var(--gcc-muted); }
+.jrn-agent-info { flex: 1; min-width: 0; }
+.jrn-agent-name { font-size: 0.82rem; font-weight: 600; color: var(--gcc-navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jrn-agent-meta { display: flex; align-items: center; gap: 0.45rem; flex-shrink: 0; }
+.jrn-ag-status-label { font-size: 0.7rem; color: var(--gcc-amber); font-weight: 500; }
+.jrn-ag-status-label.locked { color: var(--gcc-muted); }
+.jrn-artifact-link { font-size: 0.71rem; color: var(--gcc-teal); text-decoration: none; opacity: 0; transition: opacity 0.12s; white-space: nowrap; }
+.jrn-artifact-link:hover { text-decoration: underline; }
+
+/* ── Journey v3 (GCC-003) — filter pills ──────────────────────────────────── */
+.jrn-filters { display: flex; align-items: center; gap: .4rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.jrn-filter {
+  padding: .28rem .75rem; border-radius: 100px; border: 1px solid #d0d5dd;
+  background: #fff; color: var(--gcc-muted); font-size: .75rem; font-weight: 400;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .12s, color .12s;
+  white-space: nowrap;
+}
+.jrn-filter.active { background: var(--gcc-teal); color: #fff; border-color: var(--gcc-teal); font-weight: 600; }
+.jrn-filter:not(.active):hover { background: #f3f4f6; color: var(--gcc-navy); }
+.jrn-filter-count { margin-left: auto; font-size: .75rem; color: var(--gcc-muted); font-family: 'DM Sans', sans-serif; }
+
+/* ── Journey v3 — layer accordion ─────────────────────────────────────────── */
+.jrn3-accordion { display: flex; flex-direction: column; gap: .55rem; max-width: 860px; }
+.jrn3-card { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 10px; overflow: hidden; border-left-width: 4px; border-left-style: solid; }
+.jrn3-hd {
+  width: 100%; display: flex; align-items: center; gap: .85rem;
+  padding: .8rem 1rem; background: none; border: none; cursor: pointer;
+  text-align: left; color: inherit; transition: background .12s;
+}
+.jrn3-hd:hover { background: rgba(0,0,0,.02); }
+.jrn3-ring { position: relative; flex-shrink: 0; width: 40px; height: 40px; }
+.jrn3-ring-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: .62rem; font-weight: 700; }
+.jrn3-badge { font-size: .67rem; font-weight: 800; padding: .15rem .42rem; border-radius: 4px; color: #fff; flex-shrink: 0; }
+.jrn3-info { flex: 1; min-width: 0; }
+.jrn3-name { font-size: .9rem; font-weight: 600; color: var(--gcc-navy); font-family: 'DM Sans', sans-serif; }
+.jrn3-summary { font-size: .72rem; color: var(--gcc-muted); font-family: 'DM Sans', sans-serif; margin-top: .1rem; }
+.jrn3-income { font-size: .88rem; font-weight: 600; color: var(--gcc-navy); font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
+.jrn3-chevron { font-size: .95rem; color: var(--gcc-muted); flex-shrink: 0; transition: transform .2s; }
+.jrn3-card.open .jrn3-chevron { transform: rotate(180deg); }
+
+.jrn3-body { border-top: 1px solid rgba(0,0,0,.06); padding: .6rem 1rem .9rem; display: none; }
+.jrn3-card.open .jrn3-body { display: block; }
+
+/* Suggested next row */
+.jrn3-sug-row {
+  display: flex; align-items: center; gap: .4rem; border-radius: 6px;
+  padding: .45rem .7rem; margin-bottom: .5rem; font-size: .78rem; font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Action rows */
+.jrn3-action-row {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .5rem 0; border-bottom: 1px solid rgba(0,0,0,.03);
+  transition: background .1s; cursor: default;
+}
+.jrn3-action-row:last-child { border-bottom: none; }
+.jrn3-action-row:hover { background: rgba(0,0,0,.015); margin: 0 -.5rem; padding-left: .5rem; padding-right: .5rem; }
+.jrn3-st-icon {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: .6rem; font-weight: 700; color: #fff;
+}
+.jrn3-st-complete  { background: #1A8754; }
+.jrn3-st-in_progress { background: #C9952A; animation: jrn-pulse 1.2s ease-in-out infinite; }
+.jrn3-st-pending   { background: transparent; border: 2px solid #d0d5dd; color: var(--gcc-muted); }
+.jrn3-st-failed    { background: #E85D4A; }
+.jrn3-a-name { flex: 1; font-size: .84rem; color: var(--gcc-navy); font-family: 'DM Sans', sans-serif; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jrn3-a-badge { font-size: .68rem; font-weight: 500; padding: .1rem .45rem; border-radius: 100px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
+.jrn3-badge-complete   { background: #dcfce7; color: #15803d; }
+.jrn3-badge-in_progress { background: #fef3c7; color: #b45309; }
+.jrn3-badge-pending    { background: #f3f4f6; color: #6b7280; }
+.jrn3-badge-failed     { background: #fee2e2; color: #b91c1c; }
+.jrn3-a-date { font-size: .72rem; color: #b0b8c4; min-width: 82px; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
+.jrn3-a-artifact { font-size: .72rem; color: var(--gcc-teal); text-decoration: none; min-width: 105px; text-align: right; font-family: 'DM Sans', sans-serif; flex-shrink: 0; white-space: nowrap; }
+.jrn3-a-artifact:hover { text-decoration: underline; }
+.jrn3-empty { font-size: .82rem; color: var(--gcc-muted); text-align: center; padding: 1rem 0; font-family: 'DM Sans', sans-serif; }
 
 /* ── Action Queue ────────────────────────────────────────────────────────── */
 .aq-list { display: flex; flex-direction: column; gap: 0.75rem; max-width: 860px; }
@@ -400,6 +603,50 @@
 .la-artifact-link:hover { text-decoration: underline; }
 .la-empty { color: var(--gcc-muted); font-size: 0.83rem; padding: 0.5rem 0; }
 
+/* ── Escalations tab ─────────────────────────────────────────────────────── */
+.esc-list { display: flex; flex-direction: column; gap: 0.75rem; max-width: 860px; }
+.esc-card {
+  background: var(--gcc-card); border: 1px solid var(--gcc-border);
+  border-left: 4px solid var(--gcc-amber); border-radius: 8px;
+  padding: 1rem 1.1rem;
+  transition: opacity 0.2s, max-height 0.15s; overflow: hidden;
+}
+.esc-card.resolving { opacity: 0; max-height: 0 !important; padding: 0; margin: 0; }
+.esc-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem; }
+.esc-meta { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
+.esc-layer-badge {
+  font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.55rem;
+  border-radius: 999px; background: var(--gcc-surface); color: var(--gcc-muted);
+}
+.esc-priority {
+  font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px;
+}
+.esc-priority-high   { background: rgba(239,68,68,.15);  color: var(--gcc-red); }
+.esc-priority-medium { background: rgba(245,158,11,.15); color: var(--gcc-amber); }
+.esc-priority-low    { background: rgba(20,184,166,.15); color: var(--gcc-teal); }
+.esc-action-type { font-size: 0.95rem; font-weight: 700; color: var(--gcc-navy); text-transform: capitalize; }
+.esc-reason { font-size: 0.83rem; color: var(--gcc-muted); line-height: 1.4; margin-top: 0.25rem; }
+.esc-card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 0.85rem; }
+.esc-date { font-size: 0.75rem; color: var(--gcc-muted); }
+.esc-btns { display: flex; gap: 0.6rem; }
+.esc-approve-btn {
+  font-size: 0.82rem; font-weight: 600;
+  background: rgba(20,184,166,0.15); color: var(--gcc-teal);
+  border: 1px solid rgba(20,184,166,0.35); border-radius: 6px;
+  padding: 0.35rem 0.9rem; cursor: pointer; transition: background 0.15s;
+}
+.esc-approve-btn:hover:not(:disabled) { background: rgba(20,184,166,0.25); }
+.esc-approve-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.esc-reject-btn {
+  font-size: 0.82rem; font-weight: 600;
+  background: rgba(239,68,68,0.1); color: var(--gcc-red);
+  border: 1px solid rgba(239,68,68,0.25); border-radius: 6px;
+  padding: 0.35rem 0.9rem; cursor: pointer; transition: background 0.15s;
+}
+.esc-reject-btn:hover:not(:disabled) { background: rgba(239,68,68,0.2); }
+.esc-reject-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.esc-loading { color: var(--gcc-muted); font-size: 0.9rem; padding: 2rem 0; text-align: center; }
+
 /* ── Visuals tab — remap generic CSS vars to dark GCC palette ────────────── */
 .gcc-visuals-panel {
   --border:   var(--gcc-border);
@@ -680,19 +927,20 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
 
   {# ── Tab bar ─────────────────────────────────────────────────────────────── #}
   <div class="gcc-tab-bar" role="tablist">
+    <button class="gcc-tab" data-tab="journey" role="tab" onclick="switchTab('journey')">Journey</button>
     <button class="gcc-tab" data-tab="queue" role="tab" onclick="switchTab('queue')">
       Action Queue
-      {% if active_item_count > 0 %}
-        <span class="gcc-tab-count" id="queueCountBadge">{{ active_item_count }}</span>
-      {% endif %}
+      <span class="gcc-tab-count" id="queueCountBadge" style="{% if not active_item_count or active_item_count == 0 %}display:none{% endif %}">{{ active_item_count or 0 }}</span>
     </button>
-    <button class="gcc-tab" data-tab="layers" role="tab" onclick="switchTab('layers')">My Layers</button>
     <button class="gcc-tab" data-tab="income" role="tab" onclick="switchTab('income')">Income</button>
     <button class="gcc-tab" data-tab="momentum" role="tab" onclick="switchTab('momentum')">Momentum</button>
     <button class="gcc-tab" data-tab="cycle" role="tab" onclick="switchTab('cycle')">Cycle</button>
     <button class="gcc-tab" data-tab="visuals" role="tab" onclick="switchTab('visuals')">Visuals</button>
     <button class="gcc-tab" data-tab="network" role="tab" onclick="switchTab('network')">Agent Network</button>
-    <button class="gcc-tab" data-tab="layer-actions" role="tab" onclick="switchTab('layer-actions')">Layer Actions</button>
+    <button class="gcc-tab" data-tab="escalations" role="tab" onclick="switchTab('escalations')">
+      Escalations
+      <span class="gcc-tab-count" id="escCountBadge" style="background:var(--gcc-amber);color:#0a0e1a;display:none">0</span>
+    </button>
   </div>
 
   {# ── Content area ────────────────────────────────────────────────────────── #}
@@ -709,7 +957,7 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
             <div class="aq-card-top">
               <div class="aq-urgency-dot"></div>
               {% if item.layer_number %}
-              <button class="aq-layer-badge" onclick="switchTab('layers')" title="Go to layer {{ item.layer_number }}">
+              <button class="aq-layer-badge" onclick="switchTab('journey')" title="Go to layer {{ item.layer_number }}">
                 L{{ item.layer_number }} · {{ ['','Active income','Leveraged income','Productized income','Automated income','Wealth deployment'][item.layer_number] }}
               </button>
               {% endif %}
@@ -736,46 +984,48 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
           <div class="aq-empty-title">Everything is running.</div>
           <div class="aq-empty-msg">Nothing needs you right now. Your agents are working and your income is being tracked. Check back later or explore your layers to see how things are going.</div>
           <div class="aq-empty-links">
-            <button class="aq-empty-link" onclick="switchTab('layers')">Explore your layers →</button>
-            <button class="aq-empty-link" onclick="openCopilot()">Chat with your co-pilot →</button>
+            <button class="aq-empty-link" onclick="switchTab('journey')">Explore your layers →</button>
+            <button class="aq-empty-link" onclick="openCopilot()">Ask Simi →</button>
           </div>
         </div>
       {% endif %}
     </div>
 
+    {# My Layers tab removed (GCC-003 — merged into Journey) #}
+
     {# ────────────────────────────────────────────────────────────────────────
-       Tab 2 — My Layers
+       Tab 1 — Journey (default)
     ──────────────────────────────────────────────────────────────────────── #}
-    <div class="gcc-tab-panel" data-panel="layers" role="tabpanel">
-      <div class="gcc-section-header"><h2>My Wealth Layers</h2></div>
-      <div class="layers-list">
-        {% set layer_defs = [
-          (1, 'Active income',       'lr-accent-l1'),
-          (2, 'Leveraged income',    'lr-accent-l2'),
-          (3, 'Productized income',  'lr-accent-l3'),
-          (4, 'Automated income',    'lr-accent-l4'),
-          (5, 'Wealth deployment',   'lr-accent-l5'),
-        ] %}
-        {% for ln, lname, accent in layer_defs %}
-          {% set layer_income = income_by_layer.get(ln, 0) %}
-          {% set layer_done   = complete_by_layer.get(ln, 0) %}
-          {% set is_urgent    = ln in urgent_layers %}
-          {% set has_activity = layer_done > 0 or layer_income > 0 %}
-          <a class="layer-row-v2 {{ accent }}" href="{{ url_for('pages.layer_detail_view', sim_id=sim.id, layer_number=ln) }}">
-            <div style="flex:1">
-              <div class="lr-name">{{ lname }}</div>
-              {% if not has_activity %}
-                <div class="lr-coming">Coming up later</div>
-              {% endif %}
-            </div>
-            <div class="lr-income">${{ '{:,.0f}'.format(layer_income) }}</div>
-            {% if has_activity %}
-              <div class="lr-actions-badge">{{ layer_done }} action{{ 's' if layer_done != 1 else '' }} completed</div>
-            {% endif %}
-            <div class="lr-status-dot {% if is_urgent %}lr-dot-warn{% elif has_activity %}lr-dot-ok{% else %}lr-dot-grey{% endif %}"></div>
-          </a>
-        {% endfor %}
+    <div class="gcc-tab-panel" data-panel="journey" role="tabpanel">
+
+      {# Focus bar — always visible; JS populates focus action + progress #}
+      <div class="jrn-focus-bar">
+        <div class="jrn-focus-left">
+          <div class="jrn-focus-label">Focus</div>
+          <div class="jrn-focus-action" id="jrnFocusAction">—</div>
+          <div class="jrn-focus-sub" id="jrnFocusSub"
+               data-cycle-info="{% if latest_cycle %}Cycle {{ latest_cycle.cycle_number }} · {{ latest_cycle.phase | capitalize }} phase{% else %}No cycle yet{% endif %}">
+            {% if latest_cycle %}Cycle {{ latest_cycle.cycle_number }} · {{ latest_cycle.phase | capitalize }} phase{% else %}No cycle yet{% endif %}
+          </div>
+        </div>
+        <div class="jrn-focus-btns">
+          <button class="jrn-btn-run" onclick="runCycleNow(this)">&#9654; Run Cycle</button>
+          <button class="jrn-btn-simi" onclick="openCopilot()">&#10022; Ask Simi</button>
+        </div>
       </div>
+
+      {# Status filter pills (GCC-003 FR-GCC-03) #}
+      <div class="jrn-filters" id="jrnFilters">
+        <button class="jrn-filter active" data-filter="all"         onclick="setJrnFilter('all')">All</button>
+        <button class="jrn-filter"        data-filter="pending"     onclick="setJrnFilter('pending')">Pending</button>
+        <button class="jrn-filter"        data-filter="in_progress" onclick="setJrnFilter('in_progress')">In progress</button>
+        <button class="jrn-filter"        data-filter="complete"    onclick="setJrnFilter('complete')">Complete</button>
+        <button class="jrn-filter"        data-filter="failed"      onclick="setJrnFilter('failed')">Failed</button>
+        <span class="jrn-filter-count" id="jrnFilterCount"></span>
+      </div>
+
+      {# Accordion — populated by renderJourney() #}
+      <div id="jrnContent"><div class="jrn-loading">Loading journey…</div></div>
     </div>
 
     {# ────────────────────────────────────────────────────────────────────────
@@ -1024,95 +1274,16 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
       {% include 'simulations/_agent_network.html' %}
     </div>
 
+    {# Layer Actions tab removed (GCC-003 — merged into Journey) #}
+
     {# ────────────────────────────────────────────────────────────────────────
-       Tab 8 — Layer Actions
+       Tab — Escalations
     ──────────────────────────────────────────────────────────────────────── #}
-    <div class="gcc-tab-panel" data-panel="layer-actions" role="tabpanel">
-      <div class="gcc-section-header" style="margin-bottom:1rem">
-        <h2>Layer Actions</h2>
+    <div class="gcc-tab-panel" data-panel="escalations" role="tabpanel">
+      <div class="gcc-section-header">
+        <h2>Escalations</h2>
       </div>
-
-      {# Filter toolbar #}
-      <div class="la-toolbar">
-        <button class="la-filter-btn active" data-la-filter="all" onclick="laFilter(this,'all')">All</button>
-        <button class="la-filter-btn" data-la-filter="pending"     onclick="laFilter(this,'pending')">Pending</button>
-        <button class="la-filter-btn" data-la-filter="in_progress" onclick="laFilter(this,'in_progress')">In progress</button>
-        <button class="la-filter-btn" data-la-filter="complete"    onclick="laFilter(this,'complete')">Complete</button>
-        <button class="la-filter-btn" data-la-filter="failed"      onclick="laFilter(this,'failed')">Failed</button>
-        <span class="la-count" id="laCount">{{ layer_actions | length }} action{{ 's' if layer_actions | length != 1 else '' }}</span>
-      </div>
-
-      {% set layer_defs = [
-        (1, 'Active income',      '#6366f1'),
-        (2, 'Leveraged income',   '#8b5cf6'),
-        (3, 'Productized income', '#ec4899'),
-        (4, 'Automated income',   '#f59e0b'),
-        (5, 'Wealth deployment',  '#14b8a6'),
-      ] %}
-
-      {% set shown_ids = namespace(v=[]) %}
-      {% for ln, lname, lcolor in layer_defs %}
-        {% set lacts = layer_actions | selectattr('layer_number', 'equalto', ln) | list %}
-        {% if lacts %}
-        {% set shown_ids.v = shown_ids.v + lacts | map(attribute='id') | list %}
-        <div class="la-layer-group" data-la-layer="{{ ln }}">
-          <div class="la-layer-heading">
-            <span class="la-accent" style="background:{{ lcolor }}"></span>
-            L{{ ln }} — {{ lname }}
-            <span style="margin-left:auto;font-weight:400">{{ lacts | length }}</span>
-          </div>
-          {% for a in lacts %}
-          <div class="la-row" data-status="{{ a.status }}" data-la-row>
-            <div class="la-action-type">{{ a.action_type | replace('_', ' ') }}</div>
-            <span class="la-status-badge la-s-{{ a.status }}">{{ a.status | replace('_', ' ') }}</span>
-            <span class="la-date">{{ a.created_at[:10] if a.created_at else '—' }}</span>
-            {% if a.status == 'complete' and a.artifact %}
-              <a class="la-artifact-link"
-                 href="{{ url_for('artifact_view.page_full_view', sim_id=sim.id, artifact_id=a.id) }}">
-                View artifact →
-              </a>
-            {% endif %}
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
-      {% endfor %}
-
-      {# Catch-all: actions not assigned to layers 1–5 #}
-      {% set other_acts = layer_actions | rejectattr('id', 'in', shown_ids.v) | list %}
-      {% if other_acts %}
-      <div class="la-layer-group" data-la-layer="other">
-        <div class="la-layer-heading">
-          <span class="la-accent" style="background:#94a3b8"></span>
-          Other actions
-          <span style="margin-left:auto;font-weight:400">{{ other_acts | length }}</span>
-        </div>
-        {% for a in other_acts %}
-        <div class="la-row" data-status="{{ a.status }}" data-la-row>
-          <div class="la-action-type">{{ a.action_type | replace('_', ' ') }}</div>
-          <span class="la-status-badge la-s-{{ a.status }}">{{ a.status | replace('_', ' ') }}</span>
-          <span class="la-date">{{ a.created_at[:10] if a.created_at else '—' }}</span>
-          {% if a.status == 'complete' and a.artifact %}
-            <a class="la-artifact-link"
-               href="{{ url_for('artifact_view.page_full_view', sim_id=sim.id, artifact_id=a.id) }}">
-              View artifact →
-            </a>
-          {% endif %}
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      {% if not layer_actions %}
-        <div class="aq-empty" style="padding:3rem 2rem">
-          <div class="aq-empty-icon">⚙</div>
-          <div class="aq-empty-title">No actions yet.</div>
-          <div class="aq-empty-msg">Agent actions will appear here as your layers activate. Go to a layer to trigger your first action.</div>
-          <div class="aq-empty-links">
-            <button class="aq-empty-link" onclick="switchTab('layers')">Go to My Layers →</button>
-          </div>
-        </div>
-      {% endif %}
+      <div id="escContent"><div class="esc-loading">Loading escalations...</div></div>
     </div>
 
     {# ────────────────────────────────────────────────────────────────────────
@@ -1259,21 +1430,21 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
 </div>
 
 {# ── Floating co-pilot button ──────────────────────────────────────────────── #}
-<button id="copilotBtn" onclick="toggleCopilot()" title="Chat with your co-pilot">
+<button id="copilotBtn" onclick="toggleCopilot()" title="Ask Simi">
   <span id="copilotBtnIcon">💬</span>
   <span class="copilot-unread" id="copilotUnread"></span>
 </button>
-<div class="copilot-tooltip" id="copilotTooltip">Chat with your co-pilot</div>
+<div class="copilot-tooltip" id="copilotTooltip">Ask Simi</div>
 
 {# ── Co-pilot bottom panel ─────────────────────────────────────────────────── #}
 <div id="copilotPanel">
   <div class="copilot-header">
-    <span class="copilot-title">Co-pilot</span>
+    <span class="copilot-title">Simi</span>
     <button class="copilot-new-btn" onclick="newCopilotConversation()">New conversation</button>
     <button class="copilot-close-btn" onclick="closeCopilot()">✕</button>
   </div>
   <div class="copilot-messages" id="copilotMessages">
-    <div class="copilot-msg bot">Hi! I'm your co-pilot for <strong>{{ sim.name }}</strong>. Ask me anything about your simulation or give me an instruction.</div>
+    <div class="copilot-msg bot">Hi! I'm Simi, your AI advisor for <strong>{{ sim.name }}</strong>. Ask me anything about your simulation or give me an instruction.</div>
   </div>
   <div class="copilot-input-area">
     <div class="copilot-input-row">
@@ -1295,12 +1466,178 @@ function switchTab(name) {
   const url = new URL(window.location);
   url.searchParams.set('tab', name);
   history.replaceState(null, '', url);
+  if (name === 'journey') loadJourney();
+}
+
+// ── Journey v3 (GCC-003) ─────────────────────────────────────────────────────
+var _jrnLoaded  = false;
+var _jrnFilter  = 'all';
+var _jrnOpenLayer = 1;
+
+// Layer colors per PRD GCC-003 (consistent with My Layers prior design)
+const JRN_COLORS = {1:'#534AB7', 2:'#0F7B72', 3:'#C9952A', 4:'#E85D4A', 5:'#185FA5'};
+const JRN_RING_C = 100.53; // circumference of r=16 circle (2π×16)
+
+function setJrnFilter(filter) {
+  _jrnFilter = filter;
+  document.querySelectorAll('.jrn-filter').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  _jrnLoaded = false;
+  loadJourney(true);
+}
+
+function loadJourney(force) {
+  if (_jrnLoaded && !force) return;
+  _jrnLoaded = true;
+  var qs = (_jrnFilter && _jrnFilter !== 'all') ? '?status=' + _jrnFilter : '';
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/journey' + qs, { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) { renderJourneyV3(data); })
+    .catch(function() {
+      document.getElementById('jrnContent').innerHTML = '<div class="jrn-loading">Could not load journey data.</div>';
+    });
+}
+
+function renderJourneyV3(data) {
+  // Update focus bar
+  var focus = data.focus || {};
+  var focusEl = document.getElementById('jrnFocusAction');
+  var subEl   = document.getElementById('jrnFocusSub');
+  if (focusEl) focusEl.textContent = focus.suggested_action ? '▶ Suggested action: ' + focus.suggested_action : '—';
+  if (subEl) {
+    var cycleInfo = focus.cycle_number
+      ? 'Cycle ' + focus.cycle_number + ' · ' + (focus.phase || 'explore').charAt(0).toUpperCase() + (focus.phase || 'explore').slice(1) + ' phase'
+      : 'No cycle yet';
+    subEl.textContent = cycleInfo;
+  }
+
+  // Update filter count
+  var countEl = document.getElementById('jrnFilterCount');
+  if (countEl) {
+    var n = data.total_actions || 0;
+    countEl.textContent = n + ' action' + (n !== 1 ? 's' : '');
+  }
+
+  var layers = data.layers || [];
+
+  // When a filter is active, hide layers with zero matching actions
+  var visibleLayers = layers.filter(function(l) {
+    return _jrnFilter === 'all' || l.total_actions > 0;
+  });
+
+  if (!visibleLayers.length) {
+    var msg = _jrnFilter !== 'all'
+      ? 'No ' + _jrnFilter.replace('_', ' ') + ' actions across any layer yet.'
+      : 'No actions yet. Use the <a href="/simulations/' + SIM_ID + '" style="color:var(--gcc-teal)">Wealth Pyramid</a> to run your first agent.';
+    document.getElementById('jrnContent').innerHTML = '<div class="jrn-loading">' + msg + '</div>';
+    return;
+  }
+
+  var html = '<div class="jrn3-accordion">';
+  visibleLayers.forEach(function(layer) {
+    var ln    = layer.layer_number;
+    var color = JRN_COLORS[ln] || '#0F7B72';
+    var pct   = layer.completion_pct || 0;
+    var offset = (JRN_RING_C * (1 - pct / 100)).toFixed(1);
+    var isOpen = ln === _jrnOpenLayer;
+
+    html += '<div class="jrn3-card' + (isOpen ? ' open' : '') + '" id="jrn3Card' + ln + '" style="border-left-color:' + color + '">';
+
+    // Header
+    html += '<button class="jrn3-hd" onclick="toggleJrn3Layer(' + ln + ')">' +
+      '<div class="jrn3-ring">' +
+      '<svg width="40" height="40" viewBox="0 0 40 40">' +
+      '<circle cx="20" cy="20" r="16" fill="none" stroke="#f0f1f3" stroke-width="2.5"/>' +
+      '<circle cx="20" cy="20" r="16" fill="none" stroke="' + color + '" stroke-width="2.5"' +
+      ' stroke-dasharray="' + JRN_RING_C + '" stroke-dashoffset="' + offset + '"' +
+      ' stroke-linecap="round" transform="rotate(-90 20 20)"/>' +
+      '</svg>' +
+      '<span class="jrn3-ring-pct" style="color:' + color + '">' + pct + '%</span>' +
+      '</div>' +
+      '<span class="jrn3-badge" style="background:' + color + '">L' + ln + '</span>' +
+      '<div class="jrn3-info">' +
+      '<div class="jrn3-name">' + esc(layer.label) + '</div>' +
+      '<div class="jrn3-summary">' + layer.unique_complete + ' of ' + layer.total_agents + ' agents complete · ' + layer.total_actions + ' action' + (layer.total_actions !== 1 ? 's' : '') + '</div>' +
+      '</div>' +
+      '<div class="jrn3-income">$' + (layer.layer_income || 0).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}) + '</div>' +
+      '<span class="jrn3-chevron">▾</span>' +
+      '</button>';
+
+    // Body
+    html += '<div class="jrn3-body" id="jrn3Body' + ln + '">';
+
+    // Suggested next row (only when filter is 'all')
+    if (_jrnFilter === 'all' && layer.suggested_action) {
+      html += '<div class="jrn3-sug-row" style="background:' + color + '14;color:' + color + '">' +
+        '▶ Suggested next: <strong>' + esc(layer.suggested_action) + '</strong>' +
+        '</div>';
+    }
+
+    if (layer.actions.length === 0) {
+      var emptyMsg = _jrnFilter !== 'all'
+        ? 'No ' + _jrnFilter.replace('_', ' ') + ' actions in this layer yet.'
+        : 'No actions in this layer yet.';
+      html += '<div class="jrn3-empty">' + emptyMsg + '</div>';
+    } else {
+      layer.actions.forEach(function(row) {
+        var stClass = 'jrn3-st-' + row.status;
+        var stIcon  = {complete:'✓', in_progress:'⟳', pending:'', failed:'⚠'}[row.status] || '';
+        var badgeCls = 'jrn3-badge-' + row.status;
+        var badgeLabel = {complete:'complete', in_progress:'in progress', pending:'pending', failed:'failed'}[row.status] || row.status;
+        var artifactHtml = (row.status === 'complete' && row.has_artifact)
+          ? '<a class="jrn3-a-artifact" href="/simulations/' + SIM_ID + '/artifacts/' + row.id + '">View artifact →</a>'
+          : '<span style="min-width:105px;display:inline-block"></span>';
+
+        html += '<div class="jrn3-action-row">' +
+          '<span class="jrn3-st-icon ' + stClass + '">' + stIcon + '</span>' +
+          '<span class="jrn3-a-name">' + esc(row.label) + '</span>' +
+          '<span class="jrn3-a-badge ' + badgeCls + '">' + badgeLabel + '</span>' +
+          '<span class="jrn3-a-date">' + (row.date || '—') + '</span>' +
+          artifactHtml +
+          '</div>';
+      });
+    }
+
+    html += '</div>'; // jrn3-body
+    html += '</div>'; // jrn3-card
+  });
+  html += '</div>'; // jrn3-accordion
+
+  document.getElementById('jrnContent').innerHTML = html;
+}
+
+function toggleJrn3Layer(ln) {
+  // Single-open accordion
+  var cards = document.querySelectorAll('.jrn3-card');
+  cards.forEach(function(card) {
+    var cardLn = parseInt(card.id.replace('jrn3Card', ''));
+    var opening = cardLn === ln && !card.classList.contains('open');
+    card.classList.toggle('open', cardLn === ln && opening);
+  });
+  _jrnOpenLayer = ln;
+}
+
+// Keep old name as alias for other callers
+function toggleJrnLayer(ln) { toggleJrn3Layer(ln); }
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function runCycleNow(btn) {
+  btn.disabled = true; btn.textContent = 'Running…';
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/run', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => { if (d.error) { alert('Cycle error: ' + d.error); } else { window.location.reload(); } })
+    .catch(() => alert('Run cycle failed — try again.'))
+    .finally(() => { btn.disabled = false; btn.textContent = '&#9654; Run Cycle'; });
 }
 
 // Init tab from URL or default
 (function() {
   const params = new URLSearchParams(window.location.search);
-  switchTab(params.get('tab') || 'queue');
+  switchTab(params.get('tab') || 'journey');
 })();
 
 // ── Relative timestamps ──────────────────────────────────────────────────────
@@ -1354,8 +1691,8 @@ function showEmptyState() {
     <div class="aq-empty-title">Everything is running.</div>
     <div class="aq-empty-msg">Nothing needs you right now. Your agents are working and your income is being tracked.</div>
     <div class="aq-empty-links">
-      <button class="aq-empty-link" onclick="switchTab('layers')">Explore your layers →</button>
-      <button class="aq-empty-link" onclick="openCopilot()">Chat with your co-pilot →</button>
+      <button class="aq-empty-link" onclick="switchTab('journey')">Explore your layers →</button>
+      <button class="aq-empty-link" onclick="openCopilot()">Ask Simi →</button>
     </div>
   </div>`;
 }
@@ -1368,7 +1705,7 @@ function closeCopilot() { copilotOpen = false; document.getElementById('copilotP
 function toggleCopilot() { copilotOpen ? closeCopilot() : openCopilot(); }
 
 function newCopilotConversation() {
-  document.getElementById('copilotMessages').innerHTML = '<div class="copilot-msg bot">New conversation started. How can I help with <strong>{{ sim.name }}</strong>?</div>';
+  document.getElementById('copilotMessages').innerHTML = '<div class="copilot-msg bot">New conversation started. How can I help with <strong>{{ sim.name }}</strong>? I\'m Simi.</div>';
 }
 
 function sendCopilotMessage() {
@@ -1387,12 +1724,13 @@ function sendCopilotMessage() {
   msgs.appendChild(thinking);
   msgs.scrollTop = msgs.scrollHeight;
 
-  fetch(ROOT + '/api/chat', {
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/chat', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({simulation_id: SIM_ID, message: msg}),
+    credentials: 'same-origin',
+    body: JSON.stringify({message: msg}),
   }).then(r => r.json()).then(d => {
-    thinking.textContent = d.response || d.reply || '(no response)';
+    thinking.textContent = d.content || d.message || '(no response)';
     msgs.scrollTop = msgs.scrollHeight;
   }).catch(() => {
     thinking.textContent = 'Something went wrong. Please try again.';
@@ -1498,6 +1836,111 @@ function toggleL6Pause() {
     .finally(() => { btn.disabled = false; });
 }
 
+// ── Escalations tab ──────────────────────────────────────────────────────────
+let _escLoaded = false;
+const LAYER_NAMES_ESC = ['', 'Active income', 'Leveraged income', 'Productized income', 'Automated income', 'Wealth deployment'];
+
+function loadEscalations(force) {
+  if (_escLoaded && !force) return;
+  _escLoaded = true;
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/escalations', { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(data => renderEscalations(data))
+    .catch(() => {
+      document.getElementById('escContent').innerHTML = '<div class="esc-loading">Could not load escalations.</div>';
+    });
+}
+
+function renderEscalations(items) {
+  const badge = document.getElementById('escCountBadge');
+  if (badge) {
+    badge.textContent = items.length;
+    badge.style.display = items.length > 0 ? '' : 'none';
+  }
+  if (!items.length) {
+    document.getElementById('escContent').innerHTML = `<div class="aq-empty">
+      <div class="aq-empty-icon">&#10003;</div>
+      <div class="aq-empty-title">No pending escalations.</div>
+      <div class="aq-empty-msg">When the orchestrator encounters actions that require your approval, they will appear here.</div>
+    </div>`;
+    return;
+  }
+  let html = '<div class="esc-list">';
+  for (const item of items) {
+    const score = item.priority_score || 0;
+    const priorityLabel = score >= 0.7 ? 'High' : score >= 0.4 ? 'Medium' : 'Low';
+    const priorityCls   = score >= 0.7 ? 'esc-priority-high' : score >= 0.4 ? 'esc-priority-medium' : 'esc-priority-low';
+    const layerName = item.source_layer ? (LAYER_NAMES_ESC[+item.source_layer] || 'Layer ' + item.source_layer) : null;
+    const dateStr = item.created_at ? item.created_at.slice(0, 10) : '';
+    html += `<div class="esc-card" id="esc-${item.id}">
+      <div class="esc-meta">
+        ${layerName ? `<span class="esc-layer-badge">L${item.source_layer} &middot; ${layerName}</span>` : ''}
+        <span class="esc-priority ${priorityCls}">${priorityLabel} priority</span>
+      </div>
+      <div class="esc-action-type">${(item.action_type || 'action').replace(/_/g, ' ')}</div>
+      ${item.escalation_reason ? `<div class="esc-reason">${escHtml(item.escalation_reason)}</div>` : ''}
+      <div class="esc-card-bottom">
+        <span class="esc-date">${dateStr}</span>
+        <div class="esc-btns">
+          <button class="esc-reject-btn"  id="esc-rej-${item.id}"  onclick="rejectEscalation('${item.id}')">Reject</button>
+          <button class="esc-approve-btn" id="esc-app-${item.id}" onclick="approveEscalation('${item.id}')">Approve</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('escContent').innerHTML = html;
+}
+
+function _resolveEscCard(id) {
+  const card = document.getElementById('esc-' + id);
+  if (!card) return;
+  card.style.maxHeight = card.offsetHeight + 'px';
+  card.offsetHeight;
+  card.classList.add('resolving');
+  setTimeout(() => {
+    card.remove();
+    const remaining = document.querySelectorAll('.esc-card').length;
+    const badge = document.getElementById('escCountBadge');
+    if (badge) { badge.textContent = remaining; if (!remaining) badge.style.display = 'none'; }
+    if (!remaining) renderEscalations([]);
+  }, 350);
+}
+
+function approveEscalation(id) {
+  const appBtn = document.getElementById('esc-app-' + id);
+  const rejBtn = document.getElementById('esc-rej-' + id);
+  if (appBtn) { appBtn.disabled = true; appBtn.textContent = 'Approving…'; }
+  if (rejBtn) rejBtn.disabled = true;
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/escalations/' + id + '/approve', {
+    method: 'POST', credentials: 'same-origin',
+  }).then(r => r.json()).then(data => {
+    if (data.error) { alert(data.error); if (appBtn) { appBtn.disabled = false; appBtn.textContent = 'Approve'; } if (rejBtn) rejBtn.disabled = false; return; }
+    _resolveEscCard(id);
+  }).catch(() => {
+    alert('Approve failed. Please try again.');
+    if (appBtn) { appBtn.disabled = false; appBtn.textContent = 'Approve'; }
+    if (rejBtn) rejBtn.disabled = false;
+  });
+}
+
+function rejectEscalation(id) {
+  const appBtn = document.getElementById('esc-app-' + id);
+  const rejBtn = document.getElementById('esc-rej-' + id);
+  if (rejBtn) { rejBtn.disabled = true; rejBtn.textContent = 'Rejecting…'; }
+  if (appBtn) appBtn.disabled = true;
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/escalations/' + id + '/reject', {
+    method: 'POST', credentials: 'same-origin',
+  }).then(r => r.json()).then(data => {
+    if (data.error) { alert(data.error); if (rejBtn) { rejBtn.disabled = false; rejBtn.textContent = 'Reject'; } if (appBtn) appBtn.disabled = false; return; }
+    _resolveEscCard(id);
+  }).catch(() => {
+    alert('Reject failed. Please try again.');
+    if (rejBtn) { rejBtn.disabled = false; rejBtn.textContent = 'Reject'; }
+    if (appBtn) appBtn.disabled = false;
+  });
+}
+
 // ── Tab switching — lazy-init Agent Network on first activation ──────────────
 let _anvReady = false;
 (function patchSwitchTab() {
@@ -1510,6 +1953,7 @@ let _anvReady = false;
         window.initAgentNetwork(SIM_ID, API, {});
       }
     }
+    if (name === 'escalations') loadEscalations();
   };
 })();
 
@@ -1555,7 +1999,7 @@ function laFilter(btn, status) {
 // switchTab() ran before the patch AND before agent_network.js existed.
 // Re-check here once all scripts are loaded.
 (function () {
-  var t = new URLSearchParams(window.location.search).get('tab') || 'queue';
+  var t = new URLSearchParams(window.location.search).get('tab') || 'journey';
   if (t === 'network' && !_anvReady && window.initAgentNetwork) {
     _anvReady = true;
     window.initAgentNetwork(SIM_ID, API, {});

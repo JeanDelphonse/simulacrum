@@ -2,6 +2,7 @@
 {% block title %}{{ artifact_name }}{% endblock %}
 
 {% block head %}
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <style>
 .av-page { background: #f7f8fb; min-height: calc(100vh - 60px); padding-bottom: 80px; }
 .av-header {
@@ -110,15 +111,174 @@
 .av-version-actions .av-btn { font-size: 12px; padding: 4px 10px; }
 .av-version-tag { font-size: 10px; color: #0d8395; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 
+/* ── Markdown preview ──────────────────────────────────────────────────────── */
+.av-preview {
+  width: 100%; min-height: 320px;
+  font-family: 'Inter', system-ui, sans-serif; font-size: 15px;
+  line-height: 1.75; color: #0f172a;
+  padding: 14px 4px;
+}
+.av-preview h1,.av-preview h2,.av-preview h3,.av-preview h4 {
+  font-weight: 700; color: #0d1a2e; margin: 1.4em 0 .5em; line-height: 1.25;
+}
+.av-preview h1 { font-size: 1.55em; border-bottom: 1px solid #e2e8f0; padding-bottom: .3em; }
+.av-preview h2 { font-size: 1.25em; }
+.av-preview h3 { font-size: 1.05em; }
+.av-preview p  { margin: .65em 0; }
+.av-preview ul,.av-preview ol { margin: .6em 0; padding-left: 1.5em; }
+.av-preview li { margin: .25em 0; }
+.av-preview strong { font-weight: 700; }
+.av-preview em { font-style: italic; }
+.av-preview code {
+  background: #f1f5f9; border-radius: 4px;
+  padding: 1px 5px; font-size: .9em; font-family: 'Fira Code', monospace;
+}
+.av-preview pre {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 14px 16px; overflow-x: auto; margin: .8em 0;
+}
+.av-preview pre code { background: none; padding: 0; }
+.av-preview blockquote {
+  border-left: 3px solid #0d8395; margin: .8em 0;
+  padding: .5em 1em; color: #475569; background: #f8fafc; border-radius: 0 6px 6px 0;
+}
+.av-preview table { border-collapse: collapse; width: 100%; margin: .8em 0; font-size: 14px; }
+.av-preview th,.av-preview td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+.av-preview th { background: #f1f5f9; font-weight: 700; }
+.av-preview hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.2em 0; }
+.av-preview a { color: #0d8395; text-decoration: underline; }
+
+.av-toggle-wrap { display: flex; gap: 2px; background: #f1f5f9; border-radius: 8px; padding: 2px; }
+.av-toggle-btn {
+  padding: 5px 12px; border: none; border-radius: 6px; font-size: 12px;
+  font-weight: 600; cursor: pointer; background: transparent; color: #64748b;
+  transition: background .12s, color .12s;
+}
+.av-toggle-btn.active { background: #fff; color: #0d1a2e; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
 @media (max-width: 600px) {
   .av-card { padding: 20px; border-radius: 8px; }
   .av-body { padding: 0 12px; margin: 16px auto; }
   .av-sidebar { width: 100%; }
 }
+
+/* ── consulting_outreach email cards ──────────────────────────────────────── */
+.co-body { max-width: 820px; margin: 24px auto; padding: 0 24px 100px; }
+.co-summary-bar {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 14px 20px; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.co-summary-stat { font-size: 13px; color: #475569; }
+.co-summary-stat strong { color: #0f172a; }
+.co-summary-spacer { flex: 1; }
+.co-progress { font-size: 13px; color: #64748b; }
+
+.co-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+  margin-bottom: 16px; overflow: hidden;
+  transition: box-shadow .15s;
+}
+.co-card:hover { box-shadow: 0 2px 8px rgba(15,23,42,.07); }
+.co-card.sent  { border-left: 4px solid #16a34a; }
+.co-card.skipped { border-left: 4px solid #94a3b8; opacity: .7; }
+.co-card.draft { border-left: 4px solid #0d8395; }
+
+.co-card-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px 0; cursor: pointer; user-select: none;
+}
+.co-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #e0f2fe; color: #0284c7;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px; flex-shrink: 0;
+}
+.co-prospect-info { flex: 1; min-width: 0; }
+.co-prospect-name { font-weight: 700; color: #0f172a; font-size: 15px; }
+.co-prospect-role { font-size: 13px; color: #64748b; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.co-status-badge {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+}
+.co-badge-draft   { background: #e0f7fa; color: #0d8395; }
+.co-badge-sent    { background: #dcfce7; color: #166534; }
+.co-badge-skipped { background: #f1f5f9; color: #64748b; }
+.co-expand-icon { color: #94a3b8; font-size: 18px; transition: transform .15s; }
+.co-expand-icon.open { transform: rotate(180deg); }
+
+.co-card-body { padding: 12px 20px 16px; display: none; }
+.co-card-body.open { display: block; }
+
+.co-section-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: #94a3b8; margin: 14px 0 8px;
+}
+.co-dossier-toggle {
+  background: none; border: none; cursor: pointer;
+  font-size: 13px; color: #0d8395; padding: 0; text-decoration: underline;
+  margin-bottom: 8px; display: block;
+}
+.co-dossier { display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+.co-dossier.open { display: block; }
+.co-signal-row { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+.co-signal-row:last-child { border-bottom: none; }
+.co-signal-key { color: #64748b; width: 130px; flex-shrink: 0; font-weight: 600; }
+.co-signal-val { color: #334155; flex: 1; line-height: 1.4; }
+.co-signal-val.empty { color: #94a3b8; font-style: italic; }
+
+.co-email-block { margin-top: 4px; }
+.co-subject-input, .co-body-input {
+  width: 100%; background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 6px; padding: 9px 12px; font-family: inherit;
+  font-size: 14px; color: #0f172a; outline: none;
+  transition: border-color .15s, background .15s;
+}
+.co-subject-input { margin-bottom: 8px; }
+.co-body-input { min-height: 140px; resize: vertical; line-height: 1.6; white-space: pre-wrap; }
+.co-subject-input:focus, .co-body-input:focus {
+  border-color: #0d8395; background: #fbfeff;
+}
+.co-subject-input[readonly], .co-body-input[readonly] {
+  background: #f8fafc; cursor: default;
+}
+
+.co-card-actions { display: flex; gap: 10px; margin-top: 14px; align-items: center; }
+.co-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600; padding: 8px 16px;
+  border-radius: 7px; cursor: pointer; border: 1px solid;
+  transition: background .15s;
+}
+.co-btn:disabled { opacity: .45; cursor: not-allowed; }
+.co-btn-send   { background: #0d1a2e; border-color: #0d1a2e; color: #fff; }
+.co-btn-send:hover:not(:disabled) { background: #1e3760; }
+.co-btn-skip   { background: #fff; border-color: #e2e8f0; color: #64748b; }
+.co-btn-skip:hover:not(:disabled) { background: #f1f5f9; }
+.co-btn-edit   { background: #fff; border-color: #e2e8f0; color: #0d8395; }
+.co-btn-edit:hover:not(:disabled) { background: #ecfeff; }
+.co-btn-save-edit { background: #0d8395; border-color: #0d8395; color: #fff; }
+.co-btn-save-edit:hover:not(:disabled) { background: #0a6b7a; }
+.co-btn-cancel-edit { background: #fff; border-color: #e2e8f0; color: #64748b; }
+.co-card-msg { margin-left: auto; font-size: 13px; color: #64748b; }
+.co-card-msg.ok  { color: #16a34a; }
+.co-card-msg.err { color: #dc2626; }
+
+.co-sent-note {
+  margin-top: 10px; padding: 8px 12px; border-radius: 6px;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  font-size: 13px; color: #166534;
+}
+.co-skip-note {
+  margin-top: 10px; padding: 8px 12px; border-radius: 6px;
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  font-size: 13px; color: #64748b;
+}
 </style>
 {% endblock %}
 
 {% block content %}
+{% set is_co = action.action_type == 'consulting_outreach' %}
 <div class="av-page">
   <header class="av-header">
     <a class="av-back" href="{{ url_for('pages.layer6_view', sim_id=sim.id) }}">
@@ -133,14 +293,35 @@
       </div>
     </div>
     <div class="av-spacer"></div>
+    {% if not is_co %}
+    <div class="av-toggle-wrap">
+      <button type="button" class="av-toggle-btn" id="avPreviewBtn">Preview</button>
+      <button type="button" class="av-toggle-btn active" id="avEditBtn">Edit</button>
+    </div>
     <button type="button" class="av-pill {% if history|length > 1 %}has-prior{% endif %}" id="avVersionsBtn">
       v{{ current.version_number }}{% if history|length > 1 %} · {{ history|length - 1 }} prior{% endif %}
     </button>
+    {% endif %}
     <span class="av-status {% if action.archived_at %}archived{% else %}draft{% endif %}" id="avStatus">
       {% if action.archived_at %}Archived{% else %}Draft{% endif %}
     </span>
   </header>
 
+  {% if is_co %}
+  <div class="co-body">
+    <div class="co-summary-bar">
+      <span class="co-summary-stat"><strong id="coTotalCount">–</strong> prospects</span>
+      <span class="co-summary-stat"><strong id="coDraftCount">–</strong> draft</span>
+      <span class="co-summary-stat"><strong id="coSentCount">–</strong> sent</span>
+      <span class="co-summary-stat"><strong id="coSkippedCount">–</strong> skipped</span>
+      <span class="co-summary-spacer"></span>
+      <span class="co-progress" id="coProgress"></span>
+    </div>
+    <div id="coCards">
+      <div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px;">Loading prospects…</div>
+    </div>
+  </div>
+  {% else %}
   <main class="av-body">
     <div id="avDraftBanner" class="av-banner" style="display:none;">
       <span>You have unsaved changes from a previous session.</span>
@@ -157,6 +338,7 @@
       {% if current.edit_summary %}
       <div class="av-summary">{{ current.edit_summary }}</div>
       {% endif %}
+      <div id="avPreview" class="av-preview" style="display:none"></div>
       <textarea
         id="avContent"
         class="av-content"
@@ -165,20 +347,26 @@
       >{{ current.content or '' }}</textarea>
     </div>
   </main>
+  {% endif %}
 
   <div class="av-actionbar">
-    <span class="av-savestate" id="avSaveState">Saved</span>
+    <span class="av-savestate" id="avSaveState">{% if is_co %}Campaign loaded{% else %}Saved{% endif %}</span>
     <div class="av-spacer"></div>
+    {% if not is_co %}
     <button type="button" class="av-btn" id="avDiscardBtn" style="display:none;">Discard changes</button>
+    {% endif %}
     <button type="button" class="av-btn" id="avRerunBtn">Re-run</button>
     {% if action.archived_at %}
     <button type="button" class="av-btn" id="avUnarchiveBtn">Restore from archive</button>
     {% else %}
     <button type="button" class="av-btn" id="avArchiveBtn">Archive</button>
     {% endif %}
+    {% if not is_co %}
     <button type="button" class="av-btn primary" id="avSaveBtn" disabled>Save as new version</button>
+    {% endif %}
   </div>
 
+  {% if not is_co %}
   <aside class="av-sidebar" id="avSidebar" aria-hidden="true">
     <div class="av-sidebar-head">
       <h3>Version history</h3>
@@ -186,8 +374,292 @@
     </div>
     <div class="av-version-list" id="avVersionList"></div>
   </aside>
+  {% endif %}
 </div>
 
+{% if is_co %}
+<script>
+(function () {
+  const ARTIFACT_ID = '{{ action.id }}';
+  let coData;
+  try {
+    coData = JSON.parse({{ current.content | tojson }});
+  } catch(e) {
+    document.getElementById('coCards').innerHTML =
+      '<div style="color:#dc2626;padding:40px;text-align:center">Failed to parse campaign data.</div>';
+    return;
+  }
+
+  const SIGNAL_LABELS = {
+    linkedin_activity:  'LinkedIn Activity',
+    company_news:       'Company News',
+    mutual_connections: 'Mutual Connections',
+    conferences_events: 'Conferences/Events',
+    hiring_signals:     'Hiring Signals',
+    public_pain_points: 'Pain Points',
+  };
+
+  function esc(s) {
+    return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function initials(first, last) {
+    return ((first||'').charAt(0)+(last||'').charAt(0)).toUpperCase() || '?';
+  }
+
+  function updateSummary() {
+    const ps = coData.prospects;
+    const total   = ps.length;
+    const sent    = ps.filter(p=>p.send_status==='sent').length;
+    const skipped = ps.filter(p=>p.send_status==='skipped').length;
+    const draft   = total - sent - skipped;
+    document.getElementById('coTotalCount').textContent   = total;
+    document.getElementById('coDraftCount').textContent   = draft;
+    document.getElementById('coSentCount').textContent    = sent;
+    document.getElementById('coSkippedCount').textContent = skipped;
+    document.getElementById('coProgress').textContent     = (sent+skipped)+' of '+total+' resolved';
+  }
+
+  function buildCard(p, idx) {
+    const card = document.createElement('div');
+    const status = p.send_status || 'draft';
+    card.className = 'co-card '+status;
+    card.dataset.idx = idx;
+
+    const em      = p.email_draft || {};
+    const ctx     = p.personalization_context || {};
+    const rdonly  = status==='sent' || status==='skipped';
+    const statusLabel = status.charAt(0).toUpperCase()+status.slice(1);
+
+    let dossierRows = '';
+    ['linkedin_activity','company_news','mutual_connections',
+     'conferences_events','hiring_signals','public_pain_points'].forEach(k => {
+      const val = ctx[k]||'';
+      dossierRows += '<div class="co-signal-row">'
+        +'<span class="co-signal-key">'+esc(SIGNAL_LABELS[k]||k)+'</span>'
+        +'<span class="co-signal-val'+(val?'':' empty')+'">'+(val?esc(val):'No signal found')+'</span>'
+        +'</div>';
+    });
+
+    let actionsHtml = '';
+    if (status==='sent') {
+      actionsHtml = '<div class="co-sent-note">&#10003; Email sent'
+        +(em.personalization_signal_used?' &middot; '+esc(em.personalization_signal_used):'')+
+        '</div>';
+    } else if (status==='skipped') {
+      actionsHtml = '<div class="co-skip-note">Skipped</div>';
+    } else {
+      actionsHtml = '<div class="co-card-actions" id="coActions'+idx+'">'
+        +'<button class="co-btn co-btn-send" data-action="send" data-idx="'+idx+'">Send</button>'
+        +'<button class="co-btn co-btn-skip" data-action="skip" data-idx="'+idx+'">Skip</button>'
+        +'<button class="co-btn co-btn-edit" data-action="edit" data-idx="'+idx+'">Edit</button>'
+        +'<span class="co-card-msg" id="coMsg'+idx+'"></span>'
+        +'</div>';
+    }
+
+    card.innerHTML =
+      '<div class="co-card-head" data-toggle="'+idx+'">'
+        +'<div class="co-avatar">'+esc(initials(p.first_name,p.last_name))+'</div>'
+        +'<div class="co-prospect-info">'
+          +'<div class="co-prospect-name">'+esc((p.first_name||'')+' '+(p.last_name||''))+'</div>'
+          +'<div class="co-prospect-role">'+esc(p.job_title||'')+' &middot; '+esc(p.company_name||'')+'</div>'
+        +'</div>'
+        +'<span class="co-status-badge co-badge-'+status+'">'+esc(statusLabel)+'</span>'
+        +'<span class="co-expand-icon" id="coExp'+idx+'">&#9662;</span>'
+      +'</div>'
+      +'<div class="co-card-body" id="coCBody'+idx+'">'
+        +'<button class="co-dossier-toggle" data-dossier="'+idx+'">'
+          +'Show personalization dossier ('+(p.signals_found||0)+' signals)'
+        +'</button>'
+        +'<div class="co-dossier" id="coDossier'+idx+'">'+dossierRows+'</div>'
+        +'<div class="co-section-label">Email Draft</div>'
+        +'<div class="co-email-block">'
+          +'<input type="text" class="co-subject-input" id="coSubj'+idx+'"'
+            +' value="'+esc(em.subject||'')+'" placeholder="Subject line"'
+            +(rdonly?' readonly':'')+' />'
+          +'<textarea class="co-body-input" id="coBodyTa'+idx+'"'
+            +' placeholder="Email body"'+(rdonly?' readonly':'')+'>'+esc(em.body||'')+'</textarea>'
+        +'</div>'
+        +actionsHtml
+      +'</div>';
+    return card;
+  }
+
+  function bindCard(card, idx) {
+    card.querySelector('[data-toggle]').addEventListener('click', ()=>toggleCard(idx));
+    const dossierBtn = card.querySelector('[data-dossier]');
+    if (dossierBtn) {
+      dossierBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const d = document.getElementById('coDossier'+idx);
+        d.classList.toggle('open');
+        const p = coData.prospects[idx];
+        e.target.textContent = d.classList.contains('open')
+          ? 'Hide personalization dossier'
+          : 'Show personalization dossier ('+(p.signals_found||0)+' signals)';
+      });
+    }
+    bindActionBtns(card, idx);
+  }
+
+  function bindActionBtns(root, idx) {
+    root.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); handleAction(e.currentTarget.dataset.action, idx); });
+    });
+  }
+
+  function toggleCard(idx, forceOpen) {
+    const body = document.getElementById('coCBody'+idx);
+    const icon = document.getElementById('coExp'+idx);
+    if (!body) return;
+    const open = forceOpen !== undefined ? forceOpen : !body.classList.contains('open');
+    body.classList.toggle('open', open);
+    icon.classList.toggle('open', open);
+  }
+
+  function setMsg(idx, text, cls) {
+    const el = document.getElementById('coMsg'+idx);
+    if (el) { el.textContent = text; el.className = 'co-card-msg'+(cls?' '+cls:''); }
+  }
+
+  function replaceActionsEl(idx, html) {
+    const actionsEl = document.getElementById('coActions'+idx);
+    if (actionsEl) { actionsEl.innerHTML = html; bindActionBtns(actionsEl, idx); }
+  }
+
+  function replaceCard(idx) {
+    const old = document.querySelector('.co-card[data-idx="'+idx+'"]');
+    if (!old) return;
+    const card = buildCard(coData.prospects[idx], idx);
+    old.parentNode.replaceChild(card, old);
+    bindCard(card, idx);
+    toggleCard(idx, true);
+  }
+
+  function renderAll() {
+    updateSummary();
+    const container = document.getElementById('coCards');
+    container.innerHTML = '';
+    let firstDraft = true;
+    coData.prospects.forEach((p, i) => {
+      const card = buildCard(p, i);
+      container.appendChild(card);
+      bindCard(card, i);
+      if (firstDraft && (p.send_status||'draft')==='draft') {
+        toggleCard(i, true);
+        firstDraft = false;
+      }
+    });
+  }
+
+  async function handleAction(action, idx) {
+    const actionsEl = document.getElementById('coActions'+idx);
+    const em = coData.prospects[idx].email_draft || {};
+
+    if (action === 'edit') {
+      document.getElementById('coSubj'+idx).removeAttribute('readonly');
+      document.getElementById('coBodyTa'+idx).removeAttribute('readonly');
+      replaceActionsEl(idx,
+        '<button class="co-btn co-btn-save-edit"   data-action="save-edit"   data-idx="'+idx+'">Save edits</button>'
+       +'<button class="co-btn co-btn-cancel-edit" data-action="cancel-edit" data-idx="'+idx+'">Cancel</button>'
+       +'<span class="co-card-msg" id="coMsg'+idx+'"></span>');
+      return;
+    }
+
+    if (action === 'cancel-edit') {
+      document.getElementById('coSubj'+idx).value = em.subject||'';
+      document.getElementById('coBodyTa'+idx).value = em.body||'';
+      document.getElementById('coSubj'+idx).setAttribute('readonly','readonly');
+      document.getElementById('coBodyTa'+idx).setAttribute('readonly','readonly');
+      replaceActionsEl(idx,
+        '<button class="co-btn co-btn-send" data-action="send" data-idx="'+idx+'">Send</button>'
+       +'<button class="co-btn co-btn-skip" data-action="skip" data-idx="'+idx+'">Skip</button>'
+       +'<button class="co-btn co-btn-edit" data-action="edit" data-idx="'+idx+'">Edit</button>'
+       +'<span class="co-card-msg" id="coMsg'+idx+'"></span>');
+      return;
+    }
+
+    if (action === 'save-edit') {
+      const subject = document.getElementById('coSubj'+idx).value;
+      const body    = document.getElementById('coBodyTa'+idx).value;
+      const btns    = actionsEl ? actionsEl.querySelectorAll('.co-btn') : [];
+      setMsg(idx,'Saving…','');
+      btns.forEach(b=>b.disabled=true);
+      try {
+        const r = await fetch(ROOT+'/api/artifacts/'+ARTIFACT_ID+'/consulting-outreach/'+idx+'/edit', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({subject, body}),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail||d.error||'Save failed');
+        coData.prospects[idx].email_draft = Object.assign(em, {subject, body});
+        document.getElementById('coSubj'+idx).setAttribute('readonly','readonly');
+        document.getElementById('coBodyTa'+idx).setAttribute('readonly','readonly');
+        replaceActionsEl(idx,
+          '<button class="co-btn co-btn-send" data-action="send" data-idx="'+idx+'">Send</button>'
+         +'<button class="co-btn co-btn-skip" data-action="skip" data-idx="'+idx+'">Skip</button>'
+         +'<button class="co-btn co-btn-edit" data-action="edit" data-idx="'+idx+'">Edit</button>'
+         +'<span class="co-card-msg ok" id="coMsg'+idx+'">Saved</span>');
+      } catch(e) {
+        setMsg(idx, e.message, 'err');
+        btns.forEach(b=>b.disabled=false);
+      }
+      return;
+    }
+
+    // send / skip
+    const btns = actionsEl ? actionsEl.querySelectorAll('.co-btn') : [];
+    setMsg(idx, action==='send'?'Sending…':'Skipping…', '');
+    btns.forEach(b=>b.disabled=true);
+    try {
+      const r = await fetch(ROOT+'/api/artifacts/'+ARTIFACT_ID+'/consulting-outreach/'+idx+'/'+action, {
+        method: 'POST',
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail||d.error||'Request failed');
+      coData.prospects[idx].send_status = action==='send' ? 'sent' : 'skipped';
+      updateSummary();
+      replaceCard(idx);
+    } catch(e) {
+      setMsg(idx, e.message, 'err');
+      btns.forEach(b=>b.disabled=false);
+    }
+  }
+
+  // Actionbar
+  const $rerunBtn  = document.getElementById('avRerunBtn');
+  const $archive   = document.getElementById('avArchiveBtn');
+  const $unarchive = document.getElementById('avUnarchiveBtn');
+  if ($rerunBtn) {
+    $rerunBtn.addEventListener('click', async () => {
+      if (!confirm('Re-run this campaign? It will generate a fresh set of prospects and emails.')) return;
+      $rerunBtn.disabled = true;
+      try {
+        const r = await fetch(ROOT+'/api/artifacts/'+ARTIFACT_ID+'/rerun', {method:'POST'});
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail||d.error);
+        alert('Re-run dispatched. Refresh in a few seconds to see the new campaign.');
+      } catch(e) { alert('Re-run failed: '+e.message); }
+      finally { $rerunBtn.disabled = false; }
+    });
+  }
+  if ($archive) {
+    $archive.addEventListener('click', async () => {
+      if (!confirm('Archive this campaign?')) return;
+      const r = await fetch(ROOT+'/api/artifacts/'+ARTIFACT_ID+'/archive', {method:'POST'});
+      if (r.ok) window.location.reload();
+    });
+  }
+  if ($unarchive) {
+    $unarchive.addEventListener('click', async () => {
+      const r = await fetch(ROOT+'/api/artifacts/'+ARTIFACT_ID+'/unarchive', {method:'POST'});
+      if (r.ok) window.location.reload();
+    });
+  }
+
+  renderAll();
+})();
+</script>
+{% else %}
 <script>
 (function () {
   const ARTIFACT_ID = '{{ action.id }}';
@@ -441,4 +913,62 @@
   });
 })();
 </script>
+
+<script>
+/* ── Markdown preview toggle — isolated from main IIFE ──────────────────── */
+(function () {
+  var btn    = document.getElementById('avPreviewBtn');
+  var editB  = document.getElementById('avEditBtn');
+  var pre    = document.getElementById('avPreview');
+  var ta     = document.getElementById('avContent');
+  var saveB  = document.getElementById('avSaveBtn');
+  var discB  = document.getElementById('avDiscardBtn');
+  if (!btn || !editB || !pre || !ta) return;
+
+  function esc(s) {
+    return (s || '').replace(/[&<>"']/g, function(c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function render() {
+    var text = ta.value || '';
+    if (!text) { pre.innerHTML = '<span style="color:#94a3b8;font-size:14px;">No content yet.</span>'; return; }
+    try {
+      pre.innerHTML = (typeof marked !== 'undefined') ? marked.parse(text) : '<pre style="white-space:pre-wrap;font-size:15px;line-height:1.75;color:#0f172a">'+esc(text)+'</pre>';
+    } catch(e) {
+      pre.innerHTML = '<pre style="white-space:pre-wrap;font-size:15px;line-height:1.75;color:#0f172a">'+esc(text)+'</pre>';
+    }
+  }
+
+  btn.addEventListener('click', function () {
+    render();
+    pre.style.display = '';
+    ta.style.display  = 'none';
+    btn.classList.add('active');
+    editB.classList.remove('active');
+    if (saveB) saveB.style.display = 'none';
+    if (discB) discB.style.display = 'none';
+  });
+
+  editB.addEventListener('click', function () {
+    pre.style.display = 'none';
+    ta.style.display  = '';
+    editB.classList.add('active');
+    btn.classList.remove('active');
+    if (saveB) saveB.style.display = '';
+  });
+
+  // Default to Preview on load (script runs after DOM is ready)
+  render();
+  pre.style.display = '';
+  ta.style.display  = 'none';
+  btn.classList.add('active');
+  editB.classList.remove('active');
+  if (saveB) saveB.style.display = 'none';
+  if (discB) discB.style.display = 'none';
+})();
+</script>
+
+{% endif %}
 {% endblock %}

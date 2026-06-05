@@ -1,0 +1,226 @@
+PRODUCT REQUIREMENTS DOCUMENT
+GCC Journey Redesign — v3.0
+Merges My Layers + Layer Actions into Journey · 10 Tabs → 8 · Progress Rings · Artifact Links · Status Filters
+Document ID
+SIM-PRD-GCC-003
+Version
+3.0 — Supersedes SIM-PRD-GCC-002 v2.0 Journey tab and eliminates My Layers + Layer Actions tabs
+Route
+/simulations/:id/gcc?tab=journey — default landing tab of the Growth Command Center
+Change summary
+Three tabs become one. My Layers (layer summaries with income and progress) and Layer Actions (action list with status filters and artifact links) are merged into Journey. The tab bar reduces from 10 tabs to 8. Journey becomes the single view for execution status: what ran, what is running, what completed, and links to every generated artifact.
+Division
+Wealth Pyramid Launchpad (/simulations/:id) = strategy + all 49 agents + configure + run. GCC Journey (/simulations/:id/gcc) = execution status + only actioned agents + artifact links. The Launchpad is where the user decides what to do. Journey is where they see what happened.
+Design source
+Prototype delivered as gcc_redesign.jsx.
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+June 2026
+This redesign eliminates redundancy. The current GCC has 10 tabs — three of which (Journey, My Layers, Layer Actions) show overlapping data about the same thing: which agents ran and what they produced. The redesigned Journey merges all three into a single tab that shows layer progress, action history, status filters, and artifact links. The tab bar drops from 10 to 8, reducing cognitive load without losing any functionality.
+1. Tab Bar Changes
+1.1 Tabs Removed
+Removed tab
+Where its content moved
+My Layers
+Layer summaries (name, income, action count, progress) are now the layer headers in Journey. Each layer header shows a progress ring, 'N of M agents complete · N actions', and layer income. All My Layers data is visible without scrolling.
+Layer Actions
+The action list with status badges, dates, and 'View artifact →' links is now the expanded content of each Journey layer. Status filters (All/Pending/In progress/Complete/Failed) move to Journey as filter pills above the layer accordion.
+1.2 New Tab Order (8 Tabs)
+#
+Tab
+Content
+1
+Journey
+DEFAULT. Focus bar + status filters + layer accordion with progress rings, action rows, and artifact links. This PRD.
+2
+Action Queue
+Unchanged. Items requiring user attention, ordered by urgency tier.
+3
+Income
+Unchanged. All-time income, by-layer breakdown, recent income events, + Log income.
+4
+Momentum
+Unchanged. Explore/exploit phase indicator, per-layer momentum cards.
+5
+Cycle
+Unchanged. Orchestrator cycle history with reasoning, Run Cycle button.
+6
+Visuals
+Unchanged. Orchestrator diagram, explore/exploit progress bar.
+7
+Agent Network
+Unchanged. Force-directed graph + layer actions swimlane.
+8
+Escalations
+Unchanged. Approval queue for actions requiring user confirmation.
+2. Focus Bar
+The Focus bar sits at the top of Journey, above the filters and layer accordion. It shows the orchestrator's current suggestion and provides quick access to Run Cycle and Ask Simi.
+Element
+Specification
+Container
+White background, 12px border-radius, 1px border rgba(0,0,0,0.06), 16px 20px padding. Full width. Margin-bottom 20px.
+Focus icon
+36x36px rounded square with gold (#C9952A) at 8% opacity background. Target icon (18px, gold).
+Focus label
+'FOCUS' in 10px bold uppercase, gold, letter-spacing 1px.
+Suggested action
+'▶ Suggested action: [agent_name]' in 15px DM Sans 600, navy. The orchestrator's top-ranked agent for the next dispatch.
+Cycle info
+'Cycle [N] · [phase] phase' in 12px muted. Shows current cycle number and explore/transition/exploit phase.
+Run Cycle button
+Filled teal, Play icon, 'Run Cycle', 13px DM Sans 600. Triggers POST /api/simulations/:id/run-cycle.
+Ask Simi button
+Outlined, MessageCircle icon, 'Ask Simi', 13px DM Sans 500. Opens the Simi chat co-pilot.
+Data source
+Suggested action: the highest-scoring agent from the last Score step that was not dispatched (next in queue). Cycle number and phase from the latest Cycle record.
+3. Status Filters
+Five filter pills sit between the focus bar and the layer accordion. Filters apply globally across all layers — selecting 'Complete' shows only completed actions in every layer. The action count updates to reflect the filtered total.
+Filter
+Behavior
+All
+Default. Shows all actions across all statuses. No filtering applied.
+Pending
+Shows only actions with status='pending'. These are dispatched but not yet started.
+In progress
+Shows only actions with status='in_progress'. These are currently executing.
+Complete
+Shows only actions with status='complete'. These have generated artifacts.
+Failed
+Shows only actions with status='failed'. These need attention or will auto-retry.
+Active filter: teal background, white text, teal border. Inactive filter: white background, muted text, grey border. Pill shape (border-radius 100px). 12px DM Sans, font-weight 600 when active, 400 when inactive. Right-aligned: '[N] actions' count in 12px muted showing the filtered total.
+When a filter is active and a layer has zero matching actions, that layer is hidden from the accordion entirely. This prevents empty layer sections cluttering the view. When the filter returns to 'All', all layers reappear.
+4. Layer Accordion
+The layer accordion replaces both the My Layers tab and the Layer Actions tab. Each layer header contains the summary data from My Layers. Each expanded layer contains the action list from Layer Actions.
+4.1 Layer Header (Replaces My Layers)
+Element
+Specification
+Progress ring
+40x40px SVG circle. Track: #f0f1f3, 2.5px stroke. Progress arc: layer color, 2.5px stroke, stroke-linecap round. Percentage text centered: 10px bold in layer color. Animation: stroke-dashoffset transition 600ms ease.
+Layer badge
+11px bold white text on layer color background, 4px border-radius. 'L1' through 'L5'.
+Layer name
+15px DM Sans 600, navy. 'Active income', 'Leveraged income', etc.
+Summary line
+12px DM Sans 400, muted. '[N] of [M] agents complete · [N] actions'. N = unique agents with at least one 'complete' action. M = total agents in that layer. Actions = total action records (including multiple runs of the same agent).
+Layer income
+14px DM Sans 600, navy. '$0' or the sum of layer_income_records for this layer. Right-aligned.
+Left border
+4px solid in layer color. Consistent with prior My Layers design. Colors: L1 #534AB7, L2 #0F7B72, L3 #C9952A, L4 #E85D4A, L5 #185FA5.
+Chevron
+16px ChevronDown, muted. Rotates 180deg when expanded, 200ms transition.
+Click behavior
+Expands this layer and collapses any other expanded layer (single-open accordion). Default: L1 expanded on page load.
+4.2 Percentage Complete Calculation
+def calculate_layer_completion(simulation_id, layer_number):
+total_agents = len(LAYER_AGENTS[layer_number])  # L1=11, L2=8, etc.
+# Count UNIQUE agents with at least one 'complete' action
+completed = db.session.query(
+func.count(distinct(ActionQueueItem.action_type))
+).filter(
+ActionQueueItem.simulation_id == simulation_id,
+ActionQueueItem.action_type.in_(LAYER_AGENTS[layer_number]),
+ActionQueueItem.status == 'complete',
+).scalar()
+return round((completed / total_agents) * 100)
+# Example: L1 has 11 agents. 8 unique agents have at least one
+# 'complete' action (some agents ran multiple times). 8/11 = 73%.
+# Multiple runs of Outreach Email count as ONE toward the percentage.
+4.3 Suggested Next (Conditional)
+Inside the expanded layer, if the layer contains the orchestrator's suggested next action AND no status filter is active, a highlighted row appears at the top: Play icon + 'Suggested next: ▶ [agent_name]' in layer color, 12px bold. Background: layer color at 8% opacity. This row is not shown when a filter is active (it would be confusing to see 'Suggested next' in a filtered view of completed actions).
+5. Action Rows (Replaces Layer Actions Tab)
+Inside each expanded layer, action rows show every agent that has been dispatched (has a status of pending, in_progress, complete, or failed). Agents that have never been run do NOT appear in Journey — they are visible on the Wealth Pyramid Launchpad page only.
+5.1 Action Row Layout
+Element
+Specification
+Status icon
+18x18px circle. Complete: filled green (#1A8754), white Check icon (10px, stroke-width 3). In progress: filled amber (#C9952A), white Clock icon (10px). Pending: empty circle with 2px #d0d5dd border. Failed: filled coral (#E85D4A), white AlertTriangle icon (10px).
+Agent name
+14px DM Sans 400, navy. Left of center. The display name of the agent (e.g. 'Cold Email Campaign', 'Outreach Email', 'Consulting Proposal').
+Status badge
+Right-aligned pill. 11px DM Sans 500, status color text on status background. Border-radius 100px. Labels: 'complete' (green), 'in progress' (amber), 'pending' (grey), 'failed' (coral).
+Date
+12px DM Sans 400, muted (#b0b8c4). Min-width 85px. Format: YYYY-MM-DD. Shows the date the action was created (dispatched).
+Artifact link
+'View artifact →' in 12px DM Sans 500, teal (#0F7B72). ArrowRight icon (11px). Visible ONLY when status='complete' and an artifact exists. Links to /simulations/:id/artifacts/:artifact_id (per SIM-PRD-VIEW-001). When no artifact: empty space (min-width 105px) to maintain alignment.
+Row separator
+1px border-bottom rgba(0,0,0,0.03) between rows. No separator after the last row.
+Hover
+Background changes to rgba(0,0,0,0.015) on hover. 100ms transition.
+5.2 Ordering
+Action rows within each layer are ordered by date descending (most recent first). This matches the current Layer Actions tab behavior. Within the same date, actions are ordered by status: in_progress first, then pending, then complete, then failed. This puts active and attention-needing items at the top.
+5.3 Multiple Runs of the Same Agent
+An agent can run multiple times (re-runs from the Launchpad, or multiple orchestrator dispatches). Each run appears as a separate row in Journey. Example: Outreach Email may have 6 rows — 1 complete, 2 in progress, 1 pending, 2 complete from earlier cycles. Each row links to its own artifact. The percentage complete calculation counts Outreach Email only ONCE regardless of how many times it ran.
+5.4 Empty Layer State
+If a layer has zero actions matching the current filter, the expanded content shows a centered message: 'No [filter] actions in this layer yet.' in 13px muted. If the filter is 'All' and the layer has zero actions ever, the message reads: 'No actions in this layer yet.' This state occurs for layers that the orchestrator has not reached — the user sees the layer header with 0% progress and knows agents are available on the Launchpad.
+6. Data Model
+6.1 Journey Query
+def get_journey_data(simulation_id, status_filter=None):
+query = ActionQueueItem.query.filter(
+ActionQueueItem.simulation_id == simulation_id,
+ActionQueueItem.status.in_(['pending','in_progress','complete','failed']),
+)
+if status_filter:
+query = query.filter(ActionQueueItem.status == status_filter)
+actions = query.order_by(
+ActionQueueItem.created_at.desc()  # most recent first
+).all()
+# Group by layer
+layers = {}
+for action in actions:
+layer = get_agent_layer(action.action_type)
+if layer not in layers:
+layers[layer] = []
+layers[layer].append({
+'agent': action.display_name,
+'action_type': action.action_type,
+'status': action.status,
+'date': action.created_at.strftime('%Y-%m-%d'),
+'artifact_id': action.artifact_id,
+'has_artifact': action.artifact_id is not None,
+})
+# Compute per-layer stats
+result = []
+for layer_num in range(1, 6):
+ly = f'L{layer_num}'
+result.append({
+'layer': ly,
+'actions': layers.get(ly, []),
+'completion_pct': calculate_layer_completion(
+simulation_id, layer_num),
+'unique_complete': count_unique_complete(
+simulation_id, layer_num),
+'total_agents': len(LAYER_AGENTS[layer_num]),
+'total_actions': len(layers.get(ly, [])),
+'income': get_layer_income(simulation_id, layer_num),
+})
+return result
+6.2 Focus Bar Query
+def get_focus_data(simulation_id):
+latest_cycle = Cycle.query.filter_by(
+simulation_id=simulation_id
+).order_by(Cycle.created_at.desc()).first()
+# Suggested next: highest-scoring undispatched agent
+# from the last Score step
+suggested = get_top_scored_undispatched(
+simulation_id, latest_cycle.id)
+return {
+'suggested_agent': suggested.display_name if suggested else None,
+'cycle_number': latest_cycle.cycle_number,
+'phase': latest_cycle.phase,  # explore/transition/exploit
+}
+7. Functional Requirements
+FR-GCC-01: The GCC tab bar is reduced from 10 tabs to 8. My Layers and Layer Actions are eliminated. Their content is merged into the Journey tab. Journey remains the default landing tab.
+FR-GCC-02: Journey shows three components in order: Focus bar (top), status filters (middle), layer accordion (bottom). The Focus bar shows the orchestrator's suggested next action, current cycle number, and explore/exploit phase. Run Cycle and Ask Simi buttons are accessible without scrolling.
+FR-GCC-03: Five status filter pills: All (default), Pending, In progress, Complete, Failed. Filters apply globally across all layers. When a filter is active, layers with zero matching actions are hidden. The action count updates to show the filtered total.
+FR-GCC-04: Each layer header shows: a progress ring (percentage of unique agents complete), layer badge (L1-L5), layer name, summary line ('N of M agents complete · N actions'), layer income, and a 4px left border in layer color. This replaces the My Layers tab entirely.
+FR-GCC-05: Percentage complete is calculated as: count of UNIQUE agents with at least one 'complete' action ÷ total agents for that layer × 100. Multiple runs of the same agent count only once. L1 has 11 total agents. If 8 unique agents have completed: 73%.
+FR-GCC-06: Action rows inside each expanded layer show only agents that have been dispatched (status is pending, in_progress, complete, or failed). Agents that have never been run do NOT appear. Each row shows: status icon (circle with icon), agent name, status badge, date, and 'View artifact →' link (visible only for complete actions with artifacts).
+FR-GCC-07: Artifact links navigate to /simulations/:id/artifacts/:artifact_id per SIM-PRD-VIEW-001. The link appears as 'View artifact →' in teal with an ArrowRight icon. Links are only shown for actions with status='complete' and a non-null artifact_id.
+FR-GCC-08: Action rows are ordered by date descending within each layer. Within the same date: in_progress first, then pending, then complete, then failed. This puts active items at the top.
+FR-GCC-09: Multiple runs of the same agent appear as separate rows, each linking to its own artifact. The user can see the history of an agent's runs (e.g., 3 Outreach Email runs across different cycles) and access each artifact individually.
+FR-GCC-10: The 'Suggested next' row appears at the top of the expanded layer containing the orchestrator's top-ranked undispatched agent. It is conditional: only shown when no status filter is active. Play icon + agent name in layer color on 8% opacity layer color background.
+FR-GCC-11: Empty layer state: 'No [filter] actions in this layer yet.' centered in 13px muted text. Layers with zero actions show 0% in the progress ring and are visible in the accordion (not hidden) when the filter is 'All'.
+FR-GCC-12: The single-open accordion behavior is preserved: expanding one layer collapses the currently expanded layer. Default: L1 expanded on page load. This matches the Wealth Pyramid Launchpad accordion behavior for consistency.
+SIM-PRD-GCC-003  ·  GCC Journey Redesign  ·  v1.0  ·  April 2026
+Jean Moussa Delphonse  ·  Bay Area Experiences Ventures  ·  Confidential

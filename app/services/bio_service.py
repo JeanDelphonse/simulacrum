@@ -23,7 +23,7 @@ Prefer precision over generality.
 **Notable Work** — 2-4 specific projects or deliverables with impact \
 **Ventures** — entrepreneurial or independent work (if applicable) \
 **Current Work** — present roles and active projects
-6. Length: 250-500 words. Each section is a prose paragraph, not a list.
+6. Length: 400-800 words. Each section is a prose paragraph, not a list.
 7. Tense: past tense for completed roles and work, present tense for current roles and active ventures.
 8. PROHIBITED LANGUAGE — never use these words or their synonyms: passionate, visionary, \
 results-driven, dynamic, innovative, thought leader, guru, ninja, rockstar, game-changer, \
@@ -32,7 +32,8 @@ disruptive, synergy, leverage (as a verb), cutting-edge, best-in-class.
 10. Do not speculate about the person's motivations, feelings, or future intentions."""
 
 
-def generate_wikipedia_bio(profile, resume_text: str, expertise_zones: list) -> str:
+def generate_wikipedia_bio(profile, resume_text: str, expertise_zones: list,
+                           existing_bio=None) -> str:
     import anthropic
     client = anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
     model = get_model('bio_generation')
@@ -45,19 +46,33 @@ def generate_wikipedia_bio(profile, resume_text: str, expertise_zones: list) -> 
         for z in (expertise_zones or [])
     ], indent=2)
 
-    user_prompt = (
-        f'Write a Wikipedia-style professional biography for the following individual.\n\n'
-        f'FULL NAME: {profile.display_name or "Not provided"}\n'
-        f'LOCATION: {profile.location or "Not specified"}\n\n'
-        f'RESUME / LINKEDIN PROFILE:\n{resume_text[:8000]}\n\n'
-        f'EXPERTISE ZONES (extracted from career analysis):\n{zone_summary}\n\n'
-        f'Write the bio now. Follow all style rules. Output plain text only. '
-        f'Use **Section Name** for section markers. No markdown beyond that.'
-    )
+    if existing_bio:
+        user_prompt = (
+            f'Refine and update the following professional biography using the latest published '
+            f'simulation data below. Keep the person\'s voice and any accurate details; update or '
+            f'expand sections where the new simulation data adds richer evidence.\n\n'
+            f'FULL NAME: {profile.display_name or "Not provided"}\n'
+            f'LOCATION: {profile.location or "Not specified"}\n\n'
+            f'EXISTING BIO (to refine):\n{existing_bio}\n\n'
+            f'RESUME / LINKEDIN PROFILE:\n{resume_text[:8000]}\n\n'
+            f'PUBLISHED SIMULATION ZONES:\n{zone_summary}\n\n'
+            f'Output the refined bio now. Follow all style rules. Plain text only. '
+            f'Use **Section Name** for section markers. No markdown beyond that.'
+        )
+    else:
+        user_prompt = (
+            f'Write a Wikipedia-style professional biography for the following individual.\n\n'
+            f'FULL NAME: {profile.display_name or "Not provided"}\n'
+            f'LOCATION: {profile.location or "Not specified"}\n\n'
+            f'RESUME / LINKEDIN PROFILE:\n{resume_text[:8000]}\n\n'
+            f'EXPERTISE ZONES (extracted from career analysis):\n{zone_summary}\n\n'
+            f'Write the bio now. Follow all style rules. Output plain text only. '
+            f'Use **Section Name** for section markers. No markdown beyond that.'
+        )
 
     response = client.messages.create(
         model=model,
-        max_tokens=1200,
+        max_tokens=2400,
         system=BIO_SYSTEM_PROMPT,
         messages=[{'role': 'user', 'content': user_prompt}],
     )

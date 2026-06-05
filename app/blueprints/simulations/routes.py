@@ -19,6 +19,25 @@ def _agent_action_types():
     return AGENT_ACTION_TYPES
 
 
+# Layer display metadata (colors match PRD design tokens)
+_LAYER_META: dict = {
+    1: {'label': 'Active Income',       'subtitle': '1:1 Time-for-Money',          'color': '#0F7B72'},
+    2: {'label': 'Leveraged Delivery',  'subtitle': '1:Many Teaching & Speaking',  'color': '#7c3aed'},
+    3: {'label': 'Digital Products',    'subtitle': 'Earn While You Sleep',        'color': '#1d4ed8'},
+    4: {'label': 'Automation & IP',     'subtitle': 'Systems That Scale',          'color': '#b45309'},
+    5: {'label': 'Wealth Deployment',   'subtitle': 'Money That Makes Money',      'color': '#15803d'},
+}
+
+
+def _get_action_layer(action_type: str):
+    """Return (layer_number, agent_def) for a given action_type, or (None, {})."""
+    from app.services.claude import AGENT_ACTION_TYPES
+    for ln, agents in AGENT_ACTION_TYPES.items():
+        if action_type in agents:
+            return ln, agents[action_type]
+    return None, {}
+
+
 @simulations_bp.route('/price', methods=['GET'])
 def get_simulation_price():
     """Public endpoint — returns current simulation price in cents and formatted."""
@@ -686,7 +705,17 @@ def re_execute_agent_action(sim_id, layer_num, action_id):
     ).first_or_404()
 
     if action.status == AgentAction.STATUS_IN_PROGRESS:
-        return jsonify({'error': 'Action is already running'}), 409
+        # Auto-recover stale in_progress actions (daemon thread killed by process recycle).
+        # consulting_outreach can take 10+ minutes; Passenger workers are recycled sooner.
+        from datetime import datetime as _dt
+        stale_cutoff = 15 * 60  # 15 minutes
+        age = (_dt.utcnow() - action.created_at).total_seconds()
+        if age < stale_cutoff:
+            return jsonify({'error': 'Action is already running'}), 409
+        action.status = AgentAction.STATUS_FAILED
+        action.error_message = 'Execution timed out — worker process was recycled'
+        action.completed_at = _dt.utcnow()
+        db.session.commit()
 
     # Archive prior artifact
     if action.artifact:
@@ -797,4 +826,293 @@ def get_archived_artifact(sim_id, layer_num, action_id):
         'action_id': action.id,
         'archived_artifact': action.archived_artifact,
         'archived_at': action.archived_at.isoformat() if action.archived_at else None,
+    }), 200
+
+
+# ---------------------------------------------------------------------------
+# Wealth Pyramid Launchpad — pyramid data + agent grid
+# ---------------------------------------------------------------------------
+
+@simulations_bp.route('/<sim_id>/pyramid', methods=['GET'])
+@login_required
+def get_pyramid(sim_id):
+    """Return wealth pyramid layer data + per-agent statuses for the Launchpad."""
+    from app.services.claude import AGENT_ACTION_TYPES
+    from app.services.layer6 import ACTION_PREREQUISITES
+
+    sim, _ = _check_sim_access(sim_id)
+    if not sim:
+        return jsonify({'error': 'Not found'}), 404
+
+    # Snapshot completed and running action types for this simulation
+    all_actions = AgentAction.query.filter_by(simulation_id=sim_id).all()
+    completed_types: set = {a.action_type for a in all_actions if a.status == AgentAction.STATUS_COMPLETE}
+    running_types:   set = {a.action_type for a in all_actions
+                            if a.status in (AgentAction.STATUS_PENDING, AgentAction.STATUS_IN_PROGRESS)}
+
+    layers_out = []
+    for layer in sorted(sim.layers, key=lambda l: l.layer_number):
+        n = layer.layer_number
+        meta = _LAYER_META.get(n, {})
+        layer_agent_defs = AGENT_ACTION_TYPES.get(n, {})
+
+        # Build opportunities list from income streams
+        opportunities = []
+        for s in layer.income_streams:
+            rev = None
+            if s.est_monthly_low and s.est_monthly_high:
+                rev = f'${s.est_monthly_low:,}–${s.est_monthly_high:,}/mo'
+            opportunities.append({
+                'name': s.name,
+                'revenue_range': rev,
+                'description': s.description,
+                'channels': [s.platform] if s.platform else [],
+                'reasoning': s.ai_reasoning,
+                'evidence': s.deliverable_refs or [],
+                'automation_level': s.automation_level,
+                'launch_timeline': f'{s.launch_timeline_weeks}w' if s.launch_timeline_weeks else None,
+            })
+
+        # Build agent list with statuses
+        agents_list = []
+        for at, defn in layer_agent_defs.items():
+            if at in running_types:
+                status = 'running'
+            elif at in completed_types:
+                status = 'complete'
+            else:
+                prereqs = ACTION_PREREQUISITES.get(at, [])
+                missing = [p for p in prereqs if p not in completed_types]
+                status = 'locked' if missing else 'ready'
+
+            agents_list.append({
+                'action_type': at,
+                'label': defn.get('label', at.replace('_', ' ').title()),
+                'description': defn.get('description', ''),
+                'status': status,
+                'prompt_form': defn.get('prompt_form', []),
+                'missing_prereqs': (
+                    [p for p in ACTION_PREREQUISITES.get(at, []) if p not in completed_types]
+                    if status == 'locked' else []
+                ),
+            })
+
+        priority = layer.priority_score or 0
+        layers_out.append({
+            'layer_number': n,
+            'label': meta.get('label', layer.layer_name),
+            'subtitle': meta.get('subtitle', ''),
+            'color': meta.get('color', '#0F7B72'),
+            'priority': 'high' if priority >= 0.7 else ('medium' if priority >= 0.4 else 'low'),
+            'ai_narrative': layer.ai_narrative,
+            'opportunities': opportunities,
+            'agents': agents_list,
+            'counts': {
+                'complete': sum(1 for a in agents_list if a['status'] == 'complete'),
+                'running':  sum(1 for a in agents_list if a['status'] == 'running'),
+                'ready':    sum(1 for a in agents_list if a['status'] == 'ready'),
+                'locked':   sum(1 for a in agents_list if a['status'] == 'locked'),
+            },
+        })
+
+    return jsonify({
+        'simulation': {
+            'id': sim.id,
+            'name': sim.name,
+            'status': sim.status,
+            'expertise_zone': sim.expertise_zone,
+            'created_at': sim.created_at.isoformat(),
+        },
+        'layers': layers_out,
+    }), 200
+
+
+@simulations_bp.route('/<sim_id>/agents/<action_type>/run', methods=['POST'])
+@login_required
+def run_agent(sim_id, action_type):
+    """Manually dispatch a single agent for this simulation (FR-PYR-09)."""
+    from app.services.layer6 import ACTION_PREREQUISITES
+
+    sim, _ = _check_sim_access(sim_id)
+    if not sim:
+        return jsonify({'error': 'Not found'}), 404
+    if sim.user_id != current_user.id:
+        return jsonify({'error': 'Only the simulation owner can run agents'}), 403
+
+    layer_number, defn = _get_action_layer(action_type)
+    if layer_number is None:
+        return jsonify({'error': 'Unknown agent type'}), 400
+
+    # Validate DAG prerequisites
+    completed_types = {
+        a.action_type for a in
+        AgentAction.query.filter_by(simulation_id=sim_id, status=AgentAction.STATUS_COMPLETE).all()
+    }
+    missing_prereqs = [p for p in ACTION_PREREQUISITES.get(action_type, []) if p not in completed_types]
+    if missing_prereqs:
+        readable = [p.replace('_', ' ') for p in missing_prereqs]
+        return jsonify({
+            'error': 'prerequisite_missing',
+            'missing': missing_prereqs,
+            'message': f'Cannot run — complete {", ".join(readable)} first.',
+        }), 422
+
+    # Create action record
+    params = (request.get_json(silent=True) or {}).get('params', {})
+    action = AgentAction(
+        id=generate_id(),
+        simulation_id=sim_id,
+        layer_number=layer_number,
+        action_type=action_type,
+        user_inputs=params,
+        status=AgentAction.STATUS_PENDING,
+        created_by=current_user.id,
+    )
+    db.session.add(action)
+    db.session.commit()
+
+    # Dispatch Celery task
+    try:
+        from app.tasks.agent import execute_agent_action_task
+        execute_agent_action_task.delay(action.id)
+    except Exception:
+        pass  # Worker picks it up via periodic sweep if Celery unavailable
+
+    return jsonify({
+        'action_id': action.id,
+        'action_type': action_type,
+        'layer_number': layer_number,
+        'status': 'running',
+        'label': defn.get('label', action_type.replace('_', ' ').title()),
+    }), 200
+
+
+# ---------------------------------------------------------------------------
+# GCC Journey v3 (SIM-PRD-GCC-003)
+# ---------------------------------------------------------------------------
+
+@simulations_bp.route('/<sim_id>/journey', methods=['GET'])
+@login_required
+def get_journey(sim_id):
+    """Return journey data for GCC Journey tab v3."""
+    from app.services.claude import AGENT_ACTION_TYPES
+    from app.models.layer6 import Layer6Outcome, Layer6Cycle, Layer6ActionQueue
+    from sqlalchemy import func, distinct as sa_distinct
+
+    sim, _ = _check_sim_access(sim_id)
+    if not sim:
+        return jsonify({'error': 'Not found'}), 404
+
+    status_filter = request.args.get('status', 'all').strip()
+    valid_statuses = {'pending', 'in_progress', 'complete', 'failed'}
+
+    # Latest cycle — scopes action rows to the current run
+    latest_cycle = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Cycle.cycle_number.desc()
+    ).first()
+
+    # All agent tasks, ordered newest-first, then deduplicated by (layer, action_type)
+    # so each agent type shows once with its most recent status.
+    _raw_actions = AgentAction.query.filter(
+        AgentAction.simulation_id == sim_id,
+        AgentAction.status.in_(list(valid_statuses)),
+    ).order_by(AgentAction.created_at.desc()).all()
+    _seen: set = set()
+    all_actions = []
+    for _a in _raw_actions:
+        _key = (_a.layer_number, _a.action_type)
+        if _key not in _seen:
+            _seen.add(_key)
+            all_actions.append(_a)
+
+    # Filtered subset for action rows
+    if status_filter in valid_statuses:
+        display_actions = [a for a in all_actions if a.status == status_filter]
+    else:
+        display_actions = all_actions
+
+    # Layer income totals
+    outcome_rows = db.session.query(
+        Layer6Outcome.layer_number,
+        func.sum(Layer6Outcome.actual_income).label('total'),
+    ).filter_by(simulation_id=sim_id).group_by(Layer6Outcome.layer_number).all()
+    income_by_layer = {r.layer_number: float(r.total or 0) for r in outcome_rows}
+
+    # Suggested agent per layer from latest cycle queue (top undispatched by layer)
+    suggested_by_layer: dict = {}
+    if latest_cycle:
+        queue_items = Layer6ActionQueue.query.filter_by(
+            cycle_id=latest_cycle.id,
+            status='queued',
+        ).order_by(Layer6ActionQueue.priority_score.desc()).all()
+        for qi in queue_items:
+            ln, defn = _get_action_layer(qi.action_type)
+            if ln and ln not in suggested_by_layer:
+                suggested_by_layer[ln] = defn.get('label', qi.action_type.replace('_', ' ').title())
+
+    status_order = {'in_progress': 0, 'pending': 1, 'complete': 2, 'failed': 3}
+
+    layers_out = []
+    for n in range(1, 6):
+        meta = _LAYER_META.get(n, {})
+        layer_agent_defs = AGENT_ACTION_TYPES.get(n, {})
+        all_agent_types = list(layer_agent_defs.keys())
+        total_agents = len(all_agent_types)
+
+        # Unique complete (unfiltered — progress ring always shows true completion)
+        unique_complete = db.session.query(
+            func.count(sa_distinct(AgentAction.action_type))
+        ).filter(
+            AgentAction.simulation_id == sim_id,
+            AgentAction.action_type.in_(all_agent_types),
+            AgentAction.status == AgentAction.STATUS_COMPLETE,
+        ).scalar() or 0
+
+        pct = round((unique_complete / total_agents) * 100) if total_agents else 0
+        layer_income = income_by_layer.get(n, 0)
+
+        # Action rows for this layer (filtered)
+        layer_rows_raw = [a for a in display_actions if a.layer_number == n]
+        # Sort: date desc, within same date in_progress > pending > complete > failed
+        layer_rows_raw.sort(
+            key=lambda a: (
+                -(a.created_at.timestamp() if a.created_at else 0),
+                status_order.get(a.status, 9),
+            )
+        )
+
+        action_rows = []
+        for a in layer_rows_raw:
+            defn = layer_agent_defs.get(a.action_type, {})
+            action_rows.append({
+                'id': a.id,
+                'action_type': a.action_type,
+                'label': defn.get('label', a.action_type.replace('_', ' ').title()),
+                'status': a.status,
+                'date': a.created_at.strftime('%Y-%m-%d') if a.created_at else None,
+                'has_artifact': bool(a.artifact),
+            })
+
+        layers_out.append({
+            'layer_number': n,
+            'label': meta.get('label', f'Layer {n}'),
+            'color': meta.get('color', '#0F7B72'),
+            'completion_pct': pct,
+            'unique_complete': unique_complete,
+            'total_agents': total_agents,
+            'total_actions': len(layer_rows_raw),
+            'layer_income': layer_income,
+            'suggested_action': suggested_by_layer.get(n),
+            'actions': action_rows,
+        })
+
+    return jsonify({
+        'layers': layers_out,
+        'focus': {
+            'cycle_number': latest_cycle.cycle_number if latest_cycle else None,
+            'phase': latest_cycle.phase if latest_cycle else None,
+            'suggested_action': suggested_by_layer.get(1),  # top suggestion for focus bar
+        },
+        'total_actions': len(display_actions),
+        'status_filter': status_filter,
     }), 200

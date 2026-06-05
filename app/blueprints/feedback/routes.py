@@ -46,6 +46,12 @@ def submit_feedback():
         else:
             simulation_id = None
 
+    existing = UserFeedback.query.filter_by(
+        user_id=current_user.id, simulation_id=simulation_id
+    ).first()
+    if existing:
+        return jsonify({'error': 'You have already submitted feedback for this simulation.'}), 409
+
     fb = UserFeedback(
         user_id=current_user.id,
         simulation_id=simulation_id,

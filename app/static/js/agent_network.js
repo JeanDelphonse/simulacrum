@@ -8,7 +8,10 @@
   'use strict';
 
   // ── Constants ────────────────────────────────────────────────────────────
-  const TIER_Y_OFFSETS = { 1: -260, 2: 0, 3: -80, 4: 130, 5: 220, 6: -200, 7: 250 };
+  // Brain-layout: dx/dy offsets from canvas centre per tier
+  // T6=frontal top · T1/T2=upper parietal · T3/T4=temporal sides · T5/T7=occipital · ORC=corpus-callosum centre
+  const BRAIN_DX = { 1: -170, 2: 170, 3: -240, 4: 240, 5: -160, 6: 0, 7: 160 };
+  const BRAIN_DY = { 1: -130, 2: -130, 3: 10, 4: 10, 5: 150, 6: -200, 7: 150 };
   const NODE_RADIUS = { hub: 36, normal: 24, sub: 16 };
   const STEP_COLORS = { harvest: '#0d9488', score: '#d97706', schedule: '#1d4ed8', report: '#0d9488' };
   const STATE_RING_COLORS = { running: '#ffffff', escalated: '#f59e0b', error: '#ef4444' };
@@ -155,6 +158,32 @@
 
     _g = _svg.append('g').attr('class', 'anv-root');
 
+    // ── Brain outline (decorative) ───────────────────────────────────────────
+    const _brainG = _g.append('g').attr('class', 'anv-brain-bg');
+    const _tc = 'rgba(15,123,114,'; // teal base
+    // Left hemisphere ellipse
+    _brainG.append('ellipse')
+      .attr('cx', cx - 110).attr('cy', cy + 10).attr('rx', 230).attr('ry', 200)
+      .attr('fill', _tc + '0.04)').attr('stroke', _tc + '0.20)').attr('stroke-width', 1.5);
+    // Right hemisphere ellipse
+    _brainG.append('ellipse')
+      .attr('cx', cx + 110).attr('cy', cy + 10).attr('rx', 230).attr('ry', 200)
+      .attr('fill', _tc + '0.04)').attr('stroke', _tc + '0.20)').attr('stroke-width', 1.5);
+    // Interhemispheric fissure
+    _brainG.append('line')
+      .attr('x1', cx).attr('y1', cy - 192).attr('x2', cx).attr('y2', cy + 192)
+      .attr('stroke', _tc + '0.18)').attr('stroke-width', 1).attr('stroke-dasharray', '5,4');
+    // Gyri — subtle curved ridges, left then right
+    [
+      `M ${cx-230},${cy-55} C ${cx-268},${cy-138} ${cx-148},${cy-172} ${cx-62},${cy-130}`,
+      `M ${cx-62},${cy-130} C ${cx-18},${cy-114} ${cx-28},${cy-58} ${cx-82},${cy-18}`,
+      `M ${cx-242},${cy+62} C ${cx-252},${cy+8} ${cx-178},${cy-12} ${cx-118},${cy+22}`,
+      `M ${cx+230},${cy-55} C ${cx+268},${cy-138} ${cx+148},${cy-172} ${cx+62},${cy-130}`,
+      `M ${cx+62},${cy-130} C ${cx+18},${cy-114} ${cx+28},${cy-58} ${cx+82},${cy-18}`,
+      `M ${cx+242},${cy+62} C ${cx+252},${cy+8} ${cx+178},${cy-12} ${cx+118},${cy+22}`,
+    ].forEach(d => _brainG.append('path').attr('d', d)
+      .attr('fill', 'none').attr('stroke', _tc + '0.12)').attr('stroke-width', 1.5).attr('stroke-linecap', 'round'));
+
     // Force simulation — run headless 300 ticks then cache
     _simulation = d3.forceSimulation(visNodes)
       .force('link', d3.forceLink(visEdges)
@@ -164,10 +193,8 @@
       .force('charge', d3.forceManyBody()
         .strength(d => d.id === 'ORC' ? -700 : (d.sub ? -80 : -200)))
       .force('center', d3.forceCenter(cx, cy))
-      .force('tierY', d3.forceY(d => {
-        const off = TIER_Y_OFFSETS[d.tier] || 0;
-        return cy + off;
-      }).strength(0.35))
+      .force('brainX', d3.forceX(d => cx + (d.id === 'ORC' ? 0 : (BRAIN_DX[d.tier] || 0))).strength(0.42))
+      .force('brainY', d3.forceY(d => cy + (d.id === 'ORC' ? 0 : (BRAIN_DY[d.tier] || 0))).strength(0.42))
       .force('collision', d3.forceCollide().radius(d => _nodeR(d) + 22))
       .stop();
 

@@ -414,3 +414,87 @@ def api_unarchive(artifact_id):
     action.archived_at = None
     db.session.commit()
     return jsonify({'status': 'restored'})
+
+
+# ---------------------------------------------------------------------------
+# API — consulting_outreach Send / Skip (FR-CO-06, FR-CO-07)
+# ---------------------------------------------------------------------------
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/consulting-outreach/<int:idx>/send', methods=['POST'])
+@login_required
+def co_send(artifact_id, idx):
+    """Mark one prospect email as sent, advance CRM to active, attempt Apollo send."""
+    action = AgentAction.query.get_or_404(artifact_id)
+    if action.action_type != 'consulting_outreach':
+        return jsonify({'error': 'not_consulting_outreach'}), 400
+    sim = Simulation.query.get(action.simulation_id)
+    if not sim or sim.user_id != current_user.id:
+        return jsonify({'error': 'forbidden'}), 403
+
+    from app.services.consulting_outreach_service import send_prospect_email
+    prospect, err = send_prospect_email(
+        artifact_id, idx, current_user.id, action.simulation_id,
+    )
+    if err:
+        return jsonify({'error': err}), 400
+    return jsonify({'ok': True, 'prospect': prospect})
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/consulting-outreach/<int:idx>/skip', methods=['POST'])
+@login_required
+def co_skip(artifact_id, idx):
+    """Mark one prospect email as skipped. Contact stays at prospect stage."""
+    action = AgentAction.query.get_or_404(artifact_id)
+    if action.action_type != 'consulting_outreach':
+        return jsonify({'error': 'not_consulting_outreach'}), 400
+    sim = Simulation.query.get(action.simulation_id)
+    if not sim or sim.user_id != current_user.id:
+        return jsonify({'error': 'forbidden'}), 403
+
+    from app.services.consulting_outreach_service import skip_prospect_email
+    prospect, err = skip_prospect_email(
+        artifact_id, idx, current_user.id, action.simulation_id,
+    )
+    if err:
+        return jsonify({'error': err}), 400
+    return jsonify({'ok': True, 'prospect': prospect})
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/consulting-outreach/<int:idx>/edit', methods=['POST'])
+@login_required
+def co_edit(artifact_id, idx):
+    """Save inline edits to one prospect's email draft. Not a new version."""
+    action = AgentAction.query.get_or_404(artifact_id)
+    if action.action_type != 'consulting_outreach':
+        return jsonify({'error': 'not_consulting_outreach'}), 400
+    sim = Simulation.query.get(action.simulation_id)
+    if not sim or sim.user_id != current_user.id:
+        return jsonify({'error': 'forbidden'}), 403
+
+    body = request.get_json(silent=True) or {}
+    subject = body.get('subject')
+    email_body = body.get('body')
+
+    from app.models.artifact import ArtifactVersion
+    import json as _json
+    current = ArtifactVersion.current_for(artifact_id)
+    if not current or not current.content:
+        return jsonify({'error': 'no_content'}), 404
+
+    try:
+        data = _json.loads(current.content)
+    except Exception:
+        return jsonify({'error': 'invalid_json'}), 500
+
+    prospects = data.get('prospects', [])
+    if idx < 0 or idx >= len(prospects):
+        return jsonify({'error': 'invalid_index'}), 400
+
+    if subject is not None:
+        prospects[idx]['email_draft']['subject'] = subject
+    if email_body is not None:
+        prospects[idx]['email_draft']['body'] = email_body
+
+    current.content = _json.dumps(data, ensure_ascii=False)
+    db.session.commit()
+    return jsonify({'ok': True})

@@ -45,6 +45,8 @@ _ROUTING: dict[str, ModelTier] = {
     'resume_consent_disclosure':   ModelTier.HAIKU,
     'contact_score':               ModelTier.HAIKU,
     'intent_classify':             ModelTier.HAIKU,
+    'consulting_outreach_research': ModelTier.HAIKU,   # Pass 2 signal extraction
+    'consulting_outreach_email':    ModelTier.SONNET,  # email writing (10 calls)
     # ── SONNET — chat copilot conversational turns ───────────────────────
     'chat_copilot':                ModelTier.SONNET,
     # ── HAIKU — bio chat classification and simple questions ─────────────

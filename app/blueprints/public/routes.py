@@ -2,7 +2,7 @@ import hashlib
 import os
 from datetime import datetime, timedelta
 
-from flask import request, jsonify, render_template, current_app, send_from_directory
+from flask import request, jsonify, render_template, current_app, send_from_directory, url_for
 from flask_login import current_user
 
 from app.blueprints.public import public_bp
@@ -220,6 +220,115 @@ def contact_form(username):
         'ok': True,
         'message': f'Your message has been sent. {profile.display_name or "They"} will be in touch soon.',
     })
+
+
+_EXPLORE_CATEGORIES = [
+    'Technology', 'Finance', 'Marketing', 'Design',
+    'Consulting', 'Healthcare', 'Legal', 'Education', 'Other',
+]
+
+
+@public_bp.route('/explore')
+def explore():
+    """Public explore directory — all published bio pages opted in."""
+    from app.models.bio_page import BioPage, BioChatSession
+    from app.models.simulation import Simulation
+
+    category = request.args.get('category', 'all').lower().strip()
+
+    rows = db.session.query(BioPage, UserProfile).join(
+        UserProfile, BioPage.user_id == UserProfile.user_id,
+    ).filter(
+        BioPage.status == BioPage.STATUS_PUBLISHED,
+        BioPage.show_on_explore == True,  # noqa: E712
+    ).order_by(BioPage.view_count.desc()).all()
+
+    cards = []
+    for bp, profile in rows:
+        sim = Simulation.query.filter_by(
+            user_id=bp.user_id, status='complete',
+        ).order_by(Simulation.created_at.desc()).first()
+        zone = (sim.expertise_zone or 'Other') if sim else 'Other'
+
+        if category != 'all':
+            if _zone_to_category(zone).lower() != category:
+                continue
+
+        chat_count = BioChatSession.query.filter(
+            BioChatSession.bio_page_id == bp.id,
+            BioChatSession.status != BioChatSession.STATUS_DELETED,
+        ).count()
+
+        cards.append({
+            'slug': bp.slug,
+            'display_name': profile.display_name or '',
+            'tagline': (profile.tagline or '')[:120],
+            'avatar_path': profile.avatar_path or '',
+            'zone': zone,
+            'category': _zone_to_category(zone),
+            'chat_count': chat_count,
+            'view_count': bp.view_count or 0,
+            'engagement': (bp.view_count or 0) + chat_count * 5,
+        })
+
+    cards.sort(key=lambda c: c['engagement'], reverse=True)
+    featured = cards[:4]
+    rest = cards[4:] if len(cards) > 4 else []
+
+    return render_template(
+        'public/explore.html',
+        cards=rest,
+        featured=featured,
+        category=category,
+        categories=_EXPLORE_CATEGORIES,
+        total=len(cards),
+    )
+
+
+def _zone_to_category(zone: str) -> str:
+    """Map free-text expertise zone to one of the explore category pills."""
+    z = (zone or '').lower()
+    for cat in _EXPLORE_CATEGORIES[:-1]:  # skip 'Other'
+        if cat.lower() in z:
+            return cat
+    return 'Other'
+
+
+@public_bp.route('/embed/<slug>.js')
+def embed_badge_js(slug: str):
+    """Floating badge embed script — injected into external sites."""
+    from app.models.bio_page import BioPage
+    bp = BioPage.query.filter_by(
+        slug=slug.lower(), status=BioPage.STATUS_PUBLISHED,
+    ).first()
+    if not bp:
+        return ('console.warn("Simulacrum: bio page not found — ' + slug + '");',
+                404, {'Content-Type': 'application/javascript'})
+
+    profile = UserProfile.query.filter_by(user_id=bp.user_id).first()
+    name = profile.display_name if profile else slug
+    avatar = (
+        url_for('public.serve_avatar', filename=profile.avatar_path, _external=True)
+        if (profile and profile.avatar_path) else ''
+    )
+    bio_url = request.url_root.rstrip('/') + '/u/' + slug.lower()
+
+    js = render_template(
+        'public/embed_badge.js',
+        slug=slug.lower(),
+        name=name,
+        avatar_url=avatar,
+        bio_url=bio_url,
+    )
+    return js, 200, {'Content-Type': 'application/javascript'}
+
+
+@public_bp.route('/embed/card.js')
+def embed_card_js():
+    """Inline card embed script — reads data-simulacrum-card attributes on the host page."""
+    base_url = request.url_root.rstrip('/')
+    js = render_template('public/embed_card.js', base_url=base_url)
+    return js, 200, {'Content-Type': 'application/javascript'}
 
 
 def _parse_bio(bio_text: str) -> list:

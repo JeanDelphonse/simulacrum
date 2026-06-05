@@ -1,223 +1,483 @@
 {% extends 'base.html' %}
-{% block title %}{{ simulation.name }}{% endblock %}
+{% block title %}{{ simulation.name }} — Wealth Pyramid{% endblock %}
+
+{% block head %}
+<style>
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --navy:   #0D1B3E;
+  --teal:   #0F7B72;
+  --muted:  #6b7b8d;
+  --border: rgba(0,0,0,0.07);
+  --surface:#fafbfc;
+}
+
+/* ── Page shell ───────────────────────────────────────────────────────────── */
+.pyr-page { max-width: 960px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.pyr-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.pyr-header-meta { display: flex; align-items: center; gap: .6rem; margin-bottom: .5rem; }
+.pyr-created { font-size: .8rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+.pyr-title { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.75rem; color: var(--navy); margin: 0 0 .25rem; }
+.pyr-subtitle { font-size: .95rem; color: var(--muted); margin: 0; font-family: 'DM Sans', sans-serif; }
+.pyr-header-actions { display: flex; gap: .6rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; margin-top: .25rem; }
+
+/* ── Layer accordion ──────────────────────────────────────────────────────── */
+.pyr-layers { display: flex; flex-direction: column; gap: .75rem; }
+.pyr-layer { border-radius: 12px; border: 1px solid var(--border); background: #fff; overflow: hidden; transition: box-shadow .2s; }
+.pyr-layer:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+.pyr-layer-header { display: flex; align-items: center; gap: .85rem; padding: 1rem 1.25rem; cursor: pointer; border-left: 4px solid transparent; user-select: none; }
+.pyr-layer-header:hover { background: #fafbfc; }
+.pyr-layer-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+.pyr-layer-badge { font-size: .68rem; font-weight: 800; color: #fff; padding: .15rem .45rem; border-radius: 4px; flex-shrink: 0; }
+.pyr-layer-text { flex: 1; min-width: 0; }
+.pyr-layer-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.1rem; color: var(--navy); }
+.pyr-layer-sub  { font-size: .8rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+.pyr-layer-counts { display: flex; gap: .5rem; flex-shrink: 0; }
+.pyr-count-pill { font-size: .72rem; font-weight: 600; padding: .15rem .5rem; border-radius: 20px; font-family: 'DM Sans', sans-serif; }
+.pyr-count-done    { background: #dcfce7; color: #15803d; }
+.pyr-count-running { background: #fef3c7; color: #b45309; }
+.pyr-count-ready   { background: #ede9fe; color: #7c3aed; }
+.pyr-priority-badge { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: .15rem .5rem; border-radius: 20px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
+.pyr-priority-high   { background: #fef3c7; color: #b45309; }
+.pyr-priority-medium { background: #f3f4f6; color: var(--muted); }
+.pyr-priority-low    { background: #f3f4f6; color: var(--muted); }
+.pyr-chevron { font-size: 1rem; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+.pyr-chevron.open { transform: rotate(180deg); }
+
+/* ── Layer body ───────────────────────────────────────────────────────────── */
+.pyr-layer-body { display: none; border-top: 1px solid var(--border); }
+.pyr-layer-body.open { display: block; }
+
+/* ── Part 1: AI Analysis ──────────────────────────────────────────────────── */
+.pyr-analysis { padding: 1.5rem 1.5rem 1rem; }
+.pyr-section-label { display: flex; align-items: center; gap: .4rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 1rem; font-family: 'DM Sans', sans-serif; }
+.pyr-positioning { background: var(--surface); border-radius: 12px; border-left: 3px solid var(--teal); padding: 1rem 1.25rem; font-size: .88rem; color: #4a5568; line-height: 1.7; margin-bottom: 1.25rem; font-family: 'DM Sans', sans-serif; }
+
+/* ── Opportunity cards ────────────────────────────────────────────────────── */
+.pyr-opp-card { background: #fff; border: 1px solid rgba(0,0,0,.06); border-radius: 12px; border-left-width: 3px; margin-bottom: .75rem; overflow: hidden; transition: box-shadow .15s; }
+.pyr-opp-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+.pyr-opp-header { padding: .9rem 1rem; cursor: pointer; }
+.pyr-opp-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; margin-bottom: .3rem; }
+.pyr-opp-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: .95rem; color: var(--navy); }
+.pyr-rev-badge { font-size: .72rem; font-weight: 700; color: #0F7B72; background: #D6F0EE; border-radius: 6px; padding: .2rem .55rem; white-space: nowrap; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
+.pyr-opp-desc { font-size: .82rem; color: var(--muted); line-height: 1.5; margin-bottom: .5rem; font-family: 'DM Sans', sans-serif; }
+.pyr-channels { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .5rem; }
+.pyr-channel-tag { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #4a5568; background: #f0f1f3; border-radius: 4px; padding: .15rem .45rem; font-family: 'DM Sans', sans-serif; }
+.pyr-reasoning-toggle { display: flex; align-items: center; gap: .3rem; font-size: .72rem; font-weight: 700; cursor: pointer; border: none; background: none; padding: 0; font-family: 'DM Sans', sans-serif; }
+.pyr-reasoning-toggle .pyr-chevron-sm { font-size: .75rem; transition: transform .15s; }
+.pyr-reasoning-toggle .pyr-chevron-sm.open { transform: rotate(180deg); }
+.pyr-opp-reasoning { display: none; border-top: 1px solid rgba(0,0,0,.04); padding: .85rem 1rem; }
+.pyr-opp-reasoning.open { display: block; }
+.pyr-reasoning-text { font-size: .82rem; color: #4a5568; line-height: 1.7; margin-bottom: .65rem; font-family: 'DM Sans', sans-serif; }
+.pyr-evidence-label { font-size: .72rem; font-weight: 700; color: var(--navy); margin-bottom: .35rem; font-family: 'DM Sans', sans-serif; }
+.pyr-evidence-list { list-style: none; padding: 0; margin: 0 0 .65rem; }
+.pyr-evidence-list li { font-size: .78rem; color: var(--muted); padding: .2rem 0 .2rem .85rem; position: relative; font-family: 'DM Sans', sans-serif; }
+.pyr-evidence-list li::before { content: ''; position: absolute; left: 0; top: .55rem; width: 4px; height: 4px; border-radius: 50%; background: var(--muted); }
+.pyr-opp-meta { display: flex; gap: .5rem; flex-wrap: wrap; }
+.pyr-meta-pill { font-size: .68rem; color: #4a5568; border: 1px solid #d0d5dd; border-radius: 20px; padding: .12rem .5rem; font-family: 'DM Sans', sans-serif; }
+
+.pyr-refine-btn { display: inline-flex; align-items: center; gap: .35rem; margin-top: .75rem; padding: .45rem .9rem; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; font-size: .8rem; font-weight: 500; color: #374151; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .12s; }
+.pyr-refine-btn:hover { background: #f9fafb; }
+
+/* ── Divider ──────────────────────────────────────────────────────────────── */
+.pyr-divider { border: none; border-top: 2px solid #f3f4f6; margin: 0; }
+
+/* ── Part 2: Agent Grid ───────────────────────────────────────────────────── */
+.pyr-execute { padding: 1.25rem 1.5rem 1.5rem; }
+.pyr-execute-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: .5rem; }
+.pyr-execute-label { display: flex; align-items: center; gap: .4rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; font-family: 'DM Sans', sans-serif; }
+.pyr-execute-counts { font-size: .78rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+
+.pyr-agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .pyr-agent-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 400px) { .pyr-agent-grid { grid-template-columns: 1fr; } }
+
+.pyr-agent-card { background: #fff; border: 1px solid rgba(0,0,0,.06); border-radius: 10px; padding: 14px; position: relative; transition: transform .15s, box-shadow .15s; cursor: pointer; }
+.pyr-agent-card:not(.locked):hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+.pyr-agent-card.locked { opacity: .45; cursor: default; }
+.pyr-agent-card.ready  { border-color: rgba(124,58,237,.3); }
+.pyr-agent-card.running { border-color: rgba(180,83,9,.3); }
+.pyr-agent-card.complete { border-color: rgba(22,163,74,.3); }
+
+.pyr-agent-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800; margin-bottom: .6rem; font-family: 'DM Sans', sans-serif; }
+.icon-complete { background: rgba(22,163,74,.1);   color: #16a34a; }
+.icon-running  { background: rgba(180,83,9,.1);    color: #b45309; }
+.icon-ready    { background: rgba(124,58,237,.1);  color: #7c3aed; }
+.icon-locked   { background: rgba(156,163,175,.1); color: #9CA3AF; }
+
+.pyr-agent-status { position: absolute; top: .6rem; right: .6rem; font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: .12rem .45rem; border-radius: 100px; font-family: 'DM Sans', sans-serif; }
+.agent-status-complete { background: #dcfce7; color: #15803d; }
+.agent-status-running  { background: #fef3c7; color: #b45309; }
+.agent-status-ready    { background: #ede9fe; color: #7c3aed; }
+.agent-status-locked   { background: #f3f4f6; color: #9CA3AF; }
+
+.pyr-agent-name { font-size: .8rem; font-weight: 600; color: var(--navy); margin-bottom: .25rem; font-family: 'DM Sans', sans-serif; line-height: 1.3; }
+.pyr-agent-desc { font-size: .7rem; color: var(--muted); line-height: 1.4; font-family: 'DM Sans', sans-serif; }
+.pyr-agent-action { font-size: .72rem; font-weight: 600; margin-top: .6rem; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: .25rem; }
+.pyr-agent-action.teal   { color: #0F7B72; }
+.pyr-agent-action.green  { color: #16a34a; }
+.pyr-agent-action.amber  { color: #b45309; }
+.pyr-agent-action.grey   { color: #9CA3AF; }
+
+/* ── Slide-over panel ────────────────────────────────────────────────────── */
+.slide-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.3); backdrop-filter: blur(4px); z-index: 199; display: none; }
+.slide-backdrop.open { display: block; }
+.slide-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; background: #fff; box-shadow: -8px 0 32px rgba(0,0,0,.12); z-index: 200; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .25s ease; }
+.slide-panel.open { transform: translateX(0); }
+@media (max-width: 480px) { .slide-panel { width: 100%; } }
+
+.slide-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; flex-shrink: 0; }
+.slide-header-text { flex: 1; min-width: 0; }
+.slide-agent-name { font-size: 1.1rem; font-weight: 600; color: var(--navy); font-family: 'DM Sans', sans-serif; margin-bottom: .2rem; }
+.slide-agent-desc { font-size: .82rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+.slide-close { background: none; border: none; font-size: 1.25rem; color: var(--muted); cursor: pointer; line-height: 1; padding: 0; flex-shrink: 0; }
+.slide-close:hover { color: var(--navy); }
+
+.slide-body { flex: 1; overflow-y: auto; padding: 24px; }
+
+.slide-complete-banner { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: .85rem 1rem; display: flex; gap: .6rem; align-items: flex-start; margin-bottom: 1.25rem; }
+.slide-complete-icon { font-size: 1rem; color: #16a34a; flex-shrink: 0; margin-top: .05rem; }
+.slide-complete-title { font-size: .875rem; font-weight: 700; color: #15803d; font-family: 'DM Sans', sans-serif; }
+.slide-complete-sub { font-size: .78rem; color: #15803d; font-family: 'DM Sans', sans-serif; opacity: .8; }
+
+.slide-params-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .85rem; font-family: 'DM Sans', sans-serif; }
+.slide-no-params { background: var(--surface); border-radius: 10px; padding: 1.25rem; text-align: center; }
+.slide-no-params-icon { font-size: 1.5rem; color: #d1d5db; margin-bottom: .4rem; }
+.slide-no-params-text { font-size: .875rem; font-weight: 600; color: var(--navy); font-family: 'DM Sans', sans-serif; }
+.slide-no-params-sub  { font-size: .78rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+
+.slide-form-group { margin-bottom: .9rem; }
+.slide-label { display: block; font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .3rem; font-family: 'DM Sans', sans-serif; }
+.slide-input, .slide-select, .slide-textarea {
+  width: 100%; padding: .55rem .75rem; border: 1px solid #d0d5dd; border-radius: 8px;
+  font-size: .875rem; color: var(--navy); font-family: 'DM Sans', sans-serif; box-sizing: border-box;
+  transition: border-color .12s; background: #fff;
+}
+.slide-input:focus, .slide-select:focus, .slide-textarea:focus { outline: none; border-color: #0F7B72; box-shadow: 0 0 0 3px rgba(15,123,114,.1); }
+.slide-textarea { resize: vertical; min-height: 80px; }
+.slide-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: .5rem 0; }
+.slide-toggle-label { font-size: .875rem; color: var(--navy); font-family: 'DM Sans', sans-serif; }
+
+.slide-deploys { background: var(--surface); border-radius: 10px; padding: 1rem; margin-top: 1.25rem; }
+.slide-deploys-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .5rem; font-family: 'DM Sans', sans-serif; }
+.slide-deploys-pills { display: flex; flex-wrap: wrap; gap: .35rem; }
+.slide-deploys-pill { font-size: .72rem; background: #fff; border: 1px solid #d0d5dd; border-radius: 20px; padding: .15rem .55rem; color: var(--navy); font-family: 'DM Sans', sans-serif; }
+
+.slide-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: .75rem 1rem; font-size: .82rem; color: #b91c1c; margin-top: .75rem; font-family: 'DM Sans', sans-serif; display: none; }
+
+.slide-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: .75rem; flex-shrink: 0; }
+.slide-cancel-btn { flex: 1; }
+.slide-run-btn { flex: 2; }
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+.pyr-toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--navy); color: #fff; padding: .65rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity .25s; pointer-events: none; font-family: 'DM Sans', sans-serif; max-width: 340px; }
+.pyr-toast.show { opacity: 1; }
+
+/* ── Status badge overrides for light backgrounds ─────────────────────────── */
+.pyr-status-badge { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: .2rem .6rem; border-radius: 20px; font-family: 'DM Sans', sans-serif; }
+.pyr-status-complete { background: #dcfce7; color: #15803d; }
+.pyr-status-generating { background: #fef3c7; color: #b45309; }
+.pyr-status-paused { background: #f3f4f6; color: var(--muted); }
+
+/* ── Generating skeleton ──────────────────────────────────────────────────── */
+.layer-skeleton { border: 1px dashed rgba(0,0,0,.1); border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: .75rem; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: .875rem; }
+.layer-skeleton .layer-num { font-weight: 700; color: rgba(0,0,0,.2); font-size: .8rem; }
+</style>
+{% endblock %}
 
 {% block content %}
-{% macro render_layer(layer) %}
-<div class="layer-card layer-{{ layer.layer_number }}" id="layer-card-{{ layer.layer_number }}">
-  <div class="layer-card-header" onclick="toggleLayer({{ layer.layer_number }})">
-    <div class="layer-title-row">
-      <span class="layer-num-badge">L{{ layer.layer_number }}</span>
-      <h3 class="layer-title">{{ layer.layer_name }}</h3>
-      {% if layer.priority_score is not none %}
-      <span class="priority-badge priority-{{ 'high' if layer.priority_score >= 0.7 else ('mid' if layer.priority_score >= 0.4 else 'low') }}"
-            title="Priority score: {{ '%.0f'|format(layer.priority_score * 100) }}%">
-        {{ 'High' if layer.priority_score >= 0.7 else ('Mid' if layer.priority_score >= 0.4 else 'Low') }} priority
-      </span>
-      {% endif %}
-    </div>
-    <span class="layer-toggle">▾</span>
-  </div>
-  <div class="layer-card-body" id="layer-body-{{ layer.layer_number }}">
-    {% if layer.ai_narrative %}
-    <p class="layer-narrative">{{ layer.ai_narrative }}</p>
-    {% endif %}
-    <div class="income-streams">
-      {% for stream in layer.income_streams %}
-      <div class="stream-card">
-        <div class="stream-header" onclick="toggleReasoning(this)">
-          <div class="stream-title-row">
-            <h4 class="stream-name">{{ stream.name }}</h4>
-            {% if stream.est_monthly_low and stream.est_monthly_high %}
-            <span class="stream-range">${{ "{:,}".format(stream.est_monthly_low) }}–${{ "{:,}".format(stream.est_monthly_high) }}/mo</span>
-            {% endif %}
-          </div>
-          <p class="stream-desc">{{ stream.description }}</p>
-          <span class="stream-platform">{{ stream.platform }}</span>
-        </div>
-        <div class="stream-reasoning hidden">
-          <div class="reasoning-label">AI Reasoning</div>
-          <p class="reasoning-text">{{ stream.ai_reasoning }}</p>
-          {% if stream.deliverable_refs %}
-          <div class="deliverable-refs">
-            <strong>Evidence from your background:</strong>
-            <ul>{% for ref in stream.deliverable_refs %}<li>{{ ref }}</li>{% endfor %}</ul>
-          </div>
-          {% endif %}
-          {% if stream.automation_level %}
-          <div class="stream-meta-row">
-            <span class="meta-tag">Automation: {{ stream.automation_level }}</span>
-            {% if stream.launch_timeline_weeks %}
-            <span class="meta-tag">Launch: {{ stream.launch_timeline_weeks }}w</span>
-            {% endif %}
-          </div>
-          {% endif %}
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    <div class="layer-refine">
-      <button class="btn btn-ghost btn-sm" onclick="showRefine({{ layer.layer_number }}, '{{ simulation.id }}')">Refine this layer →</button>
-    </div>
+<div class="pyr-page">
 
-    {% if simulation.status == 'complete' %}
-    <div class="agent-workspace" id="agent-workspace-{{ layer.layer_number }}">
-      <div class="agent-workspace-header" onclick="toggleAgentWorkspace({{ layer.layer_number }})">
-        <span class="agent-workspace-title">⚡ Agent Workspace</span>
-        <span class="agent-workspace-subtitle">Generate actionable artifacts for this layer</span>
-        <span class="agent-toggle" id="agent-toggle-{{ layer.layer_number }}">▾</span>
-      </div>
-      <div class="agent-workspace-body hidden" id="agent-workspace-body-{{ layer.layer_number }}">
-        <div class="agent-action-types" id="action-types-{{ layer.layer_number }}">
-          <div class="agent-loading">Loading available actions…</div>
-        </div>
-        <div class="agent-actions-log" id="actions-log-{{ layer.layer_number }}"></div>
-      </div>
-    </div>
-    {% endif %}
-  </div>
-</div>
-{% endmacro %}
-
-<div class="sim-detail">
-  <div class="sim-detail-header">
+  {# ── Page Header ──────────────────────────────────────────────────────── #}
+  <div class="pyr-header">
     <div>
-      <h1>{{ simulation.name }}</h1>
-      <p class="sim-detail-zone">{{ simulation.expertise_zone }}</p>
-      <p class="sim-detail-meta">
-        <span class="status-badge status-{{ simulation.status }}">{{ simulation.status.title() }}</span>
-        · Created {{ simulation.created_at.strftime('%B %d, %Y') }}
-      </p>
-    </div>
-    <div class="header-actions">
-      {% if simulation.status == 'complete' %}
-      <button class="btn btn-ghost" onclick="exportSim('{{ simulation.id }}')">Export PDF</button>
-      <button class="btn btn-ghost" onclick="shareSimulation('{{ simulation.id }}')">Share</button>
-      <a href="{{ url_for('pages.layer6_view', sim_id=simulation.id) }}" class="btn btn-primary">⚡ Growth Command Center</a>
+      <h1 class="pyr-title">{{ simulation.name }}</h1>
+      {% if simulation.expertise_zone %}
+      <p class="pyr-subtitle" style="margin-bottom:.5rem">{{ simulation.expertise_zone }}</p>
       {% endif %}
-    </div>
-  </div>
-
-  <div id="streamStatus" class="stream-status {% if simulation.status not in ('processing', 'streaming') %}hidden{% endif %}">
-    <div class="stream-spinner"></div>
-    <span id="streamStatusText">Generating your wealth simulation…</span>
-  </div>
-
-  <div class="pyramid-container">
-    <div class="pyramid-header">
-      <h2>Your Wealth Pyramid</h2>
-      <p>5 layers from active income to automated wealth deployment</p>
-    </div>
-
-    <div id="layersContainer" class="layers-container">
-      {% for layer in layers %}
-      {{ render_layer(layer) }}
-      {% endfor %}
-
-      {% for i in range(layers|length + 1, 6) %}
-      <div class="layer-skeleton" id="layer-skeleton-{{ i }}">
-        <div class="layer-skeleton-inner">
-          <span class="layer-num">L{{ i }}</span>
-          <span class="skeleton-text">Generating Layer {{ i }}…</span>
-        </div>
+      <div class="pyr-header-meta">
+        {% if simulation.status == 'complete' %}
+        <span class="pyr-status-badge pyr-status-complete">Complete</span>
+        {% elif simulation.status in ('processing', 'streaming') %}
+        <span class="pyr-status-badge pyr-status-generating">Generating</span>
+        {% else %}
+        <span class="pyr-status-badge pyr-status-paused">{{ simulation.status | title }}</span>
+        {% endif %}
+        <span class="pyr-created">Created {{ simulation.created_at.strftime('%B %d, %Y') }}</span>
+        <span class="pyr-created" style="color:rgba(255,255,255,.25)">·</span>
+        <span class="pyr-created">Your Wealth Pyramid</span>
       </div>
-      {% endfor %}
+    </div>
+    <div class="pyr-header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="pyrExportPDF()">↓ Export PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="pyrShare()">Share</button>
+      <a href="{{ url_for('pages.layer6_view', sim_id=simulation.id) }}" class="btn btn-primary btn-sm">⚡ Growth Command Center</a>
     </div>
   </div>
 
-  {% if is_owner and simulation.status == 'complete' %}
-  <div class="collab-audit-section" id="collabAuditSection">
-    <div class="collab-audit-header" onclick="toggleAuditLog()">
-      <span class="collab-audit-title">Collaboration Activity</span>
-      <button class="btn btn-ghost btn-sm" id="auditToggleBtn">Show ▾</button>
-    </div>
-    <div id="collabAuditLog" class="collab-audit-log hidden"></div>
+  {# ── Generating indicator ──────────────────────────────────────────────── #}
+  {% if simulation.status in ('processing', 'streaming') %}
+  <div style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;background:#fef3c7;border-radius:10px;margin-bottom:1.25rem;font-family:'DM Sans',sans-serif;font-size:.875rem;color:#b45309">
+    <div class="stream-spinner"></div>
+    <span>Generating your wealth simulation…</span>
   </div>
   {% endif %}
 
-  <div id="shareModal" class="modal hidden">
-    <div class="modal-card">
-      <h2>Share Simulation</h2>
-      <div class="form-group">
-        <label>Email address</label>
-        <input type="email" id="shareEmail" placeholder="collaborator@example.com" class="input-text">
+  {# ── Layer Accordion ───────────────────────────────────────────────────── #}
+  {% set layer_colors = {1:'#0F7B72', 2:'#7c3aed', 3:'#1d4ed8', 4:'#b45309', 5:'#15803d'} %}
+  {% set layer_icons  = {1:'💼', 2:'🎤', 3:'📖', 4:'📈', 5:'🛡️'} %}
+  {% set layer_subs   = {1:'1:1 Time-for-Money', 2:'1:Many Teaching & Speaking', 3:'Earn While You Sleep', 4:'Systems That Scale', 5:'Money That Makes Money'} %}
+
+  <div class="pyr-layers" id="pyrLayers">
+    {% for layer in layers %}
+    {% set lc = layer_colors.get(layer.layer_number, '#0F7B72') %}
+    <div class="pyr-layer" id="pyr-layer-{{ layer.layer_number }}">
+      <div class="pyr-layer-header" onclick="togglePyrLayer({{ layer.layer_number }})"
+           style="border-left-color:{{ lc }}">
+        <div class="pyr-layer-icon" style="background:{{ lc }}1a">{{ layer_icons.get(layer.layer_number, '⭐') }}</div>
+        <span class="pyr-layer-badge" style="background:{{ lc }}">L{{ layer.layer_number }}</span>
+        <div class="pyr-layer-text">
+          <div class="pyr-layer-name">{{ layer.layer_name.split(' — ')[0] if ' — ' in layer.layer_name else layer.layer_name }}</div>
+          <div class="pyr-layer-sub">— {{ layer_subs.get(layer.layer_number, '') }}</div>
+        </div>
+        <div class="pyr-layer-counts" id="layer-counts-{{ layer.layer_number }}">
+          {# Populated by JS after pyramid fetch #}
+        </div>
+        {% if layer.priority_score is not none %}
+        <span class="pyr-priority-badge pyr-priority-{{ 'high' if layer.priority_score >= 0.7 else 'medium' }}">
+          {{ 'High Priority' if layer.priority_score >= 0.7 else 'Medium Priority' }}
+        </span>
+        {% endif %}
+        <span class="pyr-chevron" id="pyr-chevron-{{ layer.layer_number }}">▾</span>
       </div>
-      <div class="form-group">
-        <label>Permission level</label>
-        <select id="sharePermission" class="input-select">
+
+      <div class="pyr-layer-body" id="pyr-layer-body-{{ layer.layer_number }}">
+
+        {# ── Part 1: AI Analysis ─────────────────────────────────────────── #}
+        <div class="pyr-analysis">
+          <div class="pyr-section-label" style="color:{{ lc }}">
+            🧠 AI Analysis — Opportunities
+          </div>
+
+          {% if layer.ai_narrative %}
+          <div class="pyr-positioning" style="border-left-color:{{ lc }}">
+            {{ layer.ai_narrative }}
+          </div>
+          {% endif %}
+
+          {% for stream in layer.income_streams %}
+          <div class="pyr-opp-card" style="border-left-color:{{ lc }}4d">
+            <div class="pyr-opp-header" onclick="toggleOppReasoning(this)">
+              <div class="pyr-opp-top">
+                <span class="pyr-opp-name">{{ stream.name }}</span>
+                {% if stream.est_monthly_low and stream.est_monthly_high %}
+                <span class="pyr-rev-badge">${{ "{:,}".format(stream.est_monthly_low) }}–${{ "{:,}".format(stream.est_monthly_high) }}/mo</span>
+                {% endif %}
+              </div>
+              <p class="pyr-opp-desc">{{ stream.description }}</p>
+              {% if stream.platform %}
+              <div class="pyr-channels">
+                <span class="pyr-channel-tag">{{ stream.platform }}</span>
+              </div>
+              {% endif %}
+              <button class="pyr-reasoning-toggle" style="color:{{ lc }}" onclick="event.stopPropagation();toggleOppReasoning(this.closest('.pyr-opp-header'))">
+                ✦ AI Reasoning &amp; Evidence <span class="pyr-chevron-sm">▾</span>
+              </button>
+            </div>
+            <div class="pyr-opp-reasoning">
+              {% if stream.ai_reasoning %}
+              <p class="pyr-reasoning-text">{{ stream.ai_reasoning }}</p>
+              {% endif %}
+              {% if stream.deliverable_refs %}
+              <div class="pyr-evidence-label">Evidence from your background:</div>
+              <ul class="pyr-evidence-list">
+                {% for ref in stream.deliverable_refs %}<li>{{ ref }}</li>{% endfor %}
+              </ul>
+              {% endif %}
+              {% if stream.automation_level or stream.launch_timeline_weeks %}
+              <div class="pyr-opp-meta">
+                {% if stream.automation_level %}<span class="pyr-meta-pill">Automation: {{ stream.automation_level }}</span>{% endif %}
+                {% if stream.launch_timeline_weeks %}<span class="pyr-meta-pill">Launch: {{ stream.launch_timeline_weeks }}w</span>{% endif %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+
+          <button class="pyr-refine-btn" onclick="pyrRefineLayer({{ layer.layer_number }}, '{{ simulation.id }}')">
+            ✦ Refine this layer →
+          </button>
+        </div>
+
+        <hr class="pyr-divider">
+
+        {# ── Part 2: Agent Grid ──────────────────────────────────────────── #}
+        <div class="pyr-execute">
+          <div class="pyr-execute-header">
+            <div class="pyr-execute-label" style="color:{{ lc }}">
+              ⚡ Execute — All L{{ layer.layer_number }} Agents
+            </div>
+            <div class="pyr-execute-counts" id="exec-counts-{{ layer.layer_number }}"></div>
+          </div>
+          <div class="pyr-agent-grid" id="agent-grid-{{ layer.layer_number }}">
+            <div style="font-size:.82rem;color:var(--muted);font-family:'DM Sans',sans-serif;">Loading agents…</div>
+          </div>
+        </div>
+
+      </div>{# end layer body #}
+    </div>
+    {% endfor %}
+
+    {% for i in range(layers|length + 1, 6) %}
+    <div class="layer-skeleton">
+      <span class="layer-num">L{{ i }}</span>
+      <span>Generating Layer {{ i }}…</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ── Share modal ─────────────────────────────────────────────────────── #}
+  <div id="pyrShareModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:1rem">
+    <div style="background:#fff;border-radius:14px;padding:1.75rem;max-width:420px;width:100%;box-shadow:0 16px 56px rgba(0,0,0,.15)">
+      <h2 style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--navy);margin:0 0 1rem">Share Simulation</h2>
+      <div class="form-group"><label class="settings-label">Email address</label>
+        <input type="email" id="shareEmail" class="input-text" placeholder="collaborator@example.com"></div>
+      <div class="form-group"><label class="settings-label">Permission</label>
+        <select id="sharePermission" class="input-text">
           <option value="viewer">Viewer — read only</option>
-          <option value="commenter">Commenter — can annotate</option>
+          <option value="commenter">Commenter</option>
           <option value="editor">Editor — can refine layers</option>
         </select>
       </div>
       <div id="shareError" class="form-error hidden"></div>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" onclick="document.getElementById('shareModal').classList.add('hidden')">Cancel</button>
-        <button class="btn btn-primary" onclick="sendInvite('{{ simulation.id }}')">Send invite</button>
+      <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25rem">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('pyrShareModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="pyrSendInvite()">Send invite</button>
       </div>
     </div>
   </div>
+
+  {% if is_owner and simulation.status == 'complete' %}
+  <div style="text-align:center;padding:1.5rem 0 2.5rem;border-top:1px solid rgba(0,0,0,.06);margin-top:2rem">
+    <span style="font-size:.875rem;color:rgba(255,255,255,.4)">Got results from this Simulation?</span>
+    <button class="btn btn-ghost btn-sm" style="margin-left:.75rem"
+      onclick="window.openFeedbackModal({simulation_id:'{{ simulation.id }}'})">Share your results</button>
+  </div>
+  {% endif %}
 </div>
 
-{% if simulation.status == 'complete' and is_owner %}
-<div style="text-align:center;padding:1.5rem 0 2.5rem;border-top:1px solid rgba(255,255,255,.06);margin-top:2rem">
-  <span style="font-size:.875rem;color:rgba(255,255,255,.4)">Got results from this Simulation?</span>
-  <button class="btn btn-ghost btn-sm" style="margin-left:.75rem"
-    onclick="window.openFeedbackModal({simulation_id:'{{ simulation.id }}'})">
-    Share your results
-  </button>
+{# ── Configuration Slide-Over ────────────────────────────────────────────── #}
+<div class="slide-backdrop" id="slideBackdrop" onclick="closeSlideover()"></div>
+<div class="slide-panel" id="slidePanel">
+  <div class="slide-header">
+    <div class="slide-header-text">
+      <div class="slide-agent-name" id="slideAgentName">Agent</div>
+      <div class="slide-agent-desc" id="slideAgentDesc"></div>
+    </div>
+    <button class="slide-close" onclick="closeSlideover()">✕</button>
+  </div>
+  <div class="slide-body" id="slideBody"></div>
+  <div class="slide-footer">
+    <button class="btn btn-ghost slide-cancel-btn" onclick="closeSlideover()">Cancel</button>
+    <button class="btn btn-primary slide-run-btn" id="slideRunBtn" onclick="slideRunAgent()">
+      ▶ Run Agent
+    </button>
+  </div>
 </div>
-{% endif %}
 
+<div class="pyr-toast" id="pyrToast"></div>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/sse.js') }}"></script>
 <script>
-const SIM_ID = '{{ simulation.id }}';
-const SIM_STATUS = '{{ simulation.status }}';
+const SIM_ID  = {{ simulation.id | tojson }};
+const SIM_STATUS = {{ simulation.status | tojson }};
 
-// Start SSE if simulation is still generating
+// ── SSE (if still generating) ──────────────────────────────────────────────
 if (['pending', 'processing', 'streaming'].includes(SIM_STATUS)) {
   startSSEStream(SIM_ID);
 }
 
-function toggleLayer(num) {
-  const body = document.getElementById('layer-body-' + num);
-  body.classList.toggle('collapsed');
+// ── Toast ──────────────────────────────────────────────────────────────────
+function pyrToast(msg) {
+  const el = document.getElementById('pyrToast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(pyrToast._t);
+  pyrToast._t = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-function toggleReasoning(header) {
-  const reasoning = header.nextElementSibling;
-  reasoning.classList.toggle('hidden');
-}
+// ── Layer accordion (single-open) ──────────────────────────────────────────
+var _openLayer = 1;
 
-function showRefine(layerNum, simId) {
-  const constraint = prompt('Enter a constraint for this layer (e.g. "Focus on remote-friendly income streams only"):');
-  if (!constraint) return;
-
-  fetch(ROOT + `/api/simulations/${simId}/layers/${layerNum}/refine`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ constraint }),
-  }).then(r => r.json()).then(data => {
-    if (data.layer_number) {
-      window.location.reload();
+function togglePyrLayer(n) {
+  const all = [1,2,3,4,5];
+  const opening = _openLayer !== n;
+  all.forEach(function(i) {
+    const body = document.getElementById('pyr-layer-body-' + i);
+    const chevron = document.getElementById('pyr-chevron-' + i);
+    if (!body) return;
+    if (i === n && opening) {
+      body.classList.add('open');
+      if (chevron) chevron.classList.add('open');
+      _openLayer = n;
     } else {
-      alert(data.error || 'Refinement failed');
+      body.classList.remove('open');
+      if (chevron) chevron.classList.remove('open');
     }
   });
+  if (!opening) _openLayer = null;
 }
 
-function shareSimulation(simId) {
-  document.getElementById('shareModal').classList.remove('hidden');
+// Open L1 by default
+togglePyrLayer(1);
+
+// ── Opportunity card reasoning toggle ──────────────────────────────────────
+function toggleOppReasoning(header) {
+  const reasoning = header.nextElementSibling;
+  if (!reasoning) return;
+  const isOpen = reasoning.classList.toggle('open');
+  const chevron = header.querySelector('.pyr-chevron-sm');
+  if (chevron) chevron.classList.toggle('open', isOpen);
 }
 
-async function sendInvite(simId) {
+// ── Refine layer ───────────────────────────────────────────────────────────
+async function pyrRefineLayer(layerNum, simId) {
+  const constraint = prompt('Enter a refinement constraint (e.g. "Focus on remote-friendly streams only"):');
+  if (!constraint) return;
+  const res = await fetch(ROOT + '/api/simulations/' + simId + '/layers/' + layerNum + '/refine', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ constraint }),
+  });
+  const data = await res.json();
+  if (data.layer_number) { window.location.reload(); }
+  else { alert(data.error || 'Refinement failed'); }
+}
+
+// ── Header actions ─────────────────────────────────────────────────────────
+async function pyrExportPDF() {
+  const res = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/export', { method: 'POST' });
+  if (res.ok) {
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'simulacrum_' + SIM_ID + '.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } else { alert('Export failed'); }
+}
+
+function pyrShare() {
+  document.getElementById('pyrShareModal').style.display = 'flex';
+}
+
+async function pyrSendInvite() {
   const errEl = document.getElementById('shareError');
   errEl.classList.add('hidden');
-  const res = await fetch(ROOT + `/api/simulations/${simId}/collaborators`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+  const res = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/collaborators', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       email: document.getElementById('shareEmail').value,
       permission_level: document.getElementById('sharePermission').value,
@@ -225,294 +485,276 @@ async function sendInvite(simId) {
   });
   const data = await res.json();
   if (res.ok) {
-    document.getElementById('shareModal').classList.add('hidden');
-    alert('Invitation sent!');
+    document.getElementById('pyrShareModal').style.display = 'none';
+    pyrToast('Invitation sent!');
   } else {
     errEl.textContent = data.error || 'Failed to send invite';
     errEl.classList.remove('hidden');
   }
 }
 
-async function exportSim(simId) {
-  const res = await fetch(ROOT + `/api/simulations/${simId}/export`, { method: 'POST' });
-  if (res.ok) {
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `simulacrum_${simId}.pdf`; a.click();
-    URL.revokeObjectURL(url);
-  } else {
-    alert('Export failed');
-  }
-}
+// ── Pyramid data + agent grid ───────────────────────────────────────────────
+var _pyramidData = null;
+var _polling = null;
 
-// ─── Collaboration Activity Log ─────────────────────────────────────────────
-
-let _auditLoaded = false;
-
-async function toggleAuditLog() {
-  const log = document.getElementById('collabAuditLog');
-  const btn = document.getElementById('auditToggleBtn');
-  if (!log) return;
-  const isHidden = log.classList.toggle('hidden');
-  btn.textContent = isHidden ? 'Show ▾' : 'Hide ▴';
-  if (!isHidden && !_auditLoaded) {
-    _auditLoaded = true;
-    const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/activities`);
-    if (!res.ok) { log.innerHTML = '<p class="audit-empty">Could not load activity.</p>'; return; }
-    const activities = await res.json();
-    if (!activities.length) {
-      log.innerHTML = '<p class="audit-empty">No collaboration activity yet.</p>';
-    } else {
-      log.innerHTML = activities.map(a => `
-        <div class="audit-entry">
-          <span class="audit-type">${escHtml(a.activity_type.replace(/_/g,' '))}</span>
-          ${a.layer_number ? `<span class="audit-layer">Layer ${a.layer_number}</span>` : ''}
-          ${a.content ? `<span class="audit-content">${escHtml(a.content)}</span>` : ''}
-          <span class="audit-time">${new Date(a.created_at).toLocaleString()}</span>
-        </div>`).join('');
-    }
-  }
-}
-
-// ─── Agent Workspace ────────────────────────────────────────────────────────
-
-const _agentPollers = {};
-
-function toggleAgentWorkspace(layerNum) {
-  const body = document.getElementById('agent-workspace-body-' + layerNum);
-  const toggle = document.getElementById('agent-toggle-' + layerNum);
-  const isHidden = body.classList.toggle('hidden');
-  toggle.textContent = isHidden ? '▾' : '▴';
-  if (!isHidden) loadAgentWorkspace(layerNum);
-}
-
-const _storedContext = {};
-
-async function loadAgentWorkspace(layerNum) {
-  const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions`);
-  if (!res.ok) return;
-  const data = await res.json();
-  if (data.stored_context) _storedContext[layerNum] = data.stored_context;
-  renderActionTypes(layerNum, data.available_action_types);
-  renderActionsLog(layerNum, data.actions);
-}
-
-function renderActionTypes(layerNum, types) {
-  const el = document.getElementById('action-types-' + layerNum);
-  el.innerHTML = types.map(t => `
-    <button class="btn btn-ghost btn-sm agent-type-btn"
-            onclick="showActionForm(${layerNum}, '${t.action_type}', ${JSON.stringify(t.prompt_form).replace(/"/g, '&quot;')}, '${escHtml(t.label)}', ${t.disclaimer ? 'true' : 'false'})">
-      ${escHtml(t.label)}
-    </button>
-  `).join('');
-}
-
-function renderActionsLog(layerNum, actions) {
-  const el = document.getElementById('actions-log-' + layerNum);
-  if (!actions.length) { el.innerHTML = ''; return; }
-  el.innerHTML = '<div class="actions-log-title">Previous actions</div>' +
-    actions.map(a => renderActionCard(a, layerNum)).join('');
-  // resume polling for in-flight actions
-  actions.forEach(a => {
-    if (a.status === 'pending' || a.status === 'in_progress') {
-      pollAction(layerNum, a.id);
-    }
+function _anyRunning() {
+  if (!_pyramidData) return false;
+  return _pyramidData.layers.some(function(l) {
+    return l.agents.some(function(a) { return a.status === 'running'; });
   });
 }
 
-function renderActionCard(action, layerNum) {
-  const statusClass = { pending: 'status-pending', in_progress: 'status-processing',
-                        complete: 'status-complete', failed: 'status-error' }[action.status] || '';
-  const artifactHtml = action.artifact
-    ? `<div class="agent-artifact"><pre>${escHtml(action.artifact)}</pre></div>`
-    : '';
-  const rerunBtn = (action.status === 'complete' || action.status === 'failed')
-    ? `<button class="btn btn-ghost btn-xs" onclick="rerunAction('${action.id}', ${layerNum})">Re-run</button>`
-    : '';
-  const archiveBtn = action.has_archived_artifact
-    ? `<button class="btn btn-ghost btn-xs" onclick="showArchive('${action.id}', ${layerNum})">View prior</button>`
-    : '';
-  const copyBtn = action.artifact
-    ? `<button class="btn btn-ghost btn-xs" onclick="copyArtifact('${action.id}')">Copy</button>`
-    : '';
-  const downloadBtn = action.artifact
-    ? `<button class="btn btn-ghost btn-xs" onclick="downloadArtifact('${action.id}', '${escHtml(action.action_type)}')">Download</button>`
-    : '';
-  return `
-    <div class="agent-action-card" id="action-card-${action.id}" data-artifact="${escHtml(action.artifact || '')}">
-      <div class="action-card-header">
-        <span class="action-type-label">${escHtml(action.action_type.replace(/_/g, ' '))}</span>
-        <span class="status-badge ${statusClass}">${action.status.replace('_', ' ')}</span>
-        <div class="action-card-btns">${copyBtn}${downloadBtn}${rerunBtn}${archiveBtn}</div>
-      </div>
-      ${artifactHtml}
-    </div>`;
+async function loadPyramid() {
+  const res = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/pyramid');
+  if (!res.ok) return;
+  _pyramidData = await res.json();
+  _pyramidData.layers.forEach(renderAgentGrid);
+
+  // Start polling if any agent running
+  if (_anyRunning() && !_polling) {
+    _polling = setInterval(async function() {
+      await loadPyramid();
+      if (!_anyRunning()) { clearInterval(_polling); _polling = null; }
+    }, 10000);
+  }
 }
 
-function copyArtifact(actionId) {
-  const card = document.getElementById('action-card-' + actionId);
-  const text = card ? card.dataset.artifact : '';
-  if (!text) return;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = card.querySelector('[onclick*="copyArtifact"]');
-    if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = orig, 1500); }
-  }).catch(() => alert('Copy failed — please select and copy manually.'));
+function _statusColor(status) {
+  return {complete:'#16a34a', running:'#b45309', ready:'#7c3aed', locked:'#9CA3AF'}[status] || '#9CA3AF';
+}
+function _statusLabel(status) {
+  return {complete:'Done', running:'Running', ready:'Ready', locked:'Locked'}[status] || status;
+}
+function _statusClass(status) {
+  return {complete:'complete', running:'running', ready:'ready', locked:'locked'}[status] || 'locked';
+}
+function _iconClass(status) {
+  return {complete:'icon-complete', running:'icon-running', ready:'icon-ready', locked:'icon-locked'}[status] || 'icon-locked';
 }
 
-function downloadArtifact(actionId, actionType) {
-  const card = document.getElementById('action-card-' + actionId);
-  const text = card ? card.dataset.artifact : '';
-  if (!text) return;
-  const blob = new Blob([text], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `simulacrum_${actionType}_${actionId}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+function renderAgentGrid(layer) {
+  const grid = document.getElementById('agent-grid-' + layer.layer_number);
+  const countsEl = document.getElementById('layer-counts-' + layer.layer_number);
+  const execCountsEl = document.getElementById('exec-counts-' + layer.layer_number);
+  if (!grid) return;
 
-const _DISCLAIMER_TEXT = 'For planning purposes only. Review with a licensed professional (CPA, attorney, or financial advisor) before acting on this output.';
-
-function showActionForm(layerNum, actionType, promptForm, label, hasDisclaimer = false) {
-  // Remove any existing form
-  const existing = document.getElementById('agent-form-' + layerNum);
-  if (existing) existing.remove();
-
-  const storedCtx = _storedContext[layerNum] || {};
-
-  const fields = promptForm.map(f => {
-    const prefill = storedCtx[f.key] || '';
-    if (f.type === 'select') {
-      const opts = f.options.map(o => `<option value="${o}"${o === prefill ? ' selected' : ''}>${o}</option>`).join('');
-      return `<div class="form-group">
-        <label>${escHtml(f.label)}${f.required ? ' *' : ''}</label>
-        <select class="input-select" id="af-${layerNum}-${f.key}">${opts}</select>
-      </div>`;
-    }
-    if (f.type === 'textarea') {
-      return `<div class="form-group">
-        <label>${escHtml(f.label)}${f.required ? ' *' : ''}</label>
-        <textarea class="input-text" rows="3" id="af-${layerNum}-${f.key}" placeholder="${escHtml(f.label)}">${escHtml(prefill)}</textarea>
-      </div>`;
-    }
-    return `<div class="form-group">
-      <label>${escHtml(f.label)}${f.required ? ' *' : ''}</label>
-      <input type="text" class="input-text" id="af-${layerNum}-${f.key}" placeholder="${escHtml(f.label)}" value="${escHtml(prefill)}">
-    </div>`;
-  }).join('');
-
-  const disclaimerHtml = hasDisclaimer
-    ? `<div class="agent-disclaimer">${escHtml(_DISCLAIMER_TEXT)}</div>`
-    : '';
-
-  const formHtml = `
-    <div class="agent-action-form" id="agent-form-${layerNum}">
-      <div class="form-title">${escHtml(label)}</div>
-      ${fields}
-      ${disclaimerHtml}
-      <div id="agent-form-err-${layerNum}" class="form-error hidden"></div>
-      <div class="form-actions">
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('agent-form-${layerNum}').remove()">Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="submitAction(${layerNum}, '${actionType}', ${JSON.stringify(promptForm).replace(/"/g, '&quot;')})">Run agent</button>
-      </div>
-    </div>`;
-
-  const typesEl = document.getElementById('action-types-' + layerNum);
-  typesEl.insertAdjacentHTML('afterend', formHtml);
-}
-
-async function submitAction(layerNum, actionType, promptForm) {
-  const errEl = document.getElementById('agent-form-err-' + layerNum);
-  errEl.classList.add('hidden');
-
-  const userInputs = {};
-  for (const f of promptForm) {
-    const el = document.getElementById(`af-${layerNum}-${f.key}`);
-    if (!el) continue;
-    const val = el.value.trim();
-    if (f.required && !val) {
-      errEl.textContent = `"${f.label}" is required.`;
-      errEl.classList.remove('hidden');
-      return;
-    }
-    if (val) userInputs[f.key] = val;
+  // Update status counts in layer header
+  const c = layer.counts;
+  var pills = '';
+  if (c.complete > 0) pills += '<span class="pyr-count-pill pyr-count-done">' + c.complete + ' done</span>';
+  if (c.running  > 0) pills += '<span class="pyr-count-pill pyr-count-running">' + c.running + ' running</span>';
+  if (c.ready    > 0) pills += '<span class="pyr-count-pill pyr-count-ready">' + c.ready + ' ready</span>';
+  if (countsEl) countsEl.innerHTML = pills;
+  if (execCountsEl) {
+    execCountsEl.textContent = layer.agents.length + ' agents · ' + c.complete + ' complete · ' + c.ready + ' ready';
   }
 
-  const btn = document.querySelector(`#agent-form-${layerNum} .btn-primary`);
-  btn.disabled = true;
-  btn.textContent = 'Running…';
+  grid.innerHTML = layer.agents.map(function(agent) {
+    const cls = _statusClass(agent.status);
+    const iconCls = _iconClass(agent.status);
+    const statusBadge = 'agent-status-' + cls;
+    const isClickable = agent.status === 'ready' || agent.status === 'complete';
+    const clickAttr = isClickable
+      ? 'onclick="openSlideover(' + JSON.stringify(agent).replace(/"/g, '&quot;') + ', ' + layer.layer_number + ')"'
+      : '';
 
-  const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ action_type: actionType, user_inputs: userInputs }),
+    var actionLink = '';
+    if (agent.status === 'complete') {
+      actionLink = '<div class="pyr-agent-action green">✓ View artifact →</div>';
+    } else if (agent.status === 'running') {
+      actionLink = '<div class="pyr-agent-action amber">⟳ Running...</div>';
+    } else if (agent.status === 'ready') {
+      actionLink = '<div class="pyr-agent-action teal">⚙ Configure &amp; Run →</div>';
+    } else {
+      actionLink = '<div class="pyr-agent-action grey">🔒 Prerequisites needed</div>';
+    }
+
+    return '<div class="pyr-agent-card ' + cls + '" ' + clickAttr + '>' +
+      '<div class="pyr-agent-icon ' + iconCls + '">' + agent.action_type.slice(0,2).toUpperCase() + '</div>' +
+      '<span class="pyr-agent-status ' + statusBadge + '">' + _statusLabel(agent.status) + '</span>' +
+      '<div class="pyr-agent-name">' + escHtml(agent.label) + '</div>' +
+      '<div class="pyr-agent-desc">' + escHtml(agent.description) + '</div>' +
+      actionLink +
+      '</div>';
+  }).join('');
+}
+
+// ── Slide-over ────────────────────────────────────────────────────────────
+var _currentAgent = null;
+var _currentLayerNum = null;
+
+function openSlideover(agent, layerNum) {
+  _currentAgent = agent;
+  _currentLayerNum = layerNum;
+
+  document.getElementById('slideAgentName').textContent = agent.label;
+  document.getElementById('slideAgentDesc').textContent = agent.description;
+
+  const runBtn = document.getElementById('slideRunBtn');
+  runBtn.textContent = agent.status === 'complete' ? '▶ Re-run Agent' : '▶ Run Agent';
+  runBtn.disabled = false;
+
+  // Build body
+  var html = '';
+
+  // Completion banner
+  if (agent.status === 'complete') {
+    html += '<div class="slide-complete-banner">' +
+      '<span class="slide-complete-icon">✓</span>' +
+      '<div><div class="slide-complete-title">Already completed</div>' +
+      '<div class="slide-complete-sub">Re-run with different parameters to generate a new version.</div></div>' +
+      '</div>';
+  }
+
+  // Parameters
+  html += '<div class="slide-params-title">Configure Parameters</div>';
+  if (!agent.prompt_form || agent.prompt_form.length === 0) {
+    html += '<div class="slide-no-params">' +
+      '<div class="slide-no-params-icon">⚙</div>' +
+      '<div class="slide-no-params-text">No configurable parameters</div>' +
+      '<div class="slide-no-params-sub">Runs with simulation defaults</div>' +
+      '</div>';
+  } else {
+    agent.prompt_form.forEach(function(f) {
+      html += '<div class="slide-form-group">';
+      html += '<label class="slide-label">' + escHtml(f.label) + (f.required ? ' *' : '') + '</label>';
+      if (f.type === 'select') {
+        html += '<select class="slide-select" id="sf-' + escHtml(f.key) + '">';
+        (f.options || []).forEach(function(o) { html += '<option>' + escHtml(o) + '</option>'; });
+        html += '</select>';
+      } else if (f.type === 'textarea') {
+        html += '<textarea class="slide-textarea" id="sf-' + escHtml(f.key) + '" rows="3" placeholder="' + escHtml(f.label) + '"></textarea>';
+      } else if (f.type === 'toggle') {
+        html += '<div class="slide-toggle-row">' +
+          '<span class="slide-toggle-label">' + escHtml(f.label) + '</span>' +
+          '<label class="toggle-switch" style="width:44px;height:24px">' +
+          '<input type="checkbox" id="sf-' + escHtml(f.key) + '" checked>' +
+          '<span class="toggle-slider"></span></label>' +
+          '</div>';
+      } else {
+        html += '<input type="text" class="slide-input" id="sf-' + escHtml(f.key) + '" placeholder="' + escHtml(f.label) + '">';
+      }
+      html += '</div>';
+    });
+  }
+
+  // Deploys to (integration info)
+  var deployIntegrations = _getDeployIntegrations(agent.action_type);
+  if (deployIntegrations.length) {
+    html += '<div class="slide-deploys"><div class="slide-deploys-label">Deploys To</div><div class="slide-deploys-pills">' +
+      deployIntegrations.map(function(i) { return '<span class="slide-deploys-pill">' + escHtml(i) + '</span>'; }).join('') +
+      '</div></div>';
+  }
+
+  html += '<div class="slide-error" id="slideError"></div>';
+
+  document.getElementById('slideBody').innerHTML = html;
+  document.getElementById('slideBackdrop').classList.add('open');
+  document.getElementById('slidePanel').classList.add('open');
+}
+
+function closeSlideover() {
+  document.getElementById('slideBackdrop').classList.remove('open');
+  document.getElementById('slidePanel').classList.remove('open');
+  _currentAgent = null;
+  _currentLayerNum = null;
+}
+
+async function slideRunAgent() {
+  if (!_currentAgent) return;
+  const runBtn = document.getElementById('slideRunBtn');
+  const errEl  = document.getElementById('slideError');
+  errEl.style.display = 'none';
+
+  // Collect params
+  const params = {};
+  const form = _currentAgent.prompt_form || [];
+  for (const f of form) {
+    const el = document.getElementById('sf-' + f.key);
+    if (!el) continue;
+    const val = f.type === 'toggle' ? el.checked : el.value.trim();
+    if (f.required && !val && f.type !== 'toggle') {
+      errEl.textContent = '"' + f.label + '" is required.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (val !== '' && val !== false) params[f.key] = val;
+  }
+
+  runBtn.disabled = true;
+  runBtn.textContent = 'Dispatching…';
+  closeSlideover();
+
+  // Optimistic UI — set card to running
+  _setAgentStatusOptimistic(_currentAgent.action_type, 'running');
+
+  const res = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/agents/' + _currentAgent.action_type + '/run', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ params }),
   });
   const data = await res.json();
 
   if (!res.ok) {
-    errEl.textContent = data.error || 'Failed to start action.';
-    errEl.classList.remove('hidden');
-    btn.disabled = false;
-    btn.textContent = 'Run agent';
+    _setAgentStatusOptimistic(_currentAgent.action_type, _currentAgent.status); // revert
+    pyrToast((data.message || data.error || 'Failed to dispatch agent'));
     return;
   }
 
-  document.getElementById('agent-form-' + layerNum).remove();
-  prependActionCard(data, layerNum);
-  pollAction(layerNum, data.id);
-}
+  pyrToast((data.label || _currentAgent.label) + ' is running — you will see the result in your Action Queue.');
 
-function prependActionCard(action, layerNum) {
-  const log = document.getElementById('actions-log-' + layerNum);
-  if (!log.querySelector('.actions-log-title')) {
-    log.innerHTML = '<div class="actions-log-title">Previous actions</div>';
+  // Start polling
+  if (!_polling) {
+    _polling = setInterval(async function() {
+      await loadPyramid();
+      if (!_anyRunning()) { clearInterval(_polling); _polling = null; }
+    }, 10000);
   }
-  log.querySelector('.actions-log-title').insertAdjacentHTML('afterend', renderActionCard(action, layerNum));
 }
 
-function pollAction(layerNum, actionId) {
-  if (_agentPollers[actionId]) return;
-  _agentPollers[actionId] = setInterval(async () => {
-    const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions/${actionId}`);
-    if (!res.ok) return;
-    const action = await res.json();
-    const card = document.getElementById('action-card-' + actionId);
-    if (card) card.outerHTML = renderActionCard(action, layerNum);
-    if (action.status === 'complete' || action.status === 'failed') {
-      clearInterval(_agentPollers[actionId]);
-      delete _agentPollers[actionId];
+function _setAgentStatusOptimistic(actionType, status) {
+  if (!_pyramidData) return;
+  _pyramidData.layers.forEach(function(layer) {
+    var agent = layer.agents.find(function(a) { return a.action_type === actionType; });
+    if (agent) {
+      agent.status = status;
+      // Update counts
+      layer.counts = {
+        complete: layer.agents.filter(function(a) { return a.status === 'complete'; }).length,
+        running:  layer.agents.filter(function(a) { return a.status === 'running';  }).length,
+        ready:    layer.agents.filter(function(a) { return a.status === 'ready';    }).length,
+        locked:   layer.agents.filter(function(a) { return a.status === 'locked';   }).length,
+      };
+      renderAgentGrid(layer);
     }
-  }, 3000);
-}
-
-async function rerunAction(actionId, layerNum) {
-  const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions/${actionId}/execute`, {
-    method: 'POST',
   });
-  const data = await res.json();
-  if (res.ok) {
-    const card = document.getElementById('action-card-' + actionId);
-    if (card) card.outerHTML = renderActionCard(data, layerNum);
-    pollAction(layerNum, actionId);
-  } else {
-    alert(data.error || 'Re-run failed');
-  }
 }
 
-async function showArchive(actionId, layerNum) {
-  const res = await fetch(ROOT + `/api/simulations/${SIM_ID}/layers/${layerNum}/actions/${actionId}/archive`);
-  const data = await res.json();
-  if (res.ok) {
-    alert('Prior artifact (archived ' + data.archived_at + '):\n\n' + data.archived_artifact);
-  } else {
-    alert(data.error || 'No archive found');
-  }
+// Minimal integration map for "Deploys To" pills
+var DEPLOY_MAP = {
+  cold_email_campaign: ['Apollo', 'Email'],
+  consulting_outreach: ['Apollo', 'Email'],
+  outreach_email:      ['Apollo', 'Email'],
+  booking_page:        ['Cal.com'],
+  consulting_proposal: ['PandaDoc', 'Cal.com'],
+  consulting_agreement:['PandaDoc'],
+  launch_email_sequence: ['ConvertKit'],
+  newsletter_monetization: ['ConvertKit'],
+  funnel_design:       ['ConvertKit'],
+  waitlist_landing_page: ['ConvertKit'],
+  income_allocation:   ['Plaid', 'Alpaca'],
+  compound_growth_model: ['Plaid'],
+  dca_schedule:        ['Alpaca'],
+};
+
+function _getDeployIntegrations(actionType) {
+  return DEPLOY_MAP[actionType] || [];
 }
 
 function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// Load pyramid data on page ready
+loadPyramid();
 </script>
 {% endblock %}

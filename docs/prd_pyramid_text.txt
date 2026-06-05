@@ -1,0 +1,299 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Wealth Pyramid Launchpad
+AI Analysis + Agent Grid · Configure & Run · Per-Opportunity Revenue · Per-Agent Parameters
+Document ID
+SIM-PRD-PYRAMID-001
+Version
+1.0
+Route
+/simulations/:id — the simulation detail page. This is the page the user lands on after creating a simulation or clicking a simulation from the Dashboard.
+Scope
+Two-part page per layer. Part 1: AI Analysis — opportunities with revenue ranges, channels, AI reasoning, evidence from background, automation level, and launch timeline. Part 2: Agent Grid — complete set of all agents for that layer with status indicators, configurable parameters, and Run Agent capability. Configuration slide-over panel for parameter input.
+Design source
+Prototype delivered as wealth_pyramid_launchpad.jsx. Screenshots of the live Wealth Pyramid page inform Part 1 layout. Agent Launchpad concept informs Part 2 layout.
+Connects to
+SIM-PRD-ORCH-001 v2.0 (orchestrator receives Run Agent requests), SIM-PRD-GCC-002 (Growth Command Center linked from header), SIM-PRD-VIEW-001 (View artifact links from completed agents), SIM-PRD-WIRE-001 v1.1 (integration deployment after agent runs), SIM-PRD-HOME-001 (design system tokens).
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+June 2026
+This page serves two purposes in one view. First, it shows the user what the AI found — income opportunities grounded in their resume, with revenue estimates, channels, and reasoning. Second, it lets the user act on those opportunities immediately — selecting agents, configuring their parameters, and running them. The user never has to navigate away from the simulation page to start executing. Strategy and execution live on the same screen.
+1. Page Architecture
+1.1 Route and Access
+The Wealth Pyramid Launchpad renders at /simulations/:id. It is accessible to authenticated users who own the simulation and to partner advisors with read-only access (per SIM-PRD-PART-002). The page loads the simulation record, the wealth pyramid analysis (generated during the initial simulation run), and the current status of all 49 agents.
+1.2 Page Header
+Element
+Specification
+Status badge
+'COMPLETE' green pill badge when the initial wealth analysis has finished generating. 'GENERATING' amber badge while the first simulation cycle is running. 'PAUSED' grey badge if the simulation is paused.
+Creation date
+'Created [date]' in muted 13px text next to the status badge.
+Page title
+'Your Wealth Pyramid' in Playfair Display 700, 28px, navy. Subtitle: '5 layers from active income to automated wealth deployment' in DM Sans 400, 15px, muted.
+Action buttons
+Three buttons right-aligned: 'Export PDF' (outlined, Download icon), 'Share' (outlined, Share2 icon), '⚡ Growth Command Center' (filled teal, links to /simulations/:id/gcc). Export generates a PDF of the wealth pyramid analysis (Part 1 only — not the agent grid). Share generates a public link to a read-only version.
+1.3 Layer Accordion
+The five layers render as collapsible accordion sections. Only one layer is expanded at a time (clicking a layer header collapses the currently expanded layer and expands the clicked one). Default: L1 is expanded on page load. Each layer header shows the layer badge, title, subtitle, agent status counts, priority badge, and a chevron indicator.
+Header element
+Specification
+Layer icon
+44x44px rounded square with 10% opacity layer color background. Layer-specific icon: L1 Briefcase, L2 Mic, L3 BookOpen, L4 TrendingUp, L5 Shield.
+Layer badge
+11px bold white text on layer color background. 'L1' through 'L5'. Border-radius 4px.
+Title + subtitle
+Playfair Display 700, 19px, navy: 'Active Income'. DM Sans 400, 14px, muted: '— 1:1 Time-for-Money'.
+Status counts
+Three inline counts in 12px text: '[N] done' (green), '[N] running' (amber), '[N] ready' (purple). Only shown if count > 0.
+Priority badge
+'HIGH PRIORITY' (gold background, amber text) or 'MEDIUM PRIORITY' (grey background, muted text). Pill shape, 10px uppercase.
+Chevron
+18px ChevronDown icon. Rotates 180deg when expanded. 200ms transition.
+Left border
+4px solid in layer color. Consistent with GCC My Layers pattern.
+2. Part 1 — AI Analysis (Opportunities)
+The top section of each expanded layer shows the AI-generated wealth analysis. This content is produced during the initial simulation run and stored as the simulation's wealth_pyramid artifact. It does not change between cycles — it is the strategic foundation that agents execute against.
+2.1 Section Header
+Brain icon + 'AI ANALYSIS — OPPORTUNITIES' label in layer color, 12px uppercase with 1px letter-spacing. Positioned at the top of the expanded layer content.
+2.2 Positioning Paragraph
+Element
+Specification
+Container
+Off-white (#fafbfc) background, 12px border-radius, 3px left border in layer color. Padding: 16px 20px.
+Content
+The AI's analysis of why the user's background fits this income layer. 14px DM Sans 400, color #4a5568, line-height 1.7. One paragraph, typically 2-4 sentences. Generated by Claude during the simulation run using the expertise extraction from onboarding.
+Data source
+wealth_pyramid.layers[layer_number].positioning_paragraph from the simulation artifact.
+2.3 Opportunity Cards
+Each opportunity is a card showing a specific income opportunity the AI identified for this user at this layer. A layer typically has 3-6 opportunities. Each card is collapsible — the header is always visible, the AI reasoning expands on click.
+Card element
+Specification
+Card container
+White background, 1px border rgba(0,0,0,0.06), 12px border-radius, 3px left border in layer color at 20% opacity. Bottom margin 12px. Hover: subtle shadow (0 4px 16px rgba(0,0,0,0.06)).
+Service name
+Playfair Display 700, 15px, navy. Left-aligned. The name of the income opportunity (e.g. 'Construction Lead Generation Workshops').
+Revenue range
+Right-aligned pill badge. 12px bold, teal text (#0F7B72), teal background (#D6F0EE), 6px border-radius. Shows monthly or per-engagement revenue estimate (e.g. '$1,500–$4,200/mo'). White-space: nowrap.
+Description
+13px DM Sans 400, muted (#6b7b8d), line-height 1.5. One sentence describing what the user would actually deliver.
+Channel tags
+Horizontal flex wrap of pill tags. 9px bold uppercase with 0.3px letter-spacing, #4a5568 text on #f0f1f3 background, 4px border-radius. Channels where the user would find clients (e.g. 'LOCAL BUSINESS ASSOCIATIONS', 'LINKEDIN SALES NAVIGATOR').
+AI Reasoning toggle
+Sparkles icon + 'AI Reasoning & Evidence' text in layer color, 11px bold. ChevronDown rotates on expand. Click toggles the reasoning section.
+AI Reasoning (expanded)
+Bordered top (1px rgba(0,0,0,0.04)). Reasoning paragraph: 13px, #4a5568, line-height 1.7. 'Evidence from your background:' bold label followed by bullet points (4px circle dots, 12px muted text). Automation and Launch tags at bottom (10px text in bordered pills).
+Data source
+wealth_pyramid.layers[layer_number].opportunities[index] from the simulation artifact. Each opportunity has: name, revenue_range, description, channels[], reasoning, evidence[], automation_level, launch_timeline.
+2.4 Refine This Layer
+Below the last opportunity card: 'Refine this layer →' button. Outlined style (1px border #d0d5dd, white background, DM Sans 500, 12px). Sparkles icon. Click opens the Simi chat co-pilot with a pre-filled prompt: 'I want to refine my Layer [N] opportunities. Current opportunities: [list names]. What changes would you suggest?' The co-pilot can regenerate the wealth pyramid analysis for this layer.
+3. Part 2 — Agent Grid (Execute)
+Below the AI Analysis section, separated by a 2px horizontal rule, the complete agent grid for this layer. This is the execution layer — every agent available for this layer is shown as a card, configurable, and runnable.
+3.1 Section Header
+Layers icon + 'EXECUTE — ALL L[N] AGENTS' label in layer color, 12px uppercase with 1px letter-spacing. Right-aligned: '[N] agents · [N] complete · [N] ready' in 12px muted text.
+3.2 Agent Card Grid
+Element
+Specification
+Grid layout
+CSS grid: repeat(auto-fill, minmax(195px, 1fr)). Gap: 10px. Responsive: 4 columns on desktop, 2 on tablet, 1 on mobile.
+Card container
+White background, 10px border-radius, 14px padding. Border: 1px solid rgba(0,0,0,0.06). Available agents: border color changes to layer color at 30% opacity. Hover (non-locked): translateY(-2px) + shadow. Locked: opacity 0.45, cursor default.
+Agent icon
+32x32px rounded square (8px radius) with 10% opacity status color background. Icon from the agent's icon field. 15px size. Color: status color.
+Status badge
+Top-right of card. 9px bold uppercase, status color text on status background. Border-radius 100px. Four states: 'DONE' (green), 'RUNNING' (amber), 'READY' (purple), 'LOCKED' (grey).
+Agent name
+13px DM Sans 600, navy. Below the icon row.
+Description
+11px DM Sans 400, muted, line-height 1.4. One-line description of what the agent produces.
+Action link
+Bottom of card. Status-dependent: Available → 'Configure & Run →' (layer color, Settings icon). Complete → 'View artifact →' (green, Check icon). Running → 'Running...' (amber, Clock icon). Locked → 'Prerequisites needed' (grey, Lock icon).
+Click behavior
+Available: opens configuration slide-over (Section 4). Complete: opens configuration slide-over with 'Already completed' banner and 'Re-run Agent' button. Running: no action (agent is mid-execution). Locked: no action (prerequisites not met).
+3.3 Agent Counts Per Layer
+Layer
+Count
+Agents
+L1
+11 agents
+Rate Card, LinkedIn Profile, Booking Page, Cold Email, Consulting Outreach, Role Search, Consulting Proposal, SOW Template, Agreement Template, Referral Network, Rate Negotiation
+L2
+8 agents
+Speaking Proposals, Speaker Fee Rider, Group Coaching, Corporate Training, Workshop Curriculum, Waitlist Page, Alumni Reactivation, Workshop ROI
+L3
+10 agents
+Course Curriculum, Pricing Research, Sales Page, E-Book/Guide, A/B Test Plan, Membership, Launch Sequence, Affiliate Program, Testimonials, Lapsed Buyer Reactivation
+L4
+10 agents
+SEO Content Calendar, Lead Magnet Funnel, Newsletter Monetization, SaaS Product Spec, IP Licensing, Affiliate Partnerships, Video/Podcast Strategy, Community Flywheel, Programmatic Ads, Client Win-Back
+L5
+10 agents
+Income Allocation, Compound Projections, Fund Recommendations, Investment Policy Statement, Real Estate Strategy, Tax Optimization, Entity Structure, DCA Schedule, Insurance Review, Estate Planning Brief
+All 49 agents are shown across all 5 layers. Every agent the platform supports appears in the grid — no agents are hidden. Locked agents are dimmed but visible, showing the user what becomes available as they progress.
+4. Configuration Slide-Over Panel
+When the user clicks an available or completed agent card, a slide-over panel opens from the right side of the screen. The panel contains the agent's configurable parameters and a Run Agent button. The backdrop dims and blurs.
+4.1 Panel Layout
+Element
+Specification
+Panel dimensions
+Fixed right, top to bottom, 440px wide. White background. Box-shadow: -8px 0 32px rgba(0,0,0,0.12). z-index: 200.
+Backdrop
+Covers entire viewport. Background: rgba(0,0,0,0.3) with backdrop-filter: blur(4px). Click backdrop → close panel.
+Header
+20px 24px padding. Agent name (18px DM Sans 600, navy). Description (13px muted). X close button (20px, right-aligned).
+Body (scrollable)
+Flex: 1 with overflow: auto. 24px padding. Contains the completion banner (if applicable), parameter form, and integration info.
+Footer
+16px 24px padding. 1px top border. Two buttons: Cancel (outlined, flex 1) and Run Agent (filled teal, flex 2, Play icon). If agent is complete: button says 'Re-run Agent'.
+4.2 Completion Banner
+If the agent's status is 'complete', a green info box appears at the top of the panel body: green background (#E6F7EF), Check icon, bold text 'Already completed', and subtitle 'Re-run with different parameters to generate a new version.' This tells the user they can re-run with different inputs without losing the existing artifact (version history is preserved per SIM-PRD-VIEW-001).
+4.3 Parameter Form
+Each agent has zero or more configurable parameters. Parameters are rendered as form fields. If the agent has no parameters, a placeholder card appears: Settings icon (24px grey) + 'No configurable parameters' + 'Runs with simulation defaults.' Parameter types:
+Type
+Rendering
+select
+Full-width dropdown. Options defined per agent. DM Sans 400, 14px. Border: 1px solid #d0d5dd. Focus: teal border per design system. Default value pre-selected.
+text
+Full-width text input. Placeholder text in muted color hints at expected input (e.g. 'e.g. Construction, SaaS'). DM Sans 400, 14px.
+toggle
+44x24px toggle switch. Teal when on, grey (#d0d5dd) when off. 18px white circle with shadow. 200ms transition.
+textarea
+Full-width textarea for longer inputs (project scope). 3 rows default, resizable. DM Sans 400, 14px.
+4.4 Agent Parameters — Per-Agent Specification
+Each agent's configurable parameters are listed below. Agents not listed have no parameters (they run with simulation defaults from the expertise extraction and rate card).
+Agent
+Parameters
+rate_card
+tier_count (select: 3/4/5, default 4), pricing_anchor (select: Conservative/Balanced/Aggressive, default Balanced)
+linkedin_optimization
+tone (select: Understated/Confident/Bold, default Confident)
+booking_page
+session_types (select: 2/3/4, default 3), free_discovery (toggle, default on)
+cold_email_campaign
+prospect_count (select: 15/25/50, default 25), target_industry (text), target_titles (text), company_size (select: 1-50/51-200/201-500/500+/Any, default 51-200), sequence_steps (select: 2/3/4, default 3)
+consulting_outreach
+prospect_count (select: 5/10/15, default 10), focus_hint (text)
+role_search
+prospect_count (select: 15/25/50, default 25), target_titles (text)
+consulting_proposal
+client_name (text), project_scope (text), rate_card_tier (select: Tier 1-4/Custom), payment_terms (select: 100% upfront/50-50/Net 30/Milestone, default 50-50)
+sow_template
+sow_type (select: Fixed scope/Time & materials/Retainer, default Fixed scope)
+agreement_template
+agreement_type (select: MSA/NDA/Service Agreement/IC Agreement, default MSA)
+referral_network
+partner_count (select: 10/15/20, default 15), adjacent_fields (text)
+speaking_proposals
+pitch_count (select: 5/10/15, default 10), talk_topics (text)
+group_coaching
+cohort_size (select: 5/8/12/15, default 8), duration_weeks (select: 4/6/8/12, default 8)
+course_curriculum
+module_count (select: 6/8/10/12, default 10), course_level (select: Beginner/Intermediate/Advanced, default Intermediate)
+lead_magnet_funnel
+format (select: PDF checklist/PDF guide/Email course/Quiz, default PDF checklist), nurture_emails (select: 3/5/7, default 5)
+4.5 Integration Info
+Below the parameter form, an info card shows which integrations the agent deploys to. Off-white background (#fafbfc), 10px border-radius, 16px padding. Label: 'DEPLOYS TO' in 12px uppercase muted. Integration names as pill badges (11px, white background, 1px border #d0d5dd). Integration list sourced from AGENT_INTEGRATION_MAP per SIM-PRD-WIRE-001 v1.1.
+4.6 Run Agent Flow
+When the user clicks 'Run Agent' (or 'Re-run Agent'):
+The panel closes immediately. The agent card in the grid transitions to 'RUNNING' status (amber badge, Clock icon, 'Running...' text).
+A POST request is sent to /api/simulations/:id/agents/:action_type/run with the configured parameters as the request body.
+The server creates an ActionQueueItem with status='pending', stores the parameters as prefill_inputs on the action record, and dispatches the agent as a Celery task (same execution path as orchestrator dispatch per SIM-PRD-ORCH-001 v2.0 Section 5).
+The DAG is validated server-side before dispatch. If prerequisites are not met, the request returns a 422 error with the missing prerequisites listed. The panel re-opens with an error banner: 'Cannot run — [prerequisite agent] must complete first.'
+If the agent requires an integration that is not connected, the request returns a 422 with the missing integration. The panel re-opens with an error banner: 'Connect [integration] in Settings to run this agent.' Link to Settings → Integrations.
+On successful dispatch, a toast notification appears: '[Agent name] is running — you will see the result in your Action Queue.' The user can continue browsing the page.
+When the agent completes (Celery task finishes), the card updates to 'DONE' status via a WebSocket push or polling. The 'View artifact →' link becomes active.
+5. Data Model
+5.1 Wealth Pyramid Artifact
+# Generated during initial simulation run
+# Stored as artifact_versions with action_type='wealth_pyramid'
+wealth_pyramid = {
+'layers': [
+{
+'layer_number': 1,
+'label': 'Active Income',
+'subtitle': '1:1 Time-for-Money',
+'priority': 'high',  # high | medium | low
+'positioning_paragraph': 'Your construction project...',
+'opportunities': [
+{
+'name': 'Construction Lead Generation Workshops',
+'revenue_range': '$1,500–$4,200/mo',
+'description': 'Deliver training sessions...',
+'channels': ['Local Business Associations', ...],
+'reasoning': 'Your proven lead gen process...',
+'evidence': ['Use CRM to find leads', ...],
+'automation_level': 'medium',  # low | medium | high
+'launch_timeline': '6w',
+},
+# ... 3-6 opportunities per layer
+],
+},
+# ... 5 layers
+],
+}
+5.2 Agent Status Query
+# For each layer, query the current status of all agents
+def get_agent_statuses(simulation_id, layer_number):
+agents = LAYER_AGENTS[layer_number]  # all agents for this layer
+statuses = {}
+for agent_type in agents:
+latest = ActionQueueItem.query.filter_by(
+simulation_id=simulation_id,
+action_type=agent_type,
+).order_by(ActionQueueItem.created_at.desc()).first()
+if latest and latest.status == 'complete':
+statuses[agent_type] = 'complete'
+elif latest and latest.status == 'in_progress':
+statuses[agent_type] = 'in_progress'
+elif check_prerequisites_exist(agent_type, simulation_id):
+statuses[agent_type] = 'available'
+else:
+statuses[agent_type] = 'locked'
+return statuses
+5.3 Run Agent API
+@bp.route('/api/simulations/<sim_id>/agents/<action_type>/run', methods=['POST'])
+@login_required
+def run_agent(sim_id, action_type):
+sim = Simulation.get_or_404(sim_id)
+if sim.user_id != current_user.id:
+abort(403)
+# Validate DAG prerequisites
+prereqs = AGENT_DAG.get(action_type, [])
+missing = [p for p in prereqs if not artifact_exists(sim_id, p)]
+if missing:
+return jsonify({'error': 'prerequisite_missing',
+'missing': missing}), 422
+# Validate integration availability
+integrations = AGENT_INTEGRATION_MAP.get(action_type, [])
+for integ in integrations:
+if integ != 'crm' and not has_integration(sim_id, integ):
+return jsonify({'error': 'integration_missing',
+'integration': integ}), 422
+# Create action record with user-provided parameters
+params = request.json.get('params', {})
+action = ActionQueueItem.create(
+simulation_id=sim_id,
+action_type=action_type,
+status='pending',
+prefill_inputs=json.dumps(params),
+source='manual',  # distinguishes from orchestrator-dispatched
+)
+# Dispatch Celery task
+task = execute_agent.delay(sim_id, action_type, cycle_id=None)
+action.celery_task_id = task.id
+db.session.commit()
+return jsonify({'status': 'dispatched', 'action_id': action.id}), 200
+6. Functional Requirements
+FR-PYR-01: The Wealth Pyramid Launchpad renders at /simulations/:id. It is the simulation detail page — the user lands here after creating a simulation or selecting one from the Dashboard.
+FR-PYR-02: The page header shows simulation status (Complete/Generating/Paused), creation date, page title ('Your Wealth Pyramid'), and three action buttons: Export PDF, Share, and Growth Command Center (links to /simulations/:id/gcc).
+FR-PYR-03: Five layers render as a single-open accordion. Default: L1 expanded. Each layer header shows: layer icon, badge (L1-L5), title + subtitle, agent status counts (done/running/ready), priority badge (HIGH/MEDIUM), and 4px left border in layer color.
+FR-PYR-04: Part 1 (AI Analysis) occupies the top of each expanded layer. It contains: the positioning paragraph in a teal-bordered box, 3-6 opportunity cards with service name, revenue range, description, channel tags, and expandable AI reasoning with evidence bullets and automation/launch tags. A 'Refine this layer' button opens the Simi co-pilot with a pre-filled prompt.
+FR-PYR-05: Part 2 (Agent Grid) occupies the bottom of each expanded layer, separated by a 2px horizontal rule. It contains: section header ('Execute — All L[N] Agents' with agent counts) and a responsive grid of ALL agents for that layer. No agents are hidden — locked agents are dimmed but visible.
+FR-PYR-06: Agent cards show: icon, status badge (Done/Running/Ready/Locked), agent name, one-line description, and a status-dependent action link (Configure & Run / View artifact / Running / Prerequisites needed). Available cards have a teal-highlighted border.
+FR-PYR-07: Clicking an available or completed agent card opens a configuration slide-over panel (440px wide, slides from right). The panel shows: agent name, description, completion banner (if applicable), configurable parameters (select, text, toggle, textarea), integration info ('Deploys to' pills), and Run/Re-run button.
+FR-PYR-08: Agent parameters are defined per agent per Section 4.4. Parameters are stored as prefill_inputs on the ActionQueueItem record. Agents with no parameters show a placeholder card and run with simulation defaults.
+FR-PYR-09: Run Agent dispatches a POST to /api/simulations/:id/agents/:action_type/run. The server validates DAG prerequisites and integration availability before dispatching. Missing prerequisites or disconnected integrations return 422 with actionable error messages. Successful dispatch returns 200 and creates a Celery task.
+FR-PYR-10: Manual agent runs (source='manual') follow the same execution path as orchestrator-dispatched runs: same Celery task, same output validation, same integration deployment, same bio page auto-update, same CRM saves. The only difference is source attribution — the Bayesian model tracks manual vs orchestrator dispatch separately.
+FR-PYR-11: All 49 agents are represented across the 5 layer grids: L1 (11), L2 (8), L3 (10), L4 (10), L5 (10). The grid shows every agent the platform supports. Locked agents display 'Prerequisites needed' so the user understands what unlocks them.
+FR-PYR-12: Re-running a completed agent creates a new artifact version (per SIM-PRD-VIEW-001 version history). The previous version is retained. The user can view and compare versions in the artifact Full View.
+FR-PYR-13: When an agent completes, its card updates from 'Running' to 'Done' via WebSocket push (preferred) or polling (fallback, every 10 seconds while any agent is running). A toast notification appears: '[Agent name] completed — view artifact.'
+SIM-PRD-PYRAMID-001  ·  Wealth Pyramid Launchpad  ·  v1.0  ·  April 2026
+Jean Moussa Delphonse  ·  Bay Area Experiences Ventures  ·  Confidential

@@ -202,6 +202,19 @@ def build_targeting_criteria(
             agent_type=action_type,
         )
 
+    if action_type == 'consulting_outreach':
+        industries_raw = user_inputs.get('target_industries', '')
+        return TargetingCriteria(
+            expertise_zone=expertise_zone,
+            expertise_tags=tags,
+            job_titles=_titles_for_zone(tags),
+            seniorities=['vp', 'c_suite', 'director'],
+            company_sizes=['51-200', '201-500', '501-1000'],
+            industries=_industries_from_text(industries_raw) if industries_raw else _industries_for_zone(tags),
+            geographies=['United States'],
+            agent_type=action_type,
+        )
+
     if action_type == 'speaking_proposals':
         geo = user_inputs.get('geographic_regions', 'United States') or 'United States'
         return TargetingCriteria(
@@ -354,21 +367,43 @@ def _verify_one_email(email: str, provider: str, api_key: str) -> _VerificationR
 
 
 def _check_monthly_budget() -> bool:
-    """Return True if monthly verification budget has NOT been exhausted."""
+    """Return True if monthly verification budget has NOT been exhausted.
+
+    Retries once on OperationalError (2006 MySQL server has gone away).
+    The connection can time out while Claude API calls are in-flight because
+    it is held by the session rather than returned to the pool, so pool_pre_ping
+    cannot protect it.  A close() + retry forces a fresh checkout with pre-ping.
+    """
     from app.models.platform_settings import PlatformSetting
-    cap_cents = int(PlatformSetting.get('email_verifier_monthly_budget_cents', '5000'))
-    if cap_cents <= 0:
-        return True
-    # Sum verification costs for the current calendar month
     from sqlalchemy import func, extract
-    now = datetime.utcnow()
-    spent = db.session.query(
-        func.coalesce(func.sum(ProspectResearchRun.verification_cost_cents), 0)
-    ).filter(
-        extract('year',  ProspectResearchRun.created_at) == now.year,
-        extract('month', ProspectResearchRun.created_at) == now.month,
-    ).scalar() or 0
-    return int(spent) < cap_cents
+    from sqlalchemy.exc import OperationalError
+
+    def _run() -> bool:
+        cap_cents = int(PlatformSetting.get('email_verifier_monthly_budget_cents', '5000'))
+        if cap_cents <= 0:
+            return True
+        now = datetime.utcnow()
+        spent = db.session.query(
+            func.coalesce(func.sum(ProspectResearchRun.verification_cost_cents), 0)
+        ).filter(
+            extract('year',  ProspectResearchRun.created_at) == now.year,
+            extract('month', ProspectResearchRun.created_at) == now.month,
+        ).scalar() or 0
+        return int(spent) < cap_cents
+
+    try:
+        return _run()
+    except OperationalError:
+        # Connection timed out while idle — return it to the pool, then retry.
+        try:
+            db.session.close()
+        except Exception:
+            pass
+        try:
+            return _run()
+        except Exception as exc:
+            logger.warning('_check_monthly_budget retry failed: %s — assuming budget OK', exc)
+            return True  # non-fatal; allow research to continue
 
 
 # ── Main engine ───────────────────────────────────────────────────────────────
@@ -453,12 +488,20 @@ class ProspectResearchEngine:
             )
         except Exception as exc:
             logger.warning('Failed to log research run: %s', exc)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
 
         # Bayesian signals
         try:
             self._dispatch_bayesian_signals(simulation_id, targeting)
         except Exception as exc:
             logger.warning('Bayesian signal dispatch failed: %s', exc)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
 
         return ProspectList(
             prospects=prospects,
@@ -1014,6 +1057,15 @@ Page content:
         targeting: TargetingCriteria,
         duration: float,
     ):
+        if not user_id:
+            try:
+                from app.models.simulation import Simulation
+                sim = Simulation.query.get(simulation_id)
+                user_id = sim.user_id if sim else None
+            except Exception:
+                pass
+        if not user_id:
+            return
         run = ProspectResearchRun(
             id=generate_id(),
             simulation_id=simulation_id,

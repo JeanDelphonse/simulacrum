@@ -20,12 +20,14 @@ SIGNING_ACTION_TYPES = {
 # ── PandaDoc API client ───────────────────────────────────────────────────────
 
 class PandaDocClient:
-    def __init__(self, api_key: str):
-        self._api_key = api_key
+    def __init__(self, token: str, auth_type: str = 'oauth'):
+        self._token = token
+        self._auth_type = auth_type
 
     def _headers(self):
+        prefix = 'Bearer' if self._auth_type == 'oauth' else 'API-Key'
         return {
-            'Authorization': f'API-Key {self._api_key}',
+            'Authorization': f'{prefix} {self._token}',
             'Content-Type': 'application/json',
         }
 
@@ -120,8 +122,9 @@ def deploy_document_for_signing(user_id: str, simulation_id: str,
     if not integration or not integration.is_connected:
         raise PandaDocAuthRequired('pandadoc_not_configured')
 
-    api_key = integration.decrypt_access_token()
-    client = PandaDocClient(api_key)
+    token = integration.decrypt_access_token()
+    auth_type = 'oauth' if integration.refresh_token_enc else 'api_key'
+    client = PandaDocClient(token, auth_type=auth_type)
 
     name_parts = (recipient_name or '').split(' ', 1)
     first_name = name_parts[0] if name_parts else ''

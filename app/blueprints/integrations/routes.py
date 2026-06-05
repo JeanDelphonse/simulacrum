@@ -1,5 +1,6 @@
 import secrets
 import logging
+import time as _time
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -13,6 +14,22 @@ from app.models.contact import Contact, ContactActivity
 from utils.id_gen import generate_id
 
 logger = logging.getLogger(__name__)
+
+# ── Wizard validate rate limiter (5 req / 60 s per provider per user) ─────────
+_wizard_rl: dict = {}
+
+def _wizard_rl_check(provider: str, user_id: str) -> bool:
+    key = f'{provider}:{user_id}'
+    now = _time.time()
+    entry = _wizard_rl.get(key)
+    if not entry or now - entry[1] >= 60:
+        _wizard_rl[key] = (1, now)
+        return False
+    count, start = entry
+    if count >= 5:
+        return True
+    _wizard_rl[key] = (count + 1, start)
+    return False
 
 
 # ── Integration status ────────────────────────────────────────────────────────
@@ -42,66 +59,66 @@ def integrations_status():
     return jsonify(result)
 
 
-# ── Apollo OAuth ──────────────────────────────────────────────────────────────
+# ── Apollo — Guided wizard (API key) ──────────────────────────────────────────
 
-@integrations_bp.route('/api/integrations/apollo/connect')
+@integrations_bp.route('/api/integrations/apollo/validate', methods=['POST'])
 @login_required
-def apollo_connect():
-    client_id = current_app.config.get('APOLLO_CLIENT_ID')
-    if not client_id:
-        return jsonify({'error': 'Apollo integration is not configured on this server.'}), 503
-
-    state = secrets.token_urlsafe(16)
-    session['apollo_oauth_state'] = state
-
-    from app.services.apollo_client import get_auth_url
-    return redirect(get_auth_url(state))
-
-
-@integrations_bp.route('/api/integrations/apollo/callback')
-@login_required
-def apollo_callback():
-    error = request.args.get('error')
-    if error:
-        return redirect(url_for('pages.settings_integrations') + '?apollo_error=cancelled')
-
-    state = request.args.get('state')
-    expected = session.pop('apollo_oauth_state', None)
-    if not expected or state != expected:
-        return redirect(url_for('pages.settings_integrations') + '?apollo_error=invalid_state')
-
-    code = request.args.get('code')
-    if not code:
-        return redirect(url_for('pages.settings_integrations') + '?apollo_error=no_code')
-
+def apollo_validate():
+    if _wizard_rl_check('apollo', current_user.id):
+        return jsonify({'status': 'error', 'error': 'Too many attempts — wait a minute.'}), 429
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    if not api_key or len(api_key) < 10:
+        return jsonify({'status': 'invalid', 'error': 'Key too short'}), 400
     try:
-        from app.services.apollo_client import exchange_code_for_token
-        from app.services.token_crypto import encrypt_token
-        token_data = exchange_code_for_token(code)
+        import requests as _req
+        resp = _req.get(
+            'https://api.apollo.io/v1/auth/health',
+            headers={'X-Api-Key': api_key, 'Cache-Control': 'no-cache'},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            d = resp.json()
+            plan = (d.get('plan_tier') or d.get('plan') or '').lower()
+            return jsonify({
+                'status': 'valid',
+                'account_email': d.get('email', ''),
+                'plan_tier': plan,
+                'is_free_plan': plan in ('free', ''),
+            })
+        elif resp.status_code == 401:
+            return jsonify({'status': 'invalid', 'error': 'Invalid API key'}), 401
+        else:
+            return jsonify({'status': 'error', 'error': 'Apollo API error'}), 502
     except Exception as exc:
-        logger.error('Apollo token exchange failed for user %s: %s', current_user.id, exc)
-        return redirect(url_for('pages.settings_integrations') + '?apollo_error=token_exchange_failed')
+        logger.warning('Apollo validate error for user %s: %s', current_user.id, exc)
+        return jsonify({'status': 'error', 'error': 'Validation failed'}), 502
 
+
+@integrations_bp.route('/api/integrations/apollo/save', methods=['POST'])
+@login_required
+def apollo_save():
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    if not api_key:
+        return jsonify({'error': 'api_key is required'}), 400
+    from app.services.token_crypto import encrypt_token
     integration = UserIntegration.query.filter_by(
         user_id=current_user.id, provider='apollo'
     ).first()
     if not integration:
         integration = UserIntegration(
-            id=generate_id(),
-            user_id=current_user.id,
-            provider='apollo',
+            id=generate_id(), user_id=current_user.id, provider='apollo',
         )
         db.session.add(integration)
-
-    integration.access_token_enc = encrypt_token(token_data['access_token'])
-    if token_data.get('refresh_token'):
-        integration.refresh_token_enc = encrypt_token(token_data['refresh_token'])
-    if token_data.get('expires_in'):
-        integration.token_expires_at = datetime.utcnow() + timedelta(seconds=token_data['expires_in'])
-    _mark_connected(integration, 'Apollo OAuth connected')
+    integration.access_token_enc = encrypt_token(api_key)
+    integration.refresh_token_enc = None
+    integration.token_expires_at = None
+    if data.get('account_email'):
+        integration.provider_account_id = str(data['account_email'])
+    _mark_connected(integration, 'Apollo API key saved via wizard')
     db.session.commit()
-
-    return redirect(url_for('pages.settings_integrations') + '?apollo_connected=1')
+    return jsonify({'ok': True})
 
 
 @integrations_bp.route('/api/integrations/apollo/disconnect', methods=['POST'])
@@ -120,7 +137,8 @@ def apollo_disconnect():
             from app.models.simulation import Simulation
             from app.services.apollo_client import ApolloClient
             token = integration.decrypt_access_token()
-            apollo = ApolloClient(token)
+            auth_type = 'oauth' if integration.refresh_token_enc else 'api_key'
+            apollo = ApolloClient(token, auth_type=auth_type)
             user_sim_ids = [
                 s.id for s in Simulation.query.filter_by(user_id=current_user.id).all()
             ]
@@ -487,66 +505,68 @@ def stripe_connect_webhook():
     return jsonify({'received': True}), 200
 
 
-# ── Cal.com OAuth ─────────────────────────────────────────────────────────────
+# ── Cal.com — Guided wizard (API key) ─────────────────────────────────────────
 
-@integrations_bp.route('/api/integrations/cal/connect')
+@integrations_bp.route('/api/integrations/cal/validate', methods=['POST'])
 @login_required
-def cal_connect():
-    if not current_app.config.get('CAL_CLIENT_ID'):
-        return jsonify({'error': 'Cal.com integration is not configured on this server.'}), 503
-
-    state = secrets.token_urlsafe(16)
-    session['cal_oauth_state'] = state
-
-    from app.services.cal_service import get_auth_url
-    return redirect(get_auth_url(state))
-
-
-@integrations_bp.route('/api/integrations/cal/callback')
-@login_required
-def cal_callback():
-    error = request.args.get('error')
-    if error:
-        return redirect(url_for('pages.settings_integrations') + '?cal_error=cancelled')
-
-    state = request.args.get('state')
-    expected = session.pop('cal_oauth_state', None)
-    if not expected or state != expected:
-        return redirect(url_for('pages.settings_integrations') + '?cal_error=invalid_state')
-
-    code = request.args.get('code')
-    if not code:
-        return redirect(url_for('pages.settings_integrations') + '?cal_error=no_code')
-
+def cal_validate():
+    if _wizard_rl_check('cal', current_user.id):
+        return jsonify({'status': 'error', 'error': 'Too many attempts — wait a minute.'}), 429
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    if not api_key or len(api_key) < 10:
+        return jsonify({'status': 'invalid', 'error': 'Key too short'}), 400
     try:
-        from app.services.cal_service import exchange_code
-        from app.services.token_crypto import encrypt_token
-        token_data = exchange_code(code)
+        import requests as _req
+        resp = _req.get(
+            'https://api.cal.com/v2/me',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'cal-api-version': '2024-08-13',
+            },
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            d = resp.json().get('data', resp.json())
+            return jsonify({
+                'status': 'valid',
+                'username': d.get('username', ''),
+                'email': d.get('email', ''),
+                'timezone': d.get('timeZone', ''),
+            })
+        elif resp.status_code == 401:
+            return jsonify({'status': 'invalid', 'error': 'Invalid API key'}), 401
+        else:
+            return jsonify({'status': 'error', 'error': 'Cal.com API error'}), 502
     except Exception as exc:
-        logger.error('Cal.com token exchange failed for user %s: %s', current_user.id, exc)
-        return redirect(url_for('pages.settings_integrations') + '?cal_error=token_exchange_failed')
+        logger.warning('Cal validate error for user %s: %s', current_user.id, exc)
+        return jsonify({'status': 'error', 'error': 'Validation failed'}), 502
 
+
+@integrations_bp.route('/api/integrations/cal/save', methods=['POST'])
+@login_required
+def cal_save():
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    if not api_key:
+        return jsonify({'error': 'api_key is required'}), 400
+    from app.services.token_crypto import encrypt_token
     integration = UserIntegration.query.filter_by(
         user_id=current_user.id, provider='cal'
     ).first()
     if not integration:
         integration = UserIntegration(
-            id=generate_id(),
-            user_id=current_user.id,
-            provider='cal',
+            id=generate_id(), user_id=current_user.id, provider='cal',
         )
         db.session.add(integration)
-
-    integration.access_token_enc = encrypt_token(token_data['access_token'])
-    if token_data.get('refresh_token'):
-        integration.refresh_token_enc = encrypt_token(token_data['refresh_token'])
-    if token_data.get('expires_in'):
-        from datetime import timedelta
-        integration.token_expires_at = datetime.utcnow() + timedelta(seconds=token_data['expires_in'])
-    _mark_connected(integration, 'Cal.com OAuth connected')
+    integration.access_token_enc = encrypt_token(api_key)
+    integration.refresh_token_enc = None
+    integration.token_expires_at = None
+    if data.get('username'):
+        integration.provider_account_id = str(data['username'])
+    _mark_connected(integration, 'Cal.com API key saved via wizard')
     db.session.commit()
-
-    return redirect(url_for('pages.settings_integrations') + '?cal_connected=1')
+    return jsonify({'ok': True})
 
 
 @integrations_bp.route('/api/integrations/cal/disconnect', methods=['POST'])
@@ -723,7 +743,40 @@ def _get_or_create_momentum(simulation_id: str):
     return momentum
 
 
-# ── PandaDoc API key management ───────────────────────────────────────────────
+# ── PandaDoc — Guided wizard (API key) ───────────────────────────────────────
+
+@integrations_bp.route('/api/integrations/pandadoc/validate', methods=['POST'])
+@login_required
+def pandadoc_validate():
+    if _wizard_rl_check('pandadoc', current_user.id):
+        return jsonify({'status': 'error', 'error': 'Too many attempts — wait a minute.'}), 429
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    if not api_key or len(api_key) < 10:
+        return jsonify({'status': 'invalid', 'error': 'Key too short'}), 400
+    try:
+        import requests as _req
+        resp = _req.get(
+            'https://api.pandadoc.com/public/v1/documents?count=1',
+            headers={'Authorization': f'API-Key {api_key}'},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            d = resp.json()
+            workspace = d.get('workspace', d.get('account', {}))
+            return jsonify({
+                'status': 'valid',
+                'account_name': workspace.get('name', ''),
+                'plan_tier': workspace.get('plan', ''),
+            })
+        elif resp.status_code == 401:
+            return jsonify({'status': 'invalid', 'error': 'Invalid API key'}), 401
+        else:
+            return jsonify({'status': 'error', 'error': 'PandaDoc API error'}), 502
+    except Exception as exc:
+        logger.warning('PandaDoc validate error for user %s: %s', current_user.id, exc)
+        return jsonify({'status': 'error', 'error': 'Validation failed'}), 502
+
 
 @integrations_bp.route('/api/integrations/pandadoc/save', methods=['POST'])
 @login_required
@@ -732,31 +785,21 @@ def pandadoc_save():
     api_key = (data.get('api_key') or '').strip()
     if not api_key:
         return jsonify({'error': 'api_key is required'}), 400
-
-    # Validate the key works by calling PandaDoc /me
-    try:
-        import requests as _req
-        resp = _req.get('https://api.pandadoc.com/public/v1/members/current/',
-                        headers={'Authorization': f'API-Key {api_key}'}, timeout=10)
-        resp.raise_for_status()
-    except Exception as exc:
-        logger.warning('PandaDoc API key validation failed for user %s: %s', current_user.id, exc)
-        return jsonify({'error': 'Invalid PandaDoc API key — could not authenticate.'}), 422
-
     from app.services.token_crypto import encrypt_token
     integration = UserIntegration.query.filter_by(
         user_id=current_user.id, provider='pandadoc'
     ).first()
     if not integration:
         integration = UserIntegration(
-            id=generate_id(),
-            user_id=current_user.id,
-            provider='pandadoc',
+            id=generate_id(), user_id=current_user.id, provider='pandadoc',
         )
         db.session.add(integration)
-
     integration.access_token_enc = encrypt_token(api_key)
-    _mark_connected(integration, 'PandaDoc API key saved')
+    integration.refresh_token_enc = None  # clear any stale OAuth token
+    integration.token_expires_at = None
+    if data.get('account_name'):
+        integration.provider_account_id = str(data['account_name'])
+    _mark_connected(integration, 'PandaDoc API key saved via wizard')
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -863,50 +906,63 @@ def signing_send():
         return jsonify({'error': str(exc)}), 500
 
 
-# ── ConvertKit API key management (FR-PUB-02) ─────────────────────────────────
+# ── ConvertKit — Guided wizard (API key + secret) ─────────────────────────────
 
-@integrations_bp.route('/api/integrations/convertkit/save', methods=['POST'])
+@integrations_bp.route('/api/integrations/convertkit/validate', methods=['POST'])
 @login_required
-def convertkit_save():
-    """
-    Save ConvertKit API key + optional API secret.
-    Body: {api_key, api_secret?}
-    """
+def convertkit_validate():
+    if _wizard_rl_check('convertkit', current_user.id):
+        return jsonify({'status': 'error', 'error': 'Too many attempts — wait a minute.'}), 429
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    api_secret = (data.get('api_secret') or '').strip()
+    if not api_key or not api_secret:
+        return jsonify({'status': 'invalid', 'error': 'Both API Key and API Secret are required'}), 400
+    try:
+        import requests as _req
+        resp = _req.get(
+            f'https://api.convertkit.com/v3/account?api_secret={api_secret}',
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            d = resp.json()
+            return jsonify({
+                'status': 'valid',
+                'account_name': d.get('name', ''),
+                'plan_tier': d.get('plan_type', ''),
+            })
+        elif resp.status_code == 401:
+            return jsonify({'status': 'invalid', 'error': 'Invalid API credentials'}), 401
+        else:
+            return jsonify({'status': 'error', 'error': 'ConvertKit API error'}), 502
+    except Exception as exc:
+        logger.warning('ConvertKit validate error for user %s: %s', current_user.id, exc)
+        return jsonify({'status': 'error', 'error': 'Validation failed'}), 502
+
+
+@integrations_bp.route('/api/integrations/convertkit/connect', methods=['POST'])
+@login_required
+def convertkit_connect():
     data = request.get_json(silent=True) or {}
     api_key = (data.get('api_key') or '').strip()
     api_secret = (data.get('api_secret') or '').strip()
     if not api_key:
         return jsonify({'error': 'api_key is required'}), 400
-
-    # Validate the key works by fetching subscriber count
-    try:
-        import requests as _req
-        resp = _req.get(
-            'https://api.convertkit.com/v3/subscribers',
-            params={'api_secret': api_secret or api_key, 'page': 1},
-            timeout=10,
-        )
-        resp.raise_for_status()
-    except Exception as exc:
-        logger.warning('ConvertKit API key validation failed for user %s: %s', current_user.id, exc)
-        return jsonify({'error': 'Invalid ConvertKit API key — could not authenticate.'}), 422
-
     from app.services.token_crypto import encrypt_token
     integration = UserIntegration.query.filter_by(
         user_id=current_user.id, provider='convertkit'
     ).first()
     if not integration:
         integration = UserIntegration(
-            id=generate_id(),
-            user_id=current_user.id,
-            provider='convertkit',
+            id=generate_id(), user_id=current_user.id, provider='convertkit',
         )
         db.session.add(integration)
-
     integration.access_token_enc = encrypt_token(api_key)
     if api_secret:
         integration.refresh_token_enc = encrypt_token(api_secret)
-    _mark_connected(integration, 'ConvertKit API key saved')
+    if data.get('account_name'):
+        integration.provider_account_id = str(data['account_name'])
+    _mark_connected(integration, 'ConvertKit API key saved via wizard')
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -1045,34 +1101,61 @@ def _upsert_contact_from_email(user_id: str, email: str, source: str = 'convertk
 
 # ── Kajabi — Courses & Memberships ───────────────────────────────────────────
 
-@integrations_bp.route('/api/integrations/kajabi/save', methods=['POST'])
+@integrations_bp.route('/api/integrations/kajabi/validate', methods=['POST'])
 @login_required
-def kajabi_save():
+def kajabi_validate():
     """
-    Save Kajabi API key + site subdomain (FR-KAJABI-01).
-    Body: {api_key, site_subdomain}
+    Validate a Kajabi API key and return account metadata (subdomain, site_name).
+    Rate-limited to 5 req/min per user (FR-AUTH-10).
+    Does not store the key.
     """
-    data          = request.get_json(silent=True) or {}
-    api_key       = (data.get('api_key') or '').strip()
-    subdomain     = (data.get('site_subdomain') or '').strip()
-    if not api_key:
-        return jsonify({'error': 'api_key is required'}), 400
+    if _wizard_rl_check('kajabi', current_user.id):
+        return jsonify({'status': 'error', 'error': 'Too many attempts — wait a minute and try again.'}), 429
 
-    # Light validation — Kajabi API v1 endpoint
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    if not api_key or len(api_key) < 20:
+        return jsonify({'status': 'invalid', 'error': 'Key too short'}), 400
+
     try:
         import requests as _req
         resp = _req.get(
-            'https://kajabi.com/api/v1/site',
-            headers={'Authorization': f'Bearer {api_key}',
-                     'Accept': 'application/json'},
+            'https://kajabi.com/api/v1/sites',
+            headers={'Authorization': f'Token {api_key}'},
             timeout=10,
         )
-        if resp.status_code not in (200, 401):
-            pass  # Accept even a 401 — key may still work for webhooks
+        if resp.status_code == 200:
+            sites = resp.json()
+            site = sites[0] if isinstance(sites, list) and sites else {}
+            return jsonify({
+                'status': 'valid',
+                'subdomain': site.get('subdomain', ''),
+                'site_name': site.get('name', ''),
+                'account_email': site.get('owner_email', ''),
+            })
         elif resp.status_code == 401:
-            return jsonify({'error': 'Invalid Kajabi API key — authentication failed.'}), 422
+            return jsonify({'status': 'invalid', 'error': 'Invalid API key'}), 401
+        else:
+            return jsonify({'status': 'error', 'error': 'Kajabi API error'}), 502
+    except _req.Timeout:
+        return jsonify({'status': 'error', 'error': 'Kajabi did not respond'}), 504
     except Exception as exc:
-        logger.warning('Kajabi API key validation skipped for user %s: %s', current_user.id, exc)
+        logger.warning('Kajabi validate error for user %s: %s', current_user.id, exc)
+        return jsonify({'status': 'error', 'error': 'Validation failed'}), 502
+
+
+@integrations_bp.route('/api/integrations/kajabi/connect', methods=['POST'])
+@login_required
+def kajabi_connect():
+    """
+    Store an already-validated Kajabi API key (FR-AUTH-05).
+    Body: {api_key, subdomain, site_name}
+    """
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    subdomain = (data.get('subdomain') or '').strip()
+    if not api_key:
+        return jsonify({'error': 'api_key is required'}), 400
 
     from app.services.token_crypto import encrypt_token
     integration = UserIntegration.query.filter_by(
@@ -1086,11 +1169,11 @@ def kajabi_save():
         )
         db.session.add(integration)
 
-    integration.access_token_enc    = encrypt_token(api_key)
+    integration.access_token_enc = encrypt_token(api_key)
     integration.provider_account_id = subdomain or None
-    _mark_connected(integration, 'Kajabi API key saved')
+    _mark_connected(integration, 'Kajabi API key connected via wizard')
     db.session.commit()
-    return jsonify({'ok': True})
+    return jsonify({'ok': True, 'subdomain': subdomain})
 
 
 @integrations_bp.route('/api/integrations/kajabi/clear', methods=['POST'])
@@ -1340,63 +1423,80 @@ def plaid_disconnect():
     return jsonify({'ok': True})
 
 
-# ── Alpaca — Brokerage & Trade Execution ─────────────────────────────────────
+# ── Alpaca — Guided wizard (API key + secret) ─────────────────────────────────
 
-@integrations_bp.route('/api/integrations/alpaca/save', methods=['POST'])
+@integrations_bp.route('/api/integrations/alpaca/validate', methods=['POST'])
 @login_required
-def alpaca_save():
-    """
-    Save Alpaca API key + secret (FR-ALPACA-01).
-    Body: {api_key, api_secret, paper?}  paper=true for paper trading account.
-    """
-    data       = request.get_json(silent=True) or {}
-    api_key    = (data.get('api_key') or '').strip()
+def alpaca_validate():
+    if _wizard_rl_check('alpaca', current_user.id):
+        return jsonify({'status': 'error', 'error': 'Too many attempts — wait a minute.'}), 429
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
     api_secret = (data.get('api_secret') or '').strip()
-    is_paper   = bool(data.get('paper', True))
+    if not api_key or not api_secret:
+        return jsonify({'status': 'invalid', 'error': 'Both API Key ID and Secret Key are required'}), 400
 
+    # Detect paper vs live by trying paper first, then live
+    import requests as _req
+    for base, env in [
+        ('https://paper-api.alpaca.markets', 'paper'),
+        ('https://api.alpaca.markets', 'live'),
+    ]:
+        try:
+            resp = _req.get(
+                f'{base}/v2/account',
+                headers={
+                    'APCA-API-KEY-ID': api_key,
+                    'APCA-API-SECRET-KEY': api_secret,
+                },
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                d = resp.json()
+                return jsonify({
+                    'status': 'valid',
+                    'account_status': d.get('status', ''),
+                    'account_type': env,
+                    'is_paper': env == 'paper',
+                    'buying_power': d.get('buying_power', ''),
+                    'equity': d.get('equity', ''),
+                    'account_id': d.get('id') or d.get('account_number') or '',
+                })
+        except Exception:
+            continue
+
+    return jsonify({'status': 'invalid', 'error': 'Invalid credentials — could not authenticate.'}), 401
+
+
+@integrations_bp.route('/api/integrations/alpaca/connect', methods=['POST'])
+@login_required
+def alpaca_connect():
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
+    api_secret = (data.get('api_secret') or '').strip()
     if not api_key or not api_secret:
         return jsonify({'error': 'api_key and api_secret are required'}), 400
-
-    base = 'https://paper-api.alpaca.markets' if is_paper else 'https://api.alpaca.markets'
-    try:
-        import requests as _req
-        resp = _req.get(
-            f'{base}/v2/account',
-            headers={
-                'APCA-API-KEY-ID':     api_key,
-                'APCA-API-SECRET-KEY': api_secret,
-            },
-            timeout=10,
-        )
-        resp.raise_for_status()
-        account_data = resp.json()
-    except Exception as exc:
-        logger.warning('Alpaca key validation failed for user %s: %s', current_user.id, exc)
-        return jsonify({'error': 'Invalid Alpaca credentials — could not authenticate.'}), 422
-
     from app.services.token_crypto import encrypt_token
     integration = UserIntegration.query.filter_by(
         user_id=current_user.id, provider='alpaca'
     ).first()
     if not integration:
         integration = UserIntegration(
-            id=generate_id(),
-            user_id=current_user.id,
-            provider='alpaca',
+            id=generate_id(), user_id=current_user.id, provider='alpaca',
         )
         db.session.add(integration)
-
-    integration.access_token_enc    = encrypt_token(api_key)
-    integration.refresh_token_enc   = encrypt_token(api_secret)
-    integration.provider_account_id = account_data.get('id') or account_data.get('account_number')
+    is_paper = bool(data.get('is_paper', True))
+    integration.access_token_enc = encrypt_token(api_key)
+    integration.refresh_token_enc = encrypt_token(api_secret)
+    integration.provider_account_id = data.get('account_id') or None
     meta = integration.get_meta()
     meta['paper'] = is_paper
-    meta['fintech_toggle'] = meta.get('fintech_toggle', False)
+    meta['fintech_toggle'] = meta.get('fintech_toggle', False) if not is_paper else False
     integration.set_meta(meta)
     env_label = 'paper' if is_paper else 'live'
-    _mark_connected(integration, f'Alpaca credentials saved ({env_label})')
+    _mark_connected(integration, f'Alpaca API key saved via wizard ({env_label})')
     db.session.commit()
-    return jsonify({'ok': True, 'account_id': integration.provider_account_id})
+    return jsonify({'ok': True})
 
 
 @integrations_bp.route('/api/integrations/alpaca/clear', methods=['POST'])
@@ -1631,6 +1731,10 @@ def _log_activity(user_id: str, provider: str, event_type: str,
         db.session.flush()
     except Exception as exc:
         logger.warning('Activity log write failed: %s', exc)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
 
 def _mark_connected(integration: UserIntegration, detail: str = 'OAuth connected'):

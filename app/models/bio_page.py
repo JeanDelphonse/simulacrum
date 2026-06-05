@@ -1,6 +1,6 @@
 """
-SIM-PRD-BIO-001 + SIM-PRD-BIOCHAT-001
-Bio page and bio page chat models.
+SIM-PRD-BIO-001 + SIM-PRD-BIOCHAT-001 + SIM-PRD-BIO-002
+Bio page, bio page chat, and PLG distribution models.
 """
 from __future__ import annotations
 import json
@@ -74,6 +74,11 @@ class BioPage(db.Model):
     contact_form_count  = db.Column(db.Integer, nullable=False, default=0)
     cta_click_count     = db.Column(db.Integer, nullable=False, default=0)
 
+    # PLG distribution (SIM-PRD-BIO-002)
+    show_badge          = db.Column(db.Boolean, nullable=False, default=True)
+    show_on_explore     = db.Column(db.Boolean, nullable=False, default=True)
+    share_prompt_shown  = db.Column(db.Boolean, nullable=False, default=False)
+
     created_at      = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at      = db.Column(db.DateTime, nullable=False, default=datetime.utcnow,
                                 onupdate=datetime.utcnow)
@@ -142,6 +147,9 @@ class BioPage(db.Model):
             'view_count': self.view_count,
             'contact_form_count': self.contact_form_count,
             'cta_click_count': self.cta_click_count,
+            'show_badge': self.show_badge,
+            'show_on_explore': self.show_on_explore,
+            'share_prompt_shown': self.share_prompt_shown,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
         }
@@ -198,6 +206,23 @@ class BioChatSession(db.Model):
             'ended_at': self.ended_at.isoformat() if self.ended_at else None,
             'created_at': self.created_at.isoformat(),
         }
+
+
+class BioPageVisit(db.Model):
+    """First-party visitor record for bio page analytics (SIM-PRD-BIO-002)."""
+    __tablename__ = 'bio_page_visits'
+
+    id           = db.Column(db.String(9),   primary_key=True, default=generate_id)
+    bio_page_id  = db.Column(db.String(9),   nullable=False, index=True)
+    visitor_hash = db.Column(db.String(64),  nullable=False)
+    referrer     = db.Column(db.String(255), nullable=False, default='')
+    utm_source   = db.Column(db.String(100), nullable=False, default='')
+    created_at   = db.Column(db.DateTime,    nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index('idx_bpv_page_date', 'bio_page_id', 'created_at'),
+        db.Index('idx_bpv_hash',      'bio_page_id', 'visitor_hash'),
+    )
 
 
 class BioChatMessage(db.Model):

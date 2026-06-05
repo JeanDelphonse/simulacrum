@@ -1,7 +1,7 @@
 import time
 import logging
 from datetime import datetime
-from flask import render_template, redirect, url_for, jsonify, request
+from flask import render_template, redirect, url_for, jsonify, request, send_from_directory, current_app
 from flask_login import current_user, login_required
 from app.blueprints.pages import pages_bp
 from app.extensions import db
@@ -43,10 +43,28 @@ def _get_landing_data():
     return data
 
 
+@pages_bp.route('/sitemap.xml')
+def sitemap():
+    return send_from_directory(
+        current_app.static_folder, 'sitemap.xml',
+        mimetype='application/xml'
+    )
+
+
 @pages_bp.route('/ping')
 def ping():
     """Lightweight keepalive — no DB queries. Hit by cron to keep Passenger warm."""
     return jsonify({'ok': True}), 200
+
+
+def _sim_price_usd() -> str:
+    """Return formatted simulation price from platform_settings, e.g. '$695'."""
+    try:
+        from app.models.platform_settings import PlatformSetting
+        cents = int(PlatformSetting.get('simulation_price') or current_app.config['SIMULATION_PRICE_CENTS'])
+    except Exception:
+        cents = int(current_app.config.get('SIMULATION_PRICE_CENTS', 69500))
+    return f'${cents // 100:,}' if cents % 100 == 0 else f'${cents / 100:,.2f}'
 
 
 @pages_bp.route('/')
@@ -56,7 +74,8 @@ def index():
     data = _get_landing_data()
     return render_template('landing.html',
                            testimonials=data['testimonials'],
-                           trust_stats=data['trust_stats'])
+                           trust_stats=data['trust_stats'],
+                           sim_price_usd=_sim_price_usd())
 
 
 @pages_bp.route('/dashboard')
@@ -115,7 +134,9 @@ def simulation_delete(sim_id):
 def simulation_confirmed(sim_id):
     from app.models.simulation import Simulation
     sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
-    return render_template('simulations/confirmed.html', simulation=sim)
+    cents = sim.amount_charged_cents or int(current_app.config.get('SIMULATION_PRICE_CENTS', 69500))
+    paid = f'${cents // 100:,}' if cents % 100 == 0 else f'${cents / 100:,.2f}'
+    return render_template('simulations/confirmed.html', simulation=sim, payment_amount=paid)
 
 
 @pages_bp.route('/simulations/<sim_id>')
@@ -289,7 +310,7 @@ def settings_integrations():
         stripe_error=request.args.get('stripe_error'),
         cal_connected=request.args.get('cal_connected') == '1',
         cal_error=request.args.get('cal_error'),
-        pandadoc_saved=request.args.get('pandadoc_saved') == '1',
+        pandadoc_connected=request.args.get('pandadoc_connected') == '1',
         pandadoc_error=request.args.get('pandadoc_error'),
         ck_saved=request.args.get('ck_saved') == '1',
         ck_error=request.args.get('ck_error'),
@@ -373,14 +394,42 @@ def admin_view():
     if not current_user.is_admin:
         from flask import abort
         abort(403)
+    from sqlalchemy import func
     from app.models.platform_settings import PlatformSetting
     from app.models.user import User
     from app.models.profile import UserProfile
+    from app.models.simulation import Simulation
+    from app.models.ai_interaction import AIInteraction
+    from app.extensions import db
+
     settings = {s.key: s.value for s in PlatformSetting.query.all()}
     users = User.query.order_by(User.created_at.desc()).limit(50).all()
     user_ids = [u.id for u in users]
     profiles = {p.user_id: p for p in UserProfile.query.filter(UserProfile.user_id.in_(user_ids)).all()}
-    return render_template('admin/index.html', settings=settings, users=users, profiles=profiles)
+
+    total_completed = Simulation.query.filter_by(status=Simulation.STATUS_COMPLETE).count()
+    total_refunded = Simulation.query.filter_by(status=Simulation.STATUS_REFUNDED).count()
+    revenue_row = db.session.query(
+        func.coalesce(func.sum(Simulation.amount_charged_cents), 0)
+    ).filter_by(status=Simulation.STATUS_COMPLETE).first()
+    total_revenue_cents = revenue_row[0] if revenue_row else 0
+    refund_rate = round(total_refunded / max(total_completed + total_refunded, 1) * 100, 2)
+
+    token_row = db.session.query(
+        func.coalesce(func.sum(AIInteraction.prompt_tokens), 0),
+        func.coalesce(func.sum(AIInteraction.completion_tokens), 0),
+    ).first()
+    total_tokens = (token_row[0] or 0) + (token_row[1] or 0)
+
+    revenue_stats = {
+        'total_revenue_usd': total_revenue_cents / 100,
+        'total_simulations_completed': total_completed,
+        'refund_rate_pct': refund_rate,
+        'total_tokens': total_tokens,
+    }
+
+    return render_template('admin/index.html', settings=settings, users=users,
+                           profiles=profiles, revenue_stats=revenue_stats)
 
 
 @pages_bp.route('/admin/feedback')
@@ -719,21 +768,45 @@ def advisor_gcc_view(client_uid, sim_id):
         import logging as _log
         _log.getLogger(__name__).error('advisor GCC data build failed: %s', _e)
 
-    # Profile card data for client
+    # Variables shared with gcc_view template
     from app.models.simulation import Simulation as _Sim, SimulationLayer as _SL, IncomeStream as _IS
     from app.models.layer6 import Layer6Outcome as _Out
+    from app.models.agent_action import AgentAction as _AA
+    from datetime import date as _date
+
+    sim_layers = _SL.query.filter_by(simulation_id=sim_id).order_by(_SL.layer_number).all()
+    layer_ids = [l.id for l in sim_layers]
+
+    outcome_rows = _db.session.query(
+        _Out.layer_number, _func.sum(_Out.actual_income).label('total'),
+    ).filter_by(simulation_id=sim_id).group_by(_Out.layer_number).all()
+    income_by_layer = {r.layer_number: float(r.total or 0) for r in outcome_rows}
+    total_income = sum(income_by_layer.values())
+
+    this_month = _date.today().strftime('%Y-%m')
+    income_this_month = float(
+        _db.session.query(_func.sum(_Out.actual_income))
+        .filter_by(simulation_id=sim_id, reporting_month=this_month).scalar() or 0
+    )
+
+    recent_income = _Out.query.filter_by(simulation_id=sim_id).order_by(
+        _Out.created_at.desc()
+    ).limit(20).all()
+
+    layer_actions = _AA.query.filter_by(simulation_id=sim_id).order_by(
+        _AA.created_at.desc()
+    ).all()
+
     client_zone_count = _Sim.query.filter_by(user_id=client_uid).count()
-    layer_ids = [l.id for l in _SL.query.filter_by(simulation_id=sim_id).all()]
     client_projected_annual = 0
     if layer_ids:
         client_projected_annual = sum(
             (s.est_monthly_high or 0) * 12
             for s in _IS.query.filter(_IS.layer_id.in_(layer_ids)).all()
         )
-    client_actual_income = float(
-        _db.session.query(_db.func.sum(_Out.actual_income))
-        .filter_by(simulation_id=sim_id).scalar() or 0
-    )
+
+    from flask import request as _req
+    active_tab = _req.args.get('tab', 'queue')
 
     return render_template(
         'simulations/layer6.html',
@@ -744,6 +817,19 @@ def advisor_gcc_view(client_uid, sim_id):
         action_pills=[p.to_pill_dict() for p in action_pills],
         escalation_by_layer=escalation_by_layer,
         complete_by_layer=complete_by_layer,
+        active_items=[],
+        active_item_count=0,
+        income_by_layer=income_by_layer,
+        total_income=total_income,
+        income_this_month=income_this_month,
+        urgent_layers=[],
+        recent_income=[r.to_dict() for r in recent_income],
+        sim_layers=sim_layers,
+        layer6_config=layer6_cfg.to_dict() if layer6_cfg else None,
+        active_tab=active_tab,
+        layer_actions=[a.to_dict() for a in layer_actions],
+        active_flags=[],
+        active_suggestions=[],
         advisor_mode=True,
         advisor_access=access,
         advisor_notes_by_layer=advisor_notes_by_layer,
@@ -756,7 +842,7 @@ def advisor_gcc_view(client_uid, sim_id):
         profile=client_profile,
         zone_count=client_zone_count,
         projected_annual=client_projected_annual,
-        actual_income=client_actual_income,
+        actual_income=total_income,
     )
 
 

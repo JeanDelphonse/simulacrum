@@ -8,182 +8,216 @@
 {% if active_tab == 'integrations' %}
 <style>
 /* ── Integration card grid ── */
-.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.35); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(255,255,255,.07); }
+.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #9CA3AF; margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(0,0,0,.07); font-family: 'DM Sans', sans-serif; }
 .integ-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 @media (max-width: 820px) { .integ-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 540px) { .integ-grid { grid-template-columns: 1fr; } }
-.integ-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 1.25rem; min-height: 180px; display: flex; flex-direction: column; gap: .45rem; position: relative; }
+.integ-card { background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 12px; padding: 1.25rem; min-height: 180px; display: flex; flex-direction: column; gap: .45rem; position: relative; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
 .integ-card-top { display: flex; align-items: flex-start; gap: .75rem; }
 .integ-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; }
 .integ-card-info { flex: 1; min-width: 0; }
-.integ-card-name { font-weight: 700; font-size: .9rem; color: #e8eaf0; line-height: 1.25; }
-.integ-card-desc { font-size: .72rem; color: rgba(255,255,255,.38); margin-top: .1rem; }
-.integ-badge { position: absolute; top: 1rem; right: 1rem; font-size: .62rem; font-weight: 700; padding: .15rem .55rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
-.integ-badge.connected { background: rgba(134,239,172,.15); color: #86efac; }
-.integ-badge.not_connected { background: rgba(255,255,255,.07); color: rgba(255,255,255,.4); }
-.integ-badge.expired { background: rgba(245,200,66,.15); color: #f5c842; }
-.integ-badge.legal { background: rgba(245,200,66,.08); color: #f5c842; }
-.integ-conn-details { font-size: .72rem; color: rgba(255,255,255,.4); line-height: 1.55; }
+.integ-card-name { font-weight: 700; font-size: .9rem; color: #0D1B3E; line-height: 1.25; font-family: 'DM Sans', sans-serif; }
+.integ-card-desc { font-size: .72rem; color: #9CA3AF; margin-top: .1rem; font-family: 'DM Sans', sans-serif; }
+.integ-badge { position: absolute; top: 1rem; right: 1rem; font-size: .62rem; font-weight: 700; padding: .15rem .55rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
+.integ-badge.connected { background: rgba(34,197,94,.12); color: #15803d; }
+.integ-badge.not_connected { background: rgba(0,0,0,.06); color: #6B7B8D; }
+.integ-badge.expired { background: rgba(201,149,42,.12); color: #92400e; }
+.integ-badge.legal { background: rgba(201,149,42,.08); color: #92400e; }
+.integ-conn-details { font-size: .72rem; color: #6B7B8D; line-height: 1.55; font-family: 'DM Sans', sans-serif; }
 .integ-health { display: inline-flex; align-items: center; gap: .3rem; }
 .integ-health-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.integ-health-dot.healthy { background: #86efac; }
-.integ-health-dot.intermittent { background: #f5c842; }
-.integ-health-dot.failing, .integ-health-dot.expired { background: #fca5a5; }
-.integ-health-dot.not_connected { background: rgba(255,255,255,.2); }
-.integ-primary-btn { width: 100%; margin-top: .65rem; padding: .5rem; font-size: .8rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: opacity .15s; text-align: center; text-decoration: none; display: block; }
-.integ-primary-btn.navy { background: #1a3a5c; color: #e8eaf0; }
+.integ-health-dot.healthy { background: #22c55e; }
+.integ-health-dot.intermittent { background: #C9952A; }
+.integ-health-dot.failing, .integ-health-dot.expired { background: #dc2626; }
+.integ-health-dot.not_connected { background: #D1D5DB; }
+.integ-primary-btn { width: 100%; margin-top: .65rem; padding: .5rem; font-size: .8rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: opacity .15s; text-align: center; text-decoration: none; display: block; font-family: 'DM Sans', sans-serif; }
+.integ-primary-btn.navy { background: #0D1B3E; color: #fff; }
 .integ-primary-btn.navy:hover { opacity: .85; }
-.integ-primary-btn.outlined { background: transparent; border: 1px solid rgba(19,168,158,.4); color: #13A89E; }
-.integ-primary-btn.outlined:hover { background: rgba(19,168,158,.07); }
-.integ-primary-btn.amber { background: rgba(245,200,66,.12); border: 1px solid rgba(245,200,66,.3); color: #f5c842; }
-.integ-primary-btn.amber:hover { background: rgba(245,200,66,.18); }
+.integ-primary-btn.outlined { background: transparent; border: 1px solid rgba(15,123,114,.4); color: #0F7B72; }
+.integ-primary-btn.outlined:hover { background: rgba(15,123,114,.06); }
+.integ-primary-btn.amber { background: rgba(201,149,42,.1); border: 1px solid rgba(201,149,42,.3); color: #92400e; }
+.integ-primary-btn.amber:hover { background: rgba(201,149,42,.16); }
 .integ-secondary-links { display: flex; gap: 1rem; margin-top: .3rem; }
-.integ-secondary-link { font-size: .72rem; color: rgba(255,255,255,.35); text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; transition: color .15s; }
-.integ-secondary-link:hover { color: rgba(255,255,255,.65); }
-.integ-secondary-link.danger { color: rgba(252,165,165,.5); }
-.integ-secondary-link.danger:hover { color: #fca5a5; }
-.integ-agents { font-size: .68rem; color: rgba(255,255,255,.25); margin-top: auto; padding-top: .4rem; line-height: 1.4; }
+.integ-secondary-link { font-size: .72rem; color: #9CA3AF; text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; transition: color .15s; font-family: 'DM Sans', sans-serif; }
+.integ-secondary-link:hover { color: #0D1B3E; }
+.integ-secondary-link.danger { color: rgba(220,38,38,.55); }
+.integ-secondary-link.danger:hover { color: #b91c1c; }
+.integ-agents { font-size: .68rem; color: #9CA3AF; margin-top: auto; padding-top: .4rem; line-height: 1.4; font-family: 'DM Sans', sans-serif; }
 /* Manage panel */
-.integ-manage-panel { background: rgba(255,255,255,.025); border-top: 1px solid rgba(255,255,255,.07); margin: .75rem -1.25rem -1.25rem; padding: 1rem 1.25rem; border-radius: 0 0 12px 12px; display: none; }
+.integ-manage-panel { background: #F8F9FA; border-top: 1px solid rgba(0,0,0,.07); margin: .75rem -1.25rem -1.25rem; padding: 1rem 1.25rem; border-radius: 0 0 12px 12px; display: none; }
 .integ-manage-panel.open { display: block; }
-.integ-manage-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.35); margin-bottom: .75rem; display: flex; align-items: center; justify-content: space-between; }
+.integ-manage-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9CA3AF; margin-bottom: .75rem; display: flex; align-items: center; justify-content: space-between; font-family: 'DM Sans', sans-serif; }
 .integ-cfg-row { margin-bottom: .75rem; }
-.integ-cfg-label { font-size: .72rem; font-weight: 600; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; }
-.integ-cfg-input { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: .35rem .6rem; color: #e8eaf0; font-size: .8rem; width: 100%; }
-.integ-cfg-input:focus { outline: none; border-color: rgba(19,168,158,.4); }
+.integ-cfg-label { font-size: .72rem; font-weight: 600; color: #6B7B8D; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; font-family: 'DM Sans', sans-serif; }
+.integ-cfg-input { background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 6px; padding: .35rem .6rem; color: #1A1A2E; font-size: .8rem; width: 100%; font-family: 'DM Sans', sans-serif; }
+.integ-cfg-input:focus { outline: none; border-color: rgba(15,123,114,.4); box-shadow: 0 0 0 3px rgba(15,123,114,.1); }
 .integ-cfg-save-btn { margin-top: .5rem; }
 /* Activity log panel */
-.integ-activity-panel { background: rgba(255,255,255,.025); border-top: 1px solid rgba(255,255,255,.07); margin: .75rem -1.25rem -1.25rem; padding: 1rem 1.25rem; border-radius: 0 0 12px 12px; display: none; max-height: 300px; overflow-y: auto; }
+.integ-activity-panel { background: #F8F9FA; border-top: 1px solid rgba(0,0,0,.07); margin: .75rem -1.25rem -1.25rem; padding: 1rem 1.25rem; border-radius: 0 0 12px 12px; display: none; max-height: 300px; overflow-y: auto; }
 .integ-activity-panel.open { display: block; }
-.integ-activity-entry { display: flex; gap: .75rem; padding: .45rem 0; border-bottom: 1px solid rgba(255,255,255,.04); align-items: flex-start; }
+.integ-activity-entry { display: flex; gap: .75rem; padding: .45rem 0; border-bottom: 1px solid rgba(0,0,0,.05); align-items: flex-start; }
 .integ-activity-entry:last-child { border-bottom: none; }
 .integ-activity-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: .25rem; flex-shrink: 0; }
-.integ-activity-dot.success { background: #86efac; }
-.integ-activity-dot.error { background: #fca5a5; }
-.integ-activity-dot.retry { background: #f5c842; }
-.integ-activity-time { font-size: .68rem; color: rgba(255,255,255,.3); white-space: nowrap; }
-.integ-activity-type { font-size: .75rem; color: rgba(255,255,255,.7); flex: 1; }
-.integ-activity-dir { font-size: .65rem; color: rgba(255,255,255,.3); }
+.integ-activity-dot.success { background: #22c55e; }
+.integ-activity-dot.error { background: #dc2626; }
+.integ-activity-dot.retry { background: #C9952A; }
+.integ-activity-time { font-size: .68rem; color: #9CA3AF; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
+.integ-activity-type { font-size: .75rem; color: #374151; flex: 1; font-family: 'DM Sans', sans-serif; }
+.integ-activity-dir { font-size: .65rem; color: #9CA3AF; font-family: 'DM Sans', sans-serif; }
 /* Disconnect modal */
-.integ-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.integ-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; display: none; align-items: center; justify-content: center; }
 .integ-modal-overlay.open { display: flex; }
-.integ-modal { background: #0f1823; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 1.75rem; max-width: 420px; width: 100%; margin: 1rem; }
-.integ-modal-title { font-size: 1.05rem; font-weight: 700; color: #e8eaf0; margin-bottom: .5rem; }
-.integ-modal-body { font-size: .875rem; color: rgba(255,255,255,.6); margin-bottom: 1rem; line-height: 1.6; }
-.integ-modal-agents { background: rgba(255,255,255,.04); border-radius: 8px; padding: .65rem .85rem; font-size: .78rem; color: rgba(255,255,255,.5); margin-bottom: 1.25rem; line-height: 1.6; }
+.integ-modal { background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; padding: 1.75rem; max-width: 420px; width: 100%; margin: 1rem; box-shadow: 0 16px 56px rgba(0,0,0,.15); }
+.integ-modal-title { font-size: 1.05rem; font-weight: 700; color: #0D1B3E; margin-bottom: .5rem; font-family: 'DM Sans', sans-serif; }
+.integ-modal-body { font-size: .875rem; color: #6B7B8D; margin-bottom: 1rem; line-height: 1.6; font-family: 'DM Sans', sans-serif; }
+.integ-modal-agents { background: #F8F9FA; border-radius: 8px; padding: .65rem .85rem; font-size: .78rem; color: #6B7B8D; margin-bottom: 1.25rem; line-height: 1.6; font-family: 'DM Sans', sans-serif; }
 .integ-modal-actions { display: flex; gap: .75rem; justify-content: flex-end; }
 /* API key save modals */
-.integ-apikey-modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.integ-apikey-modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; display: none; align-items: center; justify-content: center; }
 .integ-apikey-modal.open { display: flex; }
-.integ-apikey-box { background: #0f1823; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 1.75rem; max-width: 400px; width: 100%; margin: 1rem; }
+.integ-apikey-box { background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; padding: 1.75rem; max-width: 400px; width: 100%; margin: 1rem; box-shadow: 0 16px 56px rgba(0,0,0,.15); }
 @media (max-width: 480px) { .integ-apikey-box, .integ-modal { max-width: 100%; margin: .5rem; } }
-.integ-flash { padding: .5rem .9rem; border-radius: 8px; font-size: .82rem; margin-bottom: .6rem; }
-.integ-flash.ok { background: rgba(134,239,172,.12); color: #86efac; }
-.integ-flash.err { background: rgba(252,165,165,.1); color: #fca5a5; }
+.integ-flash { padding: .5rem .9rem; border-radius: 8px; font-size: .82rem; margin-bottom: .6rem; font-family: 'DM Sans', sans-serif; }
+.integ-flash.ok { background: rgba(34,197,94,.09); color: #15803d; }
+.integ-flash.err { background: rgba(220,38,38,.08); color: #b91c1c; }
+/* Kajabi wizard step dots */
+.kj-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.15); border: 1.5px solid rgba(255,255,255,.25); display: inline-block; transition: background .2s, border-color .2s; }
+.kj-dot.active { background: #00a896; border-color: #00a896; }
+.kj-dot.done { background: #00a896; border-color: #00a896; }
 </style>
 {% endif %}
 <style>
 .settings-layout { display: flex; gap: 2rem; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
 .settings-nav { width: 200px; flex-shrink: 0; }
-.settings-nav-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.35); margin-bottom: .75rem; }
-.settings-nav-link { display: block; padding: .45rem .75rem; border-radius: 6px; font-size: .875rem; color: rgba(255,255,255,.6); text-decoration: none; margin-bottom: .2rem; transition: background .15s, color .15s; }
-.settings-nav-link:hover { background: rgba(255,255,255,.06); color: #e8eaf0; }
-.settings-nav-link.active { background: rgba(245,200,66,.12); color: #f5c842; font-weight: 600; }
+.settings-nav-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #9CA3AF; margin-bottom: .75rem; }
+.settings-nav-link { display: block; padding: .45rem .75rem; border-radius: 6px; font-size: .875rem; color: #6B7B8D; text-decoration: none; margin-bottom: .2rem; transition: background .15s, color .15s; font-family: 'DM Sans', sans-serif; }
+.settings-nav-link:hover { background: rgba(0,0,0,.04); color: #0D1B3E; }
+.settings-nav-link.active { background: rgba(15,123,114,.1); color: #0F7B72; font-weight: 600; }
 .settings-panel { flex: 1; min-width: 0; }
 .settings-section { margin-bottom: 2rem; }
-.settings-section-title { font-size: 1rem; font-weight: 700; color: #e8eaf0; margin-bottom: 1.25rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.settings-section-title { font-size: 1rem; font-weight: 700; color: #0D1B3E; margin-bottom: 1.25rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(0,0,0,.08); font-family: 'DM Sans', sans-serif; }
 .settings-row { display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1rem; }
-.settings-label { font-size: .8rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; }
-.settings-hint { font-size: .78rem; color: rgba(255,255,255,.35); margin-top: .2rem; }
-.settings-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,.06); }
-.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: .6rem 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+.settings-label { font-size: .8rem; font-weight: 600; color: #6B7B8D; text-transform: uppercase; letter-spacing: .04em; font-family: 'DM Sans', sans-serif; }
+.settings-hint { font-size: .78rem; color: #9CA3AF; margin-top: .2rem; font-family: 'DM Sans', sans-serif; }
+.settings-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,.06); }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: .6rem 0; border-bottom: 1px solid rgba(0,0,0,.05); }
 .toggle-row:last-child { border-bottom: none; }
-.toggle-label { font-size: .875rem; color: #e8eaf0; }
-.toggle-desc { font-size: .78rem; color: rgba(255,255,255,.4); }
+.toggle-label { font-size: .875rem; color: #1A1A2E; font-family: 'DM Sans', sans-serif; }
+.toggle-desc { font-size: .78rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
 .toggle-switch { position: relative; width: 40px; height: 22px; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
-.toggle-slider { position: absolute; inset: 0; background: rgba(255,255,255,.12); border-radius: 22px; cursor: pointer; transition: background .2s; }
-.toggle-slider:before { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform .2s; }
-.toggle-switch input:checked + .toggle-slider { background: #f5c842; }
+.toggle-slider { position: absolute; inset: 0; background: rgba(0,0,0,.15); border-radius: 22px; cursor: pointer; transition: background .2s; }
+.toggle-slider:before { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.toggle-switch input:checked + .toggle-slider { background: #0F7B72; }
 .toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
-.bio-panel { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 1rem; }
-.bio-preview { font-size: .875rem; line-height: 1.7; color: rgba(255,255,255,.8); white-space: pre-wrap; }
-.bio-section-title { font-weight: 700; color: #e8eaf0; }
-.bio-meta { font-size: .75rem; color: rgba(255,255,255,.35); margin-top: .5rem; }
+.bio-panel { background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 8px; padding: 1rem; }
+.bio-preview { font-size: .875rem; line-height: 1.7; color: #1A1A2E; white-space: pre-wrap; font-family: 'DM Sans', sans-serif; }
+.bio-section-title { font-weight: 700; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
+.bio-meta { font-size: .75rem; color: #9CA3AF; margin-top: .5rem; font-family: 'DM Sans', sans-serif; }
 .bio-actions-row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
-.username-check { font-size: .78rem; margin-top: .25rem; }
-.username-check.ok { color: #86efac; }
-.username-check.err { color: #fca5a5; }
-.avatar-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,.12); }
-.avatar-initials { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg,#1a4a6b,#0e7490); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: #fff; }
+.username-check { font-size: .78rem; margin-top: .25rem; font-family: 'DM Sans', sans-serif; }
+.username-check.ok { color: #15803d; }
+.username-check.err { color: #b91c1c; }
+.avatar-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(0,0,0,.1); }
+.avatar-initials { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg,#0F7B72,#13A89E); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: #fff; }
 .avatar-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-.vis-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; margin-bottom: .75rem; overflow: hidden; }
+.vis-card { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 10px; margin-bottom: .75rem; overflow: hidden; }
 .vis-card-header { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; cursor: pointer; }
-.vis-drag-handle { color: rgba(255,255,255,.25); cursor: grab; font-size: 1.1rem; }
-.vis-sim-name { font-weight: 600; font-size: .9rem; flex: 1; }
-.vis-zone { font-size: .78rem; color: rgba(255,255,255,.45); }
-.vis-card-body { padding: 0 1rem 1rem; border-top: 1px solid rgba(255,255,255,.06); display: none; }
+.vis-drag-handle { color: #9CA3AF; cursor: grab; font-size: 1.1rem; }
+.vis-sim-name { font-weight: 600; font-size: .9rem; flex: 1; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
+.vis-zone { font-size: .78rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
+.vis-card-body { padding: 0 1rem 1rem; border-top: 1px solid rgba(0,0,0,.06); display: none; }
 .vis-card-body.open { display: block; padding-top: .75rem; }
-.vis-preview-card { background: #fff; border-radius: 10px; padding: 1rem; margin-top: .75rem; }
-.vis-preview-zone { font-size: .85rem; font-weight: 700; color: #111827; }
-.vis-preview-tagline { font-size: .8rem; color: #374151; margin-top: .25rem; }
+.vis-preview-card { background: #F8F9FA; border: 1px solid rgba(0,0,0,.06); border-radius: 10px; padding: 1rem; margin-top: .75rem; }
+.vis-preview-zone { font-size: .85rem; font-weight: 700; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
+.vis-preview-tagline { font-size: .8rem; color: #374151; margin-top: .25rem; font-family: 'DM Sans', sans-serif; }
 .vis-preview-services { margin-top: .5rem; display: flex; flex-wrap: wrap; gap: .3rem; }
-.vis-preview-pill { font-size: .72rem; background: #f3f4f6; color: #374151; border-radius: 20px; padding: .15rem .5rem; }
-.avail-badge { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
-.avail-available { background: rgba(34,197,94,.15); color: #86efac; }
-.avail-limited { background: rgba(245,200,66,.15); color: #f5c842; }
-.avail-unavailable { background: rgba(255,255,255,.08); color: rgba(255,255,255,.4); }
+.vis-preview-pill { font-size: .72rem; background: #F3F4F6; color: #374151; border-radius: 20px; padding: .15rem .5rem; font-family: 'DM Sans', sans-serif; }
+.avail-badge { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; font-family: 'DM Sans', sans-serif; }
+.avail-available { background: rgba(34,197,94,.12); color: #15803d; }
+.avail-limited { background: rgba(201,149,42,.12); color: #92400e; }
+.avail-unavailable { background: rgba(0,0,0,.06); color: #6B7B8D; }
 .session-list { display: flex; flex-direction: column; gap: .5rem; }
-.session-row { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: .75rem 1rem; display: flex; align-items: center; gap: 1rem; }
-.session-device { font-weight: 600; font-size: .875rem; flex: 1; }
-.session-meta { font-size: .75rem; color: rgba(255,255,255,.4); }
-.session-current-badge { font-size: .68rem; background: rgba(245,200,66,.15); color: #f5c842; border-radius: 20px; padding: .1rem .45rem; font-weight: 700; }
-.delete-zone { border: 1px solid rgba(239,68,68,.25); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
-.delete-zone p { font-size: .875rem; color: rgba(255,255,255,.6); margin-bottom: .75rem; }
-.publish-bar { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1.5rem; }
-.publish-status { font-size: .875rem; }
-.publish-status.live { color: #86efac; font-weight: 700; }
-.publish-status.draft { color: rgba(255,255,255,.45); }
-.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #1a2235; border: 1px solid rgba(245,200,66,.3); color: #f5c842; padding: .65rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.session-row { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 8px; padding: .75rem 1rem; display: flex; align-items: center; gap: 1rem; }
+.session-device { font-weight: 600; font-size: .875rem; flex: 1; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
+.session-meta { font-size: .75rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
+.session-current-badge { font-size: .68rem; background: rgba(15,123,114,.12); color: #0F7B72; border-radius: 20px; padding: .1rem .45rem; font-weight: 700; font-family: 'DM Sans', sans-serif; }
+.delete-zone { border: 1px solid rgba(220,38,38,.2); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+.delete-zone p { font-size: .875rem; color: #6B7B8D; margin-bottom: .75rem; font-family: 'DM Sans', sans-serif; }
+.publish-bar { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1.5rem; }
+.publish-status { font-size: .875rem; font-family: 'DM Sans', sans-serif; }
+.publish-status.live { color: #15803d; font-weight: 700; }
+.publish-status.draft { color: #6B7B8D; }
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #0D1B3E; border: 1px solid rgba(15,123,114,.4); color: #fff; padding: .65rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity .25s; pointer-events: none; font-family: 'DM Sans', sans-serif; }
 .toast.show { opacity: 1; }
 @media (max-width: 640px) { .settings-layout { flex-direction: column; } .settings-nav { width: 100%; display: flex; gap: .5rem; overflow-x: auto; } .settings-nav-title { display: none; } .settings-nav-link { white-space: nowrap; } }
 /* ── My Chats ── */
 .chats-search-row { display: flex; gap: .6rem; margin-bottom: 1.25rem; align-items: center; }
-.chats-search-input { flex: 1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 7px; padding: .45rem .75rem; color: #e8eaf0; font-size: .875rem; }
-.chats-search-input::placeholder { color: rgba(255,255,255,.3); }
-.chats-search-input:focus { outline: none; border-color: rgba(19,168,158,.5); }
-.chats-sort-select { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 7px; padding: .42rem .6rem; color: #e8eaf0; font-size: .8rem; }
-.chats-group-hdr { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.35); margin: 1.1rem 0 .4rem; padding-bottom: .3rem; border-bottom: 1px solid rgba(255,255,255,.06); }
-.chat-session-row { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: .65rem 1rem; display: flex; align-items: center; gap: .85rem; margin-bottom: .35rem; cursor: pointer; transition: background .15s; }
-.chat-session-row:hover { background: rgba(255,255,255,.06); }
-.chat-session-row.active-thread { background: rgba(19,168,158,.08); border-color: rgba(19,168,158,.25); }
-.chat-session-date { font-size: .72rem; color: rgba(255,255,255,.4); white-space: nowrap; flex-shrink: 0; }
-.chat-session-preview { flex: 1; font-size: .82rem; color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chat-session-badge { font-size: .68rem; background: rgba(255,255,255,.08); color: rgba(255,255,255,.45); border-radius: 20px; padding: .1rem .45rem; flex-shrink: 0; }
-.chat-session-del { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.2); font-size: .95rem; padding: .2rem .3rem; border-radius: 4px; transition: color .15s; flex-shrink: 0; }
-.chat-session-del:hover { color: #fca5a5; }
-.chat-thread-view { margin-top: 1.25rem; background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; overflow: hidden; }
-.chat-thread-hdr { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1rem; border-bottom: 1px solid rgba(255,255,255,.07); font-size: .78rem; color: rgba(255,255,255,.45); }
-.chat-thread-back { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.5); font-size: .8rem; padding: 0; }
-.chat-thread-back:hover { color: #e8eaf0; }
+.chats-search-input { flex: 1; background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 7px; padding: .45rem .75rem; color: #1A1A2E; font-size: .875rem; font-family: 'DM Sans', sans-serif; }
+.chats-search-input::placeholder { color: #9CA3AF; }
+.chats-search-input:focus { outline: none; border-color: rgba(15,123,114,.5); box-shadow: 0 0 0 3px rgba(15,123,114,.1); }
+.chats-sort-select { background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 7px; padding: .42rem .6rem; color: #1A1A2E; font-size: .8rem; font-family: 'DM Sans', sans-serif; }
+.chats-group-hdr { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9CA3AF; margin: 1.1rem 0 .4rem; padding-bottom: .3rem; border-bottom: 1px solid rgba(0,0,0,.06); font-family: 'DM Sans', sans-serif; }
+.chat-session-row { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 8px; padding: .65rem 1rem; display: flex; align-items: center; gap: .85rem; margin-bottom: .35rem; cursor: pointer; transition: background .15s; }
+.chat-session-row:hover { background: #F8F9FA; }
+.chat-session-row.active-thread { background: rgba(15,123,114,.06); border-color: rgba(15,123,114,.25); }
+.chat-session-date { font-size: .72rem; color: #9CA3AF; white-space: nowrap; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
+.chat-session-preview { flex: 1; font-size: .82rem; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
+.chat-session-badge { font-size: .68rem; background: rgba(0,0,0,.06); color: #6B7B8D; border-radius: 20px; padding: .1rem .45rem; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
+.chat-session-del { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: .95rem; padding: .2rem .3rem; border-radius: 4px; transition: color .15s; flex-shrink: 0; }
+.chat-session-del:hover { color: #b91c1c; }
+.chat-thread-view { margin-top: 1.25rem; background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 10px; overflow: hidden; }
+.chat-thread-hdr { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1rem; border-bottom: 1px solid rgba(0,0,0,.07); font-size: .78rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
+.chat-thread-back { background: none; border: none; cursor: pointer; color: #6B7B8D; font-size: .8rem; padding: 0; font-family: 'DM Sans', sans-serif; }
+.chat-thread-back:hover { color: #0D1B3E; }
 .chat-thread-msgs { max-height: 420px; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .6rem; }
 .chat-thread-msg { max-width: 78%; }
 .chat-thread-msg.user { align-self: flex-end; }
 .chat-thread-msg.bot  { align-self: flex-start; }
-.chat-thread-bubble { padding: .55rem .8rem; border-radius: 10px; font-size: .84rem; line-height: 1.55; }
-.chat-thread-msg.user  .chat-thread-bubble { background: #1a4a6b; color: #e0f2fe; }
-.chat-thread-msg.bot   .chat-thread-bubble { background: rgba(255,255,255,.06); color: #e8eaf0; border-left: 3px solid #13A89E; }
-.chat-thread-ts { font-size: .68rem; color: rgba(255,255,255,.3); margin-top: .2rem; }
+.chat-thread-bubble { padding: .55rem .8rem; border-radius: 10px; font-size: .84rem; line-height: 1.55; font-family: 'DM Sans', sans-serif; }
+.chat-thread-msg.user  .chat-thread-bubble { background: #0D1B3E; color: #e0f2fe; }
+.chat-thread-msg.bot   .chat-thread-bubble { background: #F3F4F6; color: #1A1A2E; border-left: 3px solid #0F7B72; }
+.chat-thread-ts { font-size: .68rem; color: #9CA3AF; margin-top: .2rem; font-family: 'DM Sans', sans-serif; }
 .chat-thread-msg.user  .chat-thread-ts { text-align: right; }
-.chat-thread-continue { display: block; text-align: center; padding: .65rem 1rem; border-top: 1px solid rgba(255,255,255,.06); font-size: .8rem; color: #13A89E; text-decoration: none; }
-.chat-thread-continue:hover { background: rgba(19,168,158,.06); }
-.chats-load-more { display: block; width: 100%; margin-top: .75rem; padding: .5rem; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 7px; color: rgba(255,255,255,.5); font-size: .82rem; cursor: pointer; text-align: center; }
-.chats-load-more:hover { background: rgba(255,255,255,.07); color: #e8eaf0; }
-.chats-empty { font-size: .875rem; color: rgba(255,255,255,.4); padding: 2rem 0; text-align: center; }
-.chats-del-confirm { display: flex; align-items: center; gap: .6rem; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 6px; padding: .45rem .75rem; margin-top: .3rem; font-size: .78rem; color: rgba(255,255,255,.7); }
+.chat-thread-continue { display: block; text-align: center; padding: .65rem 1rem; border-top: 1px solid rgba(0,0,0,.06); font-size: .8rem; color: #0F7B72; text-decoration: none; font-family: 'DM Sans', sans-serif; }
+.chat-thread-continue:hover { background: rgba(15,123,114,.04); }
+.chats-load-more { display: block; width: 100%; margin-top: .75rem; padding: .5rem; background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 7px; color: #6B7B8D; font-size: .82rem; cursor: pointer; text-align: center; font-family: 'DM Sans', sans-serif; }
+.chats-load-more:hover { background: #F8F9FA; color: #0D1B3E; }
+.chats-empty { font-size: .875rem; color: #9CA3AF; padding: 2rem 0; text-align: center; font-family: 'DM Sans', sans-serif; }
+.chats-del-confirm { display: flex; align-items: center; gap: .6rem; background: rgba(220,38,38,.06); border: 1px solid rgba(220,38,38,.18); border-radius: 6px; padding: .45rem .75rem; margin-top: .3rem; font-size: .78rem; color: #374151; font-family: 'DM Sans', sans-serif; }
 .chats-del-confirm button { background: none; border: none; cursor: pointer; font-size: .78rem; padding: 0 .3rem; }
-.chats-del-confirm .confirm-yes { color: #fca5a5; }
-.chats-del-confirm .confirm-no  { color: rgba(255,255,255,.4); }
+.chats-del-confirm .confirm-yes { color: #b91c1c; }
+.chats-del-confirm .confirm-no  { color: #6B7B8D; }
+/* ── Bio page editor (inline in profile tab) ── */
+.bp-editor-section { border: 1px solid rgba(255,255,255,.07); border-radius: 8px; margin-bottom: .5rem; overflow: hidden; }
+.bp-editor-header { width: 100%; background: none; border: none; padding: .75rem 1rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: .875rem; font-weight: 600; color: #e8eaf0; text-align: left; font-family: 'DM Sans', sans-serif; }
+.bp-editor-header:hover { background: rgba(255,255,255,.04); }
+.bp-editor-body { padding: 1rem; display: none; border-top: 1px solid rgba(255,255,255,.07); }
+.bp-editor-body.open { display: block; }
+.bp-form-group { margin-bottom: .9rem; }
+.bp-form-group label { display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9CA3AF; margin-bottom: .3rem; font-family: 'DM Sans', sans-serif; }
+.bp-form-group input, .bp-form-group textarea { width: 100%; padding: .5rem .75rem; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; font-size: .875rem; color: #e8eaf0; background: rgba(255,255,255,.04); font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
+.bp-form-group input:focus, .bp-form-group textarea:focus { outline: none; border-color: rgba(15,123,114,.5); box-shadow: 0 0 0 3px rgba(15,123,114,.1); }
+.bp-form-group textarea { resize: vertical; min-height: 80px; }
+.bp-custom-toggle { display: flex; align-items: center; gap: .45rem; margin-top: .4rem; font-size: .78rem; color: #9CA3AF; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.bp-theme-options { display: flex; gap: .6rem; margin-top: .25rem; }
+.bp-theme-btn { flex: 1; padding: .45rem; border-radius: 8px; border: 2px solid rgba(255,255,255,.12); cursor: pointer; font-size: .78rem; font-weight: 600; text-align: center; transition: border-color .12s; font-family: 'DM Sans', sans-serif; }
+.bp-theme-btn.active { border-color: #0F7B72; }
+.bp-theme-default { background: #f9fafb; color: #111827; }
+.bp-theme-dark { background: #0f172a; color: #f1f5f9; }
+.bp-theme-warm { background: #fefce8; color: #1c1917; }
+.bp-testimonial-item { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: .7rem; margin-bottom: .5rem; position: relative; }
+.bp-testimonial-item .t-quote { font-size: .83rem; font-style: italic; margin-bottom: .25rem; color: rgba(255,255,255,.7); font-family: 'DM Sans', sans-serif; }
+.bp-testimonial-item .t-name { font-size: .78rem; font-weight: 600; color: #e8eaf0; font-family: 'DM Sans', sans-serif; }
+.bp-t-delete { position: absolute; top: .5rem; right: .5rem; background: none; border: none; color: rgba(255,255,255,.3); cursor: pointer; font-size: .88rem; }
+.bp-t-delete:hover { color: #fca5a5; }
+.bp-upload-area { border: 2px dashed rgba(255,255,255,.15); border-radius: 8px; padding: .8rem; text-align: center; font-size: .82rem; color: #9CA3AF; cursor: pointer; transition: border-color .12s; font-family: 'DM Sans', sans-serif; }
+.bp-upload-area:hover { border-color: #0F7B72; }
+.bp-upload-area input[type=file] { display: none; }
+#bp-save-status { font-size: .78rem; color: #9CA3AF; font-family: 'DM Sans', sans-serif; }
+#bp-save-status.saved { color: #86efac; }
+#bp-save-status.error { color: #fca5a5; }
+.bp-add-t-toggle { color: #0F7B72; background: none; border: none; font-size: .85rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; padding: 0; }
 </style>
 {% endblock %}
 
@@ -317,7 +351,7 @@
           <div class="bio-actions-row">
             <button class="btn btn-ghost btn-sm" onclick="toggleBioEdit()">Edit</button>
             <button class="btn btn-ghost btn-sm" id="regenBtn" onclick="regenerateBio()">Regenerate{% if profile.bio_edited %} (replaces your edits){% endif %}</button>
-            <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" class="btn btn-ghost btn-sm">Preview profile ↗</a>
+            <a href="{{ url_for('public.profile_page', username=profile.username, _external=True) }}" target="_blank" class="btn btn-ghost btn-sm">Preview profile ↗</a>
           </div>
           <textarea class="input-text" id="bioEditor" rows="12" style="display:none;margin-top:.75rem">{{ profile.bio }}</textarea>
         </div>
@@ -340,31 +374,135 @@
       {% if profile and profile.username %}
       <div class="settings-section" id="bioPageSection">
         <div class="settings-section-title">Bio Page</div>
-        <div class="bio-panel" style="margin-bottom:1rem">
+
+        <!-- Status + actions bar -->
+        <div class="bio-panel" style="margin-bottom:1.25rem">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <div>
-              <div style="font-size:.875rem;color:#e8eaf0">
-                simulacrum.io/u/<strong>{{ profile.username }}</strong>
-              </div>
+              <div style="font-size:.875rem;color:#e8eaf0">simulacrum.io/u/<strong>{{ profile.username }}</strong></div>
               <div id="bioPageStatusHint" style="font-size:.78rem;margin-top:.25rem;color:rgba(255,255,255,.35)">Loading…</div>
             </div>
-            <div style="display:flex;gap:.5rem;flex-shrink:0;flex-wrap:wrap;align-items:center">
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;flex-shrink:0">
+              <span id="bp-save-status"></span>
               <button id="bioPublishBtn" class="btn btn-primary btn-sm" style="display:none" onclick="toggleBioPublish()">Publish bio page</button>
-              <a href="/u/{{ profile.username }}/edit" class="btn btn-ghost btn-sm">Edit ↗</a>
-              <a href="/u/{{ profile.username }}" target="_blank" class="btn btn-ghost btn-sm">View ↗</a>
+              <a href="{{ request.url_root }}u/{{ profile.username }}" target="_blank" class="btn btn-ghost btn-sm">View ↗</a>
             </div>
           </div>
         </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Enable chat widget</div>
-            <div class="toggle-desc">Show the AI chat widget on your public bio page so visitors can ask questions</div>
+
+        <!-- Inline editor accordion -->
+        <div id="bp-editor-panel">
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="hero">Hero <span>›</span></button>
+            <div class="bp-editor-body" id="bp-hero-body">
+              <div class="bp-form-group">
+                <label>Professional title</label>
+                <input type="text" id="hero-title" placeholder="e.g. Brand strategist &amp; advisor" maxlength="200">
+                <label class="bp-custom-toggle"><input type="checkbox" id="hero-title-custom"> Use custom title (overrides LinkedIn artifact)</label>
+              </div>
+              <div class="bp-form-group">
+                <label>Positioning / tagline</label>
+                <textarea id="hero-positioning" placeholder="One-sentence pitch…" maxlength="400"></textarea>
+                <label class="bp-custom-toggle"><input type="checkbox" id="hero-pos-custom"> Use custom positioning (overrides rate card)</label>
+              </div>
+              <div class="bp-form-group">
+                <label>CTA button URL</label>
+                <input type="url" id="hero-cta-url" placeholder="Leave blank to use booking page or contact form">
+              </div>
+              <div class="bp-form-group">
+                <label>CTA button label</label>
+                <input type="text" id="hero-cta-label" placeholder="Book a call" maxlength="50">
+              </div>
+              <div class="bp-form-group">
+                <label>Hero photo</label>
+                <div class="bp-upload-area" id="bp-hero-upload-area">
+                  <input type="file" id="bp-hero-image-input" accept="image/jpeg,image/png,image/webp">
+                  Click to upload hero photo (JPEG / PNG / WebP, max 5 MB)
+                </div>
+                <div id="bp-hero-img-preview" style="margin-top:.35rem;font-size:.78rem;color:#86efac;"></div>
+              </div>
+            </div>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="bioChatEnabled" onchange="saveBioChatToggle(this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="about">About <span>›</span></button>
+            <div class="bp-editor-body" id="bp-about-body">
+              <div class="bp-form-group">
+                <label>Custom bio text</label>
+                <textarea id="about-bio" placeholder="Your extended professional bio…" style="min-height:160px;" maxlength="2000"></textarea>
+                <label class="bp-custom-toggle"><input type="checkbox" id="about-custom"> Use custom bio (overrides LinkedIn About section)</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="vis-sections">Section visibility <span>›</span></button>
+            <div class="bp-editor-body" id="bp-vis-sections-body">
+              <div class="toggle-row">
+                <span class="toggle-label">Services</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-services" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Testimonials</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-testimonials" checked><span class="toggle-slider"></span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="testimonials">Testimonials <span>›</span></button>
+            <div class="bp-editor-body" id="bp-testimonials-body">
+              <div id="bp-testimonials-list"></div>
+              <button class="bp-add-t-toggle" id="bp-add-t-btn">+ Add testimonial</button>
+              <div id="bp-add-t-form" style="display:none;margin-top:.75rem">
+                <div class="bp-form-group"><label>Quote *</label><textarea id="bp-t-quote" placeholder="Their testimonial…" maxlength="500"></textarea></div>
+                <div class="bp-form-group"><label>Name *</label><input type="text" id="bp-t-name" placeholder="Jane Smith" maxlength="100"></div>
+                <div class="bp-form-group"><label>Title</label><input type="text" id="bp-t-title" placeholder="CEO at Acme" maxlength="100"></div>
+                <div class="bp-form-group"><label>Company</label><input type="text" id="bp-t-company" placeholder="Acme Corp" maxlength="100"></div>
+                <div style="display:flex;gap:.5rem;margin-top:.25rem">
+                  <button class="btn btn-primary btn-sm" id="bp-t-save-btn" style="flex:1">Save testimonial</button>
+                  <button class="btn btn-ghost btn-sm" id="bp-t-cancel-btn">Cancel</button>
+                </div>
+                <div id="bp-t-err" style="color:#fca5a5;font-size:.78rem;margin-top:.4rem;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="theme">Visual theme <span>›</span></button>
+            <div class="bp-editor-body" id="bp-theme-body">
+              <div class="bp-theme-options">
+                <button class="bp-theme-btn bp-theme-default active" data-theme="default">Default</button>
+                <button class="bp-theme-btn bp-theme-dark" data-theme="dark">Dark</button>
+                <button class="bp-theme-btn bp-theme-warm" data-theme="warm">Warm</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="chat">Chat widget <span>›</span></button>
+            <div class="bp-editor-body" id="bp-chat-body">
+              <div class="toggle-row">
+                <div><div class="toggle-label">Chat widget enabled</div><div class="toggle-desc">Show the AI chat widget on your bio page</div></div>
+                <label class="toggle-switch"><input type="checkbox" id="chat-enabled" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <div><div class="toggle-label">Live takeover enabled</div><div class="toggle-desc">You can take over live chat sessions from the GCC</div></div>
+                <label class="toggle-switch"><input type="checkbox" id="chat-takeover"><span class="toggle-slider"></span></label>
+              </div>
+              <div class="bp-form-group" style="margin-top:.75rem">
+                <label>Daily session limit</label>
+                <input type="number" id="chat-limit" value="50" min="1" max="500">
+              </div>
+              <div class="bp-form-group">
+                <label>Custom welcome message (optional)</label>
+                <textarea id="chat-welcome" placeholder="Leave blank for the default welcome message…" maxlength="300"></textarea>
+              </div>
+            </div>
+          </div>
+
+        </div>{# end bp-editor-panel #}
       </div>
       {% endif %}
 
@@ -480,7 +618,7 @@
       {% if stripe_error %}<div class="integ-flash err">Stripe: {{ stripe_error | replace('_', ' ') | title }}</div>{% endif %}
       {% if cal_connected %}<div class="integ-flash ok">&#x2713; Cal.com connected.</div>{% endif %}
       {% if cal_error %}<div class="integ-flash err">Cal.com: {{ cal_error | replace('_', ' ') | title }}</div>{% endif %}
-      {% if pandadoc_saved %}<div class="integ-flash ok">&#x2713; PandaDoc key saved.</div>{% endif %}
+      {% if pandadoc_connected %}<div class="integ-flash ok">&#x2713; PandaDoc account connected.</div>{% endif %}
       {% if pandadoc_error %}<div class="integ-flash err">PandaDoc: {{ pandadoc_error | replace('_', ' ') | title }}</div>{% endif %}
       {% if ck_saved %}<div class="integ-flash ok">&#x2713; ConvertKit keys saved.</div>{% endif %}
       {% if ck_error %}<div class="integ-flash err">ConvertKit: {{ ck_error | replace('_', ' ') | title }}</div>{% endif %}
@@ -528,10 +666,10 @@
             {% if apollo.last_api_success_at %} &bull; Last active {{ apollo.last_api_success_at.strftime('%b %d') }}{% endif %}
           </div>
           {% endif %}
-          <a href="{{ url_for('integrations.apollo_connect') }}"
-             class="integ-primary-btn {% if apollo_status == 'connected' %}outlined{% elif apollo_status == 'expired' %}amber{% else %}navy{% endif %}">
-            {% if apollo_status == 'expired' %}Re-authenticate{% elif apollo_status == 'connected' %}Manage{% else %}Connect Apollo{% endif %}
-          </a>
+          <button onclick="openGenericWizard('apollo')"
+                  class="integ-primary-btn {% if apollo_status == 'connected' %}outlined{% else %}navy{% endif %}">
+            {% if apollo_status == 'connected' %}Reconnect Apollo{% else %}Connect Apollo{% endif %}
+          </button>
           {% if apollo_status == 'connected' %}
           <div class="integ-secondary-links">
             <button class="integ-secondary-link danger" onclick="showDisconnect('apollo','Apollo','cold_email_campaign · consulting_outreach · speaking_proposals')">Disconnect</button>
@@ -637,10 +775,10 @@
             {% if cal_int.connected_at %} &bull; Since {{ cal_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
           </div>
           {% endif %}
-          <a href="{{ url_for('integrations.cal_connect') }}"
-             class="integ-primary-btn {% if cal_status == 'connected' %}outlined{% elif cal_status == 'expired' %}amber{% else %}navy{% endif %}">
-            {% if cal_status == 'expired' %}Re-authenticate{% elif cal_status == 'connected' %}Manage{% else %}Connect Cal.com{% endif %}
-          </a>
+          <button onclick="openGenericWizard('calcom')"
+                  class="integ-primary-btn {% if cal_status == 'connected' %}outlined{% else %}navy{% endif %}">
+            {% if cal_status == 'connected' %}Reconnect Cal.com{% else %}Connect Cal.com{% endif %}
+          </button>
           {% if cal_status == 'connected' %}
           <div class="integ-secondary-links">
             <button class="integ-secondary-link danger" onclick="showDisconnect('cal','Cal.com','booking_page · consulting_proposal (call invite) · workshop_curriculum')">Disconnect</button>
@@ -687,9 +825,9 @@
             {% if pandadoc_int.connected_at %} &bull; Since {{ pandadoc_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
           </div>
           {% endif %}
-          <button onclick="openApiKeyModal('pandadoc')"
+          <button onclick="openGenericWizard('pandadoc')"
                   class="integ-primary-btn {% if pd_status == 'connected' %}outlined{% else %}navy{% endif %}">
-            {% if pd_status == 'connected' %}Manage{% else %}Connect PandaDoc{% endif %}
+            {% if pd_status == 'connected' %}Reconnect PandaDoc{% else %}Connect PandaDoc{% endif %}
           </button>
           {% if pd_status == 'connected' %}
           <div class="integ-secondary-links">
@@ -746,9 +884,9 @@
             {% if kajabi_int.provider_account_id %} &bull; {{ kajabi_int.provider_account_id }}{% endif %}
           </div>
           {% endif %}
-          <button onclick="openApiKeyModal('kajabi')"
+          <button onclick="openKajabiWizard()"
                   class="integ-primary-btn {% if kajabi_status == 'connected' %}outlined{% else %}navy{% endif %}">
-            {% if kajabi_status == 'connected' %}Manage{% else %}Connect Kajabi{% endif %}
+            {% if kajabi_status == 'connected' %}Reconnect Kajabi{% else %}Connect Kajabi{% endif %}
           </button>
           {% if kajabi_status == 'connected' %}
           <div class="integ-secondary-links">
@@ -795,9 +933,9 @@
             {% if ck_int.connected_at %} &bull; Since {{ ck_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
           </div>
           {% endif %}
-          <button onclick="openApiKeyModal('convertkit')"
+          <button onclick="openGenericWizard('convertkit')"
                   class="integ-primary-btn {% if ck_status == 'connected' %}outlined{% else %}navy{% endif %}">
-            {% if ck_status == 'connected' %}Manage{% else %}Connect ConvertKit{% endif %}
+            {% if ck_status == 'connected' %}Reconnect ConvertKit{% else %}Connect ConvertKit{% endif %}
           </button>
           {% if ck_status == 'connected' %}
           <div class="integ-secondary-links">
@@ -934,9 +1072,9 @@
             </strong>
           </div>
           {% endif %}
-          <button onclick="openApiKeyModal('alpaca')"
+          <button onclick="openGenericWizard('alpaca')"
                   class="integ-primary-btn {% if alpaca_status == 'connected' %}outlined{% else %}navy{% endif %}">
-            {% if alpaca_status == 'connected' %}Manage{% else %}Connect Alpaca{% endif %}
+            {% if alpaca_status == 'connected' %}Reconnect Alpaca{% else %}Connect Alpaca{% endif %}
           </button>
           {% if alpaca_status == 'connected' %}
           <div class="integ-secondary-links">
@@ -1029,6 +1167,110 @@
           <button class="btn btn-ghost btn-sm" onclick="closeApiKeyModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" id="apikeyModalSaveBtn" onclick="apikeyModalSave()">Save</button>
         </div>
+      </div>
+    </div>
+
+    {# ── Generic guided wizard (Apollo, Cal.com, PandaDoc, ConvertKit, Alpaca) ── #}
+    <div id="genericWizard" class="integ-modal-overlay">
+      <div class="integ-modal" style="max-width:480px;width:100%;padding:1.75rem 1.75rem 1.5rem;position:relative">
+        <div style="display:flex;gap:.5rem;justify-content:center;margin-bottom:1.25rem">
+          <span class="kj-dot active" id="wzDot1"></span>
+          <span class="kj-dot" id="wzDot2"></span>
+          <span class="kj-dot" id="wzDot3"></span>
+        </div>
+        <div id="wzScreen1">
+          <div id="wzTitle1" style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.35rem;color:#1a2744;margin-bottom:.6rem"></div>
+          <p id="wzInstructions" style="font-size:.88rem;color:rgba(255,255,255,.65);margin-bottom:1rem"></p>
+          <div id="wzSteps" style="background:rgba(0,168,150,.08);border:1px solid rgba(0,168,150,.2);border-radius:8px;padding:.9rem 1rem;margin-bottom:1rem"></div>
+          <div id="wzNote" style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.8rem;display:none"></div>
+          <button onclick="wzGoTo(2)" class="integ-primary-btn navy" style="width:100%;margin-top:.25rem">I have my API key</button>
+        </div>
+        <div id="wzScreen2" style="display:none">
+          <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.7rem" id="wzConnectTitle">Paste your API key</div>
+          <div id="wzFields" style="margin-bottom:.35rem"></div>
+          <div id="wzValidState" style="font-size:.78rem;min-height:1.1rem;margin-bottom:.6rem;display:flex;flex-direction:column;gap:.2rem"></div>
+          <button id="wzConnectBtn" class="integ-primary-btn navy" style="width:100%" disabled onclick="wzDoConnect()" title="Paste a valid key to continue">Connect</button>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.35);text-align:center;margin-top:.55rem">Your credentials are encrypted and stored securely. We never share them with third parties.</div>
+        </div>
+        <div id="wzScreen3" style="display:none">
+          <div id="wzTitle3" style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.8rem"></div>
+          <div style="background:rgba(255,255,255,.04);border-left:3px solid #00a896;border-radius:6px;padding:.85rem 1rem;margin-bottom:1rem">
+            <div style="display:flex;align-items:center;gap:.65rem">
+              <div id="wzConfirmLogo" style="width:32px;height:32px;border-radius:6px;background:rgba(0,168,150,.12);color:#00a896;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem"></div>
+              <div>
+                <div id="wzConfirmName" style="font-size:.9rem;font-weight:600;color:#e8eaf0"></div>
+                <div id="wzConfirmSub" style="font-size:.77rem;color:rgba(255,255,255,.5)"></div>
+              </div>
+              <span style="margin-left:auto;font-size:.7rem;background:#16a34a20;color:#16a34a;border:1px solid #16a34a40;border-radius:20px;padding:.15rem .55rem">Connected</span>
+            </div>
+          </div>
+          <p id="wzBody" style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1rem"></p>
+          <button class="integ-primary-btn navy" style="width:100%" onclick="wzDone()">Done</button>
+        </div>
+        <button onclick="closeGenericWizard()" style="position:absolute;top:.75rem;right:.9rem;background:none;border:none;color:rgba(255,255,255,.35);font-size:1.1rem;cursor:pointer;line-height:1">&#x2715;</button>
+      </div>
+    </div>
+
+    {# ── Kajabi guided wizard ── #}
+    <div id="kajabiWizard" class="integ-modal-overlay">
+      <div class="integ-modal" style="max-width:480px;width:100%;padding:1.75rem 1.75rem 1.5rem">
+
+        {# Step dots #}
+        <div id="kjDots" style="display:flex;gap:.5rem;justify-content:center;margin-bottom:1.25rem">
+          <span class="kj-dot active" id="kjDot1"></span>
+          <span class="kj-dot" id="kjDot2"></span>
+          <span class="kj-dot" id="kjDot3"></span>
+        </div>
+
+        {# ── Screen 1: Instructions ── #}
+        <div id="kjScreen1">
+          <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.35rem;color:#1a2744;margin-bottom:.6rem">Let&#39;s connect your Kajabi account</div>
+          <p style="font-size:.9rem;color:rgba(255,255,255,.65);margin-bottom:1rem">To connect Kajabi, you&#39;ll need to copy your API key from your Kajabi admin panel. Here&#39;s exactly where to find it:</p>
+          <div style="background:rgba(0,168,150,.08);border:1px solid rgba(0,168,150,.2);border-radius:8px;padding:.9rem 1rem;margin-bottom:1rem">
+            <div style="font-size:.82rem;color:rgba(255,255,255,.8);display:flex;flex-direction:column;gap:.45rem">
+              <div><span style="display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#00a896;color:#fff;font-size:.65rem;font-weight:700;margin-right:.4rem">1</span>Log in to your Kajabi admin panel.</div>
+              <div><span style="display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#00a896;color:#fff;font-size:.65rem;font-weight:700;margin-right:.4rem">2</span>Navigate to <strong>Settings → Site details → Developer</strong>.</div>
+              <div><span style="display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#00a896;color:#fff;font-size:.65rem;font-weight:700;margin-right:.4rem">3</span>Click <strong>Generate new token</strong> and copy the token that appears.</div>
+            </div>
+          </div>
+          <button class="integ-primary-btn navy" style="width:100%;margin-top:.25rem" onclick="kjGoTo(2)">I have my API key</button>
+          <div style="text-align:center;margin-top:.6rem">
+            <a href="https://help.kajabi.com/hc/en-us/articles/360035432934" target="_blank" rel="noopener" class="integ-secondary-link" style="font-size:.8rem">I need help finding it &#x2197;</a>
+          </div>
+        </div>
+
+        {# ── Screen 2: Paste & Validate ── #}
+        <div id="kjScreen2" style="display:none">
+          <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.6rem">Paste your Kajabi API key</div>
+          <div style="position:relative;margin-bottom:.35rem">
+            <input type="password" id="kjApiKey" autocomplete="off"
+                   class="integ-cfg-input" style="width:100%;font-family:monospace;font-size:.85rem;box-sizing:border-box"
+                   placeholder="Paste your Kajabi API key here"
+                   oninput="kjOnPaste(this)">
+          </div>
+          <div id="kjValidState" style="font-size:.78rem;min-height:1.1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.35rem"></div>
+          <button id="kjConnectBtn" class="integ-primary-btn navy" style="width:100%" disabled onclick="kjDoConnect()" title="Paste a valid API key to continue">Connect Kajabi</button>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.35);text-align:center;margin-top:.55rem">Your API key is encrypted and stored securely. We never share it with third parties.</div>
+        </div>
+
+        {# ── Screen 3: Confirmation ── #}
+        <div id="kjScreen3" style="display:none">
+          <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.8rem">You&#39;re connected to Kajabi</div>
+          <div id="kjConfirmCard" style="background:rgba(255,255,255,.04);border-left:3px solid #00a896;border-radius:6px;padding:.85rem 1rem;margin-bottom:1rem">
+            <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.4rem">
+              <div style="width:32px;height:32px;border-radius:6px;background:#2563eb20;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem">KJ</div>
+              <div>
+                <div id="kjConfirmName" style="font-size:.9rem;font-weight:600;color:#e8eaf0"></div>
+                <div id="kjConfirmSub" style="font-size:.77rem;color:rgba(255,255,255,.5)"></div>
+              </div>
+              <span style="margin-left:auto;font-size:.7rem;background:#16a34a20;color:#16a34a;border:1px solid #16a34a40;border-radius:20px;padding:.15rem .55rem">Connected</span>
+            </div>
+          </div>
+          <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1rem">Your course and membership agents can now deploy products directly to your Kajabi account. When students enroll or members subscribe, the income is captured automatically.</p>
+          <button class="integ-primary-btn navy" style="width:100%" onclick="kjDone()">Done</button>
+        </div>
+
+        <button onclick="closeKajabiWizard()" style="position:absolute;top:.75rem;right:.9rem;background:none;border:none;color:rgba(255,255,255,.35);font-size:1.1rem;cursor:pointer;line-height:1">&#x2715;</button>
       </div>
     </div>
 
@@ -1278,7 +1520,16 @@ async function regenerateBio() {
   btn.disabled = true;
   btn.textContent = 'Generating…';
 
-  const res = await fetch(ROOT2 + '/api/settings/profile/bio/generate', { method: 'POST' });
+  const editor = document.getElementById('bioEditor');
+  const preview = document.getElementById('bioPreview');
+  const currentBio = (editor && editor.style.display !== 'none')
+    ? editor.value.trim()
+    : (preview ? preview.textContent.trim() : '');
+  const res = await fetch(ROOT2 + '/api/settings/profile/bio/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({existing_bio: currentBio}),
+  });
   const data = await res.json();
   btn.textContent = 'Regenerate';
 
@@ -1289,8 +1540,6 @@ async function regenerateBio() {
     return;
   }
 
-  const editor = document.getElementById('bioEditor');
-  const preview = document.getElementById('bioPreview');
   if (editor) { editor.value = data.bio; editor.style.display = 'block'; }
   if (preview) preview.style.display = 'none';
   toast('Bio generated — review and click Save Profile to keep it');
@@ -1299,64 +1548,278 @@ async function regenerateBio() {
   setTimeout(() => { _regenCooldown = false; btn.disabled = false; }, 60000);
 }
 
-// ── Bio Page settings ──────────────────────────────────────────────────────
+// ── Bio Page editor (inline in profile tab) ────────────────────────────────
 {% if active_tab == 'profile' %}
-var _bioPageStatus = 'draft';
+(function() {
+  var _bioPageStatus = 'draft';
+  var _bpData = null;
+  var _bpSaveTimer = null;
+  var _bpIsSaving = false;
+  var _saveStatusEl = document.getElementById('bp-save-status');
 
-(async () => {
-  const hint    = document.getElementById('bioPageStatusHint');
-  const toggle  = document.getElementById('bioChatEnabled');
-  const pubBtn  = document.getElementById('bioPublishBtn');
-  if (!hint && !toggle) return;
-  try {
-    const res = await fetch(ROOT2 + '/api/bio');
-    if (!res.ok) { if (hint) hint.textContent = ''; return; }
-    const data = await res.json();
-    const bp = data.bio_page || data;
+  // Load bio data and populate editor
+  fetch(ROOT2 + '/api/bio').then(function(r) {
+    if (!r.ok) { _bpStatusClear(); return null; }
+    return r.json();
+  }).then(function(data) {
+    if (!data) return;
+    _bpData = data;
+    var bp = data.bio_page || data;
     _bioPageStatus = bp.status || 'draft';
-    _updateBioStatusUI(hint, pubBtn, _bioPageStatus);
-    if (toggle) toggle.checked = !!(bp.chat_settings && bp.chat_settings.enabled !== false);
-  } catch(e) { if (hint) hint.textContent = ''; }
-})();
+    _updateBioStatusUI(bp.status || 'draft');
+    _bpPopulate(bp);
+  }).catch(function() { _bpStatusClear(); });
 
-function _updateBioStatusUI(hint, pubBtn, status) {
-  if (!hint) return;
-  if (status === 'published') {
-    hint.textContent = '● Live — visitors can see your bio page and chat widget';
-    hint.style.color = '#86efac';
-    if (pubBtn) { pubBtn.textContent = 'Unpublish'; pubBtn.style.display = 'inline-block'; pubBtn.className = 'btn btn-ghost btn-sm'; }
-  } else {
-    hint.textContent = '○ Draft — your bio page is not visible at /u/' + (document.getElementById('usernamePreview') ? document.getElementById('usernamePreview').textContent : '') + ' yet. Publish to make it live.';
-    hint.style.color = '#f5c842';
-    if (pubBtn) { pubBtn.textContent = 'Publish bio page'; pubBtn.style.display = 'inline-block'; pubBtn.className = 'btn btn-primary btn-sm'; }
+  function _bpStatusClear() {
+    var hint = document.getElementById('bioPageStatusHint');
+    if (hint) hint.textContent = '';
   }
-}
 
-async function toggleBioPublish() {
-  const hint   = document.getElementById('bioPageStatusHint');
-  const pubBtn = document.getElementById('bioPublishBtn');
-  const action = _bioPageStatus === 'published' ? 'unpublish' : 'publish';
-  if (pubBtn) pubBtn.disabled = true;
-  const res = await fetch(ROOT2 + '/api/bio/' + action, { method: 'POST' });
-  if (res.ok) {
-    _bioPageStatus = action === 'publish' ? 'published' : 'unpublished';
-    _updateBioStatusUI(hint, pubBtn, _bioPageStatus);
-    toast(action === 'publish' ? 'Bio page is now live!' : 'Bio page unpublished');
-  } else {
-    toast('Failed — please try again');
+  function _updateBioStatusUI(status) {
+    var hint   = document.getElementById('bioPageStatusHint');
+    var pubBtn = document.getElementById('bioPublishBtn');
+    if (!hint) return;
+    if (status === 'published') {
+      hint.textContent = '● Live — visitors can see your bio page and chat widget';
+      hint.style.color = '#86efac';
+      if (pubBtn) { pubBtn.textContent = 'Unpublish'; pubBtn.style.display = 'inline-block'; pubBtn.className = 'btn btn-ghost btn-sm'; }
+    } else {
+      var slug = document.getElementById('usernamePreview') ? document.getElementById('usernamePreview').textContent : '';
+      hint.textContent = '○ Draft — not yet visible at /u/' + slug + '. Publish to make it live.';
+      hint.style.color = '#f5c842';
+      if (pubBtn) { pubBtn.textContent = 'Publish bio page'; pubBtn.style.display = 'inline-block'; pubBtn.className = 'btn btn-primary btn-sm'; }
+    }
   }
-  if (pubBtn) pubBtn.disabled = false;
-}
+  window.toggleBioPublish = async function() {
+    var hint   = document.getElementById('bioPageStatusHint');
+    var pubBtn = document.getElementById('bioPublishBtn');
+    var action = _bioPageStatus === 'published' ? 'unpublish' : 'publish';
+    if (pubBtn) pubBtn.disabled = true;
+    var res = await fetch(ROOT2 + '/api/bio/' + action, { method: 'POST' });
+    if (res.ok) {
+      _bioPageStatus = action === 'publish' ? 'published' : 'unpublished';
+      _updateBioStatusUI(_bioPageStatus);
+      toast(action === 'publish' ? 'Bio page is now live!' : 'Bio page unpublished');
+    } else {
+      toast('Failed — please try again');
+    }
+    if (pubBtn) pubBtn.disabled = false;
+  };
 
-async function saveBioChatToggle(enabled) {
-  const res = await fetch(ROOT2 + '/api/bio', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_settings: { enabled } }),
+  function _bpPopulate(bp) {
+    var sec  = bp.sections || {};
+    var hero = sec.hero || {};
+    var about = sec.about || {};
+    var vis  = sec.visibility || {};
+    var chat = bp.chat_settings || {};
+    var el = function(id) { return document.getElementById(id); };
+
+    if (el('hero-title'))      el('hero-title').value      = hero.professional_title || '';
+    if (el('hero-title-custom')) el('hero-title-custom').checked = !!hero.is_custom_title;
+    if (el('hero-positioning')) el('hero-positioning').value = hero.positioning || '';
+    if (el('hero-pos-custom')) el('hero-pos-custom').checked = !!hero.is_custom_positioning;
+    if (el('hero-cta-url'))    el('hero-cta-url').value    = hero.cta_url || '';
+    if (el('hero-cta-label'))  el('hero-cta-label').value  = hero.cta_label || '';
+
+    if (el('about-bio'))    el('about-bio').value    = about.bio_text || '';
+    if (el('about-custom')) el('about-custom').checked = !!about.is_custom;
+
+    if (el('vis-services'))     el('vis-services').checked     = vis.services !== false;
+    if (el('vis-testimonials')) el('vis-testimonials').checked = vis.testimonials !== false;
+
+    if (el('chat-enabled'))  el('chat-enabled').checked  = chat.enabled !== false;
+    if (el('chat-takeover')) el('chat-takeover').checked = !!chat.live_takeover_enabled;
+    if (el('chat-limit'))    el('chat-limit').value      = chat.daily_session_limit || 50;
+    if (el('chat-welcome'))  el('chat-welcome').value    = chat.custom_welcome || '';
+
+    document.querySelectorAll('.bp-theme-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.theme === (bp.theme || 'default'));
+    });
+    _bpRenderTestimonials(bp.custom_testimonials || []);
+  }
+
+  // Accordion
+  document.querySelectorAll('.bp-editor-header').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var sec = this.dataset.bpSection;
+      var body = document.getElementById('bp-' + sec + '-body');
+      if (body) body.classList.toggle('open');
+    });
   });
-  if (res.ok) toast(enabled ? 'Chat widget enabled' : 'Chat widget disabled');
-  else toast('Failed to save — please try again');
-}
+  // Open hero by default
+  var heroBody = document.getElementById('bp-hero-body');
+  if (heroBody) heroBody.classList.add('open');
+
+  // Auto-save
+  var panel = document.getElementById('bp-editor-panel');
+  if (panel) {
+    panel.addEventListener('input', _bpScheduleSave);
+    panel.addEventListener('change', _bpScheduleSave);
+  }
+
+  function _bpScheduleSave() {
+    clearTimeout(_bpSaveTimer);
+    if (_saveStatusEl) { _saveStatusEl.textContent = 'Unsaved…'; _saveStatusEl.className = ''; }
+    _bpSaveTimer = setTimeout(_bpSave, 1200);
+  }
+
+  function _bpBuildPayload() {
+    var el = function(id) { return document.getElementById(id); };
+    return {
+      sections: {
+        hero: {
+          professional_title: (el('hero-title') && el('hero-title').value.trim()) || null,
+          is_custom_title: !!(el('hero-title-custom') && el('hero-title-custom').checked),
+          positioning: (el('hero-positioning') && el('hero-positioning').value.trim()) || null,
+          is_custom_positioning: !!(el('hero-pos-custom') && el('hero-pos-custom').checked),
+          cta_url: (el('hero-cta-url') && el('hero-cta-url').value.trim()) || null,
+          cta_label: (el('hero-cta-label') && el('hero-cta-label').value.trim()) || null,
+        },
+        about: {
+          bio_text: (el('about-bio') && el('about-bio').value.trim()) || null,
+          is_custom: !!(el('about-custom') && el('about-custom').checked),
+        },
+        visibility: {
+          services: !!(el('vis-services') && el('vis-services').checked),
+          testimonials: !!(el('vis-testimonials') && el('vis-testimonials').checked),
+        },
+      },
+      chat_settings: {
+        enabled: !!(el('chat-enabled') && el('chat-enabled').checked),
+        live_takeover_enabled: !!(el('chat-takeover') && el('chat-takeover').checked),
+        daily_session_limit: parseInt((el('chat-limit') && el('chat-limit').value) || '50', 10),
+        custom_welcome: (el('chat-welcome') && el('chat-welcome').value.trim()) || null,
+      },
+    };
+  }
+
+  function _bpSave() {
+    if (_bpIsSaving) return;
+    _bpIsSaving = true;
+    fetch(ROOT2 + '/api/bio', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify(_bpBuildPayload()),
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(d) {
+      _bpData = d;
+      if (_saveStatusEl) { _saveStatusEl.textContent = 'Saved'; _saveStatusEl.className = 'saved'; }
+    })
+    .catch(function() {
+      if (_saveStatusEl) { _saveStatusEl.textContent = 'Save failed'; _saveStatusEl.className = 'error'; }
+    })
+    .finally(function() { _bpIsSaving = false; });
+  }
+
+  // Theme picker
+  document.querySelectorAll('.bp-theme-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.bp-theme-btn').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      fetch(ROOT2 + '/api/bio', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({theme: this.dataset.theme}),
+      });
+    });
+  });
+
+  // Hero image upload
+  var uploadArea = document.getElementById('bp-hero-upload-area');
+  var imageInput = document.getElementById('bp-hero-image-input');
+  if (uploadArea && imageInput) {
+    uploadArea.addEventListener('click', function() { imageInput.click(); });
+    imageInput.addEventListener('change', function() {
+      if (!this.files || !this.files[0]) return;
+      var fd = new FormData();
+      fd.append('image', this.files[0]);
+      fetch(ROOT2 + '/api/bio/hero-image', {method: 'POST', body: fd})
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.hero_image_url) {
+            var prev = document.getElementById('bp-hero-img-preview');
+            if (prev) prev.textContent = 'Hero image uploaded ✓';
+          }
+        });
+    });
+  }
+
+  // Testimonials
+  function _bpRenderTestimonials(items) {
+    var list = document.getElementById('bp-testimonials-list');
+    if (!list) return;
+    list.innerHTML = '';
+    (items || []).forEach(function(t) {
+      var div = document.createElement('div');
+      div.className = 'bp-testimonial-item';
+      div.innerHTML =
+        '<p class="t-quote">"' + _esc(t.quote) + '"</p>' +
+        '<div class="t-name">' + _esc(t.name) + (t.title ? ', ' + _esc(t.title) : '') + '</div>' +
+        '<button class="bp-t-delete" data-id="' + t.id + '" title="Delete">✕</button>';
+      list.appendChild(div);
+    });
+    list.querySelectorAll('.bp-t-delete').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (!confirm('Delete this testimonial?')) return;
+        var tid = this.dataset.id;
+        fetch(ROOT2 + '/api/bio/testimonials/' + tid, {method: 'DELETE'})
+          .then(function(r) { return r.json(); })
+          .then(function() {
+            var updated = (_bpData && _bpData.custom_testimonials || []).filter(function(t) { return t.id !== tid; });
+            if (_bpData) _bpData.custom_testimonials = updated;
+            _bpRenderTestimonials(updated);
+          });
+      });
+    });
+  }
+
+  var addTBtn    = document.getElementById('bp-add-t-btn');
+  var addTForm   = document.getElementById('bp-add-t-form');
+  var tSaveBtn   = document.getElementById('bp-t-save-btn');
+  var tCancelBtn = document.getElementById('bp-t-cancel-btn');
+  if (addTBtn)    addTBtn.addEventListener('click', function() { addTForm.style.display = 'block'; addTBtn.style.display = 'none'; });
+  if (tCancelBtn) tCancelBtn.addEventListener('click', function() { addTForm.style.display = 'none'; addTBtn.style.display = 'inline'; });
+  if (tSaveBtn) {
+    tSaveBtn.addEventListener('click', function() {
+      var quote   = (document.getElementById('bp-t-quote').value   || '').trim();
+      var name    = (document.getElementById('bp-t-name').value    || '').trim();
+      var title   = (document.getElementById('bp-t-title').value   || '').trim();
+      var company = (document.getElementById('bp-t-company').value || '').trim();
+      var tErr = document.getElementById('bp-t-err');
+      if (!quote || !name) { tErr.textContent = 'Quote and name are required.'; return; }
+      tErr.textContent = '';
+      if (tSaveBtn.disabled) return;
+      tSaveBtn.disabled = true;
+      fetch(ROOT2 + '/api/bio/testimonials', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({quote: quote, name: name, title: title || null, company: company || null}),
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(t) {
+        if (t.id) {
+          if (_bpData) _bpData.custom_testimonials = (_bpData.custom_testimonials || []).concat([t]);
+          _bpRenderTestimonials(_bpData ? _bpData.custom_testimonials : [t]);
+          addTForm.style.display = 'none'; addTBtn.style.display = 'inline';
+          ['bp-t-quote','bp-t-name','bp-t-title','bp-t-company'].forEach(function(id) {
+            var el = document.getElementById(id); if (el) el.value = '';
+          });
+        } else { tErr.textContent = t.error || 'Failed to save.'; }
+      })
+      .catch(function() { tErr.textContent = 'Network error.'; })
+      .finally(function() { tSaveBtn.disabled = false; });
+    });
+  }
+
+  function _esc(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
 {% endif %}
 
 // ── Visibility ─────────────────────────────────────────────────────────────
@@ -1756,24 +2219,6 @@ async function saveApolloSettings() {
   else { const d = await res.json(); toast(d.error || 'Save failed'); }
 }
 
-async function ckSave(btn) {
-  const key    = (document.getElementById('ckApiKey')?.value || '').trim();
-  const secret = (document.getElementById('ckApiSecret')?.value || '').trim();
-  const errEl  = document.getElementById('ckSaveErr');
-  errEl.style.display = 'none';
-  if (!key) { errEl.textContent = 'Paste your ConvertKit API key first.'; errEl.style.display = 'block'; return; }
-  btn.disabled = true; btn.textContent = 'Saving…';
-  const res = await fetch(ROOT2 + '/api/integrations/convertkit/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: key, api_secret: secret }),
-  });
-  const data = await res.json();
-  btn.disabled = false; btn.textContent = 'Save keys';
-  if (res.ok) { toast('ConvertKit keys saved'); location.reload(); }
-  else { errEl.textContent = data.error || 'Save failed — check your API key.'; errEl.style.display = 'block'; }
-}
-
 async function ckClear(btn) {
   if (!confirm('Remove ConvertKit keys? Landing page deployment will be disabled until you re-enter keys.')) return;
   btn.disabled = true;
@@ -1782,28 +2227,309 @@ async function ckClear(btn) {
   else { btn.disabled = false; toast('Remove failed — try again'); }
 }
 
-async function pandadocSave(btn) {
-  const key = (document.getElementById('pandadocApiKey')?.value || '').trim();
-  const errEl = document.getElementById('pandadocSaveErr');
-  errEl.style.display = 'none';
-  if (!key) { errEl.textContent = 'Paste your PandaDoc API key first.'; errEl.style.display = 'block'; return; }
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  const res = await fetch(ROOT2 + '/api/integrations/pandadoc/save', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ api_key: key }),
+// ── Generic guided wizard ──────────────────────────────────────────────────────
+const _wzDefs = {
+  apollo: {
+    name: 'Apollo', logo: 'AP',
+    title1: "Let's connect your Apollo account",
+    instructions: "Generate an API key from your Apollo account settings.",
+    steps: ["Log in to your Apollo account.", "Navigate to <strong>Settings → API Keys</strong>.", "Click <strong>Create API Key</strong> and copy the key."],
+    fields: [{id: 'wzKey', label: 'API Key', placeholder: 'Apollo API key', fieldName: 'api_key'}],
+    validateUrl: '/api/integrations/apollo/validate',
+    saveUrl: '/api/integrations/apollo/save',
+    confirmTitle: "You're connected to Apollo",
+    confirmBody: 'Your outreach sequences and contact search agents can now run.',
+    getMetaLine: d => d.account_email || 'Your Apollo account',
+    getMetaSub: d => d.plan_tier ? `Plan: ${d.plan_tier}` : '',
+    extraNote: d => d.is_free_plan ? "Some features are limited on Apollo's free plan. Upgrade to Professional for full sequence capabilities." : null,
+  },
+  calcom: {
+    name: 'Cal.com', logo: 'CA',
+    title1: "Let's connect your Cal.com account",
+    instructions: "Generate an API key from your Cal.com developer settings.",
+    steps: ["Log in to your Cal.com account.", "Navigate to <strong>Settings → Developer → API Keys</strong>.", "Click <strong>Create new key</strong> and copy it."],
+    fields: [{id: 'wzKey', label: 'API Key', placeholder: 'Cal.com API key', fieldName: 'api_key'}],
+    validateUrl: '/api/integrations/cal/validate',
+    saveUrl: '/api/integrations/cal/save',
+    confirmTitle: "You're connected to Cal.com",
+    confirmBody: 'Your booking page agent can now deploy event types and manage your schedule.',
+    getMetaLine: d => d.username ? `@${d.username}` : 'Your Cal.com account',
+    getMetaSub: d => d.timezone || d.email || '',
+    extraSaveField: d => ({username: d.username || ''}),
+  },
+  pandadoc: {
+    name: 'PandaDoc', logo: 'PD',
+    title1: "Let's connect your PandaDoc account",
+    instructions: "Generate an API key from your PandaDoc settings. This key gives Simulacrum access to create and send documents in your workspace.",
+    steps: ["Log in to your PandaDoc account.", "Navigate to <strong>Settings → Integrations → API</strong>.", "Click <strong>Create API Key</strong> and copy the key."],
+    fields: [{id: 'wzKey', label: 'API Key', placeholder: 'PandaDoc API key', fieldName: 'api_key'}],
+    validateUrl: '/api/integrations/pandadoc/validate',
+    saveUrl: '/api/integrations/pandadoc/save',
+    confirmTitle: "You're connected to PandaDoc",
+    confirmBody: 'Your consulting proposal and contract agents can now create and send documents for e-signature.',
+    getMetaLine: d => d.account_name || 'Your PandaDoc workspace',
+    getMetaSub: d => d.plan_tier || '',
+    extraSaveField: d => ({account_name: d.account_name || ''}),
+  },
+  convertkit: {
+    name: 'ConvertKit', logo: 'CK',
+    title1: "Let's connect your ConvertKit account",
+    instructions: "Copy both your API Key and API Secret from your ConvertKit account settings.",
+    steps: ["Log in to your ConvertKit account.", "Navigate to <strong>Settings → Advanced → API</strong>.", "Copy your <strong>API Key</strong> and <strong>API Secret</strong>."],
+    fields: [
+      {id: 'wzKey', label: 'API Key', placeholder: 'ConvertKit API key', fieldName: 'api_key'},
+      {id: 'wzSecret', label: 'API Secret', placeholder: 'ConvertKit API secret', fieldName: 'api_secret'},
+    ],
+    validateUrl: '/api/integrations/convertkit/validate',
+    saveUrl: '/api/integrations/convertkit/connect',
+    confirmTitle: "You're connected to ConvertKit",
+    confirmBody: 'Your landing page and email sequence agents can now deploy forms and manage your list.',
+    getMetaLine: d => d.account_name || 'Your ConvertKit account',
+    getMetaSub: d => d.plan_tier || '',
+    extraSaveField: d => ({account_name: d.account_name || ''}),
+  },
+  alpaca: {
+    name: 'Alpaca', logo: 'ALC',
+    title1: "Let's connect your Alpaca account",
+    instructions: "Generate API keys from your Alpaca dashboard. Paper Trading is recommended to start.",
+    steps: ["Log in to your Alpaca account at alpaca.markets.", "Navigate to <strong>Dashboard → API Keys</strong>.", "Click <strong>Generate New Keys</strong> (Paper or Live) and copy both values."],
+    fields: [
+      {id: 'wzKey', label: 'API Key ID', placeholder: 'Alpaca API key ID', fieldName: 'api_key'},
+      {id: 'wzSecret', label: 'Secret Key', placeholder: 'Alpaca secret key', fieldName: 'api_secret'},
+    ],
+    validateUrl: '/api/integrations/alpaca/validate',
+    saveUrl: '/api/integrations/alpaca/connect',
+    confirmTitle: "You're connected to Alpaca",
+    confirmBody: 'Your DCA schedule and investment plan agents can now execute trades in your brokerage account.',
+    getMetaLine: d => d.account_type === 'paper' ? 'Paper Trading Account' : 'Live Brokerage Account',
+    getMetaSub: d => d.buying_power ? `Buying power: $${parseFloat(d.buying_power).toLocaleString(undefined,{maximumFractionDigits:2})}` : '',
+    extraNote: d => d.account_type === 'paper' ? 'This is a paper trading key — trades will be simulated, not real.' : 'This is a live trading key. Automated trades will require explicit approval in the Action Queue.',
+    extraSaveField: d => ({is_paper: d.is_paper, account_id: d.account_id || ''}),
+  },
+};
+
+let _wz = {provider: null, validated: null};
+let _wzValidateTimer = null;
+
+function openGenericWizard(provider) {
+  const def = _wzDefs[provider];
+  if (!def) return;
+  _wz = {provider, validated: null};
+  document.getElementById('wzTitle1').textContent = def.title1;
+  document.getElementById('wzInstructions').textContent = def.instructions;
+  document.getElementById('wzSteps').innerHTML = def.steps.map((s,i) =>
+    `<div style="display:flex;gap:.5rem;margin-bottom:.35rem;align-items:flex-start">
+      <span style="display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;border-radius:50%;background:#00a896;color:#fff;font-size:.65rem;font-weight:700;margin-top:.1rem">${i+1}</span>
+      <span style="font-size:.82rem;color:rgba(255,255,255,.8)">${s}</span>
+    </div>`
+  ).join('');
+  const noteEl = document.getElementById('wzNote');
+  noteEl.style.display = 'none'; noteEl.textContent = '';
+  document.getElementById('wzConnectBtn').textContent = `Connect ${def.name}`;
+  document.getElementById('wzTitle3').textContent = def.confirmTitle;
+  document.getElementById('wzBody').textContent = def.confirmBody;
+  document.getElementById('wzConfirmLogo').textContent = def.logo;
+  wzGoTo(1);
+  document.getElementById('genericWizard').classList.add('open');
+}
+
+function closeGenericWizard() {
+  document.getElementById('genericWizard').classList.remove('open');
+}
+
+function wzGoTo(screen) {
+  [1,2,3].forEach(n => {
+    document.getElementById('wzScreen' + n).style.display = n === screen ? '' : 'none';
+    const dot = document.getElementById('wzDot' + n);
+    dot.className = 'kj-dot' + (n < screen ? ' done' : n === screen ? ' active' : '');
   });
-  const data = await res.json();
-  btn.disabled = false;
-  btn.textContent = 'Save key';
-  if (res.ok) {
-    toast('PandaDoc API key saved');
-    location.reload();
-  } else {
-    errEl.textContent = data.error || 'Save failed — check your API key and try again.';
-    errEl.style.display = 'block';
+  if (screen === 2) {
+    const def = _wzDefs[_wz.provider];
+    _wz.validated = null;
+    document.getElementById('wzConnectBtn').disabled = true;
+    document.getElementById('wzValidState').innerHTML = '';
+    document.getElementById('wzFields').innerHTML = def.fields.map(f =>
+      `<div style="margin-bottom:.65rem">
+        <div style="font-size:.75rem;color:rgba(255,255,255,.55);margin-bottom:.3rem">${f.label}</div>
+        <input type="password" id="${f.id}" class="integ-cfg-input"
+               style="width:100%;box-sizing:border-box;font-family:monospace;font-size:.83rem"
+               placeholder="${f.placeholder}" autocomplete="off" oninput="wzOnInput()">
+      </div>`
+    ).join('');
   }
+}
+
+async function wzOnInput() {
+  clearTimeout(_wzValidateTimer);
+  const def = _wzDefs[_wz.provider];
+  if (!def) return;
+  const allFilled = def.fields.every(f => {
+    const el = document.getElementById(f.id);
+    return el && el.value.trim().length >= 10;
+  });
+  const stateEl = document.getElementById('wzValidState');
+  const connectBtn = document.getElementById('wzConnectBtn');
+  if (!allFilled) {
+    stateEl.innerHTML = ''; connectBtn.disabled = true; _wz.validated = null; return;
+  }
+  stateEl.innerHTML = '<span style="color:rgba(255,255,255,.45)">&#x231B; Checking your key…</span>';
+  _wz.validated = null; connectBtn.disabled = true;
+  _wzValidateTimer = setTimeout(async () => {
+    try {
+      const body = {};
+      def.fields.forEach(f => { body[f.fieldName] = document.getElementById(f.id).value.trim(); });
+      const res = await fetch(ROOT2 + def.validateUrl, {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+      });
+      const d = await res.json();
+      if (d.status === 'valid') {
+        _wz.validated = {...body, ...d};
+        if (def.extraSaveField) Object.assign(_wz.validated, def.extraSaveField(d));
+        const metaLine = def.getMetaLine ? def.getMetaLine(d) : def.name;
+        stateEl.innerHTML = `<span style="color:#4ade80">&#x2713; ${metaLine}</span>`;
+        const note = def.extraNote ? def.extraNote(d) : null;
+        if (note) stateEl.innerHTML += `<div style="font-size:.72rem;color:rgba(245,200,66,.8);margin-top:.25rem">${note}</div>`;
+        connectBtn.disabled = false; connectBtn.removeAttribute('title');
+      } else {
+        stateEl.innerHTML = `<span style="color:#fca5a5">&#x2717; ${d.error || "This key doesn't appear to be valid."}</span>`;
+        connectBtn.disabled = true;
+      }
+    } catch(err) {
+      document.getElementById('wzValidState').innerHTML = '<span style="color:#fca5a5">&#x2717; Validation failed — check your connection.</span>';
+    }
+  }, 400);
+}
+
+async function wzDoConnect() {
+  if (!_wz.validated) return;
+  const def = _wzDefs[_wz.provider];
+  const btn = document.getElementById('wzConnectBtn');
+  btn.disabled = true; btn.textContent = 'Connecting…';
+  try {
+    const res = await fetch(ROOT2 + def.saveUrl, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(_wz.validated),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      document.getElementById('wzConfirmName').textContent = def.getMetaLine ? def.getMetaLine(_wz.validated) : def.name;
+      document.getElementById('wzConfirmSub').textContent = def.getMetaSub ? def.getMetaSub(_wz.validated) : '';
+      wzGoTo(3);
+    } else {
+      btn.disabled = false; btn.textContent = `Connect ${def.name}`;
+      toast(d.error || 'Connection failed — try again');
+    }
+  } catch(err) {
+    btn.disabled = false; btn.textContent = `Connect ${def.name}`;
+    toast('Connection failed — try again');
+  }
+}
+
+function wzDone() { closeGenericWizard(); location.reload(); }
+
+document.getElementById('genericWizard').addEventListener('click', function(e) {
+  if (e.target === this) closeGenericWizard();
+});
+
+// ── Kajabi wizard ──────────────────────────────────────────────────────────────
+let _kjValidatedKey = null;
+let _kjValidatedSub = null;
+let _kjValidateTimer = null;
+
+function openKajabiWizard() {
+  _kjValidatedKey = null; _kjValidatedSub = null;
+  kjGoTo(1);
+  document.getElementById('kajabiWizard').classList.add('open');
+}
+
+function closeKajabiWizard() {
+  document.getElementById('kajabiWizard').classList.remove('open');
+}
+
+function kjGoTo(screen) {
+  [1,2,3].forEach(n => {
+    document.getElementById('kjScreen' + n).style.display = n === screen ? '' : 'none';
+    const dot = document.getElementById('kjDot' + n);
+    dot.className = 'kj-dot' + (n < screen ? ' done' : n === screen ? ' active' : '');
+  });
+  if (screen === 2) {
+    document.getElementById('kjApiKey').value = '';
+    document.getElementById('kjValidState').innerHTML = '';
+    document.getElementById('kjConnectBtn').disabled = true;
+    _kjValidatedKey = null;
+  }
+}
+
+async function kjOnPaste(input) {
+  clearTimeout(_kjValidateTimer);
+  const key = input.value.trim();
+  const stateEl = document.getElementById('kjValidState');
+  const connectBtn = document.getElementById('kjConnectBtn');
+  _kjValidatedKey = null;
+  connectBtn.disabled = true;
+  if (key.length < 20) { stateEl.innerHTML = ''; return; }
+  stateEl.innerHTML = '<span style="color:rgba(255,255,255,.45)">&#x231B; Checking your key…</span>';
+  _kjValidateTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(ROOT2 + '/api/integrations/kajabi/validate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ api_key: key }),
+      });
+      const d = await res.json();
+      if (d.status === 'valid') {
+        _kjValidatedKey = key;
+        _kjValidatedSub = d.subdomain || '';
+        stateEl.innerHTML = `<span style="color:#4ade80">&#x2713; Connected to ${d.subdomain || d.site_name || 'your Kajabi account'}</span>`;
+        connectBtn.disabled = false;
+        connectBtn.removeAttribute('title');
+      } else {
+        stateEl.innerHTML = `<span style="color:#fca5a5">&#x2717; ${d.error || 'This key doesn\'t appear to be valid. Make sure you copied the complete key from Kajabi.'}</span>`;
+        connectBtn.disabled = true;
+      }
+    } catch(err) {
+      stateEl.innerHTML = '<span style="color:#fca5a5">&#x2717; Validation failed — check your connection and try again.</span>';
+    }
+  }, 400);
+}
+
+async function kjDoConnect() {
+  if (!_kjValidatedKey) return;
+  const btn = document.getElementById('kjConnectBtn');
+  btn.disabled = true; btn.textContent = 'Connecting…';
+  try {
+    const res = await fetch(ROOT2 + '/api/integrations/kajabi/connect', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ api_key: _kjValidatedKey, subdomain: _kjValidatedSub }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      document.getElementById('kjConfirmName').textContent = _kjValidatedSub || 'Your Kajabi account';
+      document.getElementById('kjConfirmSub').textContent = _kjValidatedSub;
+      kjGoTo(3);
+    } else {
+      btn.disabled = false; btn.textContent = 'Connect Kajabi';
+      toast(d.error || 'Connection failed — try again');
+    }
+  } catch(err) {
+    btn.disabled = false; btn.textContent = 'Connect Kajabi';
+    toast('Connection failed — try again');
+  }
+}
+
+function kjDone() {
+  closeKajabiWizard();
+  location.reload();
+}
+
+document.getElementById('kajabiWizard').addEventListener('click', function(e) {
+  if (e.target === this) closeKajabiWizard();
+});
+
+// ── (legacy stub kept for backwards compatibility) ─────────────────────────────
+async function pandadocSave(btn) {
+  // PandaDoc now uses OAuth — redirect to connect flow
+  location.href = ROOT2 + '/api/integrations/pandadoc/connect';
 }
 
 async function pandadocClear(btn) {
@@ -1838,25 +2564,6 @@ async function sgClear(btn) {
   const res = await fetch(ROOT2 + '/api/integrations/sendgrid/clear', { method: 'POST' });
   if (res.ok) { toast('SendGrid key removed'); location.reload(); }
   else { btn.disabled = false; toast('Remove failed — try again'); }
-}
-
-// ── Kajabi ──
-async function kajabiSave(btn) {
-  const key    = (document.getElementById('kajabiApiKey')?.value || '').trim();
-  const domain = (document.getElementById('kajabiSubdomain')?.value || '').trim();
-  const errEl  = document.getElementById('kajabiSaveErr');
-  errEl.style.display = 'none';
-  if (!key) { errEl.textContent = 'Paste your Kajabi API key first.'; errEl.style.display = 'block'; return; }
-  btn.disabled = true; btn.textContent = 'Saving…';
-  const res = await fetch(ROOT2 + '/api/integrations/kajabi/save', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ api_key: key, site_subdomain: domain }),
-  });
-  const data = await res.json();
-  btn.disabled = false;
-  if (res.ok) { toast('Kajabi API key saved'); location.reload(); }
-  else { errEl.textContent = data.error || 'Save failed — check your API key.'; errEl.style.display = 'block'; btn.textContent = 'Save key'; }
 }
 
 async function kajabiClear(btn) {
@@ -1913,26 +2620,6 @@ async function plaidDisconnect(btn) {
   else { btn.disabled = false; toast('Disconnect failed'); }
 }
 
-// ── Alpaca ──
-async function alpacaSave(btn) {
-  const key    = (document.getElementById('alpacaApiKey')?.value || '').trim();
-  const secret = (document.getElementById('alpacaApiSecret')?.value || '').trim();
-  const paper  = document.getElementById('alpacaPaperToggle')?.checked ?? true;
-  const errEl  = document.getElementById('alpacaSaveErr');
-  errEl.style.display = 'none';
-  if (!key || !secret) { errEl.textContent = 'Both API key and secret are required.'; errEl.style.display = 'block'; return; }
-  btn.disabled = true; btn.textContent = 'Connecting…';
-  const res = await fetch(ROOT2 + '/api/integrations/alpaca/save', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ api_key: key, api_secret: secret, paper }),
-  });
-  const data = await res.json();
-  btn.disabled = false;
-  if (res.ok) { toast('Alpaca connected'); location.reload(); }
-  else { errEl.textContent = data.error || 'Connection failed — check your credentials.'; errEl.style.display = 'block'; btn.textContent = 'Connect Alpaca'; }
-}
-
 async function alpacaClear(btn) {
   if (!confirm('Disconnect Alpaca? Automated trading will stop and no further trades will be placed.')) return;
   btn.disabled = true;
@@ -1986,62 +2673,9 @@ async function toggleActivity(provider) {
   }
 }
 
-// ── API-key modal ──────────────────────────────────────────────────────────────
+// ── API-key modal (no longer used for any platform — all use guided wizards) ──
 let _apikeyProvider = null;
-const _apikeyDefs = {
-  pandadoc: {
-    title: 'Connect PandaDoc',
-    desc: 'Paste your PandaDoc API key. Found in Account Settings → API.',
-    fields: `<div class="integ-cfg-row">
-      <div class="integ-cfg-label">API key</div>
-      <input type="password" id="pandadocApiKey" autocomplete="off" class="integ-cfg-input" placeholder="PandaDoc API key">
-      <div id="pandadocSaveErr" style="font-size:.72rem;color:#fca5a5;margin-top:.3rem;display:none"></div>
-    </div>`,
-  },
-  kajabi: {
-    title: 'Connect Kajabi',
-    desc: 'Paste your Kajabi API key and optional subdomain. Found in Settings → API.',
-    fields: `<div class="integ-cfg-row">
-      <div class="integ-cfg-label">API key</div>
-      <input type="password" id="kajabiApiKey" autocomplete="off" class="integ-cfg-input" placeholder="Kajabi API key">
-    </div>
-    <div class="integ-cfg-row">
-      <div class="integ-cfg-label">Site subdomain (optional)</div>
-      <input type="text" id="kajabiSubdomain" autocomplete="off" class="integ-cfg-input" placeholder="yoursite.mykajabi.com">
-      <div id="kajabiSaveErr" style="font-size:.72rem;color:#fca5a5;margin-top:.3rem;display:none"></div>
-    </div>`,
-  },
-  convertkit: {
-    title: 'Connect ConvertKit',
-    desc: 'Paste your ConvertKit API key and optional secret. Found in Account → Advanced.',
-    fields: `<div class="integ-cfg-row">
-      <div class="integ-cfg-label">API key</div>
-      <input type="password" id="ckApiKey" autocomplete="off" class="integ-cfg-input" placeholder="ConvertKit public API key">
-    </div>
-    <div class="integ-cfg-row">
-      <div class="integ-cfg-label">API secret (optional)</div>
-      <input type="password" id="ckApiSecret" autocomplete="off" class="integ-cfg-input" placeholder="ConvertKit API secret">
-      <div id="ckSaveErr" style="font-size:.72rem;color:#fca5a5;margin-top:.3rem;display:none"></div>
-    </div>`,
-  },
-  alpaca: {
-    title: 'Connect Alpaca',
-    desc: 'Paste your Alpaca API credentials. Paper trading is recommended to start.',
-    fields: `<div class="integ-cfg-row">
-      <div class="integ-cfg-label">API key ID</div>
-      <input type="password" id="alpacaApiKey" autocomplete="off" class="integ-cfg-input" placeholder="Alpaca API key ID">
-    </div>
-    <div class="integ-cfg-row">
-      <div class="integ-cfg-label">API secret key</div>
-      <input type="password" id="alpacaApiSecret" autocomplete="off" class="integ-cfg-input" placeholder="Alpaca API secret key">
-      <div id="alpacaSaveErr" style="font-size:.72rem;color:#fca5a5;margin-top:.3rem;display:none"></div>
-    </div>
-    <div class="integ-cfg-row" style="display:flex;align-items:center;gap:.5rem">
-      <input type="checkbox" id="alpacaPaperToggle" checked style="width:14px;height:14px;accent-color:#f5c842">
-      <label for="alpacaPaperToggle" style="font-size:.82rem;color:rgba(255,255,255,.6)">Paper trading (recommended)</label>
-    </div>`,
-  },
-};
+const _apikeyDefs = {};
 
 function openApiKeyModal(provider) {
   const def = _apikeyDefs[provider];
@@ -2065,11 +2699,7 @@ async function apikeyModalSave() {
   if (!_apikeyProvider) return;
   const saveBtn = document.getElementById('apikeyModalSaveBtn');
   saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
-  const p = _apikeyProvider;
-  if (p === 'pandadoc')   await pandadocSave(saveBtn);
-  else if (p === 'kajabi')     await kajabiSave(saveBtn);
-  else if (p === 'convertkit') await ckSave(saveBtn);
-  else if (p === 'alpaca')     await alpacaSave(saveBtn);
+  // All platforms now use guided wizards — this modal is kept for future use
   if (saveBtn.textContent === 'Saving…') { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
 }
 

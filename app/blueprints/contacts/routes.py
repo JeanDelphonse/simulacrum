@@ -64,11 +64,15 @@ def list_contacts():
 
     sort = request.args.get('sort', 'score')
     if sort == 'score':
-        q = q.order_by(Contact.qualifying_score.desc().nullslast())
+        # MySQL <8.0.30 has no NULLS LAST — coalesce pushes NULLs to the bottom
+        q = q.order_by(db.func.coalesce(Contact.qualifying_score, -1).desc())
     elif sort == 'name':
         q = q.order_by(Contact.last_name, Contact.first_name)
     elif sort == 'activity':
-        q = q.order_by(Contact.last_contacted_at.desc().nullslast())
+        q = q.order_by(
+            db.case((Contact.last_contacted_at.is_(None), 1), else_=0),
+            Contact.last_contacted_at.desc(),
+        )
     elif sort == 'stage':
         q = q.order_by(Contact.pipeline_stage)
     else:

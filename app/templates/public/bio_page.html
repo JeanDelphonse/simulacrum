@@ -3,31 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ ctx.full_name }} — {{ ctx.professional_title or 'Professional' }}</title>
+  <title>{{ ctx.full_name }} — {{ ctx.professional_title or 'Professional' }} | Simulacrum</title>
   <meta name="description" content="{{ (ctx.positioning or ctx.about_text or '')[:160] }}">
   {% if bio_page.sections.get('visibility', {}).get('noindex') %}
   <meta name="robots" content="noindex">
+  {% else %}
+  <meta name="robots" content="index, follow">
   {% endif %}
   <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/u/{{ slug }}">
+
+  {% set _og_image = '' %}
+  {% if ctx.hero_image_url %}{% set _og_image = url_for('public.serve_avatar', filename=ctx.hero_image_url, _external=True) %}
+  {% elif ctx.avatar_path %}{% set _og_image = url_for('public.serve_avatar', filename=ctx.avatar_path, _external=True) %}{% endif %}
+
   <meta property="og:type" content="profile">
-  <meta property="og:title" content="{{ ctx.full_name }}">
-  <meta property="og:description" content="{{ (ctx.positioning or '')[:160] }}">
+  <meta property="og:title" content="{{ ctx.full_name }}{% if ctx.professional_title %} — {{ ctx.professional_title }}{% endif %}">
+  <meta property="og:description" content="{{ (ctx.positioning or ctx.about_text or '')[:160] }}">
   <meta property="og:url" content="{{ request.url_root.rstrip('/') }}/u/{{ slug }}">
-  {% if ctx.hero_image_url %}
-  <meta property="og:image" content="{{ url_for('public.serve_avatar', filename=ctx.hero_image_url, _external=True) }}">
+  {% if _og_image %}
+  <meta property="og:image" content="{{ _og_image }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   {% endif %}
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ ctx.full_name }}">
+  <meta name="twitter:title" content="{{ ctx.full_name }}{% if ctx.professional_title %} — {{ ctx.professional_title }}{% endif %}">
   <meta name="twitter:description" content="{{ (ctx.positioning or '')[:160] }}">
+  {% if _og_image %}<meta name="twitter:image" content="{{ _og_image }}">{% endif %}
+
+  {% set _same_as = [] %}
+  {% if ctx.linkedin_url %}{% set _ = _same_as.append(ctx.linkedin_url) %}{% endif %}
+  {% if ctx.twitter_url %}{% set _ = _same_as.append(ctx.twitter_url) %}{% endif %}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Person",
-    "name": "{{ ctx.full_name | replace('"', '\\"') }}",
-    "jobTitle": "{{ (ctx.professional_title or '') | replace('"', '\\"') }}",
-    "description": "{{ (ctx.positioning or '')[:200] | replace('"', '\\"') }}",
-    "url": "{{ request.url_root.rstrip('/') }}/u/{{ slug }}"
-    {% if ctx.linkedin_url %},"sameAs": ["{{ ctx.linkedin_url }}"]{% endif %}
+    "name": {{ ctx.full_name | tojson }},
+    "jobTitle": {{ (ctx.professional_title or '') | tojson }},
+    "description": {{ (ctx.positioning or ctx.about_text or '')[:200] | tojson }},
+    "url": {{ (request.url_root.rstrip('/') + '/u/' + slug) | tojson }}
+    {% if _og_image %},"image": {{ _og_image | tojson }}{% endif %}
+    {% if _same_as %},"sameAs": {{ _same_as | tojson }}{% endif %}
+    {% if ctx.get('_rate_card_raw') %},"makesOffer": [{"@type":"Offer","itemOffered":{"@type":"Service","name":"Services","description":{{ ctx.get('_rate_card_raw', '')[:200] | tojson }}}}]{% endif %}
   }
   </script>
   <style>
@@ -289,6 +305,30 @@
       color: var(--muted); margin: .75rem 0;
     }
     .md-prose hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+
+    /* ── PLG: footer badge ──────────────────────────────────────────── */
+    .plg-badge { margin-top: .75rem; }
+    .plg-badge a {
+      display: inline-flex; align-items: center; gap: .35rem;
+      font-size: 13px; font-family: system-ui, -apple-system, sans-serif;
+      color: var(--muted); text-decoration: none; transition: color .2s;
+    }
+    .plg-badge a:hover { color: #0F7B72; }
+    .plg-logo {
+      width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0;
+      background: linear-gradient(135deg, #0e7490, #059669); display: inline-block;
+    }
+    .plg-cta { color: #0F7B72; font-weight: 500; }
+    .theme-dark .plg-cta { color: #13A89E; }
+    .theme-warm .plg-cta { color: #0F7B72; }
+
+    /* ── PLG: chat attribution ──────────────────────────────────────── */
+    .chat-powered-by {
+      text-align: center; padding: .25rem .5rem .35rem;
+      font-size: 10px; color: #9ca3af; border-top: 1px solid #f3f4f6;
+    }
+    .chat-powered-by a { color: #9ca3af; text-decoration: none; }
+    .chat-powered-by a:hover { color: #0F7B72; }
   </style>
 </head>
 
@@ -464,7 +504,15 @@
     {% if ctx.website_url %}<a href="{{ ctx.website_url }}" target="_blank" rel="noopener">Website</a>{% endif %}
     {% if ctx.booking_url %}<a href="{{ ctx.booking_url }}" target="_blank" rel="noopener">Book a call</a>{% endif %}
   </div>
-  <div class="powered-by">Powered by <a href="/" style="color:var(--muted)">Simulacrum</a></div>
+  {% if bio_page.show_badge %}
+  <div class="plg-badge">
+    <a href="https://simulacrumai.io?src=bio_badge" target="_blank" rel="noopener">
+      <span class="plg-logo"></span>
+      Built with Simulacrum
+      <span class="plg-cta">· Get yours free →</span>
+    </a>
+  </div>
+  {% endif %}
 </footer>
 
 <!-- ── Chat widget ─────────────────────────────────────────────────────── -->
@@ -472,7 +520,7 @@
   Ask me anything about {{ ctx.full_name.split()[0] if ctx.full_name else 'their' }}'s work
 </div>
 
-<button id="bio-chat-btn" aria-label="Open chat" title="Chat with {{ ctx.full_name.split()[0] if ctx.full_name else 'us' }}" style="display:none;">
+<button id="bio-chat-btn" aria-label="Chat with {{ ctx.full_name.split()[0] if ctx.full_name else 'us' }}" style="display:none;">
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -512,6 +560,9 @@
       <textarea id="chat-input" placeholder="Ask a question…" rows="1"
                 aria-label="Type your message"></textarea>
       <button class="chat-send-btn" id="chat-send">Send</button>
+    </div>
+    <div class="chat-powered-by">
+      Powered by <a href="https://simulacrumai.io?src=chat_widget" target="_blank" rel="noopener">Simulacrum AI</a>
     </div>
   </div>
 </div>
@@ -789,6 +840,25 @@ function toggleSimBio(card) {
   }
 }
 </script>
+
+{% if not is_owner %}
+<script>
+(function () {
+  try {
+    fetch({{ (request.script_root + '/api/bio/track') | tojson }}, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        slug: {{ slug | tojson }},
+        referrer: document.referrer,
+        utm_source: new URLSearchParams(location.search).get('utm_source') || '',
+      }),
+    });
+  } catch (e) {}
+}());
+</script>
+{% endif %}
+
 
 </body>
 </html>

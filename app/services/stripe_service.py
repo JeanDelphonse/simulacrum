@@ -10,8 +10,8 @@ def _stripe():
     return stripe
 
 
-def create_payment_intent(user_id: str, simulation_id: str, amount_cents: int = 1000) -> dict:
-    """Create a Stripe PaymentIntent for $10.00 simulation generation."""
+def create_payment_intent(user_id: str, simulation_id: str, amount_cents: int = 69500) -> dict:
+    """Create a Stripe PaymentIntent for $695.00 simulation generation."""
     s = _stripe()
     intent = s.PaymentIntent.create(
         amount=amount_cents,

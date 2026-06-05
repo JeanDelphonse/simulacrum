@@ -24,19 +24,33 @@ def execute_agent_action_task(action_id: str):
     action.status = AgentAction.STATUS_IN_PROGRESS
     db.session.commit()
 
+    # Cache scalar fields before the long execution. Long-running tasks trigger
+    # _log_interaction retries that can invalidate the DB connection; if the
+    # session-level connection is recycled mid-task, lazy-loading these from a
+    # detached action object raises DetachedInstanceError.
+    action_type      = action.action_type
+    layer_number     = action.layer_number
+    user_inputs      = action.user_inputs
+    user_id          = action.created_by
+    simulation_id    = action.simulation_id
+
     try:
-        sim = Simulation.query.get(action.simulation_id)
+        sim = Simulation.query.get(simulation_id)
+        # Orchestrator-dispatched actions have created_by=None; fall back to
+        # the simulation owner so record_agent_contacts gets a valid user_id.
+        if not user_id and sim:
+            user_id = sim.user_id
         resume = Resume.query.get(sim.resume_id) if sim else None
         parsed_text = resume.parsed_text if resume else ''
 
         artifact = execute_agent_action(
-            action_type=action.action_type,
-            layer_number=action.layer_number,
+            action_type=action_type,
+            layer_number=layer_number,
             expertise_zone=sim.expertise_zone if sim else '',
             parsed_text=parsed_text,
-            user_inputs=action.user_inputs,
-            user_id=action.created_by,
-            simulation_id=action.simulation_id,
+            user_inputs=user_inputs,
+            user_id=user_id,
+            simulation_id=simulation_id,
             dispatch_source='user_rerun',
             action_id=action_id,
         )
@@ -66,9 +80,9 @@ def execute_agent_action_task(action_id: str):
         av = ArtifactVersion(
             id=generate_id(),
             action_id=action_id,
-            simulation_id=action.simulation_id,
-            layer_number=action.layer_number,
-            action_type=action.action_type,
+            simulation_id=simulation_id,
+            layer_number=layer_number,
+            action_type=action_type,
             version_number=new_version_number,
             version_label=version_label,
             content=artifact,
@@ -77,7 +91,7 @@ def execute_agent_action_task(action_id: str):
             is_current=True,
             created_by='user',
         )
-        av.prefill_inputs = action.user_inputs
+        av.prefill_inputs = user_inputs
         db.session.add(av)
         db.session.commit()
 
@@ -86,15 +100,28 @@ def execute_agent_action_task(action_id: str):
 
         # Propagate staleness to downstream dependencies
         from app.services.prefill_engine import propagate_staleness
-        propagate_staleness(action.simulation_id, action_id, new_version_number)
+        propagate_staleness(simulation_id, action_id, new_version_number)
 
         logger.info('AgentAction %s completed — version %d created', action_id, new_version_number)
 
     except Exception as exc:
-        logger.error('AgentAction %s failed: %s', action_id, exc)
-        action.status = AgentAction.STATUS_FAILED
-        action.error_message = str(exc)
-        db.session.commit()
+        logger.error('AgentAction %s failed: %s', action_id, exc, exc_info=True)
+        # Roll back any dirty/invalid transaction before writing the failure status.
+        # Without this, a session left in REQUIRES_ROLLBACK state (e.g. by a failed
+        # _log_run commit inside ProspectResearchEngine) will cause db.session.commit()
+        # here to raise InvalidRequestError, leaving the action stuck in_progress forever.
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            action = AgentAction.query.get(action_id)
+            if action:
+                action.status = AgentAction.STATUS_FAILED
+                action.error_message = str(exc)[:500]
+                db.session.commit()
+        except Exception as commit_err:
+            logger.error('Could not persist FAILED status for action %s: %s', action_id, commit_err)
 
 
 def _generate_change_summary(action, new_version_number: int) -> str:

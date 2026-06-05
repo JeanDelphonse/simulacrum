@@ -464,6 +464,13 @@ def send_referral(partner):
     if not recipient_email:
         return jsonify({'error': 'recipient_email is required'}), 400
 
+    existing = ReferralInvitation.query.filter_by(
+        partner_id=partner.id, recipient_email=recipient_email
+    ).first()
+    if existing:
+        sent_on = existing.sent_at.strftime('%b %d, %Y') if existing.sent_at else 'a previous date'
+        return jsonify({'error': f'An invitation to {recipient_email} was already sent on {sent_on}.'}), 409
+
     invitation = ReferralInvitation(
         id=generate_id(),
         partner_id=partner.id,

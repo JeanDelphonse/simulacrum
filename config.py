@@ -21,7 +21,7 @@ class Config:
     STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
     STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
     STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
-    SIMULATION_PRICE_CENTS = 1000  # $10.00
+    SIMULATION_PRICE_CENTS = 69500  # $695.00
     LINKEDIN_CLIENT_ID = os.environ.get('LINKEDIN_CLIENT_ID')
     LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET')
     LINKEDIN_REDIRECT_URI = os.environ.get('LINKEDIN_REDIRECT_URI', 'http://localhost:5000/api/resumes/linkedin/callback')
@@ -32,6 +32,9 @@ class Config:
     APOLLO_CLIENT_ID = os.environ.get('APOLLO_CLIENT_ID')
     APOLLO_CLIENT_SECRET = os.environ.get('APOLLO_CLIENT_SECRET')
     APOLLO_REDIRECT_URI = os.environ.get('APOLLO_REDIRECT_URI', 'http://localhost:5000/api/integrations/apollo/callback')
+    PANDADOC_CLIENT_ID = os.environ.get('PANDADOC_CLIENT_ID')
+    PANDADOC_CLIENT_SECRET = os.environ.get('PANDADOC_CLIENT_SECRET')
+    PANDADOC_REDIRECT_URI = os.environ.get('PANDADOC_REDIRECT_URI', 'http://localhost:5000/api/integrations/pandadoc/callback')
     BASE_URL = os.environ.get('BASE_URL', 'http://localhost:5000')
     STRIPE_CLIENT_ID = os.environ.get('STRIPE_CLIENT_ID')                          # ca_xxxx (Connect app client ID)
     STRIPE_CONNECT_WEBHOOK_SECRET = os.environ.get('STRIPE_CONNECT_WEBHOOK_SECRET') # whsec_xxxx for Connect events

@@ -776,7 +776,43 @@ _NODE_CATALOG = [
     {'id':'SPD','label':'Spend Ceiling','tier':6,'color':'#1B3A6B','hub':False,'sub':True,'parent':'AUT','conditional':False},
     {'id':'QHR','label':'Quiet Hours','tier':6,'color':'#1B3A6B','hub':False,'sub':True,'parent':'AUT','conditional':False},
     {'id':'LOG','label':'Execution Audit Log','tier':7,'color':'#444444','hub':False,'sub':False,'parent':None,'conditional':False},
+
+    # ── L1 child agent nodes ──────────────────────────────────────────────────
+    {'id':'CO','label':'Consulting Outreach','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'consulting_outreach'},
+    {'id':'CEC','label':'Cold Email Campaign','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'cold_email_campaign'},
+    {'id':'OEM','label':'Outreach Email','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'outreach_email'},
+    {'id':'RC','label':'Rate Card','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'rate_card'},
+    {'id':'BP','label':'Booking Page','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'booking_page'},
+    {'id':'CPP','label':'Consulting Proposal','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'consulting_proposal'},
+
+    # ── L2 child agent nodes ──────────────────────────────────────────────────
+    {'id':'SPK','label':'Speaking Proposals','tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'speaking_proposals'},
+    {'id':'CCC','label':'Coaching Curriculum','tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'coaching_curriculum'},
+    {'id':'WKC','label':'Workshop Content','tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'workshop_content'},
+    {'id':'CTP','label':'Corp Training Proposal','tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'corporate_training_proposal'},
+
+    # ── L3 child agent nodes ──────────────────────────────────────────────────
+    {'id':'CRF','label':'Course Framework','tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'course_framework'},
+    {'id':'SAP','label':'Sales Page','tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'sales_page'},
+    {'id':'LES','label':'Launch Email Seq.','tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'launch_email_sequence'},
+    {'id':'MST','label':'Membership Structure','tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'membership_structure'},
+
+    # ── L4 child agent nodes ──────────────────────────────────────────────────
+    {'id':'SEO','label':'SEO Content Calendar','tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'seo_content_calendar'},
+    {'id':'FDN','label':'Funnel Design','tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'funnel_design'},
+    {'id':'NMO','label':'Newsletter Monetiz.','tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'newsletter_monetization'},
+    {'id':'SPS','label':'SaaS Product Spec','tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'saas_product_spec'},
+
+    # ── L5 child agent nodes ──────────────────────────────────────────────────
+    {'id':'PAN','label':'Portfolio Analysis','tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'portfolio_analysis'},
+    {'id':'CGW','label':'Compound Growth','tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'compound_growth'},
+    {'id':'DCS','label':'DCA Schedule','tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'dca_schedule'},
 ]
+
+# Quick lookup: action_type → node id (for state computation)
+_AGENT_NODE_MAP = {n['action_type']: n['id'] for n in _NODE_CATALOG if n.get('action_type')}
+# Layer membership for each agent node id
+_AGENT_PARENT_MAP = {n['id']: n['parent'] for n in _NODE_CATALOG if n.get('action_type')}
 
 _EDGE_CATALOG = [
     {'id':'APO-ORC','source':'APO','target':'ORC','step':'harvest','bidirectional':False,'conditional':False,
@@ -840,6 +876,49 @@ _EDGE_CATALOG = [
                'seo_organic_sessions','newsletter_subscribers','investment_balance','consulting_bookings_mo']},
     {'id':'ORC-LOG','source':'ORC','target':'LOG','step':'report','bidirectional':False,'conditional':False,
      'fields':['event_type','actor','action_id','reasoning','created_at']},
+
+    # ── L1 → agent children ───────────────────────────────────────────────────
+    {'id':'L1-CO', 'source':'L1','target':'CO', 'step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L1-CEC','source':'L1','target':'CEC','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L1-OEM','source':'L1','target':'OEM','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L1-RC', 'source':'L1','target':'RC', 'step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L1-BP', 'source':'L1','target':'BP', 'step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L1-CPP','source':'L1','target':'CPP','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+
+    # ── L2 → agent children ───────────────────────────────────────────────────
+    {'id':'L2-SPK','source':'L2','target':'SPK','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L2-CCC','source':'L2','target':'CCC','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L2-WKC','source':'L2','target':'WKC','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L2-CTP','source':'L2','target':'CTP','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+
+    # ── L3 → agent children ───────────────────────────────────────────────────
+    {'id':'L3-CRF','source':'L3','target':'CRF','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L3-SAP','source':'L3','target':'SAP','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L3-LES','source':'L3','target':'LES','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L3-MST','source':'L3','target':'MST','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+
+    # ── L4 → agent children ───────────────────────────────────────────────────
+    {'id':'L4-SEO','source':'L4','target':'SEO','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L4-FDN','source':'L4','target':'FDN','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L4-NMO','source':'L4','target':'NMO','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L4-SPS','source':'L4','target':'SPS','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+
+    # ── L5 → agent children ───────────────────────────────────────────────────
+    {'id':'L5-PAN','source':'L5','target':'PAN','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L5-CGW','source':'L5','target':'CGW','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+    {'id':'L5-DCS','source':'L5','target':'DCS','step':'schedule','bidirectional':False,'conditional':False,'fields':['action_type','status']},
+
+    # ── Prerequisite dependency edges (DAG flow across layers) ────────────────
+    {'id':'CO-SPK', 'source':'CO', 'target':'SPK','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'CCC-CRF','source':'CCC','target':'CRF','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'CRF-SAP','source':'CRF','target':'SAP','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'SAP-LES','source':'SAP','target':'LES','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'SAP-SEO','source':'SAP','target':'SEO','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'LES-FDN','source':'LES','target':'FDN','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'FDN-NMO','source':'FDN','target':'NMO','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'FDN-PAN','source':'FDN','target':'PAN','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'PAN-CGW','source':'PAN','target':'CGW','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
+    {'id':'PAN-DCS','source':'PAN','target':'DCS','step':'schedule','bidirectional':False,'conditional':False,'fields':['unlocks']},
 ]
 
 
@@ -891,6 +970,25 @@ def _node_states_for_cycle(cycle, actions, log_entries, momentum, config, fintec
         states[nid] = {'status': aut_st, 'badge_count': 0}
 
     states['LOG'] = {'status': 'complete' if log_entries else 'idle', 'badge_count': len(log_entries)}
+
+    # Agent child node states — derived from action queue entries by action_type
+    _status_map = {
+        'complete': 'complete', 'dispatched': 'running',
+        'escalated': 'escalated', 'failed': 'error',
+        'queued': 'active',
+    }
+    for a in actions:
+        nid = _AGENT_NODE_MAP.get(a.action_type)
+        if nid:
+            states[nid] = {
+                'status': _status_map.get(a.status, 'active'),
+                'badge_count': 1 if a.status == 'complete' else 0,
+            }
+    # Default idle for any agent node not seen in current cycle's queue
+    for nid in _AGENT_NODE_MAP.values():
+        if nid not in states:
+            states[nid] = {'status': 'idle', 'badge_count': 0}
+
     return states
 
 
@@ -923,6 +1021,36 @@ def _edge_states_for_cycle(cycle, actions, log_entries, momentum, fintech_on):
         states[eid] = {'active': is_done, 'error': False}
 
     states['ORC-LOG'] = {'active': bool(log_entries), 'error': False}
+
+    # Layer → agent child edges and prerequisite cross-edges
+    dispatched_types = {a.action_type for a in actions if a.status in ('dispatched', 'complete', 'queued', 'escalated')}
+    complete_types   = {a.action_type for a in actions if a.status == 'complete'}
+
+    # Layer-to-agent edges: active when action was dispatched this cycle
+    for action_type, nid in _AGENT_NODE_MAP.items():
+        parent = _AGENT_PARENT_MAP.get(nid, '')
+        edge_id = f'{parent}-{nid}'
+        states[edge_id] = {'active': action_type in dispatched_types, 'error': False}
+
+    # Prerequisite edges: active when source is complete and target was dispatched
+    _prereq_edges = [
+        ('CO-SPK',  'consulting_outreach',     'speaking_proposals'),
+        ('CCC-CRF', 'coaching_curriculum',      'course_framework'),
+        ('CRF-SAP', 'course_framework',         'sales_page'),
+        ('SAP-LES', 'sales_page',               'launch_email_sequence'),
+        ('SAP-SEO', 'sales_page',               'seo_content_calendar'),
+        ('LES-FDN', 'launch_email_sequence',     'funnel_design'),
+        ('FDN-NMO', 'funnel_design',             'newsletter_monetization'),
+        ('FDN-PAN', 'funnel_design',             'portfolio_analysis'),
+        ('PAN-CGW', 'portfolio_analysis',        'compound_growth'),
+        ('PAN-DCS', 'portfolio_analysis',        'dca_schedule'),
+    ]
+    for eid, src_type, tgt_type in _prereq_edges:
+        states[eid] = {
+            'active': src_type in complete_types and tgt_type in dispatched_types,
+            'error': False,
+        }
+
     return states
 
 

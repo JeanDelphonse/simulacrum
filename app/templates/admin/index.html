@@ -47,11 +47,28 @@
 
   <section class="admin-section">
     <h2>Revenue Dashboard</h2>
-    <div id="revenueStats" class="stats-grid">
-      <div class="stat-card"><div class="stat-value" id="totalRevenue">Loading…</div><div class="stat-label">Total Revenue</div></div>
-      <div class="stat-card"><div class="stat-value" id="totalSims">—</div><div class="stat-label">Simulations Completed</div></div>
-      <div class="stat-card"><div class="stat-value" id="refundRate">—</div><div class="stat-label">Refund Rate</div></div>
-      <div class="stat-card"><div class="stat-value" id="totalTokens">—</div><div class="stat-label">AI Tokens Used</div></div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">${{ "%.2f"|format(revenue_stats.total_revenue_usd) }}</div>
+        <div class="stat-label">Total Revenue</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ revenue_stats.total_simulations_completed }}</div>
+        <div class="stat-label">Simulations Completed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ revenue_stats.refund_rate_pct }}%</div>
+        <div class="stat-label">Refund Rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">
+          {% set t = revenue_stats.total_tokens %}
+          {% if t >= 1000000 %}{{ "%.1f"|format(t / 1000000) }}M
+          {% elif t >= 1000 %}{{ "%.1f"|format(t / 1000) }}k
+          {% else %}{{ t }}{% endif %}
+        </div>
+        <div class="stat-label">AI Tokens Used</div>
+      </div>
     </div>
   </section>
 
@@ -103,16 +120,6 @@ async function saveSimPrice() {
   msg.style.display = 'inline';
   setTimeout(() => { msg.style.display = 'none'; }, 2500);
 }
-
-// Load revenue stats
-fetch(ROOT + '/api/admin/revenue').then(r => r.json()).then(data => {
-  document.getElementById('totalRevenue').textContent = '$' + data.total_revenue_usd.toFixed(2);
-  document.getElementById('totalSims').textContent = data.total_simulations_completed;
-  document.getElementById('refundRate').textContent = data.refund_rate_pct + '%';
-  document.getElementById('totalTokens').textContent = (
-    (data.ai_tokens.prompt_tokens_total + data.ai_tokens.completion_tokens_total) / 1000
-  ).toFixed(1) + 'k';
-});
 
 // Load price history
 fetch(ROOT + '/api/admin/settings/simulation_price').then(r => r.json()).then(data => {

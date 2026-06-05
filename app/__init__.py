@@ -143,6 +143,9 @@ def create_app(config_name=None):
 
     @app.errorhandler(Exception)
     def _handle_exception(e):
+        from werkzeug.exceptions import HTTPException
+        if isinstance(e, HTTPException):
+            return e
         app.logger.error('Unhandled exception:\n' + _tb.format_exc())
         from flask import jsonify, request as _req
         if _req.path.startswith('/api/'):

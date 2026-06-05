@@ -123,6 +123,17 @@ def start_generation_if_needed(simulation_id: str, app_obj):
                 db.session.commit()
 
 
+def sse_event(event_type: str, data: dict) -> str:
+    """Format one SSE message: event + JSON data."""
+    import json as _json
+    return f'event: {event_type}\ndata: {_json.dumps(data)}\n\n'
+
+
+def sse_keepalive() -> str:
+    """SSE comment line — keeps the connection alive without triggering a client event."""
+    return ': keepalive\n\n'
+
+
 def push_sse_event(simulation_id: str, payload: dict):
     """
     Placeholder for real-time SSE push. Currently a no-op — the app uses

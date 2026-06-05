@@ -51,14 +51,14 @@ def refresh_access_token(refresh_token: str) -> dict:
 # ── API client ────────────────────────────────────────────────────────────────
 
 class ApolloClient:
-    def __init__(self, access_token: str):
+    def __init__(self, access_token: str, auth_type: str = 'api_key'):
         self._token = access_token
+        self._auth_type = auth_type
 
     def _headers(self):
-        return {
-            'Authorization': f'Bearer {self._token}',
-            'Content-Type': 'application/json',
-        }
+        if self._auth_type == 'oauth':
+            return {'Authorization': f'Bearer {self._token}', 'Content-Type': 'application/json'}
+        return {'X-Api-Key': self._token, 'Content-Type': 'application/json'}
 
     def _get(self, path, params=None):
         import requests

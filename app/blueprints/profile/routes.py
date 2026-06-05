@@ -117,7 +117,7 @@ def update_profile():
             setattr(profile, field, bool(data[field]))
 
     if 'bio' in data:
-        profile.bio = (data['bio'] or '').strip()[:2000] or None
+        profile.bio = (data['bio'] or '').strip()[:10000] or None
         profile.bio_edited = True
 
     profile.updated_at = datetime.utcnow()
@@ -131,28 +131,47 @@ def generate_bio():
     profile = _get_or_create_profile(current_user)
     db.session.commit()
 
+    body = request.get_json(silent=True) or {}
+    existing_bio = (body.get('existing_bio') or '').strip() or None
+
     from app.models.resume import Resume
     resume = Resume.query.filter_by(user_id=current_user.id).order_by(Resume.created_at.desc()).first()
-    if not resume or not resume.parsed_text:
-        return jsonify({'error': 'Upload a resume or connect LinkedIn first'}), 400
 
+    from app.models.published_page import PublishedPage
     from app.models.simulation import Simulation
-    sims = Simulation.query.filter_by(user_id=current_user.id, status='complete').all()
+    published_sim_ids = {
+        p.simulation_id for p in
+        PublishedPage.query.filter_by(status='live').all()
+    }
+    published_sims = [
+        s for s in Simulation.query.filter_by(user_id=current_user.id).all()
+        if s.id in published_sim_ids
+    ]
+
     zones = []
-    for sim in sims:
+    for sim in published_sims:
         if sim.expertise_zone:
-            zones.append({'zone_name': sim.expertise_zone})
-    if resume.expertise_zones:
-        zones = resume.expertise_zones or zones
+            zones.append({'zone_name': sim.expertise_zone, 'evidence': sim.name or ''})
+
+    # Fall back to resume zones or any completed simulation if nothing published
+    if not zones:
+        if resume and resume.expertise_zones:
+            zones = resume.expertise_zones
+        else:
+            for sim in Simulation.query.filter_by(user_id=current_user.id, status='complete').all():
+                if sim.expertise_zone:
+                    zones.append({'zone_name': sim.expertise_zone})
 
     if not zones:
-        return jsonify({'error': 'Complete at least one Simulation to generate your bio'}), 400
+        return jsonify({'error': 'Publish at least one Simulation to regenerate your bio'}), 400
+
+    resume_text = (resume.parsed_text if resume and resume.parsed_text else '') or ''
 
     try:
         from app.services.bio_service import generate_wikipedia_bio
-        bio_text = generate_wikipedia_bio(profile, resume.parsed_text, zones)
+        bio_text = generate_wikipedia_bio(profile, resume_text, zones, existing_bio=existing_bio)
     except Exception as e:
-        current_app.logger.error(f'Bio generation failed: {e}')
+        current_app.logger.error('Bio generation failed: %s', e)
         return jsonify({'error': 'Bio generation failed. Please try again.'}), 500
 
     return jsonify({'bio': bio_text})
