@@ -361,10 +361,31 @@
     {% else %}
     <button type="button" class="av-btn" id="avArchiveBtn">Archive</button>
     {% endif %}
+    {% if linkedin_connected and not is_co %}
+    <button type="button" class="av-btn" id="avLinkedInBtn">Post to LinkedIn</button>
+    {% endif %}
     {% if not is_co %}
     <button type="button" class="av-btn primary" id="avSaveBtn" disabled>Save as new version</button>
     {% endif %}
   </div>
+
+  {% if linkedin_connected and not is_co %}
+  <div id="liModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:520px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+      <h3 style="margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a;">Post to LinkedIn</h3>
+      <p style="font-size:13px;color:#64748b;margin:0 0 14px;">Customize before publishing to your LinkedIn feed.</p>
+      <textarea id="liPostText" style="width:100%;box-sizing:border-box;min-height:160px;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:14px;font-family:inherit;line-height:1.6;resize:vertical;outline:none;" maxlength="3000" placeholder="Write your LinkedIn post…"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <span id="liCharCount" style="font-size:12px;color:#94a3b8;">0 / 3000</span>
+        <span id="liPostMsg" style="font-size:13px;color:#dc2626;"></span>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+        <button type="button" class="av-btn" id="liCancelBtn">Cancel</button>
+        <button type="button" class="av-btn primary" id="liPublishBtn">Submit for Approval</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   {% if not is_co %}
   <aside class="av-sidebar" id="avSidebar" aria-hidden="true">
@@ -970,5 +991,64 @@
 })();
 </script>
 
+{% if linkedin_connected and not is_co %}
+<script>
+(function () {
+  var $btn     = document.getElementById('avLinkedInBtn');
+  var $modal   = document.getElementById('liModal');
+  var $text    = document.getElementById('liPostText');
+  var $count   = document.getElementById('liCharCount');
+  var $msg     = document.getElementById('liPostMsg');
+  var $publish = document.getElementById('liPublishBtn');
+  var $cancel  = document.getElementById('liCancelBtn');
+  if (!$btn || !$modal) return;
+
+  $btn.addEventListener('click', function () {
+    var ta = document.getElementById('avContent');
+    $text.value = ta ? ta.value.slice(0, 3000) : '';
+    updateCount();
+    $msg.textContent = '';
+    $modal.style.display = 'flex';
+    $text.focus();
+  });
+
+  $cancel.addEventListener('click', function () { $modal.style.display = 'none'; });
+  $modal.addEventListener('click', function (e) {
+    if (e.target === $modal) $modal.style.display = 'none';
+  });
+
+  $text.addEventListener('input', updateCount);
+  function updateCount() {
+    var n = $text.value.length;
+    $count.textContent = n + ' / 3000';
+    $count.style.color = n > 2800 ? '#b45309' : '#94a3b8';
+  }
+
+  $publish.addEventListener('click', async function () {
+    var text = $text.value.trim();
+    if (!text) { $msg.textContent = 'Post text is required.'; return; }
+    $publish.disabled = true;
+    $publish.textContent = 'Submitting…';
+    $msg.textContent = '';
+    try {
+      var r = await fetch(ROOT + '/api/integrations/linkedin/post', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({text: text, artifact_id: '{{ action.id }}'}),
+      });
+      var d = await r.json();
+      if (!r.ok) throw new Error(d.message || d.error || 'Submit failed');
+      $modal.style.display = 'none';
+      alert('Post submitted for approval — check your Action Queue in the GCC to approve and publish.');
+    } catch (e) {
+      $msg.textContent = e.message;
+    } finally {
+      $publish.disabled = false;
+      $publish.textContent = 'Submit for Approval';
+    }
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}

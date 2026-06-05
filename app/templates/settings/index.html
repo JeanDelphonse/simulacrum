@@ -195,11 +195,11 @@
 .bp-editor-body { padding: 1rem; display: none; border-top: 1px solid rgba(255,255,255,.07); }
 .bp-editor-body.open { display: block; }
 .bp-form-group { margin-bottom: .9rem; }
-.bp-form-group label { display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9CA3AF; margin-bottom: .3rem; font-family: 'DM Sans', sans-serif; }
+.bp-form-group label { display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #cbd5e1; margin-bottom: .3rem; font-family: 'DM Sans', sans-serif; }
 .bp-form-group input, .bp-form-group textarea { width: 100%; padding: .5rem .75rem; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; font-size: .875rem; color: #e8eaf0; background: rgba(255,255,255,.04); font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
 .bp-form-group input:focus, .bp-form-group textarea:focus { outline: none; border-color: rgba(15,123,114,.5); box-shadow: 0 0 0 3px rgba(15,123,114,.1); }
 .bp-form-group textarea { resize: vertical; min-height: 80px; }
-.bp-custom-toggle { display: flex; align-items: center; gap: .45rem; margin-top: .4rem; font-size: .78rem; color: #9CA3AF; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.bp-custom-toggle { display: flex; align-items: center; gap: .45rem; margin-top: .4rem; font-size: .78rem; color: #94a3b8; cursor: pointer; font-family: 'DM Sans', sans-serif; }
 .bp-theme-options { display: flex; gap: .6rem; margin-top: .25rem; }
 .bp-theme-btn { flex: 1; padding: .45rem; border-radius: 8px; border: 2px solid rgba(255,255,255,.12); cursor: pointer; font-size: .78rem; font-weight: 600; text-align: center; transition: border-color .12s; font-family: 'DM Sans', sans-serif; }
 .bp-theme-btn.active { border-color: #0F7B72; }
@@ -211,13 +211,16 @@
 .bp-testimonial-item .t-name { font-size: .78rem; font-weight: 600; color: #e8eaf0; font-family: 'DM Sans', sans-serif; }
 .bp-t-delete { position: absolute; top: .5rem; right: .5rem; background: none; border: none; color: rgba(255,255,255,.3); cursor: pointer; font-size: .88rem; }
 .bp-t-delete:hover { color: #fca5a5; }
-.bp-upload-area { border: 2px dashed rgba(255,255,255,.15); border-radius: 8px; padding: .8rem; text-align: center; font-size: .82rem; color: #9CA3AF; cursor: pointer; transition: border-color .12s; font-family: 'DM Sans', sans-serif; }
+.bp-upload-area { border: 2px dashed rgba(255,255,255,.15); border-radius: 8px; padding: .8rem; text-align: center; font-size: .82rem; color: #94a3b8; cursor: pointer; transition: border-color .12s; font-family: 'DM Sans', sans-serif; }
 .bp-upload-area:hover { border-color: #0F7B72; }
 .bp-upload-area input[type=file] { display: none; }
-#bp-save-status { font-size: .78rem; color: #9CA3AF; font-family: 'DM Sans', sans-serif; }
+#bp-save-status { font-size: .78rem; color: #94a3b8; font-family: 'DM Sans', sans-serif; }
 #bp-save-status.saved { color: #86efac; }
 #bp-save-status.error { color: #fca5a5; }
 .bp-add-t-toggle { color: #0F7B72; background: none; border: none; font-size: .85rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; padding: 0; }
+/* Toggle labels inside dark bio editor panels */
+.bp-editor-body .toggle-label { color: #e8eaf0; }
+.bp-editor-body .toggle-desc  { color: #94a3b8; }
 </style>
 {% endblock %}
 
@@ -380,7 +383,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <div>
               <div style="font-size:.875rem;color:#e8eaf0">simulacrum.io/u/<strong>{{ profile.username }}</strong></div>
-              <div id="bioPageStatusHint" style="font-size:.78rem;margin-top:.25rem;color:rgba(255,255,255,.35)">Loading…</div>
+              <div id="bioPageStatusHint" style="font-size:.78rem;margin-top:.25rem;color:rgba(255,255,255,.65)">Loading…</div>
             </div>
             <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;flex-shrink:0">
               <span id="bp-save-status"></span>
@@ -969,7 +972,15 @@
 
         {# ─── LinkedIn ─── #}
         <div class="integ-card" id="card-linkedin">
-          <span class="integ-badge legal">Legal review</span>
+          {% if linkedin_enabled %}
+            {% if linkedin_resume %}
+              <span class="integ-badge connected">Connected</span>
+            {% else %}
+              <span class="integ-badge not_connected">Not connected</span>
+            {% endif %}
+          {% else %}
+            <span class="integ-badge legal">Legal review</span>
+          {% endif %}
           <div class="integ-card-top">
             <div class="integ-logo" style="background:#0a66c220;color:#0a66c2">LI</div>
             <div class="integ-card-info">
@@ -977,12 +988,31 @@
               <div class="integ-card-desc">Profile and content distribution</div>
             </div>
           </div>
-          <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
-            Pending attorney review of the LinkedIn API Terms of Service (FR-LINKEDIN-01).
-            The OAuth flow and content publishing are ready to deploy once legal clearance is received.
-          </div>
-          <button disabled class="integ-primary-btn navy" style="opacity:.35;cursor:not-allowed">Coming soon</button>
-          <div class="integ-agents">Will support: content_distribution · connection_import · profile_optimization</div>
+          {% if linkedin_enabled %}
+            {% if linkedin_resume %}
+              <div class="integ-conn-details">
+                <span class="integ-health"><span class="integ-health-dot healthy"></span> Connected</span>
+                &nbsp;·&nbsp; Imported {{ linkedin_resume.created_at.strftime('%b %d, %Y') }}
+              </div>
+              <div class="integ-secondary-links">
+                <a class="integ-secondary-link" href="{{ url_for('pages.resume_detail', resume_id=linkedin_resume.id) }}">View profile →</a>
+                <button class="integ-secondary-link danger" onclick="disconnectLinkedIn()">Disconnect</button>
+              </div>
+              <button onclick="startLinkedInInteg(this)" class="integ-primary-btn outlined">↻ Re-sync</button>
+            {% else %}
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
+                Connect your LinkedIn profile to import your name, headline, and contact details.
+              </div>
+              <button onclick="startLinkedInInteg(this)" class="integ-primary-btn navy">Connect LinkedIn →</button>
+            {% endif %}
+          {% else %}
+            <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
+              Pending attorney review of the LinkedIn API Terms of Service (FR-LINKEDIN-01).
+              The OAuth flow and content publishing are ready to deploy once legal clearance is received.
+            </div>
+            <button disabled class="integ-primary-btn navy" style="opacity:.35;cursor:not-allowed">Coming soon</button>
+          {% endif %}
+          <div class="integ-agents">Supports: content_distribution · connection_import · profile_optimization</div>
         </div>
 
       </div>{# end audience grid #}
@@ -1420,6 +1450,32 @@
 {% block scripts %}
 <script>
 const ROOT2 = window.ROOT || '';
+
+async function startLinkedInInteg(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
+  try {
+    const res = await fetch(ROOT2 + '/api/resumes/linkedin', { credentials: 'same-origin' });
+    const data = await res.json();
+    if (data.auth_url) {
+      window.location.href = data.auth_url;
+    } else if (data.consent_required) {
+      if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Re-sync') ? '↻ Re-sync' : 'Connect LinkedIn →'; }
+      alert('Please accept the Terms of Service on the Sources page before connecting LinkedIn.');
+    } else {
+      throw new Error(data.error || 'Could not start LinkedIn login');
+    }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Re-sync') ? '↻ Re-sync' : 'Connect LinkedIn →'; }
+    alert(e.message || 'LinkedIn connection failed. Please try again.');
+  }
+}
+
+async function disconnectLinkedIn() {
+  if (!confirm('Disconnect LinkedIn? This removes your imported LinkedIn profile from Simulacrum. You can reconnect at any time.')) return;
+  const res = await fetch(ROOT2 + '/api/resumes/linkedin/disconnect', { method: 'POST' });
+  if (res.ok) { window.location.reload(); }
+  else { alert('Disconnect failed — please try again.'); }
+}
 
 function toast(msg) {
   const el = document.getElementById('toastEl');

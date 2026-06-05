@@ -119,6 +119,11 @@ ACTION_ITEM_TEMPLATES = {
         'action_label': 'Review and publish',
         'is_dismissable': True,
     },
+    'social_post_approval': {
+        'urgency_tier': 2,
+        'action_label': 'Review post',
+        'is_dismissable': False,
+    },
 }
 
 LAYER_NAMES = {

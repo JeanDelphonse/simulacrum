@@ -57,6 +57,11 @@
 }
 .anv-modal-close:hover { color: #f1f5f9; background: #1e293b; }
 
+/* Next run indicator (FR-GCC-13) */
+.anv-next-run { font-size: 0.73rem; color: #64748b; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+.anv-next-run.amber { color: #fbbf24; }
+.anv-next-run.running { color: #00b89a; }
+
 /* Cycle select */
 #anv-cycle-select {
   background: #1e293b;
@@ -705,6 +710,7 @@
       <div class="anv-hdr-sep"></div>
 
       <button id="anv-run-now" class="anv-hdr-btn primary" title="Trigger a cycle now">▶ Run Now</button>
+      <span class="anv-next-run" id="anvNextRun" data-next-run-class="anv-next-run"></span>
       <button id="anv-share"   class="anv-hdr-btn" title="Share this view">⤴ Share</button>
       <button id="anv-diff-btn" class="anv-hdr-btn" title="Compare two cycles">⇄ Diff</button>
 

@@ -98,6 +98,10 @@ def page_full_view(sim_id, artifact_id):
         return redirect(url_for('pages.layer6_view', sim_id=sim_id))
 
     history = ArtifactVersion.history_for(action.id)
+    from app.models.integration import UserIntegration
+    li_int = UserIntegration.query.filter_by(
+        user_id=current_user.id, provider='linkedin'
+    ).first()
     return render_template(
         'simulations/artifact_view.html',
         sim=sim,
@@ -105,6 +109,7 @@ def page_full_view(sim_id, artifact_id):
         current=current,
         history=history,
         artifact_name=_plain_name(action.action_type),
+        linkedin_connected=bool(li_int and li_int.is_connected),
     )
 
 

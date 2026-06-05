@@ -360,7 +360,7 @@ class ActionItem(db.Model):
         'blog_published', 'stale_artifact', 'cycle_ready',
         'first_cycle', 'orchestrator_recommendation', 'milestone',
         'waitlist_threshold', 'contact_promote',
-        'bio_chat_started', 'bio_page_review',
+        'bio_chat_started', 'bio_page_review', 'social_post_approval',
     ]
 
     id               = db.Column(db.String(9), primary_key=True, default=generate_id)
@@ -438,4 +438,30 @@ class Layer6ShareToken(db.Model):
             'cycle_id': self.cycle_id,
             'expires_at': self.expires_at.isoformat(),
             'created_at': self.created_at.isoformat(),
+        }
+
+
+class CyclePosteriorSnapshot(db.Model):
+    """Snapshot of all Bayesian posteriors at the Score step of each cycle (FR-DIFF-10)."""
+    __tablename__ = 'cycle_posterior_snapshots'
+
+    id             = db.Column(db.String(9), primary_key=True, default=generate_id)
+    cycle_id       = db.Column(
+        db.String(9), db.ForeignKey('layer6_cycles.id', ondelete='CASCADE'),
+        nullable=False, index=True,
+    )
+    simulation_id  = db.Column(db.String(9), nullable=False, index=True)
+    action_type    = db.Column(db.String(100), nullable=False)
+    posterior_value = db.Column(db.Numeric(10, 6), nullable=False)
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('cycle_id', 'action_type', name='uq_cps_cycle_action'),
+    )
+
+    def to_dict(self):
+        return {
+            'cycle_id': self.cycle_id,
+            'action_type': self.action_type,
+            'posterior_value': float(self.posterior_value),
         }

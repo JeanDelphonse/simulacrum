@@ -15,7 +15,7 @@ from app.models.audit_log import AuditLog
 from app.models.platform_settings import PlatformSetting
 from app.services.resume_parser import parse_resume, allowed_file
 from app.services.claude import extract_expertise_zones, normalize_linkedin_text
-from app.services.linkedin import get_auth_url, exchange_code_for_token, crawl_profile, encrypt_token
+from app.services.linkedin import get_auth_url, exchange_code_for_token, crawl_profile, encrypt_token, get_user_info
 from utils.id_gen import generate_id
 
 
@@ -241,12 +241,43 @@ def linkedin_oauth_callback():
         )
         db.session.add(resume)
         AuditLog.log('linkedin_imported', user_id=current_user.id, resource_id=resume.id)
+
+        # Upsert UserIntegration so the user can post to LinkedIn from artifacts
+        profile_info = get_user_info(access_token)
+        from app.models.integration import UserIntegration
+        from app.services.token_crypto import encrypt_token as _tc_encrypt
+        li_int = UserIntegration.query.filter_by(
+            user_id=current_user.id, provider='linkedin'
+        ).first()
+        if not li_int:
+            li_int = UserIntegration(
+                id=generate_id(), user_id=current_user.id, provider='linkedin'
+            )
+            db.session.add(li_int)
+        li_int.access_token_enc = _tc_encrypt(access_token)
+        li_int.provider_account_id = profile_info.get('sub', '')
+        li_int.connected_at = datetime.utcnow()
+
         db.session.commit()
 
         return redirect(url_for('pages.resume_detail', resume_id=resume.id))
     except Exception as e:
         logger.error('LinkedIn import failed: %s', e)
         return redirect(url_for('pages.resumes_view') + '?linkedin_error=import_failed')
+
+
+@resumes_bp.route('/linkedin/disconnect', methods=['POST'])
+@login_required
+def linkedin_disconnect():
+    resume = Resume.query.filter_by(
+        user_id=current_user.id, source='linkedin'
+    ).order_by(Resume.created_at.desc()).first()
+    if not resume:
+        return jsonify({'error': 'No LinkedIn profile connected'}), 404
+    db.session.delete(resume)
+    AuditLog.log('linkedin_disconnected', user_id=current_user.id)
+    db.session.commit()
+    return jsonify({'ok': True}), 200
 
 
 @resumes_bp.route('/<resume_id>', methods=['GET'])

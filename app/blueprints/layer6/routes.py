@@ -12,6 +12,7 @@ from app.models.simulation import Simulation
 from app.models.layer6 import (
     Layer6Config, Layer6Cycle, Layer6ActionQueue,
     Layer6Outcome, Layer6Momentum, Layer6ExecutionLog, Layer6ShareToken,
+    CyclePosteriorSnapshot,
 )
 from app.models.audit_log import AuditLog
 
@@ -1435,6 +1436,201 @@ def compare_cycles(sim_id):
                 'started_at': c.cycle_started_at.isoformat()}
 
     return jsonify({'a': cycle_snapshot(ca), 'b': cycle_snapshot(cb)}), 200
+
+
+@layer6_bp.route('/<sim_id>/layer6/diff', methods=['GET'])
+@login_required
+def cycle_diff(sim_id):
+    """
+    Cycle Diff — compare two cycles across 6 sections.
+    ?current=<cycle_id>&prior=<cycle_id>
+    Defaults: current=latest, prior=one before latest.
+    """
+    sim, err, code = _get_sim_or_404(sim_id)
+    if err:
+        return err, code
+
+    all_cycles = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Cycle.cycle_number.desc()
+    ).all()
+
+    if len(all_cycles) < 1:
+        return jsonify({'error': 'No cycles found'}), 404
+
+    current_id = request.args.get('current') or all_cycles[0].id
+    prior_id   = request.args.get('prior') or (all_cycles[1].id if len(all_cycles) > 1 else None)
+
+    current_cycle = Layer6Cycle.query.filter_by(id=current_id, simulation_id=sim_id).first()
+    prior_cycle   = Layer6Cycle.query.filter_by(id=prior_id, simulation_id=sim_id).first() if prior_id else None
+
+    if not current_cycle:
+        return jsonify({'error': 'Current cycle not found'}), 404
+
+    # Helpers
+    def _actions_for(cycle):
+        if not cycle:
+            return []
+        return Layer6ActionQueue.query.filter(
+            Layer6ActionQueue.cycle_id == cycle.id,
+            Layer6ActionQueue.status.in_([
+                Layer6ActionQueue.STATUS_DISPATCHED,
+                Layer6ActionQueue.STATUS_COMPLETE,
+                Layer6ActionQueue.STATUS_ESCALATED,
+            ])
+        ).all()
+
+    cur_actions  = _actions_for(current_cycle)
+    prior_actions = _actions_for(prior_cycle)
+
+    cur_types   = {a.action_type for a in cur_actions}
+    prior_types = {a.action_type for a in prior_actions}
+
+    # Summary cards
+    from app.models.contact import Contact
+    cur_contacts  = Contact.query.filter_by(user_id=sim.user_id, source_cycle_id=current_id).count()
+    prior_contacts = Contact.query.filter_by(user_id=sim.user_id, source_cycle_id=prior_id).count() if prior_id else 0
+
+    summary_cards = [
+        {
+            'label': 'New Contacts',
+            'current': cur_contacts,
+            'prior': prior_contacts,
+            'delta': cur_contacts - prior_contacts,
+        },
+        {
+            'label': 'Emails Sent',
+            'current': 0,
+            'prior': 0,
+            'delta': 0,
+        },
+        {
+            'label': 'Replies',
+            'current': 0,
+            'prior': 0,
+            'delta': 0,
+        },
+        {
+            'label': 'Cycle Cost',
+            'current': 0.0,
+            'prior': 0.0,
+            'delta': 0.0,
+            'format': 'dollars',
+        },
+    ]
+
+    # Section 1 — Agents dispatched
+    agents_dispatched = []
+    for at in cur_types | prior_types:
+        if at in cur_types and at in prior_types:
+            badge = 'rerun'
+        elif at in cur_types:
+            badge = 'new'
+        else:
+            badge = 'dropped'
+        agents_dispatched.append({'action_type': at, 'badge': badge})
+    agents_dispatched.sort(key=lambda x: (x['badge'] != 'new', x['badge'] != 'rerun', x['action_type']))
+
+    # Section 2 — CRM contact changes
+    new_prospects = []
+    for c in Contact.query.filter_by(user_id=sim.user_id, source_cycle_id=current_id,
+                                      pipeline_stage='prospect').limit(6).all():
+        new_prospects.append({
+            'name': c.display_name,
+            'company': c.company_name or '',
+            'source_agent': c.source or '',
+        })
+
+    # Advanced contacts: contacts with stage change activity during current cycle window
+    advanced = []
+    if current_cycle.cycle_started_at and current_cycle.cycle_completed_at:
+        from app.models.contact import ContactActivity
+        stage_changes = ContactActivity.query.filter(
+            ContactActivity.simulation_id == sim_id,
+            ContactActivity.activity_type == 'stage_changed',
+            ContactActivity.activity_date >= current_cycle.cycle_started_at,
+            ContactActivity.activity_date <= (current_cycle.cycle_completed_at or datetime.utcnow()),
+        ).limit(5).all()
+        for sc in stage_changes:
+            c = Contact.query.get(sc.contact_id)
+            if c:
+                advanced.append({
+                    'name': c.display_name,
+                    'company': c.company_name or '',
+                    'reason': f'{sc.pipeline_stage_from} → {sc.pipeline_stage_to}',
+                })
+
+    crm_contacts = {
+        'new_prospects': new_prospects[:5],
+        'new_prospects_overflow': max(0, len(new_prospects) - 5),
+        'advanced': advanced,
+    }
+
+    # Section 3 — Email activity (placeholder until email campaigns are cycle-linked)
+    email_activity = {'current': [], 'prior': []}
+
+    # Section 4 — Bayesian score changes
+    cur_snaps  = {s.action_type: float(s.posterior_value)
+                  for s in CyclePosteriorSnapshot.query.filter_by(cycle_id=current_id).all()}
+    prior_snaps = {s.action_type: float(s.posterior_value)
+                   for s in CyclePosteriorSnapshot.query.filter_by(cycle_id=prior_id).all()} if prior_id else {}
+
+    bayesian_scores = []
+    for at in set(cur_snaps) | set(prior_snaps):
+        cur_val   = cur_snaps.get(at, 0.5)
+        prior_val = prior_snaps.get(at, 0.5)
+        delta     = round(cur_val - prior_val, 4)
+        bayesian_scores.append({
+            'action_type': at,
+            'current': round(cur_val, 4),
+            'prior': round(prior_val, 4),
+            'delta': delta,
+            'direction': 'up' if delta > 0 else ('down' if delta < 0 else 'flat'),
+        })
+    bayesian_scores.sort(key=lambda x: abs(x['delta']), reverse=True)
+
+    # Section 5 — Signals harvested
+    POSITIVE_SIGNALS = {'email_replied', 'booking_created', 'page_view', 'chat_session',
+                        'lead_captured', 'payment_received', 'completed'}
+    NEGATIVE_SIGNALS = {'email_bounced', 'booking_cancelled', 'no_show', 'failed'}
+
+    cur_logs = Layer6ExecutionLog.query.filter_by(cycle_id=current_id).all()
+    signals = []
+    for log in cur_logs:
+        sentiment = ('positive' if log.event_type in POSITIVE_SIGNALS
+                     else 'negative' if log.event_type in NEGATIVE_SIGNALS
+                     else None)
+        if sentiment:
+            signals.append({
+                'type': log.event_type,
+                'sentiment': sentiment,
+                'detail': (log.reasoning or '')[:120],
+                'source': log.actor,
+            })
+
+    # Section 6 — Orchestrator reasoning
+    reasoning = {
+        'current': current_cycle.orchestrator_reasoning or '',
+        'prior': prior_cycle.orchestrator_reasoning or '' if prior_cycle else '',
+    }
+
+    # Cycle selector options
+    cycle_options = [
+        {'id': c.id, 'label': f'Cycle {c.cycle_number} — {c.phase}', 'number': c.cycle_number}
+        for c in all_cycles
+    ]
+
+    return jsonify({
+        'current_cycle': current_cycle.to_dict(),
+        'prior_cycle': prior_cycle.to_dict() if prior_cycle else None,
+        'cycle_options': cycle_options,
+        'summary_cards': summary_cards,
+        'agents_dispatched': agents_dispatched,
+        'crm_contacts': crm_contacts,
+        'email_activity': email_activity,
+        'bayesian_scores': bayesian_scores[:20],
+        'signals': signals,
+        'reasoning': reasoning,
+    }), 200
 
 
 # ---------------------------------------------------------------------------

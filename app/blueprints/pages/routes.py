@@ -286,12 +286,21 @@ def settings_integrations():
         user_id=current_user.id, provider='alpaca'
     ).first()
     sg_connected = bool(PlatformSetting.get('sendgrid_api_key'))
+    linkedin_enabled = PlatformSetting.get('linkedin_integration_enabled') == 'on'
 
     alpaca_meta = alpaca_int.get_meta() if alpaca_int else {}
+
+    # LinkedIn connection state (profile URL stored on user's resume record)
+    from app.models.resume import Resume as _Resume
+    linkedin_resume = _Resume.query.filter_by(
+        user_id=current_user.id, source='linkedin'
+    ).order_by(_Resume.created_at.desc()).first()
 
     return render_template(
         'settings/index.html',
         active_tab='integrations',
+        linkedin_enabled=linkedin_enabled,
+        linkedin_resume=linkedin_resume,
         profile=profile,
         apollo=apollo,
         stripe_int=stripe_int,
@@ -340,8 +349,10 @@ def settings_notifications():
 @login_required
 def resumes_view():
     from app.models.resume import Resume
+    from app.models.platform_settings import PlatformSetting
     resumes = Resume.query.filter_by(user_id=current_user.id).order_by(Resume.created_at.desc()).all()
-    return render_template('resumes/list.html', resumes=resumes)
+    linkedin_enabled = PlatformSetting.get('linkedin_integration_enabled') == 'on'
+    return render_template('resumes/list.html', resumes=resumes, linkedin_enabled=linkedin_enabled)
 
 
 @pages_bp.route('/resumes/<resume_id>')

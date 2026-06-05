@@ -155,7 +155,11 @@
 .jrn-focus-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gcc-teal); }
 .jrn-focus-action { font-size: 1rem; font-weight: 700; color: var(--gcc-navy); }
 .jrn-focus-sub { font-size: 0.76rem; color: var(--gcc-muted); }
-.jrn-focus-btns { display: flex; gap: 0.55rem; flex-shrink: 0; }
+.jrn-focus-btns { display: flex; align-items: center; gap: 0.55rem; flex-shrink: 0; }
+.jrn-run-group { display: flex; align-items: center; gap: 0.5rem; }
+.jrn-next-run { font-size: 0.73rem; color: #6b7b8d; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+.jrn-next-run.amber { color: #C9952A; }
+.jrn-next-run.running { color: var(--gcc-teal); }
 .jrn-btn-run {
   background: var(--gcc-teal); color: #0a0e1a; border: none; border-radius: 6px;
   padding: 0.45rem 0.9rem; font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap;
@@ -524,6 +528,55 @@
 }
 .cyc-pill-explore { background: rgba(245,158,11,0.15); color: var(--gcc-amber); }
 .cyc-pill-exploit { background: rgba(20,184,166,0.15); color: var(--gcc-teal); }
+
+/* ── Cycle diff ─────────────────────────────────────────────────────────── */
+.cyc-view-btn {
+  font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.85rem;
+  border: 1px solid var(--gcc-border); border-radius: 6px;
+  background: var(--gcc-bg); color: var(--gcc-muted); cursor: pointer;
+  transition: all 0.15s;
+}
+.cyc-view-btn.active { background: var(--gcc-navy); color: #fff; border-color: var(--gcc-navy); }
+.diff-selectors { display:flex; gap:1.25rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+.diff-sel-group { display:flex; flex-direction:column; gap:0.3rem; }
+.diff-sel-label { font-size:0.75rem; font-weight:600; color:var(--gcc-muted); text-transform:uppercase; letter-spacing:0.04em; }
+.diff-sel { font-size:0.875rem; padding:0.4rem 0.75rem; border:1px solid var(--gcc-border); border-radius:6px; background:var(--gcc-card); color:var(--gcc-navy); cursor:pointer; min-width:200px; }
+.diff-cards-row { display:grid; grid-template-columns:repeat(4,1fr); gap:0.85rem; margin-bottom:1.5rem; }
+.diff-card { background:var(--gcc-card); border:1px solid var(--gcc-border); border-radius:10px; padding:1rem 1.1rem; }
+.diff-card-label { font-size:0.75rem; font-weight:600; color:var(--gcc-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.35rem; }
+.diff-card-val { font-size:1.5rem; font-weight:700; color:var(--gcc-navy); }
+.diff-card-prior { font-size:0.8rem; color:var(--gcc-muted); margin-top:0.1rem; }
+.diff-delta { display:inline-flex; align-items:center; gap:0.2rem; font-size:0.75rem; font-weight:700; padding:0.15rem 0.45rem; border-radius:999px; margin-left:0.4rem; vertical-align:middle; }
+.diff-delta-pos { background:rgba(16,185,129,0.12); color:#059669; }
+.diff-delta-neg { background:rgba(220,38,38,0.1); color:#dc2626; }
+.diff-delta-flat { background:var(--gcc-surface); color:var(--gcc-muted); }
+.diff-section { margin-bottom:1.75rem; }
+.diff-section-title { font-size:0.8rem; font-weight:700; color:var(--gcc-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.85rem; padding-bottom:0.4rem; border-bottom:1px solid var(--gcc-border); }
+.diff-agents-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
+.diff-agent-row { display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.7rem; border-radius:7px; background:var(--gcc-bg); font-size:0.84rem; }
+.diff-badge { font-size:0.7rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:999px; flex-shrink:0; }
+.diff-badge-new { background:rgba(16,185,129,0.15); color:#059669; }
+.diff-badge-rerun { background:rgba(201,149,42,0.15); color:var(--gcc-amber); }
+.diff-badge-dropped { background:rgba(220,38,38,0.1); color:#dc2626; text-decoration:line-through; }
+.diff-contacts-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.85rem; }
+.diff-contact-card { background:var(--gcc-bg); border-radius:8px; padding:0.7rem 0.9rem; font-size:0.84rem; display:flex; align-items:flex-start; gap:0.5rem; }
+.diff-contact-icon { font-size:1rem; flex-shrink:0; }
+.diff-contact-name { font-weight:600; color:var(--gcc-navy); }
+.diff-contact-sub { font-size:0.77rem; color:var(--gcc-muted); }
+.diff-bayes-row { display:flex; align-items:center; gap:0.75rem; padding:0.55rem 0.75rem; border-radius:7px; background:var(--gcc-bg); margin-bottom:0.4rem; }
+.diff-bayes-label { font-size:0.83rem; color:var(--gcc-navy); width:200px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.diff-bayes-bar-wrap { flex:1; height:8px; background:#E5E7EB; border-radius:4px; position:relative; overflow:hidden; }
+.diff-bayes-bar { height:100%; border-radius:4px; transition:width 0.4s; }
+.diff-bayes-vals { font-size:0.78rem; color:var(--gcc-muted); width:100px; text-align:right; flex-shrink:0; }
+.diff-signal-row { display:flex; align-items:center; gap:0.6rem; padding:0.45rem 0.7rem; border-radius:7px; font-size:0.84rem; margin-bottom:0.35rem; }
+.diff-signal-pos { background:rgba(16,185,129,0.08); }
+.diff-signal-neg { background:rgba(220,38,38,0.07); }
+.diff-reasoning-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.diff-reasoning-card { border-left:3px solid; padding:0.85rem 1rem; border-radius:0 8px 8px 0; font-size:0.84rem; line-height:1.5; }
+.diff-reasoning-cur { border-color:var(--gcc-teal); background:rgba(15,123,114,0.05); }
+.diff-reasoning-prior { border-color:#9CA3AF; background:var(--gcc-bg); opacity:0.75; }
+.diff-reasoning-label { font-size:0.72rem; font-weight:700; color:var(--gcc-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.4rem; }
+.diff-empty { color:var(--gcc-muted); font-size:0.84rem; font-style:italic; padding:0.5rem 0; }
 
 /* ── Agent Network tab — render the ANV modal inline (not as an overlay) ─── */
 .gcc-anv-panel { padding: 0 !important; overflow: hidden; }
@@ -969,10 +1022,15 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
             <div class="aq-card-bottom">
               <span class="aq-timestamp" data-ts="{{ item.created_at }}"></span>
               <div class="aq-card-actions">
-                {% if item.is_dismissable %}
-                  <button class="aq-dismiss-btn" onclick="dismissItem('{{ item.id }}')">Dismiss</button>
+                {% if item.item_type == 'social_post_approval' %}
+                  <button class="aq-dismiss-btn" onclick="rejectSocialPost('{{ item.id }}', '{{ item.source_action_id }}')">Reject</button>
+                  <button class="aq-action-btn" onclick="approveSocialPost('{{ item.id }}', '{{ item.source_action_id }}')">Approve &amp; Publish</button>
+                {% else %}
+                  {% if item.is_dismissable %}
+                    <button class="aq-dismiss-btn" onclick="dismissItem('{{ item.id }}')">Dismiss</button>
+                  {% endif %}
+                  <a class="aq-action-btn" href="{{ item.action_url }}">{{ item.action_label }}</a>
                 {% endif %}
-                <a class="aq-action-btn" href="{{ item.action_url }}">{{ item.action_label }}</a>
               </div>
             </div>
           </div>
@@ -1009,7 +1067,10 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
           </div>
         </div>
         <div class="jrn-focus-btns">
-          <button class="jrn-btn-run" onclick="runCycleNow(this)">&#9654; Run Cycle</button>
+          <div class="jrn-run-group">
+            <button class="jrn-btn-run" onclick="runCycleNow(this)">&#9654; Run Cycle</button>
+            <span class="jrn-next-run" id="jrnNextRun" data-next-run-class="jrn-next-run"></span>
+          </div>
           <button class="jrn-btn-simi" onclick="openCopilot()">&#10022; Ask Simi</button>
         </div>
       </div>
@@ -1209,9 +1270,16 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
     <div class="gcc-tab-panel" data-panel="cycle" role="tabpanel">
       <div class="gcc-section-header" style="margin-bottom:1.25rem">
         <h2>Orchestrator Cycle</h2>
-        <button class="gcc-run-btn" id="runCycleBtn">▶ Run Cycle</button>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <button class="gcc-run-btn" id="runCycleBtn">▶ Run Cycle</button>
+          <span class="jrn-next-run" id="cycNextRun" data-next-run-class="jrn-next-run"></span>
+          <button class="cyc-view-btn active" id="btnHistory" onclick="showCycleView('history')">History</button>
+          <button class="cyc-view-btn" id="btnDiff" onclick="showCycleView('diff')">Diff</button>
+        </div>
       </div>
 
+      {# History view #}
+      <div id="cycViewHistory">
       {# Current cycle status banner #}
       {% if latest_cycle %}
         <div class="cyc-status-card">
@@ -1265,6 +1333,23 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
           {% endfor %}
         </div>
       {% endif %}
+      </div>{# end #cycViewHistory #}
+
+      {# Diff view #}
+      <div id="cycViewDiff" style="display:none">
+        <div class="diff-selectors">
+          <div class="diff-sel-group">
+            <label class="diff-sel-label">Current cycle</label>
+            <select id="diffCurrentSel" onchange="loadDiff()" class="diff-sel"></select>
+          </div>
+          <div class="diff-sel-group">
+            <label class="diff-sel-label">Prior cycle</label>
+            <select id="diffPriorSel" onchange="loadDiff()" class="diff-sel"></select>
+          </div>
+        </div>
+        <div id="diffSummaryCards" class="diff-cards-row"></div>
+        <div id="diffBody"></div>
+      </div>
     </div>
 
     {# ────────────────────────────────────────────────────────────────────────
@@ -1292,6 +1377,9 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
     <div class="gcc-tab-panel gcc-visuals-panel" data-panel="visuals" role="tabpanel">
       <div class="gcc-section-header" style="margin-bottom:0">
         <h2>Orchestrator Diagram</h2>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <span class="jrn-next-run" id="visNextRun" data-next-run-class="jrn-next-run"></span>
+        </div>
       </div>
       {% include 'simulations/_orchestrator_diagram.html' %}
     </div>
@@ -1473,6 +1561,46 @@ function switchTab(name) {
 var _jrnLoaded  = false;
 var _jrnFilter  = 'all';
 var _jrnOpenLayer = 1;
+var _jrnNextCycleAt  = null;
+var _jrnSimStatus    = null;
+var _jrnCycleRunning = false;
+var _jrnCountdownTimer = null;
+
+function _updateNextRunEl() {
+  ['jrnNextRun', 'cycNextRun', 'visNextRun', 'anvNextRun'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var base = el.dataset.nextRunClass || 'jrn-next-run';
+    if (_jrnCycleRunning) {
+      el.className = base + ' running';
+      el.textContent = '⏳ Running now…';
+      return;
+    }
+    if (_jrnSimStatus === 'paused' || !_jrnNextCycleAt) {
+      el.className = base + ' amber';
+      el.textContent = _jrnSimStatus === 'paused' ? '⏸ Next run: paused' : '';
+      return;
+    }
+    el.className = base;
+    var now  = new Date();
+    var next = new Date(_jrnNextCycleAt);
+    var diffMs = next - now;
+    if (diffMs <= 0) {
+      el.textContent = '⏱ Next run: soon';
+      return;
+    }
+    var diffH = diffMs / 3600000;
+    if (diffH < 24) {
+      var h = Math.floor(diffH);
+      var m = Math.floor((diffMs % 3600000) / 60000);
+      el.textContent = '⏱ Next run: in ' + h + 'h ' + m + 'm';
+    } else if (diffH < 48) {
+      el.textContent = '⏱ Next run: Tomorrow at ' + next.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    } else {
+      el.textContent = '⏱ Next run: ' + next.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ' at ' + next.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    }
+  });
+}
 
 // Layer colors per PRD GCC-003 (consistent with My Layers prior design)
 const JRN_COLORS = {1:'#534AB7', 2:'#0F7B72', 3:'#C9952A', 4:'#E85D4A', 5:'#185FA5'};
@@ -1511,6 +1639,14 @@ function renderJourneyV3(data) {
       : 'No cycle yet';
     subEl.textContent = cycleInfo;
   }
+
+  // Next run indicator (FR-GCC-13)
+  _jrnNextCycleAt  = focus.next_cycle_at  || null;
+  _jrnSimStatus    = focus.simulation_status || null;
+  _jrnCycleRunning = !!focus.cycle_is_running;
+  _updateNextRunEl();
+  if (_jrnCountdownTimer) clearInterval(_jrnCountdownTimer);
+  _jrnCountdownTimer = setInterval(_updateNextRunEl, 60000);
 
   // Update filter count
   var countEl = document.getElementById('jrnFilterCount');
@@ -1670,6 +1806,38 @@ function dismissItem(itemId) {
       setTimeout(() => { card.remove(); updateQueueCount(); }, 350);
     }
   }).catch(() => {});
+}
+
+// ── Social post approval ─────────────────────────────────────────────────────
+async function approveSocialPost(itemId, queueId) {
+  if (!confirm('Approve and publish this post now?')) return;
+  const card = document.getElementById('aq-' + itemId);
+  try {
+    const r = await fetch(ROOT + '/api/integrations/social-queue/' + queueId + '/approve', {
+      method: 'POST', credentials: 'same-origin',
+    });
+    const d = await r.json();
+    if (!r.ok) { alert('Publish failed: ' + (d.message || d.error || 'Unknown error')); return; }
+    if (card) {
+      card.style.maxHeight = card.offsetHeight + 'px';
+      card.offsetHeight;
+      card.classList.add('resolving');
+      setTimeout(() => { card.remove(); updateQueueCount(); }, 350);
+    }
+  } catch (e) { alert('Publish failed: ' + e.message); }
+}
+
+async function rejectSocialPost(itemId, queueId) {
+  const card = document.getElementById('aq-' + itemId);
+  const r = await fetch(ROOT + '/api/integrations/social-queue/' + queueId + '/reject', {
+    method: 'POST', credentials: 'same-origin',
+  });
+  if (r.ok && card) {
+    card.style.maxHeight = card.offsetHeight + 'px';
+    card.offsetHeight;
+    card.classList.add('resolving');
+    setTimeout(() => { card.remove(); updateQueueCount(); }, 350);
+  }
 }
 
 function updateQueueCount() {
@@ -1970,6 +2138,162 @@ function laFilter(btn, status) {
   });
   const cnt = document.getElementById('laCount');
   if (cnt) cnt.textContent = vis + ' action' + (vis !== 1 ? 's' : '');
+}
+
+// ── Cycle Diff ────────────────────────────────────────────────────────────────
+const SIM_ID_DIFF = '{{ sim.id }}';
+let _diffData = null;
+
+function showCycleView(view) {
+  document.getElementById('cycViewHistory').style.display = view === 'history' ? '' : 'none';
+  document.getElementById('cycViewDiff').style.display    = view === 'diff' ? '' : 'none';
+  document.getElementById('btnHistory').classList.toggle('active', view === 'history');
+  document.getElementById('btnDiff').classList.toggle('active', view === 'diff');
+  if (view === 'diff' && !_diffData) loadDiff();
+}
+
+function loadDiff() {
+  const cur   = document.getElementById('diffCurrentSel').value;
+  const prior = document.getElementById('diffPriorSel').value;
+  const url   = `/api/simulations/${SIM_ID_DIFF}/layer6/diff` +
+                (cur   ? `?current=${cur}` : '') +
+                (prior ? `&prior=${prior}` : '');
+  fetch(url).then(r => r.json()).then(data => {
+    _diffData = data;
+    _renderDiffSelectors(data);
+    _renderDiffCards(data.summary_cards);
+    _renderDiffBody(data);
+  }).catch(e => console.error('Diff load failed', e));
+}
+
+function _renderDiffSelectors(data) {
+  const opts = data.cycle_options || [];
+  ['diffCurrentSel','diffPriorSel'].forEach((selId, idx) => {
+    const sel = document.getElementById(selId);
+    if (sel.options.length === 0) {
+      opts.forEach(o => {
+        const opt = new Option(o.label, o.id);
+        sel.add(opt);
+      });
+    }
+    const targetId = idx === 0
+      ? data.current_cycle?.id
+      : data.prior_cycle?.id;
+    if (targetId) sel.value = targetId;
+  });
+}
+
+function _renderDiffCards(cards) {
+  const el = document.getElementById('diffSummaryCards');
+  if (!cards || !el) return;
+  el.innerHTML = cards.map(c => {
+    const delta = c.delta || 0;
+    const cls   = delta > 0 ? 'diff-delta-pos' : delta < 0 ? 'diff-delta-neg' : 'diff-delta-flat';
+    const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '—';
+    const valFmt = c.format === 'dollars' ? `$${(c.current||0).toFixed(2)}` : (c.current || 0);
+    const priorFmt = c.format === 'dollars' ? `$${(c.prior||0).toFixed(2)}` : (c.prior || 0);
+    return `<div class="diff-card">
+      <div class="diff-card-label">${c.label}</div>
+      <div class="diff-card-val">${valFmt}<span class="diff-delta ${cls}">${arrow} ${Math.abs(delta)}</span></div>
+      <div class="diff-card-prior">Prior: ${priorFmt}</div>
+    </div>`;
+  }).join('');
+}
+
+function _renderDiffBody(data) {
+  const el = document.getElementById('diffBody');
+  if (!el) return;
+  let html = '';
+
+  // Section 1 — Agents
+  const agents = data.agents_dispatched || [];
+  if (agents.length) {
+    html += `<div class="diff-section">
+      <div class="diff-section-title">Agents Dispatched</div>
+      <div class="diff-agents-grid">`;
+    agents.forEach(a => {
+      const lbl = a.action_type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      const bdge = a.badge === 'new' ? '<span class="diff-badge diff-badge-new">NEW</span>'
+                 : a.badge === 'rerun' ? '<span class="diff-badge diff-badge-rerun">RE-RUN</span>'
+                 : '<span class="diff-badge diff-badge-dropped">DROPPED</span>';
+      html += `<div class="diff-agent-row">${bdge}<span style="${a.badge==='dropped'?'text-decoration:line-through;color:var(--gcc-muted)':''}">${lbl}</span></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // Section 2 — CRM contacts
+  const crm = data.crm_contacts || {};
+  html += `<div class="diff-section">
+    <div class="diff-section-title">CRM Contact Changes</div>
+    <div class="diff-contacts-grid">`;
+  (crm.new_prospects || []).forEach(p => {
+    html += `<div class="diff-contact-card"><div class="diff-contact-icon" style="color:#059669">+</div>
+      <div><div class="diff-contact-name">${p.name || '—'}</div>
+      <div class="diff-contact-sub">${p.company||''} ${p.source_agent?'· '+p.source_agent:''}</div></div></div>`;
+  });
+  if (crm.new_prospects_overflow > 0) {
+    html += `<div class="diff-empty">+${crm.new_prospects_overflow} more new contacts</div>`;
+  }
+  (crm.advanced || []).forEach(p => {
+    html += `<div class="diff-contact-card"><div class="diff-contact-icon" style="color:var(--gcc-amber)">↑</div>
+      <div><div class="diff-contact-name">${p.name||'—'}</div>
+      <div class="diff-contact-sub">${p.company||''} ${p.reason?'· '+p.reason:''}</div></div></div>`;
+  });
+  if (!crm.new_prospects?.length && !crm.advanced?.length) {
+    html += `<div class="diff-empty">No contact changes this cycle</div>`;
+  }
+  html += `</div></div>`;
+
+  // Section 4 — Bayesian scores
+  const scores = (data.bayesian_scores || []).slice(0, 10);
+  if (scores.length) {
+    html += `<div class="diff-section">
+      <div class="diff-section-title">Bayesian Score Changes</div>`;
+    scores.forEach(s => {
+      const barColor = s.direction === 'up' ? '#0F7B72' : s.direction === 'down' ? '#F87171' : '#9CA3AF';
+      const pct = Math.round(s.current * 100);
+      const lbl = s.action_type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      const dCls = s.delta > 0 ? 'diff-delta-pos' : s.delta < 0 ? 'diff-delta-neg' : 'diff-delta-flat';
+      const dAr  = s.delta > 0 ? '↑' : s.delta < 0 ? '↓' : '—';
+      html += `<div class="diff-bayes-row">
+        <div class="diff-bayes-label">${lbl}</div>
+        <div class="diff-bayes-bar-wrap"><div class="diff-bayes-bar" style="width:${pct}%;background:${barColor}"></div></div>
+        <div class="diff-bayes-vals">${s.prior.toFixed(3)} → ${s.current.toFixed(3)} <span class="diff-delta ${dCls}">${dAr}${Math.abs(s.delta).toFixed(3)}</span></div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Section 5 — Signals
+  const sigs = data.signals || [];
+  if (sigs.length) {
+    html += `<div class="diff-section">
+      <div class="diff-section-title">Signals Harvested</div>`;
+    sigs.forEach(s => {
+      const cls = s.sentiment === 'positive' ? 'diff-signal-pos' : 'diff-signal-neg';
+      const icon = s.sentiment === 'positive' ? '✓' : '✗';
+      html += `<div class="diff-signal-row ${cls}"><span>${icon}</span><span style="font-weight:600">${s.type}</span><span style="color:var(--gcc-muted)">${s.detail}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Section 6 — Reasoning
+  const reas = data.reasoning || {};
+  html += `<div class="diff-section">
+    <div class="diff-section-title">Orchestrator Reasoning</div>
+    <div class="diff-reasoning-grid">
+      <div class="diff-reasoning-card diff-reasoning-cur">
+        <div class="diff-reasoning-label">Current cycle</div>
+        <div>${reas.current || '<em>No reasoning recorded.</em>'}</div>
+      </div>
+      <div class="diff-reasoning-card diff-reasoning-prior">
+        <div class="diff-reasoning-label">Prior cycle</div>
+        <div>${reas.prior || '<em>No prior cycle selected.</em>'}</div>
+      </div>
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
 }
 
 // ── Run Cycle ────────────────────────────────────────────────────────────────
