@@ -579,7 +579,7 @@
     (function() {
       if (document.getElementById('unlockLayersSection') && document.getElementById('unlockLayersSection').dataset.loaded === '0') {
         document.getElementById('unlockLayersSection').dataset.loaded = '1';
-        fetch(ROOT + '/api/users/me/simulations', { credentials: 'same-origin' })
+        fetch(ROOT + '/api/simulations', { credentials: 'same-origin' })
           .then(r => r.json())
           .then(function(data) {
             var sims = (data.simulations || data || []).filter(function(s) { return s.status === 'complete'; });
@@ -608,6 +608,7 @@
       });
     }
     </script>
+    {% endif %}
 
     {# ── Testimonials tab ──────────────────────────────────────────── #}
     {% if active_tab == 'testimonials' %}

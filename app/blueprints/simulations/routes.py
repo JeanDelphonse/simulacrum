@@ -81,6 +81,7 @@ def list_simulations():
             'layer_count': len(s.layers),
             'created_at': s.created_at.isoformat(),
             'shared': is_shared,
+            'unlock_all_layers': bool(s.unlock_all_layers),
         }
 
     return jsonify(
@@ -1064,6 +1065,23 @@ def get_journey(sim_id):
             ln, defn = _get_action_layer(qi.action_type)
             if ln and ln not in suggested_by_layer:
                 suggested_by_layer[ln] = defn.get('label', qi.action_type.replace('_', ' ').title())
+
+    # Fallback: if queue empty for a layer, use top in_progress/pending action
+    for _n in range(1, 6):
+        if _n not in suggested_by_layer:
+            _fb = next(
+                (a for a in all_actions if a.layer_number == _n and a.status in ('in_progress', 'pending')),
+                None,
+            )
+            if _fb:
+                _defn = AGENT_ACTION_TYPES.get(_n, {}).get(_fb.action_type, {})
+                suggested_by_layer[_n] = _defn.get('label', _fb.action_type.replace('_', ' ').title())
+            else:
+                # Nothing run yet — suggest the first defined agent type for this layer
+                _layer_agents = AGENT_ACTION_TYPES.get(_n, {})
+                if _layer_agents:
+                    _first_type, _first_def = next(iter(_layer_agents.items()))
+                    suggested_by_layer[_n] = _first_def.get('label', _first_type.replace('_', ' ').title())
 
     status_order = {'in_progress': 0, 'pending': 1, 'complete': 2, 'failed': 3}
 
