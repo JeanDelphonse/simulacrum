@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ sim.name }} — ROI Report</title>
+<meta property="og:title" content="{{ sim.name }} — {{ roi_ratio }}x ROI">
+<meta property="og:description" content="Captured ${{ '{:,.0f}'.format(total_income) }} from a ${{ '{:,.0f}'.format(cost_usd) }} simulation.">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0e1a; color: #e8eaf0; font-family: 'DM Sans', -apple-system, sans-serif;
+         min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+  .card { background: linear-gradient(135deg, #0f1b35 0%, #0a1628 100%);
+          border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 3rem;
+          max-width: 520px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .badge { display: inline-block; background: rgba(15,123,114,.2); color: #4dd9c4;
+           border: 1px solid rgba(15,123,114,.4); border-radius: 20px; font-size: .75rem;
+           font-weight: 700; padding: .3rem .9rem; letter-spacing: .06em; margin-bottom: 1.5rem; }
+  .roi-num { font-size: 5rem; font-weight: 800; color: #4dd9c4; line-height: 1; margin-bottom: .5rem; }
+  .roi-label { font-size: 1rem; color: rgba(255,255,255,.5); margin-bottom: 2rem; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+  .stat { background: rgba(255,255,255,.05); border-radius: 12px; padding: 1.25rem; }
+  .stat-val { font-size: 1.5rem; font-weight: 700; color: #e8eaf0; }
+  .stat-lbl { font-size: .75rem; color: rgba(255,255,255,.4); margin-top: .25rem; }
+  .sim-name { font-size: .9rem; color: rgba(255,255,255,.4); margin-bottom: 1.5rem; }
+  .cta { display: inline-block; background: #0f7b72; color: #fff; border-radius: 10px;
+         padding: .75rem 1.75rem; font-size: .9rem; font-weight: 600; text-decoration: none;
+         transition: background .2s; }
+  .cta:hover { background: #0a6460; }
+  .powered { margin-top: 1.5rem; font-size: .72rem; color: rgba(255,255,255,.25); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="badge">SIMULACRUM ROI REPORT</div>
+
+  {% if roi_ratio >= 1 %}
+  <div class="roi-num">{{ roi_ratio }}x</div>
+  <div class="roi-label">Return on investment</div>
+  {% else %}
+  <div class="roi-num">${{ '{:,.0f}'.format(total_income) }}</div>
+  <div class="roi-label">Income captured so far</div>
+  {% endif %}
+
+  <div class="sim-name">{{ sim.name }}</div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val">${{ '{:,.0f}'.format(total_income) }}</div>
+      <div class="stat-lbl">Total income captured</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">${{ '{:,.0f}'.format(cost_usd) }}</div>
+      <div class="stat-lbl">Simulation investment</div>
+    </div>
+  </div>
+
+  <a href="https://simulacrum.app" class="cta">Start your own simulation →</a>
+  <div class="powered">Powered by Simulacrum — AI-driven career wealth simulation</div>
+</div>
+</body>
+</html>

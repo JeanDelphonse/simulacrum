@@ -85,6 +85,22 @@ COLD_START_SEQUENCE = [
     'cold_email_campaign', 'consulting_outreach',
 ]
 
+# Trust level presets (ENH-09)
+TRUST_PRESETS = {
+    'full_auto': {
+        'email': True, 'email_funnels': True, 'linkedin': True,
+        'calendar': True, 'content_publishing': True,
+    },
+    'balanced': {
+        'email': True, 'email_funnels': True, 'linkedin': False,
+        'calendar': False, 'content_publishing': False,
+    },
+    'review_all': {
+        'email': False, 'email_funnels': False, 'linkedin': False,
+        'calendar': False, 'content_publishing': False,
+    },
+}
+
 
 def seed_cold_start_priors(simulation_id: str) -> None:
     from app.extensions import db
@@ -430,6 +446,28 @@ def _dispatch_with_celery(dispatch_entries, simulation_id):
         celery_chain(*dep_sigs).delay()
 
 
+def _snapshot_posteriors(simulation_id: str, cycle_id: str) -> None:
+    """Snapshot all Bayesian posteriors at this cycle's Score step (FR-DIFF-10)."""
+    from app.extensions import db
+    from app.models.bayesian import BayesianPosterior
+    from app.models.layer6 import CyclePosteriorSnapshot
+
+    posteriors = BayesianPosterior.query.filter_by(simulation_id=simulation_id).all()
+    for bp in posteriors:
+        # posterior_key is 'yield:action_type' — extract action_type
+        parts = bp.posterior_key.split(':', 1)
+        action_type = parts[1] if len(parts) == 2 else bp.posterior_key
+        snap = CyclePosteriorSnapshot(
+            simulation_id=simulation_id,
+            cycle_id=cycle_id,
+            action_type=action_type,
+            posterior_value=bp.value,
+        )
+        db.session.add(snap)
+    if posteriors:
+        db.session.commit()
+
+
 def run_orchestrator_cycle(simulation_id: str) -> dict:
     """
     Execute one full orchestrator cycle:
@@ -612,7 +650,19 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
     cycle.orchestrator_reasoning = reasoning
     cycle.cycle_completed_at = datetime.utcnow()
 
+    # Generate plain-language user insight (ENH-08)
+    try:
+        cycle.user_insight = _generate_user_insight(phase, scored[:n_to_dispatch], cycle_number)
+    except Exception as _ue:
+        logger.warning('User insight generation failed: %s', _ue)
+
     db.session.commit()
+
+    # Snapshot Bayesian posteriors for Cycle Diff (FR-DIFF-10)
+    try:
+        _snapshot_posteriors(simulation_id, cycle.id)
+    except Exception as _spe:
+        logger.warning('Posterior snapshot failed for cycle %s: %s', cycle.id, _spe)
 
     # Fire escalation notifications (best-effort, must not raise)
     try:
@@ -851,6 +901,33 @@ def _generate_cycle_reasoning(phase: str, top_actions: list[dict],
     )
 
 
+def _generate_user_insight(phase: str, top_actions: list[dict], cycle_number: int) -> str:
+    """Plain-language narration of what the AI prioritised this cycle (ENH-08)."""
+    if not top_actions:
+        return ''
+    try:
+        import anthropic
+        from flask import current_app
+        client = anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
+        action_names = ', '.join(a['action_type'].replace('_', ' ') for a in top_actions[:3])
+        prompt = (
+            f"Cycle {cycle_number}, Phase: {phase.upper()}. "
+            f"Top actions I selected: {action_names}.\n\n"
+            "In 1-2 sentences of warm, plain English, tell the user what you prioritised "
+            "and why it matters for their wealth-building journey. Speak as 'I' (the AI). "
+            "Start with the action. Do not use words like Bayesian, posterior, or technical terms."
+        )
+        resp = client.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=120,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        return resp.content[0].text.strip()
+    except Exception as exc:
+        logger.warning('_generate_user_insight failed: %s', exc)
+        return ''
+
+
 def _check_recalibration(simulation_id: str, config) -> None:
     """
     Trigger a Re-Calibration Event if actual income < 60% of projected
@@ -949,11 +1026,18 @@ def build_dashboard(simulation_id: str) -> dict:
     total_actual = sum(m['actual_income'] for m in layer_metrics)
     total_projected = sum(m['projected_income'] for m in layer_metrics)
 
+    # ROI ratio (ENH-06): revenue captured ÷ simulation cost
+    roi_ratio = 0.0
+    if sim.amount_charged_cents and sim.amount_charged_cents > 0:
+        roi_ratio = round(total_actual / (sim.amount_charged_cents / 100), 1)
+
     numbers = {
         'layers': layer_metrics,
         'total_actual': total_actual,
         'total_projected': total_projected,
         'total_variance': total_actual - total_projected,
+        'roi_ratio': roi_ratio,
+        'simulation_cost_usd': (sim.amount_charged_cents or 0) / 100,
     }
 
     # --- ACTIONS zone ---
@@ -1043,7 +1127,11 @@ def build_journey_data(simulation_id: str) -> dict:
     Mirrors get_journey() in layer6/routes.py — used server-side for advisor view."""
     from app.models.layer6 import Layer6Config, Layer6Cycle, Layer6ActionQueue
     from app.models.agent_action import AgentAction
+    from app.models.simulation import Simulation
     from datetime import datetime as _dt, timedelta
+
+    _sim = Simulation.query.get(simulation_id)
+    _unlock_all = _sim.unlock_all_layers if _sim else False
 
     completed_by_type: dict = {}
     for a in AgentAction.query.filter_by(
@@ -1086,7 +1174,7 @@ def build_journey_data(simulation_id: str) -> dict:
     for layer_num, seq in _LAYER_STEPS.items():
         total = len(seq)
         blocker = _LAYER_BLOCKERS.get(layer_num)
-        is_blocked = bool(blocker and blocker not in completed_types)
+        is_blocked = bool(blocker and blocker not in completed_types) and not _unlock_all
         steps = []
         for i, (atype, label) in enumerate(seq):
             artifact_fields = []

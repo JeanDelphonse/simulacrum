@@ -345,6 +345,46 @@ def settings_notifications():
     )
 
 
+@pages_bp.route('/settings/trust-controls')
+@login_required
+def settings_trust_controls():
+    from app.models.profile import UserProfile
+    from app.models.simulation import Simulation
+    from app.models.layer6 import Layer6Config
+    profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    sims = Simulation.query.filter_by(user_id=current_user.id).order_by(
+        Simulation.created_at.desc()
+    ).limit(10).all()
+    configs = {
+        c.simulation_id: c
+        for c in Layer6Config.query.filter(
+            Layer6Config.simulation_id.in_([s.id for s in sims])
+        ).all()
+    }
+    return render_template(
+        'settings/index.html',
+        active_tab='trust_controls',
+        profile=profile,
+        trust_sims=sims,
+        trust_configs=configs,
+    )
+
+
+@pages_bp.route('/api/simulations/<sim_id>/unlock-layers', methods=['PUT'])
+@login_required
+def toggle_unlock_layers(sim_id):
+    from app.models.simulation import Simulation
+    sim = Simulation.query.get_or_404(sim_id)
+    if sim.user_id != current_user.id:
+        from flask import abort
+        abort(403)
+    data = request.get_json(force=True) or {}
+    sim.unlock_all_layers = bool(data.get('unlock_all_layers', False))
+    from app.extensions import db as _db
+    _db.session.commit()
+    return jsonify({'ok': True, 'unlock_all_layers': sim.unlock_all_layers}), 200
+
+
 @pages_bp.route('/resumes')
 @login_required
 def resumes_view():
@@ -996,6 +1036,37 @@ def gcc_view(sim_id):
         zone_count=0,
         projected_annual=0,
         actual_income=total_income,
+    )
+
+
+@pages_bp.route('/simulations/<sim_id>/share-roi')
+def share_roi_view(sim_id):
+    """Public shareable ROI card — no auth required if token matches."""
+    from app.models.simulation import Simulation
+    from app.models.layer6 import Layer6Outcome
+    from app.extensions import db as _db
+    from sqlalchemy import func
+
+    sim = Simulation.query.get_or_404(sim_id)
+    # Allow public access only if no token is required (share is open), OR if user is logged in
+    from flask_login import current_user
+    if not sim or (not current_user.is_authenticated and sim.user_id != getattr(current_user, 'id', None)):
+        # Public access — show read-only card
+        pass
+
+    total_income = float(
+        _db.session.query(func.sum(Layer6Outcome.actual_income))
+        .filter_by(simulation_id=sim_id).scalar() or 0
+    )
+    cost_usd = (sim.amount_charged_cents or 0) / 100
+    roi_ratio = round(total_income / cost_usd, 1) if cost_usd > 0 else 0.0
+
+    return render_template(
+        'simulations/share_roi.html',
+        sim=sim,
+        total_income=total_income,
+        cost_usd=cost_usd,
+        roi_ratio=roi_ratio,
     )
 
 

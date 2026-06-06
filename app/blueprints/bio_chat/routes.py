@@ -22,6 +22,155 @@ _CLASSIFIER_MODEL = 'claude-haiku-4-5-20251001'
 _HAIKU_MODEL      = 'claude-haiku-4-5-20251001'
 _SONNET_MODEL     = 'claude-sonnet-4-6'
 
+CHAT_TOOLS = [
+    {
+        "name": "check_availability",
+        "description": "Check the host's booking availability. Use when a visitor asks about scheduling, booking a call, or available times.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days_ahead": {
+                    "type": "integer",
+                    "description": "How many days ahead to check (1-14). Default 7.",
+                }
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "send_rate_card",
+        "description": "Email the rate card to the visitor. Use when a visitor asks about pricing, fees, rates, or cost.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "interest_area": {
+                    "type": "string",
+                    "description": "Service area the visitor is interested in (e.g. consulting, coaching, speaking).",
+                }
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "request_proposal",
+        "description": "Log a proposal request for the host. Use when a visitor wants a custom proposal, quote, or detailed scope of work.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "project_summary": {
+                    "type": "string",
+                    "description": "One-sentence summary of what the visitor needs.",
+                }
+            },
+            "required": ["project_summary"],
+        },
+    },
+    {
+        "name": "tag_subscriber",
+        "description": "Tag the visitor in the email list for targeted follow-up. Use when a visitor expresses clear interest in a specific service or topic.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "description": "Tag name (e.g. consulting-interest, course-interest, speaking-interest).",
+                }
+            },
+            "required": ["tag"],
+        },
+    },
+]
+
+
+def _execute_chat_tool(tool_name: str, tool_input: dict, session, bp) -> str:
+    """Execute a single bio chat tool and return a plain-text result string."""
+    try:
+        if tool_name == 'check_availability':
+            # Return booking URL if Cal.com is connected, else a soft message
+            try:
+                from app.models.integration import UserIntegration
+                integ = UserIntegration.query.filter_by(
+                    user_id=bp.user_id, provider='cal', is_active=True,
+                ).first()
+                if integ and integ.extra_data:
+                    import json as _json
+                    extra = _json.loads(integ.extra_data) if isinstance(integ.extra_data, str) else integ.extra_data
+                    booking_url = extra.get('booking_url') or extra.get('username')
+                    if booking_url:
+                        return f"You can check availability and book directly here: {booking_url}"
+            except Exception:
+                pass
+            return "I've noted your interest in scheduling. Please use the contact form and we'll reach out with available times."
+
+        elif tool_name == 'send_rate_card':
+            interest = tool_input.get('interest_area', 'services')
+            try:
+                from app.blueprints.bio.routes import _assemble_context
+                from app.models.user import User
+                from app.services.email_service import _send
+                user = User.query.get(bp.user_id)
+                first = (user.full_name or '').split()[0] if user else 'your host'
+                ctx = _assemble_context(bp.user_id, bp)
+                rate_card = (ctx.get('_rate_card_raw') or 'Contact for current rates.').strip()
+                if len(rate_card) > 2000:
+                    rate_card = rate_card[:2000] + '...'
+                _send(
+                    subject=f'Rate card from {user.full_name if user else "your host"}',
+                    recipients=[session.visitor_email],
+                    body=(
+                        f'Hi {session.visitor_name.split()[0]},\n\n'
+                        f'Thanks for your interest in {interest}. '
+                        f'Here is {first}\'s current rate card:\n\n'
+                        f'{rate_card}\n\n'
+                        f'Reply to this email or use the booking link to get started.\n\n'
+                        f'— {user.full_name if user else "The team"}'
+                    ),
+                )
+                return f"Rate card sent to {session.visitor_email}."
+            except Exception as _re:
+                logger.warning('send_rate_card tool failed: %s', _re)
+                return f"I've noted your interest in {interest} and will arrange for the rate card to be sent."
+
+        elif tool_name == 'request_proposal':
+            summary = tool_input.get('project_summary', 'Custom engagement')
+            try:
+                from app.models.layer6 import ActionItem
+                from utils.action_items import create_action_item
+                if bp.simulation_id:
+                    create_action_item(
+                        simulation_id=bp.simulation_id,
+                        user_id=bp.user_id,
+                        item_type='orchestrator_recommendation',
+                        title=f'Proposal requested: {session.visitor_name}',
+                        description=f'{summary} — {session.visitor_email}',
+                        action_url=f'/settings?tab=bio-chats&session={session.id}',
+                        source_contact_id=session.contact_id,
+                        emit_sse=True,
+                    )
+            except Exception as _pe:
+                logger.warning('request_proposal action item failed: %s', _pe)
+            return f"Proposal request logged. We'll follow up at {session.visitor_email} with a custom proposal."
+
+        elif tool_name == 'tag_subscriber':
+            tag = tool_input.get('tag', 'bio-chat-lead').strip().lower().replace(' ', '-')
+            try:
+                from app.services.convertkit_service import deploy_lead_to_convertkit
+                deploy_lead_to_convertkit(
+                    user_id=bp.user_id,
+                    email=session.visitor_email,
+                    first_name=session.visitor_name.split()[0],
+                    tags=[tag],
+                )
+            except Exception as _te:
+                logger.warning('tag_subscriber tool failed: %s', _te)
+            return f"Subscribed {session.visitor_email} with tag '{tag}' for follow-up content."
+
+        return "Action completed."
+    except Exception as exc:
+        logger.error('Chat tool %s execution failed: %s', tool_name, exc)
+        return "I encountered an issue with that action. Please try again or contact us directly."
+
+
 _CLASSIFIER_PROMPT = """\
 Classify the following visitor message as 'simple' or 'complex'.
 
@@ -344,18 +493,50 @@ def send_message(session_id: str):
         in_tokens = out_tokens = 0
 
         try:
+            # First pass: streaming with tools enabled
             with client.messages.stream(
                 model=model,
                 max_tokens=512,
                 system=system_prompt,
+                tools=CHAT_TOOLS,
                 messages=history,
             ) as stream:
                 for text in stream.text_stream:
                     full_text += text
                     yield f'data: {json.dumps({"text": text})}\n\n'
-                final = stream.get_final_message()
-                in_tokens  = final.usage.input_tokens
-                out_tokens = final.usage.output_tokens
+                first_msg = stream.get_final_message()
+                in_tokens = first_msg.usage.input_tokens
+                out_tokens = first_msg.usage.output_tokens
+
+            # If tool use was triggered, execute tools and stream second response
+            if first_msg.stop_reason == 'tool_use':
+                tool_results = []
+                for block in first_msg.content:
+                    if block.type == 'tool_use':
+                        yield f'data: {json.dumps({"tool_call": block.name})}\n\n'
+                        result_str = _execute_chat_tool(block.name, block.input, session, bp)
+                        tool_results.append({
+                            'type': 'tool_result',
+                            'tool_use_id': block.id,
+                            'content': result_str,
+                        })
+
+                follow_messages = list(history) + [
+                    {'role': 'assistant', 'content': first_msg.content},
+                    {'role': 'user', 'content': tool_results},
+                ]
+                with client.messages.stream(
+                    model=model,
+                    max_tokens=512,
+                    system=system_prompt,
+                    messages=follow_messages,
+                ) as stream2:
+                    for text in stream2.text_stream:
+                        full_text += text
+                        yield f'data: {json.dumps({"text": text})}\n\n'
+                    final2 = stream2.get_final_message()
+                    out_tokens += final2.usage.output_tokens
+
         except GeneratorExit:
             # Client disconnected — stop streaming, skip DB persist
             return

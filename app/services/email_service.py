@@ -415,3 +415,23 @@ def send_collab_invite_email(invitee_email: str, inviter_name: str, sim_name: st
         )
     except Exception as e:
         logger.error(f'Failed to send collab invite to {invitee_email}: {e}')
+
+
+def send_alert_digest_email(user, alerts: list):
+    """Daily digest of active proactive alerts (ENH-04)."""
+    if not alerts:
+        return
+    try:
+        lines = [f'Hi {(user.full_name or "").split()[0] or "there"},\n',
+                 'Here is your daily Simulacrum activity digest:\n']
+        for a in alerts:
+            lines.append(f'  • [{a.item_type.replace("_", " ").title()}] {a.title}')
+        lines.append('\nLog in to take action: https://simulacrum.app/simulations')
+        lines.append('\n— Simulacrum')
+        _send(
+            subject=f'Your Simulacrum digest — {len(alerts)} alert{"s" if len(alerts) != 1 else ""}',
+            recipients=[user.email],
+            body='\n'.join(lines),
+        )
+    except Exception as e:
+        logger.error(f'Failed to send alert digest to {user.email}: {e}')

@@ -25,6 +25,7 @@ class Simulation(db.Model):
     stripe_charge_id = db.Column(db.String(255), nullable=True)
     amount_charged_cents = db.Column(db.Integer, nullable=True)
     error_message = db.Column(db.Text, nullable=True)
+    unlock_all_layers = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

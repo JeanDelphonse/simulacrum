@@ -34,6 +34,7 @@ class Layer6Config(db.Model):
     _quiet_hours = db.Column('quiet_hours', db.Text, nullable=True)
     explore_phase_end_month = db.Column(db.Integer, nullable=False, default=3)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    trust_level = db.Column(db.String(20), nullable=False, default='balanced')
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -87,6 +88,7 @@ class Layer6Config(db.Model):
             'quiet_hours': self.quiet_hours,
             'explore_phase_end_month': self.explore_phase_end_month,
             'is_active': self.is_active,
+            'trust_level': self.trust_level,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
         }
@@ -111,6 +113,7 @@ class Layer6Cycle(db.Model):
     actions_dispatched = db.Column(db.Integer, nullable=False, default=0)
     actions_escalated = db.Column(db.Integer, nullable=False, default=0)
     orchestrator_reasoning = db.Column(db.Text, nullable=True)
+    user_insight = db.Column(db.Text, nullable=True)
     cycle_started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     cycle_completed_at = db.Column(db.DateTime, nullable=True)
 
@@ -126,6 +129,7 @@ class Layer6Cycle(db.Model):
             'actions_dispatched': self.actions_dispatched,
             'actions_escalated': self.actions_escalated,
             'orchestrator_reasoning': self.orchestrator_reasoning,
+            'user_insight': self.user_insight,
             'cycle_started_at': self.cycle_started_at.isoformat(),
             'cycle_completed_at': self.cycle_completed_at.isoformat() if self.cycle_completed_at else None,
         }
@@ -271,6 +275,7 @@ class Layer6Momentum(db.Model):
     pipeline_value = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     investment_balance = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     consulting_bookings_mo = db.Column(db.Integer, nullable=False, default=0)
+    last_milestone_reached_cents = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self):
@@ -287,6 +292,7 @@ class Layer6Momentum(db.Model):
             'pipeline_value': float(self.pipeline_value),
             'investment_balance': float(self.investment_balance),
             'consulting_bookings_mo': self.consulting_bookings_mo,
+            'last_milestone_reached_cents': self.last_milestone_reached_cents,
             'created_at': self.created_at.isoformat(),
         }
 
@@ -361,6 +367,7 @@ class ActionItem(db.Model):
         'first_cycle', 'orchestrator_recommendation', 'milestone',
         'waitlist_threshold', 'contact_promote',
         'bio_chat_started', 'bio_page_review', 'social_post_approval',
+        'proactive_alert', 'layer_unlocked',
     ]
 
     id               = db.Column(db.String(9), primary_key=True, default=generate_id)

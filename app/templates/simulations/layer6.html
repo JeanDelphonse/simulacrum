@@ -1075,6 +1075,40 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
         </div>
       </div>
 
+      {# Adaptive Learning Insight card (ENH-08) — shown when latest cycle has user_insight #}
+      {% if latest_cycle and latest_cycle.user_insight %}
+      <div id="insightCard" style="background:rgba(15,123,114,.12);border:1px solid rgba(15,123,114,.3);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:.85rem;">
+        <span style="font-size:1.1rem;flex-shrink:0;margin-top:.05rem">💡</span>
+        <div style="flex:1;font-size:.875rem;line-height:1.55;color:rgba(255,255,255,.85)">
+          <strong style="color:#4dd9c4;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.3rem">Cycle {{ latest_cycle.cycle_number }} · AI insight</strong>
+          {{ latest_cycle.user_insight }}
+        </div>
+        <button onclick="document.getElementById('insightCard').style.display='none';localStorage.setItem('insight_dismissed_{{ latest_cycle.id }}','1')"
+                style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-size:1rem;flex-shrink:0;padding:.15rem"
+                title="Dismiss">✕</button>
+      </div>
+      <script>
+        (function() {
+          var dismissed = localStorage.getItem('insight_dismissed_{{ latest_cycle.id }}');
+          if (dismissed) { var el = document.getElementById('insightCard'); if (el) el.style.display='none'; }
+        })();
+      </script>
+      {% endif %}
+
+      {# ROI bar (ENH-06) — only show when there's meaningful income captured #}
+      {% if total_income and total_income > 0 and sim.amount_charged_cents %}
+      {% set roi_ratio = (total_income / (sim.amount_charged_cents / 100)) | round(1) %}
+      <div id="roiBar" style="background:rgba(77,217,196,.08);border:1px solid rgba(77,217,196,.2);border-radius:10px;padding:.75rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+        <div style="display:flex;align-items:center;gap:.75rem">
+          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#4dd9c4">ROI</span>
+          <span style="font-size:1.3rem;font-weight:800;color:#4dd9c4">{{ roi_ratio }}x</span>
+          <span style="font-size:.8rem;color:rgba(255,255,255,.45)">${{ '{:,.0f}'.format(total_income) }} captured · ${{ '{:,.0f}'.format(sim.amount_charged_cents / 100) }} invested</span>
+        </div>
+        <a href="/simulations/{{ sim.id }}/share-roi" target="_blank"
+           style="font-size:.75rem;color:#4dd9c4;text-decoration:none;border:1px solid rgba(77,217,196,.3);border-radius:6px;padding:.3rem .75rem;white-space:nowrap;">Share ↗</a>
+      </div>
+      {% endif %}
+
       {# Status filter pills (GCC-003 FR-GCC-03) #}
       <div class="jrn-filters" id="jrnFilters">
         <button class="jrn-filter active" data-filter="all"         onclick="setJrnFilter('all')">All</button>
@@ -1454,6 +1488,27 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
             <option value="linkedin_connections" {% if cfg and cfg.contact_scope == 'linkedin_connections' %}selected{% endif %}>LinkedIn connections</option>
             <option value="any_researched"      {% if cfg and cfg.contact_scope == 'any_researched' %}selected{% endif %}>Any researched prospect</option>
           </select>
+        </div>
+      </div>
+
+      {# Trust Controls — 3-level preset (ENH-09) #}
+      <div class="l6s-section">
+        <div class="l6s-section-label">Autonomy level</div>
+        {% set tl = cfg.trust_level if cfg and cfg.trust_level else 'balanced' %}
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-top:.5rem">
+          {% for level, label, desc in [
+            ('review_all', 'Review All', 'Every action needs your approval'),
+            ('balanced', 'Balanced', 'Email runs freely; LinkedIn and bookings need approval'),
+            ('full_auto', 'Full Auto', 'All channels run autonomously'),
+          ] %}
+          <label style="cursor:pointer;display:block">
+            <input type="radio" name="l6sTrustLevel" value="{{ level }}" {% if tl == level %}checked{% endif %} style="display:none" onchange="previewTrust('{{ level }}')">
+            <div class="l6s-trust-card {% if tl == level %}active{% endif %}" data-trust="{{ level }}" style="border:1.5px solid {% if tl == level %}var(--gcc-teal){% else %}rgba(255,255,255,.12){% endif %};border-radius:8px;padding:.75rem .65rem;text-align:center;transition:border-color .15s">
+              <div style="font-weight:700;font-size:.82rem;margin-bottom:.25rem">{{ label }}</div>
+              <div style="font-size:.7rem;opacity:.55;line-height:1.4">{{ desc }}</div>
+            </div>
+          </label>
+          {% endfor %}
         </div>
       </div>
 
@@ -1936,17 +1991,39 @@ document.getElementById('l6sOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeL6Settings();
 });
 
+const _TRUST_PRESETS = {
+  full_auto:  { email: true,  email_funnels: true,  linkedin: true,  calendar: true,  content_publishing: true  },
+  balanced:   { email: true,  email_funnels: true,  linkedin: false, calendar: false, content_publishing: false },
+  review_all: { email: false, email_funnels: false, linkedin: false, calendar: false, content_publishing: false },
+};
+
+function previewTrust(level) {
+  const preset = _TRUST_PRESETS[level];
+  if (!preset) return;
+  document.getElementById('l6sChEmail').checked    = preset.email;
+  document.getElementById('l6sChFunnel').checked   = preset.email_funnels;
+  document.getElementById('l6sChLinkedin').checked = preset.linkedin;
+  document.getElementById('l6sChCalendar').checked = preset.calendar;
+  document.getElementById('l6sChContent').checked  = preset.content_publishing;
+  document.querySelectorAll('.l6s-trust-card').forEach(el => {
+    const active = el.dataset.trust === level;
+    el.style.borderColor = active ? 'var(--gcc-teal)' : 'rgba(255,255,255,.12)';
+  });
+}
+
 function _l6sPayload() {
   const blocked = [];
   if (document.getElementById('l6sBlkTax').checked)       blocked.push('tax');
   if (document.getElementById('l6sBlkInvest').checked)    blocked.push('invest');
   if (document.getElementById('l6sBlkSocial').checked)    blocked.push('social');
   if (document.getElementById('l6sBlkColdEmail').checked) blocked.push('cold_email');
+  const trustRadio = document.querySelector('input[name="l6sTrustLevel"]:checked');
   return {
     cadence:          document.getElementById('l6sCadence').value,
     actions_per_cycle: parseInt(document.getElementById('l6sActionsPerCycle').value) || 3,
     spend_ceiling:    parseFloat(document.getElementById('l6sSpendCeiling').value) || 0,
     contact_scope:    document.getElementById('l6sContactScope').value,
+    trust_level:      trustRadio ? trustRadio.value : 'balanced',
     channel_approvals: {
       email:          document.getElementById('l6sChEmail').checked,
       email_funnels:  document.getElementById('l6sChFunnel').checked,

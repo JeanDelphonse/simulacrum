@@ -124,6 +124,16 @@ ACTION_ITEM_TEMPLATES = {
         'action_label': 'Review post',
         'is_dismissable': False,
     },
+    'proactive_alert': {
+        'urgency_tier': 3,
+        'action_label': 'Take action',
+        'is_dismissable': True,
+    },
+    'layer_unlocked': {
+        'urgency_tier': 4,
+        'action_label': 'Explore layer',
+        'is_dismissable': True,
+    },
 }
 
 LAYER_NAMES = {

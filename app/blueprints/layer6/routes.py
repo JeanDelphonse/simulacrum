@@ -128,6 +128,71 @@ def _apply_config(cfg: Layer6Config, data: dict) -> None:
         cfg.quiet_hours = data['quiet_hours']
     if 'explore_phase_end_month' in data:
         cfg.explore_phase_end_month = max(1, int(data['explore_phase_end_month']))
+    if 'trust_level' in data and data['trust_level'] in {'full_auto', 'balanced', 'review_all'}:
+        cfg.trust_level = data['trust_level']
+
+
+# ---------------------------------------------------------------------------
+# Trust Controls (ENH-09)
+# ---------------------------------------------------------------------------
+
+@layer6_bp.route('/<sim_id>/layer6/trust-level', methods=['PUT'])
+@login_required
+def set_trust_level(sim_id):
+    """Set trust_level and bulk-update channel_approvals from preset."""
+    sim, err, code = _get_sim_or_404(sim_id)
+    if err:
+        return err, code
+    if sim.user_id != current_user.id:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    cfg, err, code = _get_config_or_404(sim_id)
+    if err:
+        return err, code
+
+    data = request.get_json(force=True) or {}
+    level = data.get('trust_level', '').strip()
+    valid = {'full_auto', 'balanced', 'review_all'}
+    if level not in valid:
+        return jsonify({'error': f'trust_level must be one of: {", ".join(valid)}'}), 400
+
+    from app.services.layer6 import TRUST_PRESETS
+    cfg.trust_level = level
+    cfg.channel_approvals = TRUST_PRESETS[level]
+    db.session.commit()
+    return jsonify(cfg.to_dict()), 200
+
+
+# ---------------------------------------------------------------------------
+# ROI Card (ENH-06)
+# ---------------------------------------------------------------------------
+
+@layer6_bp.route('/<sim_id>/roi-card', methods=['GET'])
+@login_required
+def roi_card(sim_id):
+    """Return ROI metrics for the share card."""
+    sim, err, code = _get_sim_or_404(sim_id)
+    if err:
+        return err, code
+
+    from app.models.layer6 import Layer6Outcome
+    from app.extensions import db as _db
+    from sqlalchemy import func
+
+    total_income = float(
+        _db.session.query(func.sum(Layer6Outcome.actual_income))
+        .filter_by(simulation_id=sim_id).scalar() or 0
+    )
+    cost_usd = (sim.amount_charged_cents or 0) / 100
+    roi_ratio = round(total_income / cost_usd, 1) if cost_usd > 0 else 0.0
+
+    return jsonify({
+        'simulation_id': sim_id,
+        'simulation_name': sim.name,
+        'total_income': total_income,
+        'simulation_cost_usd': cost_usd,
+        'roi_ratio': roi_ratio,
+    }), 200
 
 
 # ---------------------------------------------------------------------------

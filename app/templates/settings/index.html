@@ -237,6 +237,7 @@
     <a href="{{ url_for('pages.settings_integrations') }}" class="settings-nav-link {% if active_tab == 'integrations' %}active{% endif %}">Integrations</a>
     <a href="{{ url_for('pages.settings_notifications') }}" class="settings-nav-link {% if active_tab == 'notifications' %}active{% endif %}">Notifications</a>
     <a href="{{ url_for('pages.settings_security') }}" class="settings-nav-link {% if active_tab == 'security' %}active{% endif %}">Security</a>
+    <a href="{{ url_for('pages.settings_trust_controls') }}" class="settings-nav-link {% if active_tab == 'trust_controls' %}active{% endif %}">Trust Controls</a>
   </nav>
 
   <div class="settings-panel">
@@ -564,8 +565,49 @@
           <button onclick="document.getElementById('partnerHelpOverlay').style.display='none'" class="btn btn-ghost btn-sm">Got it</button>
         </div>
       </div>
+
+      {# ENH-13: Unlock all layers toggle #}
+      <div id="unlockLayersSection" class="settings-section" style="margin-top:2.5rem" data-loaded="0">
+        <div class="settings-section-title" style="margin-bottom:.5rem;border:none;padding:0">Progressive Onboarding</div>
+        <p class="settings-hint" style="margin-bottom:1rem">By default, layers unlock progressively as you complete key milestones. Turn this off to access all layers immediately.</p>
+        <div id="unlockLayersList" style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+      </div>
     </div>
     {% endif %}
+    {% if active_tab == 'visibility' %}
+    <script>
+    (function() {
+      if (document.getElementById('unlockLayersSection') && document.getElementById('unlockLayersSection').dataset.loaded === '0') {
+        document.getElementById('unlockLayersSection').dataset.loaded = '1';
+        fetch(ROOT + '/api/users/me/simulations', { credentials: 'same-origin' })
+          .then(r => r.json())
+          .then(function(data) {
+            var sims = (data.simulations || data || []).filter(function(s) { return s.status === 'complete'; });
+            if (!sims.length) { document.getElementById('unlockLayersList').textContent = 'No completed simulations.'; return; }
+            var html = '';
+            sims.forEach(function(s) {
+              var checked = s.unlock_all_layers ? 'checked' : '';
+              html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+                '<div><div style="font-size:.875rem;font-weight:500">' + s.name + '</div></div>' +
+                '<label class="toggle-switch" style="flex-shrink:0">' +
+                '<input type="checkbox" ' + checked + ' onchange="toggleUnlockLayers(\'' + s.id + '\', this.checked)">' +
+                '<span class="toggle-slider"></span></label>' +
+                '</div>';
+            });
+            document.getElementById('unlockLayersList').innerHTML = html;
+          })
+          .catch(function() { document.getElementById('unlockLayersList').textContent = 'Could not load simulations.'; });
+      }
+    })();
+    function toggleUnlockLayers(simId, val) {
+      fetch(ROOT + '/api/simulations/' + simId + '/unlock-layers', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ unlock_all_layers: val }),
+        credentials: 'same-origin',
+      });
+    }
+    </script>
 
     {# ── Testimonials tab ──────────────────────────────────────────── #}
     {% if active_tab == 'testimonials' %}
@@ -1440,6 +1482,42 @@
     </div>
     {% endif %}
 
+    {# ── Trust Controls tab (ENH-09/10) ───────────────────────────────────── #}
+    {% if active_tab == 'trust_controls' %}
+    <div id="trustControlsTab">
+      <div class="settings-section-title" style="margin-bottom:.5rem;border:none;padding:0">Autonomy Trust Level</div>
+      <p class="settings-hint" style="margin-bottom:1.5rem">Choose how autonomously the Growth Orchestrator runs for each of your simulations. You can adjust individual channel permissions in the GCC settings modal.</p>
+
+      {% if trust_sims %}
+      {% for sim in trust_sims %}
+      {% set cfg = trust_configs.get(sim.id) %}
+      {% if cfg %}
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:1.25rem;margin-bottom:1rem">
+        <div style="font-size:.875rem;font-weight:600;margin-bottom:1rem;color:#e8eaf0">{{ sim.name }}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem">
+          {% for level, label, desc in [
+            ('review_all', 'Review All', 'Every action needs approval'),
+            ('balanced', 'Balanced', 'Email runs freely; others need approval'),
+            ('full_auto', 'Full Auto', 'All channels autonomous'),
+          ] %}
+          {% set active = (cfg.trust_level or 'balanced') == level %}
+          <button onclick="setTrustLevel('{{ sim.id }}', '{{ level }}', this)"
+                  data-sim="{{ sim.id }}" data-level="{{ level }}"
+                  style="border:1.5px solid {{ 'rgba(15,123,114,.6)' if active else 'rgba(255,255,255,.1)' }};background:{{ 'rgba(15,123,114,.15)' if active else 'transparent' }};border-radius:8px;padding:.75rem .5rem;cursor:pointer;color:inherit;transition:all .15s;text-align:center">
+            <div style="font-weight:700;font-size:.82rem">{{ label }}</div>
+            <div style="font-size:.7rem;opacity:.5;margin-top:.25rem;line-height:1.35">{{ desc }}</div>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% else %}
+      <p class="settings-hint">No simulations with Layer 6 configured yet.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
   </div>
 </div>
 
@@ -1475,6 +1553,24 @@ async function disconnectLinkedIn() {
   const res = await fetch(ROOT2 + '/api/resumes/linkedin/disconnect', { method: 'POST' });
   if (res.ok) { window.location.reload(); }
   else { alert('Disconnect failed — please try again.'); }
+}
+
+async function setTrustLevel(simId, level, btn) {
+  const allBtns = document.querySelectorAll('[data-sim="' + simId + '"]');
+  allBtns.forEach(b => {
+    const active = b.dataset.level === level;
+    b.style.borderColor = active ? 'rgba(15,123,114,.6)' : 'rgba(255,255,255,.1)';
+    b.style.background   = active ? 'rgba(15,123,114,.15)' : 'transparent';
+  });
+  try {
+    await fetch(ROOT2 + '/api/simulations/' + simId + '/layer6/trust-level', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ trust_level: level }),
+      credentials: 'same-origin',
+    });
+    toast('Trust level updated');
+  } catch(e) { toast('Save failed'); }
 }
 
 function toast(msg) {
