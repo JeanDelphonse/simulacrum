@@ -182,4 +182,100 @@ def record_agent_contacts(
         logger.error('record_agent_contacts commit failed: %s', e)
         db.session.rollback()
 
+
+def save_contacts_to_crm(
+    contacts: list,
+    user_id: str,
+    simulation_id: str,
+    action_type: str,
+    cycle_id: str = None,
+    update_only: bool = False,
+) -> int:
+    """
+    Upsert a list of contacts into the CRM (FR-CRM-03, FR-CRM-04).
+
+    Match priority: email → name+company → create new.
+    If update_only=True (alumni_reactivation), never create new contacts.
+    Returns count of contacts upserted/created.
+    """
+    if not contacts or not user_id:
+        return 0
+
+    from app.extensions import db
+    from app.models.contact import Contact, ContactActivity
+    from utils.id_gen import generate_id
+    from datetime import datetime
+
+    saved = 0
+    for raw in contacts:
+        if not raw.get('first_name') and not raw.get('last_name'):
+            continue
+
+        first = (raw.get('first_name') or '').strip()
+        last  = (raw.get('last_name') or '').strip()
+        email = (raw.get('email') or '').strip().lower() or None
+
+        # Try to find existing contact
+        existing = None
+        if email:
+            existing = Contact.query.filter_by(user_id=user_id, email=email).first()
+        if not existing and first and last and raw.get('company_name'):
+            existing = Contact.query.filter_by(
+                user_id=user_id,
+                first_name=first,
+                last_name=last,
+                company_name=raw.get('company_name'),
+            ).first()
+
+        if existing:
+            # Enrich null fields only
+            for field, val in [
+                ('email', email),
+                ('phone', raw.get('phone')),
+                ('job_title', raw.get('job_title')),
+                ('company_name', raw.get('company_name')),
+                ('company_size', raw.get('company_size')),
+                ('industry', raw.get('industry')),
+                ('linkedin_url', raw.get('linkedin_url')),
+                ('notes', raw.get('qualifying_notes')),
+            ]:
+                if val and getattr(existing, field) is None:
+                    setattr(existing, field, val)
+            if cycle_id and not existing.source_cycle_id:
+                existing.source_cycle_id = cycle_id
+            saved += 1
+        elif not update_only:
+            contact = Contact(
+                id=generate_id(),
+                user_id=user_id,
+                first_name=first or 'Unknown',
+                last_name=last or '',
+                email=email or f'{generate_id()}@noemail.placeholder',
+                phone=raw.get('phone'),
+                job_title=raw.get('job_title'),
+                company_name=raw.get('company_name'),
+                company_size=raw.get('company_size'),
+                industry=raw.get('industry'),
+                linkedin_url=raw.get('linkedin_url'),
+                notes=raw.get('qualifying_notes'),
+                source='agent_generated',
+                source_cycle_id=cycle_id,
+                pipeline_stage='prospect',
+            )
+            db.session.add(contact)
+            saved += 1
+
+    if saved:
+        try:
+            db.session.commit()
+        except Exception as exc:
+            logger.warning('save_contacts_to_crm commit failed: %s', exc)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            return 0
+
+    return saved
+
     return {'created': created, 'updated': updated, 'skipped': skipped}

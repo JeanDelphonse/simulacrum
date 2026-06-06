@@ -996,7 +996,7 @@ def run_agent(sim_id, action_type):
 def get_journey(sim_id):
     """Return journey data for GCC Journey tab v3."""
     from app.services.claude import AGENT_ACTION_TYPES
-    from app.models.layer6 import Layer6Outcome, Layer6Cycle, Layer6ActionQueue
+    from app.models.layer6 import Layer6Outcome, Layer6Cycle, Layer6ActionQueue, Layer6Config
     from sqlalchemy import func, distinct as sa_distinct
 
     sim, _ = _check_sim_access(sim_id)
@@ -1037,6 +1037,21 @@ def get_journey(sim_id):
         func.sum(Layer6Outcome.actual_income).label('total'),
     ).filter_by(simulation_id=sim_id).group_by(Layer6Outcome.layer_number).all()
     income_by_layer = {r.layer_number: float(r.total or 0) for r in outcome_rows}
+
+    # Next cycle timing (FR-GCC-13)
+    _cadence_hours = {
+        'daily': 24, 'every_3_days': 72, 'weekly': 168,
+        'every_12h': 12, 'every_48h': 48, 'every_72h': 72, 'every_168h': 168,
+    }
+    next_cycle_at_iso = None
+    cycle_is_running = False
+    if latest_cycle:
+        cycle_is_running = (latest_cycle.cycle_completed_at is None)
+        _cfg = Layer6Config.query.filter_by(simulation_id=sim_id).first()
+        if _cfg:
+            _hours = _cadence_hours.get(_cfg.cadence, 24)
+            _next_dt = latest_cycle.cycle_started_at + timedelta(hours=_hours)
+            next_cycle_at_iso = _next_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     # Suggested agent per layer from latest cycle queue (top undispatched by layer)
     suggested_by_layer: dict = {}
@@ -1112,6 +1127,9 @@ def get_journey(sim_id):
             'cycle_number': latest_cycle.cycle_number if latest_cycle else None,
             'phase': latest_cycle.phase if latest_cycle else None,
             'suggested_action': suggested_by_layer.get(1),  # top suggestion for focus bar
+            'next_cycle_at': next_cycle_at_iso,
+            'simulation_status': sim.status,
+            'cycle_is_running': cycle_is_running,
         },
         'total_actions': len(display_actions),
         'status_filter': status_filter,

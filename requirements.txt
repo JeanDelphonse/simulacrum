@@ -21,3 +21,4 @@ Werkzeug==3.0.*
 requests==2.32.*
 sendgrid==6.11.*
 PyMySQL==1.1.*
+APScheduler>=3.10,<4

@@ -43,6 +43,7 @@ class Contact(db.Model):
     source              = db.Column(db.String(50), nullable=False, default='manual_entry')
     source_action_id    = db.Column(db.String(9), nullable=True)
     source_artifact_id  = db.Column(db.String(9), nullable=True)
+    source_cycle_id     = db.Column(db.String(9), nullable=True, index=True)
     source_notes        = db.Column(db.String(500), nullable=True)
     qualifying_score    = db.Column(db.Numeric(4, 3), nullable=True, index=True)
     pipeline_stage      = db.Column(
