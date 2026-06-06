@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}{{ org.white_label_name or org.org_name }} — Outplacement Dashboard{% endblock %}
+
+{% block content %}
+<div class="gcc-page-shell">
+  <div class="gcc-page-header">
+    {% if org.white_label_logo_url %}
+    <img src="{{ org.white_label_logo_url }}" alt="{{ org.white_label_name or org.org_name }}" class="corp-logo">
+    {% endif %}
+    <div>
+      <h1 class="gcc-page-title">{{ org.white_label_name or org.org_name }}</h1>
+      <p class="gcc-page-subtitle">Outplacement Dashboard &nbsp;·&nbsp; {{ org.license_tier|capitalize }} License &nbsp;·&nbsp; {{ org.seat_count }} seats</p>
+    </div>
+    <button class="gcc-btn gcc-btn-primary" onclick="openProvisionModal()">+ Add Employees</button>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="corp-stats-bar">
+    <div class="corp-stat">
+      <span class="corp-stat-number">{{ stats.total }}</span>
+      <span class="corp-stat-label">Provisioned</span>
+    </div>
+    <div class="corp-stat">
+      <span class="corp-stat-number">{{ stats.invited }}</span>
+      <span class="corp-stat-label">Awaiting Activation</span>
+    </div>
+    <div class="corp-stat">
+      <span class="corp-stat-number">{{ stats.active }}</span>
+      <span class="corp-stat-label">In Progress</span>
+    </div>
+    <div class="corp-stat corp-stat--complete">
+      <span class="corp-stat-number">{{ stats.complete }}</span>
+      <span class="corp-stat-label">Completed</span>
+    </div>
+    <div class="corp-stat corp-stat--muted">
+      <span class="corp-stat-number">{{ stats.seats_available }}</span>
+      <span class="corp-stat-label">Seats Remaining</span>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  {% if stats.total > 0 %}
+  <div class="corp-progress-wrap">
+    <div class="corp-progress-bar">
+      <div class="corp-progress-fill" style="width: {{ (stats.complete / stats.total * 100)|int }}%"></div>
+    </div>
+    <span class="corp-progress-label">{{ (stats.complete / stats.total * 100)|int }}% completed</span>
+  </div>
+  {% endif %}
+
+  <!-- Employee table -->
+  <div class="gcc-card mt-4">
+    <div class="gcc-card-header">
+      <span>Employees</span>
+      <div class="corp-filter-pills">
+        <button class="corp-pill corp-pill--active" data-filter="all">All</button>
+        <button class="corp-pill" data-filter="invited">Invited</button>
+        <button class="corp-pill" data-filter="active">Active</button>
+        <button class="corp-pill" data-filter="complete">Complete</button>
+      </div>
+    </div>
+
+    {% if employees %}
+    <table class="gcc-table" id="empTable">
+      <thead>
+        <tr>
+          <th>Name / Email</th>
+          <th>Status</th>
+          <th>Simulation</th>
+          <th>Activated</th>
+          <th>Completed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr class="emp-row" data-status="{{ emp.status }}">
+          <td>
+            <div class="emp-name">{{ emp.full_name or '—' }}</div>
+            <div class="emp-email">{{ emp.email }}</div>
+          </td>
+          <td>
+            <span class="corp-badge corp-badge--{{ emp.status }}">{{ emp.status|capitalize }}</span>
+          </td>
+          <td>
+            {% if emp.simulation_id %}
+            <a href="/api/simulations/{{ emp.simulation_id }}" class="gcc-link" target="_blank">View →</a>
+            {% else %}
+            <span class="gcc-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="gcc-muted">{{ emp.activated_at.strftime('%b %d, %Y') if emp.activated_at else '—' }}</td>
+          <td class="gcc-muted">{{ emp.completed_at.strftime('%b %d, %Y') if emp.completed_at else '—' }}</td>
+          <td>
+            <button class="gcc-btn-icon corp-remove-btn"
+                    data-emp-id="{{ emp.id }}"
+                    data-emp-email="{{ emp.email }}"
+                    title="Remove">×</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="gcc-empty-state">
+      <p>No employees provisioned yet.</p>
+      <button class="gcc-btn gcc-btn-primary" onclick="openProvisionModal()">Add Employees</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Provision modal -->
+<div class="gcc-modal-overlay" id="provisionModal" style="display:none">
+  <div class="gcc-modal">
+    <div class="gcc-modal-header">
+      <h2>Add Employees</h2>
+      <button class="gcc-modal-close" onclick="closeProvisionModal()">×</button>
+    </div>
+    <div class="gcc-modal-body">
+      <p class="gcc-helper-text">Enter one email per line (with optional name), or upload a CSV with <code>email</code> and <code>full_name</code> columns.</p>
+
+      <div class="corp-tabs">
+        <button class="corp-tab corp-tab--active" data-tab="manual">Manual entry</button>
+        <button class="corp-tab" data-tab="csv">CSV upload</button>
+      </div>
+
+      <div id="tabManual">
+        <textarea id="empListInput" class="gcc-textarea" rows="8"
+          placeholder="alice@acme.com, Alice Smith&#10;bob@acme.com&#10;carol@acme.com, Carol Jones"></textarea>
+      </div>
+      <div id="tabCsv" style="display:none">
+        <input type="file" id="csvFileInput" accept=".csv,.tsv" class="gcc-input">
+      </div>
+    </div>
+    <div class="gcc-modal-footer">
+      <span id="provisionMsg" class="gcc-helper-text"></span>
+      <button class="gcc-btn gcc-btn-secondary" onclick="closeProvisionModal()">Cancel</button>
+      <button class="gcc-btn gcc-btn-primary" id="provisionBtn" onclick="submitProvision()">Send Invites</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.corp-logo { height: 40px; object-fit: contain; margin-right: 12px; }
+.corp-stats-bar { display: flex; gap: 24px; margin: 24px 0; }
+.corp-stat { background: var(--gcc-surface); border-radius: 8px; padding: 16px 20px; text-align: center; min-width: 120px; }
+.corp-stat--complete .corp-stat-number { color: var(--gcc-green, #15803d); }
+.corp-stat--muted .corp-stat-number { color: var(--gcc-muted, #6b7280); }
+.corp-stat-number { display: block; font-size: 2rem; font-weight: 700; }
+.corp-stat-label { font-size: 0.78rem; color: var(--gcc-muted, #6b7280); }
+.corp-progress-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.corp-progress-bar { flex: 1; height: 8px; background: var(--gcc-border, #e5e7eb); border-radius: 4px; overflow: hidden; }
+.corp-progress-fill { height: 100%; background: var(--gcc-green, #15803d); border-radius: 4px; transition: width .4s; }
+.corp-progress-label { font-size: 0.85rem; color: var(--gcc-muted); white-space: nowrap; }
+.corp-filter-pills { display: flex; gap: 8px; }
+.corp-pill { padding: 4px 12px; border-radius: 99px; border: 1px solid var(--gcc-border); background: transparent; cursor: pointer; font-size: 0.82rem; }
+.corp-pill--active { background: var(--gcc-accent, #0F7B72); color: white; border-color: transparent; }
+.corp-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 500; }
+.corp-badge--invited { background: #fef9c3; color: #854d0e; }
+.corp-badge--active { background: #dbeafe; color: #1e40af; }
+.corp-badge--complete { background: #dcfce7; color: #166534; }
+.emp-name { font-weight: 500; font-size: 0.9rem; }
+.emp-email { font-size: 0.8rem; color: var(--gcc-muted); }
+.corp-remove-btn { background: none; border: none; cursor: pointer; color: var(--gcc-muted); font-size: 1.1rem; padding: 2px 6px; border-radius: 4px; }
+.corp-remove-btn:hover { background: #fee2e2; color: #dc2626; }
+.corp-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.corp-tab { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--gcc-border); background: transparent; cursor: pointer; font-size: 0.85rem; }
+.corp-tab--active { background: var(--gcc-surface); font-weight: 600; }
+</style>
+
+<script>
+const ORG_ID = '{{ org.id }}';
+
+function openProvisionModal() { document.getElementById('provisionModal').style.display = 'flex'; }
+function closeProvisionModal() { document.getElementById('provisionModal').style.display = 'none'; }
+
+// Tab switching
+document.querySelectorAll('.corp-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.corp-tab').forEach(t => t.classList.remove('corp-tab--active'));
+    btn.classList.add('corp-tab--active');
+    document.getElementById('tabManual').style.display = btn.dataset.tab === 'manual' ? '' : 'none';
+    document.getElementById('tabCsv').style.display = btn.dataset.tab === 'csv' ? '' : 'none';
+  });
+});
+
+// Status filter
+document.querySelectorAll('.corp-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.corp-pill').forEach(p => p.classList.remove('corp-pill--active'));
+    pill.classList.add('corp-pill--active');
+    const f = pill.dataset.filter;
+    document.querySelectorAll('.emp-row').forEach(row => {
+      row.style.display = (f === 'all' || row.dataset.status === f) ? '' : 'none';
+    });
+  });
+});
+
+async function submitProvision() {
+  const btn = document.getElementById('provisionBtn');
+  const msg = document.getElementById('provisionMsg');
+  const activeTab = document.querySelector('.corp-tab--active').dataset.tab;
+  btn.disabled = true;
+  msg.textContent = 'Sending invites…';
+
+  try {
+    let resp;
+    if (activeTab === 'csv') {
+      const file = document.getElementById('csvFileInput').files[0];
+      if (!file) { msg.textContent = 'Please select a CSV file.'; btn.disabled = false; return; }
+      const fd = new FormData();
+      fd.append('file', file);
+      resp = await fetch(`/api/corporate/orgs/${ORG_ID}/provision`, { method: 'POST', body: fd });
+    } else {
+      const raw = document.getElementById('empListInput').value.trim();
+      const employees = raw.split('\n').filter(Boolean).map(line => {
+        const [emailPart, ...nameParts] = line.split(',');
+        return { email: emailPart.trim(), full_name: nameParts.join(',').trim() };
+      }).filter(e => e.email);
+      resp = await fetch(`/api/corporate/orgs/${ORG_ID}/provision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employees }),
+      });
+    }
+
+    const result = await resp.json();
+    if (!resp.ok) { msg.textContent = result.error || 'Error'; btn.disabled = false; return; }
+    msg.textContent = `✓ ${result.created} invite(s) sent. ${result.skipped > 0 ? result.skipped + ' skipped.' : ''}`;
+    setTimeout(() => location.reload(), 1500);
+  } catch (e) {
+    msg.textContent = 'Network error';
+    btn.disabled = false;
+  }
+}
+
+// Remove employee
+document.querySelectorAll('.corp-remove-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const empId = btn.dataset.empId;
+    const email = btn.dataset.empEmail;
+    if (!confirm(`Remove ${email} from this program?`)) return;
+    const resp = await fetch(`/api/corporate/orgs/${ORG_ID}/employees/${empId}`, { method: 'DELETE' });
+    if (resp.ok) { btn.closest('tr').remove(); }
+  });
+});
+</script>
+{% endblock %}

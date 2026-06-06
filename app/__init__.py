@@ -108,6 +108,8 @@ def create_app(config_name=None):
     app.logger.info('startup: bio_bp imported')
     from app.blueprints.bio_chat import bio_chat_bp
     app.logger.info('startup: bio_chat_bp imported')
+    from app.blueprints.corporate import corporate_bp
+    app.logger.info('startup: corporate_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -131,12 +133,17 @@ def create_app(config_name=None):
     app.register_blueprint(artifact_view_bp)
     app.register_blueprint(bio_bp)
     app.register_blueprint(bio_chat_bp)
+    app.register_blueprint(corporate_bp)
 
     # Register page routes
     from app.blueprints.pages import pages_bp
     app.logger.info('startup: pages_bp imported')
     app.register_blueprint(pages_bp)
     app.logger.info('startup: all blueprints registered')
+
+    # Start in-process scheduler (replaces Celery Beat on shared hosting)
+    from app.scheduler import start_scheduler
+    start_scheduler(app)
 
     # Catch all unhandled exceptions and log the full traceback
     import traceback as _tb

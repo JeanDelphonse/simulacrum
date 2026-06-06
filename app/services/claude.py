@@ -658,6 +658,19 @@ AGENT_ACTION_TYPES = {
                  'type': 'text', 'required': False},
             ],
         },
+        'sponsorship_outreach': {
+            'label': 'Newsletter Sponsorship Outreach (10–15 Sponsors)',
+            'description': 'Find 10–15 companies that sponsor newsletters in your niche, generate personalized pitch emails, and produce a ready-to-sign sponsorship agreement template.',
+            'prompt_form': [
+                {'key': 'newsletter_name', 'label': 'Newsletter name', 'type': 'text', 'required': True},
+                {'key': 'niche', 'label': 'Newsletter niche / topic (e.g. "B2B SaaS founders")',
+                 'type': 'text', 'required': True},
+                {'key': 'audience_description', 'label': 'Describe your audience (role, seniority, industry)',
+                 'type': 'textarea', 'required': True},
+                {'key': 'list_size', 'label': 'Subscriber count', 'type': 'text', 'required': True},
+                {'key': 'open_rate', 'label': 'Open rate (%)', 'type': 'text', 'required': False},
+            ],
+        },
     },
     5: {
         'portfolio_analysis': {
@@ -835,6 +848,17 @@ def execute_agent_action(
             user_inputs=user_inputs,
         )
 
+    if action_type == 'sponsorship_outreach':
+        from app.services.sponsorship_outreach_service import execute_sponsorship_outreach
+        return execute_sponsorship_outreach(
+            user_id=user_id,
+            simulation_id=simulation_id,
+            action_id=action_id,
+            expertise_zone=expertise_zone,
+            parsed_text=parsed_text,
+            user_inputs=user_inputs,
+        )
+
     inputs_formatted = '\n'.join(
         f'- {k}: {v}' for k, v in user_inputs.items() if v
     ) or 'None provided'
@@ -859,6 +883,26 @@ PROFESSIONAL BACKGROUND (excerpt):
 {prospect_section}
 Generate the complete artifact for this action. Be specific and draw directly from the professional's background, expertise zone, and deliverables. Write in a professional, immediately usable format. Do not include meta-commentary or instructions — only the artifact itself."""
 
+    # For contact-producing agents, append a structured contacts extraction instruction
+    _contact_agents = {
+        'cold_email_campaign', 'role_search', 'referral_network',
+        'speaking_proposals', 'corporate_training_proposal',
+        'affiliate_program', 'affiliate_partnerships', 'alumni_reactivation',
+    }
+    _update_only_agents = {'alumni_reactivation'}
+    if action_type in _contact_agents:
+        prompt += (
+            '\n\n---\nIMPORTANT: After your main response, append this exact block '
+            '(mandatory output):\n'
+            '<!--CONTACTS\n'
+            '[{"first_name":"...","last_name":"...","email":"...","job_title":"...",'
+            '"company_name":"...","qualifying_notes":"..."}]\n'
+            'CONTACTS-->\n'
+            'Include one entry per prospect/contact you generated or referenced. '
+            'Required per entry: first_name, last_name. Omit fields you don\'t have. '
+            'If no specific contacts were produced, output <!--CONTACTS [] CONTACTS-->.'
+        )
+
     model = get_model(action_type)
     response = _client().messages.create(
         model=model,
@@ -866,7 +910,57 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         messages=[{'role': 'user', 'content': prompt}],
     )
     _log_interaction(AIInteraction.TYPE_AGENT_ACTION, user_id, simulation_id, response.usage, model=model)
-    return response.content[0].text.strip()
+    raw_artifact = response.content[0].text.strip()
+
+    # Extract and save contacts[] if present (FR-CRM-03)
+    if action_type in _contact_agents:
+        raw_artifact = _extract_and_save_contacts(
+            raw_artifact, user_id, simulation_id, action_type,
+            update_only=(action_type in _update_only_agents),
+        )
+
+    return raw_artifact
+
+
+def _extract_and_save_contacts(
+    artifact: str,
+    user_id: str,
+    simulation_id: str,
+    action_type: str,
+    update_only: bool = False,
+) -> str:
+    """Extract <!--CONTACTS [...] CONTACTS--> block, save to CRM, return clean artifact."""
+    import re as _re
+    import logging as _log
+    _logger = _log.getLogger(__name__)
+
+    match = _re.search(r'<!--CONTACTS\s*(.*?)\s*CONTACTS-->', artifact, _re.DOTALL)
+    if not match:
+        return artifact
+
+    clean = artifact[:match.start()].rstrip() + artifact[match.end():]
+
+    try:
+        contacts = json.loads(match.group(1).strip())
+        if contacts and isinstance(contacts, list):
+            from app.services.contact_lookup import save_contacts_to_crm
+            # Resolve user_id from simulation if missing
+            if not user_id and simulation_id:
+                from app.models.simulation import Simulation as _Sim
+                _sim = _Sim.query.get(simulation_id)
+                user_id = _sim.user_id if _sim else None
+            if user_id:
+                save_contacts_to_crm(
+                    contacts=contacts,
+                    user_id=user_id,
+                    simulation_id=simulation_id,
+                    action_type=action_type,
+                    update_only=update_only,
+                )
+    except Exception as exc:
+        _logger.warning('Contacts extraction failed for %s: %s', action_type, exc)
+
+    return clean.strip()
 
 
 def _get_prospect_context(
