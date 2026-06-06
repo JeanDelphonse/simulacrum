@@ -463,6 +463,17 @@ def admin_partners_view():
     return render_template('admin/partners.html', partners=partners)
 
 
+@pages_bp.route('/admin/corporate')
+@login_required
+def admin_corporate_view():
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    from app.models.corporate import CorporateAccount
+    orgs = CorporateAccount.query.order_by(CorporateAccount.created_at.desc()).all()
+    return render_template('admin/corporate.html', orgs=orgs)
+
+
 @pages_bp.route('/admin/users/<target_uid>/integrations')
 @login_required
 def admin_user_integrations(target_uid):

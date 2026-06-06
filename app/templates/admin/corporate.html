@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% block title %}Corporate Accounts — Admin{% endblock %}
+{% block content %}
+<div class="page-container">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link active">Corporate</a>
+  </nav>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+    <h1>Corporate Accounts</h1>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ New Organization</button>
+  </div>
+
+  {% if orgs %}
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Organization</th>
+        <th>Tier</th>
+        <th>Seats</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for org in orgs %}
+      <tr>
+        <td>
+          <div style="font-weight:600">{{ org.org_name }}</div>
+          <div style="font-size:0.8rem;opacity:0.6">{{ org.contact_email }}</div>
+        </td>
+        <td>{{ org.license_tier|capitalize }}</td>
+        <td>{{ org.seats_used }} / {{ org.seat_count }}</td>
+        <td>
+          <span class="corp-badge corp-badge--{{ org.status }}">{{ org.status|capitalize }}</span>
+        </td>
+        <td style="font-size:0.85rem;opacity:0.7">{{ org.created_at.strftime('%b %d, %Y') if org.created_at else '—' }}</td>
+        <td>
+          {% if org.status == 'pending' %}
+          <button class="btn btn-sm btn-primary" onclick="activateOrg('{{ org.id }}')">Activate</button>
+          {% elif org.status == 'active' %}
+          <a href="/corporate/{{ org.id }}" class="btn btn-sm btn-secondary" target="_blank">Dashboard →</a>
+          <button class="btn btn-sm" style="margin-left:4px;background:rgba(220,38,38,.15);color:#f87171;border:none;cursor:pointer;" onclick="suspendOrg('{{ org.id }}')">Suspend</button>
+          {% elif org.status == 'suspended' %}
+          <button class="btn btn-sm btn-primary" onclick="activateOrg('{{ org.id }}')">Reactivate</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="text-align:center;padding:48px 0;opacity:0.5">
+    <p>No corporate accounts yet.</p>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="openCreateModal()">Create the first one</button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Create org modal -->
+<div id="createModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface,#1a1a2e);border-radius:12px;padding:32px;width:100%;max-width:480px;border:1px solid rgba(255,255,255,.1);">
+    <h2 style="margin-bottom:20px">New Corporate Account</h2>
+
+    <label class="form-label">Organization Name *</label>
+    <input id="f_org_name" class="form-input" type="text" placeholder="Acme Corp">
+
+    <label class="form-label" style="margin-top:12px">Contact Name *</label>
+    <input id="f_contact_name" class="form-input" type="text" placeholder="HR Director">
+
+    <label class="form-label" style="margin-top:12px">Contact Email *</label>
+    <input id="f_contact_email" class="form-input" type="email" placeholder="hr@acme.com">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div>
+        <label class="form-label">License Tier</label>
+        <select id="f_tier" class="form-input" onchange="updateSeats()">
+          <option value="starter">Starter (25 seats)</option>
+          <option value="professional">Professional (100 seats)</option>
+          <option value="enterprise">Enterprise (unlimited)</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Seat Count</label>
+        <input id="f_seats" class="form-input" type="number" value="25" min="1">
+      </div>
+    </div>
+
+    <label class="form-label" style="margin-top:12px">White-Label Name <span style="opacity:0.5">(optional)</span></label>
+    <input id="f_wl_name" class="form-input" type="text" placeholder="Leave blank to use org name">
+
+    <label class="form-label" style="margin-top:12px">White-Label Logo URL <span style="opacity:0.5">(optional)</span></label>
+    <input id="f_wl_logo" class="form-input" type="url" placeholder="https://...">
+
+    <div id="createMsg" style="margin-top:12px;font-size:0.85rem;color:#f87171;display:none"></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" id="createBtn" onclick="submitCreate()">Create & Activate</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.corp-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 500; }
+.corp-badge--pending    { background: #fef9c3; color: #854d0e; }
+.corp-badge--active     { background: #dcfce7; color: #166534; }
+.corp-badge--suspended  { background: #fee2e2; color: #991b1b; }
+.form-label { display: block; font-size: 0.82rem; opacity: 0.7; margin-bottom: 4px; }
+.form-input { width: 100%; padding: 8px 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 6px; color: inherit; font-size: 0.9rem; }
+</style>
+
+<script>
+const TIER_SEATS = { starter: 25, professional: 100, enterprise: 500 };
+
+function updateSeats() {
+  const tier = document.getElementById('f_tier').value;
+  document.getElementById('f_seats').value = TIER_SEATS[tier] || 25;
+}
+
+function openCreateModal()  { document.getElementById('createModal').style.display = 'flex'; }
+function closeCreateModal() { document.getElementById('createModal').style.display = 'none'; }
+
+async function submitCreate() {
+  const btn = document.getElementById('createBtn');
+  const msg = document.getElementById('createMsg');
+  msg.style.display = 'none';
+  btn.disabled = true;
+
+  const body = {
+    org_name:           document.getElementById('f_org_name').value.trim(),
+    contact_name:       document.getElementById('f_contact_name').value.trim(),
+    contact_email:      document.getElementById('f_contact_email').value.trim(),
+    license_tier:       document.getElementById('f_tier').value,
+    seat_count:         parseInt(document.getElementById('f_seats').value, 10),
+    white_label_name:   document.getElementById('f_wl_name').value.trim() || null,
+    white_label_logo_url: document.getElementById('f_wl_logo').value.trim() || null,
+  };
+
+  if (!body.org_name || !body.contact_name || !body.contact_email) {
+    msg.textContent = 'Organization name, contact name, and email are required.';
+    msg.style.display = 'block';
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    // Create
+    let resp = await fetch('/api/corporate/orgs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    let data = await resp.json();
+    if (!resp.ok) { msg.textContent = data.error || 'Error creating org'; msg.style.display = 'block'; btn.disabled = false; return; }
+
+    // Auto-activate
+    await fetch(`/api/corporate/orgs/${data.id}/activate`, { method: 'PUT' });
+
+    closeCreateModal();
+    location.reload();
+  } catch (e) {
+    msg.textContent = 'Network error';
+    msg.style.display = 'block';
+    btn.disabled = false;
+  }
+}
+
+async function activateOrg(id) {
+  await fetch(`/api/corporate/orgs/${id}/activate`, { method: 'PUT' });
+  location.reload();
+}
+
+async function suspendOrg(id) {
+  if (!confirm('Suspend this organization? Employees will lose access.')) return;
+  await fetch(`/api/corporate/orgs/${id}/suspend`, { method: 'PUT' });
+  location.reload();
+}
+</script>
+{% endblock %}
