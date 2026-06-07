@@ -97,6 +97,13 @@ def dispatch_layer6_action(self, queue_entry_id: str):
             except Exception as _de:
                 logger.warning('outreach_email post-send dispatch failed: %s', _de)
 
+        if entry.action_type == 'cold_email_campaign':
+            try:
+                from app.tasks.agent import _dispatch_cold_email_campaign
+                _dispatch_cold_email_campaign(agent_action.id, entry.simulation_id, sim.user_id)
+            except Exception as _de:
+                logger.warning('cold_email_campaign post-send dispatch failed: %s', _de)
+
         # Deploy artifact to integration chain (FR-WIRE-01)
         try:
             from app.services.wire_service import deploy_to_integration

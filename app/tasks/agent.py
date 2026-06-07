@@ -111,6 +111,12 @@ def execute_agent_action_task(action_id: str):
             except Exception as exc:
                 logger.warning('outreach_email post-send dispatch failed action=%s: %s', action_id, exc)
 
+        if action_type == 'cold_email_campaign':
+            try:
+                _dispatch_cold_email_campaign(action_id, simulation_id, user_id)
+            except Exception as exc:
+                logger.warning('cold_email_campaign post-send dispatch failed action=%s: %s', action_id, exc)
+
     except Exception as exc:
         logger.error('AgentAction %s failed: %s', action_id, exc, exc_info=True)
         # Roll back any dirty/invalid transaction before writing the failure status.
@@ -268,6 +274,143 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
                 'Your outreach emails are drafted and ready. '
                 'Open the artifact to review each one, then click Send.'
             ),
+            action_url=f'/artifacts/{action_id}',
+            source_action_id=action_id,
+            emit_sse=True,
+        )
+
+
+def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: str):
+    """
+    Post-completion hook for cold_email_campaign.
+    Sends Step 1 emails immediately (or creates escalation) based on channel_approvals.
+    Creates follow-up escalation ActionItems for Step 2 (day 7) and Step 3 (day 14).
+    """
+    import json
+    from app.extensions import db
+    from app.models.layer6 import Layer6Config
+    from app.models.artifact import ArtifactVersion
+    from app.models.contact import Contact, ContactActivity
+    from utils.id_gen import generate_id
+    from utils.action_items import create_action_item
+    import datetime
+
+    config = Layer6Config.query.filter_by(simulation_id=simulation_id).first()
+    email_approved = config.channel_approvals.get('email', False) if config else False
+
+    av = ArtifactVersion.query.filter_by(action_id=action_id, is_current=True).first()
+    if not av or not av.content:
+        return
+
+    try:
+        data = json.loads(av.content)
+    except Exception:
+        return
+
+    prospects = data.get('prospects', [])
+    if not prospects:
+        return
+
+    step1_prospects = [
+        (idx, p) for idx, p in enumerate(prospects)
+        if p.get('sequence') and p['sequence'][0].get('send_status') == 'draft'
+    ]
+    if not step1_prospects:
+        return
+
+    _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
+
+    if email_approved:
+        sent = 0
+        from app.models.agent_action import AgentAction
+        from app.services.consulting_outreach_service import _try_apollo_send
+        action_obj = AgentAction.query.get(action_id)
+
+        for idx, p in step1_prospects:
+            email = p.get('email') or _FALLBACK_EMAIL
+            step1 = p['sequence'][0]
+            try:
+                _try_apollo_send(
+                    {'email': email, 'email_draft': {'subject': step1.get('subject', ''), 'body': step1.get('body', '')}},
+                    user_id, action_obj,
+                )
+                step1['send_status'] = 'sent'
+                step1['sent_at'] = datetime.datetime.utcnow().isoformat()
+
+                # Resolve CRM contact — look up by email, create if missing
+                crm_id = p.get('crm_contact_id')
+                contact = Contact.query.get(crm_id) if crm_id else None
+                if not contact and email != _FALLBACK_EMAIL:
+                    contact = Contact.query.filter_by(
+                        user_id=user_id, email=email.lower().strip()
+                    ).first()
+                if not contact:
+                    contact = Contact(
+                        id=generate_id(),
+                        user_id=user_id,
+                        simulation_id=simulation_id,
+                        first_name=p.get('first_name', ''),
+                        last_name=p.get('last_name', ''),
+                        email=email.lower().strip(),
+                        job_title=p.get('job_title', ''),
+                        company_name=p.get('company_name', ''),
+                        pipeline_stage='prospect',
+                        source='agent_action',
+                        source_action_id=action_id,
+                    )
+                    db.session.add(contact)
+                    db.session.flush()
+
+                # Backfill crm_contact_id in artifact
+                p['crm_contact_id'] = contact.id
+
+                # Advance to active + log activity
+                contact.advance_stage('active', created_by='orchestrator',
+                                      simulation_id=simulation_id, action_id=action_id)
+                contact.last_contacted_at = datetime.datetime.utcnow()
+                db.session.add(ContactActivity(
+                    id=generate_id(),
+                    contact_id=contact.id,
+                    simulation_id=simulation_id,
+                    action_id=action_id,
+                    activity_type='outreach_sent',
+                    notes='Cold email campaign step 1 sent',
+                    created_by='orchestrator',
+                ))
+                sent += 1
+            except Exception as exc:
+                logger.warning('cold_email step1 send failed prospect %d: %s', idx, exc)
+
+        # Persist updated send_status in artifact
+        av.content = json.dumps(data, ensure_ascii=False)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        logger.info('Cold email campaign step 1: sent %d/%d for action %s', sent, len(step1_prospects), action_id)
+
+        # Create follow-up ActionItems for steps 2 & 3
+        n = len(step1_prospects)
+        for step_num, delay_days in ((2, 7), (3, 14)):
+            create_action_item(
+                simulation_id=simulation_id,
+                user_id=user_id,
+                item_type='escalation',
+                title=f'Send cold email Step {step_num} to {n} prospect{"s" if n != 1 else ""} (day {delay_days})',
+                description=f'Step {step_num} follow-ups are ready. Send them {delay_days} days after your Step 1 outreach.',
+                action_url=f'/artifacts/{action_id}',
+                source_action_id=action_id,
+                emit_sse=False,
+            )
+    else:
+        n = len(step1_prospects)
+        create_action_item(
+            simulation_id=simulation_id,
+            user_id=user_id,
+            item_type='escalation',
+            title=f'Review & send cold email Step 1 to {n} prospect{"s" if n != 1 else ""} — approval required',
+            description='Your cold email campaign is drafted. Review each email and send Step 1 to start the sequence.',
             action_url=f'/artifacts/{action_id}',
             source_action_id=action_id,
             emit_sse=True,

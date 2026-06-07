@@ -863,9 +863,9 @@ def execute_agent_action(
         f'- {k}: {v}' for k, v in user_inputs.items() if v
     ) or 'None provided'
 
-    # outreach_email: pull verified prospects from CRM contacts (have real emails)
-    # Fall back to research engine only if CRM has no eligible contacts.
-    if action_type == 'outreach_email':
+    # outreach_email / cold_email_campaign: pull verified prospects from CRM
+    # contacts (have real emails). Fall back to research engine if CRM is empty.
+    if action_type in ('outreach_email', 'cold_email_campaign'):
         prospect_section = _get_crm_prospect_section(user_id, simulation_id, user_inputs)
         if not prospect_section:
             prospect_section = _get_prospect_context(
@@ -906,6 +906,25 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             'Subject and body must be complete, personalised, and ready to send.'
         )
 
+    # cold_email_campaign: structured JSON with 3-step sequence per prospect
+    if action_type == 'cold_email_campaign':
+        prompt += (
+            '\n\n---\nReturn ONLY a JSON object in this exact format (no markdown fences, '
+            'no commentary outside the JSON):\n'
+            '{"version":"1.0","agent":"cold_email_campaign","prospects":['
+            '{"first_name":"...","last_name":"...","email":"...","job_title":"...",'
+            '"company_name":"...","crm_contact_id":null,'
+            '"sequence":['
+            '{"step":1,"subject":"...","body":"...","send_status":"draft","send_delay_days":0},'
+            '{"step":2,"subject":"...","body":"...","send_status":"pending","send_delay_days":7},'
+            '{"step":3,"subject":"...","body":"...","send_status":"pending","send_delay_days":14}'
+            ']}]}\n'
+            'One entry per prospect from the research list above. '
+            'Use the prospect email addresses provided. '
+            'Step 1 is the initial outreach. Step 2 is a follow-up (day 7). '
+            'Step 3 is a final follow-up (day 14). All subjects and bodies must be complete and ready to send.'
+        )
+
     # For contact-producing agents, append a structured contacts extraction instruction
     _contact_agents = {
         'cold_email_campaign', 'role_search', 'referral_network',
@@ -927,7 +946,8 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         )
 
     model = get_model(action_type)
-    max_tokens = 4096 if action_type == 'outreach_email' else 3000
+    _json_outreach = {'outreach_email', 'cold_email_campaign'}
+    max_tokens = 8192 if action_type == 'cold_email_campaign' else (4096 if action_type == 'outreach_email' else 3000)
     response = _client().messages.create(
         model=model,
         max_tokens=max_tokens,
@@ -936,8 +956,8 @@ Generate the complete artifact for this action. Be specific and draw directly fr
     _log_interaction(AIInteraction.TYPE_AGENT_ACTION, user_id, simulation_id, response.usage, model=model)
     raw_artifact = response.content[0].text.strip()
 
-    # outreach_email: parse JSON, save contacts to CRM, return clean JSON string
-    if action_type == 'outreach_email':
+    # JSON outreach agents: parse, save contacts, return clean JSON
+    if action_type in _json_outreach:
         raw_artifact = _finalize_outreach_email_artifact(
             raw_artifact, user_id, simulation_id, action_id,
         )
