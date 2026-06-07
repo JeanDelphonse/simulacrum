@@ -876,8 +876,9 @@ def _check_autonomy_bounds(action_type: str, config) -> tuple[bool, str]:
     Actions that touch external channels or spending beyond approved limits are escalated.
     """
     channel_map = {
-        'outreach_email': 'email',
-        'cold_email_campaign': 'email',
+        # outreach_email and cold_email_campaign are NOT here — they generate draft
+        # artifacts only; actual email sending is gated by the post-completion dispatch
+        # hooks (_dispatch_outreach_emails / _dispatch_cold_email_campaign).
         'consulting_outreach': 'email',
         'referral_network_activation': 'email',
         'launch_email_sequence': 'email_funnels',
