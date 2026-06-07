@@ -84,7 +84,7 @@ def get_prefill(sim_id, action_type):
     if layer_num not in range(1, 6):
         return jsonify({'error': 'layer_num must be 1–5'}), 400
 
-    resume = Resume.query.get(sim.resume_id)
+    resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
 
     from app.services.prefill_engine import PrefillEngine
     engine = PrefillEngine(

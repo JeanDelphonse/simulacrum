@@ -36,7 +36,7 @@ def dispatch_layer6_action(self, queue_entry_id: str):
         logger.warning('Simulation %s not found for L6 action', entry.simulation_id)
         return
 
-    resume = Resume.query.get(sim.resume_id)
+    resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
     parsed_text = resume.parsed_text if resume else ''
 
     # Create an AgentAction record so the result shows in the simulation view

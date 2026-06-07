@@ -263,7 +263,7 @@ def refine_layer(sim_id, layer_num):
         simulation_id=sim_id, layer_number=layer_num
     ).first_or_404()
 
-    resume = Resume.query.get(sim.resume_id)
+    resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
     parsed_text = resume.parsed_text if resume else ''
 
     try:

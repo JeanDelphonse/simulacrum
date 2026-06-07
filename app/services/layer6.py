@@ -742,7 +742,7 @@ def _execute_action_sync(entry) -> None:
     from app.services.claude import execute_agent_action
 
     sim = Simulation.query.get(entry.simulation_id)
-    resume = Resume.query.get(sim.resume_id) if sim else None
+    resume = Resume.query.get(sim.resume_id) if sim and sim.resume_id else None
     parsed_text = resume.parsed_text if resume else ''
 
     agent_action = AgentAction(

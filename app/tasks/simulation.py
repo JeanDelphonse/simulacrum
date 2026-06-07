@@ -31,7 +31,7 @@ def generate_simulation_task(self, simulation_id: str):
         sim.status = Simulation.STATUS_STREAMING
         db.session.commit()
 
-        resume = Resume.query.get(sim.resume_id)
+        resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
         parsed_text = resume.parsed_text if resume else ''
         fintech_enabled = is_fintech_enabled()
 

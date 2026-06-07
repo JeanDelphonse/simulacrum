@@ -51,7 +51,7 @@ def start_generation_if_needed(simulation_id: str, app_obj):
             from app.services.claude import generate_simulation_layer
             from app.services.fintech import is_fintech_enabled
 
-            resume = Resume.query.get(sim.resume_id)
+            resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
             parsed_text = resume.parsed_text if resume else ''
             fintech_enabled = is_fintech_enabled()
 

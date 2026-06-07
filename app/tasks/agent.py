@@ -40,7 +40,7 @@ def execute_agent_action_task(action_id: str):
         # the simulation owner so record_agent_contacts gets a valid user_id.
         if not user_id and sim:
             user_id = sim.user_id
-        resume = Resume.query.get(sim.resume_id) if sim else None
+        resume = Resume.query.get(sim.resume_id) if sim and sim.resume_id else None
         parsed_text = resume.parsed_text if resume else ''
 
         artifact = execute_agent_action(
