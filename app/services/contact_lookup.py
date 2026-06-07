@@ -72,7 +72,7 @@ def get_contacts_for_action(
         else:
             closed_lost_ok = []
 
-        db_contacts = query.order_by(Contact.qualifying_score.desc().nullslast()).limit(min_pool * 2).all()
+        db_contacts = query.order_by(Contact.qualifying_score.desc()).limit(min_pool * 2).all()
         db_contacts = db_contacts + closed_lost_ok
 
         generate_count = max(0, min_pool - len(db_contacts))

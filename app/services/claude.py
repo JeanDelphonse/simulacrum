@@ -1116,7 +1116,7 @@ def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dic
             Contact.do_not_contact.is_(False),
             Contact.email.isnot(None),
             Contact.pipeline_stage.in_(['prospect', 'active', 'lead']),
-        ).order_by(Contact.qualifying_score.desc().nullslast()).limit(15).all()
+        ).order_by(Contact.qualifying_score.desc()).limit(15).all()
 
         if not contacts:
             return ''
