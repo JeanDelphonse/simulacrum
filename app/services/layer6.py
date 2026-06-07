@@ -360,10 +360,11 @@ def _build_integration_user_inputs(action_type: str, active_integrations: dict,
 
 
 def build_eligible_actions(simulation_id: str, config, completed_types: set[str],
-                            phase: str) -> list[dict[str, Any]]:
+                            phase: str, force_rerun: bool = False) -> list[dict[str, Any]]:
     """
     Return all agent action types eligible for dispatch this cycle, with scores.
     Eligibility: prerequisites complete, not blocked, not already queued/running.
+    force_rerun=True: skip the completed-type filter so all agents are eligible again.
     """
     from app.services.claude import AGENT_ACTION_TYPES
     from app.models.layer6 import Layer6ActionQueue
@@ -389,10 +390,10 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
                 continue
             if action_type in in_flight:
                 continue
-            if action_type in completed_types:
+            if not force_rerun and action_type in completed_types:
                 continue
 
-            # Check prerequisites
+            # Check prerequisites (always uses real completed_types so order is respected)
             prereqs = ACTION_PREREQUISITES.get(action_type, [])
             if not all(p in completed_types for p in prereqs):
                 continue
@@ -468,7 +469,7 @@ def _snapshot_posteriors(simulation_id: str, cycle_id: str) -> None:
         db.session.commit()
 
 
-def run_orchestrator_cycle(simulation_id: str) -> dict:
+def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dict:
     """
     Execute one full orchestrator cycle:
       1. Harvest — refresh outcome data
@@ -523,8 +524,8 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
     # Determine phase using cycle-number-based 37% rule
     phase = determine_phase(simulation_id, cycle_number)
 
-    # Enforce 5-8 agents per cycle (FR-ORCH-07)
-    n_to_dispatch = max(5, min(8, config.actions_per_cycle))
+    # Manual force-rerun dispatches every eligible agent; scheduled cycles cap at 5-8
+    n_to_dispatch = 999 if force_rerun else max(5, min(8, config.actions_per_cycle))
 
     # Create cycle record
     cycle = Layer6Cycle(
@@ -555,7 +556,7 @@ def run_orchestrator_cycle(simulation_id: str) -> dict:
         outcomes_by_layer.setdefault(o.layer_number, []).append(o.to_dict())
 
     eligible = build_eligible_actions(
-        simulation_id, config, completed_types, phase=phase
+        simulation_id, config, completed_types, phase=phase, force_rerun=force_rerun,
     )
 
     all_eligible_types = [e['action_type'] for e in eligible]

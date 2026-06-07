@@ -213,7 +213,7 @@ def run_cycle(sim_id):
     from app.services.layer6 import run_orchestrator_cycle
     from app.models.layer6 import Layer6ActionQueue
     try:
-        cycle_data = run_orchestrator_cycle(sim_id)
+        cycle_data = run_orchestrator_cycle(sim_id, force_rerun=True)
         actions = Layer6ActionQueue.query.filter_by(
             cycle_id=cycle_data['id']
         ).order_by(Layer6ActionQueue.priority_score.desc()).all()
