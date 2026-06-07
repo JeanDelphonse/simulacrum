@@ -239,7 +239,7 @@
   #pricing { background: var(--off-white); }
   .pricing-head { text-align: center; margin-bottom: 12px; }
   .pricing-head-sub { text-align: center; font-size: 15px; color: var(--muted); margin-bottom: 48px; }
-  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 820px; margin: 0 auto; }
+  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; max-width: 1160px; margin: 0 auto; }
   .price-card {
     background: #fff; border: 1px solid var(--border);
     border-radius: 20px; padding: 36px 32px;
@@ -385,7 +385,7 @@
     .feat-icon-grid { grid-template-columns: repeat(2,1fr); }
     .feat-card-light, .feat-card-dark { padding: 28px 24px; }
     .feat-check-grid { grid-template-columns: 1fr; }
-    .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
     .sp-card { flex: 0 0 85%; }
     .sp-chevron { display: none; }
     #hero { padding-top: calc(var(--nav-h) + 44px); padding-bottom: 56px; }
@@ -606,21 +606,6 @@
           </div>
         </div>
       </div>
-      <!-- Pro tier -->
-      <div class="feat-card-dark fade-up">
-        <div class="feat-tier-label teal-light">Pro simulation — {{ sim_price_usd }}</div>
-        <div class="feat-title light-text">49 AI agents. 6 income layers. One simulation.</div>
-        <div class="feat-check-grid">
-          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Rate card &amp; speaker fees</span></div>
-          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Cold email campaign ×10 prospects</span></div>
-          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Kajabi course outline</span></div>
-          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>SEO-optimized blog post</span></div>
-          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Cal.com booking automation</span></div>
-          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Bayesian growth orchestrator</span></div>
-          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Full CRM + pipeline</span></div>
-          <div class="feat-check-row"><span class="feat-check-tick">✓</span><span>Prospect research engine</span></div>
-        </div>
-      </div>
     </div>
   </div>
 </section>
@@ -670,6 +655,24 @@
           <div class="price-feat"><span class="price-check">✓</span><span>Prospect research engine</span></div>
         </div>
         <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal" style="width:100%;justify-content:center;">Start your simulation</a>
+      </div>
+      <!-- Corporate -->
+      <div class="price-card fade-up d3" style="border:2px solid var(--navy);background:var(--navy);color:#fff;">
+        <div class="price-badge-row"><span class="price-badge" style="background:rgba(255,255,255,.15);color:#fff;">Enterprise</span></div>
+        <div class="price-tier" style="color:rgba(255,255,255,.55);">Corporate</div>
+        <div class="price-amount" style="color:#fff;">Custom</div>
+        <div class="price-per" style="color:rgba(255,255,255,.5);">per seat · annual contract</div>
+        <div class="price-features">
+          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Everything in Pro Simulation</span></div>
+          <div class="price-divider" style="color:rgba(255,255,255,.35);border-color:rgba(255,255,255,.12);">Plus corporate features:</div>
+          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Bulk seat licensing &amp; SSO</span></div>
+          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Outplacement &amp; career transition programs</span></div>
+          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Cohort dashboards &amp; HR reporting</span></div>
+          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Dedicated success manager</span></div>
+          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>White-label &amp; custom branding</span></div>
+          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Priority API access &amp; SLA</span></div>
+        </div>
+        <a href="mailto:valuemanager.management@gmail.com?subject=Corporate%20Licensing%20Enquiry" class="btn" style="width:100%;justify-content:center;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);">Contact sales →</a>
       </div>
     </div>
   </div>

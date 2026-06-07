@@ -791,6 +791,14 @@ def _execute_action_sync(entry) -> None:
         db.session.commit()
         logger.info('Layer 6 sync action %s (%s) completed', entry.id, entry.action_type)
 
+        # Post-completion: dispatch outreach emails based on trust level
+        if entry.action_type == 'outreach_email':
+            try:
+                from app.tasks.agent import _dispatch_outreach_emails
+                _dispatch_outreach_emails(agent_action.id, entry.simulation_id, sim.user_id if sim else None)
+            except Exception as _de:
+                logger.warning('outreach_email post-send dispatch failed: %s', _de)
+
         # Deploy artifact to integration chain (FR-WIRE-01)
         try:
             from app.services.wire_service import deploy_to_integration
