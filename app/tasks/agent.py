@@ -250,24 +250,38 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
 
     _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
 
-    # ── Phase 1: upsert ALL prospects with real emails into CRM as 'prospect' ──
+    # ── Phase 1: upsert ALL named prospects into CRM as 'prospect' ──
     artifact_changed = False
     crm_created = 0
     for p in prospects:
-        email = (p.get('email') or '').strip().lower()
-        if not email or email == _FALLBACK_EMAIL:
+        first = (p.get('first_name') or '').strip()
+        last  = (p.get('last_name') or '').strip()
+        if not first and not last:
             continue
-        crm_id = p.get('crm_contact_id')
-        contact = Contact.query.get(crm_id) if crm_id else None
+
+        raw_email = (p.get('email') or '').strip().lower()
+        has_real_email = bool(raw_email and raw_email != _FALLBACK_EMAIL)
+
+        contact = None
+        if has_real_email:
+            crm_id = p.get('crm_contact_id')
+            contact = Contact.query.get(crm_id) if crm_id else None
+            if not contact:
+                contact = Contact.query.filter_by(user_id=user_id, email=raw_email).first()
+        else:
+            if first and last:
+                contact = Contact.query.filter_by(
+                    user_id=user_id, first_name=first, last_name=last,
+                ).first()
+
         if not contact:
-            contact = Contact.query.filter_by(user_id=user_id, email=email).first()
-        if not contact:
+            email_to_save = raw_email if has_real_email else f'{generate_id()}@noemail.placeholder'
             contact = Contact(
                 id=generate_id(),
                 user_id=user_id,
-                first_name=p.get('first_name', ''),
-                last_name=p.get('last_name', ''),
-                email=email,
+                first_name=first or 'Unknown',
+                last_name=last or '',
+                email=email_to_save,
                 job_title=p.get('job_title', ''),
                 company_name=p.get('company_name', ''),
                 pipeline_stage='prospect',
@@ -277,6 +291,7 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
             db.session.add(contact)
             db.session.flush()
             crm_created += 1
+
         if not p.get('crm_contact_id'):
             p['crm_contact_id'] = contact.id
             artifact_changed = True
@@ -366,25 +381,40 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
 
     _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
 
-    # ── Phase 1: upsert ALL prospects with real emails into CRM as 'prospect' ──
+    # ── Phase 1: upsert ALL named prospects into CRM as 'prospect' ──
+    # Real email → match/create by email.
+    # No/fallback email → match by name+company, create with unique placeholder.
     artifact_changed = False
     crm_created = 0
     for p in prospects:
-        email = (p.get('email') or '').strip().lower()
-        if not email or email == _FALLBACK_EMAIL:
-            continue  # skip fallback-email placeholders
+        first = (p.get('first_name') or '').strip()
+        last  = (p.get('last_name') or '').strip()
+        if not first and not last:
+            continue
 
-        crm_id = p.get('crm_contact_id')
-        contact = Contact.query.get(crm_id) if crm_id else None
+        raw_email = (p.get('email') or '').strip().lower()
+        has_real_email = bool(raw_email and raw_email != _FALLBACK_EMAIL)
+
+        contact = None
+        if has_real_email:
+            crm_id = p.get('crm_contact_id')
+            contact = Contact.query.get(crm_id) if crm_id else None
+            if not contact:
+                contact = Contact.query.filter_by(user_id=user_id, email=raw_email).first()
+        else:
+            if first and last:
+                contact = Contact.query.filter_by(
+                    user_id=user_id, first_name=first, last_name=last,
+                ).first()
+
         if not contact:
-            contact = Contact.query.filter_by(user_id=user_id, email=email).first()
-        if not contact:
+            email_to_save = raw_email if has_real_email else f'{generate_id()}@noemail.placeholder'
             contact = Contact(
                 id=generate_id(),
                 user_id=user_id,
-                first_name=p.get('first_name', ''),
-                last_name=p.get('last_name', ''),
-                email=email,
+                first_name=first or 'Unknown',
+                last_name=last or '',
+                email=email_to_save,
                 job_title=p.get('job_title', ''),
                 company_name=p.get('company_name', ''),
                 pipeline_stage='prospect',
