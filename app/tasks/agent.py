@@ -283,8 +283,9 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
 def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: str):
     """
     Post-completion hook for cold_email_campaign.
-    Sends Step 1 emails immediately (or creates escalation) based on channel_approvals.
-    Creates follow-up escalation ActionItems for Step 2 (day 7) and Step 3 (day 14).
+    Phase 1 (always): upsert every prospect with a real email into CRM as 'prospect'.
+    Phase 2: send Step 1 emails if channel approved, else create escalation ActionItem.
+    Creates follow-up escalation ActionItems for Step 2/3 when Step 1 is sent.
     """
     import json
     from app.extensions import db
@@ -311,14 +312,62 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
     if not prospects:
         return
 
+    _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
+
+    # ── Phase 1: upsert ALL prospects with real emails into CRM as 'prospect' ──
+    artifact_changed = False
+    crm_created = 0
+    for p in prospects:
+        email = (p.get('email') or '').strip().lower()
+        if not email or email == _FALLBACK_EMAIL:
+            continue  # skip fallback-email placeholders
+
+        crm_id = p.get('crm_contact_id')
+        contact = Contact.query.get(crm_id) if crm_id else None
+        if not contact:
+            contact = Contact.query.filter_by(user_id=user_id, email=email).first()
+        if not contact:
+            contact = Contact(
+                id=generate_id(),
+                user_id=user_id,
+                simulation_id=simulation_id,
+                first_name=p.get('first_name', ''),
+                last_name=p.get('last_name', ''),
+                email=email,
+                job_title=p.get('job_title', ''),
+                company_name=p.get('company_name', ''),
+                pipeline_stage='prospect',
+                source='agent_action',
+                source_action_id=action_id,
+            )
+            db.session.add(contact)
+            db.session.flush()
+            crm_created += 1
+
+        if not p.get('crm_contact_id'):
+            p['crm_contact_id'] = contact.id
+            artifact_changed = True
+
+    if artifact_changed:
+        av.content = json.dumps(data, ensure_ascii=False)
+
+    try:
+        db.session.commit()
+        logger.info('cold_email_campaign: upserted %d new CRM contacts for action %s', crm_created, action_id)
+    except Exception as exc:
+        logger.error('cold_email_campaign CRM upsert failed for action %s: %s', action_id, exc)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+    # ── Phase 2: send Step 1 emails (or escalate for review) ──
     step1_prospects = [
         (idx, p) for idx, p in enumerate(prospects)
         if p.get('sequence') and p['sequence'][0].get('send_status') == 'draft'
     ]
     if not step1_prospects:
         return
-
-    _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
 
     if email_approved:
         sent = 0
@@ -337,51 +386,29 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
                 step1['send_status'] = 'sent'
                 step1['sent_at'] = datetime.datetime.utcnow().isoformat()
 
-                # Resolve CRM contact — look up by email, create if missing
+                # Contact already exists from Phase 1; look up to advance stage
                 crm_id = p.get('crm_contact_id')
                 contact = Contact.query.get(crm_id) if crm_id else None
                 if not contact and email != _FALLBACK_EMAIL:
-                    contact = Contact.query.filter_by(
-                        user_id=user_id, email=email.lower().strip()
-                    ).first()
-                if not contact:
-                    contact = Contact(
+                    contact = Contact.query.filter_by(user_id=user_id, email=email.lower().strip()).first()
+
+                if contact:
+                    contact.advance_stage('active', created_by='orchestrator',
+                                          simulation_id=simulation_id, action_id=action_id)
+                    contact.last_contacted_at = datetime.datetime.utcnow()
+                    db.session.add(ContactActivity(
                         id=generate_id(),
-                        user_id=user_id,
+                        contact_id=contact.id,
                         simulation_id=simulation_id,
-                        first_name=p.get('first_name', ''),
-                        last_name=p.get('last_name', ''),
-                        email=email.lower().strip(),
-                        job_title=p.get('job_title', ''),
-                        company_name=p.get('company_name', ''),
-                        pipeline_stage='prospect',
-                        source='agent_action',
-                        source_action_id=action_id,
-                    )
-                    db.session.add(contact)
-                    db.session.flush()
-
-                # Backfill crm_contact_id in artifact
-                p['crm_contact_id'] = contact.id
-
-                # Advance to active + log activity
-                contact.advance_stage('active', created_by='orchestrator',
-                                      simulation_id=simulation_id, action_id=action_id)
-                contact.last_contacted_at = datetime.datetime.utcnow()
-                db.session.add(ContactActivity(
-                    id=generate_id(),
-                    contact_id=contact.id,
-                    simulation_id=simulation_id,
-                    action_id=action_id,
-                    activity_type='outreach_sent',
-                    notes='Cold email campaign step 1 sent',
-                    created_by='orchestrator',
-                ))
+                        action_id=action_id,
+                        activity_type='outreach_sent',
+                        notes='Cold email campaign step 1 sent',
+                        created_by='orchestrator',
+                    ))
                 sent += 1
             except Exception as exc:
                 logger.warning('cold_email step1 send failed prospect %d: %s', idx, exc)
 
-        # Persist updated send_status in artifact
         av.content = json.dumps(data, ensure_ascii=False)
         try:
             db.session.commit()
@@ -390,7 +417,6 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
 
         logger.info('Cold email campaign step 1: sent %d/%d for action %s', sent, len(step1_prospects), action_id)
 
-        # Create follow-up ActionItems for steps 2 & 3
         n = len(step1_prospects)
         for step_num, delay_days in ((2, 7), (3, 14)):
             create_action_item(
