@@ -59,7 +59,7 @@ def _check_cold_prospects(sim):
         # Check that no activity was logged since cutoff
         recent = ContactActivity.query.filter(
             ContactActivity.contact_id == contact.id,
-            ContactActivity.created_at >= cutoff,
+            ContactActivity.activity_date >= cutoff,
         ).first()
         if recent:
             continue
