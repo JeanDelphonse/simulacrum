@@ -218,14 +218,15 @@ def ArtifactVersion_count(action_id: str) -> int:
 def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
     """
     Post-completion hook for outreach_email.
-    Checks Layer6Config.channel_approvals['email'] for this simulation:
-      - Approved  → auto-send every draft prospect email via Apollo, log CRM activity
-      - Not approved → create an escalation ActionItem for the user to review and send
+    Phase 1 (always): upsert every prospect with a real email into CRM as 'prospect'.
+    Phase 2: if email approved → auto-send; else → create escalation ActionItem.
     """
     import json
     from app.extensions import db
     from app.models.layer6 import Layer6Config
     from app.models.artifact import ArtifactVersion
+    from app.models.contact import Contact
+    from utils.id_gen import generate_id
 
     config = Layer6Config.query.filter_by(simulation_id=simulation_id).first()
     email_approved = (
@@ -244,6 +245,56 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
         return
 
     prospects = data.get('prospects', [])
+    if not prospects:
+        return
+
+    _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
+
+    # ── Phase 1: upsert ALL prospects with real emails into CRM as 'prospect' ──
+    artifact_changed = False
+    crm_created = 0
+    for p in prospects:
+        email = (p.get('email') or '').strip().lower()
+        if not email or email == _FALLBACK_EMAIL:
+            continue
+        crm_id = p.get('crm_contact_id')
+        contact = Contact.query.get(crm_id) if crm_id else None
+        if not contact:
+            contact = Contact.query.filter_by(user_id=user_id, email=email).first()
+        if not contact:
+            contact = Contact(
+                id=generate_id(),
+                user_id=user_id,
+                first_name=p.get('first_name', ''),
+                last_name=p.get('last_name', ''),
+                email=email,
+                job_title=p.get('job_title', ''),
+                company_name=p.get('company_name', ''),
+                pipeline_stage='prospect',
+                source='agent_action',
+                source_action_id=action_id,
+            )
+            db.session.add(contact)
+            db.session.flush()
+            crm_created += 1
+        if not p.get('crm_contact_id'):
+            p['crm_contact_id'] = contact.id
+            artifact_changed = True
+
+    if artifact_changed:
+        av.content = json.dumps(data, ensure_ascii=False)
+
+    try:
+        db.session.commit()
+        logger.info('outreach_email: upserted %d new CRM contacts for action %s', crm_created, action_id)
+    except Exception as exc:
+        logger.error('outreach_email CRM upsert failed for action %s: %s', action_id, exc)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+    # ── Phase 2: send or escalate ──
     drafts = [p for p in prospects if p.get('send_status') == 'draft']
     if not drafts:
         return
@@ -330,7 +381,6 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
             contact = Contact(
                 id=generate_id(),
                 user_id=user_id,
-                simulation_id=simulation_id,
                 first_name=p.get('first_name', ''),
                 last_name=p.get('last_name', ''),
                 email=email,
