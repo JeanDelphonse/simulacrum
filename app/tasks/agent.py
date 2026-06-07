@@ -338,6 +338,7 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
     Phase 2: send Step 1 emails if channel approved, else create escalation ActionItem.
     Creates follow-up escalation ActionItems for Step 2/3 when Step 1 is sent.
     """
+    logger.error('DEBUG _dispatch_cold_email_campaign CALLED action=%s sim=%s user=%s', action_id, simulation_id, user_id)  # TODO remove
     import json
     from app.extensions import db
     from app.models.layer6 import Layer6Config
