@@ -861,6 +861,7 @@ def _check_autonomy_bounds(action_type: str, config) -> tuple[bool, str]:
     Actions that touch external channels or spending beyond approved limits are escalated.
     """
     channel_map = {
+        'outreach_email': 'email',
         'cold_email_campaign': 'email',
         'consulting_outreach': 'email',
         'referral_network_activation': 'email',

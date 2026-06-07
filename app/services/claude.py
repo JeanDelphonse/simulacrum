@@ -863,10 +863,19 @@ def execute_agent_action(
         f'- {k}: {v}' for k, v in user_inputs.items() if v
     ) or 'None provided'
 
-    # Prospect research injection (FR-RESEARCH-01)
-    prospect_section = _get_prospect_context(
-        action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
-    )
+    # outreach_email: pull verified prospects from CRM contacts (have real emails)
+    # Fall back to research engine only if CRM has no eligible contacts.
+    if action_type == 'outreach_email':
+        prospect_section = _get_crm_prospect_section(user_id, simulation_id, user_inputs)
+        if not prospect_section:
+            prospect_section = _get_prospect_context(
+                action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
+            )
+    else:
+        # Prospect research injection (FR-RESEARCH-01)
+        prospect_section = _get_prospect_context(
+            action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
+        )
 
     prompt = f"""You are a specialized career wealth agent executing a specific action for a professional.
 
@@ -882,6 +891,20 @@ PROFESSIONAL BACKGROUND (excerpt):
 {parsed_text[:3500]}
 {prospect_section}
 Generate the complete artifact for this action. Be specific and draw directly from the professional's background, expertise zone, and deliverables. Write in a professional, immediately usable format. Do not include meta-commentary or instructions — only the artifact itself."""
+
+    # outreach_email: override to structured JSON so emails can be sent programmatically
+    if action_type == 'outreach_email':
+        prompt += (
+            '\n\n---\nReturn ONLY a JSON object in this exact format (no markdown fences, '
+            'no commentary outside the JSON):\n'
+            '{"version":"1.0","agent":"outreach_email","prospects":['
+            '{"first_name":"...","last_name":"...","email":"...","job_title":"...",'
+            '"company_name":"...","crm_contact_id":null,"send_status":"draft",'
+            '"email_draft":{"subject":"...","body":"..."}}]}\n'
+            'One entry per prospect from the research list above. '
+            'Use the prospect email addresses provided. '
+            'Subject and body must be complete, personalised, and ready to send.'
+        )
 
     # For contact-producing agents, append a structured contacts extraction instruction
     _contact_agents = {
@@ -904,13 +927,21 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         )
 
     model = get_model(action_type)
+    max_tokens = 4096 if action_type == 'outreach_email' else 3000
     response = _client().messages.create(
         model=model,
-        max_tokens=3000,
+        max_tokens=max_tokens,
         messages=[{'role': 'user', 'content': prompt}],
     )
     _log_interaction(AIInteraction.TYPE_AGENT_ACTION, user_id, simulation_id, response.usage, model=model)
     raw_artifact = response.content[0].text.strip()
+
+    # outreach_email: parse JSON, save contacts to CRM, return clean JSON string
+    if action_type == 'outreach_email':
+        raw_artifact = _finalize_outreach_email_artifact(
+            raw_artifact, user_id, simulation_id, action_id,
+        )
+        return raw_artifact
 
     # Extract and save contacts[] if present (FR-CRM-03)
     if action_type in _contact_agents:
@@ -920,6 +951,93 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         )
 
     return raw_artifact
+
+
+def _finalize_outreach_email_artifact(
+    raw: str,
+    user_id: str,
+    simulation_id: str,
+    action_id: str,
+) -> str:
+    """
+    Parse the outreach_email JSON artifact, save prospects to CRM,
+    backfill crm_contact_id on each record, return the updated JSON string.
+    Falls back to returning the raw string on parse failure.
+    """
+    import re as _re
+    import logging as _log
+    _logger = _log.getLogger(__name__)
+
+    # Strip any accidental markdown fences
+    clean = _re.sub(r'^```(?:json)?\s*', '', raw.strip(), flags=_re.IGNORECASE)
+    clean = _re.sub(r'\s*```$', '', clean.strip())
+
+    try:
+        data = json.loads(clean)
+    except Exception:
+        _logger.warning('outreach_email artifact is not valid JSON — returning raw text')
+        return raw
+
+    prospects = data.get('prospects', [])
+    if not prospects:
+        return json.dumps(data, ensure_ascii=False)
+
+    _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
+
+    # Fill missing emails with fallback so every prospect is sendable
+    for p in prospects:
+        if not p.get('email'):
+            p['email'] = _FALLBACK_EMAIL
+
+    # Debug: log all prospects
+    for i, p in enumerate(prospects):
+        _logger.error(
+            'outreach_email prospect[%d]: name="%s %s" email="%s" company="%s" title="%s"',
+            i,
+            p.get('first_name', ''),
+            p.get('last_name', ''),
+            p.get('email', ''),
+            p.get('company_name', ''),
+            p.get('job_title', ''),
+        )
+
+    try:
+        from app.services.contact_lookup import save_contacts_to_crm
+        from app.models.contact import Contact
+
+        contacts_payload = [
+            {
+                'first_name': p.get('first_name', ''),
+                'last_name':  p.get('last_name', ''),
+                'email':      p.get('email', ''),
+                'job_title':  p.get('job_title', ''),
+                'company_name': p.get('company_name', ''),
+            }
+            for p in prospects if p.get('first_name') or p.get('email')
+        ]
+        if contacts_payload and user_id:
+            save_contacts_to_crm(
+                contacts=contacts_payload,
+                user_id=user_id,
+                simulation_id=simulation_id,
+                action_type='outreach_email',
+                cycle_id=None,
+            )
+
+        # Backfill crm_contact_id so send_prospect_email can advance CRM stage
+        for p in prospects:
+            if not p.get('crm_contact_id') and p.get('email'):
+                c = Contact.query.filter_by(
+                    user_id=user_id,
+                    email=p['email'].lower().strip(),
+                ).first()
+                if c:
+                    p['crm_contact_id'] = c.id
+
+    except Exception as exc:
+        _logger.warning('outreach_email CRM save failed: %s', exc)
+
+    return json.dumps(data, ensure_ascii=False)
 
 
 def _extract_and_save_contacts(
@@ -961,6 +1079,42 @@ def _extract_and_save_contacts(
         _logger.warning('Contacts extraction failed for %s: %s', action_type, exc)
 
     return clean.strip()
+
+
+def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dict) -> str:
+    """
+    Build a prospect injection section from existing CRM contacts.
+    Returns formatted text for the prompt, or empty string if no eligible contacts.
+    """
+    if not user_id:
+        return ''
+    try:
+        from app.models.contact import Contact
+        contacts = Contact.query.filter(
+            Contact.user_id == user_id,
+            Contact.is_archived.is_(False),
+            Contact.do_not_contact.is_(False),
+            Contact.email.isnot(None),
+            Contact.pipeline_stage.in_(['prospect', 'active', 'lead']),
+        ).order_by(Contact.qualifying_score.desc().nullslast()).limit(15).all()
+
+        if not contacts:
+            return ''
+
+        lines = ['\n\nPROSPECT LIST (from your CRM — use these exact email addresses):']
+        for c in contacts:
+            parts = [f'{c.first_name or ""} {c.last_name or ""}'.strip()]
+            if c.job_title:
+                parts.append(c.job_title)
+            if c.company_name:
+                parts.append(c.company_name)
+            parts.append(f'<{c.email}>')
+            lines.append('  - ' + ' | '.join(p for p in parts if p))
+        return '\n'.join(lines) + '\n'
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning('_get_crm_prospect_section failed: %s', exc)
+        return ''
 
 
 def _get_prospect_context(

@@ -104,6 +104,13 @@ def execute_agent_action_task(action_id: str):
 
         logger.info('AgentAction %s completed — version %d created', action_id, new_version_number)
 
+        # Post-completion: dispatch outreach emails based on trust level
+        if action_type == 'outreach_email':
+            try:
+                _dispatch_outreach_emails(action_id, simulation_id, user_id)
+            except Exception as exc:
+                logger.warning('outreach_email post-send dispatch failed action=%s: %s', action_id, exc)
+
     except Exception as exc:
         logger.error('AgentAction %s failed: %s', action_id, exc, exc_info=True)
         # Roll back any dirty/invalid transaction before writing the failure status.
@@ -200,3 +207,68 @@ def _link_upstream_dependencies(action):
 def ArtifactVersion_count(action_id: str) -> int:
     from app.models.artifact import ArtifactVersion
     return ArtifactVersion.query.filter_by(action_id=action_id).count()
+
+
+def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
+    """
+    Post-completion hook for outreach_email.
+    Checks Layer6Config.channel_approvals['email'] for this simulation:
+      - Approved  → auto-send every draft prospect email via Apollo, log CRM activity
+      - Not approved → create an escalation ActionItem for the user to review and send
+    """
+    import json
+    from app.extensions import db
+    from app.models.layer6 import Layer6Config
+    from app.models.artifact import ArtifactVersion
+
+    config = Layer6Config.query.filter_by(simulation_id=simulation_id).first()
+    email_approved = (
+        config.channel_approvals.get('email', False) if config else False
+    )
+
+    av = ArtifactVersion.query.filter_by(
+        action_id=action_id, is_current=True,
+    ).first()
+    if not av or not av.content:
+        return
+
+    try:
+        data = json.loads(av.content)
+    except Exception:
+        return
+
+    prospects = data.get('prospects', [])
+    drafts = [p for p in prospects if p.get('send_status') == 'draft']
+    if not drafts:
+        return
+
+    if email_approved:
+        from app.services.consulting_outreach_service import send_prospect_email
+        sent = 0
+        for idx, p in enumerate(prospects):
+            if p.get('send_status') != 'draft':
+                continue
+            try:
+                send_prospect_email(action_id, idx, user_id, simulation_id)
+                sent += 1
+            except Exception as exc:
+                logger.warning(
+                    'Auto-send failed for prospect %d action %s: %s', idx, action_id, exc,
+                )
+        logger.info('Auto-sent %d outreach emails for action %s', sent, action_id)
+    else:
+        n = len(drafts)
+        from utils.action_items import create_action_item
+        create_action_item(
+            simulation_id=simulation_id,
+            user_id=user_id,
+            item_type='escalation',
+            title=f'Review & send {n} outreach email{"s" if n != 1 else ""} — approval required',
+            description=(
+                'Your outreach emails are drafted and ready. '
+                'Open the artifact to review each one, then click Send.'
+            ),
+            action_url=f'/artifacts/{action_id}',
+            source_action_id=action_id,
+            emit_sse=True,
+        )
