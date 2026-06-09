@@ -1,6 +1,6 @@
 """SIM-PRD-RESEARCH-001: prospect_research_runs audit table.
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: a2b3c4d5e6f7
 Revises: f3a4b5c6d7e8
 Create Date: 2026-05-22
 
@@ -8,7 +8,7 @@ Create Date: 2026-05-22
 from alembic import op
 import sqlalchemy as sa
 
-revision      = 'a1b2c3d4e5f6'
+revision      = 'a2b3c4d5e6f7'
 down_revision = 'f3a4b5c6d7e8'
 branch_labels = None
 depends_on    = None

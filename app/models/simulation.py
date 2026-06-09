@@ -23,7 +23,11 @@ class Simulation(db.Model):
     status = db.Column(db.String(20), nullable=False, default='pending')
     stripe_payment_intent_id = db.Column(db.String(255), nullable=True)
     stripe_charge_id = db.Column(db.String(255), nullable=True)
-    amount_charged_cents = db.Column(db.Integer, nullable=True)
+    amount_charged_cents = db.Column(db.Integer, nullable=True)        # actual amount paid
+    base_price_at_purchase_cents = db.Column(db.Integer, nullable=True)  # base price at time of purchase
+    discount_applied_percentage = db.Column(db.Integer, nullable=True, default=0)  # 0 = no discount
+    prospect_tier = db.Column(db.Integer, nullable=False, default=1)               # 1=free/5, 2=10, 3=15
+    prospect_tier_paid_cents = db.Column(db.Integer, nullable=False, default=0)    # cumulative paid for upgrades
     error_message = db.Column(db.Text, nullable=True)
     unlock_all_layers = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -36,6 +40,14 @@ class Simulation(db.Model):
                                      cascade='all, delete-orphan')
     activities = db.relationship('CollabActivity', backref='simulation', lazy='dynamic',
                                  cascade='all, delete-orphan')
+
+    def get_prospect_count(self) -> int:
+        """Return the prospect count for this simulation based on its current tier."""
+        from app.services.pricing_service import get_prospect_tier_config
+        cfg = get_prospect_tier_config()
+        return {1: cfg['tier1_count'], 2: cfg['tier2_count'], 3: cfg['tier3_count']}.get(
+            self.prospect_tier or 1, cfg['tier1_count']
+        )
 
     def to_dict(self):
         return {

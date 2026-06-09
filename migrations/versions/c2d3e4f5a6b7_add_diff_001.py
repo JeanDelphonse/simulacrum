@@ -1,14 +1,14 @@
 """add_diff_001 — cycle_posterior_snapshots + contacts.source_cycle_id
 
 Revision ID: c2d3e4f5a6b7
-Revises: a1b2c3d4e5f6
+Revises: a2b3c4d5e6f7
 Create Date: 2026-06-05
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = 'c2d3e4f5a6b7'
-down_revision = 'a1b2c3d4e5f6'
+down_revision = 'a2b3c4d5e6f7'
 branch_labels = None
 depends_on = None
 

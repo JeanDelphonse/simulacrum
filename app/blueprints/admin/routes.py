@@ -81,6 +81,126 @@ def get_simulation_price_history():
     }), 200
 
 
+# ---------------------------------------------------------------------------
+# Discount management (FR-DISC-01 – FR-DISC-03)
+# ---------------------------------------------------------------------------
+
+@admin_bp.route('/discounts', methods=['GET'])
+@login_required
+@admin_required
+def list_discounts():
+    from app.models.discount import SimulationDiscount
+    rows = SimulationDiscount.query.order_by(SimulationDiscount.created_at.desc()).all()
+    return jsonify([r.to_dict() for r in rows]), 200
+
+
+@admin_bp.route('/discounts', methods=['POST'])
+@login_required
+@admin_required
+def create_discount():
+    from datetime import datetime
+    from app.models.discount import SimulationDiscount
+    data = request.get_json() or {}
+
+    pct = data.get('discount_percentage')
+    if pct not in SimulationDiscount.VALID_PERCENTAGES:
+        return jsonify({'error': f'discount_percentage must be one of {SimulationDiscount.VALID_PERCENTAGES}'}), 400
+
+    try:
+        start_at = datetime.fromisoformat(data['start_at'].replace('Z', ''))
+        end_at = datetime.fromisoformat(data['end_at'].replace('Z', ''))
+    except (KeyError, ValueError):
+        return jsonify({'error': 'start_at and end_at are required ISO datetime strings'}), 400
+
+    if end_at <= start_at:
+        return jsonify({'error': 'end_at must be after start_at'}), 400
+
+    label = (data.get('label') or '').strip()[:30] or None
+
+    # Truncate any overlapping active discount (FR-DISC-01: one at a time)
+    now = datetime.utcnow()
+    overlapping = SimulationDiscount.query.filter(
+        SimulationDiscount.start_at < end_at,
+        SimulationDiscount.end_at > start_at,
+    ).all()
+    for existing in overlapping:
+        if existing.end_at > start_at:
+            existing.end_at = start_at
+    db.session.flush()
+
+    discount = SimulationDiscount(
+        discount_percentage=pct,
+        start_at=start_at,
+        end_at=end_at,
+        label=label,
+        created_by=current_user.id,
+    )
+    db.session.add(discount)
+    AuditLog.log('discount_created', user_id=current_user.id, metadata={
+        'discount_percentage': pct,
+        'start_at': start_at.isoformat(),
+        'end_at': end_at.isoformat(),
+        'label': label,
+    })
+    db.session.commit()
+    return jsonify(discount.to_dict()), 201
+
+
+@admin_bp.route('/discounts/<discount_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_discount(discount_id):
+    from app.models.discount import SimulationDiscount
+    discount = SimulationDiscount.query.get_or_404(discount_id)
+    AuditLog.log('discount_deleted', user_id=current_user.id, metadata={'discount_id': discount_id})
+    db.session.delete(discount)
+    db.session.commit()
+    return jsonify({'deleted': True}), 200
+
+
+# ---------------------------------------------------------------------------
+# Prospect Tier Config (SIM-REQ-PROSPECT-001 — FR-TIER-02)
+# ---------------------------------------------------------------------------
+
+@admin_bp.route('/prospect-tier-config', methods=['GET'])
+@login_required
+@admin_required
+def get_prospect_tier_config_route():
+    from app.services.pricing_service import get_prospect_tier_config
+    cfg = get_prospect_tier_config()
+    return jsonify(cfg), 200
+
+
+@admin_bp.route('/prospect-tier-config', methods=['PUT'])
+@login_required
+@admin_required
+def update_prospect_tier_config():
+    data = request.get_json() or {}
+    allowed = {
+        'prospect_tier1_count', 'prospect_tier2_count', 'prospect_tier2_price_cents',
+        'prospect_tier3_count', 'prospect_tier3_price_cents',
+    }
+    updated = {}
+    for key in allowed:
+        if key in data:
+            try:
+                val = int(data[key])
+                if val < 0:
+                    return jsonify({'error': f'{key} must be non-negative'}), 400
+            except (TypeError, ValueError):
+                return jsonify({'error': f'{key} must be an integer'}), 400
+            PlatformSetting.set(key, str(val), updated_by=current_user.id)
+            updated[key] = val
+
+    if not updated:
+        return jsonify({'error': 'No valid fields provided'}), 400
+
+    AuditLog.log('prospect_tier_config_updated', user_id=current_user.id, metadata=updated)
+    db.session.commit()
+    from app.services.pricing_service import get_prospect_tier_config
+    return jsonify(get_prospect_tier_config()), 200
+
+
 @admin_bp.route('/revenue', methods=['GET'])
 @login_required
 @admin_required
@@ -95,6 +215,21 @@ def revenue_dashboard():
     ).filter_by(status=Simulation.STATUS_COMPLETE).first()
     total_revenue_cents = revenue_row[0] if revenue_row else 0
 
+    # Discount impact: total discount value applied across all simulations (FR-DISC-09)
+    discount_impact_row = db.session.query(
+        func.coalesce(
+            func.sum(Simulation.base_price_at_purchase_cents - Simulation.amount_charged_cents), 0
+        )
+    ).filter(
+        Simulation.status == Simulation.STATUS_COMPLETE,
+        Simulation.discount_applied_percentage > 0,
+    ).first()
+    discount_impact_cents = discount_impact_row[0] if discount_impact_row else 0
+    discount_sim_count = Simulation.query.filter(
+        Simulation.status == Simulation.STATUS_COMPLETE,
+        Simulation.discount_applied_percentage > 0,
+    ).count()
+
     # Per-user spend top 10
     top_users = db.session.query(
         User.id, User.email, User.full_name, User.total_spend, User.simulation_count
@@ -105,6 +240,15 @@ def revenue_dashboard():
         func.sum(AIInteraction.prompt_tokens),
         func.sum(AIInteraction.completion_tokens),
     ).first()
+
+    # Prospect tier upgrade revenue (FR-TIER-10)
+    prospect_upgrade_row = db.session.query(
+        func.coalesce(func.sum(Simulation.prospect_tier_paid_cents), 0)
+    ).filter(Simulation.prospect_tier_paid_cents > 0).first()
+    prospect_upgrade_revenue_cents = prospect_upgrade_row[0] if prospect_upgrade_row else 0
+    prospect_upgrade_sim_count = Simulation.query.filter(
+        Simulation.prospect_tier_paid_cents > 0
+    ).count()
 
     # Price change audit trail
     price_history_rows = AuditLog.query.filter_by(action='setting_updated').order_by(
@@ -126,6 +270,14 @@ def revenue_dashboard():
         'total_simulations_refunded': total_refunded,
         'refund_rate_pct': round(total_refunded / max(total_completed + total_refunded, 1) * 100, 2),
         'total_revenue_usd': total_revenue_cents / 100,
+        'discount_impact': {
+            'total_discount_usd': discount_impact_cents / 100,
+            'simulations_count': discount_sim_count,
+        },
+        'prospect_tier_upgrades': {
+            'total_revenue_usd': prospect_upgrade_revenue_cents / 100,
+            'simulations_count': prospect_upgrade_sim_count,
+        },
         'top_users': [{
             'id': u.id, 'email': u.email, 'full_name': u.full_name,
             'total_spend_usd': u.total_spend / 100, 'simulation_count': u.simulation_count,

@@ -236,6 +236,7 @@ def execute_sponsorship_outreach(
     expertise_zone: str,
     parsed_text: str,
     user_inputs: dict,
+    prospect_count: int = None,
 ) -> str:
     """
     Execute the sponsorship_outreach agent.
@@ -255,7 +256,7 @@ def execute_sponsorship_outreach(
 
     # Pass 1: discover sponsors + derive rate card
     discovery = _find_sponsors(user_inputs, api_key, sonnet_model)
-    sponsors_raw = discovery.get('sponsors', [])[:15]
+    sponsors_raw = discovery.get('sponsors', [])[:prospect_count or 5]
     rate_card = discovery.get('rate_card', {})
     discovery_duration = round(time.time() - t_start, 2)
 
@@ -275,6 +276,30 @@ def execute_sponsorship_outreach(
             'send_status': 'draft',
         })
     email_duration = round(time.time() - t_emails, 2)
+
+    # Save sponsor contacts to CRM (FR-CRM-03)
+    try:
+        from app.services.contact_lookup import save_contacts_to_crm
+        contacts_payload = [
+            {
+                'first_name': 'Sponsorship',
+                'last_name': 'Contact',
+                'email': '',  # missing email will automatically trigger fallback email generation
+                'job_title': s.get('contact_title'),
+                'company_name': s.get('company_name'),
+                'website_url': s.get('website'),
+                'qualifying_notes': s.get('fit_reasoning'),
+            }
+            for s in sponsor_records
+        ]
+        save_contacts_to_crm(
+            contacts=contacts_payload,
+            user_id=user_id,
+            simulation_id=simulation_id,
+            action_type='sponsorship_outreach',
+        )
+    except Exception as exc:
+        logger.warning('Sponsorship outreach CRM save failed: %s', exc)
 
     # Pass 3: agreement template
     agreement_template = _generate_agreement(user_inputs, publisher_name, api_key, haiku_model)

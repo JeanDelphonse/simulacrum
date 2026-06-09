@@ -40,11 +40,18 @@ def _get_action_layer(action_type: str):
 
 @simulations_bp.route('/price', methods=['GET'])
 def get_simulation_price():
-    """Public endpoint — returns current simulation price in cents and formatted."""
-    price_cents = int(PlatformSetting.get('simulation_price') or current_app.config['SIMULATION_PRICE_CENTS'])
+    """Public endpoint — returns current simulation pricing including any active discount."""
+    from app.services.pricing_service import get_current_price, format_price_usd
+    pricing = get_current_price()
     return jsonify({
-        'amount_cents': price_cents,
-        'amount_usd': f'${price_cents / 100:.2f}',
+        'amount_cents': pricing['discounted_price_cents'],
+        'amount_usd': format_price_usd(pricing['discounted_price_cents']),
+        'base_price_cents': pricing['base_price_cents'],
+        'base_price_usd': format_price_usd(pricing['base_price_cents']),
+        'is_discounted': pricing['is_discounted'],
+        'discount_percentage': pricing['discount_percentage'],
+        'label': pricing['label'],
+        'expires_at': pricing['expires_at'],
     }), 200
 
 
@@ -117,18 +124,45 @@ def create_simulation():
     AuditLog.log('simulation_created', user_id=current_user.id, resource_id=sim_id)
     db.session.commit()
 
-    # Read price from platform_settings (falls back to config if not set)
-    price_cents = int(PlatformSetting.get('simulation_price') or current_app.config['SIMULATION_PRICE_CENTS'])
+    # Resolve current pricing (applies any active discount — FR-DISC-10)
+    from app.services.pricing_service import get_current_price
+    pricing = get_current_price()
+    charge_cents = pricing['discounted_price_cents']
 
-    # Create Stripe PaymentIntent
+    sim.base_price_at_purchase_cents = pricing['base_price_cents']
+    sim.discount_applied_percentage = pricing['discount_percentage']
+    sim.amount_charged_cents = charge_cents
+
+    # 100% discount: activate immediately without Stripe (FR-DISC-06)
+    if charge_cents == 0:
+        sim.status = Simulation.STATUS_PROCESSING
+        db.session.commit()
+        import threading
+        from flask import current_app as _app
+        _app_obj = _app._get_current_object()
+        _sim_id = sim_id
+        def _run():
+            with _app_obj.app_context():
+                from app.tasks.simulation import generate_simulation_task
+                generate_simulation_task.apply(args=[_sim_id])
+        threading.Thread(target=_run, daemon=True).start()
+        return jsonify({
+            'simulation_id': sim_id,
+            'is_free': True,
+            'amount_cents': 0,
+            'message': 'Free simulation activated. Generation started.',
+        }), 201
+
+    # Create Stripe PaymentIntent with discount metadata
     try:
         payment = create_payment_intent(
             user_id=current_user.id,
             simulation_id=sim_id,
-            amount_cents=price_cents,
+            amount_cents=charge_cents,
+            base_price_cents=pricing['base_price_cents'],
+            discount_percentage=pricing['discount_percentage'],
         )
         sim.stripe_payment_intent_id = payment['payment_intent_id']
-        sim.amount_charged_cents = price_cents
         db.session.commit()
 
         return jsonify({
@@ -136,6 +170,7 @@ def create_simulation():
             'payment_intent_id': payment['payment_intent_id'],
             'client_secret': payment['client_secret'],
             'amount_cents': payment['amount'],
+            'is_free': False,
             'message': 'Simulation created. Complete payment to begin generation.',
         }), 201
     except Exception as e:
@@ -473,7 +508,8 @@ def seed_simulation(sim_id):
     data = request.get_json() or {}
 
     new_name = data.get('name') or f'{source.name} (fork)'
-    price_cents = int(PlatformSetting.get('simulation_price') or current_app.config['SIMULATION_PRICE_CENTS'])
+    from app.services.pricing_service import get_current_price
+    pricing = get_current_price()
 
     new_sim_id = generate_id()
     new_sim = Simulation(
@@ -521,15 +557,41 @@ def seed_simulation(sim_id):
                 pass
     db.session.commit()
 
-    # Create Stripe PaymentIntent for the new simulation
+    charge_cents = pricing['discounted_price_cents']
+    new_sim.base_price_at_purchase_cents = pricing['base_price_cents']
+    new_sim.discount_applied_percentage = pricing['discount_percentage']
+    new_sim.amount_charged_cents = charge_cents
+
+    if charge_cents == 0:
+        new_sim.status = Simulation.STATUS_PROCESSING
+        db.session.commit()
+        import threading
+        from flask import current_app as _app
+        _app_obj = _app._get_current_object()
+        _nsid = new_sim_id
+        def _run():
+            with _app_obj.app_context():
+                from app.tasks.simulation import generate_simulation_task
+                generate_simulation_task.apply(args=[_nsid])
+        threading.Thread(target=_run, daemon=True).start()
+        return jsonify({
+            'simulation_id': new_sim_id,
+            'name': new_name,
+            'source_simulation_id': sim_id,
+            'is_free': True,
+            'amount_cents': 0,
+            'invited_collaborators': invited,
+        }), 201
+
     try:
         payment = create_payment_intent(
             user_id=current_user.id,
             simulation_id=new_sim_id,
-            amount_cents=price_cents,
+            amount_cents=charge_cents,
+            base_price_cents=pricing['base_price_cents'],
+            discount_percentage=pricing['discount_percentage'],
         )
         new_sim.stripe_payment_intent_id = payment['payment_intent_id']
-        new_sim.amount_charged_cents = price_cents
         db.session.commit()
     except Exception as e:
         db.session.delete(new_sim)
@@ -542,7 +604,8 @@ def seed_simulation(sim_id):
         'source_simulation_id': sim_id,
         'payment_intent_id': payment['payment_intent_id'],
         'client_secret': payment['client_secret'],
-        'amount_cents': price_cents,
+        'amount_cents': charge_cents,
+        'is_free': False,
         'invited_collaborators': invited,
     }), 201
 
@@ -916,6 +979,26 @@ def get_pyramid(sim_id):
             },
         })
 
+    from app.services.pricing_service import get_prospect_tier_config, format_price_usd
+    _ptcfg = get_prospect_tier_config()
+    _tier = sim.prospect_tier or 1
+    _tier_counts = {1: _ptcfg['tier1_count'], 2: _ptcfg['tier2_count'], 3: _ptcfg['tier3_count']}
+    _tier_prices = {1: 0, 2: _ptcfg['tier2_price_cents'], 3: _ptcfg['tier3_price_cents']}
+
+    def _tier_option(t):
+        count = _tier_counts[t]
+        price = _tier_prices[t]
+        already_paid = _tier_prices.get(_tier, 0)
+        delta = max(0, price - already_paid) if t > _tier else 0
+        return {
+            'tier': t,
+            'count': count,
+            'cumulative_price_cents': price,
+            'delta_cents': delta,
+            'delta_usd': format_price_usd(delta) if delta else None,
+            'is_current': t == _tier,
+        }
+
     return jsonify({
         'simulation': {
             'id': sim.id,
@@ -923,6 +1006,9 @@ def get_pyramid(sim_id):
             'status': sim.status,
             'expertise_zone': sim.expertise_zone,
             'created_at': sim.created_at.isoformat(),
+            'prospect_tier': _tier,
+            'prospect_count': _tier_counts.get(_tier, _ptcfg['tier1_count']),
+            'prospect_tier_options': [_tier_option(t) for t in (1, 2, 3)],
         },
         'layers': layers_out,
     }), 200
@@ -992,6 +1078,119 @@ def run_agent(sim_id, action_type):
 # GCC Journey v3 (SIM-PRD-GCC-003)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Prospect Tier (SIM-REQ-PROSPECT-001)
+# ---------------------------------------------------------------------------
+
+@simulations_bp.route('/<sim_id>/prospect-tier', methods=['GET'])
+@login_required
+def get_prospect_tier(sim_id):
+    """Return current prospect tier, count, and upgrade options for this simulation."""
+    sim, _ = _check_sim_access(sim_id)
+    if not sim:
+        return jsonify({'error': 'Not found'}), 404
+
+    from app.services.pricing_service import get_prospect_tier_config, format_price_usd
+    cfg = get_prospect_tier_config()
+    tier = sim.prospect_tier or 1
+    tier_counts = {1: cfg['tier1_count'], 2: cfg['tier2_count'], 3: cfg['tier3_count']}
+    tier_prices = {1: 0, 2: cfg['tier2_price_cents'], 3: cfg['tier3_price_cents']}
+    already_paid = tier_prices.get(tier, 0)
+
+    options = []
+    for t in (1, 2, 3):
+        count = tier_counts[t]
+        price = tier_prices[t]
+        delta = max(0, price - already_paid) if t > tier else 0
+        options.append({
+            'tier': t,
+            'count': count,
+            'cumulative_price_cents': price,
+            'delta_cents': delta,
+            'delta_usd': format_price_usd(delta) if delta else None,
+            'is_current': t == tier,
+        })
+
+    return jsonify({
+        'simulation_id': sim_id,
+        'prospect_tier': tier,
+        'prospect_count': tier_counts.get(tier, cfg['tier1_count']),
+        'prospect_tier_paid_cents': sim.prospect_tier_paid_cents or 0,
+        'options': options,
+    }), 200
+
+
+@simulations_bp.route('/<sim_id>/prospect-tier/upgrade', methods=['POST'])
+@login_required
+def upgrade_prospect_tier(sim_id):
+    """Create a Stripe Checkout session to upgrade this simulation's prospect tier."""
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first()
+    if not sim:
+        return jsonify({'error': 'Not found'}), 404
+    if sim.status != Simulation.STATUS_COMPLETE:
+        return jsonify({'error': 'Simulation must be complete before upgrading'}), 400
+
+    data = request.get_json() or {}
+    target_tier = data.get('target_tier')
+    action_type = data.get('action_type', '')
+    layer_number = data.get('layer_number', '')
+
+    if target_tier not in (2, 3):
+        return jsonify({'error': 'target_tier must be 2 or 3'}), 400
+
+    current_tier = sim.prospect_tier or 1
+    if target_tier <= current_tier:
+        return jsonify({'error': 'Already at this tier or higher'}), 400
+
+    from app.services.pricing_service import get_prospect_tier_config, format_price_usd
+    cfg = get_prospect_tier_config()
+    tier_prices = {2: cfg['tier2_price_cents'], 3: cfg['tier3_price_cents']}
+    tier_counts = {1: cfg['tier1_count'], 2: cfg['tier2_count'], 3: cfg['tier3_count']}
+    already_paid = tier_prices.get(current_tier, 0)
+    target_price = tier_prices[target_tier]
+    delta = max(0, target_price - already_paid)
+
+    if delta == 0:
+        # Nothing to charge (admin set prices so delta == 0); upgrade for free
+        sim.prospect_tier = target_tier
+        db.session.commit()
+        return jsonify({'upgraded': True, 'prospect_tier': target_tier}), 200
+
+    from flask import url_for as _url_for
+    from app.services.stripe_service import create_prospect_tier_checkout_session
+
+    # Build success URL back to the simulation, with params for auto-dispatch
+    base_url = current_app.config.get('BASE_URL', request.host_url.rstrip('/'))
+    success_url = (
+        f'{base_url}/simulations/{sim_id}'
+        f'?tier_upgraded={target_tier}'
+        f'&run_agent={action_type}'
+        f'&run_layer={layer_number}'
+    )
+    cancel_url = f'{base_url}/simulations/{sim_id}'
+
+    try:
+        result = create_prospect_tier_checkout_session(
+            user_id=current_user.id,
+            simulation_id=sim_id,
+            upgrade_to_tier=target_tier,
+            delta_cents=delta,
+            tier_count=tier_counts[target_tier],
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+    except Exception as exc:
+        return jsonify({'error': f'Stripe error: {exc}'}), 500
+
+    return jsonify({
+        'checkout_url': result['checkout_url'],
+        'session_id': result['session_id'],
+        'delta_cents': delta,
+        'delta_usd': format_price_usd(delta),
+        'target_tier': target_tier,
+    }), 200
+
+
 @simulations_bp.route('/<sim_id>/journey', methods=['GET'])
 @login_required
 def get_journey(sim_id):
@@ -1026,11 +1225,22 @@ def get_journey(sim_id):
             _seen.add(_key)
             all_actions.append(_a)
 
-    # Filtered subset for action rows
-    if status_filter in valid_statuses:
-        display_actions = [a for a in all_actions if a.status == status_filter]
+    # Scope to the latest cycle: only show agents dispatched in that cycle.
+    if latest_cycle:
+        _cycle_action_ids = {
+            row.agent_action_id
+            for row in Layer6ActionQueue.query.filter_by(cycle_id=latest_cycle.id).all()
+            if row.agent_action_id
+        }
+        _cycle_actions = [a for a in all_actions if a.id in _cycle_action_ids]
     else:
-        display_actions = all_actions
+        _cycle_actions = []
+
+    # Apply optional status filter on top of the cycle scope.
+    if status_filter in valid_statuses:
+        display_actions = [a for a in _cycle_actions if a.status == status_filter]
+    else:
+        display_actions = _cycle_actions
 
     # Layer income totals
     outcome_rows = db.session.query(
@@ -1085,6 +1295,18 @@ def get_journey(sim_id):
 
     status_order = {'in_progress': 0, 'pending': 1, 'complete': 2, 'failed': 3}
 
+    # Pre-fetch which actions actually have a current ArtifactVersion so that
+    # has_artifact is accurate. Using bool(a.artifact) (the legacy column) can
+    # diverge from ArtifactVersion reality and cause "View artifact" to link to
+    # a page that immediately redirects back to GCC.
+    from app.models.artifact import ArtifactVersion as _AV
+    _action_ids_with_version = {
+        row[0]
+        for row in db.session.query(_AV.action_id)
+        .filter(_AV.simulation_id == sim_id, _AV.is_current.is_(True))
+        .all()
+    }
+
     layers_out = []
     for n in range(1, 6):
         meta = _LAYER_META.get(n, {})
@@ -1123,7 +1345,7 @@ def get_journey(sim_id):
                 'label': defn.get('label', a.action_type.replace('_', ' ').title()),
                 'status': a.status,
                 'date': a.created_at.strftime('%Y-%m-%d') if a.created_at else None,
-                'has_artifact': bool(a.artifact),
+                'has_artifact': a.id in _action_ids_with_version,
             })
 
         layers_out.append({

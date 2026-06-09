@@ -829,6 +829,7 @@ def execute_agent_action(
     simulation_id: str,
     dispatch_source: str = 'orchestrator',
     action_id: str = None,
+    prospect_count: int = None,
 ) -> str:
     """Execute an agent action for a simulation layer. Returns the generated artifact text."""
     layer_name, _, layer_desc = LAYER_DEFINITIONS[layer_number]
@@ -846,6 +847,7 @@ def execute_agent_action(
             expertise_zone=expertise_zone,
             parsed_text=parsed_text,
             user_inputs=user_inputs,
+            prospect_count=prospect_count,
         )
 
     if action_type == 'sponsorship_outreach':
@@ -857,6 +859,7 @@ def execute_agent_action(
             expertise_zone=expertise_zone,
             parsed_text=parsed_text,
             user_inputs=user_inputs,
+            prospect_count=prospect_count,
         )
 
     inputs_formatted = '\n'.join(
@@ -866,15 +869,17 @@ def execute_agent_action(
     # outreach_email / cold_email_campaign: pull verified prospects from CRM
     # contacts (have real emails). Fall back to research engine if CRM is empty.
     if action_type in ('outreach_email', 'cold_email_campaign'):
-        prospect_section = _get_crm_prospect_section(user_id, simulation_id, user_inputs)
+        prospect_section = _get_crm_prospect_section(user_id, simulation_id, user_inputs, prospect_count)
         if not prospect_section:
             prospect_section = _get_prospect_context(
                 action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
+                prospect_count=prospect_count,
             )
     else:
         # Prospect research injection (FR-RESEARCH-01)
         prospect_section = _get_prospect_context(
             action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
+            prospect_count=prospect_count,
         )
 
     prompt = f"""You are a specialized career wealth agent executing a specific action for a professional.
@@ -923,6 +928,19 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             'Use the prospect email addresses provided. '
             'Step 1 is the initial outreach. Step 2 is a follow-up (day 7). '
             'Step 3 is a final follow-up (day 14). All subjects and bodies must be complete and ready to send.'
+        )
+
+    # Inject prospect limit constraint for all contact-producing agents (FR-TIER-07)
+    _all_contact_agents = {
+        'cold_email_campaign', 'consulting_outreach', 'role_search', 'referral_network',
+        'speaking_proposals', 'corporate_training_proposal', 'affiliate_program',
+        'affiliate_partnerships', 'alumni_reactivation', 'sponsorship_outreach',
+        'partnership_proposal', 'ip_licensing', 'client_winback', 'lapsed_buyer_reactivation',
+    }
+    if prospect_count and action_type in _all_contact_agents:
+        prompt += (
+            f'\n\nCRITICAL CONSTRAINT: Generate exactly {prospect_count} prospects/contacts '
+            f'in the contacts[] array. Do not generate more or fewer than {prospect_count}.'
         )
 
     # For contact-producing agents, append a structured contacts extraction instruction
@@ -989,6 +1007,9 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         raw_artifact = _finalize_outreach_email_artifact(
             raw_artifact, user_id, simulation_id, action_id,
         )
+        # Enforce prospect count cap — keep highest qualifying_score entries (FR-TIER-07)
+        if prospect_count:
+            raw_artifact = _truncate_prospects_to_limit(raw_artifact, prospect_count)
         return raw_artifact
 
     # Extract and save contacts[] if present (FR-CRM-03)
@@ -999,6 +1020,21 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         )
 
     return raw_artifact
+
+
+def _truncate_prospects_to_limit(artifact_json: str, limit: int) -> str:
+    """Enforce prospect count cap — keep highest qualifying_score entries (FR-TIER-07)."""
+    import json as _json
+    try:
+        data = _json.loads(artifact_json)
+        prospects = data.get('prospects', [])
+        if len(prospects) > limit:
+            prospects.sort(key=lambda p: p.get('qualifying_score', 0), reverse=True)
+            data['prospects'] = prospects[:limit]
+            return _json.dumps(data, ensure_ascii=False)
+    except Exception:
+        pass
+    return artifact_json
 
 
 def _finalize_outreach_email_artifact(
@@ -1253,7 +1289,7 @@ def _extract_and_save_contacts(
     return clean.strip()
 
 
-def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dict) -> str:
+def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dict, prospect_count: int = None) -> str:
     """
     Build a prospect injection section from existing CRM contacts.
     Returns formatted text for the prompt, or empty string if no eligible contacts.
@@ -1268,7 +1304,7 @@ def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dic
             Contact.do_not_contact.is_(False),
             Contact.email.isnot(None),
             Contact.pipeline_stage.in_(['prospect', 'active', 'lead']),
-        ).order_by(Contact.qualifying_score.desc()).limit(15).all()
+        ).order_by(Contact.qualifying_score.desc()).limit(prospect_count or 5).all()
 
         if not contacts:
             return ''
@@ -1296,6 +1332,7 @@ def _get_prospect_context(
     user_id: str,
     simulation_id: str,
     action_id: str,
+    prospect_count: int = None,
 ) -> str:
     """
     Run the prospect research engine and return a formatted section for injection
@@ -1327,7 +1364,7 @@ def _get_prospect_context(
             simulation_id=simulation_id,
             action_id=action_id,
             targeting=targeting,
-            target_count=25,
+            target_count=prospect_count or 5,
         )
         if not result.prospects:
             return ''

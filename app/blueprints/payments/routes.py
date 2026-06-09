@@ -38,11 +38,20 @@ def stripe_webhook():
         connect_sim_id = meta.get('simulacrum_simulation_id')
 
         if sim_id and not connect_sim_id:
-            # Platform payment for simulation generation — update charge_id only
+            # Platform payment for simulation generation
             sim = Simulation.query.get(sim_id)
             if sim:
                 if not sim.stripe_charge_id:
                     sim.stripe_charge_id = pi.get('latest_charge')
+                # Store discount fields from PaymentIntent metadata (FR-DISC-07)
+                try:
+                    sim.base_price_at_purchase_cents = int(meta.get('base_price_cents') or sim.amount_charged_cents or 0)
+                    sim.discount_applied_percentage = int(meta.get('discount_percentage') or 0)
+                    actual_paid = int(meta.get('discounted_price_cents') or pi.get('amount_received') or pi.get('amount') or 0)
+                    if actual_paid:
+                        sim.amount_charged_cents = actual_paid
+                except Exception:
+                    pass
                 db.session.commit()
                 try:
                     from app.blueprints.partners.routes import maybe_log_commission
@@ -59,6 +68,27 @@ def stripe_webhook():
                 attribute_income_from_stripe_event(pi, stripe_account)
             except Exception as exc:
                 logger.error('Income attribution failed for payment_intent: %s', exc, exc_info=True)
+
+    elif event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        meta = session.get('metadata') or {}
+        if meta.get('product') == 'prospect_tier_upgrade':
+            sim_id = meta.get('simulation_id')
+            try:
+                upgrade_to_tier = int(meta.get('upgrade_to_tier', 0))
+                delta_cents = int(meta.get('delta_cents', 0))
+            except (TypeError, ValueError):
+                upgrade_to_tier = delta_cents = 0
+            if sim_id and upgrade_to_tier in (2, 3):
+                sim = Simulation.query.get(sim_id)
+                if sim and (sim.prospect_tier or 1) < upgrade_to_tier:
+                    sim.prospect_tier = upgrade_to_tier
+                    sim.prospect_tier_paid_cents = (sim.prospect_tier_paid_cents or 0) + delta_cents
+                    db.session.commit()
+                    logger.info(
+                        'Prospect tier upgraded to %d for sim %s (+%d cents)',
+                        upgrade_to_tier, sim_id, delta_cents,
+                    )
 
     elif event['type'] == 'payment_intent.payment_failed':
         pi = event['data']['object']

@@ -504,10 +504,26 @@ function _anyRunning() {
   });
 }
 
+// Prospect tier state (SIM-REQ-PROSPECT-001)
+var _prospectTierOptions = [];   // [{tier, count, cumulative_price_cents, delta_cents, delta_usd, is_current}]
+var _prospectCurrentTier = 1;
+
+const _CONTACT_AGENTS = new Set([
+  'cold_email_campaign','consulting_outreach','role_search','referral_network',
+  'speaking_proposals','corporate_training_proposal','affiliate_program',
+  'affiliate_partnerships','alumni_reactivation','sponsorship_outreach',
+  'partnership_proposal','ip_licensing','client_winback','lapsed_buyer_reactivation',
+]);
+
 async function loadPyramid() {
   const res = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/pyramid');
   if (!res.ok) return;
   _pyramidData = await res.json();
+  // Cache prospect tier data from the pyramid simulation block
+  if (_pyramidData.simulation) {
+    _prospectTierOptions = _pyramidData.simulation.prospect_tier_options || [];
+    _prospectCurrentTier = _pyramidData.simulation.prospect_tier || 1;
+  }
   _pyramidData.layers.forEach(renderAgentGrid);
 
   // Start polling if any agent running
@@ -638,6 +654,26 @@ function openSlideover(agent, layerNum) {
     });
   }
 
+  // Prospect count dropdown for contact-producing agents (SIM-REQ-PROSPECT-001)
+  if (_CONTACT_AGENTS.has(agent.action_type) && _prospectTierOptions.length) {
+    html += '<div class="slide-form-group" style="margin-top:.75rem;">';
+    html += '<label class="slide-label">Prospect count</label>';
+    html += '<select class="slide-select" id="sfProspectTier" onchange="updateProspectRunBtn()">';
+    _prospectTierOptions.forEach(function(opt) {
+      var label = opt.count + ' prospects';
+      if (opt.is_current) {
+        label += ' ✓ (current tier)';
+      } else if (opt.delta_cents > 0) {
+        label += ' (+' + opt.delta_usd + ')';
+      } else if (opt.tier < _prospectCurrentTier) {
+        label += ' (included)';
+      }
+      html += '<option value="' + opt.tier + '"' + (opt.is_current ? ' selected' : '') + '>' + escHtml(label) + '</option>';
+    });
+    html += '</select>';
+    html += '</div>';
+  }
+
   // Deploys to (integration info)
   var deployIntegrations = _getDeployIntegrations(agent.action_type);
   if (deployIntegrations.length) {
@@ -660,6 +696,23 @@ function closeSlideover() {
   _currentLayerNum = null;
 }
 
+// Update run button label when prospect tier dropdown changes (SIM-REQ-PROSPECT-001)
+function updateProspectRunBtn() {
+  const sel = document.getElementById('sfProspectTier');
+  if (!sel) return;
+  const selectedTier = parseInt(sel.value);
+  const opt = _prospectTierOptions.find(function(o) { return o.tier === selectedTier; });
+  const runBtn = document.getElementById('slideRunBtn');
+  if (opt && opt.delta_cents > 0) {
+    runBtn.textContent = 'Upgrade & Run — ' + opt.delta_usd;
+    runBtn.style.background = '#C9952A';
+  } else {
+    const isRerun = _currentAgent && _currentAgent.status === 'complete';
+    runBtn.textContent = isRerun ? '▶ Re-run Agent' : '▶ Run Agent';
+    runBtn.style.background = '';
+  }
+}
+
 async function slideRunAgent() {
   if (!_currentAgent) return;
   const runBtn = document.getElementById('slideRunBtn');
@@ -679,6 +732,38 @@ async function slideRunAgent() {
       return;
     }
     if (val !== '' && val !== false) params[f.key] = val;
+  }
+
+  // Check if prospect tier upgrade is needed (SIM-REQ-PROSPECT-001)
+  const tierSel = document.getElementById('sfProspectTier');
+  if (tierSel) {
+    const selectedTier = parseInt(tierSel.value);
+    if (selectedTier > _prospectCurrentTier) {
+      const opt = _prospectTierOptions.find(function(o) { return o.tier === selectedTier; });
+      if (opt && opt.delta_cents > 0) {
+        runBtn.disabled = true;
+        runBtn.textContent = 'Redirecting to payment…';
+        const upgradeRes = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/prospect-tier/upgrade', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            target_tier: selectedTier,
+            action_type: _currentAgent.action_type,
+            layer_number: _currentLayerNum,
+          }),
+        });
+        const upgradeData = await upgradeRes.json();
+        if (!upgradeRes.ok) {
+          errEl.textContent = upgradeData.error || 'Upgrade failed';
+          errEl.style.display = 'block';
+          runBtn.disabled = false;
+          updateProspectRunBtn();
+          return;
+        }
+        // Redirect to Stripe Checkout — agent runs after user returns to the page
+        window.location.href = upgradeData.checkout_url;
+        return;
+      }
+    }
   }
 
   runBtn.disabled = true;
@@ -755,6 +840,38 @@ function escHtml(str) {
 }
 
 // Load pyramid data on page ready
-loadPyramid();
+loadPyramid().then(function() {
+  // After returning from Stripe Checkout, auto-dispatch the agent (SIM-REQ-PROSPECT-001)
+  const params = new URLSearchParams(window.location.search);
+  const tierUpgraded = params.get('tier_upgraded');
+  const runAgent    = params.get('run_agent');
+  const runLayer    = params.get('run_layer');
+  if (tierUpgraded && runAgent && runLayer) {
+    // Strip query params from URL without reload
+    history.replaceState({}, '', window.location.pathname);
+    // Poll until the webhook has confirmed the tier upgrade (max 15s)
+    var attempts = 0;
+    var maxAttempts = 15;
+    var poll = setInterval(async function() {
+      attempts++;
+      const r = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/prospect-tier');
+      const d = await r.json();
+      if (d.prospect_tier >= parseInt(tierUpgraded) || attempts >= maxAttempts) {
+        clearInterval(poll);
+        // Reload tier state then dispatch
+        _prospectCurrentTier = d.prospect_tier || _prospectCurrentTier;
+        pyrToast('Tier upgraded! Launching ' + runAgent.replace(/_/g,' ') + '…');
+        const dispatchRes = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/agents/' + runAgent + '/run', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ params: {} }),
+        });
+        if (dispatchRes.ok) {
+          _setAgentStatusOptimistic(runAgent, 'running');
+          await loadPyramid();
+        }
+      }
+    }, 1000);
+  }
+});
 </script>
 {% endblock %}

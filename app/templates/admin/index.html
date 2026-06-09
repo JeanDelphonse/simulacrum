@@ -56,6 +56,85 @@
       <h3 style="font-size:0.9rem;margin-bottom:0.25rem;color:rgba(255,255,255,0.7);">Price Change History</h3>
       <div id="priceHistoryContent"><span style="font-size:0.8rem;color:rgba(255,255,255,0.4);">Loading…</span></div>
     </div>
+
+    <!-- Discount Configuration (FR-DISC-01) -->
+    <div style="margin-top:2rem;border-top:1px solid rgba(255,255,255,.1);padding-top:1.5rem;">
+      <h3 style="font-size:1rem;margin-bottom:1rem;color:rgba(255,255,255,.85);">Discount Configuration</h3>
+      <div id="activeDiscountBanner" style="display:none;margin-bottom:1rem;padding:10px 14px;border-radius:8px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);font-size:.85rem;color:#34d399;"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end;">
+        <div>
+          <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Discount %</label>
+          <select id="discountPct" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+            <option value="10">10%</option>
+            <option value="15">15%</option>
+            <option value="20">20%</option>
+            <option value="50">50%</option>
+            <option value="100">100% (free)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Start (UTC)</label>
+          <input type="datetime-local" id="discountStart" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+        </div>
+        <div>
+          <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">End (UTC)</label>
+          <input type="datetime-local" id="discountEnd" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+        </div>
+        <div>
+          <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Label (optional, max 30 chars)</label>
+          <input type="text" id="discountLabel" maxlength="30" placeholder="e.g. Launch Special" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+        </div>
+        <div>
+          <button class="btn btn-secondary btn-sm" onclick="saveDiscount()" style="width:100%;">Create Discount</button>
+          <span id="discountMsg" style="font-size:.8rem;display:none;margin-top:4px;display:block;"></span>
+        </div>
+      </div>
+
+      <!-- Discount history table (FR-DISC-03) -->
+      <div style="margin-top:1.5rem;">
+        <h4 style="font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:.5rem;">Discount History</h4>
+        <div id="discountHistoryContent"><span style="font-size:.8rem;color:rgba(255,255,255,.35);">Loading…</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Prospect Tier Configuration (SIM-REQ-PROSPECT-001) -->
+  <section class="admin-section">
+    <h2>Prospect Tier Configuration</h2>
+    <p style="font-size:.85rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;">
+      Configure the prospect counts and prices for each tier. All values take effect immediately for new agent runs.
+    </p>
+    <div id="prospectTierStatus" style="display:none;margin-bottom:.75rem;font-size:.82rem;"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end;">
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 1 prospects (free)</label>
+        <input type="number" id="ptTier1Count" min="1" step="1"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 2 prospects</label>
+        <input type="number" id="ptTier2Count" min="1" step="1"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 2 price (USD)</label>
+        <input type="number" id="ptTier2Price" min="0" step="0.01"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 3 prospects (max)</label>
+        <input type="number" id="ptTier3Count" min="1" step="1"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 3 cumulative price (USD)</label>
+        <input type="number" id="ptTier3Price" min="0" step="0.01"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+      </div>
+      <div>
+        <button class="btn btn-secondary btn-sm" onclick="saveProspectTierConfig()" style="width:100%;margin-top:18px;">Save Tier Config</button>
+      </div>
+    </div>
   </section>
 
   <section class="admin-section">
@@ -65,6 +144,18 @@
         <div class="stat-value">${{ "%.2f"|format(revenue_stats.total_revenue_usd) }}</div>
         <div class="stat-label">Total Revenue</div>
       </div>
+      {% if revenue_stats.discount_impact and revenue_stats.discount_impact.simulations_count > 0 %}
+      <div class="stat-card">
+        <div class="stat-value" style="color:#E85D4A;">-${{ "%.2f"|format(revenue_stats.discount_impact.total_discount_usd) }}</div>
+        <div class="stat-label">Discount Impact ({{ revenue_stats.discount_impact.simulations_count }} sims)</div>
+      </div>
+      {% endif %}
+      {% if revenue_stats.prospect_tier_upgrades and revenue_stats.prospect_tier_upgrades.simulations_count > 0 %}
+      <div class="stat-card">
+        <div class="stat-value" style="color:#C9952A;">+${{ "%.2f"|format(revenue_stats.prospect_tier_upgrades.total_revenue_usd) }}</div>
+        <div class="stat-label">Prospect Tier Upgrades ({{ revenue_stats.prospect_tier_upgrades.simulations_count }} sims)</div>
+      </div>
+      {% endif %}
       <div class="stat-card">
         <div class="stat-value">{{ revenue_stats.total_simulations_completed }}</div>
         <div class="stat-label">Simulations Completed</div>
@@ -133,6 +224,107 @@ async function saveSimPrice() {
   msg.style.display = 'inline';
   setTimeout(() => { msg.style.display = 'none'; }, 2500);
 }
+
+// Discount helpers
+const STATUS_COLORS = { active: '#34d399', scheduled: '#f59e0b', expired: '#6b7280' };
+
+function loadDiscounts() {
+  fetch(ROOT + '/api/admin/discounts').then(r => r.json()).then(rows => {
+    // Active banner
+    const active = rows.find(r => r.status === 'active');
+    const banner = document.getElementById('activeDiscountBanner');
+    if (active) {
+      banner.style.display = 'block';
+      banner.textContent = `Active: ${active.discount_percentage}% off${active.label ? ' — ' + active.label : ''} · ends ${new Date(active.end_at).toLocaleString()}`;
+    } else {
+      banner.style.display = 'none';
+    }
+    // History table
+    const el = document.getElementById('discountHistoryContent');
+    if (!rows.length) { el.innerHTML = '<p style="font-size:.8rem;color:rgba(255,255,255,.35)">No discounts yet.</p>'; return; }
+    el.innerHTML = `<table class="admin-table" style="font-size:.8rem">
+      <thead><tr><th>%</th><th>Start</th><th>End</th><th>Label</th><th>Status</th><th>Sims</th><th></th></tr></thead>
+      <tbody>${rows.map(d => `<tr>
+        <td>${d.discount_percentage}%</td>
+        <td>${new Date(d.start_at).toLocaleString()}</td>
+        <td>${new Date(d.end_at).toLocaleString()}</td>
+        <td>${d.label || '—'}</td>
+        <td><span style="color:${STATUS_COLORS[d.status]||'#fff'};font-weight:600">${d.status}</span></td>
+        <td>${d.simulations_purchased}</td>
+        <td><button onclick="deleteDiscount('${d.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:.75rem">delete</button></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }).catch(() => {
+    document.getElementById('discountHistoryContent').innerHTML = '<p style="font-size:.8rem;color:#ef4444">Could not load discounts.</p>';
+  });
+}
+
+async function saveDiscount() {
+  const pct = parseInt(document.getElementById('discountPct').value);
+  const start = document.getElementById('discountStart').value;
+  const end = document.getElementById('discountEnd').value;
+  const label = document.getElementById('discountLabel').value.trim();
+  const msg = document.getElementById('discountMsg');
+  if (!start || !end) { msg.style.display = 'block'; msg.style.color = '#ef4444'; msg.textContent = 'Start and end dates required.'; return; }
+  const res = await fetch(ROOT + '/api/admin/discounts', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ discount_percentage: pct, start_at: start, end_at: end, label: label || null }),
+  });
+  if (res.ok) {
+    msg.style.display = 'block'; msg.style.color = '#34d399'; msg.textContent = 'Discount created!';
+    setTimeout(() => { msg.style.display = 'none'; }, 2500);
+    loadDiscounts();
+  } else {
+    const err = await res.json();
+    msg.style.display = 'block'; msg.style.color = '#ef4444'; msg.textContent = err.error || 'Error.';
+  }
+}
+
+async function deleteDiscount(id) {
+  if (!confirm('Delete this discount?')) return;
+  await fetch(ROOT + '/api/admin/discounts/' + id, { method: 'DELETE' });
+  loadDiscounts();
+}
+
+loadDiscounts();
+
+// Prospect Tier Config
+async function loadProspectTierConfig() {
+  try {
+    const r = await fetch(ROOT + '/api/admin/prospect-tier-config');
+    const cfg = await r.json();
+    document.getElementById('ptTier1Count').value = cfg.tier1_count;
+    document.getElementById('ptTier2Count').value = cfg.tier2_count;
+    document.getElementById('ptTier2Price').value = (cfg.tier2_price_cents / 100).toFixed(2);
+    document.getElementById('ptTier3Count').value = cfg.tier3_count;
+    document.getElementById('ptTier3Price').value = (cfg.tier3_price_cents / 100).toFixed(2);
+  } catch (e) {}
+}
+
+async function saveProspectTierConfig() {
+  const el = document.getElementById('prospectTierStatus');
+  const payload = {
+    prospect_tier1_count:        parseInt(document.getElementById('ptTier1Count').value),
+    prospect_tier2_count:        parseInt(document.getElementById('ptTier2Count').value),
+    prospect_tier2_price_cents:  Math.round(parseFloat(document.getElementById('ptTier2Price').value) * 100),
+    prospect_tier3_count:        parseInt(document.getElementById('ptTier3Count').value),
+    prospect_tier3_price_cents:  Math.round(parseFloat(document.getElementById('ptTier3Price').value) * 100),
+  };
+  const r = await fetch(ROOT + '/api/admin/prospect-tier-config', {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  });
+  if (r.ok) {
+    el.style.display = 'block'; el.style.color = '#34d399'; el.textContent = 'Saved!';
+    setTimeout(() => { el.style.display = 'none'; }, 2500);
+  } else {
+    const d = await r.json();
+    el.style.display = 'block'; el.style.color = '#f87171'; el.textContent = d.error || 'Save failed';
+  }
+}
+
+loadProspectTierConfig();
 
 // Load price history
 fetch(ROOT + '/api/admin/settings/simulation_price').then(r => r.json()).then(data => {

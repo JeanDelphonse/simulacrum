@@ -31,6 +31,21 @@ def dispatch_layer6_action(self, queue_entry_id: str):
         logger.warning('Layer6ActionQueue entry %s not found', queue_entry_id)
         return
 
+    # Atomic lock: set agent_action_id placeholder to prevent concurrent runs
+    try:
+        res = db.session.execute(
+            db.text("UPDATE layer6_action_queue SET agent_action_id = 'LOCK' WHERE id = :eid AND agent_action_id IS NULL"),
+            {'eid': queue_entry_id}
+        )
+        db.session.commit()
+        if res.rowcount == 0:
+            logger.warning('Layer6ActionQueue entry %s already locked/processed — skipping', queue_entry_id)
+            return
+    except Exception as exc:
+        db.session.rollback()
+        logger.error('Failed to lock Layer6ActionQueue entry %s: %s', queue_entry_id, exc)
+        return
+
     sim = Simulation.query.get(entry.simulation_id)
     if not sim:
         logger.warning('Simulation %s not found for L6 action', entry.simulation_id)
@@ -49,6 +64,8 @@ def dispatch_layer6_action(self, queue_entry_id: str):
     db.session.add(agent_action)
     db.session.flush()
 
+    # Re-fetch entry and update real agent_action_id
+    entry = Layer6ActionQueue.query.get(queue_entry_id)
     entry.agent_action_id = agent_action.id
     db.session.commit()
 
@@ -66,6 +83,7 @@ def dispatch_layer6_action(self, queue_entry_id: str):
             user_id=sim.user_id,
             simulation_id=entry.simulation_id,
             action_id=agent_action.id,
+            prospect_count=sim.get_prospect_count(),
         )
 
         artifact = result if isinstance(result, str) else str(result)
@@ -103,6 +121,22 @@ def dispatch_layer6_action(self, queue_entry_id: str):
                 _dispatch_cold_email_campaign(agent_action.id, entry.simulation_id, sim.user_id)
             except Exception as _de:
                 logger.warning('cold_email_campaign post-send dispatch failed: %s', _de)
+
+        # Create scheduled action steps for multi-step agents (SIM-PRD-STEPS-001 A.3)
+        try:
+            from app.services.action_step_service import create_steps_from_artifact, AGENT_STEP_CONFIG
+            if entry.action_type in AGENT_STEP_CONFIG:
+                _n = create_steps_from_artifact(
+                    agent_action_id=agent_action.id,
+                    simulation_id=entry.simulation_id,
+                    action_type=entry.action_type,
+                    artifact_json=artifact,
+                    parent_action_id=entry.id,
+                )
+                if _n:
+                    logger.info('Created %d action steps for %s', _n, entry.action_type)
+        except Exception as _ste:
+            logger.warning('create_steps_from_artifact failed for %s: %s', entry.action_type, _ste)
 
         # Deploy artifact to integration chain (FR-WIRE-01)
         try:

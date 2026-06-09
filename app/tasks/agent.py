@@ -43,6 +43,8 @@ def execute_agent_action_task(action_id: str):
         resume = Resume.query.get(sim.resume_id) if sim and sim.resume_id else None
         parsed_text = resume.parsed_text if resume else ''
 
+        prospect_count = sim.get_prospect_count() if sim else None
+
         artifact = execute_agent_action(
             action_type=action_type,
             layer_number=layer_number,
@@ -53,6 +55,7 @@ def execute_agent_action_task(action_id: str):
             simulation_id=simulation_id,
             dispatch_source='user_rerun',
             action_id=action_id,
+            prospect_count=prospect_count,
         )
 
         action.artifact = artifact
@@ -116,6 +119,22 @@ def execute_agent_action_task(action_id: str):
                 _dispatch_cold_email_campaign(action_id, simulation_id, user_id)
             except Exception as exc:
                 logger.warning('cold_email_campaign post-send dispatch failed action=%s: %s', action_id, exc)
+
+        # Create scheduled action steps for multi-step agents (SIM-PRD-STEPS-001 A.3)
+        try:
+            from app.services.action_step_service import create_steps_from_artifact, AGENT_STEP_CONFIG
+            if action_type in AGENT_STEP_CONFIG:
+                _n = create_steps_from_artifact(
+                    agent_action_id=action_id,
+                    simulation_id=simulation_id,
+                    action_type=action_type,
+                    artifact_json=artifact,
+                    parent_action_id=None,  # user-triggered; no queue entry
+                )
+                if _n:
+                    logger.info('Created %d action steps for %s (user run)', _n, action_type)
+        except Exception as _ste:
+            logger.warning('create_steps_from_artifact failed for %s: %s', action_type, _ste)
 
     except Exception as exc:
         logger.error('AgentAction %s failed: %s', action_id, exc, exc_info=True)
@@ -253,6 +272,11 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
     # ── Phase 1: upsert ALL named prospects into CRM as 'prospect' ──
     artifact_changed = False
     crm_created = 0
+    used_fallbacks = {
+        p.get('email').strip().lower()
+        for p in prospects
+        if p.get('email') and p.get('email').strip().lower().startswith('valuemanager.management')
+    }
     for p in prospects:
         first = (p.get('first_name') or '').strip()
         last  = (p.get('last_name') or '').strip()
@@ -260,28 +284,37 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
             continue
 
         raw_email = (p.get('email') or '').strip().lower()
-        has_real_email = bool(raw_email and raw_email != _FALLBACK_EMAIL)
+        is_fallback = raw_email.startswith('valuemanager.management') and raw_email.endswith('@gmail.com')
+        if not raw_email or raw_email == 'valuemanager.management@gmail.com':
+            from app.services.contact_lookup import get_next_fallback_email
+            raw_email = get_next_fallback_email(user_id, used_fallbacks)
+            used_fallbacks.add(raw_email)
+            p['email'] = raw_email
+            artifact_changed = True
+            is_fallback = True
+
+        has_real_email = bool(raw_email and not is_fallback)
 
         contact = None
-        if has_real_email:
+        if raw_email:
             crm_id = p.get('crm_contact_id')
             contact = Contact.query.get(crm_id) if crm_id else None
             if not contact:
                 contact = Contact.query.filter_by(user_id=user_id, email=raw_email).first()
-        else:
+
+        if not contact and is_fallback:
             if first and last:
                 contact = Contact.query.filter_by(
                     user_id=user_id, first_name=first, last_name=last,
                 ).first()
 
         if not contact:
-            email_to_save = raw_email if has_real_email else f'{generate_id()}@noemail.placeholder'
             contact = Contact(
                 id=generate_id(),
                 user_id=user_id,
                 first_name=first or 'Unknown',
                 last_name=last or '',
-                email=email_to_save,
+                email=raw_email,
                 job_title=p.get('job_title', ''),
                 company_name=p.get('company_name', ''),
                 pipeline_stage='prospect',
@@ -382,9 +415,14 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
 
     # ── Phase 1: upsert ALL named prospects into CRM as 'prospect' ──
     # Real email → match/create by email.
-    # No/fallback email → match by name+company, create with unique placeholder.
+    # No/fallback email → match by name+company, create with unique fallback email.
     artifact_changed = False
     crm_created = 0
+    used_fallbacks = {
+        p.get('email').strip().lower()
+        for p in prospects
+        if p.get('email') and p.get('email').strip().lower().startswith('valuemanager.management')
+    }
     for p in prospects:
         first = (p.get('first_name') or '').strip()
         last  = (p.get('last_name') or '').strip()
@@ -392,28 +430,37 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
             continue
 
         raw_email = (p.get('email') or '').strip().lower()
-        has_real_email = bool(raw_email and raw_email != _FALLBACK_EMAIL)
+        is_fallback = raw_email.startswith('valuemanager.management') and raw_email.endswith('@gmail.com')
+        if not raw_email or raw_email == 'valuemanager.management@gmail.com':
+            from app.services.contact_lookup import get_next_fallback_email
+            raw_email = get_next_fallback_email(user_id, used_fallbacks)
+            used_fallbacks.add(raw_email)
+            p['email'] = raw_email
+            artifact_changed = True
+            is_fallback = True
+
+        has_real_email = bool(raw_email and not is_fallback)
 
         contact = None
-        if has_real_email:
+        if raw_email:
             crm_id = p.get('crm_contact_id')
             contact = Contact.query.get(crm_id) if crm_id else None
             if not contact:
                 contact = Contact.query.filter_by(user_id=user_id, email=raw_email).first()
-        else:
+
+        if not contact and is_fallback:
             if first and last:
                 contact = Contact.query.filter_by(
                     user_id=user_id, first_name=first, last_name=last,
                 ).first()
 
         if not contact:
-            email_to_save = raw_email if has_real_email else f'{generate_id()}@noemail.placeholder'
             contact = Contact(
                 id=generate_id(),
                 user_id=user_id,
                 first_name=first or 'Unknown',
                 last_name=last or '',
-                email=email_to_save,
+                email=raw_email,
                 job_title=p.get('job_title', ''),
                 company_name=p.get('company_name', ''),
                 pipeline_stage='prospect',

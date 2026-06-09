@@ -10,9 +10,18 @@ def _stripe():
     return stripe
 
 
-def create_payment_intent(user_id: str, simulation_id: str, amount_cents: int = 69500) -> dict:
-    """Create a Stripe PaymentIntent for $695.00 simulation generation."""
+def create_payment_intent(
+    user_id: str,
+    simulation_id: str,
+    amount_cents: int = 69500,
+    base_price_cents: int = None,
+    discount_percentage: int = 0,
+) -> dict:
+    """Create a Stripe PaymentIntent for simulation generation."""
     s = _stripe()
+    base = base_price_cents if base_price_cents is not None else amount_cents
+    desc = f'Simulacrum Pro Simulation — {discount_percentage}% off (was ${base/100:.2f})' \
+        if discount_percentage else 'Simulacrum Pro Simulation'
     intent = s.PaymentIntent.create(
         amount=amount_cents,
         currency='usd',
@@ -20,8 +29,11 @@ def create_payment_intent(user_id: str, simulation_id: str, amount_cents: int = 
             'user_id': user_id,
             'simulation_id': simulation_id,
             'product': 'simulation_generation',
+            'base_price_cents': str(base),
+            'discount_percentage': str(discount_percentage),
+            'discounted_price_cents': str(amount_cents),
         },
-        description=f'Simulacrum Simulation Generation — {simulation_id}',
+        description=desc,
     )
     return {
         'payment_intent_id': intent.id,
@@ -59,6 +71,43 @@ def issue_refund(payment_intent_id: str, reason: str = 'Simulation generation fa
         'status': refund.status,
         'amount': refund.amount,
     }
+
+
+def create_prospect_tier_checkout_session(
+    user_id: str,
+    simulation_id: str,
+    upgrade_to_tier: int,
+    delta_cents: int,
+    tier_count: int,
+    success_url: str,
+    cancel_url: str,
+) -> dict:
+    """Create a Stripe Checkout Session for a per-simulation prospect tier upgrade."""
+    s = _stripe()
+    session = s.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': 'usd',
+                'product_data': {
+                    'name': f'Prospect Tier {upgrade_to_tier} — {tier_count} prospects per agent run',
+                },
+                'unit_amount': delta_cents,
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            'user_id': user_id,
+            'simulation_id': simulation_id,
+            'product': 'prospect_tier_upgrade',
+            'upgrade_to_tier': str(upgrade_to_tier),
+            'delta_cents': str(delta_cents),
+        },
+    )
+    return {'checkout_url': session.url, 'session_id': session.id}
 
 
 def construct_webhook_event(payload: bytes, sig_header: str) -> object:

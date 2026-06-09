@@ -422,6 +422,7 @@ def execute_consulting_outreach(
     expertise_zone,
     parsed_text,
     user_inputs,
+    prospect_count=None,
 ):
     """
     Execute the two-pass consulting_outreach agent.
@@ -444,14 +445,15 @@ def execute_consulting_outreach(
     # ── Pass 1: standard research ─────────────────────────────────────────────
     targeting = build_targeting_criteria('consulting_outreach', expertise_zone, user_inputs)
     engine = ProspectResearchEngine()
+    _target = prospect_count or 5
     result = engine.research(
         user_id=user_id,
         simulation_id=simulation_id,
         action_id=action_id,
         targeting=targeting,
-        target_count=10,
+        target_count=_target,
     )
-    prospects = result.prospects[:10]
+    prospects = result.prospects[:_target]
     pass1_duration = round(time.time() - t_start, 2)
 
     # Populate crm_contact_id for any prospects the engine didn't tag
