@@ -930,8 +930,10 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         'cold_email_campaign', 'role_search', 'referral_network',
         'speaking_proposals', 'corporate_training_proposal',
         'affiliate_program', 'affiliate_partnerships', 'alumni_reactivation',
+        'ip_licensing',
+        'client_winback', 'partnership_proposal', 'lapsed_buyer_reactivation',
     }
-    _update_only_agents = {'alumni_reactivation'}
+    _update_only_agents = {'alumni_reactivation', 'client_winback', 'lapsed_buyer_reactivation'}
     if action_type in _contact_agents:
         prompt += (
             '\n\n---\nIMPORTANT: After your main response, append this exact block '
@@ -945,15 +947,41 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             'If no specific contacts were produced, output <!--CONTACTS [] CONTACTS-->.'
         )
 
+    # Action types whose descriptions explicitly demand large output get a higher budget.
+    # Everything else defaults to 8192 (was 3000 — the prior limit caused silent truncation).
+    _LARGE_OUTPUT_ACTIONS = {
+        'seo_content_calendar', 'youtube_podcast', 'workshop_content',
+        'saas_product_spec', 'course_framework', 'coaching_curriculum',
+        'consulting_proposal', 'sales_page', 'ebook_guide',
+    }
+    _ACTION_MAX_TOKENS = {
+        'cold_email_campaign': 8192,
+        'outreach_email':      4096,
+    }
+    max_tokens = _ACTION_MAX_TOKENS.get(
+        action_type,
+        16384 if action_type in _LARGE_OUTPUT_ACTIONS else 8192,
+    )
+
+    import logging as _log
+    _logger = _log.getLogger(__name__)
+
     model = get_model(action_type)
     _json_outreach = {'outreach_email', 'cold_email_campaign'}
-    max_tokens = 8192 if action_type == 'cold_email_campaign' else (4096 if action_type == 'outreach_email' else 3000)
     response = _client().messages.create(
         model=model,
         max_tokens=max_tokens,
         messages=[{'role': 'user', 'content': prompt}],
     )
     _log_interaction(AIInteraction.TYPE_AGENT_ACTION, user_id, simulation_id, response.usage, model=model)
+
+    if response.stop_reason == 'max_tokens':
+        _logger.warning(
+            'execute_agent_action: artifact truncated at max_tokens=%d '
+            'action_type=%s sim=%s action=%s — consider raising the limit',
+            max_tokens, action_type, simulation_id, action_id,
+        )
+
     raw_artifact = response.content[0].text.strip()
 
     # JSON outreach agents: parse, save contacts, return clean JSON
@@ -980,7 +1008,7 @@ def _finalize_outreach_email_artifact(
     action_id: str,
 ) -> str:
     """
-    Parse the outreach_email JSON artifact, save prospects to CRM,
+    Parse the outreach_email / cold_email_campaign JSON artifact, save prospects to CRM,
     backfill crm_contact_id on each record, return the updated JSON string.
     Falls back to returning the raw string on parse failure.
     """
@@ -993,33 +1021,40 @@ def _finalize_outreach_email_artifact(
     clean = _re.sub(r'\s*```$', '', clean.strip())
 
     try:
-        data = json.loads(clean)
-    except Exception:
-        _logger.warning('outreach_email artifact is not valid JSON — returning raw text')
+        # raw_decode parses the first complete JSON value and ignores trailing text
+        # (handles the common case where the LLM appends commentary after the closing })
+        data, _ = json.JSONDecoder().raw_decode(clean)
+    except Exception as _je:
+        _logger.error(
+            'CONTACTS_SAVE FAILED action=%s sim=%s: artifact is not valid JSON — %s',
+            action_id, simulation_id, _je,
+        )
         return raw
 
     prospects = data.get('prospects', [])
     if not prospects:
+        _logger.error(
+            'CONTACTS_SAVE FAILED action=%s sim=%s: JSON parsed but prospects[] is empty',
+            action_id, simulation_id,
+        )
         return json.dumps(data, ensure_ascii=False)
 
-    _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
+    if not user_id:
+        _logger.error(
+            'CONTACTS_SAVE FAILED action=%s sim=%s: user_id is None — cannot save %d prospects',
+            action_id, simulation_id, len(prospects),
+        )
+        return json.dumps(data, ensure_ascii=False)
 
     # Fill missing emails with fallback so every prospect is sendable
+    from app.services.contact_lookup import get_next_fallback_email
+    used_fallbacks = set()
     for p in prospects:
-        if not p.get('email'):
-            p['email'] = _FALLBACK_EMAIL
-
-    # Debug: log all prospects
-    for i, p in enumerate(prospects):
-        _logger.error(
-            'outreach_email prospect[%d]: name="%s %s" email="%s" company="%s" title="%s"',
-            i,
-            p.get('first_name', ''),
-            p.get('last_name', ''),
-            p.get('email', ''),
-            p.get('company_name', ''),
-            p.get('job_title', ''),
-        )
+        email = (p.get('email') or '').strip().lower()
+        if not email or email == 'valuemanager.management@gmail.com':
+            fb_email = get_next_fallback_email(user_id, used_fallbacks)
+            p['email'] = fb_email
+            used_fallbacks.add(fb_email)
 
     try:
         from app.services.contact_lookup import save_contacts_to_crm
@@ -1035,13 +1070,28 @@ def _finalize_outreach_email_artifact(
             }
             for p in prospects if p.get('first_name') or p.get('email')
         ]
-        if contacts_payload and user_id:
-            save_contacts_to_crm(
+        if contacts_payload:
+            saved = save_contacts_to_crm(
                 contacts=contacts_payload,
                 user_id=user_id,
                 simulation_id=simulation_id,
                 action_type='outreach_email',
                 cycle_id=None,
+            )
+            if saved:
+                _logger.info(
+                    'CONTACTS_SAVE OK action=%s sim=%s: %d/%d prospects saved to CRM',
+                    action_id, simulation_id, saved, len(contacts_payload),
+                )
+            else:
+                _logger.error(
+                    'CONTACTS_SAVE FAILED action=%s sim=%s: save_contacts_to_crm returned 0 for %d prospects',
+                    action_id, simulation_id, len(contacts_payload),
+                )
+        else:
+            _logger.error(
+                'CONTACTS_SAVE FAILED action=%s sim=%s: contacts_payload is empty after filtering %d prospects',
+                action_id, simulation_id, len(prospects),
             )
 
         # Backfill crm_contact_id so send_prospect_email can advance CRM stage
@@ -1055,9 +1105,96 @@ def _finalize_outreach_email_artifact(
                     p['crm_contact_id'] = c.id
 
     except Exception as exc:
-        _logger.warning('outreach_email CRM save failed: %s', exc)
+        _logger.error(
+            'CONTACTS_SAVE FAILED action=%s sim=%s: exception — %s',
+            action_id, simulation_id, exc, exc_info=True,
+        )
 
     return json.dumps(data, ensure_ascii=False)
+
+
+def _llm_extract_contacts(artifact: str) -> list:
+    """
+    Fallback: ask Haiku to pull named contacts from a markdown artifact.
+    Returns a list of contact dicts, or [] on failure.
+    """
+    import logging as _log
+    _logger = _log.getLogger(__name__)
+    try:
+        import anthropic as _ant
+        _c = _ant.Anthropic()
+        resp = _c.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=1024,
+            messages=[{
+                'role': 'user',
+                'content': (
+                    'Extract every named person or organisation from the text below as a JSON array.\n'
+                    'Each element: {"first_name":"...","last_name":"...","email":"...","job_title":"...","company_name":"..."}\n'
+                    'Rules: first_name and last_name are required. Omit keys you do not have. '
+                    'For organisations with no named person use first_name="Contact", last_name=company_name. '
+                    'Return ONLY the JSON array, no commentary, no fences. If none found return [].\n\n'
+                    f'TEXT:\n{artifact[:3000]}'
+                ),
+            }],
+        )
+        raw = resp.content[0].text.strip()
+        contacts = json.loads(raw)
+        if isinstance(contacts, list):
+            return contacts
+    except Exception as exc:
+        _logger.error('CONTACTS_SAVE fallback LLM extraction failed: %s', exc)
+    return []
+
+
+def _save_contacts_list(
+    contacts: list,
+    user_id: str,
+    simulation_id: str,
+    action_type: str,
+    update_only: bool,
+    source: str,
+) -> None:
+    """Resolve user_id if missing, call save_contacts_to_crm, log result."""
+    import logging as _log
+    _logger = _log.getLogger(__name__)
+
+    if not user_id and simulation_id:
+        from app.models.simulation import Simulation as _Sim
+        _sim = _Sim.query.get(simulation_id)
+        user_id = _sim.user_id if _sim else None
+
+    if not user_id:
+        _logger.error(
+            'CONTACTS_SAVE FAILED action_type=%s sim=%s [%s]: user_id is None — cannot save %d contacts',
+            action_type, simulation_id, source, len(contacts),
+        )
+        return
+
+    try:
+        from app.services.contact_lookup import save_contacts_to_crm
+        saved = save_contacts_to_crm(
+            contacts=contacts,
+            user_id=user_id,
+            simulation_id=simulation_id,
+            action_type=action_type,
+            update_only=update_only,
+        )
+        if saved:
+            _logger.info(
+                'CONTACTS_SAVE OK action_type=%s sim=%s [%s]: %d/%d contacts saved to CRM',
+                action_type, simulation_id, source, saved, len(contacts),
+            )
+        else:
+            _logger.error(
+                'CONTACTS_SAVE FAILED action_type=%s sim=%s [%s]: save_contacts_to_crm returned 0 for %d contacts',
+                action_type, simulation_id, source, len(contacts),
+            )
+    except Exception as exc:
+        _logger.error(
+            'CONTACTS_SAVE FAILED action_type=%s sim=%s [%s]: exception — %s',
+            action_type, simulation_id, source, exc, exc_info=True,
+        )
 
 
 def _extract_and_save_contacts(
@@ -1067,37 +1204,52 @@ def _extract_and_save_contacts(
     action_type: str,
     update_only: bool = False,
 ) -> str:
-    """Extract <!--CONTACTS [...] CONTACTS--> block, save to CRM, return clean artifact."""
+    """
+    Extract <!--CONTACTS [...] CONTACTS--> block and save to CRM.
+    Falls back to a Haiku extraction call if the LLM omitted the block.
+    Returns the artifact with the CONTACTS block stripped.
+    """
     import re as _re
     import logging as _log
     _logger = _log.getLogger(__name__)
 
     match = _re.search(r'<!--CONTACTS\s*(.*?)\s*CONTACTS-->', artifact, _re.DOTALL)
+
     if not match:
-        return artifact
+        # LLM skipped the block — extract via Haiku fallback
+        _logger.warning(
+            'CONTACTS_SAVE action_type=%s sim=%s: CONTACTS block missing, attempting LLM fallback extraction',
+            action_type, simulation_id,
+        )
+        contacts = _llm_extract_contacts(artifact)
+        if contacts:
+            _save_contacts_list(contacts, user_id, simulation_id, action_type, update_only, source='llm_fallback')
+        else:
+            _logger.error(
+                'CONTACTS_SAVE FAILED action_type=%s sim=%s: no CONTACTS block and LLM fallback returned nothing',
+                action_type, simulation_id,
+            )
+        return artifact  # nothing to strip
 
     clean = artifact[:match.start()].rstrip() + artifact[match.end():]
 
     try:
         contacts = json.loads(match.group(1).strip())
-        if contacts and isinstance(contacts, list):
-            from app.services.contact_lookup import save_contacts_to_crm
-            # Resolve user_id from simulation if missing
-            if not user_id and simulation_id:
-                from app.models.simulation import Simulation as _Sim
-                _sim = _Sim.query.get(simulation_id)
-                user_id = _sim.user_id if _sim else None
-            if user_id:
-                save_contacts_to_crm(
-                    contacts=contacts,
-                    user_id=user_id,
-                    simulation_id=simulation_id,
-                    action_type=action_type,
-                    update_only=update_only,
-                )
-    except Exception as exc:
-        _logger.warning('Contacts extraction failed for %s: %s', action_type, exc)
+    except Exception as _je:
+        _logger.error(
+            'CONTACTS_SAVE FAILED action_type=%s sim=%s: CONTACTS block is not valid JSON — %s',
+            action_type, simulation_id, _je,
+        )
+        return clean.strip()
 
+    if not contacts or not isinstance(contacts, list):
+        _logger.error(
+            'CONTACTS_SAVE FAILED action_type=%s sim=%s: CONTACTS block parsed to empty/non-list',
+            action_type, simulation_id,
+        )
+        return clean.strip()
+
+    _save_contacts_list(contacts, user_id, simulation_id, action_type, update_only, source='embedded_block')
     return clean.strip()
 
 
