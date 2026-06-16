@@ -7,20 +7,25 @@ from app.extensions import db, migrate, login_manager, bcrypt, mail, cors
 
 
 def _configure_logging(app):
-    """Write ERROR+ logs to error.log at the project root."""
+    """Write logs to error.log at the project root."""
     log_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'error.log')
     handler = RotatingFileHandler(log_path, maxBytes=2 * 1024 * 1024, backupCount=5)
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(logging.Formatter(
         '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
     ))
+    # Route everything through the root logger only.
+    # app.logger and werkzeug both propagate to root by default, so attaching
+    # the handler only to root avoids every record being written twice.
+    root = logging.getLogger()
+    if not any(isinstance(h, RotatingFileHandler) and getattr(h, 'baseFilename', None) == log_path
+               for h in root.handlers):
+        root.setLevel(logging.DEBUG)
+        root.addHandler(handler)
+    # Prevent Flask's app logger from double-writing via propagation + its own handlers
+    app.logger.handlers = []
+    app.logger.propagate = True
     app.logger.setLevel(logging.DEBUG)
-    app.logger.addHandler(handler)
-    # Capture werkzeug and root logger to the same file
-    for name in ('werkzeug', ''):
-        lg = logging.getLogger(name)
-        lg.setLevel(logging.DEBUG)
-        lg.addHandler(handler)
 
 
 def create_app(config_name=None):
