@@ -32,6 +32,12 @@ from app.models.notification import Notification, NotificationPreference
 from app.models.bio_page import BioPage, BioChatSession, BioChatMessage
 from app.models.integration_signal import IntegrationSignal
 from app.models.layer6 import ActionItem, CyclePosteriorSnapshot
+from app.models.outreach_email import EmailLog, EmailSuppression
+from app.models.action_step import ActionStep
+from app.models.social import (
+    BioPageLike, UserConnection, ActivityEvent,
+    PlatformChat, PlatformChatMessage,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -55,4 +61,8 @@ __all__ = [
     'Notification', 'NotificationPreference',
     'BioPage', 'BioChatSession', 'BioChatMessage',
     'IntegrationSignal', 'ActionItem', 'CyclePosteriorSnapshot',
+    'EmailLog', 'EmailSuppression',
+    'ActionStep',
+    'BioPageLike', 'UserConnection', 'ActivityEvent',
+    'PlatformChat', 'PlatformChatMessage',
 ]

@@ -74,6 +74,9 @@ class BioPage(db.Model):
     contact_form_count  = db.Column(db.Integer, nullable=False, default=0)
     cta_click_count     = db.Column(db.Integer, nullable=False, default=0)
 
+    # Social layer (SIM-PRD-SOCIAL-001)
+    like_count          = db.Column(db.Integer, nullable=False, default=0)
+
     # PLG distribution (SIM-PRD-BIO-002)
     show_badge          = db.Column(db.Boolean, nullable=False, default=True)
     show_on_explore     = db.Column(db.Boolean, nullable=False, default=True)
@@ -145,6 +148,7 @@ class BioPage(db.Model):
             'is_published': self.is_published,
             'published_at': self.published_at.isoformat() if self.published_at else None,
             'view_count': self.view_count,
+            'like_count': self.like_count,
             'contact_form_count': self.contact_form_count,
             'cta_click_count': self.cta_click_count,
             'show_badge': self.show_badge,

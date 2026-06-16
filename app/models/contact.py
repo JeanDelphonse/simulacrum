@@ -51,6 +51,7 @@ class Contact(db.Model):
         nullable=False, default='prospect', index=True,
     )
     last_contacted_at   = db.Column(db.DateTime, nullable=True)
+    outreach_count      = db.Column(db.Integer, nullable=False, default=0)
     is_archived         = db.Column(db.Boolean, nullable=False, default=False)
     do_not_contact      = db.Column(db.Boolean, nullable=False, default=False)
     notes               = db.Column(db.Text, nullable=True)
@@ -125,6 +126,7 @@ class Contact(db.Model):
             'score_pct': self.score_pct,
             'pipeline_stage': self.pipeline_stage,
             'last_contacted_at': self.last_contacted_at.isoformat() if self.last_contacted_at else None,
+            'outreach_count': self.outreach_count or 0,
             'is_archived': self.is_archived,
             'do_not_contact': self.do_not_contact,
             'notes': self.notes,

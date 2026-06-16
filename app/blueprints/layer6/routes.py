@@ -214,6 +214,8 @@ def run_cycle(sim_id):
     from app.models.layer6 import Layer6ActionQueue
     try:
         cycle_data = run_orchestrator_cycle(sim_id, force_rerun=True)
+        if cycle_data.get('skipped'):
+            return jsonify(cycle_data), 200
         actions = Layer6ActionQueue.query.filter_by(
             cycle_id=cycle_data['id']
         ).order_by(Layer6ActionQueue.priority_score.desc()).all()
@@ -222,6 +224,7 @@ def run_cycle(sim_id):
                      metadata={'cycle_number': cycle_data.get('cycle_number')})
         return jsonify(cycle_data), 200
     except Exception as exc:
+        logger.exception('run_cycle failed for %s: %s', sim_id, exc)
         return jsonify({'error': str(exc)}), 500
 
 
@@ -289,6 +292,191 @@ def list_cycles(sim_id):
         Layer6Cycle.cycle_number.desc()
     ).all()
     return jsonify([c.to_dict() for c in cycles]), 200
+
+
+@layer6_bp.route('/<sim_id>/layer6/cycles/summary', methods=['GET'])
+@login_required
+def list_cycles_summary(sim_id):
+    """Paginated cycle list with per-cycle activity counts for the Cycle accordion (FR-CYC-14)."""
+    sim, err, code = _get_sim_or_404(sim_id)
+    if err:
+        return err, code
+
+    page = max(0, int(request.args.get('page', 0)))
+    per_page = 10
+
+    cycles = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Cycle.cycle_number.desc()
+    ).offset(page * per_page).limit(per_page + 1).all()
+
+    has_more = len(cycles) > per_page
+    cycles = cycles[:per_page]
+
+    from app.models.outreach_email import EmailLog
+    from app.models.contact import Contact
+
+    result = []
+    for c in cycles:
+        agent_action_ids = [
+            r.agent_action_id
+            for r in Layer6ActionQueue.query.filter_by(cycle_id=c.id)
+            .with_entities(Layer6ActionQueue.agent_action_id).all()
+            if r.agent_action_id
+        ]
+        emails_sent = 0
+        replies = 0
+        if agent_action_ids:
+            emails_sent = EmailLog.query.filter(
+                EmailLog.action_id.in_(agent_action_ids)
+            ).count()
+            replies = EmailLog.query.filter(
+                EmailLog.action_id.in_(agent_action_ids),
+                EmailLog.replied_at.isnot(None),
+            ).count()
+        contacts_added = Contact.query.filter_by(source_cycle_id=c.id).count()
+
+        row = c.to_dict()
+        row['emails_sent'] = emails_sent
+        row['replies'] = replies
+        row['contacts_added'] = contacts_added
+        result.append(row)
+
+    return jsonify({'cycles': result, 'has_more': has_more}), 200
+
+
+@layer6_bp.route('/<sim_id>/layer6/cycles/<cycle_id>/activity', methods=['GET'])
+@login_required
+def cycle_activity(sim_id, cycle_id):
+    """Full activity detail for one cycle: agents, emails, contacts, steps, bookings."""
+    sim, err, code = _get_sim_or_404(sim_id)
+    if err:
+        return err, code
+
+    cycle = Layer6Cycle.query.filter_by(id=cycle_id, simulation_id=sim_id).first()
+    if not cycle:
+        return jsonify({'error': 'Cycle not found'}), 404
+
+    from app.models.outreach_email import EmailLog
+    from app.models.contact import Contact
+    from app.models.action_step import ActionStep
+    from app.models.artifact import ArtifactVersion
+
+    queue_items = Layer6ActionQueue.query.filter_by(cycle_id=cycle_id).order_by(
+        Layer6ActionQueue.created_at
+    ).all()
+    agent_action_ids = [q.agent_action_id for q in queue_items if q.agent_action_id]
+
+    artifact_action_ids = set()
+    if agent_action_ids:
+        for av in ArtifactVersion.query.filter(
+            ArtifactVersion.action_id.in_(agent_action_ids),
+            ArtifactVersion.is_current == True,
+        ).with_entities(ArtifactVersion.action_id).all():
+            artifact_action_ids.add(av.action_id)
+
+    agents_data = []
+    for q in queue_items:
+        d = q.to_dict()
+        d['has_artifact'] = q.agent_action_id in artifact_action_ids
+        agents_data.append(d)
+
+    # Emails sent via direct agent dispatch or executed follow-up steps
+    emails_data = []
+    executed_step_ids = []
+    if queue_items:
+        executed_step_ids = [
+            s.id for s in ActionStep.query.filter(
+                ActionStep.parent_action_id.in_([q.id for q in queue_items]),
+                ActionStep.status == ActionStep.STATUS_EXECUTED,
+            ).with_entities(ActionStep.id).all()
+        ]
+
+    email_filters = []
+    if agent_action_ids:
+        email_filters.append(EmailLog.action_id.in_(agent_action_ids))
+    if executed_step_ids:
+        email_filters.append(EmailLog.step_id.in_(executed_step_ids))
+
+    if email_filters:
+        emails = EmailLog.query.filter(db.or_(*email_filters)).order_by(EmailLog.sent_at).all()
+        contact_ids = list({e.contact_id for e in emails})
+        contacts_map = {}
+        if contact_ids:
+            for c in Contact.query.filter(Contact.id.in_(contact_ids)).all():
+                contacts_map[c.id] = c
+        for e in emails:
+            ct = contacts_map.get(e.contact_id)
+            row = e.to_dict()
+            row['contact_name'] = ct.display_name if ct else 'Unknown'
+            row['company'] = ct.company_name or '' if ct else ''
+            if e.replied_at:
+                row['display_status'] = 'replied'
+            elif e.bounced_at:
+                row['display_status'] = 'bounced'
+            elif e.opened_at:
+                row['display_status'] = 'opened'
+            else:
+                row['display_status'] = 'sent'
+            emails_data.append(row)
+
+    # Contacts added to CRM during this cycle
+    contacts_added_data = []
+    for c in Contact.query.filter_by(source_cycle_id=cycle_id).order_by(
+        Contact.pipeline_stage.desc()
+    ).all():
+        initials = ((c.first_name or '')[:1] + (c.last_name or '')[:1]).upper() or '?'
+        source_agent = ''
+        if c.source_action_id:
+            q = next((q for q in queue_items if q.agent_action_id == c.source_action_id), None)
+            if q:
+                source_agent = q.action_type.replace('_', ' ').title()
+        contacts_added_data.append({
+            'id': c.id,
+            'name': c.display_name,
+            'company': c.company_name or '',
+            'initials': initials,
+            'pipeline_stage': c.pipeline_stage,
+            'source_agent': source_agent or 'Agent',
+        })
+
+    # Action steps: processed (executed/skipped) and upcoming (scheduled)
+    steps_processed = []
+    steps_upcoming = []
+    if queue_items:
+        queue_label_map = {q.id: q.action_type.replace('_', ' ').title() for q in queue_items}
+        for s in ActionStep.query.filter(
+            ActionStep.parent_action_id.in_([q.id for q in queue_items])
+        ).order_by(ActionStep.scheduled_for).all():
+            row = s.to_dict()
+            row['agent_label'] = queue_label_map.get(s.parent_action_id, '')
+            if s.status in ('executed', 'skipped'):
+                steps_processed.append(row)
+            elif s.status == 'scheduled':
+                days_left = max(0, (s.scheduled_for - datetime.utcnow()).days)
+                if days_left == 0:
+                    urgency, countdown = 'high', 'Today'
+                elif days_left == 1:
+                    urgency, countdown = 'high', 'Tomorrow'
+                elif days_left == 2:
+                    urgency, countdown = 'high', 'in 2 days'
+                elif days_left <= 5:
+                    urgency, countdown = 'medium', f'in {days_left} days'
+                else:
+                    urgency, countdown = 'low', f'in {days_left} days'
+                row['urgency'] = urgency
+                row['urgency_label'] = {'high': 'Urgent', 'medium': 'Soon', 'low': 'Upcoming'}[urgency]
+                row['countdown'] = countdown
+                row['suggested_date'] = s.scheduled_for.strftime('%b %d')
+                steps_upcoming.append(row)
+
+    return jsonify({
+        'agents': agents_data,
+        'emails': emails_data,
+        'contacts': contacts_added_data,
+        'steps_processed': steps_processed,
+        'steps_upcoming': steps_upcoming,
+        'bookings': [],
+    }), 200
 
 
 @layer6_bp.route('/<sim_id>/layer6/cycles/<cycle_id>', methods=['GET'])

@@ -58,24 +58,71 @@ def ping():
 
 
 def _sim_price_usd() -> str:
-    """Return formatted simulation price from platform_settings, e.g. '$695'."""
+    """Return formatted base simulation price, e.g. '$15.95'. Used for FAQ copy."""
     try:
-        from app.models.platform_settings import PlatformSetting
-        cents = int(PlatformSetting.get('simulation_price') or current_app.config['SIMULATION_PRICE_CENTS'])
+        from app.services.pricing_service import get_current_price, format_price_usd
+        return format_price_usd(get_current_price()['base_price_cents'])
     except Exception:
         cents = int(current_app.config.get('SIMULATION_PRICE_CENTS', 69500))
-    return f'${cents // 100:,}' if cents % 100 == 0 else f'${cents / 100:,.2f}'
+        return f'${cents // 100:,}' if cents % 100 == 0 else f'${cents / 100:,.2f}'
+
+
+def _sim_pricing() -> dict:
+    """Return full pricing dict for discount-aware display."""
+    try:
+        from app.services.pricing_service import get_current_price, format_price_usd
+        p = get_current_price()
+        p['base_price_usd'] = format_price_usd(p['base_price_cents'])
+        p['discounted_price_usd'] = format_price_usd(p['discounted_price_cents'])
+        return p
+    except Exception:
+        cents = int(current_app.config.get('SIMULATION_PRICE_CENTS', 69500))
+        usd = f'${cents // 100:,}' if cents % 100 == 0 else f'${cents / 100:,.2f}'
+        return {
+            'base_price_cents': cents, 'discounted_price_cents': cents,
+            'base_price_usd': usd, 'discounted_price_usd': usd,
+            'discount_percentage': 0, 'is_discounted': False,
+            'label': None, 'expires_at': None,
+        }
+
+
+def _get_recent_bio_pages(limit: int = 8) -> list:
+    """FR-SOC-08: Most recently published bio pages for the landing sidebar."""
+    try:
+        from app.models.bio_page import BioPage
+        from app.models.profile import UserProfile as _UP
+        from sqlalchemy import func as _func
+        # Order by published_at when available, fall back to created_at
+        order_col = _func.coalesce(BioPage.published_at, BioPage.created_at)
+        rows = db.session.query(BioPage, _UP).join(
+            _UP, BioPage.user_id == _UP.user_id,
+        ).filter(
+            BioPage.status == BioPage.STATUS_PUBLISHED,
+        ).order_by(order_col.desc()).limit(limit).all()
+        return [
+            {
+                'slug': bp.slug,
+                'display_name': p.display_name or '',
+                'tagline': (p.tagline or '')[:80],
+                'avatar_path': p.avatar_path or '',
+                'like_count': getattr(bp, 'like_count', 0) or 0,
+            }
+            for bp, p in rows
+        ]
+    except Exception as _e:
+        logger.warning('_get_recent_bio_pages failed: %s', _e)
+        return []
 
 
 @pages_bp.route('/')
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('pages.dashboard'))
     data = _get_landing_data()
     return render_template('landing.html',
                            testimonials=data['testimonials'],
                            trust_stats=data['trust_stats'],
-                           sim_price_usd=_sim_price_usd())
+                           sim_price_usd=_sim_price_usd(),
+                           sim_pricing=_sim_pricing(),
+                           recent_bio_pages=_get_recent_bio_pages())
 
 
 @pages_bp.route('/dashboard')

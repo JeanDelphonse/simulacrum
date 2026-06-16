@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Chats — Simulacrum</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f9fafb; color: #111827; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
+    a { text-decoration: none; color: inherit; }
+
+    .chats-nav {
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      padding: .875rem 2rem; display: flex; align-items: center; gap: 1.5rem;
+    }
+    .chats-nav .brand { font-weight: 800; font-size: 1.1rem; color: #111827; }
+    .chats-nav .brand span { color: #0e7490; }
+    .chats-nav a { font-size: .88rem; color: #6b7280; font-weight: 500; }
+    .chats-nav a:hover { color: #0e7490; }
+    .chats-nav .nav-right { margin-left: auto; }
+
+    .chats-layout {
+      display: flex; max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; gap: 1.5rem;
+    }
+
+    /* ── Left: chat list ── */
+    .chat-list { width: 320px; flex-shrink: 0; }
+    .chat-list-header { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .chat-item {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: .875rem 1rem; margin-bottom: .625rem; cursor: pointer;
+      display: flex; gap: .75rem; align-items: center;
+      transition: border-color .12s, box-shadow .12s;
+    }
+    .chat-item:hover, .chat-item.active {
+      border-color: #0e7490; box-shadow: 0 2px 8px rgba(14,116,144,.12);
+    }
+    .chat-item-avatar {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      object-fit: cover; background: #f3f4f6;
+    }
+    .chat-item-avatar-placeholder {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, #0e7490, #059669);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 16px; font-weight: 700;
+    }
+    .chat-item-body { flex: 1; min-width: 0; }
+    .chat-item-name { font-size: .9rem; font-weight: 600; color: #111827; margin-bottom: .125rem; }
+    .chat-item-preview {
+      font-size: .8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .chat-item-time { font-size: .75rem; color: #9ca3af; margin-top: .125rem; }
+
+    /* ── Right: chat panel ── */
+    .chat-panel {
+      flex: 1; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+      display: flex; flex-direction: column; min-height: 500px; overflow: hidden;
+    }
+    .panel-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .panel-header-name { font-weight: 700; font-size: 1rem; }
+    .panel-header a { font-size: .82rem; color: #0e7490; margin-left: auto; }
+    .panel-messages {
+      flex: 1; padding: 1.25rem; overflow-y: auto;
+      display: flex; flex-direction: column; gap: .75rem;
+    }
+    .msg { max-width: 75%; }
+    .msg.user { align-self: flex-end; }
+    .msg.assistant { align-self: flex-start; }
+    .msg-bubble {
+      padding: .625rem .875rem; border-radius: 12px; font-size: .9rem; line-height: 1.55;
+    }
+    .msg.user .msg-bubble { background: #0e7490; color: #fff; border-bottom-right-radius: 4px; }
+    .msg.assistant .msg-bubble { background: #f3f4f6; color: #111827; border-bottom-left-radius: 4px; }
+    .msg-time { font-size: .72rem; color: #9ca3af; margin-top: .2rem; text-align: right; }
+    .msg.assistant .msg-time { text-align: left; }
+
+    .panel-input {
+      padding: 1rem 1.25rem; border-top: 1px solid #e5e7eb;
+      display: flex; gap: .625rem;
+    }
+    .panel-input textarea {
+      flex: 1; border: 1px solid #d1d5db; border-radius: 8px; padding: .6rem .875rem;
+      font-size: .9rem; font-family: inherit; resize: none; line-height: 1.5;
+      outline: none; transition: border-color .12s;
+    }
+    .panel-input textarea:focus { border-color: #0e7490; }
+    .panel-send {
+      background: #0e7490; color: #fff; border: none; border-radius: 8px;
+      padding: .6rem 1.1rem; cursor: pointer; font-weight: 600; font-size: .88rem;
+      transition: background .12s;
+    }
+    .panel-send:hover { background: #0c6480; }
+    .panel-send:disabled { opacity: .5; cursor: not-allowed; }
+
+    .empty-chats { text-align: center; padding: 4rem 1.5rem; color: #9ca3af; }
+    .empty-chats h2 { font-size: 1.1rem; color: #374151; margin-bottom: .5rem; }
+    .empty-chats a {
+      display: inline-block; margin-top: 1rem; background: #0e7490;
+      color: #fff; padding: .55rem 1.25rem; border-radius: 8px; font-size: .88rem; font-weight: 600;
+    }
+
+    .no-chat-selected {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: #9ca3af; font-size: .95rem;
+    }
+
+    @media (max-width: 680px) {
+      .chats-layout { flex-direction: column; }
+      .chat-list { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="chats-nav">
+  <a class="brand" href="/">SimulacrumAI.io</a>
+  <a href="/explore">Explore</a>
+  <a href="/feed">Feed</a>
+  <div class="nav-right"><a href="/dashboard">Dashboard</a></div>
+</nav>
+
+<div class="chats-layout">
+  {% if chats %}
+  <div class="chat-list">
+    <div class="chat-list-header">My Chats</div>
+    {% for item in chats %}
+    <div class="chat-item" data-chat-id="{{ item.chat.id }}" data-owner-slug="{{ item.owner_slug }}"
+         data-owner-name="{{ item.owner_name }}" data-owner-avatar="{{ item.owner_avatar or '' }}">
+      {% if item.owner_avatar %}
+      <img class="chat-item-avatar"
+           src="{{ url_for('public.serve_avatar', filename=item.owner_avatar) }}"
+           alt="{{ item.owner_name }}" loading="lazy">
+      {% else %}
+      <div class="chat-item-avatar-placeholder">{{ item.owner_name[0] if item.owner_name else '?' }}</div>
+      {% endif %}
+      <div class="chat-item-body">
+        <div class="chat-item-name">{{ item.owner_name }}</div>
+        <div class="chat-item-preview">
+          {% if item.last_message_role == 'user' %}You: {% endif %}{{ item.last_message or 'Start a conversation' }}
+        </div>
+        <div class="chat-item-time">{{ item.last_message_at[:10] }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="chat-panel" id="chat-panel">
+    <div class="no-chat-selected">Select a chat to continue</div>
+  </div>
+
+  {% else %}
+  <div style="flex:1;">
+    <div class="empty-chats">
+      <h2>No chats yet</h2>
+      <p>Start a conversation with any professional on Simulacrum from their bio page or the Explore directory.</p>
+      <a href="/explore">Browse professionals →</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var items = document.querySelectorAll('.chat-item');
+  var panel = document.getElementById('chat-panel');
+  var currentChatId = null;
+  var currentSlug = null;
+
+  items.forEach(function (item) {
+    item.addEventListener('click', function () {
+      items.forEach(function (i) { i.classList.remove('active'); });
+      item.classList.add('active');
+      loadChat(item.dataset.chatId, item.dataset.ownerSlug, item.dataset.ownerName, item.dataset.ownerAvatar);
+    });
+  });
+
+  function loadChat(chatId, ownerSlug, ownerName, ownerAvatar) {
+    currentChatId = chatId;
+    currentSlug = ownerSlug;
+
+    var avatarHtml = ownerAvatar
+      ? '<img class="chat-item-avatar" src="/avatars/' + ownerAvatar + '" alt="' + ownerName + '">'
+      : '<div class="chat-item-avatar-placeholder">' + (ownerName[0] || '?') + '</div>';
+
+    panel.innerHTML =
+      '<div class="panel-header">' + avatarHtml +
+      '<span class="panel-header-name">' + ownerName + '</span>' +
+      (ownerSlug ? '<a href="/u/' + ownerSlug + '" target="_blank">View page →</a>' : '') +
+      '</div>' +
+      '<div class="panel-messages" id="pm-' + chatId + '"></div>' +
+      '<div class="panel-input">' +
+      '<textarea id="pi-' + chatId + '" rows="2" placeholder="Type a message…"></textarea>' +
+      '<button class="panel-send" id="ps-' + chatId + '">Send</button>' +
+      '</div>';
+
+    fetch('/api/platform-chat/' + chatId + '/messages')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var msgs = document.getElementById('pm-' + chatId);
+        data.messages.forEach(function (m) { appendMsg(msgs, m.role, m.content, m.created_at); });
+        msgs.scrollTop = msgs.scrollHeight;
+      });
+
+    var sendBtn = document.getElementById('ps-' + chatId);
+    var textarea = document.getElementById('pi-' + chatId);
+
+    function doSend() {
+      var text = textarea.value.trim();
+      if (!text) return;
+      textarea.value = '';
+      sendBtn.disabled = true;
+
+      var msgs = document.getElementById('pm-' + chatId);
+      appendMsg(msgs, 'user', text, new Date().toISOString());
+      msgs.scrollTop = msgs.scrollHeight;
+
+      var aiEl = document.createElement('div');
+      aiEl.className = 'msg assistant';
+      aiEl.innerHTML = '<div class="msg-bubble" id="ai-streaming-' + chatId + '"></div>';
+      msgs.appendChild(aiEl);
+      msgs.scrollTop = msgs.scrollHeight;
+      var aiText = document.getElementById('ai-streaming-' + chatId);
+
+      fetch('/api/platform-chat/' + chatId + '/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      }).then(function (resp) {
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        function pump() {
+          reader.read().then(function (result) {
+            if (result.done) { sendBtn.disabled = false; return; }
+            buffer += decoder.decode(result.value, { stream: true });
+            var parts = buffer.split('\n\n');
+            buffer = parts.pop();
+            parts.forEach(function (part) {
+              if (!part.startsWith('data: ')) return;
+              try {
+                var d = JSON.parse(part.slice(6));
+                if (d.text) { aiText.textContent += d.text; msgs.scrollTop = msgs.scrollHeight; }
+              } catch (_) {}
+            });
+            pump();
+          });
+        }
+        pump();
+      }).catch(function () { sendBtn.disabled = false; });
+    }
+
+    sendBtn.addEventListener('click', doSend);
+    textarea.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+    });
+  }
+
+  function appendMsg(container, role, content, ts) {
+    var div = document.createElement('div');
+    div.className = 'msg ' + role;
+    var time = ts ? ts.slice(0, 16).replace('T', ' ') : '';
+    div.innerHTML =
+      '<div class="msg-bubble">' + escHtml(content) + '</div>' +
+      '<div class="msg-time">' + time + '</div>';
+    container.appendChild(div);
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+}());
+</script>
+
+</body>
+</html>

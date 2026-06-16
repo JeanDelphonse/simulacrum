@@ -11,17 +11,20 @@ logger = logging.getLogger(__name__)
 def _send_via_smtp(subject: str, recipients: list[str], body: str):
     from flask_mail import Message
     from app.extensions import mail
-    msg = Message(subject, recipients=recipients, body=body)
+    sender_email = current_app.config['MAIL_DEFAULT_SENDER']
+    sender_name  = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
+    msg = Message(subject, recipients=recipients, body=body, sender=(sender_name, sender_email))
     mail.send(msg)
 
 
 def _send_via_sendgrid(subject: str, recipients: list[str], body: str):
     import sendgrid
-    from sendgrid.helpers.mail import Mail, To
+    from sendgrid.helpers.mail import Mail, To, From
     sg = sendgrid.SendGridAPIClient(api_key=current_app.config['SENDGRID_API_KEY'])
-    sender = current_app.config['MAIL_DEFAULT_SENDER']
+    sender_email = current_app.config['MAIL_DEFAULT_SENDER']
+    sender_name  = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
     message = Mail(
-        from_email=sender,
+        from_email=From(sender_email, sender_name),
         to_emails=[To(r) for r in recipients],
         subject=subject,
         plain_text_content=body,

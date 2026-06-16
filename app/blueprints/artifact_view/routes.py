@@ -94,8 +94,10 @@ def _plain_name(action_type: str) -> str:
 def page_full_view(sim_id, artifact_id):
     sim, action, current = _resolve_artifact(sim_id, artifact_id)
     if current is None:
-        # No version yet — likely action still pending. Send back to the GCC.
-        return redirect(url_for('pages.layer6_view', sim_id=sim_id))
+        # No ArtifactVersion yet — redirect directly to GCC (bypasses the
+        # layer6_view → gcc_view 301 hop that browsers cache and that made
+        # this feel like an infinite loop when the link kept bouncing back).
+        return redirect(url_for('pages.gcc_view', sim_id=sim_id))
 
     history = ArtifactVersion.history_for(action.id)
     from app.models.integration import UserIntegration

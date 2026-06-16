@@ -289,12 +289,16 @@
 .jrn3-st-in_progress { background: #C9952A; animation: jrn-pulse 1.2s ease-in-out infinite; }
 .jrn3-st-pending   { background: transparent; border: 2px solid #d0d5dd; color: var(--gcc-muted); }
 .jrn3-st-failed    { background: #E85D4A; }
+.jrn3-st-escalated { background: #7c3aed; }
+.jrn3-st-rejected  { background: #9ca3af; }
 .jrn3-a-name { flex: 1; font-size: .84rem; color: var(--gcc-navy); font-family: 'DM Sans', sans-serif; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jrn3-a-badge { font-size: .68rem; font-weight: 500; padding: .1rem .45rem; border-radius: 100px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
 .jrn3-badge-complete   { background: #dcfce7; color: #15803d; }
 .jrn3-badge-in_progress { background: #fef3c7; color: #b45309; }
 .jrn3-badge-pending    { background: #f3f4f6; color: #6b7280; }
 .jrn3-badge-failed     { background: #fee2e2; color: #b91c1c; }
+.jrn3-badge-escalated  { background: #ede9fe; color: #6d28d9; }
+.jrn3-badge-rejected   { background: #f3f4f6; color: #9ca3af; }
 .jrn3-a-date { font-size: .72rem; color: #b0b8c4; min-width: 82px; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
 .jrn3-a-artifact { font-size: .72rem; color: var(--gcc-teal); text-decoration: none; min-width: 105px; text-align: right; font-family: 'DM Sans', sans-serif; flex-shrink: 0; white-space: nowrap; }
 .jrn3-a-artifact:hover { text-decoration: underline; }
@@ -578,6 +582,110 @@
 .diff-reasoning-label { font-size:0.72rem; font-weight:700; color:var(--gcc-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.4rem; }
 .diff-empty { color:var(--gcc-muted); font-size:0.84rem; font-style:italic; padding:0.5rem 0; }
 
+/* ── Cycle accordion (SIM-PRD-CYCLE-001) ────────────────────────────────── */
+.cyc-acc-list { max-width:820px; }
+.cyc-acc-row { background:#fff; border:1px solid var(--gcc-border); border-radius:12px; margin-bottom:10px; overflow:hidden; }
+.cyc-acc-row:hover { background:rgba(0,0,0,0.004); }
+.cyc-acc-hdr { display:flex; align-items:center; gap:0.75rem; padding:0.8rem 1rem; cursor:pointer; user-select:none; }
+.cyc-acc-badge { width:38px; height:38px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; color:var(--gcc-navy); }
+.cyc-badge-exploit { background:rgba(20,184,166,0.08); color:var(--gcc-teal); }
+.cyc-badge-explore { background:rgba(139,92,246,0.08); color:#7c3aed; }
+.cyc-acc-label { font-weight:600; font-size:0.92rem; color:var(--gcc-navy); white-space:nowrap; }
+.cyc-acc-phase { font-size:0.68rem; font-weight:600; text-transform:uppercase; padding:0.13rem 0.5rem; border-radius:999px; }
+.cyc-phase-exploit { background:#D6F0EE; color:var(--gcc-teal); }
+.cyc-phase-explore { background:#EEEDFE; color:#7c3aed; }
+.cyc-acc-date { font-size:0.74rem; color:var(--gcc-muted); }
+.cyc-acc-stats { display:flex; gap:0.65rem; margin-left:auto; align-items:center; flex-wrap:wrap; }
+.cyc-acc-stat { font-size:0.77rem; font-weight:700; }
+.cyc-stat-navy { color:var(--gcc-navy); }
+.cyc-stat-purple { color:#534AB7; }
+.cyc-stat-green { color:#059669; }
+.cyc-stat-teal { color:var(--gcc-teal); }
+.cyc-acc-chevron { color:var(--gcc-muted); font-size:0.75rem; flex-shrink:0; margin-left:0.35rem; transition:transform 0.2s; display:inline-block; }
+.cyc-acc-row.open .cyc-acc-chevron { transform:rotate(180deg); }
+.cyc-acc-body { display:none; padding:0 1rem 1rem; }
+.cyc-acc-row.open .cyc-acc-body { display:block; }
+.cyc-reasoning-new { background:#F4F8FB; border-radius:8px; border-left:3px solid var(--gcc-teal); padding:12px 14px; margin-bottom:0.9rem; }
+.cyc-reasoning-lbl { font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--gcc-teal); margin-bottom:5px; }
+.cyc-reasoning-txt { font-size:0.82rem; color:#4a5568; line-height:1.7; }
+.cyc-sec { margin-bottom:0.7rem; }
+.cyc-sec-hdr { display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; font-weight:700; color:var(--gcc-navy); cursor:pointer; padding:0.35rem 0; user-select:none; }
+.cyc-sec-icon { font-size:0.85rem; }
+.cyc-sec-badge { font-size:0.67rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:999px; margin-left:auto; }
+.cyc-sbadge-green  { background:rgba(5,150,105,0.1);  color:#059669; }
+.cyc-sbadge-purple { background:rgba(83,74,183,0.1);  color:#534AB7; }
+.cyc-sbadge-teal   { background:rgba(20,184,166,0.12); color:var(--gcc-teal); }
+.cyc-sbadge-gold   { background:rgba(201,149,42,0.12); color:var(--gcc-amber); }
+.cyc-sbadge-muted  { background:rgba(107,123,141,0.1); color:var(--gcc-muted); }
+.cyc-sec-toggle { font-size:0.68rem; color:var(--gcc-muted); margin-left:0.15rem; transition:transform 0.15s; display:inline-block; }
+.cyc-sec.collapsed .cyc-sec-toggle { transform:rotate(-90deg); }
+.cyc-sec-body { margin-top:0.3rem; }
+.cyc-sec.collapsed .cyc-sec-body { display:none; }
+.cyc-agent-row { display:flex; align-items:flex-start; gap:0.6rem; padding:0.55rem 0.7rem; border-radius:7px; background:rgba(0,0,0,0.013); margin-bottom:4px; }
+.cyc-agent-icon { font-size:0.88rem; flex-shrink:0; margin-top:1px; }
+.cyc-agent-info { flex:1; min-width:0; }
+.cyc-agent-name { font-size:0.82rem; font-weight:500; color:var(--gcc-navy); }
+.cyc-agent-layer { font-size:0.7rem; color:var(--gcc-muted); margin-top:1px; }
+.cyc-agent-link { font-size:0.76rem; color:var(--gcc-teal); white-space:nowrap; flex-shrink:0; align-self:center; }
+.cyc-agent-link:hover { text-decoration:underline; }
+.cyc-agent-failed { font-size:0.71rem; color:#E85D4A; margin-top:2px; }
+.cyc-email-summary { display:flex; gap:0.65rem; flex-wrap:wrap; margin-bottom:0.45rem; font-size:0.77rem; font-weight:600; }
+.cyc-email-row { display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0.7rem; border-radius:7px; cursor:pointer; margin-bottom:3px; }
+.cyc-email-row:hover { background:rgba(0,0,0,0.015); }
+.cyc-email-icon { font-size:0.85rem; flex-shrink:0; }
+.cyc-email-info { flex:1; min-width:0; }
+.cyc-email-recip { font-size:0.82rem; font-weight:500; color:var(--gcc-navy); }
+.cyc-email-subj  { font-size:0.74rem; color:var(--gcc-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cyc-email-right { text-align:right; flex-shrink:0; }
+.cyc-email-badge { font-size:0.67rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:999px; display:block; margin-bottom:2px; }
+.cyc-email-time  { font-size:0.69rem; color:var(--gcc-muted); }
+.cyc-ebadge-replied { background:rgba(26,135,84,0.12); color:#1A8754; }
+.cyc-ebadge-opened  { background:rgba(83,74,183,0.1);  color:#534AB7; }
+.cyc-ebadge-sent    { background:rgba(107,123,141,0.1); color:#6b7b8d; }
+.cyc-ebadge-bounced { background:rgba(232,93,74,0.1);  color:#E85D4A; }
+.cyc-contact-row { display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0.7rem; border-radius:7px; background:rgba(0,0,0,0.013); margin-bottom:4px; }
+.cyc-avatar { width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:rgba(20,184,166,0.1); color:var(--gcc-teal); font-size:0.68rem; font-weight:700; }
+.cyc-contact-info { flex:1; min-width:0; }
+.cyc-contact-name { font-size:0.82rem; font-weight:500; color:var(--gcc-navy); }
+.cyc-contact-co   { font-size:0.71rem; color:var(--gcc-muted); }
+.cyc-contact-badges { display:flex; gap:0.35rem; align-items:center; flex-shrink:0; }
+.cyc-stage-badge { font-size:0.67rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:999px; }
+.cyc-stage-prospect { background:rgba(107,123,141,0.1); color:#6b7b8d; }
+.cyc-stage-active   { background:rgba(5,150,105,0.1);   color:#059669; }
+.cyc-stage-client   { background:rgba(20,184,166,0.12); color:var(--gcc-teal); }
+.cyc-source-badge { font-size:0.67rem; background:rgba(107,123,141,0.1); color:var(--gcc-muted); padding:0.1rem 0.4rem; border-radius:999px; }
+.cyc-step-row { display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.7rem; border-radius:7px; margin-bottom:4px; }
+.cyc-step-icon { font-size:0.85rem; flex-shrink:0; }
+.cyc-step-info { flex:1; min-width:0; }
+.cyc-step-agent  { font-size:0.82rem; font-weight:500; color:var(--gcc-navy); }
+.cyc-step-detail { font-size:0.71rem; color:var(--gcc-muted); margin-top:1px; }
+.cyc-step-row.executed { background:rgba(5,150,105,0.05); }
+.cyc-step-row.skipped  { background:#FAFBFC; }
+.cyc-upcoming-lbl { font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--gcc-amber); margin:0.65rem 0 0.35rem; }
+.cyc-upcoming { border-radius:7px; margin-bottom:4px; overflow:hidden; border-left:3px solid; }
+.cyc-upcoming.urgency-high   { border-color:#E85D4A; background:rgba(232,93,74,0.04); }
+.cyc-upcoming.urgency-medium { border-color:#C9952A; background:rgba(201,149,42,0.04); }
+.cyc-upcoming.urgency-low    { border-color:#6b7b8d; background:rgba(107,123,141,0.04); }
+.cyc-upcoming-inner { display:flex; align-items:center; gap:0.55rem; padding:0.55rem 0.7rem; }
+.cyc-up-icon { font-size:0.82rem; flex-shrink:0; }
+.cyc-up-info { flex:1; min-width:0; }
+.cyc-up-agent  { font-size:0.82rem; font-weight:500; color:var(--gcc-navy); }
+.cyc-up-detail { font-size:0.71rem; color:var(--gcc-muted); margin-top:1px; }
+.cyc-up-right  { text-align:right; flex-shrink:0; }
+.cyc-urgency-badge { font-size:0.67rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:999px; display:block; margin-bottom:2px; }
+.cyc-urg-urgent   { background:#FDECEA; color:#E85D4A; }
+.cyc-urg-soon     { background:#FDF3DC; color:#C9952A; }
+.cyc-urg-upcoming { background:#F0F1F3; color:#6b7b8d; }
+.cyc-up-date  { font-size:0.76rem; font-weight:600; color:var(--gcc-navy); }
+.cyc-up-count { font-size:0.69rem; font-weight:500; }
+.urgency-high .cyc-up-count   { color:#E85D4A; }
+.urgency-medium .cyc-up-count { color:#C9952A; }
+.urgency-low .cyc-up-count    { color:#6b7b8d; }
+.cyc-load-more { text-align:center; padding:0.75rem; max-width:820px; }
+.cyc-load-more-btn { font-size:0.81rem; font-weight:600; color:var(--gcc-muted); background:none; border:1px solid var(--gcc-border); border-radius:7px; padding:0.4rem 1.2rem; cursor:pointer; }
+.cyc-load-more-btn:hover { background:rgba(0,0,0,0.02); color:var(--gcc-navy); }
+.cyc-acc-empty { padding:2.5rem 1rem; text-align:center; color:var(--gcc-muted); font-size:0.84rem; }
+
 /* ── Agent Network tab — render the ANV modal inline (not as an overlay) ─── */
 .gcc-anv-panel { padding: 0 !important; overflow: hidden; }
 .gcc-anv-panel .anv-modal-overlay {
@@ -740,6 +848,18 @@
 .mom-trend-down { color: var(--gcc-red); margin-left: 0.35rem; }
 .mom-trend-flat { color: var(--gcc-grey); margin-left: 0.35rem; }
 .mom-placeholder { font-size: 0.78rem; color: var(--gcc-muted); font-style: italic; }
+.mom-input {
+  width: 100px; background: var(--gcc-bg); border: 1px solid var(--gcc-border);
+  border-radius: 6px; padding: 0.25rem 0.5rem; font-size: 0.88rem; font-weight: 600;
+  color: var(--gcc-navy); text-align: right;
+}
+.mom-input:focus { outline: none; border-color: var(--gcc-teal); }
+.mom-save-row { display: flex; justify-content: flex-end; margin-top: 1rem; max-width: 960px; }
+.mom-save-btn {
+  background: var(--gcc-teal); color: #0a0e1a; border: none; border-radius: 7px;
+  padding: 0.45rem 1.1rem; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+}
+.mom-save-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* ── Floating co-pilot button ────────────────────────────────────────────── */
 #copilotBtn {
@@ -1077,15 +1197,74 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
 
       {# Adaptive Learning Insight card (ENH-08) — shown when latest cycle has user_insight #}
       {% if latest_cycle and latest_cycle.user_insight %}
-      <div id="insightCard" style="background:rgba(15,123,114,.12);border:1px solid rgba(15,123,114,.3);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:.85rem;">
-        <span style="font-size:1.1rem;flex-shrink:0;margin-top:.05rem">💡</span>
-        <div style="flex:1;font-size:.875rem;line-height:1.55;color:rgba(255,255,255,.85)">
-          <strong style="color:#4dd9c4;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.3rem">Cycle {{ latest_cycle.cycle_number }} · AI insight</strong>
-          {{ latest_cycle.user_insight }}
+      <div id="insightCard" style="background:rgba(15,123,114,.12);border:1px solid rgba(15,123,114,.3);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;">
+        <div style="display:flex;align-items:flex-start;gap:.85rem;">
+          <span style="font-size:1.1rem;flex-shrink:0;margin-top:.05rem">💡</span>
+          <div style="flex:1;font-size:.875rem;line-height:1.55;color:rgba(255,255,255,.85)">
+            <strong style="color:#4dd9c4;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.3rem">Cycle {{ latest_cycle.cycle_number }} · AI insight</strong>
+            {{ latest_cycle.user_insight }}
+          </div>
+          <button onclick="document.getElementById('insightCard').style.display='none';localStorage.setItem('insight_dismissed_{{ latest_cycle.id }}','1')"
+                  style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-size:1rem;flex-shrink:0;padding:.15rem"
+                  title="Dismiss">✕</button>
         </div>
-        <button onclick="document.getElementById('insightCard').style.display='none';localStorage.setItem('insight_dismissed_{{ latest_cycle.id }}','1')"
-                style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-size:1rem;flex-shrink:0;padding:.15rem"
-                title="Dismiss">✕</button>
+        {% if latest_cycle.cycle_steps %}
+        <div id="insightStepsList" style="margin-top:.9rem;padding-top:.85rem;border-top:1px solid rgba(15,123,114,.25);">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#4dd9c4;margin-bottom:.6rem;">
+            Your actions for today
+            <span id="stepsProgress" style="font-weight:400;color:rgba(255,255,255,.4);margin-left:.5rem;"></span>
+          </div>
+          <div id="stepItems"></div>
+        </div>
+        <script>
+        (function() {
+          var steps = {{ latest_cycle.cycle_steps | safe }};
+          var cycleId = '{{ latest_cycle.id }}';
+          var storageKey = 'steps_checked_' + cycleId;
+          var checked = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+          function save() { localStorage.setItem(storageKey, JSON.stringify(checked)); }
+
+          function updateProgress() {
+            var done = checked.length;
+            var total = steps.length;
+            var el = document.getElementById('stepsProgress');
+            if (el) el.textContent = done === total ? '✓ All done!' : done + '/' + total + ' done';
+          }
+
+          function render() {
+            var container = document.getElementById('stepItems');
+            if (!container) return;
+            container.innerHTML = '';
+            steps.forEach(function(step, i) {
+              var isDone = checked.indexOf(i) !== -1;
+              var row = document.createElement('div');
+              row.style.cssText = 'display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.45rem;cursor:pointer;';
+              row.innerHTML =
+                '<div style="flex-shrink:0;width:16px;height:16px;margin-top:.1rem;border-radius:4px;border:1.5px solid ' +
+                (isDone ? '#4dd9c4' : 'rgba(255,255,255,.25)') +
+                ';background:' + (isDone ? '#4dd9c4' : 'transparent') + ';display:flex;align-items:center;justify-content:center;">' +
+                (isDone ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#0a2e2b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '') +
+                '</div>' +
+                '<span style="font-size:.84rem;line-height:1.45;color:' + (isDone ? 'rgba(255,255,255,.38)' : 'rgba(255,255,255,.8)') + ';' + (isDone ? 'text-decoration:line-through;' : '') + '">' +
+                step.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') +
+                '</span>';
+              row.addEventListener('click', function() {
+                var idx = checked.indexOf(i);
+                if (idx === -1) checked.push(i); else checked.splice(idx, 1);
+                save();
+                render();
+                updateProgress();
+              });
+              container.appendChild(row);
+            });
+            updateProgress();
+          }
+
+          render();
+        })();
+        </script>
+        {% endif %}
       </div>
       <script>
         (function() {
@@ -1217,84 +1396,67 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
         {# L1 — Active income #}
         <div class="mom-card">
           <div class="mom-card-title"><span style="color:#6366f1">●</span> Active income</div>
-          {% if momentum %}
-            <div class="mom-indicator">
-              <span class="mom-ind-label">Consulting bookings (mo)</span>
-              <span class="mom-ind-val">{{ momentum.consulting_bookings_mo }}<span class="mom-trend-flat">→</span></span>
-            </div>
-            <div class="mom-indicator">
-              <span class="mom-ind-label">Pipeline value</span>
-              <span class="mom-ind-val">${{ '{:,.0f}'.format(momentum.pipeline_value) }}<span class="mom-trend-flat">→</span></span>
-            </div>
-          {% else %}
-            <div class="mom-placeholder">No data yet — agents will populate this as they work.</div>
-          {% endif %}
+          <div class="mom-indicator">
+            <span class="mom-ind-label">Consulting bookings (mo)</span>
+            <input class="mom-input" type="number" min="0" id="mom_consulting_bookings_mo" value="{{ momentum.consulting_bookings_mo if momentum else 0 }}">
+          </div>
+          <div class="mom-indicator">
+            <span class="mom-ind-label">Pipeline value ($)</span>
+            <input class="mom-input" type="number" min="0" step="100" id="mom_pipeline_value" value="{{ momentum.pipeline_value|int if momentum else 0 }}">
+          </div>
         </div>
 
         {# L2 — Leveraged income #}
         <div class="mom-card">
           <div class="mom-card-title"><span style="color:#8b5cf6">●</span> Leveraged income</div>
-          {% if momentum %}
-            <div class="mom-indicator">
-              <span class="mom-ind-label">LinkedIn connections</span>
-              <span class="mom-ind-val">{{ momentum.linkedin_connections }}<span class="mom-trend-flat">→</span></span>
-            </div>
-          {% else %}
-            <div class="mom-placeholder">No data yet.</div>
-          {% endif %}
+          <div class="mom-indicator">
+            <span class="mom-ind-label">LinkedIn connections</span>
+            <input class="mom-input" type="number" min="0" id="mom_linkedin_connections" value="{{ momentum.linkedin_connections if momentum else 0 }}">
+          </div>
         </div>
 
         {# L3 — Productized income #}
         <div class="mom-card">
           <div class="mom-card-title"><span style="color:#ec4899">●</span> Productized income</div>
-          {% if momentum %}
-            <div class="mom-indicator">
-              <span class="mom-ind-label">Course enrollments</span>
-              <span class="mom-ind-val">{{ momentum.course_enrollments }}<span class="mom-trend-flat">→</span></span>
-            </div>
-            <div class="mom-indicator">
-              <span class="mom-ind-label">Newsletter subscribers</span>
-              <span class="mom-ind-val">{{ momentum.newsletter_subscribers }}<span class="mom-trend-flat">→</span></span>
-            </div>
-          {% else %}
-            <div class="mom-placeholder">No data yet.</div>
-          {% endif %}
+          <div class="mom-indicator">
+            <span class="mom-ind-label">Course enrollments</span>
+            <input class="mom-input" type="number" min="0" id="mom_course_enrollments" value="{{ momentum.course_enrollments if momentum else 0 }}">
+          </div>
+          <div class="mom-indicator">
+            <span class="mom-ind-label">Newsletter subscribers</span>
+            <input class="mom-input" type="number" min="0" id="mom_newsletter_subscribers" value="{{ momentum.newsletter_subscribers if momentum else 0 }}">
+          </div>
         </div>
 
         {# L4 — Automated income #}
         <div class="mom-card">
           <div class="mom-card-title"><span style="color:var(--gcc-amber)">●</span> Automated income</div>
-          {% if momentum %}
-            <div class="mom-indicator">
-              <span class="mom-ind-label">Email list size</span>
-              <span class="mom-ind-val">{{ momentum.email_list_size }}<span class="mom-trend-flat">→</span></span>
-            </div>
-            <div class="mom-indicator">
-              <span class="mom-ind-label">Funnel opt-in rate</span>
-              <span class="mom-ind-val">{{ '{:.1%}'.format(momentum.funnel_opt_in_rate) }}<span class="mom-trend-flat">→</span></span>
-            </div>
-            <div class="mom-indicator">
-              <span class="mom-ind-label">Organic sessions (SEO)</span>
-              <span class="mom-ind-val">{{ momentum.seo_organic_sessions }}<span class="mom-trend-flat">→</span></span>
-            </div>
-          {% else %}
-            <div class="mom-placeholder">No data yet.</div>
-          {% endif %}
+          <div class="mom-indicator">
+            <span class="mom-ind-label">Email list size</span>
+            <input class="mom-input" type="number" min="0" id="mom_email_list_size" value="{{ momentum.email_list_size if momentum else 0 }}">
+          </div>
+          <div class="mom-indicator">
+            <span class="mom-ind-label">Funnel opt-in rate (%)</span>
+            <input class="mom-input" type="number" min="0" max="100" step="0.1" id="mom_funnel_opt_in_rate" value="{{ (momentum.funnel_opt_in_rate * 100)|round(1) if momentum else 0 }}">
+          </div>
+          <div class="mom-indicator">
+            <span class="mom-ind-label">Organic sessions (SEO)</span>
+            <input class="mom-input" type="number" min="0" id="mom_seo_organic_sessions" value="{{ momentum.seo_organic_sessions if momentum else 0 }}">
+          </div>
         </div>
 
         {# L5 — Wealth deployment #}
         <div class="mom-card">
           <div class="mom-card-title"><span style="color:var(--gcc-teal)">●</span> Wealth deployment</div>
-          {% if momentum %}
-            <div class="mom-indicator">
-              <span class="mom-ind-label">Investment balance</span>
-              <span class="mom-ind-val">${{ '{:,.0f}'.format(momentum.investment_balance) }}<span class="mom-trend-flat">→</span></span>
-            </div>
-            <div class="mom-placeholder" style="margin-top:0.5rem">Full L5 indicators pending Plaid integration.</div>
-          {% else %}
-            <div class="mom-placeholder">No data yet.</div>
-          {% endif %}
+          <div class="mom-indicator">
+            <span class="mom-ind-label">Investment balance ($)</span>
+            <input class="mom-input" type="number" min="0" step="100" id="mom_investment_balance" value="{{ momentum.investment_balance|int if momentum else 0 }}">
+          </div>
         </div>
+      </div>
+
+      <div class="mom-save-row">
+        <button class="mom-save-btn" id="momSaveBtn" onclick="saveMomentum()">Save Indicators</button>
       </div>
     </div>
 
@@ -1303,7 +1465,7 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
     ──────────────────────────────────────────────────────────────────────── #}
     <div class="gcc-tab-panel" data-panel="cycle" role="tabpanel">
       <div class="gcc-section-header" style="margin-bottom:1.25rem">
-        <h2>Orchestrator Cycle</h2>
+        <h2>Cycle History</h2>
         <div style="display:flex;gap:0.5rem;align-items:center">
           <button class="gcc-run-btn" id="runCycleBtn">▶ Run Cycle</button>
           <span class="jrn-next-run" id="cycNextRun" data-next-run-class="jrn-next-run"></span>
@@ -1312,61 +1474,12 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
         </div>
       </div>
 
-      {# History view #}
+      {# History view — accordion, fully JS-driven (SIM-PRD-CYCLE-001) #}
       <div id="cycViewHistory">
-      {# Current cycle status banner #}
-      {% if latest_cycle %}
-        <div class="cyc-status-card">
-          <div class="cyc-status-left">
-            <span class="cyc-phase-dot {% if latest_cycle.phase == 'exploit' %}cyc-dot-exploit{% else %}cyc-dot-explore{% endif %}"></span>
-            <div>
-              <div class="cyc-status-title">Cycle {{ latest_cycle.cycle_number }} — {{ latest_cycle.phase | capitalize }} phase</div>
-              <div class="cyc-status-sub">
-                {% if not latest_cycle.cycle_completed_at %}
-                  <span style="color:var(--gcc-teal)">Running…</span>
-                {% else %}
-                  Completed {{ latest_cycle.cycle_completed_at.strftime('%b %d, %Y') }}
-                {% endif %}
-                &nbsp;·&nbsp; {{ latest_cycle.actions_dispatched }} dispatched &nbsp;·&nbsp; {{ latest_cycle.actions_escalated }} escalated
-              </div>
-            </div>
-          </div>
+        <div id="cycAccordion" class="cyc-acc-list"></div>
+        <div id="cycLoadMore" class="cyc-load-more" style="display:none">
+          <button class="cyc-load-more-btn" onclick="loadMoreCycles()">Load more cycles</button>
         </div>
-
-        {% if latest_cycle.orchestrator_reasoning %}
-          <div class="cyc-reasoning">
-            <div class="cyc-reasoning-label">Orchestrator reasoning</div>
-            <div class="cyc-reasoning-text">{{ latest_cycle.orchestrator_reasoning }}</div>
-          </div>
-        {% endif %}
-      {% else %}
-        <div class="aq-empty" style="padding:3rem 2rem">
-          <div class="aq-empty-icon">⚙</div>
-          <div class="aq-empty-title">No cycles run yet.</div>
-          <div class="aq-empty-msg">Click <strong>Run Cycle</strong> above to trigger the orchestrator for the first time. It will score your income streams, dispatch actions, and generate a report.</div>
-        </div>
-      {% endif %}
-
-      {# Cycle history list #}
-      {% if all_cycles %}
-        <div class="cyc-history-header">Cycle history</div>
-        <div class="cyc-history-list">
-          {% for c in all_cycles %}
-          <div class="cyc-history-row">
-            <div class="cyc-history-num">Cycle {{ c.cycle_number }}</div>
-            <div class="cyc-history-meta">
-              <span class="cyc-phase-pill cyc-pill-{{ c.phase }}">{{ c.phase }}</span>
-              <span>{{ c.actions_dispatched }} actions</span>
-              {% if c.actions_escalated %}<span>{{ c.actions_escalated }} escalated</span>{% endif %}
-            </div>
-            <div class="cyc-history-date">{{ c.cycle_started_at[:10] if c.cycle_started_at else '—' }}</div>
-            <div class="cyc-history-status">
-              {% if not c.cycle_completed_at %}<span style="color:var(--gcc-teal)">Running</span>{% else %}Done{% endif %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      {% endif %}
       </div>{# end #cycViewHistory #}
 
       {# Diff view #}
@@ -1773,9 +1886,9 @@ function renderJourneyV3(data) {
     } else {
       layer.actions.forEach(function(row) {
         var stClass = 'jrn3-st-' + row.status;
-        var stIcon  = {complete:'✓', in_progress:'⟳', pending:'', failed:'⚠'}[row.status] || '';
+        var stIcon  = {complete:'✓', in_progress:'⟳', pending:'', failed:'⚠', escalated:'⬆', rejected:'—'}[row.status] || '';
         var badgeCls = 'jrn3-badge-' + row.status;
-        var badgeLabel = {complete:'complete', in_progress:'in progress', pending:'pending', failed:'failed'}[row.status] || row.status;
+        var badgeLabel = {complete:'complete', in_progress:'in progress', pending:'pending', failed:'failed', escalated:'escalated', rejected:'rejected'}[row.status] || row.status;
         var artifactHtml = (row.status === 'complete' && row.has_artifact)
           ? '<a class="jrn3-a-artifact" href="/simulations/' + SIM_ID + '/artifacts/' + row.id + '">View artifact →</a>'
           : '<span style="min-width:105px;display:inline-block"></span>';
@@ -1820,7 +1933,7 @@ function runCycleNow(btn) {
   btn.disabled = true; btn.textContent = 'Running…';
   fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/run', { method: 'POST' })
     .then(r => r.json())
-    .then(d => { if (d.error) { alert('Cycle error: ' + d.error); } else { window.location.reload(); } })
+    .then(d => { if (d.error) { alert('Cycle error: ' + d.error); } else { window.location.href = window.location.pathname + '?tab=journey'; } })
     .catch(() => alert('Run cycle failed — try again.'))
     .finally(() => { btn.disabled = false; btn.textContent = '&#9654; Run Cycle'; });
 }
@@ -1830,6 +1943,9 @@ function runCycleNow(btn) {
   const params = new URLSearchParams(window.location.search);
   switchTab(params.get('tab') || 'journey');
 })();
+
+// Pre-fetch escalation count so the badge is visible before the user opens the tab
+setTimeout(loadEscalations, 0);
 
 // ── Relative timestamps ──────────────────────────────────────────────────────
 function relativeTime(iso) {
@@ -2373,6 +2489,32 @@ function _renderDiffBody(data) {
   el.innerHTML = html;
 }
 
+// ── Momentum save ────────────────────────────────────────────────────────────
+function saveMomentum() {
+  const btn = document.getElementById('momSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const optIn = parseFloat(document.getElementById('mom_funnel_opt_in_rate').value || 0);
+  const payload = {
+    consulting_bookings_mo:  parseInt(document.getElementById('mom_consulting_bookings_mo').value  || 0),
+    pipeline_value:          parseFloat(document.getElementById('mom_pipeline_value').value         || 0),
+    linkedin_connections:    parseInt(document.getElementById('mom_linkedin_connections').value    || 0),
+    course_enrollments:      parseInt(document.getElementById('mom_course_enrollments').value      || 0),
+    newsletter_subscribers:  parseInt(document.getElementById('mom_newsletter_subscribers').value  || 0),
+    email_list_size:         parseInt(document.getElementById('mom_email_list_size').value         || 0),
+    funnel_opt_in_rate:      optIn / 100,
+    seo_organic_sessions:    parseInt(document.getElementById('mom_seo_organic_sessions').value    || 0),
+    investment_balance:      parseFloat(document.getElementById('mom_investment_balance').value    || 0),
+  };
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/momentum', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(() => { btn.textContent = 'Saved ✓'; setTimeout(() => { btn.disabled = false; btn.textContent = 'Save Indicators'; }, 2000); })
+  .catch(() => { btn.textContent = 'Error — retry'; btn.disabled = false; });
+}
+
 // ── Run Cycle ────────────────────────────────────────────────────────────────
 (function() {
   const btn = document.getElementById('runCycleBtn');
@@ -2384,11 +2526,318 @@ function _renderDiffBody(data) {
       .then(r => r.json())
       .then(data => {
         if (data.error) { alert('Cycle error: ' + data.error); return; }
-        window.location.reload();
+        window.location.href = window.location.pathname + '?tab=journey';
       })
       .catch(() => { alert('Run cycle failed. Please try again.'); })
       .finally(() => { btn.disabled = false; btn.textContent = '▶ Run Cycle'; });
   });
+})();
+
+// ── Cycle Accordion (SIM-PRD-CYCLE-001) ─────────────────────────────────────
+var _cycPage = 0;
+var _cycHasMore = false;
+var _cycBootstrapped = false;
+var _cycDetailLoaded = {};
+var _cycExpanded = null;
+
+function _loadCyclesIfNeeded() {
+  if (_cycBootstrapped) return;
+  _cycBootstrapped = true;
+  _cycPage = 0;
+  document.getElementById('cycAccordion').innerHTML =
+    '<div style="padding:1.5rem 0;color:var(--gcc-muted);font-size:.84rem">Loading cycles…</div>';
+  _fetchCyclesPage(0, false);
+}
+
+function loadMoreCycles() {
+  _fetchCyclesPage(_cycPage + 1, true);
+}
+
+function _fetchCyclesPage(page, append) {
+  fetch(API + '/cycles/summary?page=' + page)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      _cycPage = page;
+      _cycHasMore = data.has_more;
+      _renderCycleRows(data.cycles || [], append);
+      document.getElementById('cycLoadMore').style.display = _cycHasMore ? '' : 'none';
+    })
+    .catch(function() {
+      document.getElementById('cycAccordion').innerHTML =
+        '<div class="cyc-acc-empty">Failed to load cycles. Please refresh.</div>';
+    });
+}
+
+function _renderCycleRows(cycles, append) {
+  var container = document.getElementById('cycAccordion');
+  if (!append) container.innerHTML = '';
+  if (!cycles.length && !append) {
+    container.innerHTML = '<div class="cyc-acc-empty">No cycles have run yet. Click <strong>Run Cycle</strong> above to dispatch your first set of agents.</div>';
+    return;
+  }
+  cycles.forEach(function(c, idx) {
+    var el = document.createElement('div');
+    el.className = 'cyc-acc-row';
+    el.id = 'cycRow-' + c.id;
+    el.innerHTML = _buildCycleRowHtml(c);
+    container.appendChild(el);
+    if (!append && idx === 0) _expandCycleRow(c.id);
+  });
+}
+
+function _buildCycleRowHtml(c) {
+  var phase = c.phase || 'explore';
+  var badgeCls = phase === 'exploit' ? 'cyc-badge-exploit' : 'cyc-badge-explore';
+  var phaseCls = phase === 'exploit' ? 'cyc-phase-exploit' : 'cyc-phase-explore';
+  var dateStr = '';
+  if (c.cycle_completed_at) {
+    var d = new Date(c.cycle_completed_at);
+    dateStr = d.toLocaleDateString('en-US', {month:'numeric', day:'numeric', year:'numeric'}) +
+              ' · ' + d.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+  } else if (c.cycle_started_at) {
+    dateStr = 'Running…';
+  }
+  var stats = '<span class="cyc-acc-stat cyc-stat-navy">' + esc(c.actions_dispatched || 0) + ' agents</span>';
+  if (c.emails_sent > 0)    stats += '<span class="cyc-acc-stat cyc-stat-purple">' + c.emails_sent + ' emails</span>';
+  if (c.replies > 0)        stats += '<span class="cyc-acc-stat cyc-stat-green">'  + c.replies + ' replies</span>';
+  if (c.contacts_added > 0) stats += '<span class="cyc-acc-stat cyc-stat-teal">'   + c.contacts_added + ' contacts</span>';
+  var reasoningHtml = '';
+  if (c.orchestrator_reasoning) {
+    reasoningHtml = '<div class="cyc-reasoning-new">' +
+      '<div class="cyc-reasoning-lbl">Orchestrator Reasoning</div>' +
+      '<div class="cyc-reasoning-txt">' + esc(c.orchestrator_reasoning) + '</div>' +
+      '</div>';
+  }
+  return '<div class="cyc-acc-hdr" onclick="toggleCycleRow(\'' + c.id + '\')">' +
+    '<div class="cyc-acc-badge ' + badgeCls + '">' + c.cycle_number + '</div>' +
+    '<span class="cyc-acc-label">Cycle ' + c.cycle_number + '</span>' +
+    '<span class="cyc-acc-phase ' + phaseCls + '">' + phase.toUpperCase() + '</span>' +
+    '<span class="cyc-acc-date">' + esc(dateStr) + '</span>' +
+    '<div class="cyc-acc-stats">' + stats + '</div>' +
+    '<span class="cyc-acc-chevron">▾</span>' +
+    '</div>' +
+    '<div class="cyc-acc-body" id="cycBody-' + c.id + '">' +
+      reasoningHtml +
+      '<div id="cycDetail-' + c.id + '">' +
+        '<div style="padding:.35rem 0;color:var(--gcc-muted);font-size:.82rem">Loading activity…</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function toggleCycleRow(cycleId) {
+  var row = document.getElementById('cycRow-' + cycleId);
+  if (!row) return;
+  var wasOpen = row.classList.contains('open');
+  if (_cycExpanded && _cycExpanded !== cycleId) {
+    var prev = document.getElementById('cycRow-' + _cycExpanded);
+    if (prev) prev.classList.remove('open');
+  }
+  if (wasOpen) {
+    row.classList.remove('open');
+    _cycExpanded = null;
+  } else {
+    _expandCycleRow(cycleId);
+  }
+}
+
+function _expandCycleRow(cycleId) {
+  var row = document.getElementById('cycRow-' + cycleId);
+  if (!row) return;
+  row.classList.add('open');
+  _cycExpanded = cycleId;
+  if (!_cycDetailLoaded[cycleId]) {
+    _cycDetailLoaded[cycleId] = true;
+    _loadCycleActivity(cycleId);
+  }
+}
+
+function _loadCycleActivity(cycleId) {
+  fetch(API + '/cycles/' + cycleId + '/activity')
+    .then(function(r) { return r.json(); })
+    .then(function(data) { _renderCycleDetail(cycleId, data); })
+    .catch(function() {
+      var el = document.getElementById('cycDetail-' + cycleId);
+      if (el) el.innerHTML = '<div style="color:#E85D4A;font-size:.82rem">Failed to load activity.</div>';
+    });
+}
+
+function _renderCycleDetail(cycleId, data) {
+  var el = document.getElementById('cycDetail-' + cycleId);
+  if (!el) return;
+  var html = '';
+  var agents = data.agents || [];
+  if (agents.length) html += _cycSection(cycleId, 'ag', '◎', 'Agents Dispatched', agents.length, 'green', true, _cycAgents(agents));
+  var emails = data.emails || [];
+  if (emails.length) html += _cycSection(cycleId, 'em', '✉', 'Emails Sent', emails.length, 'purple', true, _cycEmailSummary(emails) + _cycEmails(emails));
+  var contacts = data.contacts || [];
+  if (contacts.length) html += _cycSection(cycleId, 'co', '▣', 'Contacts Added to CRM', contacts.length, 'teal', false, _cycContacts(contacts));
+  var proc = data.steps_processed || [], upcoming = data.steps_upcoming || [];
+  if (proc.length || upcoming.length) {
+    var stepsLabel = proc.length + ' processed · ' + upcoming.length + ' upcoming';
+    html += _cycSectionCustom(cycleId, 'st', '⧖', 'Action Steps', stepsLabel, 'gold', false, _cycSteps(proc, upcoming));
+  }
+  var bookings = data.bookings || [];
+  if (bookings.length) html += _cycSection(cycleId, 'bk', '□', 'Calls Booked', bookings.length, 'gold', false, _cycBookings(bookings));
+  if (!html) html = '<div style="padding:.4rem 0;color:var(--gcc-muted);font-size:.82rem">No activity recorded for this cycle.</div>';
+  el.innerHTML = html;
+}
+
+function _cycSection(cid, key, icon, title, count, color, expanded, body) {
+  var id = 'cs-' + cid + '-' + key;
+  var cls = 'cyc-sec' + (expanded ? '' : ' collapsed');
+  return '<div class="' + cls + '" id="' + id + '">' +
+    '<div class="cyc-sec-hdr" onclick="toggleCycSec(\'' + id + '\')">' +
+    '<span class="cyc-sec-icon">' + icon + '</span><span>' + esc(title) + '</span>' +
+    '<span class="cyc-sec-badge cyc-sbadge-' + color + '">' + count + '</span>' +
+    '<span class="cyc-sec-toggle">▾</span></div>' +
+    '<div class="cyc-sec-body">' + body + '</div></div>';
+}
+
+function _cycSectionCustom(cid, key, icon, title, badgeText, color, expanded, body) {
+  var id = 'cs-' + cid + '-' + key;
+  var cls = 'cyc-sec' + (expanded ? '' : ' collapsed');
+  return '<div class="' + cls + '" id="' + id + '">' +
+    '<div class="cyc-sec-hdr" onclick="toggleCycSec(\'' + id + '\')">' +
+    '<span class="cyc-sec-icon">' + icon + '</span><span>' + esc(title) + '</span>' +
+    '<span class="cyc-sec-badge cyc-sbadge-' + color + '">' + esc(badgeText) + '</span>' +
+    '<span class="cyc-sec-toggle">▾</span></div>' +
+    '<div class="cyc-sec-body">' + body + '</div></div>';
+}
+
+function toggleCycSec(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.toggle('collapsed');
+}
+
+function _fmtAt(s) {
+  return (s || '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+function _cycAgents(agents) {
+  return agents.map(function(a) {
+    var ok = (a.status !== 'failed');
+    var icon = ok ? '✅' : '🔴';
+    var linkHtml = (ok && a.has_artifact && a.agent_action_id)
+      ? '<a class="cyc-agent-link" href="' + ROOT + '/simulations/' + SIM_ID + '/artifacts/' + a.agent_action_id + '">View artifact →</a>'
+      : '';
+    var failHtml = ok ? '' : '<div class="cyc-agent-failed">Failed — will retry next cycle</div>';
+    return '<div class="cyc-agent-row">' +
+      '<span class="cyc-agent-icon">' + icon + '</span>' +
+      '<div class="cyc-agent-info">' +
+        '<div class="cyc-agent-name">' + esc(_fmtAt(a.action_type)) + '</div>' +
+        '<div class="cyc-agent-layer">Layer ' + (a.source_layer || '?') + '</div>' +
+        failHtml +
+      '</div>' + linkHtml + '</div>';
+  }).join('');
+}
+
+function _cycEmailSummary(emails) {
+  var counts = {};
+  emails.forEach(function(e) { counts[e.display_status] = (counts[e.display_status] || 0) + 1; });
+  var parts = [];
+  if (counts.replied) parts.push('<span style="color:#1A8754">' + counts.replied + ' replied</span>');
+  if (counts.opened)  parts.push('<span style="color:#534AB7">' + counts.opened  + ' opened</span>');
+  if (counts.sent)    parts.push('<span style="color:#6b7b8d">' + counts.sent    + ' sent</span>');
+  if (counts.bounced) parts.push('<span style="color:#E85D4A">' + counts.bounced + ' bounced</span>');
+  return parts.length ? '<div class="cyc-email-summary">' + parts.join('') + '</div>' : '';
+}
+
+function _cycEmails(emails) {
+  var iconMap  = {replied:'↩', opened:'👁', sent:'✉', bounced:'🚫'};
+  var badgeMap = {replied:'cyc-ebadge-replied', opened:'cyc-ebadge-opened', sent:'cyc-ebadge-sent', bounced:'cyc-ebadge-bounced'};
+  var lblMap   = {replied:'Replied', opened:'Opened', sent:'Sent', bounced:'Bounced'};
+  return emails.map(function(e) {
+    var st = e.display_status;
+    var timeStr = e.sent_at ? new Date(e.sent_at).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}) : '';
+    var coHtml = e.company ? ' <span style="font-weight:400;color:var(--gcc-muted)">· ' + esc(e.company) + '</span>' : '';
+    return '<div class="cyc-email-row">' +
+      '<span class="cyc-email-icon">' + (iconMap[st] || '✉') + '</span>' +
+      '<div class="cyc-email-info">' +
+        '<div class="cyc-email-recip">' + esc(e.contact_name) + coHtml + '</div>' +
+        '<div class="cyc-email-subj">' + esc(e.subject) + '</div>' +
+      '</div>' +
+      '<div class="cyc-email-right">' +
+        '<span class="cyc-email-badge ' + (badgeMap[st] || '') + '">' + (lblMap[st] || st) + '</span>' +
+        '<div class="cyc-email-time">' + esc(timeStr) + '</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+function _cycContacts(contacts) {
+  var stageClass = {prospect:'cyc-stage-prospect', active:'cyc-stage-active', client:'cyc-stage-client'};
+  return contacts.map(function(c) {
+    var coHtml = c.company ? '<div class="cyc-contact-co">' + esc(c.company) + '</div>' : '';
+    return '<div class="cyc-contact-row">' +
+      '<div class="cyc-avatar">' + esc(c.initials) + '</div>' +
+      '<div class="cyc-contact-info"><div class="cyc-contact-name">' + esc(c.name) + '</div>' + coHtml + '</div>' +
+      '<div class="cyc-contact-badges">' +
+        '<span class="cyc-source-badge">' + esc(c.source_agent) + '</span>' +
+        '<span class="cyc-stage-badge ' + (stageClass[c.pipeline_stage] || 'cyc-stage-prospect') + '">' + esc(c.pipeline_stage) + '</span>' +
+      '</div></div>';
+  }).join('');
+}
+
+function _cycSteps(proc, upcoming) {
+  var html = proc.map(function(s) {
+    var ok = s.status === 'executed';
+    var icon = ok ? '✅' : '<span style="color:#6b7b8d;font-weight:700">×</span>';
+    var detail = '';
+    if (!ok && s.skip_reason) detail = '<div class="cyc-step-detail">' + esc(s.skip_reason) + '</div>';
+    else if (ok) detail = '<div class="cyc-step-detail" style="color:#059669">Executed</div>';
+    return '<div class="cyc-step-row ' + (ok ? 'executed' : 'skipped') + '">' +
+      '<span class="cyc-step-icon">' + icon + '</span>' +
+      '<div class="cyc-step-info"><div class="cyc-step-agent">' + esc(s.agent_label || _fmtAt(s.action_type)) +
+        (s.step_type ? ' → ' + esc(_fmtAt(s.step_type)) : '') + '</div>' + detail + '</div></div>';
+  }).join('');
+  if (upcoming.length) {
+    html += '<div class="cyc-upcoming-lbl">UPCOMING — SCHEDULED STEPS</div>';
+    var urgBadge = {high:'cyc-urg-urgent', medium:'cyc-urg-soon', low:'cyc-urg-upcoming'};
+    var urgColor = {high:'#E85D4A', medium:'#C9952A', low:'#6b7b8d'};
+    html += upcoming.map(function(s) {
+      var u = s.urgency || 'low';
+      return '<div class="cyc-upcoming urgency-' + u + '">' +
+        '<div class="cyc-upcoming-inner">' +
+          '<span class="cyc-up-icon" style="color:' + (urgColor[u] || '#6b7b8d') + '">⧖</span>' +
+          '<div class="cyc-up-info">' +
+            '<div class="cyc-up-agent">' + esc(s.agent_label || _fmtAt(s.action_type)) +
+              (s.step_type ? ' → ' + esc(_fmtAt(s.step_type)) : '') + '</div>' +
+            (s.subject ? '<div class="cyc-up-detail">' + esc(s.subject) + '</div>' : '') +
+          '</div>' +
+          '<div class="cyc-up-right">' +
+            '<span class="cyc-urgency-badge ' + (urgBadge[u] || '') + '">' + esc(s.urgency_label) + '</span>' +
+            '<div class="cyc-up-date">' + esc(s.suggested_date) + '</div>' +
+            '<div class="cyc-up-count">' + esc(s.countdown) + '</div>' +
+          '</div>' +
+        '</div></div>';
+    }).join('');
+  }
+  return html;
+}
+
+function _cycBookings(bookings) {
+  return bookings.map(function(b) {
+    return '<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;border-radius:7px;background:rgba(0,0,0,.013);margin-bottom:4px">' +
+      '<div style="flex:1"><div style="font-size:.82rem;font-weight:500;color:var(--gcc-navy)">' + esc(b.contact_name || 'Unknown') + '</div>' +
+      (b.company ? '<div style="font-size:.71rem;color:var(--gcc-muted)">' + esc(b.company) + '</div>' : '') + '</div>' +
+      '<div style="text-align:right"><div style="font-size:.77rem;font-weight:500;color:var(--gcc-teal)">' + esc(b.session_type || 'Call') + '</div>' +
+      '<div style="font-size:.7rem;color:var(--gcc-muted)">' + esc(b.booking_date || '') + '</div></div></div>';
+  }).join('');
+}
+
+// Patch switchTab to lazy-load cycle accordion on first activation
+(function() {
+  var _orig = window.switchTab;
+  window.switchTab = function(name) {
+    _orig(name);
+    if (name === 'cycle') _loadCyclesIfNeeded();
+  };
+})();
+
+// If the page was loaded directly with ?tab=cycle, the initial switchTab()
+// fired before this patch — bootstrap the accordion now.
+(function() {
+  var t = new URLSearchParams(window.location.search).get('tab');
+  if (t === 'cycle') _loadCyclesIfNeeded();
 })();
 </script>
 

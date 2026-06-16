@@ -79,7 +79,7 @@ def register():
         email=data['email'].lower(),
         password_hash=pw_hash,
         full_name=data['full_name'],
-        email_verified=True,  # TODO: revert to False once SendGrid account is unblocked
+        email_verified=False,
         email_verify_token=verify_token,
         email_verify_token_expires=datetime.utcnow() + timedelta(hours=24),
     )

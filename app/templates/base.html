@@ -18,7 +18,11 @@
 <nav class="navbar">
   <div class="nav-inner">
     <a href="{{ url_for('pages.index') }}" class="nav-logo">
-      <span class="logo-mark">S</span><span class="logo-text">Simulacrum</span>
+      <span class="logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
+        </svg>
+      </span><span class="logo-text">SimulacrumAI.io</span>
     </a>
     {% if current_user.is_authenticated %}
     <div class="nav-links">

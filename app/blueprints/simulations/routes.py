@@ -1225,22 +1225,50 @@ def get_journey(sim_id):
             _seen.add(_key)
             all_actions.append(_a)
 
-    # Scope to the latest cycle: only show agents dispatched in that cycle.
+    # Scope to the latest cycle — ALL queue items (including escalated/queued ones
+    # with no AgentAction yet) so every dispatched agent appears on the Journey tab.
+    _qstatus_map = {
+        'complete': 'complete', 'dispatched': 'in_progress',
+        'queued': 'pending', 'escalated': 'escalated',
+        'failed': 'failed', 'rejected': 'rejected',
+    }
     if latest_cycle:
-        _cycle_action_ids = {
-            row.agent_action_id
-            for row in Layer6ActionQueue.query.filter_by(cycle_id=latest_cycle.id).all()
-            if row.agent_action_id
-        }
-        _cycle_actions = [a for a in all_actions if a.id in _cycle_action_ids]
+        _cycle_queue = Layer6ActionQueue.query.filter_by(
+            cycle_id=latest_cycle.id
+        ).order_by(Layer6ActionQueue.created_at).all()
+        _dispatched_ids = [q.agent_action_id for q in _cycle_queue if q.agent_action_id]
+        _agent_map: dict = {}
+        if _dispatched_ids:
+            for _a in AgentAction.query.filter(AgentAction.id.in_(_dispatched_ids)).all():
+                _agent_map[_a.id] = _a
+        _cycle_records = []
+        for q in _cycle_queue:
+            _aa = _agent_map.get(q.agent_action_id) if q.agent_action_id else None
+            if _aa:
+                _cycle_records.append({
+                    'id': _aa.id,
+                    'action_type': q.action_type,
+                    'layer_number': _aa.layer_number,
+                    'status': _aa.status,
+                    'date': _aa.created_at.strftime('%Y-%m-%d') if _aa.created_at else None,
+                })
+            else:
+                _cycle_records.append({
+                    'id': None,
+                    'action_type': q.action_type,
+                    'layer_number': q.source_layer,
+                    'status': _qstatus_map.get(q.status, q.status),
+                    'date': q.created_at.strftime('%Y-%m-%d') if q.created_at else None,
+                })
     else:
-        _cycle_actions = []
+        _cycle_records = []
 
     # Apply optional status filter on top of the cycle scope.
-    if status_filter in valid_statuses:
-        display_actions = [a for a in _cycle_actions if a.status == status_filter]
+    _all_display_statuses = valid_statuses | {'escalated', 'rejected'}
+    if status_filter in _all_display_statuses:
+        display_records = [r for r in _cycle_records if r['status'] == status_filter]
     else:
-        display_actions = _cycle_actions
+        display_records = _cycle_records
 
     # Layer income totals
     outcome_rows = db.session.query(
@@ -1293,7 +1321,7 @@ def get_journey(sim_id):
                     _first_type, _first_def = next(iter(_layer_agents.items()))
                     suggested_by_layer[_n] = _first_def.get('label', _first_type.replace('_', ' ').title())
 
-    status_order = {'in_progress': 0, 'pending': 1, 'complete': 2, 'failed': 3}
+    status_order = {'in_progress': 0, 'pending': 1, 'complete': 2, 'failed': 3, 'escalated': 4, 'rejected': 5}
 
     # Pre-fetch which actions actually have a current ArtifactVersion so that
     # has_artifact is accurate. Using bool(a.artifact) (the legacy column) can
@@ -1327,25 +1355,19 @@ def get_journey(sim_id):
         layer_income = income_by_layer.get(n, 0)
 
         # Action rows for this layer (filtered)
-        layer_rows_raw = [a for a in display_actions if a.layer_number == n]
-        # Sort: date desc, within same date in_progress > pending > complete > failed
-        layer_rows_raw.sort(
-            key=lambda a: (
-                -(a.created_at.timestamp() if a.created_at else 0),
-                status_order.get(a.status, 9),
-            )
-        )
+        layer_rows_raw = [r for r in display_records if r['layer_number'] == n]
+        layer_rows_raw.sort(key=lambda r: status_order.get(r['status'], 9))
 
         action_rows = []
-        for a in layer_rows_raw:
-            defn = layer_agent_defs.get(a.action_type, {})
+        for r in layer_rows_raw:
+            defn = layer_agent_defs.get(r['action_type'], {})
             action_rows.append({
-                'id': a.id,
-                'action_type': a.action_type,
-                'label': defn.get('label', a.action_type.replace('_', ' ').title()),
-                'status': a.status,
-                'date': a.created_at.strftime('%Y-%m-%d') if a.created_at else None,
-                'has_artifact': a.id in _action_ids_with_version,
+                'id': r['id'],
+                'action_type': r['action_type'],
+                'label': defn.get('label', r['action_type'].replace('_', ' ').title()),
+                'status': r['status'],
+                'date': r['date'],
+                'has_artifact': r['id'] in _action_ids_with_version if r['id'] else False,
             })
 
         layers_out.append({
@@ -1371,6 +1393,6 @@ def get_journey(sim_id):
             'simulation_status': sim.status,
             'cycle_is_running': cycle_is_running,
         },
-        'total_actions': len(display_actions),
+        'total_actions': len(display_records),
         'status_filter': status_filter,
     }), 200

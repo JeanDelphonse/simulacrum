@@ -115,7 +115,7 @@ def _send_email(notif) -> None:
     )
 
     message = Mail(
-        from_email=From('notifications@simulacrum.app', 'Simulacrum'),
+        from_email=From('simi@simulacrumai.io', 'SimulacrumAI.io'),
         to_emails=To(user.email),
         subject=Subject(notif.title),
         plain_text_content=PlainTextContent(notif.body),

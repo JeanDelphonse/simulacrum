@@ -285,28 +285,13 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
 
         raw_email = (p.get('email') or '').strip().lower()
         is_fallback = raw_email.startswith('valuemanager.management') and raw_email.endswith('@gmail.com')
-        if not raw_email or raw_email == 'valuemanager.management@gmail.com':
-            from app.services.contact_lookup import get_next_fallback_email
-            raw_email = get_next_fallback_email(user_id, used_fallbacks)
-            used_fallbacks.add(raw_email)
-            p['email'] = raw_email
-            artifact_changed = True
-            is_fallback = True
+        if not raw_email or is_fallback:
+            continue
 
-        has_real_email = bool(raw_email and not is_fallback)
-
-        contact = None
-        if raw_email:
-            crm_id = p.get('crm_contact_id')
-            contact = Contact.query.get(crm_id) if crm_id else None
-            if not contact:
-                contact = Contact.query.filter_by(user_id=user_id, email=raw_email).first()
-
-        if not contact and is_fallback:
-            if first and last:
-                contact = Contact.query.filter_by(
-                    user_id=user_id, first_name=first, last_name=last,
-                ).first()
+        crm_id = p.get('crm_contact_id')
+        contact = Contact.query.get(crm_id) if crm_id else None
+        if not contact:
+            contact = Contact.query.filter_by(user_id=user_id, email=raw_email).first()
 
         if not contact:
             contact = Contact(
@@ -431,28 +416,13 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
 
         raw_email = (p.get('email') or '').strip().lower()
         is_fallback = raw_email.startswith('valuemanager.management') and raw_email.endswith('@gmail.com')
-        if not raw_email or raw_email == 'valuemanager.management@gmail.com':
-            from app.services.contact_lookup import get_next_fallback_email
-            raw_email = get_next_fallback_email(user_id, used_fallbacks)
-            used_fallbacks.add(raw_email)
-            p['email'] = raw_email
-            artifact_changed = True
-            is_fallback = True
+        if not raw_email or is_fallback:
+            continue
 
-        has_real_email = bool(raw_email and not is_fallback)
-
-        contact = None
-        if raw_email:
-            crm_id = p.get('crm_contact_id')
-            contact = Contact.query.get(crm_id) if crm_id else None
-            if not contact:
-                contact = Contact.query.filter_by(user_id=user_id, email=raw_email).first()
-
-        if not contact and is_fallback:
-            if first and last:
-                contact = Contact.query.filter_by(
-                    user_id=user_id, first_name=first, last_name=last,
-                ).first()
+        crm_id = p.get('crm_contact_id')
+        contact = Contact.query.get(crm_id) if crm_id else None
+        if not contact:
+            contact = Contact.query.filter_by(user_id=user_id, email=raw_email).first()
 
         if not contact:
             contact = Contact(

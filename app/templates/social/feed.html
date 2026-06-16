@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity Feed — Simulacrum</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f9fafb; color: #111827; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
+    a { text-decoration: none; color: inherit; }
+
+    .feed-nav {
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      padding: .875rem 2rem; display: flex; align-items: center; gap: 1.5rem;
+    }
+    .feed-nav .brand { font-weight: 800; font-size: 1.1rem; color: #111827; }
+    .feed-nav .brand span { color: #0e7490; }
+    .feed-nav a { font-size: .88rem; color: #6b7280; font-weight: 500; }
+    .feed-nav a:hover { color: #0e7490; }
+    .feed-nav .nav-right { margin-left: auto; display: flex; gap: 1rem; align-items: center; }
+
+    .feed-layout { max-width: 680px; margin: 2.5rem auto; padding: 0 1.5rem; }
+    .feed-header { margin-bottom: 1.75rem; }
+    .feed-header h1 { font-size: 1.5rem; font-weight: 700; color: #111827; margin-bottom: .25rem; }
+    .feed-header p { color: #6b7280; font-size: .9rem; }
+
+    .event-card {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 1rem 1.25rem; margin-bottom: .75rem;
+      display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .event-avatar {
+      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      object-fit: cover; background: #f3f4f6;
+    }
+    .event-avatar-placeholder {
+      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, #0e7490, #059669);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 16px; font-weight: 700;
+    }
+    .event-body { flex: 1; min-width: 0; }
+    .event-text { font-size: .9rem; color: #374151; line-height: 1.5; }
+    .event-text strong { color: #111827; }
+    .event-time { font-size: .78rem; color: #9ca3af; margin-top: .25rem; }
+    .event-link { color: #0e7490; font-weight: 600; }
+    .event-link:hover { text-decoration: underline; }
+
+    .empty-state { text-align: center; padding: 4rem 1.5rem; color: #9ca3af; }
+    .empty-state h2 { font-size: 1.1rem; margin-bottom: .5rem; color: #374151; }
+    .empty-state p { font-size: .9rem; }
+    .empty-state a {
+      display: inline-block; margin-top: 1rem;
+      background: #0e7490; color: #fff; padding: .55rem 1.25rem;
+      border-radius: 8px; font-size: .88rem; font-weight: 600;
+    }
+
+    .load-more-btn {
+      display: block; margin: 1.5rem auto 0; padding: .6rem 1.5rem;
+      border: 1px solid #e5e7eb; border-radius: 8px; background: #fff;
+      font-size: .88rem; color: #374151; cursor: pointer; font-weight: 500;
+    }
+    .load-more-btn:hover { border-color: #0e7490; color: #0e7490; }
+  </style>
+</head>
+<body>
+
+<nav class="feed-nav">
+  <a class="brand" href="/">SimulacrumAI.io</a>
+  <a href="/explore">Explore</a>
+  <a href="/my-chats">My Chats</a>
+  <div class="nav-right">
+    <a href="/dashboard">Dashboard</a>
+  </div>
+</nav>
+
+<div class="feed-layout">
+  <div class="feed-header">
+    <h1>Activity Feed</h1>
+    <p>Updates from your {{ connection_count }} connection{{ 's' if connection_count != 1 else '' }}</p>
+  </div>
+
+  {% if events %}
+  <div id="feed-list">
+    {% for item in events %}
+    {% set ev = item.event %}
+    <div class="event-card">
+      {% if item.actor_avatar %}
+      <img class="event-avatar"
+           src="{{ url_for('public.serve_avatar', filename=item.actor_avatar) }}"
+           alt="{{ item.actor_name }}" loading="lazy">
+      {% else %}
+      <div class="event-avatar-placeholder">{{ item.actor_name[0] if item.actor_name else '?' }}</div>
+      {% endif %}
+      <div class="event-body">
+        <div class="event-text">
+          {% if item.actor_slug %}
+          <a class="event-link" href="/u/{{ item.actor_slug }}">{{ item.actor_name }}</a>
+          {% else %}
+          <strong>{{ item.actor_name }}</strong>
+          {% endif %}
+          {% if ev.event_type == 'bio_page_published' %}
+            published their professional bio page.
+            {% if ev.metadata.get('slug') %}
+            <a class="event-link" href="/u/{{ ev.metadata.slug }}">View page →</a>
+            {% endif %}
+          {% elif ev.event_type == 'bio_page_updated' %}
+            updated their professional bio page.
+          {% elif ev.event_type == 'simulation_started' %}
+            started a new income simulation.
+          {% elif ev.event_type == 'likes_milestone' %}
+            {% set lc = ev.metadata.get('like_count', '') %}
+            reached {{ lc }} likes on their bio page!
+          {% elif ev.event_type == 'connection_made' %}
+            joined the Simulacrum network.
+          {% else %}
+            had some activity.
+          {% endif %}
+        </div>
+        <div class="event-time">{{ ev.created_at[:10] }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if has_more %}
+  <button class="load-more-btn" id="load-more-btn" data-page="{{ page + 1 }}">
+    Load more
+  </button>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <h2>No activity yet</h2>
+    <p>Connect with other professionals to see their updates here.</p>
+    <a href="/explore">Browse professionals →</a>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var btn = document.getElementById('load-more-btn');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var page = parseInt(btn.dataset.page, 10);
+    btn.textContent = 'Loading…';
+    btn.disabled = true;
+    fetch('/api/feed?page=' + page)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var list = document.getElementById('feed-list');
+        data.events.forEach(function (ev) {
+          var card = document.createElement('div');
+          card.className = 'event-card';
+          var initials = (ev.actor_name || '?')[0];
+          var avatar = ev.actor_avatar
+            ? '<img class="event-avatar" src="/avatars/' + ev.actor_avatar + '" loading="lazy">'
+            : '<div class="event-avatar-placeholder">' + initials + '</div>';
+          var actorHtml = ev.actor_slug
+            ? '<a class="event-link" href="/u/' + ev.actor_slug + '">' + ev.actor_name + '</a>'
+            : '<strong>' + ev.actor_name + '</strong>';
+          var typeText = {
+            bio_page_published: ' published their professional bio page.',
+            bio_page_updated: ' updated their professional bio page.',
+            simulation_started: ' started a new income simulation.',
+            likes_milestone: ' reached a new likes milestone!',
+            connection_made: ' joined the Simulacrum network.',
+          }[ev.event_type] || ' had some activity.';
+          card.innerHTML = avatar +
+            '<div class="event-body"><div class="event-text">' + actorHtml + typeText + '</div>' +
+            '<div class="event-time">' + ev.created_at.slice(0, 10) + '</div></div>';
+          list.appendChild(card);
+        });
+        if (data.has_more) {
+          btn.dataset.page = page + 1;
+          btn.textContent = 'Load more';
+          btn.disabled = false;
+        } else {
+          btn.remove();
+        }
+      })
+      .catch(function () {
+        btn.textContent = 'Load more';
+        btn.disabled = false;
+      });
+  });
+}());
+</script>
+
+</body>
+</html>

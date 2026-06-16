@@ -8,24 +8,76 @@
   <meta property="og:title" content="Explore professionals on Simulacrum">
   <meta property="og:description" content="Discover professionals powered by Simulacrum. Chat with AI assistants, explore services, and connect with talent.">
   <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f9fafb; color: #111827; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
+    body { background: #f9fafb; color: #111827; font-family: 'DM Sans', system-ui, -apple-system, sans-serif; line-height: 1.6; padding-top: 64px; }
     a { text-decoration: none; color: inherit; }
 
-    /* ── Nav ── */
+    /* ── Nav — matches landing page ── */
     .explore-nav {
-      background: #fff; border-bottom: 1px solid #e5e7eb;
-      padding: .875rem 2rem; display: flex; align-items: center; justify-content: space-between;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 64px;
+      background: rgba(250,251,252,.93); backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      transition: box-shadow 300ms;
     }
-    .explore-nav .brand { font-weight: 800; font-size: 1.1rem; color: #111827; }
-    .explore-nav .brand span { color: #0e7490; }
-    .btn-cta {
-      background: #0e7490; color: #fff; padding: .55rem 1.25rem;
-      border-radius: 8px; font-size: .88rem; font-weight: 600;
-      transition: background .15s;
+    .explore-nav.scrolled { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    .explore-nav-inner {
+      max-width: 1200px; margin: 0 auto; padding: 0 24px;
+      height: 100%; display: flex; align-items: center; gap: 8px;
     }
-    .btn-cta:hover { background: #0c6480; color: #fff; }
+    .explore-nav .brand {
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-right: 16px;
+      font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
+      color: #0D1B3E; text-decoration: none;
+    }
+    .explore-nav .brand:hover { color: #0F7B72; }
+    .explore-logo-mark {
+      width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+      background: linear-gradient(135deg, #0F7B72, #13A89E);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .explore-nav-spacer { flex: 1; }
+    .explore-nav-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'DM Sans', sans-serif; font-weight: 600;
+      border-radius: 10px; padding: 9px 16px; font-size: 14px;
+      cursor: pointer; border: none; transition: all 250ms ease; white-space: nowrap;
+      text-decoration: none;
+    }
+    .btn-teal  { background: #0F7B72; color: #fff; box-shadow: 0 4px 14px rgba(15,123,114,.28); }
+    .btn-teal:hover { background: #0c6860; transform: translateY(-1px); color: #fff; }
+    .btn-outline { background: transparent; color: #0D1B3E; border: 1px solid rgba(0,0,0,.14); }
+    .btn-outline:hover { background: rgba(0,0,0,.04); }
+    .user-menu { position: relative; }
+    .user-menu-btn {
+      background: transparent; border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
+      padding: 9px 14px; font-size: 14px; cursor: pointer; display: flex; align-items: center;
+      gap: 6px; color: #0D1B3E; white-space: nowrap; font-family: 'DM Sans', sans-serif; font-weight: 600;
+    }
+    .user-menu-btn:hover { background: rgba(0,0,0,.04); }
+    .um-name { overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block; }
+    .um-chevron { font-size: 10px; opacity: .55; flex-shrink: 0; transition: transform 200ms; }
+    .user-menu.is-open .um-chevron { transform: rotate(180deg); }
+    .user-menu-dropdown {
+      display: none; position: absolute; right: 0; top: calc(100% + 6px);
+      background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 160px; z-index: 300; overflow: hidden;
+    }
+    .user-menu.is-open .user-menu-dropdown { display: block; }
+    .user-menu-dropdown a, .user-menu-dropdown button.um-item {
+      display: block; width: 100%; text-align: left; padding: 10px 16px;
+      font-size: 14px; color: #0D1B3E; background: none; border: none;
+      cursor: pointer; text-decoration: none; font-family: 'DM Sans', sans-serif; box-sizing: border-box;
+    }
+    .user-menu-dropdown a:hover, .user-menu-dropdown button.um-item:hover { background: #f5f7fa; }
+    .um-signout { color: #dc2626 !important; }
+    .um-divider { height: 1px; background: rgba(0,0,0,.08); margin: 4px 0; }
 
     /* ── Header ── */
     .explore-header {
@@ -115,6 +167,14 @@
       transition: background .12s, color .12s;
     }
     .card-link:hover { background: #0e7490; color: #fff; }
+    .card-like { font-size: .78rem; color: #9ca3af; display: flex; align-items: center; gap: .3rem; }
+    .card-like svg { width: 13px; height: 13px; }
+    .degree-badge {
+      display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .5rem;
+      border-radius: 999px; margin-left: .4rem; vertical-align: middle;
+    }
+    .degree-1 { background: #dcfce7; color: #16a34a; }
+    .degree-2 { background: #dbeafe; color: #1d4ed8; }
 
     /* ── Empty state ── */
     .empty-state { text-align: center; padding: 4rem 1.5rem; color: #9ca3af; }
@@ -129,9 +189,37 @@
 </head>
 <body>
 
-<nav class="explore-nav">
-  <a class="brand" href="/">Simulacrum<span>.</span></a>
-  <a class="btn-cta" href="/register">Create your free bio page →</a>
+<nav class="explore-nav" id="exploreNav">
+  <div class="explore-nav-inner">
+    <a class="brand" href="/">
+      <div class="explore-logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
+        </svg>
+      </div>
+      SimulacrumAI.io
+    </a>
+    <div class="explore-nav-spacer"></div>
+    <div class="explore-nav-right">
+      {% if viewer_authenticated %}
+      <a class="btn btn-teal" href="{{ url_for('pages.dashboard') }}">Go to Dashboard</a>
+      <div class="user-menu" id="userMenu">
+        <button class="user-menu-btn" type="button" onclick="toggleUserMenu(event)">
+          <span class="um-name">{{ current_user.full_name or current_user.email }}</span>
+          <span class="um-chevron">▾</span>
+        </button>
+        <div class="user-menu-dropdown">
+          <a href="/settings">Settings</a>
+          <div class="um-divider"></div>
+          <button class="um-item um-signout" type="button" onclick="signOut()">Sign out</button>
+        </div>
+      </div>
+      {% else %}
+      <a class="btn btn-outline" href="{{ url_for('pages.login_page') }}">Log in</a>
+      <a class="btn btn-teal" href="{{ url_for('pages.register_page') }}">Get started free</a>
+      {% endif %}
+    </div>
+  </div>
 </nav>
 
 <div class="explore-header">
@@ -164,7 +252,12 @@
         <div class="card-avatar-placeholder">{{ c.display_name[0] if c.display_name else '?' }}</div>
         {% endif %}
         <div class="card-meta">
-          <div class="card-name">{{ c.display_name }}</div>
+          <div class="card-name">
+            {{ c.display_name }}
+            {% if c.degree == 1 %}<span class="degree-badge degree-1">1st</span>
+            {% elif c.degree == 2 %}<span class="degree-badge degree-2" title="2nd · via {{ c.via_name }}">2nd</span>
+            {% endif %}
+          </div>
           <div class="card-zone">{{ c.category }}</div>
         </div>
       </div>
@@ -173,7 +266,14 @@
       {% endif %}
       <div class="card-footer">
         <span class="card-chat-count">
-          <strong>{{ c.chat_count }}</strong> conversation{{ 's' if c.chat_count != 1 else '' }}
+          <strong>{{ c.chat_count }}</strong> chat{{ 's' if c.chat_count != 1 else '' }}
+          &nbsp;·&nbsp;
+          <span class="card-like">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            {{ c.like_count }}
+          </span>
         </span>
         <span class="card-link">View profile →</span>
       </div>
@@ -198,7 +298,12 @@
         <div class="card-avatar-placeholder">{{ c.display_name[0] if c.display_name else '?' }}</div>
         {% endif %}
         <div class="card-meta">
-          <div class="card-name">{{ c.display_name }}</div>
+          <div class="card-name">
+            {{ c.display_name }}
+            {% if c.degree == 1 %}<span class="degree-badge degree-1">1st</span>
+            {% elif c.degree == 2 %}<span class="degree-badge degree-2" title="2nd · via {{ c.via_name }}">2nd</span>
+            {% endif %}
+          </div>
           <div class="card-zone">{{ c.category }}</div>
         </div>
       </div>
@@ -207,7 +312,14 @@
       {% endif %}
       <div class="card-footer">
         <span class="card-chat-count">
-          <strong>{{ c.chat_count }}</strong> conversation{{ 's' if c.chat_count != 1 else '' }}
+          <strong>{{ c.chat_count }}</strong> chat{{ 's' if c.chat_count != 1 else '' }}
+          &nbsp;·&nbsp;
+          <span class="card-like">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            {{ c.like_count }}
+          </span>
         </span>
         <span class="card-link">View profile →</span>
       </div>
@@ -223,5 +335,27 @@
 </div>
 {% endif %}
 
+<script>
+(function () {
+  var nav = document.getElementById('exploreNav');
+  window.addEventListener('scroll', function () {
+    nav.classList.toggle('scrolled', window.scrollY > 10);
+  }, {passive: true});
+})();
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  var m = document.getElementById('userMenu');
+  if (m) m.classList.toggle('is-open');
+}
+document.addEventListener('click', function () {
+  var m = document.getElementById('userMenu');
+  if (m) m.classList.remove('is-open');
+});
+function signOut() {
+  fetch('/api/auth/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}})
+    .then(function () { window.location.href = '/'; })
+    .catch(function () { window.location.href = '/'; });
+}
+</script>
 </body>
 </html>

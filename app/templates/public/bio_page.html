@@ -121,6 +121,85 @@
     }
     .btn-outline:hover { background: var(--accent); color: #fff; }
 
+    /* ── Social buttons ────────────────────────────────────────────── */
+    .social-actions { display: flex; gap: .625rem; margin-top: .875rem; flex-wrap: wrap; }
+    .like-btn, .connect-btn, .platform-chat-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .45rem .9rem; border-radius: 8px; font-size: .84rem; font-weight: 600;
+      cursor: pointer; border: none; transition: all .15s;
+    }
+    .like-btn {
+      background: transparent; color: var(--muted);
+      border: 1.5px solid var(--border);
+    }
+    .like-btn:hover { border-color: #e11d48; color: #e11d48; }
+    .like-btn.liked { background: #fff1f2; color: #e11d48; border-color: #e11d48; }
+    .like-btn svg { width: 15px; height: 15px; }
+    .connect-btn {
+      background: var(--accent); color: #fff;
+    }
+    .connect-btn:hover { background: var(--accent-hover); }
+    .connect-btn.connected {
+      background: transparent; color: var(--accent); border: 1.5px solid var(--accent);
+    }
+    .connect-btn.connected:hover { background: #fff1f2; color: #e11d48; border-color: #e11d48; }
+    .platform-chat-btn {
+      background: var(--bg2); color: var(--accent); border: 1.5px solid var(--border);
+    }
+    .platform-chat-btn:hover { border-color: var(--accent); }
+
+    /* ── Platform chat slide-over ───────────────────────────────────── */
+    #platform-chat-panel {
+      position: fixed; top: 0; right: -420px; bottom: 0;
+      width: 400px; background: #fff; border-left: 1px solid #e5e7eb;
+      box-shadow: -4px 0 24px rgba(0,0,0,.12); z-index: 900;
+      display: flex; flex-direction: column;
+      transition: right .3s ease;
+    }
+    #platform-chat-panel.open { right: 0; }
+    .pc-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .pc-header-name { font-weight: 700; font-size: .95rem; flex: 1; }
+    .pc-close {
+      background: none; border: none; font-size: 1.1rem; cursor: pointer;
+      color: #9ca3af; padding: .25rem;
+    }
+    .pc-close:hover { color: #111827; }
+    .pc-messages {
+      flex: 1; padding: 1rem; overflow-y: auto;
+      display: flex; flex-direction: column; gap: .625rem;
+    }
+    .pc-msg { max-width: 82%; }
+    .pc-msg.user { align-self: flex-end; }
+    .pc-msg.assistant { align-self: flex-start; }
+    .pc-bubble {
+      padding: .55rem .825rem; border-radius: 12px; font-size: .88rem; line-height: 1.55;
+    }
+    .pc-msg.user .pc-bubble { background: #0e7490; color: #fff; border-bottom-right-radius: 3px; }
+    .pc-msg.assistant .pc-bubble { background: #f3f4f6; color: #111827; border-bottom-left-radius: 3px; }
+    .pc-input {
+      padding: .875rem 1rem; border-top: 1px solid #e5e7eb;
+      display: flex; gap: .5rem;
+    }
+    .pc-input textarea {
+      flex: 1; border: 1px solid #d1d5db; border-radius: 8px; padding: .55rem .75rem;
+      font-size: .88rem; font-family: inherit; resize: none; outline: none;
+      transition: border-color .12s;
+    }
+    .pc-input textarea:focus { border-color: #0e7490; }
+    .pc-send {
+      background: #0e7490; color: #fff; border: none; border-radius: 8px;
+      padding: .55rem 1rem; cursor: pointer; font-weight: 600; font-size: .84rem;
+    }
+    .pc-send:hover { background: #0c6480; }
+    .pc-send:disabled { opacity: .5; cursor: not-allowed; }
+    #platform-chat-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 899;
+    }
+    #platform-chat-overlay.open { display: block; }
+
     /* ── Section headings ──────────────────────────────────────────── */
     .section-heading {
       font-size: 1.35rem; font-weight: 700; margin-bottom: 1.5rem;
@@ -382,6 +461,30 @@
           <a class="btn btn-outline" href="{{ ctx.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>
           {% endif %}
         </div>
+
+        {# Social actions — FR-SOC-01, FR-SOC-04, FR-SOC-11 #}
+        {% if not is_owner %}
+        <div class="social-actions" id="social-actions">
+          <button class="like-btn" id="like-btn" data-slug="{{ slug }}" data-liked="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span id="like-count">{{ bio_page.like_count or 0 }}</span>
+          </button>
+          {% if current_user.is_authenticated %}
+          <button class="connect-btn" id="connect-btn" data-slug="{{ slug }}" data-connected="false">
+            Connect
+          </button>
+          <button class="platform-chat-btn" id="pchat-open-btn" data-slug="{{ slug }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            Chat with Simi
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+
       </div>
     </div>
   </section>
@@ -841,6 +944,129 @@ function toggleSimBio(card) {
 }
 </script>
 
+{% if not is_owner and current_user.is_authenticated %}
+<!-- Platform chat slide-over (FR-SOC-11) -->
+<div id="platform-chat-overlay"></div>
+<div id="platform-chat-panel" role="dialog" aria-label="Chat with {{ ctx.full_name.split()[0] if ctx.full_name else 'this professional' }}'s assistant">
+  <div class="pc-header">
+    <span class="pc-header-name">{{ (ctx.full_name.split()[0] if ctx.full_name else 'their') }}'s assistant</span>
+    <button class="pc-close" id="pc-close-btn" aria-label="Close">✕</button>
+  </div>
+  <div class="pc-messages" id="pc-messages"></div>
+  <div class="pc-input">
+    <textarea id="pc-input" rows="2" placeholder="Ask about their services, expertise…"></textarea>
+    <button class="pc-send" id="pc-send" disabled>Send</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var SLUG = {{ slug | tojson }};
+  var chatId = null;
+  var overlay = document.getElementById('platform-chat-overlay');
+  var panel   = document.getElementById('platform-chat-panel');
+  var msgs    = document.getElementById('pc-messages');
+  var input   = document.getElementById('pc-input');
+  var sendBtn = document.getElementById('pc-send');
+  var openBtn = document.getElementById('pchat-open-btn');
+  var closeBtn = document.getElementById('pc-close-btn');
+
+  if (!openBtn) return;
+
+  function openPanel() {
+    overlay.classList.add('open');
+    panel.classList.add('open');
+    if (!chatId) initChat();
+  }
+
+  function closePanel() {
+    overlay.classList.remove('open');
+    panel.classList.remove('open');
+  }
+
+  openBtn.addEventListener('click', openPanel);
+  closeBtn.addEventListener('click', closePanel);
+  overlay.addEventListener('click', closePanel);
+
+  function initChat() {
+    fetch('/api/platform-chat/' + SLUG + '/start', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) { appendMsg('assistant', 'Chat unavailable. ' + data.error); return; }
+        chatId = data.chat_id;
+        sendBtn.disabled = false;
+        (data.messages || []).forEach(function (m) { appendMsg(m.role, m.content); });
+        if (data.welcome_message && !data.messages.length) {
+          appendMsg('assistant', data.welcome_message);
+        }
+        msgs.scrollTop = msgs.scrollHeight;
+      })
+      .catch(function () { appendMsg('assistant', 'Could not load chat. Please refresh.'); });
+  }
+
+  function doSend() {
+    if (!chatId) return;
+    var text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    sendBtn.disabled = true;
+    appendMsg('user', text);
+
+    var streamDiv = appendMsg('assistant', '');
+    var bubble = streamDiv.querySelector('.pc-bubble');
+
+    fetch('/api/platform-chat/' + chatId + '/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text }),
+    }).then(function (r) {
+      var reader = r.body.getReader();
+      var dec = new TextDecoder();
+      var buf = '';
+      function pump() {
+        reader.read().then(function (res) {
+          if (res.done) { sendBtn.disabled = false; return; }
+          buf += dec.decode(res.value, { stream: true });
+          var parts = buf.split('\n\n');
+          buf = parts.pop();
+          parts.forEach(function (p) {
+            if (!p.startsWith('data: ')) return;
+            try {
+              var d = JSON.parse(p.slice(6));
+              if (d.text) { bubble.textContent += d.text; msgs.scrollTop = msgs.scrollHeight; }
+              if (d.done) sendBtn.disabled = false;
+            } catch (_) {}
+          });
+          pump();
+        });
+      }
+      pump();
+    }).catch(function () {
+      bubble.textContent = 'Error — please try again.';
+      sendBtn.disabled = false;
+    });
+  }
+
+  sendBtn.addEventListener('click', doSend);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+
+  function appendMsg(role, text) {
+    var div = document.createElement('div');
+    div.className = 'pc-msg ' + role;
+    var bubble = document.createElement('div');
+    bubble.className = 'pc-bubble';
+    bubble.textContent = text;
+    div.appendChild(bubble);
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return div;
+  }
+}());
+</script>
+{% endif %}
+
 {% if not is_owner %}
 <script>
 (function () {
@@ -855,6 +1081,75 @@ function toggleSimBio(card) {
       }),
     });
   } catch (e) {}
+}());
+</script>
+{% endif %}
+
+{% if not is_owner %}
+<script>
+/* Social buttons — like & connect (FR-SOC-01, FR-SOC-04) */
+(function () {
+  var SLUG = {{ slug | tojson }};
+  var IS_AUTH = {{ ('true' if current_user.is_authenticated else 'false') }};
+  var likeBtn   = document.getElementById('like-btn');
+  var connectBtn = document.getElementById('connect-btn');
+  var likeCount = document.getElementById('like-count');
+
+  if (likeBtn) {
+    if (IS_AUTH) {
+      /* Fetch current state */
+      fetch('/api/bio/' + SLUG + '/like')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          likeCount.textContent = d.like_count;
+          if (d.liked) likeBtn.classList.add('liked');
+          likeBtn.dataset.liked = d.liked ? 'true' : 'false';
+        });
+
+      likeBtn.addEventListener('click', function () {
+        fetch('/api/bio/' + SLUG + '/like', { method: 'POST' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            likeCount.textContent = d.like_count;
+            if (d.liked) { likeBtn.classList.add('liked'); likeBtn.dataset.liked = 'true'; }
+            else { likeBtn.classList.remove('liked'); likeBtn.dataset.liked = 'false'; }
+          });
+      });
+    } else {
+      likeBtn.addEventListener('click', function () {
+        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+      });
+    }
+  }
+
+  if (connectBtn && IS_AUTH) {
+    /* Fetch current connection state */
+    fetch('/api/social/connection-status/' + SLUG)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.connected) {
+          connectBtn.textContent = 'Connected';
+          connectBtn.classList.add('connected');
+          connectBtn.dataset.connected = 'true';
+        }
+      });
+
+    connectBtn.addEventListener('click', function () {
+      fetch('/api/social/connect/' + SLUG, { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.connected) {
+            connectBtn.textContent = 'Connected';
+            connectBtn.classList.add('connected');
+            connectBtn.dataset.connected = 'true';
+          } else {
+            connectBtn.textContent = 'Connect';
+            connectBtn.classList.remove('connected');
+            connectBtn.dataset.connected = 'false';
+          }
+        });
+    });
+  }
 }());
 </script>
 {% endif %}

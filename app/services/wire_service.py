@@ -107,12 +107,12 @@ def _deploy_apollo(rec, *, user_id, action_type, artifact, simulation_id,
     token = decrypt_token(rec.access_token_enc)
     client = ApolloClient(token)
 
-    # Try to parse structured prospect list from consulting_outreach artifact
+    # Try to parse structured prospect list from artifact (raw_decode tolerates trailing text)
     prospects = []
     try:
-        data = json.loads(artifact)
+        data, _ = json.JSONDecoder().raw_decode(artifact.strip())
         prospects = data.get('prospects', [])
-    except (json.JSONDecodeError, AttributeError):
+    except (json.JSONDecodeError, AttributeError, ValueError):
         pass
 
     if not prospects:
@@ -442,7 +442,7 @@ def deploy_to_integration(
                       reason=str(exc))
             escalated.append(provider)
         except Exception as exc:
-            logger.error('wire_service: %s/%s deploy failed: %s', action_type, provider, exc)
+            logger.error('wire_service: %s/%s deploy failed: %s', action_type, provider, exc, exc_info=True)
             _escalate(user_id, simulation_id, action_id, action_type, provider,
                       reason=str(exc)[:300])
             escalated.append(provider)

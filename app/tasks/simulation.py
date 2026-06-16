@@ -24,12 +24,28 @@ def generate_simulation_task(self, simulation_id: str):
             logger.error('Simulation %s not found', simulation_id)
             return
 
-        if sim.status not in (Simulation.STATUS_PENDING, Simulation.STATUS_PROCESSING, Simulation.STATUS_ERROR):
-            logger.warning('Simulation %s already in status %s — skipping', simulation_id, sim.status)
+        # Atomic lock: transition status to STATUS_STREAMING
+        try:
+            res = db.session.execute(
+                db.text(
+                    "UPDATE simulations SET status = :new WHERE id = :sid AND status IN (:old1, :old2, :old3)"
+                ),
+                {
+                    'new': Simulation.STATUS_STREAMING,
+                    'sid': simulation_id,
+                    'old1': Simulation.STATUS_PENDING,
+                    'old2': Simulation.STATUS_PROCESSING,
+                    'old3': Simulation.STATUS_ERROR,
+                }
+            )
+            db.session.commit()
+            if res.rowcount == 0:
+                logger.warning('Simulation %s already locked/streaming/complete — skipping task', simulation_id)
+                return
+        except Exception as exc:
+            db.session.rollback()
+            logger.error('Failed to acquire status lock for simulation %s: %s', simulation_id, exc)
             return
-
-        sim.status = Simulation.STATUS_STREAMING
-        db.session.commit()
 
         resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
         parsed_text = resume.parsed_text if resume else ''

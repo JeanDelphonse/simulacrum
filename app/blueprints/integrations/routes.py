@@ -2006,3 +2006,145 @@ def integrations_status_all():
     li_rec = UserIntegration.query.filter_by(user_id=current_user.id, provider='linkedin').first()
     result['linkedin'] = li_rec.to_dict() if (li_rec and li_rec.is_connected) else {'provider': 'linkedin', 'status': 'not_connected'}
     return jsonify(result)
+
+
+# ── SendGrid Event Webhook (SIM-PRD-STEPS-001 B.4) ───────────────────────────
+
+@integrations_bp.route('/api/webhooks/sendgrid', methods=['POST'])
+def sendgrid_event_webhook():
+    """
+    Receives SendGrid event webhooks: delivered, open, click, bounce, dropped.
+    Updates EmailLog tracking fields. Bounce/dropped events add to EmailSuppression.
+    Creates IntegrationSignals for the Bayesian model.
+    """
+    from app.models.outreach_email import EmailLog, EmailSuppression
+    from app.models.integration_signal import IntegrationSignal
+    from utils.id_gen import generate_id
+
+    events = request.get_json(silent=True) or []
+    if not isinstance(events, list):
+        return '', 200
+
+    for event in events:
+        sim_id = event.get('simulation_id') or event.get('simulacrum_simulation_id')
+        contact_id = event.get('contact_id') or event.get('simulacrum_contact_id')
+        event_type = event.get('event')
+        sg_message_id = event.get('sg_message_id') or event.get('sg_event_id', '')
+
+        log = None
+        if sg_message_id:
+            log = EmailLog.query.filter_by(provider_message_id=sg_message_id.split('.')[0]).first()
+
+        if log:
+            if event_type == 'delivered':
+                log.delivered_at = log.delivered_at or datetime.utcnow()
+                log.status = 'delivered'
+            elif event_type == 'open':
+                log.opened_at = log.opened_at or datetime.utcnow()
+                log.open_count = (log.open_count or 0) + 1
+                if not sim_id:
+                    sim_id = log.simulation_id
+                if not contact_id:
+                    contact_id = log.contact_id
+            elif event_type == 'click':
+                log.clicked_at = log.clicked_at or datetime.utcnow()
+                log.click_count = (log.click_count or 0) + 1
+                if not sim_id:
+                    sim_id = log.simulation_id
+                if not contact_id:
+                    contact_id = log.contact_id
+            elif event_type in ('bounce', 'dropped'):
+                log.bounced_at = log.bounced_at or datetime.utcnow()
+                log.bounce_reason = (event.get('reason') or '')[:500]
+                log.status = event_type
+                to_suppress = event.get('email') or log.to_email
+                if to_suppress:
+                    existing = EmailSuppression.query.filter_by(
+                        email=to_suppress.lower().strip()
+                    ).first()
+                    if not existing:
+                        db.session.add(EmailSuppression(
+                            id=generate_id(),
+                            email=to_suppress.lower().strip(),
+                            reason=event_type,
+                            detail=(event.get('reason') or '')[:500],
+                        ))
+                if not sim_id:
+                    sim_id = log.simulation_id
+                if not contact_id:
+                    contact_id = log.contact_id
+            elif event_type == 'spamreport':
+                to_suppress = event.get('email')
+                if to_suppress:
+                    existing = EmailSuppression.query.filter_by(
+                        email=to_suppress.lower().strip()
+                    ).first()
+                    if not existing:
+                        db.session.add(EmailSuppression(
+                            id=generate_id(),
+                            email=to_suppress.lower().strip(),
+                            reason='complaint',
+                            detail='spam report',
+                        ))
+
+        if sim_id and event_type in ('open', 'click', 'bounce', 'dropped', 'delivered'):
+            db.session.add(IntegrationSignal(
+                id=generate_id(),
+                simulation_id=sim_id,
+                user_id='system',
+                signal_type=f'email_{event_type}',
+            ))
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error('sendgrid_event_webhook commit failed: %s', exc, exc_info=True)
+
+    return '', 200
+
+
+# ── SendGrid Inbound Parse — reply detection (SIM-PRD-STEPS-001 B.5) ─────────
+
+@integrations_bp.route('/api/webhooks/sendgrid/inbound', methods=['POST'])
+def sendgrid_inbound_parse():
+    """
+    Inbound email replies via SendGrid Inbound Parse.
+    Reply-to format: reply-{contact_id}@mail.simulacrumai.io.
+    Marks EmailLog.replied_at and creates an email_reply IntegrationSignal.
+    """
+    import re
+    from app.models.outreach_email import EmailLog
+    from app.models.integration_signal import IntegrationSignal
+    from utils.id_gen import generate_id
+
+    to_addr = request.form.get('to', '')
+    from_addr = request.form.get('from', '')
+
+    match = re.search(r'reply-([a-zA-Z0-9]{9})@', to_addr)
+    if not match:
+        return '', 200
+
+    contact_id = match.group(1)
+
+    log = EmailLog.query.filter(
+        EmailLog.contact_id == contact_id,
+        EmailLog.replied_at.is_(None),
+    ).order_by(EmailLog.sent_at.desc()).first()
+
+    if log:
+        log.replied_at = datetime.utcnow()
+        db.session.add(IntegrationSignal(
+            id=generate_id(),
+            simulation_id=log.simulation_id,
+            user_id='system',
+            signal_type=IntegrationSignal.SIGNAL_EMAIL_REPLY,
+        ))
+        try:
+            db.session.commit()
+            logger.info('Reply detected for contact %s from %s', contact_id, from_addr)
+        except Exception as exc:
+            db.session.rollback()
+            logger.error('sendgrid_inbound_parse commit failed: %s', exc)
+
+    return '', 200

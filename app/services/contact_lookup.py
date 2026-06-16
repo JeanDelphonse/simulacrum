@@ -99,6 +99,46 @@ def format_contacts_for_prompt(contacts: list) -> str:
             parts.append(f'[{c.pipeline_stage}]')
         lines.append('  - ' + ', '.join(p for p in parts if p))
     return '\n'.join(lines)
+def get_next_fallback_email(user_id: str, used_emails: set[str] = None) -> str:
+    """Find the next available incremented fallback email for the given user_id."""
+    from app.models.contact import Contact
+    import re
+    
+    user_id = user_id or '_system'
+    
+    # Query all contacts for this user starting with the prefix
+    contacts = Contact.query.filter(
+        Contact.user_id == user_id,
+        Contact.email.like('valuemanager.management%@gmail.com')
+    ).all()
+    
+    max_num = 0
+    pattern = re.compile(r'^valuemanager\.management(\d+)@gmail\.com$', re.IGNORECASE)
+    
+    # Check DB contacts
+    for c in contacts:
+        match = pattern.match(c.email)
+        if match:
+            try:
+                num = int(match.group(1))
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                pass
+                
+    # Check currently used fallback emails in this batch
+    if used_emails:
+        for email in used_emails:
+            match = pattern.match(email)
+            if match:
+                try:
+                    num = int(match.group(1))
+                    if num > max_num:
+                        max_num = num
+                except ValueError:
+                    pass
+                    
+    return f'valuemanager.management{max_num + 1}@gmail.com'
 
 
 def record_agent_contacts(
@@ -118,10 +158,14 @@ def record_agent_contacts(
     from utils.id_gen import generate_id
 
     created = updated = skipped = 0
+    used_fallbacks = set()
 
     for data in contact_data_list:
         email = (data.get('email') or '').strip().lower()
-        if not email or not data.get('first_name') or not data.get('last_name'):
+        if not email:
+            skipped += 1
+            continue
+        if not data.get('first_name') or not data.get('last_name'):
             skipped += 1
             continue
 
@@ -182,6 +226,8 @@ def record_agent_contacts(
         logger.error('record_agent_contacts commit failed: %s', e)
         db.session.rollback()
 
+    return {'created': created, 'updated': updated, 'skipped': skipped}
+
 
 def save_contacts_to_crm(
     contacts: list,
@@ -207,13 +253,16 @@ def save_contacts_to_crm(
     from datetime import datetime
 
     saved = 0
+    used_fallbacks = set()
     for raw in contacts:
         if not raw.get('first_name') and not raw.get('last_name'):
             continue
 
         first = (raw.get('first_name') or '').strip()
         last  = (raw.get('last_name') or '').strip()
-        email = (raw.get('email') or '').strip().lower() or None
+        email = (raw.get('email') or '').strip().lower()
+        if not email:
+            continue
 
         # Try to find existing contact
         existing = None
@@ -250,7 +299,7 @@ def save_contacts_to_crm(
                 user_id=user_id,
                 first_name=first or 'Unknown',
                 last_name=last or '',
-                email=email or f'{generate_id()}@noemail.placeholder',
+                email=email,
                 phone=raw.get('phone'),
                 job_title=raw.get('job_title'),
                 company_name=raw.get('company_name'),
@@ -269,7 +318,7 @@ def save_contacts_to_crm(
         try:
             db.session.commit()
         except Exception as exc:
-            logger.warning('save_contacts_to_crm commit failed: %s', exc)
+            logger.error('CONTACTS_SAVE FAILED save_contacts_to_crm db commit error: %s', exc, exc_info=True)
             try:
                 db.session.rollback()
             except Exception:
@@ -277,5 +326,3 @@ def save_contacts_to_crm(
             return 0
 
     return saved
-
-    return {'created': created, 'updated': updated, 'skipped': skipped}

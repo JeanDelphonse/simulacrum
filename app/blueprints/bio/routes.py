@@ -232,10 +232,26 @@ def update_bio_page():
 @login_required
 def publish_bio_page():
     bp = _get_or_create_bio_page(current_user)
+    is_first_publish = bp.published_at is None
     bp.status = BioPage.STATUS_PUBLISHED
     bp.published_at = bp.published_at or datetime.utcnow()
     bp.updated_at = datetime.utcnow()
     db.session.commit()
+    # Emit activity event for connections' feeds
+    try:
+        from app.models.social import ActivityEvent
+        from utils.id_gen import generate_id as _gid
+        ev = ActivityEvent(
+            id=_gid(),
+            user_id=current_user.id,
+            event_type=ActivityEvent.EVENT_BIO_PUBLISHED if is_first_publish
+                       else ActivityEvent.EVENT_BIO_UPDATED,
+        )
+        ev.event_data = {'slug': bp.slug}
+        db.session.add(ev)
+        db.session.commit()
+    except Exception:
+        pass
     return jsonify({'status': bp.status, 'published_at': bp.published_at.isoformat()})
 
 

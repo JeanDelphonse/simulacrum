@@ -9,6 +9,7 @@ class ModelTier(str, Enum):
     HAIKU  = 'haiku'
     SONNET = 'sonnet'
     OPUS   = 'opus'
+    FABLE  = 'fable'
 
 
 # ── Model IDs ────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ MODELS = {
     ModelTier.HAIKU:  'claude-haiku-4-5-20251001',
     ModelTier.SONNET: 'claude-sonnet-4-6',
     ModelTier.OPUS:   'claude-opus-4-6',
+    ModelTier.FABLE:  'claude-fable-5',
 }
 
 # ── Action → Tier routing table ──────────────────────────────────────────────
@@ -58,7 +60,7 @@ _ROUTING: dict[str, ModelTier] = {
     'investment_policy_statement': ModelTier.OPUS,
     'tax_optimization':            ModelTier.OPUS,
     'entity_structure':            ModelTier.OPUS,
-    'estate_planning_checklist':   ModelTier.OPUS,
+    'estate_planning':             ModelTier.OPUS,
     # All remaining action_types → SONNET (default, see get_model())
 }
 

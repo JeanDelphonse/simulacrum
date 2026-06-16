@@ -17,7 +17,8 @@ class User(UserMixin, db.Model):
     email_verify_token_expires = db.Column(db.DateTime, nullable=True)
     password_reset_token = db.Column(db.String(255), nullable=True)
     password_reset_expires = db.Column(db.DateTime, nullable=True)
-    simulation_count = db.Column(db.Integer, default=0, nullable=False)
+    simulation_count  = db.Column(db.Integer, default=0, nullable=False)
+    connection_count  = db.Column(db.Integer, default=0, nullable=False)
     total_spend = db.Column(db.Integer, default=0, nullable=False)  # in cents
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     is_partner = db.Column(db.Boolean, default=False, nullable=False)

@@ -114,6 +114,7 @@ class Layer6Cycle(db.Model):
     actions_escalated = db.Column(db.Integer, nullable=False, default=0)
     orchestrator_reasoning = db.Column(db.Text, nullable=True)
     user_insight = db.Column(db.Text, nullable=True)
+    cycle_steps = db.Column(db.Text, nullable=True)  # JSON array of actionable to-do strings
     cycle_started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     cycle_completed_at = db.Column(db.DateTime, nullable=True)
 
@@ -130,6 +131,7 @@ class Layer6Cycle(db.Model):
             'actions_escalated': self.actions_escalated,
             'orchestrator_reasoning': self.orchestrator_reasoning,
             'user_insight': self.user_insight,
+            'cycle_steps': self.cycle_steps,
             'cycle_started_at': self.cycle_started_at.isoformat(),
             'cycle_completed_at': self.cycle_completed_at.isoformat() if self.cycle_completed_at else None,
         }

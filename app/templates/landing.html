@@ -104,6 +104,30 @@
     height: 2px; background: var(--teal); border-radius: 2px;
   }
   .lp-nav-ctas { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .user-menu { position: relative; }
+  .user-menu-btn {
+    background: transparent; border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
+    padding: 9px 14px; font-size: 14px; cursor: pointer; display: flex; align-items: center;
+    gap: 6px; color: var(--dark); white-space: nowrap; font-family: inherit;
+  }
+  .user-menu-btn:hover { background: rgba(0,0,0,.04); }
+  .um-name { overflow: hidden; text-overflow: ellipsis; max-width: 120px; display: inline-block; }
+  .um-chevron { font-size: 10px; opacity: .55; flex-shrink: 0; transition: transform 200ms; }
+  .user-menu.is-open .um-chevron { transform: rotate(180deg); }
+  .user-menu-dropdown {
+    display: none; position: absolute; right: 0; top: calc(100% + 6px);
+    background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 160px; z-index: 300; overflow: hidden;
+  }
+  .user-menu.is-open .user-menu-dropdown { display: block; }
+  .user-menu-dropdown a, .user-menu-dropdown button.um-item {
+    display: block; width: 100%; text-align: left; padding: 10px 16px;
+    font-size: 14px; color: var(--dark); background: none; border: none;
+    cursor: pointer; text-decoration: none; font-family: inherit; box-sizing: border-box;
+  }
+  .user-menu-dropdown a:hover, .user-menu-dropdown button.um-item:hover { background: #f5f7fa; color: var(--dark); }
+  .um-signout { color: #dc2626 !important; }
+  .um-divider { height: 1px; background: rgba(0,0,0,.08); margin: 4px 0; }
   .lp-hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; }
   .lp-hamburger span { display: block; width: 22px; height: 2px; background: var(--navy); border-radius: 2px; transition: all 300ms; }
   .lp-mob-menu { display: none; padding: 12px 24px 20px; border-top: 1px solid rgba(0,0,0,.06); background: rgba(250,251,252,.98); }
@@ -253,6 +277,11 @@
   .price-tier { font-family: 'DM Sans',sans-serif; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
   .price-amount { font-family: 'Playfair Display',serif; font-size: 48px; font-weight: 700; color: var(--navy); line-height: 1; }
   .price-per { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+  .price-discounted { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+  .price-original { font-family: 'Playfair Display',serif; font-size: 28px; font-weight: 700; color: #9CA3AF; text-decoration: line-through; line-height: 1; }
+  .price-current { font-family: 'Playfair Display',serif; font-size: 48px; font-weight: 700; color: #E85D4A; line-height: 1; }
+  .price-label-badge { background: #E85D4A; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: center; }
+  .price-countdown { font-size: 12px; color: #E85D4A; margin-bottom: 4px; font-weight: 600; }
   .price-features { display: flex; flex-direction: column; gap: 10px; flex: 1; margin-bottom: 28px; }
   .price-feat { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--dark); }
   .price-check { color: var(--teal); font-weight: 700; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
@@ -400,6 +429,37 @@
   @media (min-width: 768px) and (max-width: 1024px) {
     .sp-card { flex: 0 0 calc(50% - .5rem); }
   }
+
+  /* ── Bio page sidebar strip (FR-SOC-08) ─────────────────────────── */
+  #bio-sidebar-strip { background: var(--white); border-bottom: 1px solid var(--border); padding: 28px 0; }
+  .bss-inner { display: flex; align-items: center; gap: 20px; overflow-x: auto; scrollbar-width: none; padding: 0 4px; }
+  .bss-inner::-webkit-scrollbar { display: none; }
+  .bss-label { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+  .bss-card {
+    flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+    background: var(--off-white); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 14px; text-decoration: none; color: var(--dark);
+    transition: border-color .15s, box-shadow .15s; max-width: 200px;
+  }
+  .bss-card:hover { border-color: var(--teal); box-shadow: 0 2px 8px rgba(15,123,114,.12); }
+  .bss-avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
+  }
+  .bss-placeholder {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--teal), var(--teal-light));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px; font-weight: 700;
+  }
+  .bss-info { flex: 1; min-width: 0; }
+  .bss-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bss-likes { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .bss-cta {
+    flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--teal);
+    white-space: nowrap; padding: 7px 14px; border: 1px solid var(--teal);
+    border-radius: 8px; text-decoration: none; transition: background .12s, color .12s;
+  }
+  .bss-cta:hover { background: var(--teal); color: #fff; }
   </style>
 </head>
 <body>
@@ -413,7 +473,7 @@
           <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
         </svg>
       </div>
-      <span>Simulacrum</span>
+      <span>SimulacrumAI.io</span>
     </a>
     <div class="lp-nav-links">
       <a href="#how-it-works" class="lp-nav-link" data-spy="how-it-works">How it works</a>
@@ -423,8 +483,23 @@
     </div>
     <div class="lp-nav-ctas">
       <button class="btn btn-ghost-dk" id="videoDemoBtn" type="button" style="font-size:14px;padding:9px 16px;">Watch Demo</button>
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('pages.dashboard') }}" class="btn btn-teal" style="font-size:14px;padding:9px 16px;">Go to Dashboard</a>
+      <div class="user-menu" id="userMenu">
+        <button class="user-menu-btn" type="button" onclick="toggleUserMenu(event)">
+          <span class="um-name">{{ current_user.full_name or current_user.email }}</span>
+          <span class="um-chevron">▾</span>
+        </button>
+        <div class="user-menu-dropdown">
+          <a href="/settings">Settings</a>
+          <div class="um-divider"></div>
+          <button class="um-item um-signout" type="button" onclick="signOut()">Sign out</button>
+        </div>
+      </div>
+      {% else %}
       <a href="{{ url_for('pages.login_page') }}"    class="btn btn-outline" style="font-size:14px;padding:9px 16px;">Log in</a>
       <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal"   style="font-size:14px;padding:9px 16px;">Get started free</a>
+      {% endif %}
     </div>
     <button class="lp-hamburger" id="lpHamburger" aria-label="Open menu">
       <span></span><span></span><span></span>
@@ -436,8 +511,14 @@
     <a href="#pricing"      class="lp-mob-link">Pricing</a>
     <a href="#about"        class="lp-mob-link">About</a>
     <div class="lp-mob-ctas">
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('pages.dashboard') }}" class="btn btn-teal">Go to Dashboard</a>
+      <a href="/settings" class="lp-mob-link" style="margin-top:4px;">Settings</a>
+      <button onclick="signOut()" class="lp-mob-link" type="button" style="background:none;border:none;cursor:pointer;color:#dc2626;text-align:left;padding:8px 0;width:100%;font-size:inherit;font-family:inherit;">Sign out</button>
+      {% else %}
       <a href="{{ url_for('pages.login_page') }}"    class="btn btn-outline">Log in</a>
       <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal">Get started free</a>
+      {% endif %}
     </div>
   </div>
 </nav>
@@ -488,6 +569,33 @@
     </div>
   </div>
 </section>
+
+<!-- ── BIO PAGE SIDEBAR (FR-SOC-08) ──────────────────────────────── -->
+{% if recent_bio_pages %}
+<section id="bio-sidebar-strip">
+  <div class="lp-c">
+    <div class="bss-inner">
+      <span class="bss-label">On Simulacrum</span>
+      {% for p in recent_bio_pages %}
+      <a class="bss-card" href="{{ url_for('public.profile_page', username=p.slug) }}">
+        {% if p.avatar_path %}
+        <img class="bss-avatar"
+             src="{{ url_for('public.serve_avatar', filename=p.avatar_path) }}"
+             alt="{{ p.display_name }}" loading="lazy">
+        {% else %}
+        <div class="bss-placeholder">{{ p.display_name[0] if p.display_name else '?' }}</div>
+        {% endif %}
+        <div class="bss-info">
+          <div class="bss-name">{{ p.display_name }}</div>
+          {% if p.like_count %}<div class="bss-likes">♥ {{ p.like_count }}</div>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+      <a class="bss-cta" href="{{ url_for('public.explore') }}">Browse all →</a>
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <!-- ── PROBLEM ──────────────────────────────────────────────────────── -->
 <section id="problem" class="lp-s">
@@ -641,7 +749,18 @@
       <div class="price-card featured fade-up d2">
         <div class="price-badge-row"><span class="price-badge">Most popular</span></div>
         <div class="price-tier">Pro Simulation</div>
+        {% if sim_pricing.is_discounted %}
+        <div class="price-discounted">
+          <span class="price-original">{{ sim_pricing.base_price_usd }}</span>
+          <span class="price-current">{{ sim_pricing.discounted_price_usd }}</span>
+          {% if sim_pricing.label %}<span class="price-label-badge">{{ sim_pricing.label }}</span>{% endif %}
+        </div>
+        {% if sim_pricing.expires_at %}
+        <div class="price-countdown" id="priceCountdown" data-expires="{{ sim_pricing.expires_at }}"></div>
+        {% endif %}
+        {% else %}
         <div class="price-amount">{{ sim_price_usd }}</div>
+        {% endif %}
         <div class="price-per">per simulation · one-time</div>
         <div class="price-features">
           <div class="price-feat"><span class="price-check">✓</span><span>Everything in Free</span></div>
@@ -865,7 +984,7 @@
           <div class="lp-logo-mark" style="width:28px;height:28px;border-radius:7px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/></svg>
           </div>
-          <span>Simulacrum</span>
+          <span>SimulacrumAI.io</span>
         </div>
         <p class="footer-tagline">Turn your resume into autonomous income. Free bio page forever.</p>
       </div>
@@ -1016,6 +1135,22 @@ window.DEMO_VIDEO_URL = '{{ url_for("static", filename="media/Simulacrum_Revenue
   });
 })();
 
+/* ── User menu dropdown ────────────────────────────────────────────── */
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  var m = document.getElementById('userMenu');
+  if (m) m.classList.toggle('is-open');
+}
+document.addEventListener('click', function () {
+  var m = document.getElementById('userMenu');
+  if (m) m.classList.remove('is-open');
+});
+function signOut() {
+  fetch('/api/auth/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}})
+    .then(function () { window.location.href = '/'; })
+    .catch(function () { window.location.href = '/'; });
+}
+
 /* ── Social proof carousel ─────────────────────────────────────────── */
 {% if testimonials %}
 (function () {
@@ -1070,5 +1205,26 @@ window.DEMO_VIDEO_URL = '{{ url_for("static", filename="media/Simulacrum_Revenue
 })();
 {% endif %}
 </script>
+{% if sim_pricing.is_discounted and sim_pricing.expires_at %}
+<script>
+(function() {
+  var el = document.getElementById('priceCountdown');
+  if (!el) return;
+  var expires = new Date(el.dataset.expires + (el.dataset.expires.endsWith('Z') ? '' : 'Z'));
+  function tick() {
+    var diff = Math.max(0, Math.floor((expires - Date.now()) / 1000));
+    if (diff <= 0) { el.textContent = 'Offer ended'; return; }
+    var HOUR = 72 * 3600;
+    if (diff > HOUR) { el.style.display = 'none'; return; }
+    var d = Math.floor(diff / 86400);
+    var h = Math.floor((diff % 86400) / 3600);
+    var m = Math.floor((diff % 3600) / 60);
+    el.textContent = 'Ends in ' + (d ? d + 'd ' : '') + h + 'h ' + m + 'm';
+  }
+  tick();
+  setInterval(tick, 60000);
+})();
+</script>
+{% endif %}
 </body>
 </html>

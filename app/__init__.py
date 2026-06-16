@@ -28,7 +28,10 @@ def create_app(config_name=None):
         config_name = os.environ.get('FLASK_ENV', 'development')
 
     app = Flask(__name__, template_folder='templates', static_folder='static')
-    app.config.from_object(config[config_name])
+    config_obj = config[config_name]
+    app.config.from_object(config_obj)
+    if hasattr(config_obj, 'init_app'):
+        config_obj.init_app(app)
 
     # Force UPLOAD_FOLDER to an absolute path relative to this file
     # (relative paths break under Passenger where cwd != app root)
@@ -110,6 +113,8 @@ def create_app(config_name=None):
     app.logger.info('startup: bio_chat_bp imported')
     from app.blueprints.corporate import corporate_bp
     app.logger.info('startup: corporate_bp imported')
+    from app.blueprints.social import social_bp
+    app.logger.info('startup: social_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -134,6 +139,7 @@ def create_app(config_name=None):
     app.register_blueprint(bio_bp)
     app.register_blueprint(bio_chat_bp)
     app.register_blueprint(corporate_bp)
+    app.register_blueprint(social_bp)
 
     # Register page routes
     from app.blueprints.pages import pages_bp
@@ -186,6 +192,7 @@ def create_app(config_name=None):
             PrefillCorrection, ArtifactVersion, ArtifactBundle,
             ArtifactDependency, BundleTypeConfig,
         )
+        from app.models.discount import SimulationDiscount
         return dict(
             db=db, User=User, Resume=Resume, Simulation=Simulation,
             SimulationLayer=SimulationLayer, IncomeStream=IncomeStream,

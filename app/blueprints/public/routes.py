@@ -233,6 +233,7 @@ def explore():
     """Public explore directory — all published bio pages opted in."""
     from app.models.bio_page import BioPage, BioChatSession
     from app.models.simulation import Simulation
+    from app.models.social import UserConnection
 
     category = request.args.get('category', 'all').lower().strip()
 
@@ -242,6 +243,13 @@ def explore():
         BioPage.status == BioPage.STATUS_PUBLISHED,
         BioPage.show_on_explore == True,  # noqa: E712
     ).order_by(BioPage.view_count.desc()).all()
+
+    # Pre-compute viewer's connection graph for degree badges (FR-SOC-05)
+    viewer_first = set()
+    viewer_second = set()
+    if current_user.is_authenticated:
+        viewer_first = set(UserConnection.first_degree_ids(current_user.id))
+        viewer_second = UserConnection.second_degree_ids(current_user.id)
 
     cards = []
     for bp, profile in rows:
@@ -259,6 +267,26 @@ def explore():
             BioChatSession.status != BioChatSession.STATUS_DELETED,
         ).count()
 
+        like_count = getattr(bp, 'like_count', 0) or 0
+        lead_count = bp.contact_form_count or 0
+
+        # FR-SOC-02 updated ranking: views×1 + likes×3 + chats×5 + leads×10
+        engagement = (
+            (bp.view_count or 0) * 1
+            + like_count * 3
+            + chat_count * 5
+            + lead_count * 10
+        )
+
+        degree = None
+        via_name = ''
+        if current_user.is_authenticated and bp.user_id != current_user.id:
+            if bp.user_id in viewer_first:
+                degree = 1
+            elif bp.user_id in viewer_second:
+                degree = 2
+                via_name = UserConnection.via_name(current_user.id, bp.user_id)
+
         cards.append({
             'slug': bp.slug,
             'display_name': profile.display_name or '',
@@ -267,11 +295,15 @@ def explore():
             'zone': zone,
             'category': _zone_to_category(zone),
             'chat_count': chat_count,
+            'like_count': like_count,
             'view_count': bp.view_count or 0,
-            'engagement': (bp.view_count or 0) + chat_count * 5,
+            'engagement': engagement,
+            'degree': degree,
+            'via_name': via_name,
         })
 
-    cards.sort(key=lambda c: c['engagement'], reverse=True)
+    # 1st-degree connections surface first within featured (FR-SOC-05)
+    cards.sort(key=lambda c: (c['degree'] == 1, c['engagement']), reverse=True)
     featured = cards[:4]
     rest = cards[4:] if len(cards) > 4 else []
 
@@ -282,6 +314,7 @@ def explore():
         category=category,
         categories=_EXPLORE_CATEGORIES,
         total=len(cards),
+        viewer_authenticated=current_user.is_authenticated,
     )
 
 

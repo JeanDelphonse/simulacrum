@@ -474,7 +474,7 @@ class ProspectResearchEngine:
         budget_ok = _check_monthly_budget()
         if not budget_ok:
             logger.warning('Monthly email verification budget exhausted — skipping verification')
-        prospects = self._verify_emails(prospects, skip_verification=not budget_ok)
+        prospects = self._verify_emails(prospects, user_id=user_id, skip_verification=not budget_ok)
 
         # Stage 5: CRM merge
         prospects = self._merge_with_crm(user_id, simulation_id, action_id, prospects, targeting)
@@ -868,9 +868,11 @@ Page content:
 
     # ── Stage 4 — Email verification ─────────────────────────────────────────
 
-    def _verify_emails(self, prospects: list, skip_verification: bool = False) -> list:
+    def _verify_emails(self, prospects: list, user_id: str, skip_verification: bool = False) -> list:
+        from app.services.contact_lookup import get_next_fallback_email
         provider, api_key = _get_verifier_config()
         verified          = []
+        used_fallbacks    = set()
 
         for prospect in prospects:
             # Apollo-sourced: already verified
@@ -887,7 +889,14 @@ Page content:
 
             if not emails_to_check:
                 self._discarded_count += 1
-                self._save_no_email_contact(prospect)
+                fb_email = get_next_fallback_email(user_id, used_fallbacks)
+                used_fallbacks.add(fb_email)
+                prospect.email = fb_email
+                prospect.email_verified = True
+                prospect.email_source = 'fallback_default'
+                prospect.email_confidence = 1.0
+                self._save_no_email_contact(prospect, user_id)
+                verified.append(prospect)
                 continue
 
             if skip_verification:
@@ -939,39 +948,20 @@ Page content:
 
             if not found:
                 self._discarded_count += 1
-                self._save_no_email_contact(prospect)
+                fb_email = get_next_fallback_email(user_id, used_fallbacks)
+                used_fallbacks.add(fb_email)
+                prospect.email = fb_email
+                prospect.email_verified = True
+                prospect.email_source = 'fallback_default'
+                prospect.email_confidence = 1.0
+                self._save_no_email_contact(prospect, user_id)
+                verified.append(prospect)
 
         return verified
 
-    def _save_no_email_contact(self, prospect: Prospect):
-        """Persist unverifiable prospects to CRM without email for manual follow-up."""
-        try:
-            from app.models.contact import Contact
-            # Only save if we have enough to identify them
-            if not prospect.first_name or not prospect.company_name:
-                return
-            # Avoid duplicates: skip if a contact with same name+company already exists
-            existing = Contact.query.filter_by(
-                first_name=prospect.first_name,
-                last_name=prospect.last_name,
-                company_name=prospect.company_name,
-            ).first()
-            if existing:
-                return
-            contact = Contact(
-                id=generate_id(),
-                user_id='_system',   # will be corrected when merged
-                first_name=prospect.first_name,
-                last_name=prospect.last_name,
-                email=f'__no_email_{generate_id()}@placeholder',
-                job_title=prospect.job_title,
-                company_name=prospect.company_name,
-                source='web_research_no_email',
-                source_notes=prospect.why_this_fits,
-            )
-            db.session.add(contact)
-        except Exception as exc:
-            logger.debug('Could not save no-email contact: %s', exc)
+    def _save_no_email_contact(self, prospect: Prospect, user_id: str):
+        """No-op: prospects without a verified email are not saved to CRM."""
+        return
 
     # ── Stage 5 — CRM merge ───────────────────────────────────────────────────
 

@@ -165,8 +165,8 @@ def _should_re_explore(simulation_id: str) -> bool:
             Layer6Outcome.created_at >= cyc.cycle_started_at,
             Layer6Outcome.created_at <= (cyc.cycle_completed_at or cyc.cycle_started_at),
         ).all()
-        proj = sum(float(o.projected_income) for o in outs) or 1
-        actual = sum(float(o.actual_income) for o in outs)
+        proj = sum(float(o.projected_income or 0) for o in outs) or 1
+        actual = sum(float(o.actual_income or 0) for o in outs)
         return actual / proj
 
     trailing = [_cycle_yield(c) for c in cycles[:3]]
@@ -500,6 +500,19 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
         logger.info('Cycle lock held for %s — skipping', simulation_id)
         return {'skipped': True, 'reason': 'cycle_locked'}
 
+    # ── PROCESS SCHEDULED STEPS FIRST (FR-STEP-04) ──
+    # Due action_steps are evaluated and executed before scoring new agents.
+    try:
+        from app.services.action_step_service import process_due_steps
+        _step_result = process_due_steps(simulation_id, sim.user_id)
+        if _step_result['executed'] or _step_result['skipped']:
+            logger.info(
+                'Cycle %s step processing: %d executed, %d skipped',
+                simulation_id, _step_result['executed'], _step_result['skipped'],
+            )
+    except Exception as _spe:
+        logger.warning('process_due_steps failed for %s: %s', simulation_id, _spe)
+
     # Recover stale dispatched entries — anything still "dispatched" after 30 min
     # means the sync execution thread died or the Celery worker never ran.
     # Mark them failed so they become eligible for re-dispatch this cycle.
@@ -657,6 +670,12 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
     except Exception as _ue:
         logger.warning('User insight generation failed: %s', _ue)
 
+    # Generate actionable to-do steps for the user
+    try:
+        cycle.cycle_steps = _generate_cycle_steps(phase, scored[:n_to_dispatch], cycle_number)
+    except Exception as _se:
+        logger.warning('Cycle steps generation failed: %s', _se)
+
     db.session.commit()
 
     # Snapshot Bayesian posteriors for Cycle Diff (FR-DIFF-10)
@@ -703,22 +722,30 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
         # Run in a background thread so the web response returns immediately.
         # GoDaddy shared hosting kills long-running requests before Claude responds.
         import threading as _threading
-        for entry, within_bounds in dispatch_entries:
-            if within_bounds:
-                _eid = entry.id
+        entries_to_run = [entry.id for entry, within_bounds in dispatch_entries if within_bounds]
+        if entries_to_run:
+            def _bg_runner(eids, app=_app_obj):
+                for eid in eids:
+                    def _bg_single(entry_id=eid):
+                        with app.app_context():
+                            from app.extensions import db as _db
+                            from app.models.layer6 import Layer6ActionQueue as _Q
+                            try:
+                                fresh = _db.session.get(_Q, entry_id)
+                                if fresh and fresh.status == _Q.STATUS_DISPATCHED:
+                                    _execute_action_sync(fresh)
+                            except Exception as ex:
+                                logger.error('Background action queue worker execution failed for entry %s: %s', entry_id, ex)
 
-                def _bg(eid=_eid, app=_app_obj):
-                    with app.app_context():
-                        from app.extensions import db as _db
-                        from app.models.layer6 import Layer6ActionQueue as _Q
-                        fresh = _db.session.get(_Q, eid)
-                        if fresh and fresh.status == _Q.STATUS_DISPATCHED:
-                            _execute_action_sync(fresh)
+                    _threading.Thread(target=_bg_single, daemon=True).start()
 
-                _threading.Thread(target=_bg, daemon=True).start()
+            _threading.Thread(target=_bg_runner, args=(entries_to_run,), daemon=True).start()
 
     # Check for re-calibration trigger
-    _check_recalibration(simulation_id, config)
+    try:
+        _check_recalibration(simulation_id, config)
+    except Exception as _rce:
+        logger.warning('_check_recalibration failed for %s: %s', simulation_id, _rce)
 
     # Release Redis cycle lock and seed cold start priors on first cycle
     _release_cycle_lock(simulation_id)
@@ -789,7 +816,62 @@ def _execute_action_sync(entry) -> None:
             reasoning='Action completed successfully.',
             model_tier=get_tier(entry.action_type).value,
         ))
+
+        # Determine version number (count existing versions + 1)
+        from app.models.artifact import ArtifactVersion
+        from utils.id_gen import generate_id
+
+        prior_count = ArtifactVersion.query.filter_by(action_id=agent_action.id).count()
+        new_version_number = prior_count + 1
+
+        # Demote any previous current version
+        if prior_count:
+            ArtifactVersion.query.filter_by(
+                action_id=agent_action.id, is_current=True,
+            ).update({'is_current': False})
+
+        version_label = f'v{new_version_number} — {_dt.utcnow().strftime("%b %d %Y")}'
+
+        av = ArtifactVersion(
+            id=generate_id(),
+            action_id=agent_action.id,
+            simulation_id=entry.simulation_id,
+            layer_number=entry.source_layer,
+            action_type=entry.action_type,
+            version_number=new_version_number,
+            version_label=version_label,
+            content=artifact,
+            file_type='text',
+            is_current=True,
+            created_by='user',
+        )
+        av.prefill_inputs = _injected_inputs
+        db.session.add(av)
         db.session.commit()
+
+        # Update upstream_action_id on matching ArtifactDependency rows so staleness works
+        try:
+            from app.models.artifact import ArtifactDependency
+            deps = ArtifactDependency.query.filter_by(
+                simulation_id=agent_action.simulation_id,
+                upstream_action_type=agent_action.action_type,
+                upstream_action_id=None,
+            ).all()
+            for dep in deps:
+                dep.upstream_action_id = agent_action.id
+                dep.upstream_version_used = new_version_number
+            if deps:
+                db.session.commit()
+        except Exception as e:
+            logger.debug('_link_upstream_dependencies sync failed: %s', e)
+
+        # Propagate staleness to downstream dependencies
+        try:
+            from app.services.prefill_engine import propagate_staleness
+            propagate_staleness(entry.simulation_id, agent_action.id, new_version_number)
+        except Exception as e:
+            logger.debug('propagate_staleness sync failed: %s', e)
+
         logger.info('Layer 6 sync action %s (%s) completed', entry.id, entry.action_type)
 
         # Post-completion: dispatch outreach emails based on trust level
@@ -806,6 +888,22 @@ def _execute_action_sync(entry) -> None:
                 _dispatch_cold_email_campaign(agent_action.id, entry.simulation_id, sim.user_id if sim else None)
             except Exception as _de:
                 logger.warning('cold_email_campaign post-send dispatch failed: %s', _de)
+
+        # Create scheduled action steps for multi-step agents (SIM-PRD-STEPS-001 A.3)
+        try:
+            from app.services.action_step_service import create_steps_from_artifact, AGENT_STEP_CONFIG
+            if entry.action_type in AGENT_STEP_CONFIG:
+                _n = create_steps_from_artifact(
+                    agent_action_id=agent_action.id,
+                    simulation_id=entry.simulation_id,
+                    action_type=entry.action_type,
+                    artifact_json=artifact,
+                    parent_action_id=entry.id,
+                )
+                if _n:
+                    logger.info('Created %d action steps for %s (sync)', _n, entry.action_type)
+        except Exception as _ste:
+            logger.warning('create_steps_from_artifact (sync) failed for %s: %s', entry.action_type, _ste)
 
         # Deploy artifact to integration chain (FR-WIRE-01)
         try:
@@ -946,6 +1044,46 @@ def _generate_user_insight(phase: str, top_actions: list[dict], cycle_number: in
         return ''
 
 
+def _generate_cycle_steps(phase: str, top_actions: list[dict], cycle_number: int) -> str:
+    """
+    Generate 3-5 specific, actionable to-do steps the user can do today
+    based on what the orchestrator prioritised this cycle.
+    Returns a JSON array string, or '' on failure.
+    """
+    if not top_actions:
+        return ''
+    try:
+        import anthropic
+        import json as _json
+        from flask import current_app
+        client = anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
+        action_names = ', '.join(a['action_type'].replace('_', ' ') for a in top_actions[:4])
+        prompt = (
+            f"The AI Growth Orchestrator just ran Cycle {cycle_number} (Phase: {phase.upper()}) "
+            f"and prioritised these actions: {action_names}.\n\n"
+            "Write 3–5 specific, concrete steps this person can do TODAY to support and "
+            "accelerate these actions. Each step should be a short imperative sentence "
+            "(e.g. 'Review and personalise your 3 outreach emails before sending'). "
+            "Steps must be immediately actionable — no vague advice. "
+            "Return ONLY a JSON array of strings, no commentary, no markdown fences.\n"
+            'Example: ["Step one here", "Step two here", "Step three here"]'
+        )
+        resp = client.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=300,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        # Validate it's a JSON array before storing
+        parsed = _json.loads(raw)
+        if isinstance(parsed, list) and parsed:
+            return _json.dumps(parsed, ensure_ascii=False)
+        return ''
+    except Exception as exc:
+        logger.warning('_generate_cycle_steps failed: %s', exc)
+        return ''
+
+
 def _check_recalibration(simulation_id: str, config) -> None:
     """
     Trigger a Re-Calibration Event if actual income < 60% of projected
@@ -967,8 +1105,8 @@ def _check_recalibration(simulation_id: str, config) -> None:
         ).all()
         if not outcomes:
             continue
-        total_actual = sum(float(o.actual_income) for o in outcomes)
-        total_projected = sum(float(o.projected_income) for o in outcomes) or 1
+        total_actual = sum(float(o.actual_income or 0) for o in outcomes)
+        total_projected = sum(float(o.projected_income or 0) for o in outcomes) or 1
         if total_actual < 0.6 * total_projected:
             underperforming += 1
 

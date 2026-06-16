@@ -46,8 +46,20 @@ with app.app_context():
         layer_count = SimulationLayer.query.filter_by(simulation_id=sim.id).count()
 
         if layer_count >= 5:
-            # All layers exist but status never flipped — heal it
-            sim.status = 'complete'
+            # All layers exist but status never flipped — heal it atomically
+            try:
+                res = db.session.execute(
+                    db.text("UPDATE simulations SET status = 'complete' WHERE id = :sid AND status = 'processing'"),
+                    {'sid': sim.id}
+                )
+                db.session.commit()
+                if res.rowcount == 0:
+                    continue
+            except Exception as e:
+                db.session.rollback()
+                log.error(f'Failed to heal complete simulation {sim.id}: {e}')
+                continue
+
             from app.models.user import User
             user = User.query.get(sim.user_id)
             if user:
@@ -55,6 +67,21 @@ with app.app_context():
                 user.total_spend = (user.total_spend or 0) + (sim.amount_charged_cents or 1000)
             db.session.commit()
             log.info(f'Simulation {sim.id} healed — marked complete ({layer_count} layers found)')
+            continue
+
+        # Atomic lock: transition status to STATUS_STREAMING so no other runner picks it up.
+        try:
+            res = db.session.execute(
+                db.text("UPDATE simulations SET status = :new WHERE id = :sid AND status = :old"),
+                {'new': Simulation.STATUS_STREAMING, 'sid': sim.id, 'old': Simulation.STATUS_PROCESSING}
+            )
+            db.session.commit()
+            if res.rowcount == 0:
+                log.info(f'Simulation {sim.id} already locked or processed by another task, skipping')
+                continue
+        except Exception as e:
+            db.session.rollback()
+            log.error(f'Failed to lock simulation {sim.id}: {e}')
             continue
 
         if layer_count > 0:
