@@ -113,22 +113,27 @@ def register():
 
     db.session.commit()
 
-    email_error = None
-    try:
-        from app.services.email_service import send_verification_email
-        send_verification_email(user.email, user.full_name, verify_token)
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error('send_verification_email failed: %s', e, exc_info=True)
-        email_error = str(e)
+    # Send verification email in a background thread so the response returns immediately.
+    # SMTP on shared hosting can block for 30+ seconds and cause Passenger to kill the worker.
+    import threading
+    _app = current_app._get_current_object()
+    _email, _name, _token = user.email, user.full_name, verify_token
 
-    resp = {
+    def _send():
+        with _app.app_context():
+            try:
+                from app.services.email_service import send_verification_email
+                send_verification_email(_email, _name, _token)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error('send_verification_email failed: %s', e, exc_info=True)
+
+    threading.Thread(target=_send, daemon=True).start()
+
+    return jsonify({
         'message': 'Registration successful. Check your email to verify your account.',
         'user_id': user.id,
-    }
-    if email_error:
-        resp['_email_error'] = email_error  # visible in dev; remove once email is confirmed working
-    return jsonify(resp), 201
+    }), 201
 
 
 @auth_bp.route('/verify/<token>', methods=['GET'])
