@@ -15,7 +15,8 @@ class Config:
     MAIL_USE_TLS = True
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@simulacrum.ai')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
+    MAIL_DEFAULT_SENDER_NAME = os.environ.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
     CLAUDE_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
     CLAUDE_MODEL = 'claude-sonnet-4-20250514'
     STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
@@ -60,7 +61,7 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///simulacrum.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    BCRYPT_LOG_ROUNDS = 14
+    BCRYPT_LOG_ROUNDS = 12
     # Run Celery tasks synchronously when no Redis/worker is available (e.g. shared hosting)
     CELERY_TASK_ALWAYS_EAGER = os.environ.get('REDIS_URL') is None
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -69,6 +70,12 @@ class ProductionConfig(Config):
         'pool_size': 5,
         'max_overflow': 2,
     }
+
+    @classmethod
+    def init_app(cls, app):
+        key = os.environ.get('ENCRYPTION_KEY')
+        if not key:
+            raise RuntimeError("ENCRYPTION_KEY environment variable is required in production configuration.")
 
 
 class TestingConfig(Config):
