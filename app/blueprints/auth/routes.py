@@ -113,17 +113,29 @@ def register():
 
     db.session.commit()
 
-    # Send verification email in a background thread so the response returns immediately.
-    # SMTP on shared hosting can block for 30+ seconds and cause Passenger to kill the worker.
+    # Build the verify URL now, while the request context is still active.
+    from flask import url_for as _url_for
+    verify_url = _url_for('auth.verify_email', token=verify_token, _external=True)
+
+    # Send in a background thread — SMTP on shared hosting blocks long enough
+    # for Passenger to kill the worker before the response is sent.
     import threading
     _app = current_app._get_current_object()
-    _email, _name, _token = user.email, user.full_name, verify_token
+    _email, _name = user.email, user.full_name
 
     def _send():
         with _app.app_context():
             try:
-                from app.services.email_service import send_verification_email
-                send_verification_email(_email, _name, _token)
+                from app.services.email_service import _send as _send_email
+                _send_email(
+                    subject='Verify your Simulacrum account',
+                    recipients=[_email],
+                    body=(
+                        f'Hi {_name},\n\n'
+                        f'Verify your email: {verify_url}\n\n'
+                        f'Expires in 24 hours.\n\n— Simulacrum'
+                    ),
+                )
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error('send_verification_email failed: %s', e, exc_info=True)
