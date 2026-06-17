@@ -115,6 +115,32 @@
 .bio-section-title { font-weight: 700; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
 .bio-meta { font-size: .75rem; color: #9CA3AF; margin-top: .5rem; font-family: 'DM Sans', sans-serif; }
 .bio-actions-row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+/* Bio split panel */
+.bio-split-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+@media (max-width: 720px) { .bio-split-panel { grid-template-columns: 1fr; } }
+.bio-split-editor { display: flex; flex-direction: column; gap: .35rem; }
+.bio-textarea { min-height: 260px; resize: vertical; font-family: 'DM Sans', sans-serif !important; font-size: .875rem !important; line-height: 1.65 !important; }
+.bio-editor-footer { display: flex; justify-content: space-between; align-items: center; font-size: .72rem; color: #9CA3AF; font-family: 'DM Sans', sans-serif; }
+.bio-save-status { font-size: .72rem; font-family: 'DM Sans', sans-serif; transition: color .2s; }
+.bio-save-status.saving { color: #C9952A; }
+.bio-save-status.saved { color: #15803d; }
+.bio-save-status.error { color: #b91c1c; }
+.bio-split-preview-pane { background: #F8FAFA; border: 1px solid rgba(15,123,114,.12); border-radius: 8px; padding: 1rem; }
+.bio-split-preview-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #9CA3AF; margin-bottom: .6rem; font-family: 'DM Sans', sans-serif; }
+.bio-preview-content { font-size: .875rem; line-height: 1.7; color: #1A1A2E; white-space: pre-wrap; font-family: 'DM Sans', sans-serif; min-height: 80px; }
+.bio-preview-empty { color: #9CA3AF; font-style: italic; }
+/* Profile completion bar */
+.profile-completion-bar { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 10px; padding: .9rem 1rem; margin-bottom: 1.5rem; }
+.pcb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .45rem; }
+.pcb-label { font-size: .8rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
+.pcb-pct { font-size: .8rem; font-weight: 700; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
+.pcb-track { height: 5px; background: rgba(0,0,0,.07); border-radius: 99px; overflow: hidden; margin-bottom: .6rem; }
+.pcb-fill { height: 100%; background: linear-gradient(90deg,#0F7B72,#13A89E); border-radius: 99px; transition: width .4s; }
+.pcb-chips { display: flex; gap: .4rem; flex-wrap: wrap; }
+.pcb-chip { font-size: .72rem; font-weight: 600; padding: .2rem .6rem; border-radius: 20px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: none; transition: opacity .15s; display: inline-block; }
+.pcb-chip.missing { background: rgba(201,149,42,.1); color: #92400e; border: 1px solid rgba(201,149,42,.25); }
+.pcb-chip.missing:hover { opacity: .75; }
+.pcb-chip.done { background: rgba(34,197,94,.1); color: #15803d; border: 1px solid rgba(34,197,94,.2); pointer-events: none; }
 .username-check { font-size: .78rem; margin-top: .25rem; font-family: 'DM Sans', sans-serif; }
 .username-check.ok { color: #15803d; }
 .username-check.err { color: #b91c1c; }
@@ -245,10 +271,47 @@
     {# ── Profile & Bio tab ──────────────────────────────────────────── #}
     {% if active_tab == 'profile' %}
     <div id="profileTab">
-      <div class="settings-section">
-        <div class="settings-section-title">Public Profile</div>
 
-        <div class="avatar-row">
+      {# ── Wealth presence completion bar ── #}
+      {% if completeness_breakdown is defined %}
+      {% set cb_done = (completeness_breakdown.avatar|int) + (completeness_breakdown.tagline|int) + (completeness_breakdown.bio|int) + (completeness_breakdown.public_sim|int) %}
+      {% set cb_pct = cb_done * 25 %}
+      <div class="profile-completion-bar">
+        <div class="pcb-header">
+          <span class="pcb-label">Wealth presence</span>
+          <span class="pcb-pct">{{ cb_pct }}% complete</span>
+        </div>
+        <div class="pcb-track"><div class="pcb-fill" style="width:{{ cb_pct }}%"></div></div>
+        <div class="pcb-chips">
+          {% if completeness_breakdown.avatar %}
+          <span class="pcb-chip done">✓ Photo</span>
+          {% else %}
+          <button class="pcb-chip missing" onclick="scrollToId('avatarInput')">+ Photo</button>
+          {% endif %}
+          {% if completeness_breakdown.tagline %}
+          <span class="pcb-chip done">✓ Tagline</span>
+          {% else %}
+          <button class="pcb-chip missing" onclick="scrollToId('f-tagline')">+ Tagline</button>
+          {% endif %}
+          {% if completeness_breakdown.bio %}
+          <span class="pcb-chip done">✓ Bio</span>
+          {% else %}
+          <button class="pcb-chip missing" onclick="scrollToId('bioEditor')">+ Bio</button>
+          {% endif %}
+          {% if completeness_breakdown.public_sim %}
+          <span class="pcb-chip done">✓ Public simulation</span>
+          {% else %}
+          <a href="{{ url_for('pages.settings_visibility') }}" class="pcb-chip missing">+ Public simulation</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Section 1: Identity ── #}
+      <div class="settings-section">
+        <div class="settings-section-title">Identity</div>
+
+        <div class="avatar-row" id="avatarRow">
           <div id="avatarDisplay">
             {% if profile and profile.avatar_path %}
             <img class="avatar-preview" src="{{ url_for('public.serve_avatar', filename=profile.avatar_path) }}" alt="Avatar">
@@ -259,7 +322,7 @@
           <div>
             <button class="btn btn-ghost btn-sm" onclick="document.getElementById('avatarInput').click()">Upload photo</button>
             <input type="file" id="avatarInput" accept="image/jpeg,image/png" style="display:none" onchange="uploadAvatar(this)">
-            <div class="settings-hint">JPEG or PNG, max 2 MB. Circular 120×120 px.</div>
+            <div class="settings-hint">JPEG or PNG, max 2 MB. Circular 120×120 px. Shown on your bio page and in search results.</div>
           </div>
         </div>
 
@@ -275,13 +338,18 @@
                  value="{{ profile.username or '' }}" placeholder="your-username"
                  oninput="checkUsername(this.value)">
           <div class="username-check" id="usernameCheck"></div>
-          <div class="settings-hint">simulacrum.io/u/<strong id="usernamePreview">{{ profile.username or '' }}</strong></div>
+          <div class="settings-hint">simulacrum.io/u/<strong id="usernamePreview">{{ profile.username or '' }}</strong>
+            {% if profile and profile.username %}
+            · <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" style="color:#0F7B72">View ↗</a>
+            {% endif %}
+          </div>
         </div>
 
         <div class="settings-row">
           <label class="settings-label">Tagline</label>
           <input type="text" class="input-text" id="f-tagline" maxlength="200"
-                 value="{{ profile.tagline or '' }}" placeholder="Short professional tagline">
+                 value="{{ profile.tagline or '' }}" placeholder="Short professional hook — the first line clients read">
+          <div class="settings-hint">Appears in search results and on your Layer 1 consulting card.</div>
         </div>
 
         <div class="settings-row">
@@ -291,6 +359,62 @@
         </div>
       </div>
 
+      {# ── Section 2: Professional Bio (split editor/preview) ── #}
+      <div class="settings-section">
+        <div class="settings-section-title">Professional Bio</div>
+        <div class="bio-split-panel">
+          <div class="bio-split-editor">
+            <textarea class="input-text bio-textarea" id="bioEditor" rows="14"
+                      placeholder="Your professional bio will appear here. Click Generate to create one from your resume and Expertise Zones, or write your own.">{{ profile.bio or '' if profile else '' }}</textarea>
+            <div class="bio-editor-footer">
+              <span id="bioCharCount">{{ ((profile.bio or '')|length) if profile else 0 }} chars</span>
+              <span id="bioSaveStatus" class="bio-save-status"></span>
+            </div>
+          </div>
+          <div class="bio-split-preview-pane">
+            <div class="bio-split-preview-label">Preview</div>
+            <div id="bioPreviewPane" class="bio-preview-content {% if not (profile and profile.bio) %}bio-preview-empty{% endif %}">{% if profile and profile.bio %}{{ profile.bio }}{% else %}Your bio will appear here as you type…{% endif %}</div>
+          </div>
+        </div>
+        <div class="bio-actions-row" style="margin-top:.75rem">
+          <button class="btn btn-primary btn-sm" id="regenBtn"
+                  {% if not has_source_data %}disabled title="Upload a resume or create a simulation first"{% endif %}
+                  onclick="regenerateBio()">{% if profile and profile.bio %}Regenerate bio{% else %}Generate bio{% endif %}</button>
+          <span id="regenCooldownLabel" style="display:none;font-size:.75rem;color:#9CA3AF;align-self:center"></span>
+          {% if profile and profile.bio_generated_at %}
+          <span class="bio-meta" style="align-self:center">Generated {{ profile.bio_generated_at.strftime('%b %d, %Y') }}{% if profile.bio_edited %} · Edited{% endif %}</span>
+          {% endif %}
+          {% if profile and profile.username %}
+          <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" class="btn btn-ghost btn-sm" style="margin-left:auto">Preview profile ↗</a>
+          {% endif %}
+        </div>
+        <div id="bioGenErr" class="form-error hidden" style="margin-top:.5rem"></div>
+      </div>
+
+      {# ── Section 3: Booking & Contact ── #}
+      <div class="settings-section">
+        <div class="settings-section-title">Booking & Contact</div>
+        <div class="settings-row">
+          <label class="settings-label">Booking URL</label>
+          <input type="url" class="input-text" id="f-booking_url" value="{{ profile.booking_url or '' }}" placeholder="https://cal.com/yourname">
+          <div class="settings-hint">Required for the Cal.com agent to embed a live booking button in your rate card. Overrides agent artifact if set manually.</div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Booking button label</label>
+          <input type="text" class="input-text" id="f-booking_btn_label" maxlength="50"
+                 value="{{ profile.booking_btn_label or 'Book a Call' }}" placeholder="Book a Call">
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Show booking button</div><div class="toggle-desc">Display the booking link button on your public profile</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="f-show_booking_btn" {% if profile and profile.show_booking_btn %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div><div class="toggle-label">Show contact form</div><div class="toggle-desc">Display the inquiry form on your public bio page</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="f-show_contact_form" {% if profile and profile.show_contact_form %}checked{% endif %}><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      {# ── Section 4: Social Links ── #}
       <div class="settings-section">
         <div class="settings-section-title">Social Links</div>
         <div class="settings-row">
@@ -317,64 +441,13 @@
         </div>
       </div>
 
+      {# ── Section 5: Discoverability ── #}
       <div class="settings-section">
-        <div class="settings-section-title">Booking & Contact</div>
-        <div class="settings-row">
-          <label class="settings-label">Booking URL</label>
-          <input type="url" class="input-text" id="f-booking_url" value="{{ profile.booking_url or '' }}" placeholder="https://cal.com/yourname">
-          <div class="settings-hint">Overrides the Cal.com URL from your Layer 1 agent artifact if set.</div>
-        </div>
-        <div class="settings-row">
-          <label class="settings-label">Booking button label</label>
-          <input type="text" class="input-text" id="f-booking_btn_label" maxlength="50"
-                 value="{{ profile.booking_btn_label or 'Book a Call' }}" placeholder="Book a Call">
-        </div>
-        <div class="toggle-row">
-          <div><div class="toggle-label">Show contact form</div><div class="toggle-desc">Display the inquiry form on your public profile</div></div>
-          <label class="toggle-switch"><input type="checkbox" id="f-show_contact_form" {% if profile.show_contact_form %}checked{% endif %}><span class="toggle-slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div><div class="toggle-label">Show booking button</div><div class="toggle-desc">Display the booking link button on your public profile</div></div>
-          <label class="toggle-switch"><input type="checkbox" id="f-show_booking_btn" {% if profile.show_booking_btn %}checked{% endif %}><span class="toggle-slider"></span></label>
-        </div>
+        <div class="settings-section-title">Discoverability</div>
         <div class="toggle-row">
           <div><div class="toggle-label">Prevent search engine indexing</div><div class="toggle-desc">Adds a noindex tag to your public profile page</div></div>
-          <label class="toggle-switch"><input type="checkbox" id="f-noindex" {% if profile.noindex %}checked{% endif %}><span class="toggle-slider"></span></label>
+          <label class="toggle-switch"><input type="checkbox" id="f-noindex" {% if profile and profile.noindex %}checked{% endif %}><span class="toggle-slider"></span></label>
         </div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Professional Bio</div>
-        {% if profile and profile.bio %}
-        <div class="bio-panel">
-          <div class="bio-preview" id="bioPreview">{{ profile.bio }}</div>
-          <div class="bio-meta">
-            {% if profile.bio_generated_at %}Generated {{ profile.bio_generated_at.strftime('%b %d, %Y') }}{% endif %}
-            {% if profile.bio_edited %} · Manually edited{% endif %}
-          </div>
-          <div class="bio-actions-row">
-            <button class="btn btn-ghost btn-sm" onclick="toggleBioEdit()">Edit</button>
-            <button class="btn btn-ghost btn-sm" id="regenBtn" onclick="regenerateBio()">Regenerate{% if profile.bio_edited %} (replaces your edits){% endif %}</button>
-            {% if profile.username %}
-            <a href="{{ url_for('public.profile_page', username=profile.username, _external=True) }}" target="_blank" class="btn btn-ghost btn-sm">Preview profile ↗</a>
-            {% endif %}
-          </div>
-          <textarea class="input-text" id="bioEditor" rows="12" style="display:none;margin-top:.75rem">{{ profile.bio }}</textarea>
-        </div>
-        {% else %}
-        <div class="bio-panel">
-          <p style="font-size:.875rem;color:rgba(255,255,255,.5);margin:0 0 .75rem">
-            {% if has_source_data %}
-            Generate your Wikipedia-style professional bio from your resume and Expertise Zones.
-            {% else %}
-            Upload a resume or connect LinkedIn, then complete a Simulation to generate your bio.
-            {% endif %}
-          </p>
-          <button class="btn btn-primary btn-sm" id="regenBtn" {% if not has_source_data %}disabled title="Upload a resume or create a simulation first"{% endif %} onclick="regenerateBio()">Generate bio</button>
-          <textarea class="input-text" id="bioEditor" rows="12" style="display:none;margin-top:.75rem"></textarea>
-        </div>
-        {% endif %}
-        <div id="bioGenErr" class="form-error hidden" style="margin-top:.5rem"></div>
       </div>
 
       <div class="settings-section" id="bioPageSection">
@@ -1623,9 +1696,6 @@ async function uploadAvatar(input) {
 async function saveProfile() {
   const boolVal = id => document.getElementById(id)?.checked;
   const strVal = id => (document.getElementById(id)?.value || '').trim();
-  // Track whether the bio panel already exists — if not, this is the first save
-  // of a newly-generated bio and we need a page reload to render the preview state.
-  const hadBioPanel = !!document.getElementById('bioPreview');
 
   const body = {
     display_name:      strVal('f-display_name'),
@@ -1656,48 +1726,94 @@ async function saveProfile() {
   if (res.ok) {
     const preview = document.getElementById('usernamePreview');
     if (preview && data.username) preview.textContent = data.username;
-    // First-time bio save: reload so the template re-renders the full bio panel
-    // (preview div, Edit/Regenerate buttons, Preview profile link).
-    if (body.bio && !hadBioPanel) {
-      window.location.reload();
-      return;
-    }
     toast('Profile saved');
   } else {
     toast(data.error || 'Save failed');
   }
 }
 
-function toggleBioEdit() {
-  const preview = document.getElementById('bioPreview');
-  const editor  = document.getElementById('bioEditor');
+// ── Bio split panel: live preview + auto-save ─────────────────────────────
+
+let _bioSaveTimer = null;
+
+function scrollToId(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+function updateBioPreview() {
+  const editor = document.getElementById('bioEditor');
+  const preview = document.getElementById('bioPreviewPane');
+  const charCount = document.getElementById('bioCharCount');
   if (!editor) return;
-  const showing = editor.style.display !== 'none';
-  editor.style.display = showing ? 'none' : 'block';
-  if (preview) preview.style.display = showing ? '' : 'none';
+  const val = editor.value;
+  if (preview) {
+    if (val.trim()) {
+      preview.textContent = val;
+      preview.classList.remove('bio-preview-empty');
+    } else {
+      preview.textContent = 'Your bio will appear here as you type…';
+      preview.classList.add('bio-preview-empty');
+    }
+  }
+  if (charCount) charCount.textContent = val.length + ' chars';
+}
+
+function _bioSaveStatus(state, msg) {
+  const el = document.getElementById('bioSaveStatus');
+  if (!el) return;
+  el.className = 'bio-save-status' + (state ? ' ' + state : '');
+  el.textContent = msg || '';
+}
+
+function scheduleBioSave() {
+  clearTimeout(_bioSaveTimer);
+  _bioSaveStatus('saving', 'Saving…');
+  _bioSaveTimer = setTimeout(doAutoSaveBio, 2000);
+}
+
+async function doAutoSaveBio() {
+  const editor = document.getElementById('bioEditor');
+  if (!editor) return;
+  const bio = editor.value.trim();
+  try {
+    const res = await fetch(ROOT2 + '/api/settings/profile', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bio}),
+    });
+    if (res.ok) {
+      _bioSaveStatus('saved', 'Saved');
+      setTimeout(() => _bioSaveStatus('', ''), 3000);
+    } else {
+      _bioSaveStatus('error', 'Save failed');
+    }
+  } catch(e) {
+    _bioSaveStatus('error', 'Save failed');
+  }
 }
 
 let _regenCooldown = false;
+let _regenCooldownTimer = null;
+
 async function regenerateBio() {
   if (_regenCooldown) return;
   const btn = document.getElementById('regenBtn');
   const errEl = document.getElementById('bioGenErr');
+  const cooldownLabel = document.getElementById('regenCooldownLabel');
   errEl.classList.add('hidden');
   btn.disabled = true;
   btn.textContent = 'Generating…';
 
   const editor = document.getElementById('bioEditor');
-  const preview = document.getElementById('bioPreview');
-  // Always use editor.value — it's pre-populated from the server and reflects
-  // any edits the user has typed, even when the textarea is visually hidden.
-  const currentBio = editor ? editor.value.trim() : (preview ? preview.textContent.trim() : '');
+  const currentBio = editor ? editor.value.trim() : '';
   const res = await fetch(ROOT2 + '/api/settings/profile/bio/generate', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({existing_bio: currentBio}),
   });
   const data = await res.json();
-  btn.textContent = 'Regenerate';
+  btn.textContent = editor && editor.value.trim() ? 'Regenerate bio' : 'Generate bio';
 
   if (!res.ok) {
     errEl.textContent = data.error || 'Generation failed';
@@ -1706,13 +1822,38 @@ async function regenerateBio() {
     return;
   }
 
-  if (editor) { editor.value = data.bio; editor.style.display = 'block'; }
-  if (preview) preview.style.display = 'none';
-  toast('Bio generated — review and click Save Profile to keep it');
+  if (editor) {
+    editor.value = data.bio;
+    updateBioPreview();
+    scheduleBioSave();
+  }
+  toast('Bio generated — auto-saving…');
 
   _regenCooldown = true;
-  setTimeout(() => { _regenCooldown = false; btn.disabled = false; }, 60000);
+  let _secs = 60;
+  if (cooldownLabel) { cooldownLabel.style.display = 'inline'; cooldownLabel.textContent = 'Available in 60s'; }
+  _regenCooldownTimer = setInterval(() => {
+    _secs--;
+    if (cooldownLabel) cooldownLabel.textContent = 'Available in ' + _secs + 's';
+    if (_secs <= 0) {
+      clearInterval(_regenCooldownTimer);
+      _regenCooldown = false;
+      btn.disabled = false;
+      if (cooldownLabel) { cooldownLabel.style.display = 'none'; cooldownLabel.textContent = ''; }
+    }
+  }, 1000);
 }
+
+// Wire up bio editor events on profile tab load
+(function initBioEditor() {
+  const editor = document.getElementById('bioEditor');
+  if (!editor) return;
+  editor.addEventListener('input', function() {
+    updateBioPreview();
+    scheduleBioSave();
+  });
+  updateBioPreview();
+}());
 
 // ── Bio Page editor (inline in profile tab) ────────────────────────────────
 {% if active_tab == 'profile' %}

@@ -223,7 +223,7 @@ def settings_redirect():
 @pages_bp.route('/settings/profile')
 @login_required
 def settings_profile():
-    from app.models.profile import UserProfile
+    from app.models.profile import UserProfile, SimulationVisibility
     from app.models.resume import Resume
     from app.models.simulation import Simulation
     profile = UserProfile.query.filter_by(user_id=current_user.id).first()
@@ -233,11 +233,24 @@ def settings_profile():
         ).first() is not None
         or Simulation.query.filter_by(user_id=current_user.id).first() is not None
     )
+    try:
+        public_sim = SimulationVisibility.query.filter_by(
+            user_id=current_user.id, is_public=True
+        ).first() is not None
+    except Exception:
+        public_sim = False
+    completeness_breakdown = {
+        'avatar':      bool(profile and profile.avatar_path),
+        'tagline':     bool(profile and profile.tagline),
+        'bio':         bool(profile and profile.bio),
+        'public_sim':  public_sim,
+    }
     return render_template(
         'settings/index.html',
         active_tab='profile',
         profile=profile,
         has_source_data=has_source_data,
+        completeness_breakdown=completeness_breakdown,
     )
 
 
