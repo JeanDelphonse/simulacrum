@@ -227,10 +227,11 @@ def settings_profile():
     from app.models.resume import Resume
     from app.models.simulation import Simulation
     profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    resume = Resume.query.filter_by(user_id=current_user.id).order_by(
+        Resume.created_at.desc()
+    ).first()
     has_source_data = (
-        Resume.query.filter_by(user_id=current_user.id).filter(
-            Resume.parsed_text.isnot(None)
-        ).first() is not None
+        resume is not None
         or Simulation.query.filter_by(user_id=current_user.id).first() is not None
     )
     try:
@@ -245,11 +246,13 @@ def settings_profile():
         'bio':         bool(profile and profile.bio),
         'public_sim':  public_sim,
     }
+    resume_text = (resume.parsed_text or '').strip() if resume else ''
     return render_template(
         'settings/index.html',
         active_tab='profile',
         profile=profile,
         has_source_data=has_source_data,
+        resume_text=resume_text,
         completeness_breakdown=completeness_breakdown,
     )
 

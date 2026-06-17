@@ -365,15 +365,15 @@
         <div class="bio-split-panel">
           <div class="bio-split-editor">
             <textarea class="input-text bio-textarea" id="bioEditor" rows="14"
-                      placeholder="Your professional bio will appear here. Click Generate to create one from your resume and Expertise Zones, or write your own.">{{ profile.bio or '' if profile else '' }}</textarea>
+                      placeholder="Your professional bio will appear here. Click Generate to create one from your resume and Expertise Zones, or write your own.">{% if profile and profile.bio %}{{ profile.bio }}{% elif resume_text %}{{ resume_text }}{% endif %}</textarea>
             <div class="bio-editor-footer">
-              <span id="bioCharCount">{{ ((profile.bio or '')|length) if profile else 0 }} chars</span>
+              <span id="bioCharCount">{{ ((profile.bio or resume_text or '')|length) if profile else (resume_text|length if resume_text else 0) }} chars</span>
               <span id="bioSaveStatus" class="bio-save-status"></span>
             </div>
           </div>
           <div class="bio-split-preview-pane">
             <div class="bio-split-preview-label">Preview</div>
-            <div id="bioPreviewPane" class="bio-preview-content {% if not (profile and profile.bio) %}bio-preview-empty{% endif %}">{% if profile and profile.bio %}{{ profile.bio }}{% else %}Your bio will appear here as you type…{% endif %}</div>
+            <div id="bioPreviewPane" class="bio-preview-content {% if not (profile and profile.bio) and not resume_text %}bio-preview-empty{% endif %}">{% if profile and profile.bio %}{{ profile.bio }}{% elif resume_text %}{{ resume_text }}{% else %}Your bio will appear here as you type…{% endif %}</div>
           </div>
         </div>
         <div class="bio-actions-row" style="margin-top:.75rem">
@@ -1853,9 +1853,11 @@ async function regenerateBio() {
     scheduleBioSave();
   });
   updateBioPreview();
-  // Auto-generate bio on page load if user has source data but no bio yet
+  // Auto-generate bio on page load if user has source data but no bio yet.
+  // Resume text is pre-loaded in the editor as source material; regenerateBio()
+  // picks it up via editor.value and sends it as existing_bio to the API.
   {% if has_source_data and not (profile and profile.bio) %}
-  setTimeout(regenerateBio, 600);
+  setTimeout(regenerateBio, 800);
   {% endif %}
 }());
 
