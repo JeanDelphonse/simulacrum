@@ -375,7 +375,6 @@
         <div id="bioGenErr" class="form-error hidden" style="margin-top:.5rem"></div>
       </div>
 
-      {% if profile and profile.username %}
       <div class="settings-section" id="bioPageSection">
         <div class="settings-section-title">Bio Page</div>
 
@@ -383,13 +382,19 @@
         <div class="bio-panel" style="margin-bottom:1.25rem">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <div>
+              {% if profile and profile.username %}
               <div style="font-size:.875rem;color:#e8eaf0">simulacrum.io/u/<strong>{{ profile.username }}</strong></div>
+              {% else %}
+              <div style="font-size:.875rem;color:rgba(255,255,255,.5)">Set a username above to get your bio page URL</div>
+              {% endif %}
               <div id="bioPageStatusHint" style="font-size:.78rem;margin-top:.25rem;color:rgba(255,255,255,.65)">Loading…</div>
             </div>
             <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;flex-shrink:0">
               <span id="bp-save-status"></span>
               <button id="bioPublishBtn" class="btn btn-primary btn-sm" style="display:none" onclick="toggleBioPublish()">Publish bio page</button>
+              {% if profile and profile.username %}
               <a href="{{ request.url_root }}u/{{ profile.username }}" target="_blank" class="btn btn-ghost btn-sm">View ↗</a>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -508,7 +513,6 @@
 
         </div>{# end bp-editor-panel #}
       </div>
-      {% endif %}
 
       <div class="settings-actions">
         <button class="btn btn-primary" onclick="saveProfile()">Save Profile</button>
