@@ -39,7 +39,9 @@ def profile_page(username):
     if not user or user.deleted_at:
         return render_template('public/profile_unpublished.html', username=username), 200
 
-    # ── Bio page (SIM-PRD-BIO-001): if the user has a published bio page, render it ──
+    is_owner = current_user.is_authenticated and current_user.id == profile.user_id
+
+    # ── Bio page (SIM-PRD-BIO-001): render for published pages, or owner preview ──
     from app.models.bio_page import BioPage
     bio_page = BioPage.query.filter_by(user_id=profile.user_id).first()
     # Keep slug in sync with current username (slug may differ if username changed)
@@ -49,11 +51,9 @@ def profile_page(username):
             db.session.commit()
         except Exception:
             db.session.rollback()
-    if bio_page and bio_page.status == BioPage.STATUS_PUBLISHED:
+    if bio_page and (bio_page.status == BioPage.STATUS_PUBLISHED or is_owner):
         from app.blueprints.bio.routes import _assemble_context
         ctx = _assemble_context(profile.user_id, bio_page)
-
-        is_owner = current_user.is_authenticated and current_user.id == profile.user_id
 
         # Track view (skip owner's own views)
         if not is_owner:
@@ -74,7 +74,7 @@ def profile_page(username):
         )
 
     # ── Fallback: legacy profile page ────────────────────────────────────
-    if not profile.is_published:
+    if not profile.is_published and not is_owner:
         return render_template('public/profile_unpublished.html', username=username), 200
 
     vis_records = SimulationVisibility.query.filter_by(
