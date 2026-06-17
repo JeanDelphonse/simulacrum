@@ -1640,9 +1640,7 @@ async function saveProfile() {
   };
 
   const bioEditorEl = document.getElementById('bioEditor');
-  if (bioEditorEl && bioEditorEl.style.display !== 'none') {
-    body.bio = bioEditorEl.value.trim();
-  }
+  if (bioEditorEl) body.bio = bioEditorEl.value.trim();
 
   const res = await fetch(ROOT2 + '/api/settings/profile', {
     method: 'PUT',
@@ -1679,9 +1677,9 @@ async function regenerateBio() {
 
   const editor = document.getElementById('bioEditor');
   const preview = document.getElementById('bioPreview');
-  const currentBio = (editor && editor.style.display !== 'none')
-    ? editor.value.trim()
-    : (preview ? preview.textContent.trim() : '');
+  // Always use editor.value — it's pre-populated from the server and reflects
+  // any edits the user has typed, even when the textarea is visually hidden.
+  const currentBio = editor ? editor.value.trim() : (preview ? preview.textContent.trim() : '');
   const res = await fetch(ROOT2 + '/api/settings/profile/bio/generate', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -1777,6 +1775,15 @@ async function regenerateBio() {
     if (el('hero-pos-custom')) el('hero-pos-custom').checked = !!hero.is_custom_positioning;
     if (el('hero-cta-url'))    el('hero-cta-url').value    = hero.cta_url || '';
     if (el('hero-cta-label'))  el('hero-cta-label').value  = hero.cta_label || '';
+    var heroImgPrev = el('bp-hero-img-preview');
+    if (heroImgPrev) {
+      if (hero.hero_image_url) {
+        heroImgPrev.textContent = 'Hero image on file: ' + hero.hero_image_url.split('/').pop() + ' — upload a new file to replace';
+        heroImgPrev.style.color = '#86efac';
+      } else {
+        heroImgPrev.textContent = '';
+      }
+    }
 
     if (el('about-bio'))    el('about-bio').value    = about.bio_text || '';
     if (el('about-custom')) el('about-custom').checked = !!about.is_custom;
