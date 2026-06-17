@@ -355,7 +355,9 @@
           <div class="bio-actions-row">
             <button class="btn btn-ghost btn-sm" onclick="toggleBioEdit()">Edit</button>
             <button class="btn btn-ghost btn-sm" id="regenBtn" onclick="regenerateBio()">Regenerate{% if profile.bio_edited %} (replaces your edits){% endif %}</button>
+            {% if profile.username %}
             <a href="{{ url_for('public.profile_page', username=profile.username, _external=True) }}" target="_blank" class="btn btn-ghost btn-sm">Preview profile ↗</a>
+            {% endif %}
           </div>
           <textarea class="input-text" id="bioEditor" rows="12" style="display:none;margin-top:.75rem">{{ profile.bio }}</textarea>
         </div>
@@ -1621,6 +1623,9 @@ async function uploadAvatar(input) {
 async function saveProfile() {
   const boolVal = id => document.getElementById(id)?.checked;
   const strVal = id => (document.getElementById(id)?.value || '').trim();
+  // Track whether the bio panel already exists — if not, this is the first save
+  // of a newly-generated bio and we need a page reload to render the preview state.
+  const hadBioPanel = !!document.getElementById('bioPreview');
 
   const body = {
     display_name:      strVal('f-display_name'),
@@ -1649,9 +1654,15 @@ async function saveProfile() {
   });
   const data = await res.json();
   if (res.ok) {
-    toast('Profile saved');
     const preview = document.getElementById('usernamePreview');
     if (preview && data.username) preview.textContent = data.username;
+    // First-time bio save: reload so the template re-renders the full bio panel
+    // (preview div, Edit/Regenerate buttons, Preview profile link).
+    if (body.bio && !hadBioPanel) {
+      window.location.reload();
+      return;
+    }
+    toast('Profile saved');
   } else {
     toast(data.error || 'Save failed');
   }
