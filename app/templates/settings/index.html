@@ -1853,6 +1853,10 @@ async function regenerateBio() {
     scheduleBioSave();
   });
   updateBioPreview();
+  // Auto-generate bio on page load if user has source data but no bio yet
+  {% if has_source_data and not (profile and profile.bio) %}
+  setTimeout(regenerateBio, 600);
+  {% endif %}
 }());
 
 // ── Bio Page editor (inline in profile tab) ────────────────────────────────
