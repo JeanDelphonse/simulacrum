@@ -132,8 +132,20 @@ def dashboard():
     from app.models.resume import Resume
     from app.models.collaboration import Collaboration
     from app.models.partner import ReferralPartner
+    from app.models.layer6 import Layer6Cycle
     from app.extensions import db as _db
+    from sqlalchemy import func
     simulations = Simulation.query.filter_by(user_id=current_user.id).order_by(Simulation.created_at.desc()).all()
+    sim_ids = [s.id for s in simulations]
+    last_cycle_map = {}
+    if sim_ids:
+        rows = (
+            _db.session.query(Layer6Cycle.simulation_id, func.max(Layer6Cycle.cycle_completed_at))
+            .filter(Layer6Cycle.simulation_id.in_(sim_ids))
+            .group_by(Layer6Cycle.simulation_id)
+            .all()
+        )
+        last_cycle_map = {row[0]: row[1] for row in rows}
     resumes = Resume.query.filter_by(user_id=current_user.id).order_by(Resume.created_at.desc()).all()
     pending_collabs = Collaboration.query.filter_by(
         invitee_email=current_user.email,
@@ -156,6 +168,7 @@ def dashboard():
 
     return render_template('dashboard/index.html',
                            simulations=simulations,
+                           last_cycle_map=last_cycle_map,
                            resumes=resumes,
                            pending_collabs=pending_collabs,
                            partner=partner,

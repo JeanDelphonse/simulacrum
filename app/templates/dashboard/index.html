@@ -55,7 +55,7 @@
           <span class="status-badge status-{{ sim.status }}">{{ sim.status.title() }}</span>
         </div>
         <p class="sim-zone">{{ sim.expertise_zone }}</p>
-        <p class="sim-meta">{{ sim.created_at.strftime('%b %d, %Y') }} · {{ sim.layers|length }} layer{{ 's' if sim.layers|length != 1 else '' }}</p>
+        <p class="sim-meta">Created {{ sim.created_at.strftime('%b %d, %Y') }}{% if last_cycle_map.get(sim.id) %} · Last cycle {{ last_cycle_map[sim.id].strftime('%b %d, %Y') }}{% endif %} · {{ sim.layers|length }} layer{{ 's' if sim.layers|length != 1 else '' }}</p>
         <div class="sim-actions">
           <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}" class="btn btn-primary btn-sm">View →</a>
         </div>
@@ -80,7 +80,7 @@
           <span class="status-badge status-{{ sim.status }}">{{ sim.status.title() }}</span>
         </div>
         <p class="sim-zone">{{ sim.expertise_zone }}</p>
-        <p class="sim-meta">{{ sim.created_at.strftime('%b %d, %Y') }} · {{ sim.layers|length }} layer{{ 's' if sim.layers|length != 1 else '' }}</p>
+        <p class="sim-meta">Created {{ sim.created_at.strftime('%b %d, %Y') }}{% if last_cycle_map.get(sim.id) %} · Last cycle {{ last_cycle_map[sim.id].strftime('%b %d, %Y') }}{% endif %} · {{ sim.layers|length }} layer{{ 's' if sim.layers|length != 1 else '' }}</p>
         <div class="sim-actions">
           {% if sim.status in ('processing', 'streaming') %}
           <a href="{{ url_for('pages.simulation_view', sim_id=sim.id) }}" class="btn btn-ghost btn-sm">Watch live →</a>
