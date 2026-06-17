@@ -225,10 +225,14 @@ def settings_redirect():
 def settings_profile():
     from app.models.profile import UserProfile
     from app.models.resume import Resume
+    from app.models.simulation import Simulation
     profile = UserProfile.query.filter_by(user_id=current_user.id).first()
-    has_source_data = Resume.query.filter_by(user_id=current_user.id).filter(
-        Resume.parsed_text.isnot(None)
-    ).first() is not None
+    has_source_data = (
+        Resume.query.filter_by(user_id=current_user.id).filter(
+            Resume.parsed_text.isnot(None)
+        ).first() is not None
+        or Simulation.query.filter_by(user_id=current_user.id).first() is not None
+    )
     return render_template(
         'settings/index.html',
         active_tab='profile',

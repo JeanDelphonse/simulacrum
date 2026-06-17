@@ -139,6 +139,8 @@ def generate_bio():
 
     from app.models.published_page import PublishedPage
     from app.models.simulation import Simulation
+
+    # 1. Prefer published simulations
     published_sim_ids = {
         p.simulation_id for p in
         PublishedPage.query.filter_by(status='live').all()
@@ -153,19 +155,27 @@ def generate_bio():
         if sim.expertise_zone:
             zones.append({'zone_name': sim.expertise_zone, 'evidence': sim.name or ''})
 
-    # Fall back to resume zones or any completed simulation if nothing published
-    if not zones:
-        if resume and resume.expertise_zones:
-            zones = resume.expertise_zones
-        else:
-            for sim in Simulation.query.filter_by(user_id=current_user.id, status='complete').all():
-                if sim.expertise_zone:
-                    zones.append({'zone_name': sim.expertise_zone})
+    # 2. Fall back to resume expertise zones
+    if not zones and resume and resume.expertise_zones:
+        zones = resume.expertise_zones
 
+    # 3. Fall back to any completed simulation
     if not zones:
-        return jsonify({'error': 'Publish at least one Simulation to regenerate your bio'}), 400
+        for sim in Simulation.query.filter_by(user_id=current_user.id, status='complete').all():
+            if sim.expertise_zone:
+                zones.append({'zone_name': sim.expertise_zone})
+
+    # 4. Fall back to ANY simulation (user has one but it may not be complete yet)
+    if not zones:
+        for sim in Simulation.query.filter_by(user_id=current_user.id).all():
+            if sim.expertise_zone:
+                zones.append({'zone_name': sim.expertise_zone})
 
     resume_text = (resume.parsed_text if resume and resume.parsed_text else '') or ''
+
+    # Only block if there is genuinely nothing to work from
+    if not resume_text and not zones and not (profile.tagline or profile.bio or current_user.full_name):
+        return jsonify({'error': 'Upload a resume or create a simulation first'}), 400
 
     try:
         from app.services.bio_service import generate_wikipedia_bio

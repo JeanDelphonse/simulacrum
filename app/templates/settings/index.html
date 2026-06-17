@@ -368,7 +368,7 @@
             Upload a resume or connect LinkedIn, then complete a Simulation to generate your bio.
             {% endif %}
           </p>
-          <button class="btn btn-primary btn-sm" id="regenBtn" {% if not has_source_data %}disabled title="Upload a resume first"{% endif %} onclick="regenerateBio()">Generate bio</button>
+          <button class="btn btn-primary btn-sm" id="regenBtn" {% if not has_source_data %}disabled title="Upload a resume or create a simulation first"{% endif %} onclick="regenerateBio()">Generate bio</button>
           <textarea class="input-text" id="bioEditor" rows="12" style="display:none;margin-top:.75rem"></textarea>
         </div>
         {% endif %}
