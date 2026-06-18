@@ -24,7 +24,7 @@ from app.models.feedback import UserFeedback
 from app.models.resume_consent import ResumeConsent
 from app.models.contact import Contact, ContactActivity
 from app.models.income import LayerIncomeRecord
-from app.models.chat import SimulationChatMessage
+from app.models.chat import SimulationChatMessage, SimiConversation, SimiMessage
 from app.models.integration import UserIntegration, EmailCampaign
 from app.models.signing import SigningDocument
 from app.models.published_page import PublishedPage
@@ -54,7 +54,7 @@ __all__ = [
     'ResumeConsent',
     'Contact', 'ContactActivity',
     'LayerIncomeRecord',
-    'SimulationChatMessage',
+    'SimulationChatMessage', 'SimiConversation', 'SimiMessage',
     'UserIntegration', 'EmailCampaign',
     'SigningDocument',
     'PublishedPage',

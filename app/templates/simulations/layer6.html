@@ -921,7 +921,7 @@
 /* ── Co-pilot bottom panel ───────────────────────────────────────────────── */
 #copilotPanel {
   position: fixed; bottom: 0; right: 24px; z-index: 99;
-  width: 420px; height: 480px;
+  width: 420px; height: 520px;
   background: var(--gcc-card); border: 1px solid var(--gcc-border);
   border-radius: 12px 12px 0 0;
   display: flex; flex-direction: column;
@@ -932,22 +932,36 @@
 }
 #copilotPanel.open { transform: translateY(0); }
 @media (max-width: 600px) {
-  #copilotPanel { width: 100%; right: 0; height: 60vh; border-radius: 12px 12px 0 0; }
+  #copilotPanel { width: 100%; right: 0; height: 65vh; border-radius: 12px 12px 0 0; }
   #copilotBtn { bottom: 16px; right: 16px; }
 }
 .copilot-header {
-  display: flex; align-items: center; padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--gcc-border); flex-shrink: 0;
+  display: flex; align-items: center; padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--gcc-border); flex-shrink: 0; gap: 0.6rem;
 }
-.copilot-title { font-size: 0.875rem; font-weight: 700; color: var(--gcc-teal); flex: 1; }
+.copilot-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--gcc-teal), #0a7b72);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; color: #fff;
+}
+.copilot-header-info { flex: 1; min-width: 0; }
+.copilot-title { font-size: 0.82rem; font-weight: 700; color: var(--gcc-teal); display: block; }
+.copilot-subtitle { font-size: 0.7rem; color: var(--gcc-muted); display: block; }
+.copilot-refresh-btn {
+  font-size: 0.72rem; color: var(--gcc-muted); background: none; border: none;
+  cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; transition: color 0.15s, background 0.15s;
+  display: flex; align-items: center; gap: 0.25rem;
+}
+.copilot-refresh-btn:hover { color: var(--gcc-teal); background: rgba(20,184,166,0.08); }
 .copilot-new-btn {
-  font-size: 0.75rem; color: var(--gcc-muted); background: none; border: none; cursor: pointer; margin-right: 0.75rem;
-  transition: color 0.15s;
+  font-size: 0.72rem; color: var(--gcc-muted); background: none; border: none; cursor: pointer;
+  padding: 0.2rem 0.4rem; border-radius: 4px; transition: color 0.15s;
 }
 .copilot-new-btn:hover { color: var(--gcc-navy); }
 .copilot-close-btn {
   background: none; border: none; font-size: 1rem; color: var(--gcc-muted); cursor: pointer; line-height: 1;
-  transition: color 0.15s;
+  transition: color 0.15s; padding: 0.15rem;
 }
 .copilot-close-btn:hover { color: var(--gcc-navy); }
 .copilot-messages {
@@ -955,24 +969,77 @@
   display: flex; flex-direction: column; gap: 0.6rem;
 }
 .copilot-msg {
-  max-width: 85%; padding: 0.55rem 0.85rem; border-radius: 12px;
-  font-size: 0.83rem; line-height: 1.45;
+  max-width: 88%; padding: 0.55rem 0.85rem; border-radius: 12px;
+  font-size: 0.83rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
 }
 .copilot-msg.user {
-  align-self: flex-end; background: #1e3a5f; color: var(--gcc-navy);
+  align-self: flex-end; background: rgba(20,184,166,0.15);
+  border: 1px solid rgba(20,184,166,0.25); color: var(--gcc-navy);
 }
 .copilot-msg.bot {
   align-self: flex-start; background: var(--gcc-surface);
   border: 1px solid var(--gcc-border); color: var(--gcc-navy);
 }
+.copilot-msg.bot.thinking { opacity: 0.5; font-style: italic; }
+/* Suggested question pills */
+.copilot-pills {
+  display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.1rem 0 0.4rem 0;
+}
+.copilot-pill {
+  background: rgba(20,184,166,0.08); border: 1px solid rgba(20,184,166,0.25);
+  border-radius: 20px; padding: 0.3rem 0.7rem; font-size: 0.75rem;
+  color: var(--gcc-teal); cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.copilot-pill:hover { background: rgba(20,184,166,0.18); border-color: var(--gcc-teal); }
+/* Token budget warning bar */
+.copilot-budget-bar {
+  padding: 0.35rem 1rem; font-size: 0.72rem; flex-shrink: 0;
+  display: none;
+}
+.copilot-budget-bar.warn {
+  display: block; background: rgba(251,191,36,0.12); color: #f59e0b;
+  border-top: 1px solid rgba(251,191,36,0.2);
+}
+.copilot-budget-bar.stop {
+  display: block; background: rgba(239,68,68,0.1); color: #ef4444;
+  border-top: 1px solid rgba(239,68,68,0.2);
+}
+/* Fill-form confirmation banner */
+.simi-fill-banner {
+  margin: 0.5rem 1rem; padding: 0.6rem 0.85rem;
+  background: rgba(20,184,166,0.1); border: 1px solid rgba(20,184,166,0.3);
+  border-radius: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.85);
+  display: flex; align-items: flex-start; gap: 0.5rem; flex-shrink: 0;
+}
+.simi-fill-banner-icon { flex-shrink: 0; margin-top: 0.05rem; }
+.simi-fill-banner-text { flex: 1; }
+.simi-fill-banner-dismiss {
+  background: none; border: none; color: var(--gcc-muted); cursor: pointer;
+  font-size: 0.85rem; flex-shrink: 0; padding: 0;
+}
+/* Pre-filled field highlight */
+.simi-prefilled {
+  border-left: 2px solid var(--gcc-teal) !important;
+  background: #d6f0ee !important;
+}
+/* Element highlight ring */
+@keyframes simiPulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--gcc-teal); }
+  50%       { box-shadow: 0 0 0 5px rgba(20,184,166,0.3); }
+}
+.simi-highlight {
+  outline: 2px solid var(--gcc-teal) !important;
+  animation: simiPulse 0.8s ease-in-out 5;
+}
 .copilot-input-area {
-  padding: 0.75rem; border-top: 1px solid var(--gcc-border); flex-shrink: 0;
+  padding: 0.65rem 0.75rem; border-top: 1px solid var(--gcc-border); flex-shrink: 0;
 }
 .copilot-input-row { display: flex; gap: 0.5rem; }
 .copilot-input {
   flex: 1; background: var(--gcc-surface); border: 1px solid var(--gcc-border);
   border-radius: 8px; padding: 0.5rem 0.75rem; color: var(--gcc-navy);
-  font-size: 0.83rem; resize: none; min-height: 40px; max-height: 120px;
+  font-size: 0.83rem; resize: none; min-height: 38px; max-height: 120px;
   outline: none;
 }
 .copilot-input:focus { border-color: var(--gcc-teal); }
@@ -982,6 +1049,7 @@
   transition: background 0.15s;
 }
 .copilot-send-btn:hover { background: var(--gcc-teal-d); }
+.copilot-send-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* ── Section heading shared ──────────────────────────────────────────────── */
 .gcc-section-header {
@@ -1783,17 +1851,26 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
 {# ── Co-pilot bottom panel ─────────────────────────────────────────────────── #}
 <div id="copilotPanel">
   <div class="copilot-header">
-    <span class="copilot-title">Simi</span>
-    <button class="copilot-new-btn" onclick="newCopilotConversation()">New conversation</button>
+    <div class="copilot-avatar">✦</div>
+    <div class="copilot-header-info">
+      <span class="copilot-title">Simi</span>
+      <span class="copilot-subtitle">Simulation co-pilot</span>
+    </div>
+    <button class="copilot-refresh-btn" onclick="refreshCopilotContext()" title="Reload latest simulation data">↻ Refresh</button>
+    <button class="copilot-new-btn" onclick="newCopilotConversation()" title="Start a new conversation">New</button>
     <button class="copilot-close-btn" onclick="closeCopilot()">✕</button>
   </div>
-  <div class="copilot-messages" id="copilotMessages">
-    <div class="copilot-msg bot">Hi! I'm Simi, your AI advisor for <strong>{{ sim.name }}</strong>. Ask me anything about your simulation or give me an instruction.</div>
+  <div class="copilot-budget-bar" id="copilotBudgetBar"></div>
+  <div class="copilot-messages" id="copilotMessages"></div>
+  <div id="simiFillBanner" class="simi-fill-banner" style="display:none">
+    <span class="simi-fill-banner-icon">✨</span>
+    <span class="simi-fill-banner-text">Simi pre-filled this form. Review the values and click the action button to confirm. You can edit any field before confirming.</span>
+    <button class="simi-fill-banner-dismiss" onclick="document.getElementById('simiFillBanner').style.display='none'">✕</button>
   </div>
   <div class="copilot-input-area">
     <div class="copilot-input-row">
-      <textarea class="copilot-input" id="copilotInput" placeholder="Ask about your simulation or give an instruction..." rows="1" maxlength="500"></textarea>
-      <button class="copilot-send-btn" onclick="sendCopilotMessage()">Send</button>
+      <textarea class="copilot-input" id="copilotInput" placeholder="Ask about your simulation…" rows="1" maxlength="600"></textarea>
+      <button class="copilot-send-btn" id="copilotSendBtn" onclick="sendCopilotMessage()">Send</button>
     </div>
   </div>
 </div>
@@ -2124,43 +2201,241 @@ function showEmptyState() {
   </div>`;
 }
 
-// ── Co-pilot ─────────────────────────────────────────────────────────────────
-let copilotOpen = false;
+// ── Co-pilot v1.2 (SIM-PRD-CHAT-001 v1.2) ────────────────────────────────────
+let copilotOpen  = false;
+let _simiConvId  = null;
+let _simiLoaded  = false;
+let _simiCurrentTab = (new URLSearchParams(window.location.search).get('tab') || 'journey');
 
-function openCopilot()  { copilotOpen = true;  document.getElementById('copilotPanel').classList.add('open'); document.getElementById('copilotBtnIcon').textContent = '✕'; }
-function closeCopilot() { copilotOpen = false; document.getElementById('copilotPanel').classList.remove('open'); document.getElementById('copilotBtnIcon').textContent = '💬'; }
+// Keep _simiCurrentTab in sync with tab switches
+const _origSwitchTab = window.switchTab;
+
+function openCopilot() {
+  copilotOpen = true;
+  document.getElementById('copilotPanel').classList.add('open');
+  document.getElementById('copilotBtnIcon').textContent = '✕';
+  if (!_simiLoaded) {
+    _simiLoaded = true;
+    _simiLoadConversation();
+  }
+}
+function closeCopilot() {
+  copilotOpen = false;
+  document.getElementById('copilotPanel').classList.remove('open');
+  document.getElementById('copilotBtnIcon').textContent = '💬';
+}
 function toggleCopilot() { copilotOpen ? closeCopilot() : openCopilot(); }
 
-function newCopilotConversation() {
-  document.getElementById('copilotMessages').innerHTML = '<div class="copilot-msg bot">New conversation started. How can I help with <strong>{{ sim.name }}</strong>? I\'m Simi.</div>';
+function _simiLoadConversation() {
+  const msgs = document.getElementById('copilotMessages');
+  msgs.innerHTML = '<div class="copilot-msg bot thinking">Loading…</div>';
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/simi/open?tab=' + _simiCurrentTab, {
+    credentials: 'same-origin'
+  }).then(r => r.json()).then(data => {
+    _simiConvId = data.conversation_id;
+    msgs.innerHTML = '';
+    // Render history if any
+    if (data.history && data.history.length > 0) {
+      data.history.forEach(m => {
+        _simiAppendMsg(m.role === 'user' ? 'user' : 'bot', m.content);
+      });
+    } else if (data.opening) {
+      // Fresh conversation — show opening + pills
+      _simiAppendMsg('bot', data.opening);
+      if (data.suggestions && data.suggestions.length) {
+        _simiRenderPills(data.suggestions);
+      }
+    }
+    _simiUpdateBudget(data.total_tokens || 0);
+    msgs.scrollTop = msgs.scrollHeight;
+  }).catch(() => {
+    msgs.innerHTML = '<div class="copilot-msg bot">Hi! I\'m Simi. Ask me anything about your simulation.</div>';
+  });
+}
+
+function _simiAppendMsg(type, text) {
+  const msgs = document.getElementById('copilotMessages');
+  const div  = document.createElement('div');
+  div.className = 'copilot-msg ' + type;
+  div.textContent = text;
+  // Remove pill container if present (pills disappear after first message)
+  const pills = msgs.querySelector('.copilot-pills');
+  if (pills && type === 'user') pills.remove();
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function _simiRenderPills(suggestions) {
+  const msgs  = document.getElementById('copilotMessages');
+  const wrap  = document.createElement('div');
+  wrap.className = 'copilot-pills';
+  suggestions.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'copilot-pill';
+    btn.textContent = s;
+    btn.onclick = () => {
+      document.getElementById('copilotInput').value = s;
+      sendCopilotMessage();
+    };
+    wrap.appendChild(btn);
+  });
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function _simiUpdateBudget(totalTokens) {
+  const bar  = document.getElementById('copilotBudgetBar');
+  const pct  = Math.round(totalTokens / 50000 * 100);
+  if (totalTokens >= 50000) {
+    bar.className = 'copilot-budget-bar stop';
+    bar.textContent = 'Conversation budget reached. Start a new conversation.';
+  } else if (totalTokens >= 40000) {
+    bar.className = 'copilot-budget-bar warn';
+    bar.textContent = 'Running long (' + pct + '% of budget). Start a new conversation to continue with a fresh budget.';
+  } else {
+    bar.className = 'copilot-budget-bar';
+  }
 }
 
 function sendCopilotMessage() {
-  const input = document.getElementById('copilotInput');
-  const msg = input.value.trim();
+  const input   = document.getElementById('copilotInput');
+  const sendBtn = document.getElementById('copilotSendBtn');
+  const msg     = input.value.trim();
   if (!msg) return;
-  input.value = '';
+  input.value    = '';
+  sendBtn.disabled = true;
 
-  const msgs = document.getElementById('copilotMessages');
-  msgs.insertAdjacentHTML('beforeend', `<div class="copilot-msg user">${escHtml(msg)}</div>`);
-  msgs.scrollTop = msgs.scrollHeight;
+  _simiAppendMsg('user', msg);
 
-  const thinking = document.createElement('div');
-  thinking.className = 'copilot-msg bot';
-  thinking.textContent = '…';
-  msgs.appendChild(thinking);
-  msgs.scrollTop = msgs.scrollHeight;
+  const thinking = _simiAppendMsg('bot', '…');
+  thinking.classList.add('thinking');
 
-  fetch(ROOT + '/api/simulations/' + SIM_ID + '/chat', {
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/simi/message', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     credentials: 'same-origin',
-    body: JSON.stringify({message: msg}),
+    body: JSON.stringify({
+      message:         msg,
+      conversation_id: _simiConvId,
+      current_tab:     _simiCurrentTab,
+    }),
   }).then(r => r.json()).then(d => {
-    thinking.textContent = d.content || d.message || '(no response)';
-    msgs.scrollTop = msgs.scrollHeight;
+    thinking.textContent = d.content || d.error || '(no response)';
+    thinking.classList.remove('thinking');
+    if (d.conversation_id) _simiConvId = d.conversation_id;
+    if (d.total_tokens != null) _simiUpdateBudget(d.total_tokens);
+    // Handle UI actions from tool calls
+    if (d.ui_actions && d.ui_actions.length) {
+      d.ui_actions.forEach(_simiHandleUIAction);
+    }
+    document.getElementById('copilotMessages').scrollTop = 99999;
   }).catch(() => {
     thinking.textContent = 'Something went wrong. Please try again.';
+    thinking.classList.remove('thinking');
+  }).finally(() => {
+    sendBtn.disabled = false;
+    input.focus();
+  });
+}
+
+function _simiHandleUIAction(action) {
+  if (action.tool === 'navigate_to_tab') {
+    const tab = action.tab_name;
+    if (tab && typeof switchTab === 'function') {
+      switchTab(tab);
+      _simiCurrentTab = tab;
+    }
+  } else if (action.tool === 'highlight_element') {
+    const id = action.element_id;
+    const el = document.getElementById(id) ||
+               document.querySelector('[data-id="' + id + '"]') ||
+               document.querySelector('[data-action-id="' + id + '"]');
+    if (el) {
+      el.classList.add('simi-highlight');
+      el.scrollIntoView({behavior: 'smooth', block: 'center'});
+      setTimeout(() => el.classList.remove('simi-highlight'), 5000);
+    }
+  } else if (action.tool === 'fill_form') {
+    _simiFillForm(action.form_id, action.fields || {});
+  }
+}
+
+function _simiFillForm(formId, fields) {
+  const fieldMap = {
+    // l6_settings modal fields
+    'cadence':            'l6sCadence',
+    'actions_per_cycle':  'l6sActionsPerCycle',
+    'spend_ceiling':      'l6sSpendCeiling',
+    'contact_scope':      'l6sContactScope',
+    'trust_level':        null,  // handled via radio
+  };
+  let filled = 0;
+  Object.entries(fields).forEach(([key, val]) => {
+    if (key === 'trust_level') {
+      const radios = document.querySelectorAll('input[name="l6sTrustLevel"]');
+      radios.forEach(r => {
+        if (r.value === val) { r.checked = true; previewTrust(val); }
+      });
+      filled++;
+      return;
+    }
+    const elId = fieldMap[key];
+    if (!elId) return;
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.value = val;
+    el.classList.add('simi-prefilled');
+    filled++;
+  });
+  if (filled > 0) {
+    // Show L6 settings modal if not open
+    const overlay = document.getElementById('l6sOverlay');
+    if (overlay && !overlay.classList.contains('open')) openL6Settings();
+    // Show confirmation banner
+    document.getElementById('simiFillBanner').style.display = 'flex';
+  }
+}
+
+function newCopilotConversation() {
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/simi/conversation', {
+    method: 'DELETE', credentials: 'same-origin',
+  }).then(r => r.json()).then(d => {
+    _simiConvId = d.conversation_id;
+    const msgs = document.getElementById('copilotMessages');
+    msgs.innerHTML = '';
+    _simiUpdateBudget(0);
+    document.getElementById('simiFillBanner').style.display = 'none';
+    // Fetch opening message for new conversation
+    _simiLoaded = false;
+    _simiLoadConversation();
+  }).catch(() => {
+    const msgs = document.getElementById('copilotMessages');
+    msgs.innerHTML = '<div class="copilot-msg bot">New conversation started. How can I help?</div>';
+  });
+}
+
+function refreshCopilotContext() {
+  const btn = document.querySelector('.copilot-refresh-btn');
+  if (btn) { btn.textContent = '↻ …'; btn.disabled = true; }
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/simi/refresh', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({current_tab: _simiCurrentTab}),
+  }).then(r => r.json()).then(d => {
+    if (d.opening) {
+      const msgs = document.getElementById('copilotMessages');
+      const note = document.createElement('div');
+      note.className = 'copilot-msg bot';
+      note.style.opacity = '0.65';
+      note.textContent = '— Context refreshed —';
+      msgs.appendChild(note);
+      _simiAppendMsg('bot', d.opening);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  }).catch(() => {}).finally(() => {
+    if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
   });
 }
 
@@ -2171,6 +2446,17 @@ document.getElementById('copilotInput').addEventListener('keydown', e => {
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// Track current tab for Simi context
+(function() {
+  const origSwitch = window.switchTab;
+  if (typeof origSwitch === 'function') {
+    window.switchTab = function(name) {
+      _simiCurrentTab = name;
+      return origSwitch.apply(this, arguments);
+    };
+  }
+})();
 
 // Tooltip on hover
 const copilotBtn = document.getElementById('copilotBtn');
