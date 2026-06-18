@@ -392,3 +392,10 @@ def _parse_bio(bio_text: str) -> list:
         sections.append({'title': None, 'text': bio_text.strip()})
 
     return sections
+
+
+# ── Simi help page (SIM-PRD-HELP-001) ─────────────────────────────────────────
+
+@public_bp.route('/help/simi')
+def simi_help():
+    return render_template('public/simi_help.html')

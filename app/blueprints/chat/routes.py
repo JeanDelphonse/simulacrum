@@ -193,10 +193,16 @@ def simi_open(sim_id: str):
     _check_sim(sim_id)
     current_tab = request.args.get('tab', 'journey')
 
-    from app.models.chat import SimiMessage
+    from app.models.chat import SimiConversation, SimiMessage
+    from app.models.agent_action import AgentAction
     from app.services.simi_service import (
         build_simi_context, build_opening_message, get_suggestions
     )
+
+    # Count prior conversations to detect first-time user
+    prior_conv_count = SimiConversation.query.filter_by(
+        simulation_id=sim_id, user_id=current_user.id
+    ).count()
 
     conv = _get_or_create_conversation(sim_id, current_user.id)
 
@@ -204,6 +210,16 @@ def simi_open(sim_id: str):
     msgs = SimiMessage.query.filter_by(conversation_id=conv.id).order_by(
         SimiMessage.created_at.asc()
     ).limit(30).all()
+
+    # Detect first-time (no prior conversations existed before this one)
+    # prior_conv_count was measured before _get_or_create, so 0 means this is the first ever
+    is_first_time = (prior_conv_count == 0)
+
+    # Detect empty state: no agents dispatched yet
+    try:
+        is_empty_state = AgentAction.query.filter_by(simulation_id=sim_id).count() == 0
+    except Exception:
+        is_empty_state = False
 
     # Build opening message if this is a fresh conversation
     opening = None
@@ -222,6 +238,8 @@ def simi_open(sim_id: str):
         'opening':         opening,
         'suggestions':     suggestions,
         'history':         [m.to_dict() for m in msgs],
+        'is_first_time':   is_first_time,
+        'is_empty_state':  is_empty_state,
     })
 
 

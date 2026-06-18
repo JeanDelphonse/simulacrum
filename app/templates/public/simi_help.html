@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meet Simi — Simulacrum AI Co-pilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #e2e8f0;
+      --teal:   #14b8a6;
+      --teal-d: #0a7b72;
+      --gold:   #f59e0b;
+      --coral:  #E85D4A;
+      --bg:     #0a0e1a;
+      --card:   #111827;
+      --surface:#1a2332;
+      --border: rgba(255,255,255,0.09);
+      --muted:  #9CA3AF;
+      --text:   #e2e8f0;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── Nav ── */
+    .sh-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.9rem 2rem; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--bg); z-index: 10;
+    }
+    .sh-nav-logo {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-weight: 700; font-size: 0.9rem; color: var(--text);
+      text-decoration: none;
+    }
+    .sh-nav-logo-mark {
+      width: 28px; height: 28px; background: var(--teal); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; font-size: 0.85rem;
+    }
+    .sh-nav-back {
+      font-size: 0.82rem; color: var(--muted); text-decoration: none;
+      display: flex; align-items: center; gap: 0.3rem; transition: color 0.15s;
+    }
+    .sh-nav-back:hover { color: var(--teal); }
+
+    /* ── Layout ── */
+    .sh-page { max-width: 860px; margin: 0 auto; padding: 0 1.5rem 5rem; }
+
+    /* ── Hero ── */
+    .sh-hero {
+      text-align: center; padding: 4rem 1rem 3rem;
+    }
+    .sh-hero-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal), var(--teal-d));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; margin: 0 auto 1.5rem; color: #fff;
+      box-shadow: 0 8px 32px rgba(20,184,166,0.3);
+    }
+    .sh-hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      color: var(--text); margin-bottom: 1rem;
+    }
+    .sh-hero p {
+      font-size: 1.05rem; color: var(--muted); max-width: 580px;
+      margin: 0 auto; line-height: 1.7;
+    }
+
+    /* ── Section ── */
+    .sh-section { margin-bottom: 3.5rem; }
+    .sh-section-label {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--teal); margin-bottom: 0.5rem;
+    }
+    .sh-section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem; color: var(--text); margin-bottom: 1.5rem;
+    }
+
+    /* ── Capability cards ── */
+    .sh-cap-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    }
+    @media (max-width: 600px) { .sh-cap-grid { grid-template-columns: 1fr; } }
+    .sh-cap-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.1rem 1.2rem;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .sh-cap-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+    }
+    .sh-cap-icon {
+      font-size: 1.3rem; margin-bottom: 0.55rem; display: block;
+    }
+    .sh-cap-title {
+      font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 0.3rem;
+    }
+    .sh-cap-desc {
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.5;
+    }
+    .sh-cap-example {
+      font-size: 0.79rem; font-style: italic; color: var(--teal);
+    }
+
+    /* ── Guardrail cards ── */
+    .sh-guard-list { display: flex; flex-direction: column; gap: 0.85rem; }
+    .sh-guard-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--coral);
+      border-radius: 0 10px 10px 0; padding: 1rem 1.2rem;
+    }
+    .sh-guard-title {
+      font-size: 0.88rem; font-weight: 700; color: var(--coral); margin-bottom: 0.3rem;
+    }
+    .sh-guard-desc {
+      font-size: 0.82rem; color: var(--muted); line-height: 1.55;
+    }
+
+    /* ── Question chips ── */
+    .sh-chips-section { margin-bottom: 1.75rem; }
+    .sh-cat-label {
+      font-size: 0.75rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 0.6rem; display: block;
+    }
+    .sh-chips {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.25rem;
+    }
+    .sh-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 0.35rem 0.85rem;
+      font-size: 0.8rem; color: var(--text); cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      display: flex; align-items: center; gap: 0.35rem;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .sh-chip:hover { background: rgba(20,184,166,0.1); border-color: var(--teal); color: var(--teal); }
+    .sh-chip.copied { background: rgba(20,184,166,0.15); border-color: var(--teal); color: var(--teal); }
+
+    /* Copy toast */
+    .sh-toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--teal); color: #0a0e1a; font-size: 0.82rem; font-weight: 600;
+      padding: 0.5rem 1.2rem; border-radius: 20px;
+      opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+      z-index: 99;
+    }
+    .sh-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Tips table ── */
+    .sh-tips-table { width: 100%; border-collapse: collapse; }
+    .sh-tips-table th {
+      text-align: left; font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);
+    }
+    .sh-tips-table th.instead { color: var(--coral); }
+    .sh-tips-table th.try     { color: #34d399; }
+    .sh-tips-table th.tip     { color: var(--muted); }
+    .sh-tips-table td {
+      font-size: 0.83rem; padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border); vertical-align: top;
+      line-height: 1.5;
+    }
+    .sh-tips-table td.instead { color: rgba(232,93,74,0.8); font-style: italic; }
+    .sh-tips-table td.try     { color: #34d399; }
+    .sh-tips-table td.tip     { color: var(--muted); font-weight: 600; font-style: normal; font-size: 0.78rem; }
+    .sh-tips-table tr:last-child td { border-bottom: none; }
+    @media (max-width: 560px) {
+      .sh-tips-table thead { display: none; }
+      .sh-tips-table tr { display: block; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+      .sh-tips-table td { display: block; border-bottom: 1px solid var(--border); }
+      .sh-tips-table td:last-child { border-bottom: none; }
+    }
+
+    /* ── Page footer ── */
+    .sh-footer {
+      margin-top: 4rem; padding: 2rem 0; border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .sh-footer p { font-size: 0.84rem; color: var(--muted); max-width: 560px; margin: 0 auto 1.25rem; line-height: 1.6; }
+    .sh-footer a {
+      color: var(--teal); text-decoration: none; font-weight: 600; font-size: 0.88rem;
+    }
+    .sh-footer a:hover { text-decoration: underline; }
+
+    /* ── Divider ── */
+    .sh-divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="sh-nav">
+  <a href="/" class="sh-nav-logo">
+    <span class="sh-nav-logo-mark">✦</span>
+    SimulacrumAI.io
+  </a>
+  <a href="javascript:history.back()" class="sh-nav-back">← Back</a>
+</nav>
+
+<div class="sh-page">
+
+  <!-- ── 1. Hero ── -->
+  <section class="sh-hero">
+    <div class="sh-hero-avatar">✦</div>
+    <h1>Meet Simi</h1>
+    <p>Simi is your AI co-pilot inside the Growth Command Center. It knows your resume, your simulation, your agents, your contacts, and your income. Ask it anything about your wealth building journey — it will explain what happened, why, and what to do next.</p>
+  </section>
+
+  <hr class="sh-divider">
+
+  <!-- ── 2. Capabilities ── -->
+  <section class="sh-section">
+    <div class="sh-section-label">What Simi can do</div>
+    <h2 class="sh-section-title">Your simulation, fully explained</h2>
+    <div class="sh-cap-grid">
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">🔄</span>
+        <div class="sh-cap-title">Explain your cycles</div>
+        <div class="sh-cap-desc">Simi reads every cycle's reasoning and tells you why the orchestrator made each decision — in plain language.</div>
+        <div class="sh-cap-example">"Why did the orchestrator drop cold email last cycle?"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">🎯</span>
+        <div class="sh-cap-title">Coach your next step</div>
+        <div class="sh-cap-desc">Not sure what to do? Simi analyzes your simulation and recommends the single highest-impact action right now.</div>
+        <div class="sh-cap-example">"What should I do next?"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">📋</span>
+        <div class="sh-cap-title">Brief you for calls</div>
+        <div class="sh-cap-desc">Before any client call, Simi pulls the contact's full history and generates talking points so you walk in prepared.</div>
+        <div class="sh-cap-example">"Brief me for my call with Carlos Rivera"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">📊</span>
+        <div class="sh-cap-title">Interpret your scores</div>
+        <div class="sh-cap-desc">Simi explains what Bayesian scores mean and why certain agents are prioritized over others — no data science required.</div>
+        <div class="sh-cap-example">"Why is speaking_proposals scoring so low?"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">⚖️</span>
+        <div class="sh-cap-title">Compare your cycles</div>
+        <div class="sh-cap-desc">See what changed between any two cycles: agents dispatched, replies received, scores shifted, income events.</div>
+        <div class="sh-cap-example">"Compare cycle 9 to cycle 7"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">✉️</span>
+        <div class="sh-cap-title">Draft email replies</div>
+        <div class="sh-cap-desc">When a prospect replies, Simi drafts a response in your voice. You copy it and send — Simi never sends on your behalf.</div>
+        <div class="sh-cap-example">"Help me respond to Maria's email"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">🗺️</span>
+        <div class="sh-cap-title">Navigate your GCC</div>
+        <div class="sh-cap-desc">Ask Simi to show you any tab and it opens while keeping the chat active. No clicking through menus.</div>
+        <div class="sh-cap-example">"Show me my agent network"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">⚙️</span>
+        <div class="sh-cap-title">Set up your agents</div>
+        <div class="sh-cap-desc">Tell Simi what you want to run and it pre-fills the configuration form. You review and click Run.</div>
+        <div class="sh-cap-example">"Set up cold email targeting Hawaii tour operators"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">💲</span>
+        <div class="sh-cap-title">Analyze your pricing</div>
+        <div class="sh-cap-desc">Simi looks at your close rate and demand signals to suggest whether your rates should go up or down.</div>
+        <div class="sh-cap-example">"Am I priced right for my operations assessment?"</div>
+      </div>
+
+      <div class="sh-cap-card">
+        <span class="sh-cap-icon">💰</span>
+        <div class="sh-cap-title">Break down your income</div>
+        <div class="sh-cap-desc">See exactly how much you have earned per layer, per agent, and per client — with trends over time.</div>
+        <div class="sh-cap-example">"How much have I made from Layer 2?"</div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="sh-divider">
+
+  <!-- ── 3. Guardrails ── -->
+  <section class="sh-section">
+    <div class="sh-section-label">What Simi cannot do</div>
+    <h2 class="sh-section-title">You are always in control</h2>
+    <div class="sh-guard-list">
+
+      <div class="sh-guard-card">
+        <div class="sh-guard-title">Simi never sends emails</div>
+        <div class="sh-guard-desc">Simi can draft replies and suggest outreach, but it never presses send. Your emails only go out when the orchestrator's scheduled steps fire or when you send manually. You always see what is being sent and to whom.</div>
+      </div>
+
+      <div class="sh-guard-card">
+        <div class="sh-guard-title">Simi never runs agents</div>
+        <div class="sh-guard-desc">Simi can recommend which agent to run and even pre-fill the configuration for you — but it never clicks 'Run Agent.' You review the settings and decide when to start. No surprise costs.</div>
+      </div>
+
+      <div class="sh-guard-card">
+        <div class="sh-guard-title">Simi never changes your data</div>
+        <div class="sh-guard-desc">Your rate card, proposals, courses, and CRM are yours. Simi can suggest edits ('consider raising your price') but cannot modify any record. When Simi fills a form, a banner confirms: 'Simi pre-filled this — review and click submit.'</div>
+      </div>
+
+      <div class="sh-guard-card">
+        <div class="sh-guard-title">Your simulation is private</div>
+        <div class="sh-guard-desc">Simi only knows about your simulation. It cannot see other users' data, other simulations you may have, or any information outside your current session.</div>
+      </div>
+
+      <div class="sh-guard-card">
+        <div class="sh-guard-title">Financial and legal guidance is advisory</div>
+        <div class="sh-guard-desc">Simi can show you income allocation recommendations and entity structure suggestions, but it is not a financial advisor or attorney. Always review with a qualified professional before making financial or legal decisions.</div>
+      </div>
+
+      <div class="sh-guard-card">
+        <div class="sh-guard-title">Simi tells you when it doesn't know</div>
+        <div class="sh-guard-desc">If Simi doesn't have the data to answer your question, it will say so — rather than guessing. You can trust that what Simi tells you is grounded in your actual simulation data.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="sh-divider">
+
+  <!-- ── 4. Try asking ── -->
+  <section class="sh-section">
+    <div class="sh-section-label">Try asking</div>
+    <h2 class="sh-section-title">Copy a question, paste into Simi</h2>
+
+    <div class="sh-chips-section">
+      <span class="sh-cat-label">Getting started</span>
+      <div class="sh-chips">
+        <button class="sh-chip" onclick="copyChip(this)">What should I do next?</button>
+        <button class="sh-chip" onclick="copyChip(this)">Explain my wealth pyramid</button>
+        <button class="sh-chip" onclick="copyChip(this)">How does the orchestrator work?</button>
+        <button class="sh-chip" onclick="copyChip(this)">What agents are available for me?</button>
+      </div>
+    </div>
+
+    <div class="sh-chips-section">
+      <span class="sh-cat-label">Understanding your simulation</span>
+      <div class="sh-chips">
+        <button class="sh-chip" onclick="copyChip(this)">Explain my last cycle</button>
+        <button class="sh-chip" onclick="copyChip(this)">Why was consulting outreach prioritized?</button>
+        <button class="sh-chip" onclick="copyChip(this)">What's my reply rate?</button>
+        <button class="sh-chip" onclick="copyChip(this)">How many prospects are in my pipeline?</button>
+      </div>
+    </div>
+
+    <div class="sh-chips-section">
+      <span class="sh-cat-label">Preparing for calls</span>
+      <div class="sh-chips">
+        <button class="sh-chip" onclick="copyChip(this)">Brief me for my call with [name]</button>
+        <button class="sh-chip" onclick="copyChip(this)">What did [name] ask about in their last email?</button>
+        <button class="sh-chip" onclick="copyChip(this)">What's the status of my proposal to [name]?</button>
+      </div>
+    </div>
+
+    <div class="sh-chips-section">
+      <span class="sh-cat-label">Managing outreach</span>
+      <div class="sh-chips">
+        <button class="sh-chip" onclick="copyChip(this)">Who replied to my outreach?</button>
+        <button class="sh-chip" onclick="copyChip(this)">Which follow-ups are coming up?</button>
+        <button class="sh-chip" onclick="copyChip(this)">Draft a reply to [name]</button>
+        <button class="sh-chip" onclick="copyChip(this)">What's my open rate vs reply rate?</button>
+      </div>
+    </div>
+
+    <div class="sh-chips-section">
+      <span class="sh-cat-label">Income and ROI</span>
+      <div class="sh-chips">
+        <button class="sh-chip" onclick="copyChip(this)">How much have I made?</button>
+        <button class="sh-chip" onclick="copyChip(this)">Break down income by layer</button>
+        <button class="sh-chip" onclick="copyChip(this)">What's my simulation ROI?</button>
+        <button class="sh-chip" onclick="copyChip(this)">Which agent generated the most revenue?</button>
+      </div>
+    </div>
+
+    <div class="sh-chips-section">
+      <span class="sh-cat-label">Navigating the platform</span>
+      <div class="sh-chips">
+        <button class="sh-chip" onclick="copyChip(this)">Show me the Cycle tab</button>
+        <button class="sh-chip" onclick="copyChip(this)">Open my agent network</button>
+        <button class="sh-chip" onclick="copyChip(this)">Compare cycle 9 to cycle 7</button>
+        <button class="sh-chip" onclick="copyChip(this)">Set up cold email targeting [industry]</button>
+      </div>
+    </div>
+  </section>
+
+  <hr class="sh-divider">
+
+  <!-- ── 5. Tips ── -->
+  <section class="sh-section">
+    <div class="sh-section-label">Tips for better answers</div>
+    <h2 class="sh-section-title">How to get the most from Simi</h2>
+    <table class="sh-tips-table">
+      <thead>
+        <tr>
+          <th class="tip">Tip</th>
+          <th class="instead">Instead of</th>
+          <th class="try">Try</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tip">Be specific</td>
+          <td class="instead">"How am I doing?"</td>
+          <td class="try">"How is my cold email campaign performing?"</td>
+        </tr>
+        <tr>
+          <td class="tip">Name contacts</td>
+          <td class="instead">"Tell me about that prospect"</td>
+          <td class="try">"Brief me for my call with Carlos Rivera"</td>
+        </tr>
+        <tr>
+          <td class="tip">Ask follow-ups</td>
+          <td class="instead">[reading a cycle summary]</td>
+          <td class="try">"Why did the score drop for cold email?"</td>
+        </tr>
+        <tr>
+          <td class="tip">Ask Simi to navigate</td>
+          <td class="instead">[clicking through tabs manually]</td>
+          <td class="try">"Show me the Cycle tab and explain cycle 9"</td>
+        </tr>
+        <tr>
+          <td class="tip">Ask Simi to configure</td>
+          <td class="instead">[opening Launchpad, finding fields]</td>
+          <td class="try">"Set up outreach for 10 Hawaii tour operators"</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── 6. Footer ── -->
+  <footer class="sh-footer">
+    <p>Simi uses AI to answer your questions. While it has access to all your simulation data, it cannot take actions on your behalf — you always confirm before anything happens.</p>
+    <a href="javascript:history.back()">← Back to your simulation</a>
+  </footer>
+
+</div>
+
+<!-- Copy toast -->
+<div class="sh-toast" id="shToast">Copied!</div>
+
+<script>
+function copyChip(btn) {
+  const text = btn.textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    const toast = document.getElementById('shToast');
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); btn.classList.remove('copied'); }, 1800);
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.classList.add('copied');
+    const toast = document.getElementById('shToast');
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); btn.classList.remove('copied'); }, 1800);
+  });
+}
+</script>
+
+</body>
+</html>

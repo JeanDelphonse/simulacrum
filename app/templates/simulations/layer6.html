@@ -948,6 +948,12 @@
 .copilot-header-info { flex: 1; min-width: 0; }
 .copilot-title { font-size: 0.82rem; font-weight: 700; color: var(--gcc-teal); display: block; }
 .copilot-subtitle { font-size: 0.7rem; color: var(--gcc-muted); display: block; }
+.copilot-help-link {
+  color: var(--gcc-muted); text-decoration: none; font-size: 0.7rem;
+  margin-left: 0.25rem; vertical-align: middle; opacity: 0.7;
+  transition: opacity 0.15s, color 0.15s;
+}
+.copilot-help-link:hover { opacity: 1; color: var(--gcc-teal); }
 .copilot-refresh-btn {
   font-size: 0.72rem; color: var(--gcc-muted); background: none; border: none;
   cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; transition: color 0.15s, background 0.15s;
@@ -1854,7 +1860,7 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
     <div class="copilot-avatar">✦</div>
     <div class="copilot-header-info">
       <span class="copilot-title">Simi</span>
-      <span class="copilot-subtitle">Simulation co-pilot</span>
+      <span class="copilot-subtitle">Simulation co-pilot <a href="/help/simi" target="_blank" class="copilot-help-link" title="What can Simi do?">ℹ</a></span>
     </div>
     <button class="copilot-refresh-btn" onclick="refreshCopilotContext()" title="Reload latest simulation data">↻ Refresh</button>
     <button class="copilot-new-btn" onclick="newCopilotConversation()" title="Start a new conversation">New</button>
@@ -2240,8 +2246,25 @@ function _simiLoadConversation() {
         _simiAppendMsg(m.role === 'user' ? 'user' : 'bot', m.content);
       });
     } else if (data.opening) {
-      // Fresh conversation — show opening + pills
-      _simiAppendMsg('bot', data.opening);
+      // Fresh conversation — show opening message
+      const openDiv = _simiAppendMsg('bot', data.opening);
+      // First-time: append help link below opening message
+      if (data.is_first_time) {
+        const link = document.createElement('a');
+        link.href = '/help/simi'; link.target = '_blank';
+        link.style.cssText = 'display:block;margin-top:.45rem;font-size:.78rem;color:var(--gcc-teal);text-decoration:none;';
+        link.textContent = 'Learn what I can do →';
+        openDiv.appendChild(link);
+      }
+      // Empty state: extra callout
+      if (data.is_empty_state) {
+        const empty = document.createElement('div');
+        empty.className = 'copilot-msg bot';
+        empty.style.marginTop = '0.25rem';
+        empty.innerHTML = 'Not sure where to start? <a href="/help/simi" target="_blank" style="color:var(--gcc-teal);text-decoration:none;">See what I can help with →</a>';
+        msgs.appendChild(empty);
+      }
+      // Suggested pills
       if (data.suggestions && data.suggestions.length) {
         _simiRenderPills(data.suggestions);
       }
