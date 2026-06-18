@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from flask import current_app
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ def _divider() -> str:
 # Internal send helpers
 # ---------------------------------------------------------------------------
 
-def _send_via_smtp(subject: str, recipients: list[str], body: str, html: str | None = None):
+def _send_via_smtp(subject: str, recipients: list, body: str, html: Optional[str] = None):
     from flask_mail import Message
     from app.extensions import mail
     sender_email = current_app.config['MAIL_DEFAULT_SENDER']
@@ -97,7 +98,7 @@ def _send_via_smtp(subject: str, recipients: list[str], body: str, html: str | N
     mail.send(msg)
 
 
-def _send_via_sendgrid(subject: str, recipients: list[str], body: str, html: str | None = None):
+def _send_via_sendgrid(subject: str, recipients: list, body: str, html: Optional[str] = None):
     import sendgrid
     from sendgrid.helpers.mail import Mail, To, From, Content
     sg = sendgrid.SendGridAPIClient(api_key=current_app.config['SENDGRID_API_KEY'])
@@ -116,7 +117,7 @@ def _send_via_sendgrid(subject: str, recipients: list[str], body: str, html: str
         raise RuntimeError(f'SendGrid returned {response.status_code}: {response.body}')
 
 
-def _send(subject: str, recipients: list[str], body: str, html: str | None = None):
+def _send(subject: str, recipients: list, body: str, html: Optional[str] = None):
     provider = current_app.config.get('EMAIL_PROVIDER', 'smtp')
     if provider == 'sendgrid':
         _send_via_sendgrid(subject, recipients, body, html)
