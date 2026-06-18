@@ -807,6 +807,46 @@
 .esc-reject-btn:hover:not(:disabled) { background: rgba(239,68,68,0.2); }
 .esc-reject-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .esc-loading { color: var(--gcc-muted); font-size: 0.9rem; padding: 2rem 0; text-align: center; }
+.esc-detail-btn {
+  font-size: 0.82rem; font-weight: 600;
+  background: transparent; color: var(--gcc-muted);
+  border: 1px solid var(--gcc-border); border-radius: 6px;
+  padding: 0.35rem 0.9rem; cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.esc-detail-btn:hover { background: var(--gcc-surface); color: var(--gcc-navy); }
+
+/* ── Escalation detail modal ─────────────────────────────────────────────── */
+.esc-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); z-index: 450;
+  align-items: center; justify-content: center; padding: 1rem;
+}
+.esc-modal-overlay.open { display: flex; }
+.esc-modal {
+  background: var(--gcc-card); border: 1px solid var(--gcc-border);
+  border-radius: 12px; width: min(580px, 95vw);
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 72px rgba(0,0,0,0.5); color: var(--gcc-navy);
+}
+.esc-modal-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 1.25rem 1.4rem 1rem; border-bottom: 1px solid var(--gcc-border);
+}
+.esc-modal-title { font-size: 1.05rem; font-weight: 700; text-transform: capitalize; }
+.esc-modal-close {
+  background: none; border: none; color: var(--gcc-muted); font-size: 1.2rem;
+  cursor: pointer; padding: 0 0.2rem; line-height: 1; margin-left: 1rem;
+}
+.esc-modal-close:hover { color: var(--gcc-navy); }
+.esc-modal-body { padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; }
+.esc-modal-row { display: flex; flex-direction: column; gap: 0.25rem; }
+.esc-modal-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gcc-muted); }
+.esc-modal-value { font-size: 0.9rem; line-height: 1.5; color: var(--gcc-navy); }
+.esc-modal-value.reason { white-space: pre-wrap; }
+.esc-modal-footer {
+  display: flex; justify-content: flex-end; gap: 0.6rem;
+  padding: 1rem 1.4rem; border-top: 1px solid var(--gcc-border);
+}
 
 /* ── Visuals tab — remap generic CSS vars to dark GCC palette ────────────── */
 .gcc-visuals-panel {
@@ -1685,6 +1725,42 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
   </div>
 </div>
 
+{# ── Escalation Detail Modal ───────────────────────────────────────────────── #}
+<div class="esc-modal-overlay" id="escDetailOverlay">
+  <div class="esc-modal" id="escDetailModal">
+    <div class="esc-modal-header">
+      <div class="esc-modal-title" id="escDetailTitle"></div>
+      <button class="esc-modal-close" onclick="closeEscDetail()" aria-label="Close">&times;</button>
+    </div>
+    <div class="esc-modal-body">
+      <div class="esc-modal-row">
+        <div class="esc-modal-label">Layer</div>
+        <div class="esc-modal-value" id="escDetailLayer"></div>
+      </div>
+      <div class="esc-modal-row">
+        <div class="esc-modal-label">Priority</div>
+        <div class="esc-modal-value" id="escDetailPriority"></div>
+      </div>
+      <div class="esc-modal-row" id="escDetailReasonRow">
+        <div class="esc-modal-label">Why this needs approval</div>
+        <div class="esc-modal-value reason" id="escDetailReason"></div>
+      </div>
+      <div class="esc-modal-row" id="escDetailDepsRow" style="display:none">
+        <div class="esc-modal-label">Depends on</div>
+        <div class="esc-modal-value" id="escDetailDeps"></div>
+      </div>
+      <div class="esc-modal-row">
+        <div class="esc-modal-label">Queued</div>
+        <div class="esc-modal-value" id="escDetailDate"></div>
+      </div>
+    </div>
+    <div class="esc-modal-footer">
+      <button class="esc-reject-btn" id="escDetailRejectBtn" onclick="rejectFromModal()">Reject</button>
+      <button class="esc-approve-btn" id="escDetailApproveBtn" onclick="approveFromModal()">Approve</button>
+    </div>
+  </div>
+</div>
+
 {# ── Floating co-pilot button ──────────────────────────────────────────────── #}
 <button id="copilotBtn" onclick="toggleCopilot()" title="Ask Simi">
   <span id="copilotBtnIcon">💬</span>
@@ -2200,6 +2276,7 @@ function toggleL6Pause() {
 // ── Escalations tab ──────────────────────────────────────────────────────────
 let _escLoaded = false;
 const LAYER_NAMES_ESC = ['', 'Active income', 'Leveraged income', 'Productized income', 'Automated income', 'Wealth deployment'];
+const _escItems = {};  // id → item, used by the detail modal
 
 function loadEscalations(force) {
   if (_escLoaded && !force) return;
@@ -2228,6 +2305,7 @@ function renderEscalations(items) {
   }
   let html = '<div class="esc-list">';
   for (const item of items) {
+    _escItems[item.id] = item;
     const score = item.priority_score || 0;
     const priorityLabel = score >= 0.7 ? 'High' : score >= 0.4 ? 'Medium' : 'Low';
     const priorityCls   = score >= 0.7 ? 'esc-priority-high' : score >= 0.4 ? 'esc-priority-medium' : 'esc-priority-low';
@@ -2243,6 +2321,7 @@ function renderEscalations(items) {
       <div class="esc-card-bottom">
         <span class="esc-date">${dateStr}</span>
         <div class="esc-btns">
+          <button class="esc-detail-btn" onclick="openEscDetail('${item.id}')">View details</button>
           <button class="esc-reject-btn"  id="esc-rej-${item.id}"  onclick="rejectEscalation('${item.id}')">Reject</button>
           <button class="esc-approve-btn" id="esc-app-${item.id}" onclick="approveEscalation('${item.id}')">Approve</button>
         </div>
@@ -2252,6 +2331,87 @@ function renderEscalations(items) {
   html += '</div>';
   document.getElementById('escContent').innerHTML = html;
 }
+
+// ── Escalation detail modal ───────────────────────────────────────────────────
+let _escDetailId = null;
+
+function openEscDetail(id) {
+  const item = _escItems[id];
+  if (!item) return;
+  _escDetailId = id;
+  const score = item.priority_score || 0;
+  const priorityLabel = score >= 0.7 ? 'High' : score >= 0.4 ? 'Medium' : 'Low';
+  const layerName = item.source_layer ? (LAYER_NAMES_ESC[+item.source_layer] || 'Layer ' + item.source_layer) : null;
+
+  document.getElementById('escDetailTitle').textContent = (item.action_type || 'action').replace(/_/g, ' ');
+  document.getElementById('escDetailLayer').textContent = layerName ? `L${item.source_layer} — ${layerName}` : '—';
+  document.getElementById('escDetailPriority').textContent = priorityLabel + (score ? ` (score ${score.toFixed(3)})` : '');
+  document.getElementById('escDetailReason').textContent = item.escalation_reason || '—';
+  document.getElementById('escDetailDate').textContent = item.created_at ? item.created_at.slice(0, 10) : '—';
+
+  const deps = item.dependency_ids || [];
+  const depsRow = document.getElementById('escDetailDepsRow');
+  if (deps.length) {
+    document.getElementById('escDetailDeps').textContent = deps.join(', ');
+    depsRow.style.display = '';
+  } else {
+    depsRow.style.display = 'none';
+  }
+
+  const appBtn = document.getElementById('escDetailApproveBtn');
+  const rejBtn = document.getElementById('escDetailRejectBtn');
+  appBtn.disabled = false; appBtn.textContent = 'Approve';
+  rejBtn.disabled = false; rejBtn.textContent = 'Reject';
+
+  document.getElementById('escDetailOverlay').classList.add('open');
+}
+
+function closeEscDetail() {
+  document.getElementById('escDetailOverlay').classList.remove('open');
+  _escDetailId = null;
+}
+
+function approveFromModal() {
+  if (!_escDetailId) return;
+  const id = _escDetailId;
+  const appBtn = document.getElementById('escDetailApproveBtn');
+  const rejBtn = document.getElementById('escDetailRejectBtn');
+  appBtn.disabled = true; appBtn.textContent = 'Approving…';
+  rejBtn.disabled = true;
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/escalations/' + id + '/approve', {
+    method: 'POST', credentials: 'same-origin',
+  }).then(r => r.json()).then(data => {
+    if (data.error) { alert(data.error); appBtn.disabled = false; appBtn.textContent = 'Approve'; rejBtn.disabled = false; return; }
+    closeEscDetail();
+    _resolveEscCard(id);
+  }).catch(() => {
+    alert('Approve failed. Please try again.');
+    appBtn.disabled = false; appBtn.textContent = 'Approve'; rejBtn.disabled = false;
+  });
+}
+
+function rejectFromModal() {
+  if (!_escDetailId) return;
+  const id = _escDetailId;
+  const appBtn = document.getElementById('escDetailApproveBtn');
+  const rejBtn = document.getElementById('escDetailRejectBtn');
+  rejBtn.disabled = true; rejBtn.textContent = 'Rejecting…';
+  appBtn.disabled = true;
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/escalations/' + id + '/reject', {
+    method: 'POST', credentials: 'same-origin',
+  }).then(r => r.json()).then(data => {
+    if (data.error) { alert(data.error); rejBtn.disabled = false; rejBtn.textContent = 'Reject'; appBtn.disabled = false; return; }
+    closeEscDetail();
+    _resolveEscCard(id);
+  }).catch(() => {
+    alert('Reject failed. Please try again.');
+    rejBtn.disabled = false; rejBtn.textContent = 'Reject'; appBtn.disabled = false;
+  });
+}
+
+document.getElementById('escDetailOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeEscDetail();
+});
 
 function _resolveEscCard(id) {
   const card = document.getElementById('esc-' + id);
