@@ -100,7 +100,7 @@ def _send_via_smtp(subject: str, recipients: list, body: str, html: Optional[str
 
 def _send_via_sendgrid(subject: str, recipients: list, body: str, html: Optional[str] = None):
     import sendgrid
-    from sendgrid.helpers.mail import Mail, To, From, Content
+    from sendgrid.helpers.mail import Mail, To, From
     sg = sendgrid.SendGridAPIClient(api_key=current_app.config['SENDGRID_API_KEY'])
     sender_email = current_app.config['MAIL_DEFAULT_SENDER']
     sender_name  = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
@@ -108,10 +108,9 @@ def _send_via_sendgrid(subject: str, recipients: list, body: str, html: Optional
         from_email=From(sender_email, sender_name),
         to_emails=[To(r) for r in recipients],
         subject=subject,
+        plain_text_content=body,
+        html_content=html,
     )
-    message.content = [Content('text/plain', body)]
-    if html:
-        message.content.append(Content('text/html', html))
     response = sg.send(message)
     if response.status_code >= 400:
         raise RuntimeError(f'SendGrid returned {response.status_code}: {response.body}')
