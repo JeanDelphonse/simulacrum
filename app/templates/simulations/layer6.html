@@ -1741,6 +1741,18 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
         <div class="esc-modal-label">Priority</div>
         <div class="esc-modal-value" id="escDetailPriority"></div>
       </div>
+      <div class="esc-modal-row">
+        <div class="esc-modal-label">Artifact</div>
+        <div class="esc-modal-value" id="escDetailArtifact"></div>
+      </div>
+      <div class="esc-modal-row">
+        <div class="esc-modal-label">Tool</div>
+        <div class="esc-modal-value">Claude AI</div>
+      </div>
+      <div class="esc-modal-row" id="escDetailIntegrationsRow">
+        <div class="esc-modal-label">Integrations</div>
+        <div class="esc-modal-value" id="escDetailIntegrations"></div>
+      </div>
       <div class="esc-modal-row" id="escDetailReasonRow">
         <div class="esc-modal-label">Why this needs approval</div>
         <div class="esc-modal-value reason" id="escDetailReason"></div>
@@ -2346,6 +2358,9 @@ function openEscDetail(id) {
   document.getElementById('escDetailTitle').textContent = (item.action_type || 'action').replace(/_/g, ' ');
   document.getElementById('escDetailLayer').textContent = layerName ? `L${item.source_layer} — ${layerName}` : '—';
   document.getElementById('escDetailPriority').textContent = priorityLabel + (score ? ` (score ${score.toFixed(3)})` : '');
+  document.getElementById('escDetailArtifact').textContent = item.artifact_label || (item.action_type || '').replace(/_/g, ' ');
+  const integrations = item.integrations || [];
+  document.getElementById('escDetailIntegrations').textContent = integrations.length ? integrations.join(', ') : 'None configured';
   document.getElementById('escDetailReason').textContent = item.escalation_reason || '—';
   document.getElementById('escDetailDate').textContent = item.created_at ? item.created_at.slice(0, 10) : '—';
 

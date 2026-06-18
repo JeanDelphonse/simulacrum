@@ -524,6 +524,50 @@ def get_queue(sim_id):
 # Escalations
 # ---------------------------------------------------------------------------
 
+_INTEGRATION_LABELS = {
+    'apollo':     'Apollo.io',
+    'cal.com':    'Cal.com',
+    'convertkit': 'ConvertKit',
+    'pandadoc':   'PandaDoc',
+    'stripe':     'Stripe',
+    'kajabi':     'Kajabi',
+    'linkedin':   'LinkedIn',
+}
+
+_ACTION_ARTIFACT_LABELS = {
+    'cold_email_campaign':         'Cold email campaign sequences',
+    'consulting_outreach':         'Consulting outreach emails',
+    'outreach_email':              'Outreach email copy',
+    'referral_network':            'Referral network strategy',
+    'booking_page':                'Booking page content',
+    'consulting_proposal':         'Consulting proposal document',
+    'consulting_agreement':        'Consulting service agreement',
+    'rate_card':                   'Rate card document',
+    'social_proof':                'Social proof messaging',
+    'linkedin_optimize':           'LinkedIn profile optimizations',
+    'speaking_proposals':          'Speaking engagement proposals',
+    'speaker_fee_rider':           'Speaker fee & rider document',
+    'coaching_curriculum':         'Coaching program curriculum',
+    'corporate_training_proposal': 'Corporate training proposal',
+    'workshop_content':            'Workshop content & materials',
+    'waitlist_landing_page':       'Waitlist landing page copy',
+    'alumni_reactivation':         'Alumni reactivation emails',
+    'course_framework':            'Online course framework',
+    'sales_page':                  'Sales page copy',
+    'ebook_guide':                 'eBook / guide content',
+    'launch_email_sequence':       'Product launch email sequence',
+    'affiliate_program':           'Affiliate program structure',
+    'membership_structure':        'Membership program structure',
+    'lapsed_buyer_reactivation':   'Lapsed buyer reactivation emails',
+    'funnel_design':               'Funnel design & flow',
+    'newsletter_monetization':     'Newsletter monetization strategy',
+    'lead_magnet_funnel':          'Lead magnet funnel',
+    'seo_content_calendar':        'SEO content calendar',
+    'youtube_podcast':             'YouTube / podcast content strategy',
+    'community_flywheel':          'Community growth flywheel',
+}
+
+
 @layer6_bp.route('/<sim_id>/layer6/escalations', methods=['GET'])
 @login_required
 def list_escalations(sim_id):
@@ -532,10 +576,22 @@ def list_escalations(sim_id):
     if err:
         return err, code
 
+    from app.services.wire_service import AGENT_INTEGRATION_MAP
     items = Layer6ActionQueue.query.filter_by(
         simulation_id=sim_id, status=Layer6ActionQueue.STATUS_ESCALATED
     ).order_by(Layer6ActionQueue.priority_score.desc()).all()
-    return jsonify([i.to_dict() for i in items]), 200
+    enriched = []
+    for i in items:
+        d = i.to_dict()
+        d['artifact_label'] = _ACTION_ARTIFACT_LABELS.get(
+            i.action_type, i.action_type.replace('_', ' ').title()
+        )
+        d['integrations'] = [
+            _INTEGRATION_LABELS.get(p, p)
+            for p in AGENT_INTEGRATION_MAP.get(i.action_type, [])
+        ]
+        enriched.append(d)
+    return jsonify(enriched), 200
 
 
 @layer6_bp.route('/<sim_id>/layer6/escalations/<escalation_id>/approve', methods=['POST'])
