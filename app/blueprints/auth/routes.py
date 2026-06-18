@@ -113,10 +113,6 @@ def register():
 
     db.session.commit()
 
-    # Build the verify URL now, while the request context is still active.
-    from flask import url_for as _url_for
-    verify_url = _url_for('auth.verify_email', token=verify_token, _external=True)
-
     # Send in a background thread — SMTP on shared hosting blocks long enough
     # for Passenger to kill the worker before the response is sent.
     import threading
@@ -126,16 +122,8 @@ def register():
     def _send():
         with _app.app_context():
             try:
-                from app.services.email_service import _send as _send_email
-                _send_email(
-                    subject='Verify your Simulacrum account',
-                    recipients=[_email],
-                    body=(
-                        f'Hi {_name},\n\n'
-                        f'Verify your email: {verify_url}\n\n'
-                        f'Expires in 24 hours.\n\n— Simulacrum'
-                    ),
-                )
+                from app.services.email_service import send_verification_email
+                send_verification_email(_email, _name, verify_token)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error('send_verification_email failed: %s', e, exc_info=True)
