@@ -129,11 +129,9 @@ def _send(subject: str, recipients: list, body: str, html: Optional[str] = None)
 # Public API
 # ---------------------------------------------------------------------------
 
-def send_verification_email(user_email: str, user_name: str, token: str):
-    from flask import url_for
+def send_verification_email(user_email: str, user_name: str, verify_url: str):
     first = (user_name or '').strip().split()[0] or 'there'
     try:
-        verify_url = url_for('auth.verify_email', token=token, _external=True)
         plain = (
             f'Hi {first},\n\n'
             f'Confirm your SimulacrumAI.io account by clicking the link below.\n\n'

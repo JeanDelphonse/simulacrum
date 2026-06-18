@@ -113,6 +113,10 @@ def register():
 
     db.session.commit()
 
+    # Build verify URL while request context is active (url_for needs it).
+    from flask import url_for as _url_for
+    _verify_url = _url_for('auth.verify_email', token=verify_token, _external=True)
+
     # Send in a background thread — SMTP on shared hosting blocks long enough
     # for Passenger to kill the worker before the response is sent.
     import threading
@@ -123,7 +127,7 @@ def register():
         with _app.app_context():
             try:
                 from app.services.email_service import send_verification_email
-                send_verification_email(_email, _name, verify_token)
+                send_verification_email(_email, _name, _verify_url)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error('send_verification_email failed: %s', e, exc_info=True)
@@ -164,8 +168,10 @@ def resend_verification():
         user.email_verify_token_expires = datetime.utcnow() + timedelta(hours=24)
         db.session.commit()
         try:
+            from flask import url_for as _url_for
             from app.services.email_service import send_verification_email
-            send_verification_email(user.email, user.full_name, token)
+            _verify_url = _url_for('auth.verify_email', token=token, _external=True)
+            send_verification_email(user.email, user.full_name, _verify_url)
         except Exception:
             pass
     # Always 200 to avoid email enumeration
