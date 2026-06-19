@@ -230,31 +230,17 @@
     .crop-container img { max-width: 100%; display: block; }
     .crop-actions { display: flex; gap: 10px; margin-top: 12px; }
 
-    /* ── Theme picker ──────────────────────────────────────────────────── */
-    .theme-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
+    /* ── Theme picker (matches bio editor) ─────────────────────────────── */
+    .theme-options { display: flex; gap: .75rem; margin-bottom: 20px; }
+    .theme-btn {
+      flex: 1; padding: .75rem .5rem; border-radius: 8px; border: 2px solid #e5e7eb;
+      cursor: pointer; font-size: .875rem; font-weight: 600; text-align: center;
+      transition: border-color .12s;
     }
-    .theme-card {
-      border: 2px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-    .theme-card.selected { border-color: var(--teal); }
-    .theme-swatch {
-      width: 100%; height: 48px;
-      border-radius: 6px;
-      margin-bottom: 8px;
-    }
-    .theme-swatch.default { background: #0f172a; }
-    .theme-swatch.dark    { background: #18181b; }
-    .theme-swatch.warm    { background: #431407; }
-    .theme-label { font-size: 0.8125rem; font-weight: 500; }
+    .theme-btn.active { border-color: #0e7490; }
+    .theme-btn.theme-default { background: #fff;    color: #111827; }
+    .theme-btn.theme-dark    { background: #0f172a; color: #f1f5f9; }
+    .theme-btn.theme-warm    { background: #fefce8; color: #1c1917; }
 
     /* ── Bio preview iframe ─────────────────────────────────────────────── */
     .bio-preview-wrap {
@@ -578,19 +564,10 @@
     <h1 class="step-title">Choose your bio page theme</h1>
     <p class="step-desc">Pick a look for your public profile. You can change this any time from Settings.</p>
 
-    <div class="theme-grid">
-      <div class="theme-card selected" data-theme="default" tabindex="0" role="radio" aria-checked="true">
-        <div class="theme-swatch default"></div>
-        <p class="theme-label">Midnight</p>
-      </div>
-      <div class="theme-card" data-theme="dark" tabindex="0" role="radio" aria-checked="false">
-        <div class="theme-swatch dark"></div>
-        <p class="theme-label">Obsidian</p>
-      </div>
-      <div class="theme-card" data-theme="warm" tabindex="0" role="radio" aria-checked="false">
-        <div class="theme-swatch warm"></div>
-        <p class="theme-label">Ember</p>
-      </div>
+    <div class="theme-options">
+      <button class="theme-btn theme-default active" data-theme="default">Default</button>
+      <button class="theme-btn theme-dark"           data-theme="dark">Dark</button>
+      <button class="theme-btn theme-warm"           data-theme="warm">Warm</button>
     </div>
 
     <div id="step6Error" class="alert alert-error" style="display:none"></div>
@@ -1085,19 +1062,15 @@
 
   // ── Step 6: Theme ─────────────────────────────────────────────────────
   function initStep6() {
-    const cards = document.querySelectorAll('.theme-card');
-    const btn   = document.getElementById('step6Btn');
-    const back  = document.getElementById('step6Back');
+    const btns = document.querySelectorAll('.theme-btn');
+    const btn  = document.getElementById('step6Btn');
+    const back = document.getElementById('step6Back');
 
-    cards.forEach(card => {
-      card.addEventListener('click', () => {
-        cards.forEach(c => { c.classList.remove('selected'); c.setAttribute('aria-checked', 'false'); });
-        card.classList.add('selected');
-        card.setAttribute('aria-checked', 'true');
-        selectedTheme = card.dataset.theme;
-      });
-      card.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+    btns.forEach(b => {
+      b.addEventListener('click', () => {
+        btns.forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        selectedTheme = b.dataset.theme;
       });
     });
 
