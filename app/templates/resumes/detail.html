@@ -243,5 +243,22 @@ async function syncLinkedIn(resumeId) {
     alert(data.error || 'Sync failed');
   }
 }
+
+{% if not resume.expertise_zones and resume.parsed_text %}
+// Auto-analyze on first visit when no zones have been extracted yet
+(function () {
+  var btn = document.getElementById('extractBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analyzing…'; }
+  fetch(ROOT + '/api/resumes/{{ resume.id }}/extract-zones', { method: 'POST' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Analyze My Career →'; }
+      if (data.expertise_zones) renderZones(data.expertise_zones);
+    })
+    .catch(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Analyze My Career →'; }
+    });
+}());
+{% endif %}
 </script>
 {% endblock %}
