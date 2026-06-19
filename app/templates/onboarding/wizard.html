@@ -561,7 +561,7 @@
   <div class="step-pane" data-step="6">
     <p class="step-eyebrow">Step 6 of 7</p>
     <h1 class="step-title">Choose your bio page theme</h1>
-    <p class="step-desc">Pick a look for your public profile. You can change this any time from Settings.</p>
+    <p class="step-desc">Pick a look for your public profile. Continuing will generate your professional bio so it appears in the preview.</p>
 
     <div class="theme-options">
       <button class="theme-btn theme-default active" data-theme="default">Default</button>
@@ -574,7 +574,7 @@
     <div class="wiz-footer">
       <button class="btn btn-ghost" id="step6Back">Back</button>
       <div class="wiz-footer-right">
-        <button class="btn btn-primary" id="step6Btn">Continue</button>
+        <button class="btn btn-primary" id="step6Btn">Continue to Preview</button>
       </div>
     </div>
   </div>
@@ -1078,17 +1078,31 @@
 
     btn.addEventListener('click', async () => {
       showError('step6Error', '');
-      setLoading(btn, true);
+      const origText = btn.innerHTML;
+      btn.disabled = true;
       try {
+        // 1. Save theme (fast)
+        btn.innerHTML = '<span class="spinner"></span>&nbsp;Saving theme…';
         const r = await api('PUT', '/api/bio', { theme: selectedTheme });
         if (!r.ok) { showError('step6Error', r.data.error || 'Failed to save theme.'); return; }
+
+        // 2. Generate professional bio for preview (~20-40 s)
+        btn.innerHTML = '<span class="spinner"></span>&nbsp;Generating your bio preview…';
+        try {
+          const bioR = await api('POST', '/api/settings/profile/bio/generate');
+          if (bioR.ok && bioR.data.bio) {
+            await api('PUT', '/api/settings/profile', { bio: bioR.data.bio });
+          }
+        } catch (_) { /* non-critical — preview works even without bio text */ }
+
         await advanceWizard(6);
         showStep(7);
         if (window.loadBioUrl) window.loadBioUrl();
       } catch (e) {
         showError('step6Error', 'Network error. Please try again.');
       } finally {
-        setLoading(btn, false);
+        btn.innerHTML = origText;
+        btn.disabled = false;
       }
     });
 
