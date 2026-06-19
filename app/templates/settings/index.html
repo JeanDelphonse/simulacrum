@@ -307,12 +307,11 @@
       </div>
       {% endif %}
 
+      {# ── Section 1: Identity ── #}
+      <div class="settings-section">
+        <div class="settings-section-title">Identity</div>
 
-
-      <div class="settings-section" id="bioPageSection">
-        <div class="settings-section-title">Bio Page</div>
-
-        <!-- Status + actions bar -->
+        <!-- Bio page status bar -->
         <div class="bio-panel" style="margin-bottom:1.25rem">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <div>
@@ -332,125 +331,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Inline editor accordion -->
-        <div id="bp-editor-panel">
-
-          <div class="bp-editor-section">
-            <button class="bp-editor-header" data-bp-section="hero">Hero <span>›</span></button>
-            <div class="bp-editor-body" id="bp-hero-body">
-              <div class="bp-form-group">
-                <label>Professional title</label>
-                <input type="text" id="hero-title" placeholder="e.g. Brand strategist &amp; advisor" maxlength="200">
-                <label class="bp-custom-toggle"><input type="checkbox" id="hero-title-custom"> Use custom title (overrides LinkedIn artifact)</label>
-              </div>
-              <div class="bp-form-group">
-                <label>Positioning / tagline</label>
-                <textarea id="hero-positioning" placeholder="One-sentence pitch…" maxlength="400"></textarea>
-                <label class="bp-custom-toggle"><input type="checkbox" id="hero-pos-custom"> Use custom positioning (overrides rate card)</label>
-              </div>
-              <div class="bp-form-group">
-                <label>CTA button URL</label>
-                <input type="url" id="hero-cta-url" placeholder="Leave blank to use booking page or contact form">
-              </div>
-              <div class="bp-form-group">
-                <label>CTA button label</label>
-                <input type="text" id="hero-cta-label" placeholder="Book a call" maxlength="50">
-              </div>
-              <div class="bp-form-group">
-                <label>Hero photo</label>
-                <div class="bp-upload-area" id="bp-hero-upload-area">
-                  <input type="file" id="bp-hero-image-input" accept="image/jpeg,image/png,image/webp">
-                  Click to upload hero photo (JPEG / PNG / WebP, max 5 MB)
-                </div>
-                <div id="bp-hero-img-preview" style="margin-top:.35rem;font-size:.78rem;color:#86efac;"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bp-editor-section">
-            <button class="bp-editor-header" data-bp-section="about">About <span>›</span></button>
-            <div class="bp-editor-body" id="bp-about-body">
-              <div class="bp-form-group">
-                <label>Custom bio text</label>
-                <textarea id="about-bio" placeholder="Your extended professional bio…" style="min-height:160px;" maxlength="2000"></textarea>
-                <label class="bp-custom-toggle"><input type="checkbox" id="about-custom"> Use custom bio (overrides LinkedIn About section)</label>
-              </div>
-            </div>
-          </div>
-
-          <div class="bp-editor-section">
-            <button class="bp-editor-header" data-bp-section="vis-sections">Section visibility <span>›</span></button>
-            <div class="bp-editor-body" id="bp-vis-sections-body">
-              <div class="toggle-row">
-                <span class="toggle-label">Services</span>
-                <label class="toggle-switch"><input type="checkbox" id="vis-services" checked><span class="toggle-slider"></span></label>
-              </div>
-              <div class="toggle-row">
-                <span class="toggle-label">Testimonials</span>
-                <label class="toggle-switch"><input type="checkbox" id="vis-testimonials" checked><span class="toggle-slider"></span></label>
-              </div>
-            </div>
-          </div>
-
-          <div class="bp-editor-section">
-            <button class="bp-editor-header" data-bp-section="testimonials">Testimonials <span>›</span></button>
-            <div class="bp-editor-body" id="bp-testimonials-body">
-              <div id="bp-testimonials-list"></div>
-              <button class="bp-add-t-toggle" id="bp-add-t-btn">+ Add testimonial</button>
-              <div id="bp-add-t-form" style="display:none;margin-top:.75rem">
-                <div class="bp-form-group"><label>Quote *</label><textarea id="bp-t-quote" placeholder="Their testimonial…" maxlength="500"></textarea></div>
-                <div class="bp-form-group"><label>Name *</label><input type="text" id="bp-t-name" placeholder="Jane Smith" maxlength="100"></div>
-                <div class="bp-form-group"><label>Title</label><input type="text" id="bp-t-title" placeholder="CEO at Acme" maxlength="100"></div>
-                <div class="bp-form-group"><label>Company</label><input type="text" id="bp-t-company" placeholder="Acme Corp" maxlength="100"></div>
-                <div style="display:flex;gap:.5rem;margin-top:.25rem">
-                  <button class="btn btn-primary btn-sm" id="bp-t-save-btn" style="flex:1">Save testimonial</button>
-                  <button class="btn btn-ghost btn-sm" id="bp-t-cancel-btn">Cancel</button>
-                </div>
-                <div id="bp-t-err" style="color:#fca5a5;font-size:.78rem;margin-top:.4rem;"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bp-editor-section">
-            <button class="bp-editor-header" data-bp-section="theme">Visual theme <span>›</span></button>
-            <div class="bp-editor-body" id="bp-theme-body">
-              <div class="bp-theme-options">
-                <button class="bp-theme-btn bp-theme-default active" data-theme="default">Default</button>
-                <button class="bp-theme-btn bp-theme-dark" data-theme="dark">Dark</button>
-                <button class="bp-theme-btn bp-theme-warm" data-theme="warm">Warm</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="bp-editor-section">
-            <button class="bp-editor-header" data-bp-section="chat">Chat widget <span>›</span></button>
-            <div class="bp-editor-body" id="bp-chat-body">
-              <div class="toggle-row">
-                <div><div class="toggle-label">Chat widget enabled</div><div class="toggle-desc">Show the AI chat widget on your bio page</div></div>
-                <label class="toggle-switch"><input type="checkbox" id="chat-enabled" checked><span class="toggle-slider"></span></label>
-              </div>
-              <div class="toggle-row">
-                <div><div class="toggle-label">Live takeover enabled</div><div class="toggle-desc">You can take over live chat sessions from the GCC</div></div>
-                <label class="toggle-switch"><input type="checkbox" id="chat-takeover"><span class="toggle-slider"></span></label>
-              </div>
-              <div class="bp-form-group" style="margin-top:.75rem">
-                <label>Daily session limit</label>
-                <input type="number" id="chat-limit" value="50" min="1" max="500">
-              </div>
-              <div class="bp-form-group">
-                <label>Custom welcome message (optional)</label>
-                <textarea id="chat-welcome" placeholder="Leave blank for the default welcome message…" maxlength="300"></textarea>
-              </div>
-            </div>
-          </div>
-
-        </div>{# end bp-editor-panel #}
-      </div>
-
-      {# ── Section 1: Identity ── #}
-      <div class="settings-section">
-        <div class="settings-section-title">Identity</div>
 
         <div class="avatar-row" id="avatarRow">
           <div id="avatarDisplay">
@@ -589,6 +469,124 @@
           <div><div class="toggle-label">Prevent search engine indexing</div><div class="toggle-desc">Adds a noindex tag to your public profile page</div></div>
           <label class="toggle-switch"><input type="checkbox" id="f-noindex" {% if profile and profile.noindex %}checked{% endif %}><span class="toggle-slider"></span></label>
         </div>
+      </div>
+
+      <div class="settings-section" id="bioPageSection">
+        <div class="settings-section-title">Bio Page</div>
+
+        <!-- Inline editor accordion -->
+        <div id="bp-editor-panel">
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="hero">Hero <span>›</span></button>
+            <div class="bp-editor-body" id="bp-hero-body">
+              <div class="bp-form-group">
+                <label>Professional title</label>
+                <input type="text" id="hero-title" placeholder="e.g. Brand strategist &amp; advisor" maxlength="200">
+                <label class="bp-custom-toggle"><input type="checkbox" id="hero-title-custom"> Use custom title (overrides LinkedIn artifact)</label>
+              </div>
+              <div class="bp-form-group">
+                <label>Positioning / tagline</label>
+                <textarea id="hero-positioning" placeholder="One-sentence pitch…" maxlength="400"></textarea>
+                <label class="bp-custom-toggle"><input type="checkbox" id="hero-pos-custom"> Use custom positioning (overrides rate card)</label>
+              </div>
+              <div class="bp-form-group">
+                <label>CTA button URL</label>
+                <input type="url" id="hero-cta-url" placeholder="Leave blank to use booking page or contact form">
+              </div>
+              <div class="bp-form-group">
+                <label>CTA button label</label>
+                <input type="text" id="hero-cta-label" placeholder="Book a call" maxlength="50">
+              </div>
+              <div class="bp-form-group">
+                <label>Hero photo</label>
+                <div class="bp-upload-area" id="bp-hero-upload-area">
+                  <input type="file" id="bp-hero-image-input" accept="image/jpeg,image/png,image/webp">
+                  Click to upload hero photo (JPEG / PNG / WebP, max 5 MB)
+                </div>
+                <div id="bp-hero-img-preview" style="margin-top:.35rem;font-size:.78rem;color:#86efac;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="about">About <span>›</span></button>
+            <div class="bp-editor-body" id="bp-about-body">
+              <div class="bp-form-group">
+                <label>Custom bio text</label>
+                <textarea id="about-bio" placeholder="Your extended professional bio…" style="min-height:160px;" maxlength="2000"></textarea>
+                <label class="bp-custom-toggle"><input type="checkbox" id="about-custom"> Use custom bio (overrides LinkedIn About section)</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="vis-sections">Section visibility <span>›</span></button>
+            <div class="bp-editor-body" id="bp-vis-sections-body">
+              <div class="toggle-row">
+                <span class="toggle-label">Services</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-services" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Testimonials</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-testimonials" checked><span class="toggle-slider"></span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="testimonials">Testimonials <span>›</span></button>
+            <div class="bp-editor-body" id="bp-testimonials-body">
+              <div id="bp-testimonials-list"></div>
+              <button class="bp-add-t-toggle" id="bp-add-t-btn">+ Add testimonial</button>
+              <div id="bp-add-t-form" style="display:none;margin-top:.75rem">
+                <div class="bp-form-group"><label>Quote *</label><textarea id="bp-t-quote" placeholder="Their testimonial…" maxlength="500"></textarea></div>
+                <div class="bp-form-group"><label>Name *</label><input type="text" id="bp-t-name" placeholder="Jane Smith" maxlength="100"></div>
+                <div class="bp-form-group"><label>Title</label><input type="text" id="bp-t-title" placeholder="CEO at Acme" maxlength="100"></div>
+                <div class="bp-form-group"><label>Company</label><input type="text" id="bp-t-company" placeholder="Acme Corp" maxlength="100"></div>
+                <div style="display:flex;gap:.5rem;margin-top:.25rem">
+                  <button class="btn btn-primary btn-sm" id="bp-t-save-btn" style="flex:1">Save testimonial</button>
+                  <button class="btn btn-ghost btn-sm" id="bp-t-cancel-btn">Cancel</button>
+                </div>
+                <div id="bp-t-err" style="color:#fca5a5;font-size:.78rem;margin-top:.4rem;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="theme">Visual theme <span>›</span></button>
+            <div class="bp-editor-body" id="bp-theme-body">
+              <div class="bp-theme-options">
+                <button class="bp-theme-btn bp-theme-default active" data-theme="default">Default</button>
+                <button class="bp-theme-btn bp-theme-dark" data-theme="dark">Dark</button>
+                <button class="bp-theme-btn bp-theme-warm" data-theme="warm">Warm</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="chat">Chat widget <span>›</span></button>
+            <div class="bp-editor-body" id="bp-chat-body">
+              <div class="toggle-row">
+                <div><div class="toggle-label">Chat widget enabled</div><div class="toggle-desc">Show the AI chat widget on your bio page</div></div>
+                <label class="toggle-switch"><input type="checkbox" id="chat-enabled" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <div><div class="toggle-label">Live takeover enabled</div><div class="toggle-desc">You can take over live chat sessions from the GCC</div></div>
+                <label class="toggle-switch"><input type="checkbox" id="chat-takeover"><span class="toggle-slider"></span></label>
+              </div>
+              <div class="bp-form-group" style="margin-top:.75rem">
+                <label>Daily session limit</label>
+                <input type="number" id="chat-limit" value="50" min="1" max="500">
+              </div>
+              <div class="bp-form-group">
+                <label>Custom welcome message (optional)</label>
+                <textarea id="chat-welcome" placeholder="Leave blank for the default welcome message…" maxlength="300"></textarea>
+              </div>
+            </div>
+          </div>
+
+        </div>{# end bp-editor-panel #}
       </div>
 
       <div class="settings-actions">
