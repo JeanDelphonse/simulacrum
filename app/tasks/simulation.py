@@ -51,18 +51,22 @@ def generate_simulation_task(self, simulation_id: str):
         parsed_text = resume.parsed_text if resume else ''
         fintech_enabled = is_fintech_enabled()
 
-        # Capture values used in worker threads before leaving the main thread scope
+        # Phase 1: call Claude for all 5 layers concurrently (pure I/O — no shared DB state).
+        # Each thread gets its own app context for config/logging but the API calls overlap.
+        # Phase 2: write the results to DB sequentially to avoid any concurrency issues.
+        import threading
         _app = current_app._get_current_object()
         _expertise_zone = sim.expertise_zone
-        _focus_hint = sim.focus_hint or ''
-        _user_id = sim.user_id
+        _focus_hint     = sim.focus_hint or ''
+        _user_id        = sim.user_id
+        _results        = {}
+        _errors         = {}
+        _lock           = threading.Lock()
 
-        def _generate_layer(layer_num):
-            """Run in a thread pool worker — uses its own app context and db session."""
+        def _call_claude(layer_num):
             with _app.app_context():
-                from app.extensions import db as _db
                 try:
-                    layer_data = generate_simulation_layer(
+                    data = generate_simulation_layer(
                         layer_number=layer_num,
                         expertise_zone=_expertise_zone,
                         focus_hint=_focus_hint,
@@ -71,60 +75,72 @@ def generate_simulation_task(self, simulation_id: str):
                         simulation_id=simulation_id,
                         fintech_enabled=fintech_enabled,
                     )
+                    with _lock:
+                        _results[layer_num] = data
+                except Exception as e:
+                    logger.error('Layer %d Claude call failed for %s: %s', layer_num, simulation_id, e)
+                    with _lock:
+                        _errors[layer_num] = e
 
-                    sim_layer = SimulationLayer(
-                        simulation_id=simulation_id,
-                        layer_number=layer_data.get('layer_number', layer_num),
-                        layer_name=layer_data.get('layer_name', f'Layer {layer_num}'),
-                        income_type=layer_data.get('income_type', ''),
-                        ai_narrative=layer_data.get('ai_narrative', ''),
-                        priority_score=layer_data.get('priority_score'),
+        threads = [threading.Thread(target=_call_claude, args=(n,), daemon=True)
+                   for n in range(1, 6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        if _errors:
+            # Reset to ERROR so the cron / recovery can retry this simulation.
+            try:
+                _sim_err = Simulation.query.get(simulation_id)
+                if _sim_err:
+                    _sim_err.status = Simulation.STATUS_ERROR
+                    db.session.commit()
+            except Exception:
+                db.session.rollback()
+            raise list(_errors.values())[0]
+
+        # Phase 2: sequential DB writes (safe, no concurrency).
+        for layer_num in range(1, 6):
+            try:
+                layer_data = _results[layer_num]
+                sim_layer = SimulationLayer(
+                    simulation_id=simulation_id,
+                    layer_number=layer_data.get('layer_number', layer_num),
+                    layer_name=layer_data.get('layer_name', f'Layer {layer_num}'),
+                    income_type=layer_data.get('income_type', ''),
+                    ai_narrative=layer_data.get('ai_narrative', ''),
+                    priority_score=layer_data.get('priority_score'),
+                )
+                db.session.add(sim_layer)
+                db.session.flush()
+
+                for stream_data in layer_data.get('income_streams', []):
+                    low  = stream_data.get('est_monthly_low')
+                    high = stream_data.get('est_monthly_high')
+                    if low is not None and high is not None and low > high:
+                        low, high = high, low
+                    stream = IncomeStream(
+                        layer_id=sim_layer.id,
+                        name=stream_data.get('name', ''),
+                        description=stream_data.get('description', ''),
+                        platform=stream_data.get('platform', ''),
+                        est_monthly_low=low,
+                        est_monthly_high=high,
+                        ai_reasoning=stream_data.get('ai_reasoning', ''),
+                        automation_level=stream_data.get('automation_level', ''),
+                        launch_timeline_weeks=stream_data.get('launch_timeline_weeks'),
                     )
-                    _db.session.add(sim_layer)
-                    _db.session.flush()
+                    stream.deliverable_refs = stream_data.get('deliverable_refs', [])
+                    db.session.add(stream)
 
-                    for stream_data in layer_data.get('income_streams', []):
-                        low = stream_data.get('est_monthly_low')
-                        high = stream_data.get('est_monthly_high')
-                        if low is not None and high is not None and low > high:
-                            low, high = high, low
-                        stream = IncomeStream(
-                            layer_id=sim_layer.id,
-                            name=stream_data.get('name', ''),
-                            description=stream_data.get('description', ''),
-                            platform=stream_data.get('platform', ''),
-                            est_monthly_low=low,
-                            est_monthly_high=high,
-                            ai_reasoning=stream_data.get('ai_reasoning', ''),
-                            automation_level=stream_data.get('automation_level', ''),
-                            launch_timeline_weeks=stream_data.get('launch_timeline_weeks'),
-                        )
-                        stream.deliverable_refs = stream_data.get('deliverable_refs', [])
-                        _db.session.add(stream)
+                db.session.commit()
+                logger.info('Simulation %s layer %d saved', simulation_id, layer_num)
 
-                    _db.session.commit()
-                    logger.info('Simulation %s layer %d complete', simulation_id, layer_num)
-                    return layer_num
-                except Exception as layer_err:
-                    _db.session.rollback()
-                    logger.error('Layer %d failed for simulation %s: %s', layer_num, simulation_id, layer_err)
-                    raise
-
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        errors = []
-        with ThreadPoolExecutor(max_workers=5) as pool:
-            futures = {pool.submit(_generate_layer, n): n for n in range(1, 6)}
-            for future in as_completed(futures):
-                layer_num = futures[future]
-                try:
-                    future.result()
-                except Exception as layer_err:
-                    errors.append((layer_num, layer_err))
-
-        if errors:
-            for layer_num, err in errors:
-                logger.error('Layer %d error: %s', layer_num, err)
-            raise errors[0][1]
+            except Exception as layer_err:
+                db.session.rollback()
+                logger.error('Layer %d DB write failed for %s: %s', layer_num, simulation_id, layer_err)
+                raise
 
         sim = Simulation.query.get(simulation_id)
         sim.status = Simulation.STATUS_COMPLETE

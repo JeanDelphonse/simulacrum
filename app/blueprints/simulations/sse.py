@@ -26,18 +26,31 @@ def start_generation_if_needed(simulation_id: str, app_obj):
         from app.models.resume import Resume
         from flask import current_app as _app
 
-        # Atomic mutex: only the thread that bumps PROCESSING → STREAMING proceeds.
+        # Atomic mutex: transition PROCESSING → STREAMING to acquire the generation lock.
+        # Also rescue simulations stuck in STREAMING (previous generation died mid-flight)
+        # by resetting them to ERROR so the lock can be re-acquired below.
+        from datetime import datetime, timedelta
         try:
+            sim_check = Simulation.query.get(simulation_id)
+            if sim_check and sim_check.status == Simulation.STATUS_STREAMING:
+                # Only rescue if stuck for > 3 minutes (active generation should finish within 2)
+                age = (datetime.utcnow() - sim_check.updated_at) if getattr(sim_check, 'updated_at', None) else timedelta(minutes=5)
+                if age > timedelta(minutes=3):
+                    logger.warning('Simulation %s stuck in STREAMING for %s — resetting to ERROR', simulation_id, age)
+                    sim_check.status = Simulation.STATUS_ERROR
+                    db.session.commit()
+
             rows = db.session.execute(
                 db.text(
-                    "UPDATE simulations SET status = :new WHERE id = :sid AND status = :old"
+                    "UPDATE simulations SET status = :new "
+                    "WHERE id = :sid AND status IN (:old1, :old2)"
                 ),
                 {'new': Simulation.STATUS_STREAMING, 'sid': simulation_id,
-                 'old': Simulation.STATUS_PROCESSING},
+                 'old1': Simulation.STATUS_PROCESSING, 'old2': Simulation.STATUS_ERROR},
             )
             db.session.commit()
             if rows.rowcount == 0:
-                return  # already streaming/complete/error — nothing to do
+                return  # already streaming/complete — nothing to do
         except Exception as e:
             db.session.rollback()
             logger.error('Recovery mutex failed for %s: %s', simulation_id, e)
@@ -50,19 +63,22 @@ def start_generation_if_needed(simulation_id: str, app_obj):
         try:
             from app.services.claude import generate_simulation_layer
             from app.services.fintech import is_fintech_enabled
+            import threading as _threading
 
             resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
-            parsed_text = resume.parsed_text if resume else ''
+            parsed_text     = resume.parsed_text if resume else ''
             fintech_enabled = is_fintech_enabled()
             _expertise_zone = sim.expertise_zone
-            _focus_hint = sim.focus_hint or ''
-            _user_id = sim.user_id
+            _focus_hint     = sim.focus_hint or ''
+            _user_id        = sim.user_id
+            _results        = {}
+            _errors         = {}
+            _lock           = _threading.Lock()
 
-            def _generate_layer(layer_num):
+            def _call_claude(layer_num):
                 with app_obj.app_context():
-                    from app.extensions import db as _db
                     try:
-                        layer_data = generate_simulation_layer(
+                        data = generate_simulation_layer(
                             layer_number=layer_num,
                             expertise_zone=_expertise_zone,
                             focus_hint=_focus_hint,
@@ -71,56 +87,57 @@ def start_generation_if_needed(simulation_id: str, app_obj):
                             simulation_id=simulation_id,
                             fintech_enabled=fintech_enabled,
                         )
-                        sim_layer = SimulationLayer(
-                            simulation_id=simulation_id,
-                            layer_number=layer_data.get('layer_number', layer_num),
-                            layer_name=layer_data.get('layer_name', f'Layer {layer_num}'),
-                            income_type=layer_data.get('income_type', ''),
-                            ai_narrative=layer_data.get('ai_narrative', ''),
-                            priority_score=layer_data.get('priority_score'),
-                        )
-                        _db.session.add(sim_layer)
-                        _db.session.flush()
+                        with _lock:
+                            _results[layer_num] = data
+                    except Exception as e:
+                        logger.error('Recovery layer %d Claude call failed for %s: %s', layer_num, simulation_id, e)
+                        with _lock:
+                            _errors[layer_num] = e
 
-                        for stream_data in layer_data.get('income_streams', []):
-                            low = stream_data.get('est_monthly_low')
-                            high = stream_data.get('est_monthly_high')
-                            if low is not None and high is not None and low > high:
-                                low, high = high, low
-                            stream = IncomeStream(
-                                layer_id=sim_layer.id,
-                                name=stream_data.get('name', ''),
-                                description=stream_data.get('description', ''),
-                                platform=stream_data.get('platform', ''),
-                                est_monthly_low=low,
-                                est_monthly_high=high,
-                                ai_reasoning=stream_data.get('ai_reasoning', ''),
-                                automation_level=stream_data.get('automation_level', ''),
-                                launch_timeline_weeks=stream_data.get('launch_timeline_weeks'),
-                            )
-                            stream.deliverable_refs = stream_data.get('deliverable_refs', [])
-                            _db.session.add(stream)
+            threads = [_threading.Thread(target=_call_claude, args=(n,), daemon=True)
+                       for n in range(1, 6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
 
-                        _db.session.commit()
-                        logger.info('Recovery: simulation %s layer %d complete', simulation_id, layer_num)
-                        return layer_num
-                    except Exception as layer_err:
-                        _db.session.rollback()
-                        logger.error('Recovery layer %d failed for %s: %s', layer_num, simulation_id, layer_err)
-                        raise
+            if _errors:
+                raise list(_errors.values())[0]
 
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-            errors = []
-            with ThreadPoolExecutor(max_workers=5) as pool:
-                futures = {pool.submit(_generate_layer, n): n for n in range(1, 6)}
-                for future in as_completed(futures):
-                    try:
-                        future.result()
-                    except Exception as layer_err:
-                        errors.append(layer_err)
+            for layer_num in range(1, 6):
+                layer_data = _results[layer_num]
+                sim_layer = SimulationLayer(
+                    simulation_id=simulation_id,
+                    layer_number=layer_data.get('layer_number', layer_num),
+                    layer_name=layer_data.get('layer_name', f'Layer {layer_num}'),
+                    income_type=layer_data.get('income_type', ''),
+                    ai_narrative=layer_data.get('ai_narrative', ''),
+                    priority_score=layer_data.get('priority_score'),
+                )
+                db.session.add(sim_layer)
+                db.session.flush()
 
-            if errors:
-                raise errors[0]
+                for stream_data in layer_data.get('income_streams', []):
+                    low  = stream_data.get('est_monthly_low')
+                    high = stream_data.get('est_monthly_high')
+                    if low is not None and high is not None and low > high:
+                        low, high = high, low
+                    stream = IncomeStream(
+                        layer_id=sim_layer.id,
+                        name=stream_data.get('name', ''),
+                        description=stream_data.get('description', ''),
+                        platform=stream_data.get('platform', ''),
+                        est_monthly_low=low,
+                        est_monthly_high=high,
+                        ai_reasoning=stream_data.get('ai_reasoning', ''),
+                        automation_level=stream_data.get('automation_level', ''),
+                        launch_timeline_weeks=stream_data.get('launch_timeline_weeks'),
+                    )
+                    stream.deliverable_refs = stream_data.get('deliverable_refs', [])
+                    db.session.add(stream)
+
+                db.session.commit()
+                logger.info('Recovery: simulation %s layer %d saved', simulation_id, layer_num)
 
             sim = Simulation.query.get(simulation_id)
             sim.status = Simulation.STATUS_COMPLETE
