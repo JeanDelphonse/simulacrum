@@ -448,7 +448,7 @@
     <div id="resumeStatus" class="upload-status"></div>
     <div id="resumeProcessing" class="processing-banner" style="display:none">
       <span class="spinner"></span>
-      <span>Extracting your expertise zones&hellip; this takes about 15 seconds.</span>
+      <span>Uploading and parsing your resume&hellip;</span>
     </div>
     <div id="step2Error" class="alert alert-error" style="display:none"></div>
 
@@ -777,6 +777,10 @@
           status.className = 'upload-status success';
           resumeUploaded = true;
           contBtn.disabled = false;
+          // Background: extract expertise zones for the dashboard (fire-and-forget)
+          if (r.data.id) {
+            api('POST', '/api/resumes/' + r.data.id + '/extract-zones').catch(() => {});
+          }
         } else {
           showError('step2Error', r.data.error || 'Upload failed. Please try again.');
           status.textContent = '';
