@@ -236,6 +236,10 @@ def publish_bio_page():
     bp.status = BioPage.STATUS_PUBLISHED
     bp.published_at = bp.published_at or datetime.utcnow()
     bp.updated_at = datetime.utcnow()
+    # Keep legacy UserProfile.is_published in sync so admin page shows the link
+    profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    if profile and not profile.is_published:
+        profile.is_published = True
     db.session.commit()
     # Emit activity event for connections' feeds
     try:
