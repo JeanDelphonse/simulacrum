@@ -247,13 +247,12 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       overflow: hidden;
-      height: 320px;
+      height: 440px;
       margin-bottom: 20px;
     }
     .bio-preview-wrap iframe {
       width: 100%; height: 100%;
       border: none;
-      transform-origin: top left;
     }
 
     /* ── Profile preview ────────────────────────────────────────────────── */
@@ -580,12 +579,15 @@
     </div>
   </div>
 
-  <!-- ── Step 7: Publish ──────────────────────────────────────────────── -->
+  <!-- ── Step 7: Preview + Publish ───────────────────────────────────── -->
   <div class="step-pane" data-step="7">
-    <div class="finish-icon">🚀</div>
     <p class="step-eyebrow" style="text-align:center">Step 7 of 7</p>
-    <h1 class="step-title" style="text-align:center">You're all set!</h1>
-    <p class="step-desc" style="text-align:center">Publish your bio page so clients and collaborators can find you.</p>
+    <h1 class="step-title" style="text-align:center">Preview your bio page</h1>
+    <p class="step-desc" style="text-align:center">Here's how your page looks to visitors. When you're happy, click Publish.</p>
+
+    <div class="bio-preview-wrap" id="bioPreviewWrap" style="display:none">
+      <iframe id="bioPreviewFrame" title="Bio page preview" loading="lazy"></iframe>
+    </div>
 
     <div id="bioUrlCard" class="share-card" style="display:none">
       <p class="share-url" id="bioUrlDisplay"></p>
@@ -622,7 +624,7 @@
   'use strict';
 
   const TOTAL_STEPS = 7;
-  const STEP_LABELS = ['Terms', 'Resume', 'Photo', 'Username', 'Profile', 'Theme', 'Publish'];
+  const STEP_LABELS = ['Terms', 'Resume', 'Photo', 'Username', 'Profile', 'Theme', 'Preview'];
 
   // ── State ──────────────────────────────────────────────────────────────
   let currentStep = parseInt('{{ initial_step }}', 10) || 1;
@@ -1109,8 +1111,12 @@
           bioUrl = window.location.origin + '/u/' + r.data.username;
           const display = document.getElementById('bioUrlDisplay');
           const card    = document.getElementById('bioUrlCard');
+          const frame   = document.getElementById('bioPreviewFrame');
+          const wrap    = document.getElementById('bioPreviewWrap');
           if (display) display.textContent = bioUrl;
           if (card)    card.style.display = 'flex';
+          if (frame && !frame.src) frame.src = '/u/' + r.data.username;
+          if (wrap)    wrap.style.display = 'block';
         }
       } catch (e) { /* non-critical */ }
     };
