@@ -631,6 +631,7 @@
   let tosVersion = '1.0';
   let privacyVersion = '1.0';
   let resumeUploaded = false;
+  let resumeId = null;
   let avatarUploaded = false;
   let avatarCropper = null;
   let avatarBlob = null;
@@ -776,10 +777,11 @@
           status.textContent = '✓ ' + f.name + ' uploaded';
           status.className = 'upload-status success';
           resumeUploaded = true;
+          resumeId = r.data.id || null;
           contBtn.disabled = false;
           // Background: extract expertise zones for the dashboard (fire-and-forget)
-          if (r.data.id) {
-            api('POST', '/api/resumes/' + r.data.id + '/extract-zones').catch(() => {});
+          if (resumeId) {
+            api('POST', '/api/resumes/' + resumeId + '/extract-zones').catch(() => {});
           }
         } else {
           showError('step2Error', r.data.error || 'Upload failed. Please try again.');
@@ -1167,7 +1169,7 @@
         const shareModal = document.getElementById('shareModal');
         if (shareModal) shareModal.style.display = 'block';
 
-        setTimeout(() => { window.location.href = '/dashboard'; }, 4000);
+        setTimeout(() => { window.location.href = resumeId ? '/resumes/' + resumeId : '/dashboard'; }, 4000);
       } catch (e) {
         showError('step7Error', 'Network error. Please try again.');
         setLoading(btn, false);
