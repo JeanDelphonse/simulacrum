@@ -413,7 +413,7 @@
 
 <body class="theme-{{ bio_page.theme }}">
 
-{% if is_owner %}
+{% if is_owner and not hide_owner_bar %}
 <div class="owner-bar">
   {% if bio_page.status != 'published' %}
   <strong>Draft preview</strong> — this page is not yet visible to visitors.

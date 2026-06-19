@@ -1129,7 +1129,7 @@
           const wrap    = document.getElementById('bioPreviewWrap');
           if (display) display.textContent = bioUrl;
           if (card)    card.style.display = 'flex';
-          if (frame && !frame.src) frame.src = '/u/' + r.data.username;
+          if (frame && !frame.src) frame.src = '/u/' + r.data.username + '?embed=1';
           if (wrap)    wrap.style.display = 'block';
         }
       } catch (e) { /* non-critical */ }

@@ -71,6 +71,7 @@ def profile_page(username):
             ctx=ctx,
             is_owner=is_owner,
             slug=slug,
+            hide_owner_bar=request.args.get('embed') == '1',
         )
 
     # ── Fallback: legacy profile page ────────────────────────────────────
