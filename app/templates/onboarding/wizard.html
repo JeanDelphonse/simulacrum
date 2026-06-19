@@ -493,9 +493,10 @@
     </div>
 
     <div class="crop-container" id="cropContainer">
+      <p style="font-size:.8125rem;color:var(--muted);margin-bottom:8px">Optional: drag to reposition, then click <strong>Save crop</strong>.</p>
       <img id="cropImg" alt="Crop preview">
       <div class="crop-actions">
-        <button class="btn btn-primary" id="cropApplyBtn">Apply crop</button>
+        <button class="btn btn-primary" id="cropApplyBtn">Save crop</button>
         <button class="btn btn-ghost" id="cropCancelBtn">Cancel</button>
       </div>
     </div>
@@ -854,7 +855,29 @@
     const skipBtn    = document.getElementById('step3Skip');
     const backBtn    = document.getElementById('step3Back');
 
-    fileInput.addEventListener('change', () => {
+    async function uploadBlob(blob, filename) {
+      const fd = new FormData();
+      fd.append('avatar', blob, filename);
+      setLoading(contBtn, true);
+      showError('step3Error', '');
+      try {
+        const r = await api('POST', '/api/settings/profile/avatar', fd, true);
+        if (r.ok) {
+          avatarUploaded = true;
+          contBtn.disabled = false;
+        } else {
+          showError('step3Error', r.data.error || 'Upload failed. Please try again.');
+          contBtn.disabled = !avatarUploaded;
+        }
+      } catch (e) {
+        showError('step3Error', 'Network error. Please try again.');
+        contBtn.disabled = !avatarUploaded;
+      } finally {
+        setLoading(contBtn, false);
+      }
+    }
+
+    fileInput.addEventListener('change', async () => {
       const f = fileInput.files[0];
       if (!f) return;
       showError('step3Error', '');
@@ -866,6 +889,14 @@
         showError('step3Error', 'File must be under 2 MB.');
         return;
       }
+
+      // Show preview immediately
+      preview.src = URL.createObjectURL(f);
+
+      // Upload the original right away — Continue becomes enabled
+      await uploadBlob(f, f.name);
+
+      // Also show the optional crop tool
       const url = URL.createObjectURL(f);
       cropImg.src = url;
       cropWrap.style.display = 'block';
@@ -887,33 +918,14 @@
         cropWrap.style.display = 'none';
         avatarCropper.destroy();
         avatarCropper = null;
-
-        // Upload immediately
-        const fd = new FormData();
-        fd.append('avatar', blob, 'avatar.jpg');
-        setLoading(contBtn, true);
-        try {
-          const r = await api('POST', '/api/settings/profile/avatar', fd, true);
-          if (r.ok) {
-            avatarUploaded = true;
-            contBtn.disabled = false;
-            showError('step3Error', '');
-          } else {
-            showError('step3Error', r.data.error || 'Upload failed. Please try again.');
-          }
-        } catch (e) {
-          showError('step3Error', 'Network error. Please try again.');
-        } finally {
-          setLoading(contBtn, false);
-          contBtn.disabled = !avatarUploaded;
-        }
+        // Re-upload with cropped version
+        await uploadBlob(blob, 'avatar.jpg');
       }, 'image/jpeg', 0.9);
     });
 
     cancelBtn.addEventListener('click', () => {
       cropWrap.style.display = 'none';
       if (avatarCropper) { avatarCropper.destroy(); avatarCropper = null; }
-      fileInput.value = '';
     });
 
     contBtn.addEventListener('click', async () => {
