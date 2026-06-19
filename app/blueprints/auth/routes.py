@@ -200,6 +200,7 @@ def login():
     AuditLog.log('user_login', user_id=user.id)
     db.session.commit()
 
+    needs_onboarding = user.onboarding_completed_at is None
     return jsonify({
         'token': token,
         'user': {
@@ -209,6 +210,8 @@ def login():
             'is_admin': user.is_admin,
             'simulation_count': user.simulation_count,
             'total_spend_cents': user.total_spend,
+            'needs_onboarding': needs_onboarding,
+            'onboarding_step': user.onboarding_step or 1,
         },
     }), 200
 

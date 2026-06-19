@@ -120,6 +120,8 @@ def create_app(config_name=None):
     app.logger.info('startup: corporate_bp imported')
     from app.blueprints.social import social_bp
     app.logger.info('startup: social_bp imported')
+    from app.blueprints.onboarding import onboarding_bp
+    app.logger.info('startup: onboarding_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -145,6 +147,7 @@ def create_app(config_name=None):
     app.register_blueprint(bio_chat_bp)
     app.register_blueprint(corporate_bp)
     app.register_blueprint(social_bp)
+    app.register_blueprint(onboarding_bp)
 
     # Register page routes
     from app.blueprints.pages import pages_bp
@@ -155,6 +158,31 @@ def create_app(config_name=None):
     # Start in-process scheduler (replaces Celery Beat on shared hosting)
     from app.scheduler import start_scheduler
     start_scheduler(app)
+
+    # Onboarding gate: redirect incomplete users to /onboarding
+    @app.before_request
+    def _onboarding_gate():
+        from flask import redirect as _redirect, request as _req
+        from flask_login import current_user as _cu
+
+        # Skip API calls, static files, and the onboarding route itself
+        if _req.path.startswith(('/api/', '/static/', '/onboarding')):
+            return
+        # Skip public/auth pages
+        _public_prefixes = ('/legal/', '/u/', '/share/', '/samples/', '/ref/',
+                            '/auth/', '/ping', '/sitemap.xml')
+        if _req.path.startswith(_public_prefixes):
+            return
+        if _req.path in ('/login', '/register', '/verify-sent', '/forgot-password',
+                         '/partners/apply', '/'):
+            return
+
+        if not _cu.is_authenticated or not _cu.email_verified:
+            return
+
+        if getattr(_cu, 'onboarding_completed_at', None) is None:
+            step = getattr(_cu, 'onboarding_step', 1) or 1
+            return _redirect(f'/onboarding?step={step}')
 
     # Catch all unhandled exceptions and log the full traceback
     import traceback as _tb

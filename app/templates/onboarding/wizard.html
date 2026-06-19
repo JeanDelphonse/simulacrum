@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to SimulacrumAI.io — Get Started</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --teal: #14b8a6;
+      --teal-dark: #0f9688;
+      --teal-light: #ccfbf1;
+      --slate: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+      --white: #ffffff;
+      --danger: #ef4444;
+    }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--slate);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    .wiz-header {
+      width: 100%;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--white);
+    }
+    .wiz-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--slate);
+      text-decoration: none;
+    }
+    .wiz-logo-mark {
+      width: 28px; height: 28px;
+      background: var(--teal);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Progress bar ──────────────────────────────────────────────────── */
+    .wiz-progress {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin: 40px 0 32px;
+      padding: 0 16px;
+    }
+    .wiz-step-dot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+    .wiz-step-dot .dot {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all 0.2s;
+      z-index: 1;
+    }
+    .wiz-step-dot.done .dot   { background: var(--teal); border-color: var(--teal); color: var(--white); }
+    .wiz-step-dot.active .dot { background: var(--white); border-color: var(--teal); color: var(--teal); box-shadow: 0 0 0 4px var(--teal-light); }
+    .wiz-step-dot .dot-label  { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; display: none; }
+    .wiz-step-dot.active .dot-label { color: var(--teal); font-weight: 600; }
+    .wiz-connector {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      margin-bottom: 22px;
+      min-width: 20px;
+      max-width: 60px;
+      transition: background 0.2s;
+    }
+    .wiz-connector.done { background: var(--teal); }
+    @media (min-width: 480px) {
+      .wiz-step-dot .dot-label { display: block; }
+    }
+
+    /* ── Card ──────────────────────────────────────────────────────────── */
+    .wiz-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 16px 48px;
+    }
+    @media (max-width: 480px) {
+      .wiz-card { padding: 28px 20px; border-radius: 12px; }
+    }
+
+    .step-pane { display: none; }
+    .step-pane.active { display: block; }
+
+    .step-eyebrow {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 8px;
+    }
+    .step-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+    .step-desc {
+      font-size: 0.9375rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    /* ── Form controls ─────────────────────────────────────────────────── */
+    label { font-size: 0.875rem; font-weight: 500; display: block; margin-bottom: 6px; }
+    input[type=text], input[type=url], textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      color: var(--slate);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type=text]:focus, input[type=url]:focus, textarea:focus { border-color: var(--teal); }
+    input.error, textarea.error { border-color: var(--danger); }
+    .field-hint { font-size: 0.8125rem; color: var(--muted); margin-top: 4px; }
+    .field-error { font-size: 0.8125rem; color: var(--danger); margin-top: 4px; }
+    .field-ok    { font-size: 0.8125rem; color: var(--teal); margin-top: 4px; }
+    .form-row { margin-bottom: 20px; }
+
+    /* ── Checkbox ──────────────────────────────────────────────────────── */
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .check-row:hover { border-color: var(--teal); }
+    .check-row input[type=checkbox] {
+      width: 18px; height: 18px;
+      accent-color: var(--teal);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .check-row .check-text { font-size: 0.9rem; line-height: 1.5; color: var(--slate); }
+    .check-row .check-text a { color: var(--teal); }
+
+    /* ── Upload zones ──────────────────────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 8px;
+    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--teal); background: var(--teal-light); }
+    .upload-zone svg { color: var(--muted); margin-bottom: 10px; }
+    .upload-zone p { font-size: 0.9375rem; color: var(--muted); }
+    .upload-zone strong { color: var(--slate); }
+    .upload-zone input[type=file] { display: none; }
+    .upload-status { font-size: 0.875rem; margin-top: 8px; }
+    .upload-status.success { color: var(--teal); }
+    .upload-status.error   { color: var(--danger); }
+
+    /* ── Avatar upload ─────────────────────────────────────────────────── */
+    .avatar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .avatar-preview {
+      width: 96px; height: 96px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+    .avatar-actions { display: flex; flex-direction: column; gap: 10px; }
+    .crop-container {
+      display: none;
+      margin-top: 16px;
+      border-radius: 8px;
+      overflow: hidden;
+      max-height: 300px;
+    }
+    .crop-container img { max-width: 100%; display: block; }
+    .crop-actions { display: flex; gap: 10px; margin-top: 12px; }
+
+    /* ── Theme picker ──────────────────────────────────────────────────── */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .theme-card {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .theme-card.selected { border-color: var(--teal); }
+    .theme-swatch {
+      width: 100%; height: 48px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .theme-swatch.default { background: #0f172a; }
+    .theme-swatch.dark    { background: #18181b; }
+    .theme-swatch.warm    { background: #431407; }
+    .theme-label { font-size: 0.8125rem; font-weight: 500; }
+
+    /* ── Bio preview iframe ─────────────────────────────────────────────── */
+    .bio-preview-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      height: 320px;
+      margin-bottom: 20px;
+    }
+    .bio-preview-wrap iframe {
+      width: 100%; height: 100%;
+      border: none;
+      transform-origin: top left;
+    }
+
+    /* ── Profile preview ────────────────────────────────────────────────── */
+    .profile-preview {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .profile-preview-avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .profile-preview-name { font-weight: 600; font-size: 1rem; }
+    .profile-preview-title { font-size: 0.875rem; color: var(--muted); margin-top: 2px; }
+    .profile-preview-url {
+      font-size: 0.8125rem;
+      color: var(--teal);
+      margin-top: 4px;
+      word-break: break-all;
+    }
+
+    /* ── Confetti finish card ───────────────────────────────────────────── */
+    .finish-icon {
+      width: 72px; height: 72px;
+      background: var(--teal-light);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 2rem;
+    }
+    .share-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .share-url {
+      font-size: 0.875rem;
+      color: var(--teal);
+      word-break: break-all;
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 22px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary  { background: var(--teal); color: var(--white); }
+    .btn-primary:hover:not(:disabled) { background: var(--teal-dark); }
+    .btn-ghost    { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled)  { border-color: var(--teal); color: var(--teal); }
+    .btn-link     { background: transparent; color: var(--muted); padding: 0; font-weight: 400; font-size: 0.875rem; }
+    .btn-link:hover { color: var(--slate); }
+    .btn-icon     { background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; cursor: pointer; color: var(--muted); }
+    .btn-icon:hover { border-color: var(--teal); color: var(--teal); }
+
+    /* ── Footer nav ─────────────────────────────────────────────────────── */
+    .wiz-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .wiz-footer-left  { display: flex; align-items: center; gap: 12px; }
+    .wiz-footer-right { display: flex; align-items: center; gap: 12px; }
+
+    /* ── Alert banner ───────────────────────────────────────────────────── */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+    }
+    .alert-error { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+    .alert-info  { background: var(--teal-light); color: #0f766e; border: 1px solid #99f6e4; }
+
+    /* ── Spinner ────────────────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-ghost .spinner { border-color: rgba(0,0,0,.2); border-top-color: var(--muted); }
+
+    /* ── Step 2 resume processing ───────────────────────────────────────── */
+    .processing-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--teal-light);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.875rem;
+      color: #0f766e;
+    }
+    .processing-banner .spinner { border-color: rgba(15,118,110,.3); border-top-color: #0f766e; }
+  </style>
+</head>
+<body>
+
+<header class="wiz-header">
+  <a class="wiz-logo" href="/">
+    <span class="wiz-logo-mark">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
+      </svg>
+    </span>
+    SimulacrumAI.io
+  </a>
+</header>
+
+<!-- Progress bar -->
+<nav class="wiz-progress" aria-label="Setup progress" id="progressBar">
+  <!-- built by JS -->
+</nav>
+
+<!-- Wizard card -->
+<main class="wiz-card" id="wizCard">
+
+  <!-- ── Step 1: Terms ────────────────────────────────────────────────── -->
+  <div class="step-pane" data-step="1">
+    <p class="step-eyebrow">Step 1 of 7</p>
+    <h1 class="step-title">Welcome! Let's start with the basics.</h1>
+    <p class="step-desc">Before you build your wealth simulation, please review and accept our Terms of Service and Privacy Policy.</p>
+
+    <label class="check-row" id="tosRow1">
+      <input type="checkbox" id="chkTos">
+      <span class="check-text">I have read and agree to the <a href="/legal/terms" target="_blank">Terms of Service</a>.</span>
+    </label>
+    <label class="check-row" id="tosRow2">
+      <input type="checkbox" id="chkPrivacy">
+      <span class="check-text">I have read and agree to the <a href="/legal/privacy" target="_blank">Privacy Policy</a> and consent to AI processing of my career data.</span>
+    </label>
+
+    <div id="step1Error" class="alert alert-error" style="display:none"></div>
+
+    <div class="wiz-footer">
+      <span></span>
+      <div class="wiz-footer-right">
+        <button class="btn btn-primary" id="step1Btn" disabled>Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 2: Resume ───────────────────────────────────────────────── -->
+  <div class="step-pane" data-step="2">
+    <p class="step-eyebrow">Step 2 of 7</p>
+    <h1 class="step-title">Upload your resume</h1>
+    <p class="step-desc">We'll extract your expertise zones and achievements to power your wealth simulation. PDF or DOCX, under 10 MB.</p>
+
+    <div id="resumeDropZone" class="upload-zone">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/>
+        <polyline points="9 15 12 12 15 15"/>
+      </svg>
+      <p><strong>Drag &amp; drop</strong> your resume here<br>or <strong>click to browse</strong></p>
+      <p style="font-size:.8125rem;margin-top:6px">PDF or DOCX · Max 10 MB</p>
+      <input type="file" id="resumeFile" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    </div>
+    <div id="resumeStatus" class="upload-status"></div>
+    <div id="resumeProcessing" class="processing-banner" style="display:none">
+      <span class="spinner"></span>
+      <span>Extracting your expertise zones&hellip; this takes about 15 seconds.</span>
+    </div>
+    <div id="step2Error" class="alert alert-error" style="display:none"></div>
+
+    <div class="wiz-footer">
+      <button class="btn btn-ghost" id="step2Back">Back</button>
+      <div class="wiz-footer-right">
+        <button class="btn btn-link" id="step2Skip">Skip for now</button>
+        <button class="btn btn-primary" id="step2Btn" disabled>Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 3: Photo ────────────────────────────────────────────────── -->
+  <div class="step-pane" data-step="3">
+    <p class="step-eyebrow">Step 3 of 7</p>
+    <h1 class="step-title">Add a profile photo</h1>
+    <p class="step-desc">A professional photo builds trust on your bio page. JPEG or PNG, under 2 MB.</p>
+
+    <div class="avatar-wrap">
+      <img id="avatarPreview" class="avatar-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 24 24' fill='%23e2e8f0'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 20c0-4 3.6-7 8-7s8 3 8 7'/%3E%3C/svg%3E" alt="Profile photo">
+      <div class="avatar-actions">
+        <label class="btn btn-ghost" style="cursor:pointer">
+          Choose photo
+          <input type="file" id="avatarFile" accept="image/jpeg,image/png" style="display:none">
+        </label>
+      </div>
+    </div>
+
+    <div class="crop-container" id="cropContainer">
+      <img id="cropImg" alt="Crop preview">
+      <div class="crop-actions">
+        <button class="btn btn-primary" id="cropApplyBtn">Apply crop</button>
+        <button class="btn btn-ghost" id="cropCancelBtn">Cancel</button>
+      </div>
+    </div>
+
+    <div id="step3Error" class="alert alert-error" style="display:none"></div>
+
+    <div class="wiz-footer">
+      <button class="btn btn-ghost" id="step3Back">Back</button>
+      <div class="wiz-footer-right">
+        <button class="btn btn-link" id="step3Skip">Skip for now</button>
+        <button class="btn btn-primary" id="step3Btn" disabled>Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 4: Username ─────────────────────────────────────────────── -->
+  <div class="step-pane" data-step="4">
+    <p class="step-eyebrow">Step 4 of 7</p>
+    <h1 class="step-title">Claim your username</h1>
+    <p class="step-desc">This becomes your public profile URL: <strong>simulacrumai.io/u/your-username</strong></p>
+
+    <div class="form-row">
+      <label for="usernameInput">Username</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:.9375rem;color:var(--muted);white-space:nowrap">/u/</span>
+        <input type="text" id="usernameInput" placeholder="your-username" autocomplete="off">
+        <button class="btn-icon" id="checkUsernameBtn" title="Check availability">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+      </div>
+      <p class="field-hint">3–30 characters. Lowercase letters, numbers, and hyphens only.</p>
+      <p id="usernameMsg" class="field-hint" style="display:none"></p>
+    </div>
+    <div id="step4Error" class="alert alert-error" style="display:none"></div>
+
+    <div class="wiz-footer">
+      <button class="btn btn-ghost" id="step4Back">Back</button>
+      <div class="wiz-footer-right">
+        <button class="btn btn-primary" id="step4Btn" disabled>Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 5: Profile ──────────────────────────────────────────────── -->
+  <div class="step-pane" data-step="5">
+    <p class="step-eyebrow">Step 5 of 7</p>
+    <h1 class="step-title">Complete your profile</h1>
+    <p class="step-desc">This appears on your public bio page and helps Simi understand your background.</p>
+
+    <div class="form-row">
+      <label for="displayNameInput">Display name <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="displayNameInput" placeholder="Jane Doe" maxlength="100">
+    </div>
+    <div class="form-row">
+      <label for="taglineInput">Professional tagline</label>
+      <input type="text" id="taglineInput" placeholder="e.g. SaaS Growth Operator · 3× Founder" maxlength="200">
+    </div>
+    <div class="form-row">
+      <label for="locationInput">Location</label>
+      <input type="text" id="locationInput" placeholder="New York, NY" maxlength="100">
+    </div>
+    <div class="form-row">
+      <label for="linkedinInput">LinkedIn URL</label>
+      <input type="url" id="linkedinInput" placeholder="https://linkedin.com/in/yourprofile" maxlength="255">
+    </div>
+    <div id="step5Error" class="alert alert-error" style="display:none"></div>
+
+    <div class="wiz-footer">
+      <button class="btn btn-ghost" id="step5Back">Back</button>
+      <div class="wiz-footer-right">
+        <button class="btn btn-primary" id="step5Btn" disabled>Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 6: Bio theme ────────────────────────────────────────────── -->
+  <div class="step-pane" data-step="6">
+    <p class="step-eyebrow">Step 6 of 7</p>
+    <h1 class="step-title">Choose your bio page theme</h1>
+    <p class="step-desc">Pick a look for your public profile. You can change this any time from Settings.</p>
+
+    <div class="theme-grid">
+      <div class="theme-card selected" data-theme="default" tabindex="0" role="radio" aria-checked="true">
+        <div class="theme-swatch default"></div>
+        <p class="theme-label">Midnight</p>
+      </div>
+      <div class="theme-card" data-theme="dark" tabindex="0" role="radio" aria-checked="false">
+        <div class="theme-swatch dark"></div>
+        <p class="theme-label">Obsidian</p>
+      </div>
+      <div class="theme-card" data-theme="warm" tabindex="0" role="radio" aria-checked="false">
+        <div class="theme-swatch warm"></div>
+        <p class="theme-label">Ember</p>
+      </div>
+    </div>
+
+    <div id="step6Error" class="alert alert-error" style="display:none"></div>
+
+    <div class="wiz-footer">
+      <button class="btn btn-ghost" id="step6Back">Back</button>
+      <div class="wiz-footer-right">
+        <button class="btn btn-primary" id="step6Btn">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 7: Publish ──────────────────────────────────────────────── -->
+  <div class="step-pane" data-step="7">
+    <div class="finish-icon">🚀</div>
+    <p class="step-eyebrow" style="text-align:center">Step 7 of 7</p>
+    <h1 class="step-title" style="text-align:center">You're all set!</h1>
+    <p class="step-desc" style="text-align:center">Publish your bio page so clients and collaborators can find you.</p>
+
+    <div id="bioUrlCard" class="share-card" style="display:none">
+      <p class="share-url" id="bioUrlDisplay"></p>
+      <button class="btn-icon" id="copyBioUrl" title="Copy link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="step7Error" class="alert alert-error" style="display:none"></div>
+
+    <!-- Share modal (PLG) -->
+    <div id="shareModal" style="display:none;margin-top:16px">
+      <p style="font-size:.9375rem;color:var(--muted);margin-bottom:12px;text-align:center">Share your new page with your network:</p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-ghost" id="shareLinkedinBtn">Share on LinkedIn</button>
+        <button class="btn btn-ghost" id="shareTwitterBtn">Share on X / Twitter</button>
+      </div>
+    </div>
+
+    <div class="wiz-footer">
+      <button class="btn btn-ghost" id="step7Back">Back</button>
+      <div class="wiz-footer-right">
+        <button class="btn btn-primary" id="step7Btn">Publish &amp; Go to Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  const TOTAL_STEPS = 7;
+  const STEP_LABELS = ['Terms', 'Resume', 'Photo', 'Username', 'Profile', 'Theme', 'Publish'];
+
+  // ── State ──────────────────────────────────────────────────────────────
+  let currentStep = parseInt('{{ initial_step }}', 10) || 1;
+  let tosVersion = '1.0';
+  let privacyVersion = '1.0';
+  let resumeUploaded = false;
+  let avatarUploaded = false;
+  let avatarCropper = null;
+  let avatarBlob = null;
+  let usernameValid = false;
+  let selectedTheme = 'default';
+  let profileSaved = false;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  async function api(method, path, body, isForm) {
+    const headers = {};
+    if (!isForm) headers['Content-Type'] = 'application/json';
+    const opts = { method, headers, credentials: 'include' };
+    if (body) opts.body = isForm ? body : JSON.stringify(body);
+    const r = await fetch(path, opts);
+    const ct = r.headers.get('content-type') || '';
+    const data = ct.includes('json') ? await r.json() : {};
+    return { ok: r.ok, status: r.status, data };
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+  }
+
+  function setLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) {
+      btn.dataset.origText = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span>';
+      btn.disabled = true;
+    } else {
+      btn.innerHTML = btn.dataset.origText || btn.innerHTML;
+      btn.disabled = false;
+    }
+  }
+
+  async function advanceWizard(step) {
+    await api('POST', '/api/onboarding/step', { step });
+  }
+
+  // ── Progress bar ───────────────────────────────────────────────────────
+  function renderProgress() {
+    const bar = document.getElementById('progressBar');
+    bar.innerHTML = '';
+    for (let i = 1; i <= TOTAL_STEPS; i++) {
+      if (i > 1) {
+        const conn = document.createElement('div');
+        conn.className = 'wiz-connector' + (i - 1 < currentStep ? ' done' : '');
+        bar.appendChild(conn);
+      }
+      const dot = document.createElement('div');
+      dot.className = 'wiz-step-dot' +
+        (i < currentStep ? ' done' : i === currentStep ? ' active' : '');
+      dot.innerHTML = `
+        <div class="dot">${i < currentStep
+          ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+          : i}</div>
+        <span class="dot-label">${STEP_LABELS[i - 1]}</span>`;
+      bar.appendChild(dot);
+    }
+  }
+
+  function showStep(n) {
+    document.querySelectorAll('.step-pane').forEach(p => p.classList.remove('active'));
+    const pane = document.querySelector('.step-pane[data-step="' + n + '"]');
+    if (pane) pane.classList.add('active');
+    currentStep = n;
+    renderProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Step 1: TOS ───────────────────────────────────────────────────────
+  function initStep1() {
+    const chkTos = document.getElementById('chkTos');
+    const chkPp  = document.getElementById('chkPrivacy');
+    const btn    = document.getElementById('step1Btn');
+
+    function updateBtn() { btn.disabled = !(chkTos.checked && chkPp.checked); }
+    chkTos.addEventListener('change', updateBtn);
+    chkPp.addEventListener('change', updateBtn);
+
+    // Fetch current TOS versions (reuse consent-status endpoint)
+    api('GET', '/api/resumes/consent-status').then(r => {
+      if (r.ok) {
+        tosVersion     = r.data.tos_version     || '1.0';
+        privacyVersion = r.data.privacy_version || '1.0';
+      }
+    });
+
+    btn.addEventListener('click', async () => {
+      showError('step1Error', '');
+      setLoading(btn, true);
+      try {
+        await advanceWizard(1);
+        showStep(2);
+      } catch (e) {
+        showError('step1Error', 'Something went wrong. Please try again.');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+  }
+
+  // ── Step 2: Resume ────────────────────────────────────────────────────
+  function initStep2() {
+    const zone   = document.getElementById('resumeDropZone');
+    const file   = document.getElementById('resumeFile');
+    const status = document.getElementById('resumeStatus');
+    const proc   = document.getElementById('resumeProcessing');
+    const contBtn = document.getElementById('step2Btn');
+    const skipBtn = document.getElementById('step2Skip');
+    const backBtn = document.getElementById('step2Back');
+
+    async function uploadFile(f) {
+      showError('step2Error', '');
+      const allowed = ['application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowed.includes(f.type) && !f.name.match(/\.(pdf|docx)$/i)) {
+        showError('step2Error', 'Only PDF and DOCX files are accepted.');
+        return;
+      }
+      if (f.size > 10 * 1024 * 1024) {
+        showError('step2Error', 'File must be under 10 MB.');
+        return;
+      }
+
+      status.textContent = f.name;
+      status.className = 'upload-status';
+      proc.style.display = 'flex';
+      contBtn.disabled = true;
+
+      const fd = new FormData();
+      fd.append('file', f);
+      fd.append('tos_version', tosVersion);
+      fd.append('privacy_version', privacyVersion);
+      fd.append('checkbox_1', 'true');
+      fd.append('checkbox_2', 'true');
+
+      try {
+        const r = await api('POST', '/api/resumes/upload', fd, true);
+        proc.style.display = 'none';
+        if (r.ok) {
+          status.textContent = '✓ ' + f.name + ' uploaded';
+          status.className = 'upload-status success';
+          resumeUploaded = true;
+          contBtn.disabled = false;
+        } else {
+          showError('step2Error', r.data.error || 'Upload failed. Please try again.');
+          status.textContent = '';
+        }
+      } catch (e) {
+        proc.style.display = 'none';
+        showError('step2Error', 'Network error. Please try again.');
+        status.textContent = '';
+      }
+    }
+
+    zone.addEventListener('click', () => file.click());
+    file.addEventListener('change', () => { if (file.files[0]) uploadFile(file.files[0]); });
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
+    });
+
+    contBtn.addEventListener('click', async () => {
+      showError('step2Error', '');
+      setLoading(contBtn, true);
+      try {
+        await advanceWizard(2);
+        showStep(3);
+      } finally {
+        setLoading(contBtn, false);
+      }
+    });
+
+    skipBtn.addEventListener('click', async () => {
+      setLoading(skipBtn, true);
+      try {
+        await advanceWizard(2);
+        showStep(3);
+      } finally {
+        setLoading(skipBtn, false);
+      }
+    });
+
+    backBtn.addEventListener('click', () => showStep(1));
+  }
+
+  // ── Step 3: Avatar ────────────────────────────────────────────────────
+  function initStep3() {
+    const fileInput  = document.getElementById('avatarFile');
+    const preview    = document.getElementById('avatarPreview');
+    const cropWrap   = document.getElementById('cropContainer');
+    const cropImg    = document.getElementById('cropImg');
+    const applyBtn   = document.getElementById('cropApplyBtn');
+    const cancelBtn  = document.getElementById('cropCancelBtn');
+    const contBtn    = document.getElementById('step3Btn');
+    const skipBtn    = document.getElementById('step3Skip');
+    const backBtn    = document.getElementById('step3Back');
+
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files[0];
+      if (!f) return;
+      showError('step3Error', '');
+      if (!f.type.match(/image\/(jpeg|png)/)) {
+        showError('step3Error', 'JPEG or PNG only.');
+        return;
+      }
+      if (f.size > 2 * 1024 * 1024) {
+        showError('step3Error', 'File must be under 2 MB.');
+        return;
+      }
+      const url = URL.createObjectURL(f);
+      cropImg.src = url;
+      cropWrap.style.display = 'block';
+      if (avatarCropper) avatarCropper.destroy();
+      avatarCropper = new Cropper(cropImg, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.9,
+        background: false,
+      });
+    });
+
+    applyBtn.addEventListener('click', () => {
+      if (!avatarCropper) return;
+      avatarCropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(async (blob) => {
+        avatarBlob = blob;
+        preview.src = URL.createObjectURL(blob);
+        cropWrap.style.display = 'none';
+        avatarCropper.destroy();
+        avatarCropper = null;
+
+        // Upload immediately
+        const fd = new FormData();
+        fd.append('avatar', blob, 'avatar.jpg');
+        setLoading(contBtn, true);
+        try {
+          const r = await api('POST', '/api/settings/profile/avatar', fd, true);
+          if (r.ok) {
+            avatarUploaded = true;
+            contBtn.disabled = false;
+            showError('step3Error', '');
+          } else {
+            showError('step3Error', r.data.error || 'Upload failed. Please try again.');
+          }
+        } catch (e) {
+          showError('step3Error', 'Network error. Please try again.');
+        } finally {
+          setLoading(contBtn, false);
+          contBtn.disabled = !avatarUploaded;
+        }
+      }, 'image/jpeg', 0.9);
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      cropWrap.style.display = 'none';
+      if (avatarCropper) { avatarCropper.destroy(); avatarCropper = null; }
+      fileInput.value = '';
+    });
+
+    contBtn.addEventListener('click', async () => {
+      setLoading(contBtn, true);
+      try {
+        await advanceWizard(3);
+        showStep(4);
+      } finally {
+        setLoading(contBtn, false);
+      }
+    });
+
+    skipBtn.addEventListener('click', async () => {
+      setLoading(skipBtn, true);
+      try {
+        await advanceWizard(3);
+        showStep(4);
+      } finally {
+        setLoading(skipBtn, false);
+      }
+    });
+
+    backBtn.addEventListener('click', () => showStep(2));
+  }
+
+  // ── Step 4: Username ──────────────────────────────────────────────────
+  function initStep4() {
+    const input    = document.getElementById('usernameInput');
+    const checkBtn = document.getElementById('checkUsernameBtn');
+    const msgEl    = document.getElementById('usernameMsg');
+    const contBtn  = document.getElementById('step4Btn');
+    const backBtn  = document.getElementById('step4Back');
+    let checkTimer = null;
+
+    // Pre-fill from full_name
+    api('GET', '/api/settings/profile').then(r => {
+      if (r.ok && r.data.username) {
+        input.value = r.data.username;
+        checkUsername(r.data.username);
+      }
+    });
+
+    function setMsg(text, cls) {
+      msgEl.textContent = text;
+      msgEl.className = 'field-' + cls;
+      msgEl.style.display = text ? 'block' : 'none';
+    }
+
+    async function checkUsername(username) {
+      if (!username || username.length < 3) {
+        setMsg('', 'hint');
+        usernameValid = false;
+        contBtn.disabled = true;
+        return;
+      }
+      const r = await api('GET', '/api/profile/username-check?username=' + encodeURIComponent(username));
+      if (r.ok) {
+        if (r.data.available) {
+          setMsg('✓ Available', 'ok');
+          usernameValid = true;
+          contBtn.disabled = false;
+          input.classList.remove('error');
+        } else {
+          setMsg(r.data.error || 'Username already taken', 'error');
+          usernameValid = false;
+          contBtn.disabled = true;
+          input.classList.add('error');
+        }
+      }
+    }
+
+    input.addEventListener('input', () => {
+      usernameValid = false;
+      contBtn.disabled = true;
+      clearTimeout(checkTimer);
+      checkTimer = setTimeout(() => checkUsername(input.value.toLowerCase().trim()), 500);
+    });
+
+    checkBtn.addEventListener('click', () => checkUsername(input.value.toLowerCase().trim()));
+
+    contBtn.addEventListener('click', async () => {
+      showError('step4Error', '');
+      const username = input.value.toLowerCase().trim();
+      if (!usernameValid) { showError('step4Error', 'Please enter an available username.'); return; }
+      setLoading(contBtn, true);
+      try {
+        const r = await api('PUT', '/api/settings/profile', { username });
+        if (!r.ok) { showError('step4Error', r.data.error || 'Failed to save username.'); return; }
+        await advanceWizard(4);
+        showStep(5);
+        // Pre-fill display name
+        const dn = document.getElementById('displayNameInput');
+        if (dn && !dn.value) dn.value = r.data.display_name || '';
+        updateStep5Btn();
+      } catch (e) {
+        showError('step4Error', 'Network error. Please try again.');
+      } finally {
+        setLoading(contBtn, false);
+      }
+    });
+
+    backBtn.addEventListener('click', () => showStep(3));
+  }
+
+  // ── Step 5: Profile ───────────────────────────────────────────────────
+  function initStep5() {
+    const dn   = document.getElementById('displayNameInput');
+    const btn  = document.getElementById('step5Btn');
+    const back = document.getElementById('step5Back');
+
+    // Load existing profile data
+    api('GET', '/api/settings/profile').then(r => {
+      if (!r.ok) return;
+      const p = r.data;
+      if (p.display_name) dn.value = p.display_name;
+      const tg = document.getElementById('taglineInput');
+      const lo = document.getElementById('locationInput');
+      const li = document.getElementById('linkedinInput');
+      if (tg && p.tagline)      tg.value = p.tagline;
+      if (lo && p.location)     lo.value = p.location;
+      if (li && p.linkedin_url) li.value = p.linkedin_url;
+      updateStep5Btn();
+    });
+
+    function updateStep5Btn() {
+      btn.disabled = !dn.value.trim();
+    }
+    window.updateStep5Btn = updateStep5Btn;
+
+    dn.addEventListener('input', updateStep5Btn);
+
+    btn.addEventListener('click', async () => {
+      showError('step5Error', '');
+      const displayName = dn.value.trim();
+      if (!displayName) { showError('step5Error', 'Display name is required.'); return; }
+      setLoading(btn, true);
+      try {
+        const payload = {
+          display_name: displayName,
+          tagline:      (document.getElementById('taglineInput').value || '').trim() || null,
+          location:     (document.getElementById('locationInput').value || '').trim() || null,
+          linkedin_url: (document.getElementById('linkedinInput').value || '').trim() || null,
+        };
+        const r = await api('PUT', '/api/settings/profile', payload);
+        if (!r.ok) { showError('step5Error', r.data.error || 'Failed to save profile.'); return; }
+        await advanceWizard(5);
+        showStep(6);
+      } catch (e) {
+        showError('step5Error', 'Network error. Please try again.');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+
+    back.addEventListener('click', () => showStep(4));
+  }
+
+  // ── Step 6: Theme ─────────────────────────────────────────────────────
+  function initStep6() {
+    const cards = document.querySelectorAll('.theme-card');
+    const btn   = document.getElementById('step6Btn');
+    const back  = document.getElementById('step6Back');
+
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c => { c.classList.remove('selected'); c.setAttribute('aria-checked', 'false'); });
+        card.classList.add('selected');
+        card.setAttribute('aria-checked', 'true');
+        selectedTheme = card.dataset.theme;
+      });
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+      });
+    });
+
+    btn.addEventListener('click', async () => {
+      showError('step6Error', '');
+      setLoading(btn, true);
+      try {
+        const r = await api('PUT', '/api/bio', { theme: selectedTheme });
+        if (!r.ok) { showError('step6Error', r.data.error || 'Failed to save theme.'); return; }
+        await advanceWizard(6);
+        showStep(7);
+        if (window.loadBioUrl) window.loadBioUrl();
+      } catch (e) {
+        showError('step6Error', 'Network error. Please try again.');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+
+    back.addEventListener('click', () => showStep(5));
+  }
+
+  // ── Step 7: Publish ───────────────────────────────────────────────────
+  function initStep7() {
+    const btn  = document.getElementById('step7Btn');
+    const back = document.getElementById('step7Back');
+    const copyBtn = document.getElementById('copyBioUrl');
+    const liBtn   = document.getElementById('shareLinkedinBtn');
+    const twBtn   = document.getElementById('shareTwitterBtn');
+    let bioUrl = '';
+
+    window.loadBioUrl = async function() {
+      try {
+        const r = await api('GET', '/api/settings/profile');
+        if (r.ok && r.data.username) {
+          bioUrl = window.location.origin + '/u/' + r.data.username;
+          const display = document.getElementById('bioUrlDisplay');
+          const card    = document.getElementById('bioUrlCard');
+          if (display) display.textContent = bioUrl;
+          if (card)    card.style.display = 'flex';
+        }
+      } catch (e) { /* non-critical */ }
+    };
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        if (!bioUrl) return;
+        navigator.clipboard.writeText(bioUrl).then(() => {
+          copyBtn.title = 'Copied!';
+          setTimeout(() => { copyBtn.title = 'Copy link'; }, 2000);
+        });
+      });
+    }
+
+    btn.addEventListener('click', async () => {
+      showError('step7Error', '');
+      setLoading(btn, true);
+      try {
+        const r = await api('POST', '/api/bio/publish');
+        if (!r.ok) { showError('step7Error', r.data.error || 'Failed to publish.'); return; }
+        await advanceWizard(7);
+
+        // Confetti
+        if (window.confetti) {
+          window.confetti({ particleCount: 150, spread: 80, origin: { y: 0.5 } });
+          setTimeout(() => window.confetti({ particleCount: 100, spread: 60, origin: { y: 0.4 } }), 400);
+        }
+
+        // Show share options briefly then redirect
+        const shareModal = document.getElementById('shareModal');
+        if (shareModal) shareModal.style.display = 'block';
+
+        setTimeout(() => { window.location.href = '/dashboard'; }, 4000);
+      } catch (e) {
+        showError('step7Error', 'Network error. Please try again.');
+        setLoading(btn, false);
+      }
+    });
+
+    if (liBtn) {
+      liBtn.addEventListener('click', () => {
+        const text = encodeURIComponent('Just set up my wealth simulation profile on SimulacrumAI.io! 🚀 ' + bioUrl);
+        window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(bioUrl) + '&summary=' + text, '_blank');
+      });
+    }
+    if (twBtn) {
+      twBtn.addEventListener('click', () => {
+        const text = encodeURIComponent('Just built my AI wealth simulation profile on @SimulacrumAI 🚀 ' + bioUrl);
+        window.open('https://twitter.com/intent/tweet?text=' + text, '_blank');
+      });
+    }
+
+    back.addEventListener('click', () => showStep(6));
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────
+  function init() {
+    renderProgress();
+    showStep(currentStep);
+    initStep1();
+    initStep2();
+    initStep3();
+    initStep4();
+    initStep5();
+    initStep6();
+    initStep7();
+
+    // If resuming at step 7, load the bio URL immediately
+    if (currentStep === 7) { window.loadBioUrl && window.loadBioUrl(); }
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>

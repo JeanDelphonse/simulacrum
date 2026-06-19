@@ -42,7 +42,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const data = await res.json();
     if (res.ok) {
       localStorage.setItem('sim_token', data.token);
-      window.location.href = '{{ url_for("pages.dashboard") }}';
+      if (data.user && data.user.needs_onboarding) {
+        window.location.href = '/onboarding?step=' + (data.user.onboarding_step || 1);
+      } else {
+        window.location.href = '{{ url_for("pages.dashboard") }}';
+      }
     } else {
       errEl.textContent = data.error || 'Login failed';
       errEl.classList.remove('hidden');

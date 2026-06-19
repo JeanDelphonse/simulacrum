@@ -34,6 +34,9 @@ class User(UserMixin, db.Model):
     # data retention (FR-TOS-13)
     last_login_at = db.Column(db.DateTime, nullable=True)
     retention_warned_at = db.Column(db.DateTime, nullable=True)
+    # onboarding wizard (SIM-PRD-ONBOARD-001)
+    onboarding_step = db.Column(db.Integer, default=1, nullable=False, server_default='1')
+    onboarding_completed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
