@@ -237,13 +237,36 @@ def get_simulation(sim_id):
             return jsonify({'error': 'Not found'}), 404
         sim = Simulation.query.get(sim_id)
 
+    # Heal: if all 5 layers are present but status never flipped, fix it now.
+    if sim.status == Simulation.STATUS_STREAMING:
+        layer_count = SimulationLayer.query.filter_by(simulation_id=sim_id).count()
+        if layer_count >= 5:
+            try:
+                sim.status = Simulation.STATUS_COMPLETE
+                from app.models.user import User
+                user = User.query.get(sim.user_id)
+                charged = sim.amount_charged_cents or current_app.config.get('SIMULATION_PRICE_CENTS', 69500)
+                if user:
+                    user.simulation_count = (user.simulation_count or 0) + 1
+                    user.total_spend = (user.total_spend or 0) + charged
+                db.session.commit()
+                try:
+                    from app.services.email_service import send_invoice_email
+                    send_invoice_email(user.email, user.full_name, sim.name, sim.id, charged)
+                except Exception:
+                    pass
+            except Exception as _heal_err:
+                db.session.rollback()
+                import logging as _log
+                _log.getLogger(__name__).error('Heal failed for %s: %s', sim_id, _heal_err)
+
     return jsonify(sim.to_dict()), 200
 
 
 @simulations_bp.route('/<sim_id>/recover', methods=['POST'])
 @login_required
 def recover_simulation(sim_id):
-    """Fire-and-forget recovery trigger — restarts generation if stuck in STATUS_PROCESSING."""
+    """Fire-and-forget recovery trigger — restarts generation if stuck in PROCESSING or STREAMING."""
     sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first()
     if not sim:
         from app.models.collaboration import Collaboration
@@ -255,7 +278,7 @@ def recover_simulation(sim_id):
             return jsonify({'error': 'Not found'}), 404
         sim = Simulation.query.get(sim_id)
 
-    if sim and sim.status == Simulation.STATUS_PROCESSING:
+    if sim and sim.status in (Simulation.STATUS_PROCESSING, Simulation.STATUS_STREAMING):
         trigger_recovery(sim_id)
 
     return jsonify({'status': sim.status if sim else 'unknown'}), 200

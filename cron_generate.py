@@ -31,10 +31,14 @@ with app.app_context():
     from app.extensions import db
     from app.models.simulation import Simulation, SimulationLayer
 
-    # Find simulations that are processing but have no layers yet
+    # Find simulations that need attention: PROCESSING (not started) or
+    # STREAMING (started but possibly died mid-flight).
     pending = (
         Simulation.query
-        .filter(Simulation.status == Simulation.STATUS_PROCESSING)
+        .filter(Simulation.status.in_([
+            Simulation.STATUS_PROCESSING,
+            Simulation.STATUS_STREAMING,
+        ]))
         .all()
     )
 
@@ -49,7 +53,7 @@ with app.app_context():
             # All layers exist but status never flipped — heal it atomically
             try:
                 res = db.session.execute(
-                    db.text("UPDATE simulations SET status = 'complete' WHERE id = :sid AND status = 'processing'"),
+                    db.text("UPDATE simulations SET status = 'complete' WHERE id = :sid AND status IN ('processing', 'streaming')"),
                     {'sid': sim.id}
                 )
                 db.session.commit()
@@ -69,7 +73,20 @@ with app.app_context():
             log.info(f'Simulation {sim.id} healed — marked complete ({layer_count} layers found)')
             continue
 
-        # Atomic lock: transition status to STATUS_STREAMING so no other runner picks it up.
+        # Atomic lock: for PROCESSING sims, transition to STREAMING.
+        # For STREAMING sims with < 5 layers, reset to PROCESSING first so the lock can be acquired.
+        if sim.status == Simulation.STATUS_STREAMING:
+            try:
+                db.session.execute(
+                    db.text("UPDATE simulations SET status = 'processing' WHERE id = :sid AND status = 'streaming'"),
+                    {'sid': sim.id}
+                )
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                log.error(f'Failed to reset streaming simulation {sim.id}: {e}')
+                continue
+
         try:
             res = db.session.execute(
                 db.text("UPDATE simulations SET status = :new WHERE id = :sid AND status = :old"),
