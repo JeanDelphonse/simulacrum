@@ -15,13 +15,6 @@
     </div>
   </div>
 
-  <div class="resume-editor-section">
-    <h2>Career Text <span class="badge">Editable</span></h2>
-    <p class="section-hint">Review and correct the parsed text before running AI analysis</p>
-    <textarea id="parsedText" class="resume-textarea" rows="20">{{ resume.parsed_text or '' }}</textarea>
-    <button class="btn btn-ghost" onclick="saveText('{{ resume.id }}')">Save changes</button>
-  </div>
-
   <div id="zonesSection" class="zones-section" {% if not resume.expertise_zones %}style="display:none"{% endif %}>
     <h2>Expertise Zones</h2>
     <div id="zonesList" class="zones-grid">
@@ -39,6 +32,13 @@
         {% endfor %}
       {% endif %}
     </div>
+  </div>
+
+  <div class="resume-editor-section">
+    <h2>Career Text <span class="badge">Editable</span></h2>
+    <p class="section-hint">Review and correct the parsed text before running AI analysis</p>
+    <textarea id="parsedText" class="resume-textarea" rows="20">{{ resume.parsed_text or '' }}</textarea>
+    <button class="btn btn-ghost" onclick="saveText('{{ resume.id }}')">Save changes</button>
   </div>
 
   <div id="simModal" class="modal hidden">
