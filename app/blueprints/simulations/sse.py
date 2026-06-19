@@ -54,49 +54,73 @@ def start_generation_if_needed(simulation_id: str, app_obj):
             resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
             parsed_text = resume.parsed_text if resume else ''
             fintech_enabled = is_fintech_enabled()
+            _expertise_zone = sim.expertise_zone
+            _focus_hint = sim.focus_hint or ''
+            _user_id = sim.user_id
 
-            for layer_num in range(1, 6):
-                layer_data = generate_simulation_layer(
-                    layer_number=layer_num,
-                    expertise_zone=sim.expertise_zone,
-                    focus_hint=sim.focus_hint or '',
-                    parsed_text=parsed_text,
-                    user_id=sim.user_id,
-                    simulation_id=simulation_id,
-                    fintech_enabled=fintech_enabled,
-                )
-                sim_layer = SimulationLayer(
-                    simulation_id=simulation_id,
-                    layer_number=layer_data.get('layer_number', layer_num),
-                    layer_name=layer_data.get('layer_name', f'Layer {layer_num}'),
-                    income_type=layer_data.get('income_type', ''),
-                    ai_narrative=layer_data.get('ai_narrative', ''),
-                    priority_score=layer_data.get('priority_score'),
-                )
-                db.session.add(sim_layer)
-                db.session.flush()
+            def _generate_layer(layer_num):
+                with app_obj.app_context():
+                    from app.extensions import db as _db
+                    try:
+                        layer_data = generate_simulation_layer(
+                            layer_number=layer_num,
+                            expertise_zone=_expertise_zone,
+                            focus_hint=_focus_hint,
+                            parsed_text=parsed_text,
+                            user_id=_user_id,
+                            simulation_id=simulation_id,
+                            fintech_enabled=fintech_enabled,
+                        )
+                        sim_layer = SimulationLayer(
+                            simulation_id=simulation_id,
+                            layer_number=layer_data.get('layer_number', layer_num),
+                            layer_name=layer_data.get('layer_name', f'Layer {layer_num}'),
+                            income_type=layer_data.get('income_type', ''),
+                            ai_narrative=layer_data.get('ai_narrative', ''),
+                            priority_score=layer_data.get('priority_score'),
+                        )
+                        _db.session.add(sim_layer)
+                        _db.session.flush()
 
-                for stream_data in layer_data.get('income_streams', []):
-                    low = stream_data.get('est_monthly_low')
-                    high = stream_data.get('est_monthly_high')
-                    if low is not None and high is not None and low > high:
-                        low, high = high, low
-                    stream = IncomeStream(
-                        layer_id=sim_layer.id,
-                        name=stream_data.get('name', ''),
-                        description=stream_data.get('description', ''),
-                        platform=stream_data.get('platform', ''),
-                        est_monthly_low=low,
-                        est_monthly_high=high,
-                        ai_reasoning=stream_data.get('ai_reasoning', ''),
-                        automation_level=stream_data.get('automation_level', ''),
-                        launch_timeline_weeks=stream_data.get('launch_timeline_weeks'),
-                    )
-                    stream.deliverable_refs = stream_data.get('deliverable_refs', [])
-                    db.session.add(stream)
+                        for stream_data in layer_data.get('income_streams', []):
+                            low = stream_data.get('est_monthly_low')
+                            high = stream_data.get('est_monthly_high')
+                            if low is not None and high is not None and low > high:
+                                low, high = high, low
+                            stream = IncomeStream(
+                                layer_id=sim_layer.id,
+                                name=stream_data.get('name', ''),
+                                description=stream_data.get('description', ''),
+                                platform=stream_data.get('platform', ''),
+                                est_monthly_low=low,
+                                est_monthly_high=high,
+                                ai_reasoning=stream_data.get('ai_reasoning', ''),
+                                automation_level=stream_data.get('automation_level', ''),
+                                launch_timeline_weeks=stream_data.get('launch_timeline_weeks'),
+                            )
+                            stream.deliverable_refs = stream_data.get('deliverable_refs', [])
+                            _db.session.add(stream)
 
-                db.session.commit()
-                logger.info('Recovery: simulation %s layer %d complete', simulation_id, layer_num)
+                        _db.session.commit()
+                        logger.info('Recovery: simulation %s layer %d complete', simulation_id, layer_num)
+                        return layer_num
+                    except Exception as layer_err:
+                        _db.session.rollback()
+                        logger.error('Recovery layer %d failed for %s: %s', layer_num, simulation_id, layer_err)
+                        raise
+
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            errors = []
+            with ThreadPoolExecutor(max_workers=5) as pool:
+                futures = {pool.submit(_generate_layer, n): n for n in range(1, 6)}
+                for future in as_completed(futures):
+                    try:
+                        future.result()
+                    except Exception as layer_err:
+                        errors.append(layer_err)
+
+            if errors:
+                raise errors[0]
 
             sim = Simulation.query.get(simulation_id)
             sim.status = Simulation.STATUS_COMPLETE

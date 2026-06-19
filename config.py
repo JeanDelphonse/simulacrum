@@ -18,7 +18,7 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
     MAIL_DEFAULT_SENDER_NAME = os.environ.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
     CLAUDE_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
-    CLAUDE_MODEL = 'claude-sonnet-4-20250514'
+    CLAUDE_MODEL = 'claude-sonnet-4-6'
     STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
     STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
     STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
