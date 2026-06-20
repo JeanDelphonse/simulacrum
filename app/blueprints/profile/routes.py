@@ -118,6 +118,20 @@ def update_profile():
 
     if 'bio' in data:
         profile.bio = (data['bio'] or '').strip()[:10000] or None
+
+    # SIM-PRD-BIO-003: JSON section arrays
+    json_list_fields = (
+        'career_history', 'notable_work', 'ventures', 'education',
+        'certifications', 'references_press', 'publications', 'projects',
+    )
+    for field in json_list_fields:
+        if field in data:
+            val = data[field]
+            if isinstance(val, list):
+                setattr(profile, field, val)
+
+    if 'bio_sections_visible' in data and isinstance(data['bio_sections_visible'], dict):
+        profile.bio_sections_visible = data['bio_sections_visible']
         profile.bio_edited = True
 
     profile.updated_at = datetime.utcnow()
@@ -676,6 +690,16 @@ def _profile_dict(p):
         'is_published': p.is_published,
         'noindex': p.noindex,
         'completeness': p.completeness,
+        # SIM-PRD-BIO-003
+        'career_history':      p.career_history,
+        'notable_work':        p.notable_work,
+        'ventures':            p.ventures,
+        'education':           p.education,
+        'certifications':      p.certifications,
+        'references_press':    p.references_press,
+        'publications':        p.publications,
+        'projects':            p.projects,
+        'bio_sections_visible': p.bio_sections_visible,
     }
 
 

@@ -44,6 +44,10 @@
     {% if _og_image %},"image": {{ _og_image | tojson }}{% endif %}
     {% if _same_as %},"sameAs": {{ _same_as | tojson }}{% endif %}
     {% if ctx.get('_rate_card_raw') %},"makesOffer": [{"@type":"Offer","itemOffered":{"@type":"Service","name":"Services","description":{{ ctx.get('_rate_card_raw', '')[:200] | tojson }}}}]{% endif %}
+    {% if ctx.get('education') %},"alumniOf": [{% for e in ctx.education %}{% if not loop.first %},{% endif %}{"@type":"EducationalOrganization","name":{{ e.institution_name | tojson }}{% if e.get('institution_url') %},"url":{{ e.institution_url | tojson }}{% endif %}}{% endfor %}]{% endif %}
+    {% if ctx.get('career_history') %},"worksFor": {"@type":"Organization","name":{{ ctx.career_history[0].company_name | tojson }}{% if ctx.career_history[0].get('company_url') %},"url":{{ ctx.career_history[0].company_url | tojson }}{% endif %}}{% endif %}
+    {% if ctx.get('certifications') %},"hasCredential": [{% for c in ctx.certifications %}{% if not loop.first %},{% endif %}{"@type":"EducationalOccupationalCredential","credentialCategory":"certification","name":{{ c.name | tojson }}{% if c.get('issuing_body') %},"recognizedBy":{"@type":"Organization","name":{{ c.issuing_body | tojson }}}{% endif %}}{% endfor %}]{% endif %}
+    {% if ctx.get('references_press') %},"subjectOf": [{% for r in ctx.references_press %}{% if not loop.first %},{% endif %}{"@type":"Article","headline":{{ r.article_title | tojson }}{% if r.get('publication_name') %},"publisher":{"@type":"Organization","name":{{ r.publication_name | tojson }}}{% endif %}{% if r.get('article_url') %},"url":{{ r.article_url | tojson }}{% endif %}}{% endfor %}]{% endif %}
   }
   </script>
   <style>
@@ -408,6 +412,176 @@
     }
     .chat-powered-by a { color: #9ca3af; text-decoration: none; }
     .chat-powered-by a:hover { color: #0F7B72; }
+
+    /* ── BIO-003: Career Timeline ───────────────────────────────────── */
+    .timeline { position: relative; padding-left: 1.5rem; }
+    .timeline::before {
+      content: ''; position: absolute; left: 7px; top: 8px;
+      bottom: 8px; width: 2px; background: var(--border);
+    }
+    .timeline-entry { position: relative; margin-bottom: 2rem; }
+    .timeline-entry:last-child { margin-bottom: 0; }
+    .timeline-dot {
+      position: absolute; left: -1.5rem; top: 5px;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+    }
+    .tl-company { font-size: .95rem; font-weight: 700; color: var(--text); }
+    .tl-company a { color: var(--text); }
+    .tl-company a:hover { color: var(--accent); }
+    .tl-role { font-size: .85rem; color: var(--accent); font-weight: 600; margin: .15rem 0; }
+    .tl-dates { font-size: .78rem; color: var(--muted); margin-bottom: .35rem; }
+    .tl-desc { font-size: .9rem; color: var(--text); line-height: 1.65; }
+
+    /* ── BIO-003: Notable Work ──────────────────────────────────────── */
+    .notable-grid { display: flex; flex-direction: column; gap: .875rem; }
+    .notable-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+      box-shadow: var(--card-shadow); position: relative;
+      transition: border-color .15s;
+    }
+    .notable-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; border-radius: 10px 0 0 10px;
+      background: transparent; transition: background .15s;
+    }
+    .notable-card:hover { border-color: var(--accent); }
+    .notable-card:hover::before { background: var(--accent); }
+    .notable-title { font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; }
+    .notable-title a { color: var(--text); }
+    .notable-title a:hover { color: var(--accent); }
+    .notable-desc { font-size: .88rem; color: var(--text); line-height: 1.65; margin-bottom: .4rem; }
+    .notable-meta { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: .25rem; }
+    .notable-company { font-size: .75rem; color: var(--muted); background: var(--bg2); padding: .15rem .55rem; border-radius: 20px; border: 1px solid var(--border); }
+    .notable-link { font-size: .78rem; color: var(--accent); font-weight: 600; }
+    .notable-link:hover { text-decoration: underline; }
+
+    /* ── BIO-003: Ventures ──────────────────────────────────────────── */
+    .ventures-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 1rem; }
+    .venture-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.25rem; box-shadow: var(--card-shadow);
+      display: flex; gap: .875rem; align-items: flex-start;
+      cursor: pointer; transition: border-color .15s, box-shadow .15s;
+      text-decoration: none; color: inherit;
+    }
+    .venture-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,.1); color: inherit; }
+    .venture-logo {
+      width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+      background: var(--bg2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; color: var(--muted); overflow: hidden;
+    }
+    .venture-logo img { width: 36px; height: 36px; object-fit: cover; border-radius: 8px; }
+    .venture-info { flex: 1; min-width: 0; }
+    .venture-name { font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .15rem; }
+    .venture-role { font-size: .8rem; color: var(--accent); font-weight: 600; margin-bottom: .25rem; }
+    .venture-desc { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+    .venture-footer { display: flex; align-items: center; gap: .5rem; margin-top: .5rem; }
+    .venture-badge { font-size: .68rem; font-weight: 700; padding: .15rem .55rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+    .badge-active   { background: rgba(5,150,105,.1); color: #059669; border: 1px solid rgba(5,150,105,.2); }
+    .badge-exited   { background: rgba(217,119,6,.1); color: #b45309; border: 1px solid rgba(217,119,6,.2); }
+    .badge-advisory { background: rgba(124,58,237,.1); color: #7c3aed; border: 1px solid rgba(124,58,237,.2); }
+
+    /* ── BIO-003: Education ─────────────────────────────────────────── */
+    .edu-list { display: flex; flex-direction: column; gap: 1rem; }
+    .edu-entry { display: flex; gap: .875rem; align-items: flex-start; }
+    .edu-logo {
+      width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+      background: var(--bg2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; color: var(--muted); overflow: hidden;
+    }
+    .edu-logo img { width: 36px; height: 36px; object-fit: cover; border-radius: 8px; }
+    .edu-info { flex: 1; }
+    .edu-institution { font-size: .95rem; font-weight: 700; color: var(--text); }
+    .edu-institution a { color: var(--text); }
+    .edu-institution a:hover { color: var(--accent); }
+    .edu-degree { font-size: .88rem; color: var(--muted); margin-top: .1rem; }
+    .edu-year { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+    .cert-subheading { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 1.5rem 0 .75rem; }
+    .cert-list { display: flex; flex-direction: column; gap: .75rem; }
+    .cert-entry { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .cert-name { font-size: .9rem; font-weight: 600; color: var(--text); }
+    .cert-body { font-size: .82rem; color: var(--muted); margin-top: .1rem; }
+    .cert-verify { font-size: .78rem; color: var(--accent); font-weight: 600; white-space: nowrap; }
+    .cert-verify:hover { text-decoration: underline; }
+
+    /* ── BIO-003: References & Press ────────────────────────────────── */
+    .references-list { display: flex; flex-direction: column; gap: .75rem; }
+    .ref-entry {
+      display: flex; gap: .75rem; align-items: flex-start;
+      padding: .875rem 1rem; background: var(--card-bg);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: var(--card-shadow);
+    }
+    .ref-favicon {
+      width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0;
+      background: var(--bg2); object-fit: cover; margin-top: 2px;
+    }
+    .ref-info { flex: 1; min-width: 0; }
+    .ref-title { font-size: .9rem; font-weight: 600; color: var(--text); }
+    .ref-title a { color: var(--text); }
+    .ref-title a:hover { color: var(--accent); }
+    .ref-meta { font-size: .78rem; color: var(--accent); font-weight: 600; margin-top: .15rem; }
+    .ref-date { color: var(--muted); font-weight: 400; }
+    .ref-quote { font-size: .85rem; color: var(--muted); font-style: italic; margin-top: .35rem; line-height: 1.5; }
+
+    /* ── BIO-003: Publications & Speaking ───────────────────────────── */
+    .pub-featured {
+      background: var(--card-bg); border: 1px solid var(--accent);
+      border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem;
+      box-shadow: var(--card-shadow);
+    }
+    .pub-featured-title { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: .35rem; }
+    .pub-featured-title a { color: var(--text); }
+    .pub-featured-title a:hover { color: var(--accent); }
+    .pub-featured-meta { font-size: .82rem; color: var(--muted); margin-bottom: .5rem; }
+    .pub-featured-desc { font-size: .9rem; color: var(--text); line-height: 1.65; }
+    .pub-list { display: flex; flex-direction: column; gap: .625rem; }
+    .pub-entry { display: flex; gap: .75rem; align-items: flex-start; padding: .75rem; border-radius: 8px; transition: background .12s; }
+    .pub-entry:hover { background: var(--bg2); }
+    .pub-info { flex: 1; min-width: 0; }
+    .pub-title { font-size: .9rem; font-weight: 600; color: var(--text); }
+    .pub-title a { color: var(--text); }
+    .pub-title a:hover { color: var(--accent); }
+    .pub-meta { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
+    .pub-badge {
+      font-size: .65rem; font-weight: 700; padding: .15rem .5rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: .04em;
+      white-space: nowrap; align-self: flex-start; margin-top: 3px; flex-shrink: 0;
+    }
+    .pub-article   { background: rgba(14,116,144,.1); color: #0e7490; border: 1px solid rgba(14,116,144,.2); }
+    .pub-talk      { background: rgba(217,119,6,.1);  color: #b45309; border: 1px solid rgba(217,119,6,.2); }
+    .pub-podcast   { background: rgba(124,58,237,.1); color: #7c3aed; border: 1px solid rgba(124,58,237,.2); }
+    .pub-book      { background: rgba(15,23,42,.08);  color: var(--text); border: 1px solid var(--border); }
+    .pub-whitepaper{ background: rgba(107,114,128,.1); color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── BIO-003: Projects ──────────────────────────────────────────── */
+    .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 1rem; }
+    .project-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.25rem; box-shadow: var(--card-shadow);
+      transition: border-color .15s, box-shadow .15s;
+      text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: .5rem;
+    }
+    .project-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,.1); color: inherit; }
+    .project-header { display: flex; align-items: center; gap: .5rem; }
+    .project-favicon {
+      width: 18px; height: 18px; border-radius: 3px; flex-shrink: 0;
+      background: var(--bg2); object-fit: cover;
+    }
+    .project-name { font-size: .95rem; font-weight: 700; color: var(--text); flex: 1; min-width: 0; }
+    .project-ext { color: var(--accent); flex-shrink: 0; }
+    .project-desc { font-size: .85rem; color: var(--muted); line-height: 1.55; }
+    .project-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .1rem; }
+    .tag-chip { font-size: .72rem; background: var(--bg2); border: 1px solid var(--border); color: var(--muted); border-radius: 20px; padding: .15rem .55rem; }
+
+    @media (max-width: 640px) {
+      .ventures-grid { grid-template-columns: 1fr; }
+      .projects-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 
@@ -546,6 +720,85 @@
   </section>
   {% endif %}
 
+  <!-- ── 3b. Career Timeline ──────────────────────────────────────── -->
+  {% set bsv = ctx.get('bio_sections_visible', {}) %}
+  {% if bsv.get('career_timeline', True) and ctx.get('career_history') %}
+  <section id="career">
+    <h2 class="section-heading">Career</h2>
+    <div class="timeline">
+      {% for entry in ctx.career_history %}
+      <div class="timeline-entry">
+        <div class="timeline-dot"></div>
+        <div class="tl-company">
+          {% if entry.get('company_url') %}
+          <a href="{{ entry.company_url }}" target="_blank" rel="noopener noreferrer">{{ entry.company_name }}</a>
+          {% else %}{{ entry.company_name }}{% endif %}
+        </div>
+        {% if entry.get('role') %}<div class="tl-role">{{ entry.role }}</div>{% endif %}
+        {% set start = entry.get('start_date', '') %}
+        {% set end = entry.get('end_date', 'Present') %}
+        {% if start %}<div class="tl-dates">{{ start }} – {{ end }}</div>{% endif %}
+        {% if entry.get('description') %}<div class="tl-desc">{{ entry.description }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── 3c. Notable Work ───────────────────────────────────────────── -->
+  {% if bsv.get('notable_work', True) and ctx.get('notable_work') %}
+  <section id="notable-work">
+    <h2 class="section-heading">Notable Work</h2>
+    <div class="notable-grid">
+      {% for item in ctx.notable_work %}
+      <div class="notable-card">
+        <div class="notable-title">
+          {% if item.get('link_url') %}
+          <a href="{{ item.link_url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+          {% else %}{{ item.title }}{% endif %}
+        </div>
+        {% if item.get('description') %}<div class="notable-desc">{{ item.description }}</div>{% endif %}
+        <div class="notable-meta">
+          {% if item.get('company_name') %}<span class="notable-company">at {{ item.company_name }}</span>{% endif %}
+          {% if item.get('link_url') %}<a class="notable-link" href="{{ item.link_url }}" target="_blank" rel="noopener noreferrer">{{ item.get('link_label', 'View →') }}</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── 3d. Ventures ───────────────────────────────────────────────── -->
+  {% if bsv.get('ventures', True) and ctx.get('ventures') %}
+  <section id="ventures">
+    <h2 class="section-heading">Ventures</h2>
+    <div class="ventures-grid">
+      {% for v in ctx.ventures %}
+      {% set card_tag = 'a' if v.get('company_url') else 'div' %}
+      <{{ card_tag }} class="venture-card"{% if v.get('company_url') %} href="{{ v.company_url }}" target="_blank" rel="noopener noreferrer"{% endif %}>
+        <div class="venture-logo">
+          {% if v.get('company_domain') %}
+          <img src="https://logo.clearbit.com/{{ v.company_domain }}?size=72" alt="{{ v.company_name }}"
+               onerror="this.style.display='none';this.parentNode.textContent='{{ v.company_name[:2].upper() }}'">
+          {% else %}{{ v.company_name[:2].upper() if v.company_name else '?' }}{% endif %}
+        </div>
+        <div class="venture-info">
+          <div class="venture-name">{{ v.company_name }}</div>
+          {% if v.get('role') %}<div class="venture-role">{{ v.role }}</div>{% endif %}
+          {% if v.get('description') %}<div class="venture-desc">{{ v.description }}</div>{% endif %}
+          {% if v.get('status') %}
+          <div class="venture-footer">
+            <span class="venture-badge badge-{{ v.status }}">{{ v.status | capitalize }}</span>
+            {% if v.get('founded_year') %}<span style="font-size:.75rem;color:var(--muted)">Est. {{ v.founded_year }}</span>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </{{ card_tag }}>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   <!-- ── 4. Services ────────────────────────────────────────────────── -->
   {% if visibility.get('services', True) and ctx.get('_rate_card_raw') %}
   <section id="services">
@@ -561,7 +814,153 @@
   </section>
   {% endif %}
 
-  <!-- ── 7. Testimonials ────────────────────────────────────────────── -->
+  <!-- ── 7. Education & Certifications ────────────────────────────── -->
+  {% if bsv.get('education', True) and (ctx.get('education') or ctx.get('certifications')) %}
+  <section id="education">
+    <h2 class="section-heading">Education</h2>
+    {% if ctx.education %}
+    <div class="edu-list">
+      {% for e in ctx.education %}
+      <div class="edu-entry">
+        <div class="edu-logo">
+          {% if e.get('institution_url') %}
+          {% set inst_domain = e.institution_url.split('//')[-1].split('/')[0] %}
+          <img src="https://logo.clearbit.com/{{ inst_domain }}?size=72" alt="{{ e.institution_name }}"
+               onerror="this.style.display='none';this.parentNode.textContent='{{ e.institution_name[:2].upper() }}'">
+          {% else %}{{ e.institution_name[:2].upper() if e.institution_name else '?' }}{% endif %}
+        </div>
+        <div class="edu-info">
+          <div class="edu-institution">
+            {% if e.get('institution_url') %}
+            <a href="{{ e.institution_url }}" target="_blank" rel="noopener noreferrer">{{ e.institution_name }}</a>
+            {% else %}{{ e.institution_name }}{% endif %}
+          </div>
+          {% if e.get('degree') or e.get('field') %}
+          <div class="edu-degree">{{ e.get('degree', '') }}{% if e.get('degree') and e.get('field') %} · {% endif %}{{ e.get('field', '') }}</div>
+          {% endif %}
+          {% if e.get('year') %}<div class="edu-year">{{ e.year }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if ctx.certifications %}
+    <div class="cert-subheading">Certifications</div>
+    <div class="cert-list">
+      {% for c in ctx.certifications %}
+      <div class="cert-entry">
+        <div>
+          <div class="cert-name">{{ c.name }}</div>
+          {% if c.get('issuing_body') or c.get('year') %}
+          <div class="cert-body">{{ c.get('issuing_body', '') }}{% if c.get('issuing_body') and c.get('year') %} · {% endif %}{{ c.get('year', '') }}</div>
+          {% endif %}
+        </div>
+        {% if c.get('credential_url') %}
+        <a class="cert-verify" href="{{ c.credential_url }}" target="_blank" rel="noopener noreferrer">Verify →</a>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- ── 8. References & Press ──────────────────────────────────────── -->
+  {% if bsv.get('references', True) and ctx.get('references_press') %}
+  <section id="references">
+    <h2 class="section-heading">In the Press</h2>
+    <div class="references-list">
+      {% for r in ctx.references_press %}
+      {% set ref_domain = r.get('article_url', '').split('//')[-1].split('/')[0] %}
+      <div class="ref-entry">
+        {% if ref_domain %}
+        <img class="ref-favicon" src="https://www.google.com/s2/favicons?domain={{ ref_domain }}&sz=32" alt="{{ r.get('publication_name', '') }}">
+        {% endif %}
+        <div class="ref-info">
+          <div class="ref-title">
+            {% if r.get('article_url') %}
+            <a href="{{ r.article_url }}" target="_blank" rel="noopener noreferrer">{{ r.article_title }}</a>
+            {% else %}{{ r.article_title }}{% endif %}
+          </div>
+          <div class="ref-meta">
+            {{ r.get('publication_name', '') }}
+            {% if r.get('published_date') %}<span class="ref-date"> · {{ r.published_date }}</span>{% endif %}
+          </div>
+          {% if r.get('pull_quote') %}<div class="ref-quote">"{{ r.pull_quote }}"</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── 9. Publications & Speaking ────────────────────────────────── -->
+  {% if bsv.get('publications', True) and ctx.get('publications') %}
+  <section id="publications">
+    <h2 class="section-heading">Publications &amp; Speaking</h2>
+    {% set featured = ctx.publications | selectattr('featured') | first %}
+    {% if featured %}
+    <div class="pub-featured">
+      {% set pub_badge_cls = {'article':'pub-article','talk':'pub-talk','podcast':'pub-podcast','book':'pub-book','whitepaper':'pub-whitepaper'} %}
+      <span class="pub-badge {{ pub_badge_cls.get(featured.get('type','article'), 'pub-article') }}">{{ featured.get('type', 'article') | capitalize }}</span>
+      <div class="pub-featured-title" style="margin-top:.5rem">
+        {% if featured.get('url') %}
+        <a href="{{ featured.url }}" target="_blank" rel="noopener noreferrer">{{ featured.title }}</a>
+        {% else %}{{ featured.title }}{% endif %}
+      </div>
+      <div class="pub-featured-meta">{{ featured.get('venue_or_publication', '') }}{% if featured.get('date') %} · {{ featured.date }}{% endif %}</div>
+      {% if featured.get('description') %}<div class="pub-featured-desc">{{ featured.description }}</div>{% endif %}
+    </div>
+    {% endif %}
+    <div class="pub-list">
+      {% for p in ctx.publications %}
+      {% if not p.get('featured') %}
+      {% set pub_badge_cls = {'article':'pub-article','talk':'pub-talk','podcast':'pub-podcast','book':'pub-book','whitepaper':'pub-whitepaper'} %}
+      <div class="pub-entry">
+        <span class="pub-badge {{ pub_badge_cls.get(p.get('type','article'), 'pub-article') }}">{{ p.get('type', 'article') | capitalize }}</span>
+        <div class="pub-info">
+          <div class="pub-title">
+            {% if p.get('url') %}
+            <a href="{{ p.url }}" target="_blank" rel="noopener noreferrer">{{ p.title }}</a>
+            {% else %}{{ p.title }}{% endif %}
+          </div>
+          <div class="pub-meta">{{ p.get('venue_or_publication', '') }}{% if p.get('date') %} · {{ p.date }}{% endif %}</div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── 10. Project Links ──────────────────────────────────────────── -->
+  {% if bsv.get('projects', True) and ctx.get('projects') %}
+  <section id="projects">
+    <h2 class="section-heading">Projects</h2>
+    <div class="projects-grid">
+      {% for proj in ctx.projects %}
+      {% set proj_domain = proj.get('url', '').split('//')[-1].split('/')[0] %}
+      <a class="project-card" href="{{ proj.url }}" target="_blank" rel="noopener noreferrer">
+        <div class="project-header">
+          {% if proj_domain %}
+          <img class="project-favicon" src="https://www.google.com/s2/favicons?domain={{ proj_domain }}&sz=32" alt="" onerror="this.style.display='none'">
+          {% endif %}
+          <div class="project-name">{{ proj.name }}</div>
+          <svg class="project-ext" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </div>
+        {% if proj.get('description') %}<div class="project-desc">{{ proj.description }}</div>{% endif %}
+        {% if proj.get('tags') %}
+        <div class="project-tags">
+          {% for tag in proj.tags %}<span class="tag-chip">{{ tag }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ── 11. Testimonials ───────────────────────────────────────────── -->
   {% if visibility.get('testimonials', True) and bio_page.custom_testimonials %}
   <section id="testimonials">
     <h2 class="section-heading">What people say</h2>

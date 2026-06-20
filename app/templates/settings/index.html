@@ -528,6 +528,34 @@
                 <label class="toggle-switch"><input type="checkbox" id="vis-services" checked><span class="toggle-slider"></span></label>
               </div>
               <div class="toggle-row">
+                <span class="toggle-label">Career Timeline</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-career_timeline" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Notable Work</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-notable_work" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Ventures</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-ventures" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Education</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-education" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">References &amp; Press</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-references" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Publications &amp; Speaking</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-publications" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <span class="toggle-label">Projects</span>
+                <label class="toggle-switch"><input type="checkbox" id="vis-projects" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
                 <span class="toggle-label">Testimonials</span>
                 <label class="toggle-switch"><input type="checkbox" id="vis-testimonials" checked><span class="toggle-slider"></span></label>
               </div>
@@ -583,6 +611,87 @@
                 <label>Custom welcome message (optional)</label>
                 <textarea id="chat-welcome" placeholder="Leave blank for the default welcome message…" maxlength="300"></textarea>
               </div>
+            </div>
+          </div>
+
+          <!-- ── BIO-003: Career Timeline ── -->
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="career">Career Timeline <span>›</span></button>
+            <div class="bp-editor-body" id="bp-career-body">
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Auto-populated from your resume. Add, edit, or reorder entries.</div>
+              <div id="career-list"></div>
+              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('career')">+ Add position</button>
+              <div id="career-add-form" class="bio003-add-form" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- ── BIO-003: Notable Work ── -->
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="notable">Notable Work <span>›</span></button>
+            <div class="bp-editor-body" id="bp-notable-body">
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Achievements with measurable outcomes. Up to 10 entries.</div>
+              <div id="notable-list"></div>
+              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('notable')">+ Add achievement</button>
+              <div id="notable-add-form" class="bio003-add-form" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- ── BIO-003: Ventures ── -->
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="ventures">Ventures <span>›</span></button>
+            <div class="bp-editor-body" id="bp-ventures-body">
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Companies you founded, co-founded, or advise.</div>
+              <div id="ventures-list"></div>
+              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('ventures')">+ Add venture</button>
+              <div id="ventures-add-form" class="bio003-add-form" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- ── BIO-003: Education ── -->
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="education">Education &amp; Certifications <span>›</span></button>
+            <div class="bp-editor-body" id="bp-education-body">
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Degrees are auto-populated from your resume. Certifications are added manually.</div>
+              <div id="education-list"></div>
+              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('education')">+ Add degree</button>
+              <div id="education-add-form" class="bio003-add-form" style="display:none"></div>
+              <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.35);margin:1rem 0 .5rem">Certifications</div>
+              <div id="certifications-list"></div>
+              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('certifications')">+ Add certification</button>
+              <div id="certifications-add-form" class="bio003-add-form" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- ── BIO-003: References & Press ── -->
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="references">References &amp; Press <span>›</span></button>
+            <div class="bp-editor-body" id="bp-references-body">
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Articles, interviews, and press mentions that feature you.</div>
+              <div id="references-list"></div>
+              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('references')">+ Add reference</button>
+              <div id="references-add-form" class="bio003-add-form" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- ── BIO-003: Publications & Speaking ── -->
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="publications">Publications &amp; Speaking <span>›</span></button>
+            <div class="bp-editor-body" id="bp-publications-body">
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Articles, talks, podcasts, books, and whitepapers.</div>
+              <div id="publications-list"></div>
+              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('publications')">+ Add publication</button>
+              <div id="publications-add-form" class="bio003-add-form" style="display:none"></div>
+            </div>
+          </div>
+
+          <!-- ── BIO-003: Projects ── -->
+          <div class="bp-editor-section">
+            <button class="bp-editor-header" data-bp-section="projects-sec">Projects <span>›</span></button>
+            <div class="bp-editor-body" id="bp-projects-sec-body">
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Links to repos, portfolios, live tools, and deliverables.</div>
+              <div id="projects-list"></div>
+              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('projects')">+ Add project</button>
+              <div id="projects-add-form" class="bio003-add-form" style="display:none"></div>
             </div>
           </div>
 
@@ -1608,6 +1717,11 @@
 {% block scripts %}
 <script>
 const ROOT2 = window.ROOT || '';
+// SIM-PRD-BIO-003: default state (overwritten by profile tab loader)
+window.bio003State = window.bio003State || {
+  career: [], notable: [], ventures: [],
+  education: [], certifications: [], references: [], publications: [], projects: [],
+};
 
 async function startLinkedInInteg(btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
@@ -1716,6 +1830,25 @@ async function saveProfile() {
 
   const bioEditorEl = document.getElementById('bioEditor');
   if (bioEditorEl) body.bio = bioEditorEl.value.trim();
+
+  // SIM-PRD-BIO-003: section arrays
+  body.career_history   = bio003State.career;
+  body.notable_work     = bio003State.notable;
+  body.ventures         = bio003State.ventures;
+  body.education        = bio003State.education;
+  body.certifications   = bio003State.certifications;
+  body.references_press = bio003State.references;
+  body.publications     = bio003State.publications;
+  body.projects         = bio003State.projects;
+
+  // Section visibility toggles
+  const visKeys = ['career_timeline','notable_work','ventures','education','references','publications','projects','services','testimonials'];
+  const bioSectionsVisible = {};
+  visKeys.forEach(k => {
+    const el = document.getElementById('vis-' + k);
+    if (el) bioSectionsVisible[k] = el.checked;
+  });
+  body.bio_sections_visible = bioSectionsVisible;
 
   const res = await fetch(ROOT2 + '/api/settings/profile', {
     method: 'PUT',
@@ -2141,6 +2274,231 @@ async function regenerateBio() {
   function _esc(s) {
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+})();
+{% endif %}
+
+// ── SIM-PRD-BIO-003: Section editors ──────────────────────────────────────
+{% if active_tab == 'profile' %}
+(function() {
+  // State — local arrays, saved via saveProfile()
+  window.bio003State = {
+    career: [], notable: [], ventures: [],
+    education: [], certifications: [], references: [], publications: [], projects: [],
+  };
+
+  var _s = window.bio003State;
+
+  function _esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Load existing data from profile API ──
+  fetch(ROOT2 + '/api/settings/profile').then(function(r) { return r.json(); }).then(function(d) {
+    _s.career         = d.career_history   || [];
+    _s.notable        = d.notable_work     || [];
+    _s.ventures       = d.ventures         || [];
+    _s.education      = d.education        || [];
+    _s.certifications = d.certifications   || [];
+    _s.references     = d.references_press || [];
+    _s.publications   = d.publications     || [];
+    _s.projects       = d.projects         || [];
+
+    var bsv = d.bio_sections_visible || {};
+    var visKeys = ['career_timeline','notable_work','ventures','education','references','publications','projects'];
+    visKeys.forEach(function(k) {
+      var el = document.getElementById('vis-' + k);
+      if (el) el.checked = bsv[k] !== false;
+    });
+
+    _renderAll();
+  }).catch(function() {});
+
+  function _renderAll() {
+    _render('career',         _s.career);
+    _render('notable',        _s.notable);
+    _render('ventures',       _s.ventures);
+    _render('education',      _s.education);
+    _render('certifications', _s.certifications);
+    _render('references',     _s.references);
+    _render('publications',   _s.publications);
+    _render('projects',       _s.projects);
+  }
+
+  var _LABELS = {
+    career:         function(e) { return _esc(e.company_name||'') + (e.role ? ' · ' + _esc(e.role) : '') + (e.start_date ? ' (' + _esc(e.start_date) + '–' + _esc(e.end_date||'Present') + ')' : ''); },
+    notable:        function(e) { return _esc(e.title||''); },
+    ventures:       function(e) { return _esc(e.company_name||'') + (e.role ? ' · ' + _esc(e.role) : ''); },
+    education:      function(e) { return _esc(e.institution_name||'') + (e.degree ? ' · ' + _esc(e.degree) : ''); },
+    certifications: function(e) { return _esc(e.name||'') + (e.issuing_body ? ' · ' + _esc(e.issuing_body) : ''); },
+    references:     function(e) { return _esc(e.article_title||'') + (e.publication_name ? ' · ' + _esc(e.publication_name) : ''); },
+    publications:   function(e) { return _esc(e.title||'') + (e.type ? ' [' + _esc(e.type) + ']' : ''); },
+    projects:       function(e) { return _esc(e.name||''); },
+  };
+
+  function _render(key, arr) {
+    var list = document.getElementById(key + '-list');
+    if (!list) return;
+    if (!arr.length) { list.innerHTML = '<div style="font-size:.78rem;color:rgba(255,255,255,.3);padding:.35rem 0">No entries yet.</div>'; return; }
+    list.innerHTML = arr.map(function(e, i) {
+      return '<div class="bp-testimonial-item" style="display:flex;align-items:center;justify-content:space-between;gap:.5rem">' +
+        '<span style="font-size:.8rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _LABELS[key](e) + '</span>' +
+        '<div style="display:flex;gap:.3rem;flex-shrink:0">' +
+        '<button class="btn btn-ghost btn-sm" style="padding:.2rem .55rem;font-size:.72rem" onclick="bio003Edit(' + JSON.stringify(key) + ',' + i + ')">Edit</button>' +
+        '<button class="btn btn-ghost btn-sm" style="padding:.2rem .55rem;font-size:.72rem;color:#fca5a5" onclick="bio003Del(' + JSON.stringify(key) + ',' + i + ')">✕</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  window.bio003Del = function(key, idx) {
+    if (!confirm('Remove this entry?')) return;
+    window.bio003State[key].splice(idx, 1);
+    _render(key, window.bio003State[key]);
+  };
+
+  // ── Form definitions per section ──
+  var _FORMS = {
+    career: [
+      {id:'company_name', label:'Company name *', type:'text', required:true},
+      {id:'company_url',  label:'Company URL',    type:'url'},
+      {id:'role',         label:'Role / title *', type:'text', required:true},
+      {id:'start_date',   label:'Start date (YYYY-MM)', type:'text', placeholder:'2020-01'},
+      {id:'end_date',     label:'End date (YYYY-MM or "Present")', type:'text', placeholder:'Present'},
+      {id:'description',  label:'Description (1–2 sentences)', type:'textarea'},
+    ],
+    notable: [
+      {id:'title',           label:'Achievement title *', type:'text', required:true},
+      {id:'description',     label:'Description with metrics *', type:'textarea', required:true},
+      {id:'link_url',        label:'Link URL (case study, portfolio, etc.)', type:'url'},
+      {id:'link_label',      label:'Link label', type:'text', placeholder:'View →'},
+      {id:'company_name',    label:'Company attribution', type:'text'},
+    ],
+    ventures: [
+      {id:'company_name', label:'Company name *', type:'text', required:true},
+      {id:'company_url',  label:'Website URL',    type:'url'},
+      {id:'role',         label:'Your role *',    type:'text', required:true, placeholder:'Founder & CEO'},
+      {id:'description',  label:'One-line description', type:'text'},
+      {id:'status',       label:'Status', type:'select', options:['active','exited','advisory']},
+      {id:'founded_year', label:'Founded year', type:'text', placeholder:'2021'},
+    ],
+    education: [
+      {id:'institution_name', label:'Institution name *', type:'text', required:true},
+      {id:'institution_url',  label:'Institution URL',    type:'url'},
+      {id:'degree',           label:'Degree (BS, MS, MBA, PhD…)', type:'text'},
+      {id:'field',            label:'Field of study', type:'text'},
+      {id:'year',             label:'Year', type:'text', placeholder:'2018'},
+    ],
+    certifications: [
+      {id:'name',          label:'Certification name *', type:'text', required:true},
+      {id:'issuing_body',  label:'Issuing body',         type:'text'},
+      {id:'year',          label:'Year',                 type:'text'},
+      {id:'credential_url',label:'Credential URL',       type:'url'},
+    ],
+    references: [
+      {id:'article_title',    label:'Article title *',    type:'text', required:true},
+      {id:'article_url',      label:'Article URL *',      type:'url',  required:true},
+      {id:'publication_name', label:'Publication name *', type:'text', required:true},
+      {id:'published_date',   label:'Published date',     type:'text', placeholder:'March 2026'},
+      {id:'pull_quote',       label:'Pull quote (1 sentence)', type:'textarea'},
+    ],
+    publications: [
+      {id:'title',               label:'Title *',       type:'text', required:true},
+      {id:'url',                 label:'URL',           type:'url'},
+      {id:'venue_or_publication',label:'Venue / publication *', type:'text', required:true},
+      {id:'date',                label:'Date',          type:'text', placeholder:'June 2026'},
+      {id:'type',                label:'Type', type:'select', options:['article','talk','podcast','book','whitepaper']},
+      {id:'description',         label:'Short description', type:'textarea'},
+      {id:'featured',            label:'Feature this at the top', type:'checkbox'},
+    ],
+    projects: [
+      {id:'name',        label:'Project name *', type:'text', required:true},
+      {id:'url',         label:'URL *',          type:'url',  required:true},
+      {id:'description', label:'One-line description', type:'text'},
+      {id:'tags',        label:'Tags (comma-separated)', type:'text', placeholder:'Python, Flask, AI/ML'},
+    ],
+  };
+
+  var _editingIndex = {}; // key → index being edited, or -1 for new
+
+  window.bio003OpenAdd = function(key) {
+    _editingIndex[key] = -1;
+    _renderForm(key, {});
+  };
+
+  window.bio003Edit = function(key, idx) {
+    _editingIndex[key] = idx;
+    var entry = window.bio003State[key][idx] || {};
+    _renderForm(key, entry);
+  };
+
+  function _renderForm(key, entry) {
+    var container = document.getElementById(key + '-add-form');
+    if (!container) return;
+    var fields = _FORMS[key] || [];
+    var html = '<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:.875rem;margin-top:.5rem">';
+    fields.forEach(function(f) {
+      var val = entry[f.id];
+      if (f.type === 'textarea') {
+        html += '<div class="bp-form-group"><label>' + f.label + '</label>' +
+          '<textarea id="bio003-' + key + '-' + f.id + '" style="min-height:80px">' + _esc(val||'') + '</textarea></div>';
+      } else if (f.type === 'select') {
+        var opts = (f.options||[]).map(function(o) {
+          return '<option value="' + o + '"' + (val===o?' selected':'') + '>' + o.charAt(0).toUpperCase()+o.slice(1) + '</option>';
+        }).join('');
+        html += '<div class="bp-form-group"><label>' + f.label + '</label><select id="bio003-' + key + '-' + f.id + '" class="input-select">' + opts + '</select></div>';
+      } else if (f.type === 'checkbox') {
+        html += '<div class="bp-form-group" style="flex-direction:row;align-items:center;gap:.5rem"><label class="bp-custom-toggle"><input type="checkbox" id="bio003-' + key + '-' + f.id + '"' + (val?' checked':'') + '> ' + f.label + '</label></div>';
+      } else {
+        html += '<div class="bp-form-group"><label>' + f.label + '</label>' +
+          '<input type="' + f.type + '" id="bio003-' + key + '-' + f.id + '"' +
+          (f.placeholder ? ' placeholder="' + f.placeholder + '"' : '') +
+          ' value="' + _esc(String(val||'')) + '"></div>';
+      }
+    });
+    var isEdit = (_editingIndex[key] !== undefined && _editingIndex[key] >= 0);
+    html += '<div style="display:flex;gap:.5rem;margin-top:.5rem">' +
+      '<button class="btn btn-primary btn-sm" style="flex:1" onclick="bio003Save(' + JSON.stringify(key) + ')">' + (isEdit ? 'Update' : 'Add') + '</button>' +
+      '<button class="btn btn-ghost btn-sm" onclick="bio003CancelForm(' + JSON.stringify(key) + ')">Cancel</button>' +
+      '</div><div id="bio003-err-' + key + '" style="color:#fca5a5;font-size:.78rem;margin-top:.35rem"></div></div>';
+    container.innerHTML = html;
+    container.style.display = 'block';
+  }
+
+  window.bio003CancelForm = function(key) {
+    var c = document.getElementById(key + '-add-form');
+    if (c) { c.style.display = 'none'; c.innerHTML = ''; }
+  };
+
+  window.bio003Save = function(key) {
+    var fields = _FORMS[key] || [];
+    var obj = {};
+    var errEl = document.getElementById('bio003-err-' + key);
+    for (var i = 0; i < fields.length; i++) {
+      var f = fields[i];
+      var el = document.getElementById('bio003-' + key + '-' + f.id);
+      if (!el) continue;
+      if (f.type === 'checkbox') {
+        obj[f.id] = el.checked;
+      } else if (f.id === 'tags') {
+        obj[f.id] = el.value.split(',').map(function(t) { return t.trim(); }).filter(Boolean);
+      } else {
+        obj[f.id] = el.value.trim();
+      }
+      if (f.required && !obj[f.id]) {
+        if (errEl) errEl.textContent = f.label.replace(' *','') + ' is required.';
+        return;
+      }
+    }
+    if (errEl) errEl.textContent = '';
+    var idx = _editingIndex[key];
+    if (idx >= 0) {
+      window.bio003State[key][idx] = obj;
+    } else {
+      window.bio003State[key].push(obj);
+    }
+    _render(key, window.bio003State[key]);
+    window.bio003CancelForm(key);
+  };
+
 })();
 {% endif %}
 

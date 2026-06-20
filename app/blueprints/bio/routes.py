@@ -180,6 +180,17 @@ def _assemble_context(user_id: str, bp: BioPage | None = None) -> dict:
     if not ctx['booking_url']:
         ctx['cta_label'] = 'Get in touch'
 
+    # SIM-PRD-BIO-003: enhanced profile sections
+    ctx['career_history']   = profile.career_history
+    ctx['notable_work']     = profile.notable_work
+    ctx['ventures']         = profile.ventures
+    ctx['education']        = profile.education
+    ctx['certifications']   = profile.certifications
+    ctx['references_press'] = profile.references_press
+    ctx['publications']     = profile.publications
+    ctx['projects']         = profile.projects
+    ctx['bio_sections_visible'] = profile.bio_sections_visible
+
     return ctx
 
 
