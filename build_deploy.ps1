@@ -25,7 +25,7 @@ foreach ($f in $allFiles) {
     if (-not $skip -and ($excludeExts -contains $f.Extension)) { $skip = $true }
 
     if (-not $skip) {
-        $entryName = $rel -replace [regex]::Escape('\'), '/'
+        $entryName = 'simulacrum/' + ($rel -replace [regex]::Escape('\'), '/')
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $f.FullName, $entryName) | Out-Null
     }
 }
