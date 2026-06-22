@@ -1527,29 +1527,22 @@ async function publishNow() {
   var connectBtn = document.getElementById('connect-btn');
   var likeCount = document.getElementById('like-count');
 
-  if (likeBtn) {
-    if (IS_AUTH) {
-      fetch('/api/bio/' + SLUG + '/like')
+  if (likeBtn && !likeBtn.classList.contains('owner-view')) {
+    fetch('/api/bio/' + SLUG + '/like')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (likeCount) likeCount.textContent = d.like_count;
+        if (d.liked) { likeBtn.classList.add('liked'); likeBtn.dataset.liked = 'true'; }
+      });
+    likeBtn.addEventListener('click', function () {
+      fetch('/api/bio/' + SLUG + '/like', { method: 'POST' })
         .then(function (r) { return r.json(); })
         .then(function (d) {
-          likeCount.textContent = d.like_count;
-          if (d.liked) likeBtn.classList.add('liked');
-          likeBtn.dataset.liked = d.liked ? 'true' : 'false';
+          if (likeCount) likeCount.textContent = d.like_count;
+          if (d.liked) { likeBtn.classList.add('liked'); likeBtn.dataset.liked = 'true'; }
+          else { likeBtn.classList.remove('liked'); likeBtn.dataset.liked = 'false'; }
         });
-      likeBtn.addEventListener('click', function () {
-        fetch('/api/bio/' + SLUG + '/like', { method: 'POST' })
-          .then(function (r) { return r.json(); })
-          .then(function (d) {
-            likeCount.textContent = d.like_count;
-            if (d.liked) { likeBtn.classList.add('liked'); likeBtn.dataset.liked = 'true'; }
-            else { likeBtn.classList.remove('liked'); likeBtn.dataset.liked = 'false'; }
-          });
-      });
-    } else {
-      likeBtn.addEventListener('click', function () {
-        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
-      });
-    }
+    });
   }
 
   if (connectBtn && IS_AUTH) {

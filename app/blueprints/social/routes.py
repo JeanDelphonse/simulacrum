@@ -91,31 +91,45 @@ def _emit_bayesian_like(user_id: str, simulation_id: str):
 # ═══════════════════════════════════════════════════════
 
 @social_bp.route('/api/bio/<slug>/like', methods=['POST'])
-@login_required
 def toggle_like(slug: str):
-    """FR-SOC-01: Toggle like on a bio page. Returns new like status and count."""
+    """FR-SOC-01: Toggle like on a bio page. Authenticated users tracked by DB; anonymous by session."""
+    from flask import session as _session
     bp = BioPage.query.filter_by(slug=slug.lower(), status=BioPage.STATUS_PUBLISHED).first()
     if not bp:
         return jsonify({'error': 'Bio page not found'}), 404
 
-    existing = BioPageLike.query.filter_by(
-        bio_page_id=bp.id, user_id=current_user.id
-    ).first()
+    liked = False
 
-    if existing:
-        db.session.delete(existing)
-        bp.like_count = max(0, (bp.like_count or 0) - 1)
-        liked = False
+    if current_user.is_authenticated:
+        existing = BioPageLike.query.filter_by(
+            bio_page_id=bp.id, user_id=current_user.id
+        ).first()
+        if existing:
+            db.session.delete(existing)
+            bp.like_count = max(0, (bp.like_count or 0) - 1)
+            liked = False
+        else:
+            like = BioPageLike(
+                id=generate_id(),
+                bio_page_id=bp.id,
+                user_id=current_user.id,
+            )
+            db.session.add(like)
+            bp.like_count = (bp.like_count or 0) + 1
+            liked = True
     else:
-        like = BioPageLike(
-            id=generate_id(),
-            bio_page_id=bp.id,
-            user_id=current_user.id,
-        )
-        db.session.add(like)
-        bp.like_count = (bp.like_count or 0) + 1
-        liked = True
+        # Anonymous: session-based toggle (one like per browser session)
+        session_key = f'liked_{bp.id}'
+        if _session.get(session_key):
+            _session.pop(session_key, None)
+            bp.like_count = max(0, (bp.like_count or 0) - 1)
+            liked = False
+        else:
+            _session[session_key] = True
+            bp.like_count = (bp.like_count or 0) + 1
+            liked = True
 
+    if liked:
         # Emit activity event
         _emit_activity(bp.user_id, ActivityEvent.EVENT_LIKES_MILESTONE, {
             'slug': bp.slug,
@@ -143,8 +157,7 @@ def toggle_like(slug: str):
 
     try:
         db.session.commit()
-        # Emit Bayesian signal asynchronously (best-effort)
-        if liked and bp.simulation_id:
+        if liked and current_user.is_authenticated and bp.simulation_id:
             try:
                 _emit_bayesian_like(bp.user_id, bp.simulation_id)
                 db.session.commit()
@@ -158,15 +171,18 @@ def toggle_like(slug: str):
 
 
 @social_bp.route('/api/bio/<slug>/like', methods=['GET'])
-@login_required
 def get_like_status(slug: str):
-    """Return whether the current user has liked a bio page."""
+    """Return whether the current visitor has liked a bio page."""
+    from flask import session as _session
     bp = BioPage.query.filter_by(slug=slug.lower()).first()
     if not bp:
         return jsonify({'liked': False, 'like_count': 0})
-    liked = BioPageLike.query.filter_by(
-        bio_page_id=bp.id, user_id=current_user.id
-    ).first() is not None
+    if current_user.is_authenticated:
+        liked = BioPageLike.query.filter_by(
+            bio_page_id=bp.id, user_id=current_user.id
+        ).first() is not None
+    else:
+        liked = bool(_session.get(f'liked_{bp.id}'))
     return jsonify({'liked': liked, 'like_count': bp.like_count or 0})
 
 
