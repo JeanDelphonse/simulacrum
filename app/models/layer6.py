@@ -35,6 +35,13 @@ class Layer6Config(db.Model):
     explore_phase_end_month = db.Column(db.Integer, nullable=False, default=3)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     trust_level = db.Column(db.String(20), nullable=False, default='balanced')
+    # SIM-REQ-LIFECYCLE-001 — stored at creation from PlatformSettings defaults
+    active_cycle_limit = db.Column(db.Integer, nullable=False, default=30)
+    maintenance_frequency_hours = db.Column(db.Integer, nullable=False, default=168)
+    convergence_delta = db.Column(db.Numeric(6, 4), nullable=False, default=0.02)
+    convergence_consecutive = db.Column(db.Integer, nullable=False, default=3)
+    convergence_min_cycles = db.Column(db.Integer, nullable=False, default=15)
+    maintenance_dispatch_threshold = db.Column(db.Numeric(4, 2), nullable=False, default=0.70)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -89,6 +96,12 @@ class Layer6Config(db.Model):
             'explore_phase_end_month': self.explore_phase_end_month,
             'is_active': self.is_active,
             'trust_level': self.trust_level,
+            'active_cycle_limit': self.active_cycle_limit,
+            'maintenance_frequency_hours': self.maintenance_frequency_hours,
+            'convergence_delta': float(self.convergence_delta),
+            'convergence_consecutive': self.convergence_consecutive,
+            'convergence_min_cycles': self.convergence_min_cycles,
+            'maintenance_dispatch_threshold': float(self.maintenance_dispatch_threshold),
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
         }
@@ -312,6 +325,8 @@ class Layer6ExecutionLog(db.Model):
     EVENT_PAUSED = 'paused'
     EVENT_RESUMED = 'resumed'
     EVENT_RECALIBRATED = 're_calibrated'
+    EVENT_LIFECYCLE_TRANSITION = 'lifecycle_transition'
+    EVENT_CONVERGENCE_DETECTED = 'convergence_detected'
 
     ACTOR_ORCHESTRATOR = 'orchestrator'
     ACTOR_USER = 'user'

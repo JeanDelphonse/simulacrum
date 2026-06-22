@@ -67,6 +67,9 @@ def setup(sim_id):
     data = request.get_json(force=True) or {}
 
     cfg = Layer6Config(simulation_id=sim_id)
+    # FR-LIFE-12: seed lifecycle defaults from PlatformSetting
+    from app.services.layer6 import _apply_lifecycle_config_defaults
+    _apply_lifecycle_config_defaults(cfg)
     _apply_config(cfg, data)
     db.session.add(cfg)
 
@@ -240,16 +243,22 @@ def pause(sim_id):
         return err, code
 
     cfg.is_active = False
+    # FR-LIFE-07: enter Dormant phase; suspend scheduled action steps
+    sim.lifecycle_phase = sim.LIFECYCLE_DORMANT
+    from app.models.action_step import ActionStep
+    ActionStep.query.filter_by(
+        simulation_id=sim_id, status=ActionStep.STATUS_SCHEDULED,
+    ).update({'status': ActionStep.STATUS_SUSPENDED}, synchronize_session=False)
     log = Layer6ExecutionLog(
         simulation_id=sim_id,
         event_type=Layer6ExecutionLog.EVENT_PAUSED,
         actor=Layer6ExecutionLog.ACTOR_USER,
-        reasoning='User paused the orchestrator.',
+        reasoning='User paused the orchestrator. Lifecycle phase set to Dormant; scheduled steps suspended.',
     )
     db.session.add(log)
     AuditLog.log('layer6_pause', user_id=current_user.id, resource_id=sim_id)
     db.session.commit()
-    return jsonify({'status': 'paused'}), 200
+    return jsonify({'status': 'paused', 'lifecycle_phase': 'dormant'}), 200
 
 
 @layer6_bp.route('/<sim_id>/layer6/resume', methods=['POST'])
@@ -264,16 +273,38 @@ def resume(sim_id):
         return err, code
 
     cfg.is_active = True
+    # FR-LIFE-09: restore correct lifecycle phase based on cycle count
+    from app.models.layer6 import Layer6Cycle as _L6Cycle
+    last_cycle = _L6Cycle.query.filter_by(simulation_id=sim_id).order_by(
+        _L6Cycle.cycle_number.desc()
+    ).first()
+    cycle_count = last_cycle.cycle_number if last_cycle else 0
+    if cycle_count >= int(cfg.active_cycle_limit):
+        restored_phase = sim.LIFECYCLE_MAINTENANCE
+    else:
+        restored_phase = sim.LIFECYCLE_ACTIVE
+    sim.lifecycle_phase = restored_phase
+    # Restore suspended action steps to scheduled
+    from app.models.action_step import ActionStep
+    from datetime import datetime as _dt, timedelta as _td
+    suspended = ActionStep.query.filter_by(
+        simulation_id=sim_id, status=ActionStep.STATUS_SUSPENDED,
+    ).all()
+    _now = _dt.utcnow()
+    for step in suspended:
+        step.status = ActionStep.STATUS_SCHEDULED
+        if step.scheduled_for < _now:
+            step.scheduled_for = _now + _td(hours=1)
     log = Layer6ExecutionLog(
         simulation_id=sim_id,
         event_type=Layer6ExecutionLog.EVENT_RESUMED,
         actor=Layer6ExecutionLog.ACTOR_USER,
-        reasoning='User resumed the orchestrator.',
+        reasoning=f'User resumed the orchestrator. Lifecycle phase restored to {restored_phase}; {len(suspended)} suspended steps rescheduled.',
     )
     db.session.add(log)
     AuditLog.log('layer6_resume', user_id=current_user.id, resource_id=sim_id)
     db.session.commit()
-    return jsonify({'status': 'active'}), 200
+    return jsonify({'status': 'active', 'lifecycle_phase': restored_phase}), 200
 
 
 # ---------------------------------------------------------------------------

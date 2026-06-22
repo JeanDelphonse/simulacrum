@@ -14,6 +14,10 @@ class Simulation(db.Model):
     STATUS_ERROR = 'error'
     STATUS_REFUNDED = 'refunded'
 
+    LIFECYCLE_ACTIVE = 'active'
+    LIFECYCLE_MAINTENANCE = 'maintenance'
+    LIFECYCLE_DORMANT = 'dormant'
+
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     user_id = db.Column(db.String(9), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     resume_id = db.Column(db.String(9), db.ForeignKey('resumes.id', ondelete='SET NULL'), nullable=True, index=True)
@@ -30,6 +34,7 @@ class Simulation(db.Model):
     prospect_tier_paid_cents = db.Column(db.Integer, nullable=False, default=0)    # cumulative paid for upgrades
     error_message = db.Column(db.Text, nullable=True)
     unlock_all_layers = db.Column(db.Boolean, nullable=False, default=False)
+    lifecycle_phase = db.Column(db.String(15), nullable=False, default='active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

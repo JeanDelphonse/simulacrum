@@ -12,6 +12,7 @@ class ActionStep(db.Model):
     STATUS_EXECUTED  = 'executed'
     STATUS_SKIPPED   = 'skipped'
     STATUS_CANCELLED = 'cancelled'
+    STATUS_SUSPENDED = 'suspended'  # FR-LIFE-07: paused during Dormant phase
 
     # Condition types (A.4)
     CONDITION_NO_REPLY    = 'no_reply'

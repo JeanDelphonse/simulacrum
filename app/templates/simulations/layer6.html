@@ -1196,6 +1196,16 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
           {{ latest_cycle.phase | capitalize }}
         </span>
       {% endif %}
+      {# Lifecycle phase badge #}
+      {% set lp = lifecycle_phase | default('active') %}
+      {% if lp == 'active' %}
+        <span class="gcc-phase-badge" style="background:rgba(15,123,114,.15);color:#0F7B72;">Active</span>
+        <span style="font-size:.77rem;color:var(--gcc-muted);">Cycle {{ cycle_count }} of {{ active_cycle_limit }}</span>
+      {% elif lp == 'maintenance' %}
+        <span class="gcc-phase-badge" style="background:rgba(201,149,42,.15);color:#C9952A;">Maintenance</span>
+      {% elif lp == 'dormant' %}
+        <span class="gcc-phase-badge" style="background:rgba(107,123,141,.15);color:#6B7B8D;">Paused</span>
+      {% endif %}
     </div>
     <div class="gcc-header-right">
       <button class="gcc-income-total" onclick="switchTab('income')" title="Go to Income tab">
@@ -1229,6 +1239,24 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
       <span class="gcc-tab-count" id="escCountBadge" style="background:var(--gcc-amber);color:#0a0e1a;display:none">0</span>
     </button>
   </div>
+
+  {# Lifecycle transition notification banner #}
+  {% set lp = lifecycle_phase | default('active') %}
+  {% if lp == 'maintenance' %}
+  <div id="lifecycleBanner" style="background:rgba(201,149,42,.1);border-bottom:1px solid rgba(201,149,42,.3);padding:.6rem 1.75rem;display:flex;align-items:center;gap:.75rem;font-size:.82rem;flex-shrink:0;">
+    <span style="font-size:1rem;">🔄</span>
+    <span style="color:#0D1B3E;font-weight:600;">Your simulation has entered Maintenance phase.</span>
+    <span style="color:var(--gcc-muted);">Agents now run weekly and only dispatch actions above the confidence threshold.</span>
+    <button onclick="document.getElementById('lifecycleBanner').style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--gcc-muted);cursor:pointer;font-size:1rem;padding:.15rem;">✕</button>
+  </div>
+  {% elif lp == 'dormant' %}
+  <div id="lifecycleBanner" style="background:rgba(107,123,141,.1);border-bottom:1px solid rgba(107,123,141,.3);padding:.6rem 1.75rem;display:flex;align-items:center;gap:.75rem;font-size:.82rem;flex-shrink:0;">
+    <span style="font-size:1rem;">⏸</span>
+    <span style="color:#0D1B3E;font-weight:600;">Orchestrator is paused.</span>
+    <span style="color:var(--gcc-muted);">No cycles will run and scheduled steps are suspended until you resume.</span>
+    <button onclick="document.getElementById('lifecycleBanner').style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--gcc-muted);cursor:pointer;font-size:1rem;padding:.15rem;">✕</button>
+  </div>
+  {% endif %}
 
   {# ── Content area ────────────────────────────────────────────────────────── #}
   <div class="gcc-content">

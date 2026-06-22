@@ -152,6 +152,115 @@ def determine_phase(simulation_id: str, cycle_number: int) -> str:
     return 'exploit'
 
 
+# ---------------------------------------------------------------------------
+# Lifecycle phase helpers (SIM-REQ-LIFECYCLE-001)
+# ---------------------------------------------------------------------------
+
+def _detect_convergence(simulation_id: str, config) -> bool:
+    """FR-LIFE-03/04: True when top-5 agents all have posterior delta < convergence_delta
+    for convergence_consecutive consecutive cycles."""
+    from app.models.layer6 import Layer6Cycle, CyclePosteriorSnapshot
+
+    consec = int(config.convergence_consecutive)
+    delta_threshold = float(config.convergence_delta)
+
+    # Need consec+1 cycles to compute consec deltas
+    cycles = Layer6Cycle.query.filter_by(simulation_id=simulation_id).filter(
+        Layer6Cycle.cycle_completed_at.isnot(None)
+    ).order_by(Layer6Cycle.cycle_number.desc()).limit(consec + 1).all()
+
+    if len(cycles) < consec + 1:
+        return False
+
+    # Build {cycle_id: {action_type: posterior_value}}
+    cycle_posteriors = {}
+    for cyc in cycles:
+        snaps = CyclePosteriorSnapshot.query.filter_by(
+            simulation_id=simulation_id, cycle_id=cyc.id,
+        ).all()
+        cycle_posteriors[cyc.id] = {s.action_type: float(s.posterior_value) for s in snaps}
+
+    # Top 5 action types by most recent cycle's posterior
+    latest_map = cycle_posteriors.get(cycles[0].id, {})
+    if not latest_map:
+        return False
+    top5 = sorted(latest_map, key=lambda k: latest_map[k], reverse=True)[:5]
+    if len(top5) < 5:
+        return False
+
+    # Check all consec deltas for all top-5 agents
+    ordered_cycles = list(reversed(cycles))  # oldest → newest
+    for action_type in top5:
+        for i in range(len(ordered_cycles) - 1):
+            prev_val = cycle_posteriors.get(ordered_cycles[i].id, {}).get(action_type, 0.0)
+            next_val = cycle_posteriors.get(ordered_cycles[i + 1].id, {}).get(action_type, 0.0)
+            if abs(next_val - prev_val) >= delta_threshold:
+                return False
+    return True
+
+
+def _transition_to_maintenance(simulation_id: str, sim, config, reason: str) -> None:
+    """Write lifecycle_phase = 'maintenance', update cadence, log the event."""
+    from app.extensions import db
+    from app.models.layer6 import Layer6ExecutionLog
+
+    sim.lifecycle_phase = sim.LIFECYCLE_MAINTENANCE
+    config.cadence = 'every_168h'  # weekly
+    log = Layer6ExecutionLog(
+        simulation_id=simulation_id,
+        event_type=Layer6ExecutionLog.EVENT_LIFECYCLE_TRANSITION,
+        actor=Layer6ExecutionLog.ACTOR_ORCHESTRATOR,
+        reasoning=f'Transitioned to Maintenance phase. Reason: {reason}. Cadence set to weekly (168h).',
+    )
+    db.session.add(log)
+    db.session.commit()
+    logger.info('Simulation %s transitioned to Maintenance: %s', simulation_id, reason)
+
+
+def _apply_lifecycle_config_defaults(cfg) -> None:
+    """Read PlatformSetting defaults and write to Layer6Config at creation time (FR-LIFE-12)."""
+    from app.models.platform_settings import PlatformSetting
+    cfg.active_cycle_limit = int(PlatformSetting.get('lc_active_cycle_limit', 30))
+    cfg.maintenance_frequency_hours = int(PlatformSetting.get('lc_maintenance_frequency_hours', 168))
+    cfg.convergence_delta = float(PlatformSetting.get('lc_convergence_delta', 0.02))
+    cfg.convergence_consecutive = int(PlatformSetting.get('lc_convergence_consecutive', 3))
+    cfg.convergence_min_cycles = int(PlatformSetting.get('lc_convergence_min_cycles', 15))
+    cfg.maintenance_dispatch_threshold = float(PlatformSetting.get('lc_maintenance_dispatch_threshold', 0.70))
+
+
+def _check_lifecycle_transitions(simulation_id: str, sim, config, cycle_number: int) -> None:
+    """FR-LIFE-02/03/04: evaluate and apply lifecycle phase transitions after a cycle completes."""
+    if sim.lifecycle_phase != sim.LIFECYCLE_ACTIVE:
+        return  # Already transitioned — nothing to do
+
+    # FR-LIFE-02: cycle limit reached
+    if cycle_number >= int(config.active_cycle_limit):
+        _transition_to_maintenance(
+            simulation_id, sim, config,
+            f'Cycle limit reached ({cycle_number}/{config.active_cycle_limit})',
+        )
+        return
+
+    # FR-LIFE-03/04: convergence detected after minimum cycles
+    if cycle_number >= int(config.convergence_min_cycles):
+        if _detect_convergence(simulation_id, config):
+            # Log convergence detection separately
+            from app.extensions import db
+            from app.models.layer6 import Layer6ExecutionLog
+            conv_log = Layer6ExecutionLog(
+                simulation_id=simulation_id,
+                event_type=Layer6ExecutionLog.EVENT_CONVERGENCE_DETECTED,
+                actor=Layer6ExecutionLog.ACTOR_ORCHESTRATOR,
+                reasoning=f'Posterior convergence detected at cycle {cycle_number}.',
+            )
+            db.session.add(conv_log)
+            db.session.commit()
+            _transition_to_maintenance(
+                simulation_id, sim, config,
+                f'Posterior convergence detected at cycle {cycle_number}',
+            )
+
+
 def _should_re_explore(simulation_id: str) -> bool:
     from app.models.layer6 import Layer6Cycle, Layer6Outcome
     cycles = Layer6Cycle.query.filter_by(simulation_id=simulation_id).order_by(
@@ -600,6 +709,11 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
         scored.sort(key=lambda x: x['priority_score'], reverse=True)
         scored = scored[:n_to_dispatch]
 
+    # FR-LIFE-05: Maintenance phase — only dispatch above threshold
+    if sim.lifecycle_phase == sim.LIFECYCLE_MAINTENANCE:
+        threshold = float(config.maintenance_dispatch_threshold)
+        scored = [a for a in scored if a['priority_score'] >= threshold]
+
     dispatched_count = 0
     escalated_count = 0
     dispatch_entries: list[tuple[Layer6ActionQueue, bool]] = []
@@ -754,6 +868,12 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
             seed_cold_start_priors(simulation_id)
         except Exception as exc:
             logger.warning('Cold start prior seeding failed: %s', exc)
+
+    # Lifecycle transition checks (SIM-REQ-LIFECYCLE-001)
+    try:
+        _check_lifecycle_transitions(simulation_id, sim, config, cycle_number)
+    except Exception as _lce:
+        logger.warning('Lifecycle transition check failed for %s: %s', simulation_id, _lce)
 
     return cycle.to_dict()
 

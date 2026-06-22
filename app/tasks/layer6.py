@@ -222,11 +222,25 @@ def run_layer6_cycles():
     logger.info('Layer 6 beat: checking %d active configs', len(configs))
 
     for cfg in configs:
+        from app.models.simulation import Simulation
+        sim = Simulation.query.get(cfg.simulation_id)
+        if not sim:
+            continue
+
+        # FR-LIFE-08: skip dormant simulations entirely
+        if sim.lifecycle_phase == sim.LIFECYCLE_DORMANT:
+            logger.debug('Simulation %s is Dormant — skipping cycle', cfg.simulation_id)
+            continue
+
         # Deterministic jitter 0-900s based on simulation_id hash (FR-ORCH-01)
         _hash_int = int(_hl.md5(cfg.simulation_id.encode()).hexdigest(), 16)
         jitter_seconds = _hash_int % 900
 
-        dispatch_window = _dispatch_window_minutes(cfg.cadence) * 60  # convert to seconds
+        # FR-LIFE-06: maintenance phase uses maintenance_frequency_hours, not cadence
+        if sim.lifecycle_phase == sim.LIFECYCLE_MAINTENANCE:
+            dispatch_window = int(cfg.maintenance_frequency_hours) * 3600
+        else:
+            dispatch_window = _dispatch_window_minutes(cfg.cadence) * 60  # convert to seconds
 
         last_cycle = Layer6Cycle.query.filter_by(
             simulation_id=cfg.simulation_id

@@ -949,6 +949,8 @@ def advisor_gcc_view(client_uid, sim_id):
 
     from flask import request as _req
     active_tab = _req.args.get('tab', 'queue')
+    _adv_cycle_count = latest_cycle.cycle_number if latest_cycle else 0
+    _adv_cycle_limit = int(layer6_cfg.active_cycle_limit) if layer6_cfg else 30
 
     return render_template(
         'simulations/layer6.html',
@@ -985,6 +987,9 @@ def advisor_gcc_view(client_uid, sim_id):
         zone_count=client_zone_count,
         projected_annual=client_projected_annual,
         actual_income=total_income,
+        lifecycle_phase=sim.lifecycle_phase,
+        cycle_count=_adv_cycle_count,
+        active_cycle_limit=_adv_cycle_limit,
     )
 
 
@@ -1088,6 +1093,8 @@ def gcc_view(sim_id):
     profile = _UP.query.filter_by(user_id=current_user.id).first()
 
     tab = _req.args.get('tab', 'queue')
+    _cycle_count = latest_cycle.cycle_number if latest_cycle else 0
+    _active_cycle_limit = int(layer6_config.active_cycle_limit) if layer6_config else 30
 
     return render_template(
         'simulations/layer6.html',
@@ -1116,6 +1123,9 @@ def gcc_view(sim_id):
         zone_count=0,
         projected_annual=0,
         actual_income=total_income,
+        lifecycle_phase=sim.lifecycle_phase,
+        cycle_count=_cycle_count,
+        active_cycle_limit=_active_cycle_limit,
     )
 
 
