@@ -2393,6 +2393,7 @@ async function regenerateBio() {
     if (!confirm('Remove this entry?')) return;
     window.bio003State[key].splice(idx, 1);
     _render(key, window.bio003State[key]);
+    if (typeof saveProfile === 'function') saveProfile();
   };
 
   // ── Form definitions per section ──
@@ -2537,6 +2538,7 @@ async function regenerateBio() {
     }
     _render(key, window.bio003State[key]);
     window.bio003CancelForm(key);
+    if (typeof saveProfile === 'function') saveProfile();
   };
 
 })();
