@@ -157,7 +157,9 @@
 .avatar-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
 .vis-card { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 10px; margin-bottom: .75rem; overflow: hidden; }
 .vis-card-header { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; cursor: pointer; }
-.vis-drag-handle { color: #9CA3AF; cursor: grab; font-size: 1.1rem; }
+.vis-drag-handle { color: #9CA3AF; cursor: grab; font-size: 1.1rem; user-select: none; flex-shrink: 0; }
+.vis-card.dragging { opacity: .35; box-shadow: none; }
+.vis-card.drag-over { border: 2px dashed #0F7B72; background: rgba(15,123,114,.04); }
 .vis-sim-name { font-weight: 600; font-size: .9rem; flex: 1; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
 .vis-zone { font-size: .78rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
 .vis-card-body { padding: 0 1rem 1rem; border-top: 1px solid rgba(0,0,0,.06); display: none; }
@@ -2556,6 +2558,7 @@ function renderVisCards(sims) {
     return;
   }
   container.innerHTML = sims.map(s => visCardHtml(s)).join('');
+  initVisDragDrop();
 }
 
 function visCardHtml(s) {
@@ -2622,6 +2625,69 @@ function toggleVisCard(simId) {
   body.classList.toggle('open');
   const s = _visState[simId];
   if (s) renderServiceFields(simId, s.services || []);
+}
+
+function initVisDragDrop() {
+  const container = document.getElementById('visCards');
+  let dragSrc = null;
+
+  container.querySelectorAll('.vis-card').forEach(function(card) {
+    card.setAttribute('draggable', 'true');
+
+    card.addEventListener('dragstart', function(e) {
+      dragSrc = this;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', this.id);
+      setTimeout(function() { card.classList.add('dragging'); }, 0);
+    });
+
+    card.addEventListener('dragend', function() {
+      this.classList.remove('dragging');
+      container.querySelectorAll('.vis-card').forEach(function(c) { c.classList.remove('drag-over'); });
+      saveVisOrder();
+    });
+
+    card.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (this !== dragSrc) {
+        container.querySelectorAll('.vis-card').forEach(function(c) { c.classList.remove('drag-over'); });
+        this.classList.add('drag-over');
+      }
+    });
+
+    card.addEventListener('dragleave', function() {
+      this.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', function(e) {
+      e.preventDefault();
+      if (!dragSrc || this === dragSrc) return;
+      var allCards = Array.from(container.querySelectorAll('.vis-card'));
+      var srcIdx = allCards.indexOf(dragSrc);
+      var dstIdx = allCards.indexOf(this);
+      if (srcIdx < dstIdx) {
+        container.insertBefore(dragSrc, this.nextSibling);
+      } else {
+        container.insertBefore(dragSrc, this);
+      }
+      this.classList.remove('drag-over');
+    });
+  });
+}
+
+async function saveVisOrder() {
+  var container = document.getElementById('visCards');
+  var order = Array.from(container.querySelectorAll('.vis-card')).map(function(c) {
+    return c.id.replace('vc-', '');
+  });
+  try {
+    await fetch(ROOT2 + '/api/settings/visibility/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: order }),
+    });
+  } catch (e) {}
 }
 
 const _visState = {};
