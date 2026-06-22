@@ -115,10 +115,18 @@
 .bio-section-title { font-weight: 700; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
 .bio-meta { font-size: .75rem; color: #9CA3AF; margin-top: .5rem; font-family: 'DM Sans', sans-serif; }
 .bio-actions-row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
-/* Bio split panel */
-.bio-split-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
-@media (max-width: 720px) { .bio-split-panel { grid-template-columns: 1fr; } }
+/* Bio split panel — tabbed */
+.bio-split-panel { display: block; }
+.bio-split-tabs { display: flex; gap: 0; border-bottom: 2px solid rgba(0,0,0,.08); margin-bottom: .875rem; }
+.bio-split-tab {
+  padding: .5rem 1.25rem; font-size: .82rem; font-weight: 600; cursor: pointer;
+  color: #9CA3AF; background: none; border: none; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; font-family: 'DM Sans', sans-serif; transition: color .15s, border-color .15s;
+}
+.bio-split-tab:hover { color: #0D1B3E; }
+.bio-split-tab.active { color: #0F7B72; border-bottom-color: #0F7B72; }
 .bio-split-editor { display: flex; flex-direction: column; gap: .35rem; }
+.bio-split-editor.hidden, .bio-split-preview-pane.hidden { display: none; }
 .bio-textarea { min-height: 260px; resize: vertical; font-family: 'DM Sans', sans-serif !important; font-size: .875rem !important; line-height: 1.65 !important; }
 .bio-editor-footer { display: flex; justify-content: space-between; align-items: center; font-size: .72rem; color: #9CA3AF; font-family: 'DM Sans', sans-serif; }
 .bio-save-status { font-size: .72rem; font-family: 'DM Sans', sans-serif; transition: color .2s; }
@@ -402,7 +410,11 @@
       <div class="settings-section">
         <div class="settings-section-title">Professional Bio</div>
         <div class="bio-split-panel">
-          <div class="bio-split-editor">
+          <div class="bio-split-tabs">
+            <button class="bio-split-tab" id="bio-tab-editor" onclick="bioPanelTab('editor')">Editor</button>
+            <button class="bio-split-tab active" id="bio-tab-preview" onclick="bioPanelTab('preview')">Preview</button>
+          </div>
+          <div class="bio-split-editor hidden" id="bio-panel-editor">
             <textarea class="input-text bio-textarea" id="bioEditor" rows="14"
                       placeholder="Your professional bio will appear here. Click Generate to create one from your resume and Expertise Zones, or write your own.">{% if profile and profile.bio %}{{ profile.bio }}{% elif resume_text %}{{ resume_text }}{% endif %}</textarea>
             <div class="bio-editor-footer">
@@ -410,7 +422,7 @@
               <span id="bioSaveStatus" class="bio-save-status"></span>
             </div>
           </div>
-          <div class="bio-split-preview-pane">
+          <div class="bio-split-preview-pane" id="bio-panel-preview">
             <div class="bio-split-preview-label">Preview</div>
             <div id="bioPreviewPane" class="bio-preview-content {% if not (profile and profile.bio) and not resume_text %}bio-preview-empty{% endif %}">{% if profile and profile.bio %}{{ profile.bio }}{% elif resume_text %}{{ resume_text }}{% else %}Your bio will appear here as you type…{% endif %}</div>
           </div>
@@ -1946,6 +1958,14 @@ async function doAutoSaveBio() {
 
 let _regenCooldown = false;
 let _regenCooldownTimer = null;
+
+function bioPanelTab(tab) {
+  var isEditor = tab === 'editor';
+  document.getElementById('bio-panel-editor').classList.toggle('hidden', !isEditor);
+  document.getElementById('bio-panel-preview').classList.toggle('hidden', isEditor);
+  document.getElementById('bio-tab-editor').classList.toggle('active', isEditor);
+  document.getElementById('bio-tab-preview').classList.toggle('active', !isEditor);
+}
 
 async function regenerateBio() {
   if (_regenCooldown) return;
