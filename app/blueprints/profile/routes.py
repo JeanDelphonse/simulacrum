@@ -239,9 +239,21 @@ def get_visibility():
     profile = _get_or_create_profile(current_user)
     db.session.commit()
 
-    sims = Simulation.query.filter_by(
-        user_id=current_user.id, status='complete',
-    ).order_by(Simulation.created_at.asc()).all()
+    sims = (
+        db.session.query(Simulation)
+        .outerjoin(
+            SimulationVisibility,
+            (SimulationVisibility.simulation_id == Simulation.id) &
+            (SimulationVisibility.user_id == current_user.id),
+        )
+        .filter(Simulation.user_id == current_user.id, Simulation.status == 'complete')
+        .order_by(
+            db.case((SimulationVisibility.display_order.is_(None), 1), else_=0),
+            SimulationVisibility.display_order.asc(),
+            Simulation.created_at.asc(),
+        )
+        .all()
+    )
 
     records = []
     for sim in sims:
