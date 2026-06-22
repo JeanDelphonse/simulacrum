@@ -161,6 +161,17 @@
       color: var(--muted); display: inline-flex; align-items: center; gap: .3rem;
     }
     .hero-meta a:hover { color: var(--accent); }
+    .ask-simi-bubble {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .28rem .75rem; border-radius: 100px;
+      background: var(--accent); color: #fff;
+      font-size: .75rem; font-weight: 600; cursor: pointer;
+      border: none; font-family: 'DM Sans', sans-serif;
+      box-shadow: 0 2px 8px rgba(15,123,114,.25);
+      transition: background .15s, box-shadow .15s;
+    }
+    .ask-simi-bubble:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(15,123,114,.35); }
+    .ask-simi-bubble svg { width: 12px; height: 12px; }
     .hero-cta { margin-top: 0; }
     .btn {
       display: inline-block; padding: .65rem 1.5rem; border-radius: 8px;
@@ -634,6 +645,12 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
             Website
           </a>
+          {% endif %}
+          {% if bio_page.chat_enabled %}
+          <button class="ask-simi-bubble" onclick="document.getElementById('bio-chat-btn').click()" aria-label="Ask Simi">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Ask Simi
+          </button>
           {% endif %}
         </div>
         {% endif %}
