@@ -161,6 +161,15 @@
       color: var(--muted); display: inline-flex; align-items: center; gap: .3rem;
     }
     .hero-meta a:hover { color: var(--accent); }
+    .hero-meta-booking {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .28rem .75rem; border-radius: 100px;
+      background: var(--tag-bg); color: var(--tag-color);
+      font-size: .75rem; font-weight: 600;
+      border: 1px solid rgba(15,123,114,.2);
+      transition: background .15s, color .15s;
+    }
+    .hero-meta-booking:hover { background: var(--accent); color: #fff; }
     .ask-simi-bubble {
       display: inline-flex; align-items: center; gap: .35rem;
       padding: .28rem .75rem; border-radius: 100px;
@@ -172,7 +181,6 @@
     }
     .ask-simi-bubble:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(15,123,114,.35); }
     .ask-simi-bubble svg { width: 12px; height: 12px; }
-    .hero-cta { margin-top: 0; }
     .btn {
       display: inline-block; padding: .65rem 1.5rem; border-radius: 8px;
       font-weight: 600; font-size: .9rem; cursor: pointer; border: none;
@@ -626,7 +634,6 @@
         <p class="positioning">{{ ctx.positioning }}</p>
         {% endif %}
 
-        {% if ctx.linkedin_url or ctx.twitter_url or ctx.website_url %}
         <div class="hero-meta">
           {% if ctx.linkedin_url %}
           <a href="{{ ctx.linkedin_url }}" target="_blank" rel="noopener noreferrer">
@@ -646,25 +653,22 @@
             Website
           </a>
           {% endif %}
+          {% if profile and profile.show_booking_btn and ctx.booking_url %}
+          <a class="hero-meta-booking" href="{{ ctx.booking_url }}?utm_source=simulacrum_bio&utm_medium=bio_page&utm_campaign={{ slug }}" target="_blank" rel="noopener" id="hero-cta-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            {{ ctx.cta_label or 'Book a call' }}
+          </a>
+          {% elif not ctx.booking_url %}
+          <a class="hero-meta-booking" href="#contact" id="hero-cta-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Get in touch
+          </a>
+          {% endif %}
           {% if bio_page.chat_enabled %}
           <button class="ask-simi-bubble" onclick="document.getElementById('bio-chat-btn').click()" aria-label="Ask Simi">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Ask Simi
           </button>
-          {% endif %}
-        </div>
-        {% endif %}
-
-        <div class="hero-cta">
-          {% if ctx.booking_url %}
-          <a class="btn btn-primary" href="{{ ctx.booking_url }}?utm_source=simulacrum_bio&utm_medium=bio_page&utm_campaign={{ slug }}" target="_blank" rel="noopener" id="hero-cta-btn">
-            {{ ctx.cta_label or 'Book a call' }}
-          </a>
-          {% else %}
-          <a class="btn btn-primary" href="#contact" id="hero-cta-btn">Get in touch</a>
-          {% endif %}
-          {% if ctx.linkedin_url %}
-          <a class="btn btn-outline" href="{{ ctx.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>
           {% endif %}
         </div>
 
