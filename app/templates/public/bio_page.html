@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='simi_logo.jpg') }}">
   <title>{{ ctx.full_name }} — {{ ctx.professional_title or 'Professional' }} | Simulacrum</title>
   <meta name="description" content="{{ (ctx.positioning or ctx.about_text or '')[:160] }}">
   {% if bio_page.sections.get('visibility', {}).get('noindex') %}
@@ -594,6 +595,222 @@
     @media (max-width: 420px) {
       .projects-grid { grid-template-columns: 1fr; }
     }
+
+    /* ── Connections sidebar layout ──────────────────────────────── */
+    .bio-page-layout {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    .bio-page-layout > .bio-wrap {
+      flex: 1;
+      min-width: 0;
+      max-width: 800px;
+      margin: 0;
+      padding: 0;
+    }
+    .connections-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 1.5rem;
+      padding: 1.25rem 0;
+    }
+    .conn-panel-title {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .conn-degree-section { margin-bottom: 1.25rem; }
+    .conn-degree-label {
+      font-size: .72rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: .4rem;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .conn-degree-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px; height: 17px;
+      border-radius: 50%;
+      font-size: .62rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .conn-1st .conn-degree-badge { background: rgba(15,123,114,.15); color: #0F7B72; }
+    .conn-2nd .conn-degree-badge { background: rgba(124,58,237,.1); color: #7c3aed; }
+    .conn-3rd .conn-degree-badge { background: rgba(107,123,141,.1); color: var(--muted); }
+    .conn-list { display: flex; flex-direction: column; gap: .25rem; }
+    .conn-card {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      text-decoration: none;
+      color: var(--text);
+      padding: .3rem .4rem;
+      border-radius: 7px;
+      transition: background .12s;
+    }
+    .conn-card:hover { background: var(--bg2); color: var(--text); }
+    .conn-avatar {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+    }
+    .conn-avatar-placeholder {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--tag-bg);
+      color: var(--tag-color);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .6rem; font-weight: 700; flex-shrink: 0;
+    }
+    .conn-name {
+      font-size: .8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+    .conn-count-line {
+      font-size: .8rem;
+      color: var(--muted);
+      padding: .2rem .4rem;
+    }
+    @media (max-width: 960px) {
+      .connections-sidebar { display: none; }
+      .bio-page-layout > .bio-wrap { max-width: 100%; }
+    }
+    /* ── Bio tabs ──────────────────────────────────────────── */
+    .bio-tabs-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin: 1.25rem 0 0; }
+    .bio-tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: .45rem 1.15rem; font-size: .83rem; font-weight: 500; color: var(--muted); cursor: pointer; font-family: inherit; transition: color .15s; }
+    .bio-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    /* ── Slides deck ────────────────────────────────────────── */
+    .slides-panel { padding: 1.5rem 0; }
+    .slides-panel-toolbar { display: flex; align-items: flex-start; gap: .5rem; margin-bottom: 1.2rem; }
+    .slides-deck-nav { display: flex; flex-wrap: wrap; gap: .45rem; flex: 1; }
+    .slides-deck-pill { padding: .26rem .8rem; border-radius: 20px; border: 1px solid var(--border); background: none; font-size: .75rem; font-weight: 500; color: var(--muted); cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; }
+    .slides-deck-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .slide-viewer { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .slide { display: none; flex-direction: column; min-height: 380px; }
+    .slide.active { display: flex; animation: slideFadeIn .2s ease; }
+    @keyframes slideFadeIn { from { opacity:0; transform:translateX(8px); } to { opacity:1; transform:none; } }
+    .slide-header { padding: 1.35rem 1.75rem 1.05rem; border-bottom: 1px solid var(--border); }
+    .slide-header-label { font-size: .67rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .2rem; }
+    .slide-header-title { font-size: 1.18rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .slide-header-sub { font-size: .79rem; color: var(--muted); margin-top: .18rem; }
+    .slide-body { padding: 1.2rem 1.75rem; flex: 1; overflow: auto; }
+    .slide-footer { display: flex; align-items: center; justify-content: space-between; padding: .8rem 1.75rem; border-top: 1px solid var(--border); background: var(--bg); }
+    .slide-nav-btn { background: none; border: 1px solid var(--border); border-radius: 6px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); transition: all .15s; flex-shrink: 0; }
+    .slide-nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .slide-nav-btn:disabled { opacity: .3; cursor: default; }
+    .slide-dots { display: flex; gap: 4px; align-items: center; }
+    .slide-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); cursor: pointer; transition: all .2s; flex-shrink: 0; }
+    .slide-dot.active { background: var(--accent); width: 16px; border-radius: 3px; }
+    .slide-counter { font-size: .71rem; color: var(--muted); }
+    .slide-layer-num { display: inline-block; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; padding: .11rem .45rem; border-radius: 4px; }
+    .slide-streams { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; margin-top: .8rem; }
+    .slide-stream-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: .65rem .8rem; }
+    .slide-stream-name { font-size: .79rem; font-weight: 600; color: var(--text); }
+    .slide-stream-range { font-size: .84rem; font-weight: 700; color: var(--accent); margin-top: .12rem; }
+    .slide-stream-meta { font-size: .67rem; color: var(--muted); margin-top: .08rem; }
+    .slide-income-table { width: 100%; border-collapse: collapse; font-size: .79rem; }
+    .slide-income-table th { text-align: left; padding: .32rem .48rem; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .slide-income-table td { padding: .42rem .48rem; border-bottom: 1px solid var(--border); color: var(--text); }
+    .slide-income-table tr:last-child td { border-bottom: none; }
+    .slide-income-table .range-cell { font-weight: 700; color: var(--accent); white-space: nowrap; }
+    .slide-svc-chips { display: flex; flex-wrap: wrap; gap: .38rem; margin-top: .8rem; }
+    .slide-svc-chip { font-size: .71rem; padding: .2rem .58rem; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); }
+    .slide-avail-badge { display: inline-block; font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; padding: .16rem .55rem; border-radius: 20px; margin-top: .55rem; }
+    .slide-avail-badge.available { background: rgba(255,255,255,.22); color: #fff; }
+    .slide-avail-badge.limited { background: rgba(255,200,50,.3); color: #ffe082; }
+    .slide-avail-badge.unavailable { background: rgba(255,80,80,.25); color: #ffcdd2; }
+    .slides-export-btn { flex-shrink: 0; padding: .3rem .8rem; border: 1px solid var(--border); border-radius: 6px; background: none; font-size: .72rem; font-weight: 500; color: var(--muted); cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: .38rem; transition: all .15s; white-space: nowrap; }
+    .slides-export-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .slides-export-btn:disabled { opacity: .5; cursor: default; }
+    .slide-cover { background: linear-gradient(140deg, var(--accent) 0%, #0a5c56 100%); }
+    .slide-cover .slide-header { border-bottom-color: rgba(255,255,255,.18); }
+    .slide-cover .slide-header-label { color: rgba(255,255,255,.65); }
+    .slide-cover .slide-header-title { color: #fff; font-size: 1.42rem; }
+    .slide-cover .slide-header-sub { color: rgba(255,255,255,.75); }
+    .slide-cover .slide-body { color: rgba(255,255,255,.88); }
+    .slide-cover .slide-body .slide-svc-chip { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.2); color: #fff; }
+    .slide-cover .slide-footer { background: rgba(0,0,0,.18); border-top-color: rgba(255,255,255,.12); }
+    .slide-cover .slide-nav-btn { border-color: rgba(255,255,255,.28); color: rgba(255,255,255,.75); }
+    .slide-cover .slide-nav-btn:hover:not(:disabled) { border-color: #fff; color: #fff; }
+    .slide-cover .slide-dot { background: rgba(255,255,255,.3); }
+    .slide-cover .slide-dot.active { background: #fff; }
+    .slide-cover .slide-counter { color: rgba(255,255,255,.6); }
+    @media (max-width: 520px) {
+      .slide-streams { grid-template-columns: 1fr; }
+      .slide-body, .slide-header { padding-left: 1.1rem; padding-right: 1.1rem; }
+      .slide-footer { padding-left: 1.1rem; padding-right: 1.1rem; }
+    }
+    /* ── Mind map ──────────────────────────────────────────── */
+    .mm-outer { overflow: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem 1.5rem 2rem; min-height: 360px; margin-top: 1.5rem; }
+    .mm-canvas { position: relative; display: inline-block; min-width: 100%; }
+    .mm-svg { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+    .mm-node { position: absolute; display: inline-flex; align-items: center; gap: .28rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: .26rem .58rem; font-size: .78rem; white-space: nowrap; line-height: 1.35; box-sizing: border-box; }
+    .mm-node.mm-clickable { cursor: pointer; }
+    .mm-node.mm-clickable:hover { border-color: var(--accent); background: rgba(15,123,114,.08); }
+    .mm-node.mm-l0 { font-size: .9rem; font-weight: 700; background: var(--accent); color: #fff; border-color: var(--accent); padding: .34rem .85rem; border-radius: 8px; cursor: default; }
+    .mm-node.mm-l1 { font-size: .8rem; font-weight: 600; color: var(--accent); border-color: rgba(15,123,114,.45); }
+    .mm-node.mm-l2 { font-weight: 500; }
+    .mm-node.mm-l3 { font-size: .73rem; color: var(--muted); }
+    .mm-node.mm-l4, .mm-node.mm-l5 { font-size: .68rem; color: var(--muted); opacity: .8; }
+    .mm-caret { font-size: .58rem; opacity: .5; margin-left: .12rem; flex-shrink: 0; }
+    .mm-empty { padding: 3rem 1rem; text-align: center; font-size: .85rem; color: var(--muted); }
+    /* ── Infographic ───────────────────────────────────────── */
+    .ig-wrap { padding: .25rem 0 1rem; }
+    .ig-stats { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .ig-stat { flex: 1; min-width: 72px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: .7rem .8rem; text-align: center; }
+    .ig-stat-val { font-size: 1.5rem; font-weight: 700; color: var(--accent); line-height: 1; }
+    .ig-stat-lbl { font-size: .64rem; color: var(--muted); margin-top: .2rem; text-transform: uppercase; letter-spacing: .05em; }
+    .ig-sec-lbl { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .6rem; }
+    .ig-gantt { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: .8rem 1rem 1rem; overflow-x: auto; margin-bottom: 1.1rem; }
+    .ig-axis { position: relative; height: 22px; margin-bottom: .45rem; border-bottom: 1px solid var(--border); }
+    .ig-tick { position: absolute; font-size: .63rem; color: var(--muted); transform: translateX(-50%); bottom: 4px; }
+    .ig-bar-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .32rem; min-width: 480px; }
+    .ig-blabel { width: 130px; font-size: .71rem; flex-shrink: 0; display: flex; align-items: center; gap: .28rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .ig-track { flex: 1; position: relative; height: 15px; background: rgba(255,255,255,.04); border-radius: 3px; }
+    .ig-bar { position: absolute; top: 0; height: 100%; border-radius: 3px; background: rgba(15,123,114,.4); }
+    .ig-bar.ig-cur { background: linear-gradient(90deg,#0f7b72,#4dd9c4); }
+    .ig-2col { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: 1.1rem; }
+    @media(max-width:580px){.ig-2col,.ig-3col{grid-template-columns:1fr;}}
+    .ig-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: .8rem .95rem; }
+    .ig-exp-row { display: flex; align-items: center; gap: .55rem; margin-bottom: .4rem; }
+    .ig-exp-name { font-size: .7rem; flex-shrink: 0; width: 105px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ig-exp-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .ig-exp-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg,#0f7b72,#4dd9c4); }
+    .ig-nw-item { display: flex; gap: .42rem; align-items: flex-start; margin-bottom: .48rem; }
+    .ig-nw-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .33rem; }
+    .ig-nw-title { font-size: .75rem; font-weight: 500; line-height: 1.3; }
+    .ig-nw-sub { font-size: .66rem; color: var(--muted); margin-top: .06rem; }
+    .ig-3col { display: grid; grid-template-columns: repeat(3,1fr); gap: .75rem; }
+    .ig-fcol { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: .8rem .95rem; }
+    .ig-fcol-title { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: .55rem; }
+    .ig-edu .ig-fcol-title { color: #60a5fa; }
+    .ig-vent .ig-fcol-title { color: #f5c842; }
+    .ig-out .ig-fcol-title { color: #a78bfa; }
+    .ig-fitem { margin-bottom: .42rem; }
+    .ig-fitem-name { font-size: .74rem; font-weight: 500; }
+    .ig-fitem-sub { font-size: .65rem; color: var(--muted); margin-top: .06rem; }
   </style>
 </head>
 
@@ -611,6 +828,7 @@
 </div>
 {% endif %}
 
+<div class="bio-page-layout">
 <div class="bio-wrap">
 
   <!-- ── 1. Hero ─────────────────────────────────────────────────────── -->
@@ -658,7 +876,7 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             {{ ctx.cta_label or 'Book a call' }}
           </a>
-          {% elif not ctx.booking_url %}
+          {% elif not ctx.booking_url and profile.show_contact_form != False %}
           <a class="hero-meta-booking" href="#contact" id="hero-cta-btn">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Get in touch
@@ -694,6 +912,48 @@
       </div>
     </div>
   </section>
+
+  <!-- ── Tab nav ─────────────────────────────────────────────────────── -->
+  <div class="bio-tabs-nav">
+    <button class="bio-tab-btn active" onclick="mmTab('profile',this)">Profile</button>
+    <button class="bio-tab-btn" onclick="mmTab('mindmap',this)">Career Map</button>
+    <button class="bio-tab-btn" onclick="mmTab('infographic',this)">Infographic</button>
+    {% if ctx.sim_bios %}<button class="bio-tab-btn" onclick="mmTab('slides',this)">Slide Decks</button>{% endif %}
+  </div>
+
+  <!-- ── Mind map panel ──────────────────────────────────────────────── -->
+  <div id="bio-mm-panel" style="display:none">
+    <div style="display:flex;justify-content:flex-end;padding:.5rem 0 .25rem">
+      <button id="mm-ori-btn" onclick="mmToggleOri(this)" style="font-size:.72rem;padding:.25rem .65rem;border:1px solid rgba(15,123,114,.35);border-radius:6px;background:transparent;color:var(--accent,#0f7b72);cursor:pointer;letter-spacing:.02em">⇄ Switch to horizontal</button>
+    </div>
+    <div class="mm-outer"><div id="mm-canvas" class="mm-canvas"></div></div>
+  </div>
+
+  <!-- ── Infographic panel ───────────────────────────────────────────── -->
+  <div id="bio-ig-panel" style="display:none">
+    <div id="ig-root"></div>
+  </div>
+
+  <!-- ── Slides panel ───────────────────────────────────────────────── -->
+  <div id="bio-slides-panel" style="display:none" class="slides-panel">
+    {% if ctx.sim_bios %}
+    <div class="slides-panel-toolbar">
+      <div id="slides-deck-nav" class="slides-deck-nav"></div>
+      <button id="slides-export-btn" class="slides-export-btn"
+              onclick="window.exportSlidePDF&&window.exportSlidePDF()"
+              title="Download slide deck as PDF">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PDF
+      </button>
+    </div>
+    <div id="slide-viewer" class="slide-viewer"></div>
+    {% else %}
+    <div style="text-align:center;padding:3rem;color:var(--muted);font-size:.87rem">No simulation decks available.</div>
+    {% endif %}
+  </div>
+
+  <!-- ── Profile panel ───────────────────────────────────────────────── -->
+  <div id="bio-profile-panel">
 
   <!-- ── 2. About ────────────────────────────────────────────────────── -->
   {% set visibility = bio_page.sections.get('visibility', {}) %}
@@ -771,17 +1031,22 @@
     </div>
     <div class="section-body" id="career-body">
       <div class="timeline">
-        {% for entry in ctx.career_history %}
+        {% for entry in ctx.career_history | sort(attribute='start_date', reverse=True) %}
+        {% set end_raw = entry.get('end_date', '') | string | trim %}
+        {% set is_current = (not end_raw) or (end_raw | lower == 'present') %}
         <div class="timeline-entry">
-          <div class="timeline-dot{% if loop.first %} active{% endif %}"></div>
-          <div class="tl-company">
+          <div class="timeline-dot{% if not is_current %} active{% endif %}"></div>
+          <div class="tl-company" style="display:flex;align-items:center;gap:.4rem">
+            {% if entry.get('logo_url') %}
+            <img src="{{ entry.logo_url }}" alt="{{ entry.company_name }}" style="width:20px;height:20px;border-radius:4px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">
+            {% endif %}
             {% if entry.get('company_url') %}
             <a href="{{ entry.company_url }}" target="_blank" rel="noopener noreferrer">{{ entry.company_name }}</a>
             {% else %}{{ entry.company_name }}{% endif %}
           </div>
           {% if entry.get('role') %}<div class="tl-role">{{ entry.role }}</div>{% endif %}
           {% set start = entry.get('start_date', '') %}
-          {% set end = entry.get('end_date', 'Present') %}
+          {% set end = end_raw if end_raw else 'Present' %}
           {% if start %}<div class="tl-dates">{{ start }} – {{ end }}</div>{% endif %}
           {% if entry.get('description') %}<div class="tl-desc">{{ entry.description }}</div>{% endif %}
         </div>
@@ -1080,6 +1345,7 @@
   </section>
   {% endif %}
 
+  {% if profile.show_contact_form != False %}
   <!-- ── Contact ────────────────────────────────────────────────────── -->
   <section id="contact">
     <h2 class="section-heading-static">Get in touch</h2>
@@ -1102,8 +1368,63 @@
       <div class="form-msg" id="cf-msg"></div>
     </div>
   </section>
+  {% endif %}
+
+  </div><!-- /bio-profile-panel -->
 
 </div><!-- /bio-wrap -->
+
+{% if current_user.is_authenticated and connections_panel %}
+<aside class="connections-sidebar">
+  <div class="conn-panel-title">{{ ctx.full_name.split()[0] if ctx.full_name else 'Their' }}'s Network</div>
+
+  <div class="conn-degree-section conn-1st">
+    <div class="conn-degree-label">
+      <span class="conn-degree-badge">1</span>
+      1st · {{ connections_panel.connections_1st | length }} connection{{ 's' if connections_panel.connections_1st | length != 1 else '' }}
+    </div>
+    {% if connections_panel.connections_1st %}
+    <div class="conn-list">
+      {% for c in connections_panel.connections_1st %}
+      {% set _initials = (c.display_name.split()[0][0] + c.display_name.split()[-1][0]) | upper if c.display_name.split() | length > 1 else (c.display_name[0] | upper if c.display_name else '?') %}
+      <a class="conn-card" href="/u/{{ c.slug }}">
+        {% if c.avatar_path %}
+        <img class="conn-avatar" src="{{ url_for('public.serve_avatar', filename=c.avatar_path) }}" alt="{{ c.display_name }}" loading="lazy">
+        {% else %}
+        <div class="conn-avatar-placeholder">{{ _initials }}</div>
+        {% endif %}
+        <span class="conn-name">{{ c.display_name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="conn-count-line">No connections yet</div>
+    {% endif %}
+  </div>
+
+  {% if connections_panel.count_2nd > 0 %}
+  <div class="conn-degree-section conn-2nd">
+    <div class="conn-degree-label">
+      <span class="conn-degree-badge">2</span>
+      2nd · {{ connections_panel.count_2nd }} connection{{ 's' if connections_panel.count_2nd != 1 else '' }}
+    </div>
+    <div class="conn-count-line">People who know your connections</div>
+  </div>
+  {% endif %}
+
+  {% if connections_panel.count_3rd > 0 %}
+  <div class="conn-degree-section conn-3rd">
+    <div class="conn-degree-label">
+      <span class="conn-degree-badge">3</span>
+      3rd · {{ connections_panel.count_3rd }}+ connection{{ 's' if connections_panel.count_3rd != 1 else '' }}
+    </div>
+    <div class="conn-count-line">Extended network</div>
+  </div>
+  {% endif %}
+</aside>
+{% endif %}
+
+</div><!-- /bio-page-layout -->
 
 <!-- ── Footer ────────────────────────────────────────────────────────────── -->
 <footer id="footer">
@@ -1560,6 +1881,681 @@ async function publishNow() {
         });
     });
   }
+}());
+</script>
+{% endif %}
+
+<script>
+// ── Career Mind Map ─────────────────────────────────────────────────────
+(function() {
+  var _d = {
+    name:    {{ (ctx.full_name or '') | tojson }},
+    title:   {{ (ctx.professional_title or '') | tojson }},
+    career:  {{ (ctx.career_history   or []) | tojson }},
+    ventures:{{ (ctx.ventures         or []) | tojson }},
+    edu:     {{ (ctx.education        or []) | tojson }},
+    certs:   {{ (ctx.certifications   or []) | tojson }},
+    notable: {{ (ctx.notable_work     or []) | tojson }},
+    pubs:    {{ (ctx.publications     or []) | tojson }},
+    projects:{{ (ctx.projects         or []) | tojson }},
+    zones:   {{ (ctx.sim_zones        or []) | tojson }},
+  };
+
+  var LY = [20, 82, 158, 234, 306, 374]; // vertical: y per level
+  var LX = [30, 260, 500, 720, 920, 1090]; // horizontal: x per level
+  var NH = 30, H_PAD = 20, V_PAD = 14;
+  var mmOri = 'vertical';
+  var openMap = {}; // node.id -> bool
+  var rendered = false;
+
+  function trunc(s, n) { s = s || ''; return s.length > n ? s.slice(0, n) + '…' : s; }
+
+  function leaf(id, lbl, lvl) { return {id:id, label:lbl, level:lvl, children:[]}; }
+
+  function buildTree() {
+    var root = {id:'root', label:_d.name||'Career', level:0, children:[]};
+    openMap.root = true;
+
+    function cat(id, lbl, items) {
+      if (!items || !items.length) return null;
+      if (openMap[id] === undefined) openMap[id] = true; // L1 open by default
+      return {id:id, label:lbl, level:1, children:items};
+    }
+
+    // Career
+    var sortedC = (_d.career||[]).slice().sort(function(a,b){return (b.start_date||'')>(a.start_date||'')?1:-1;});
+    var cKids = sortedC.map(function(e,i) {
+      var id = 'co'+i;
+      if (openMap[id] === undefined) openMap[id] = false;
+      var ed = (e.end_date||'').trim();
+      var kids = [];
+      if (e.role)        kids.push(leaf(id+'r', trunc(e.role,40), 3));
+      if (e.start_date)  kids.push(leaf(id+'d', e.start_date+' – '+(!ed||ed.toLowerCase()==='present'?'Present':ed), 3));
+      if (e.description) kids.push(leaf(id+'x', trunc(e.description,75), 3));
+      return {id:id, label:trunc(e.company_name,32), level:2, logo:e.logo_url||'', children:kids};
+    });
+    var cNode = cat('career','Career',cKids); if (cNode) root.children.push(cNode);
+
+    // Ventures
+    var vKids = (_d.ventures||[]).map(function(v,i){
+      var id='vn'+i; if(openMap[id]===undefined) openMap[id]=false;
+      var kids=[];
+      if(v.role) kids.push(leaf(id+'r',trunc(v.role,35),3));
+      if(v.status) kids.push(leaf(id+'s',v.status.charAt(0).toUpperCase()+v.status.slice(1),3));
+      if(v.founded_year) kids.push(leaf(id+'y','Founded '+v.founded_year,3));
+      if(v.description) kids.push(leaf(id+'d',trunc(v.description,60),3));
+      return {id:id,label:trunc(v.company_name,32),level:2,children:kids};
+    });
+    var vNode = cat('ventures','Ventures',vKids); if(vNode) root.children.push(vNode);
+
+    // Education
+    var edKids = (_d.edu||[]).map(function(e,i){
+      var id='ed'+i; if(openMap[id]===undefined) openMap[id]=false;
+      var kids=[];
+      var dg=[e.degree,e.field].filter(Boolean).join(', ');
+      if(dg) kids.push(leaf(id+'d',trunc(dg,40),3));
+      if(e.year) kids.push(leaf(id+'y',''+e.year,3));
+      return {id:id,label:trunc(e.institution_name||'',32),level:2,children:kids};
+    });
+    if(_d.certs&&_d.certs.length){
+      var id='certs'; if(openMap[id]===undefined) openMap[id]=false;
+      var ckids=_d.certs.map(function(c,i){
+        var cid='ct'+i; if(openMap[cid]===undefined) openMap[cid]=false;
+        var kids=[];
+        if(c.issuing_body) kids.push(leaf(cid+'b',trunc(c.issuing_body,30),4));
+        if(c.year) kids.push(leaf(cid+'y',''+c.year,4));
+        return {id:cid,label:trunc(c.name||'',35),level:3,children:kids};
+      });
+      edKids.push({id:'certs',label:'Certifications',level:2,children:ckids});
+    }
+    var edNode = cat('education','Education',edKids); if(edNode) root.children.push(edNode);
+
+    // Notable Work
+    var nwKids = (_d.notable||[]).map(function(n,i){
+      var id='nw'+i; if(openMap[id]===undefined) openMap[id]=false;
+      var kids=[];
+      if(n.company_name) kids.push(leaf(id+'c','at '+trunc(n.company_name,25),3));
+      if(n.description) kids.push(leaf(id+'d',trunc(n.description,65),3));
+      return {id:id,label:trunc(n.title||'',40),level:2,children:kids};
+    });
+    var nwNode = cat('notable','Notable Work',nwKids); if(nwNode) root.children.push(nwNode);
+
+    // Publications
+    var pbKids = (_d.pubs||[]).map(function(p,i){
+      var id='pb'+i; if(openMap[id]===undefined) openMap[id]=false;
+      var kids=[];
+      if(p.venue_or_publication) kids.push(leaf(id+'v',trunc(p.venue_or_publication,30),3));
+      if(p.date) kids.push(leaf(id+'d',p.date,3));
+      if(p.type) kids.push(leaf(id+'t',p.type.charAt(0).toUpperCase()+p.type.slice(1),3));
+      return {id:id,label:trunc(p.title||'',40),level:2,children:kids};
+    });
+    var pbNode = cat('pubs','Publications',pbKids); if(pbNode) root.children.push(pbNode);
+
+    // Projects
+    var prKids = (_d.projects||[]).map(function(p,i){
+      var id='pr'+i; if(openMap[id]===undefined) openMap[id]=false;
+      var kids=[];
+      if(p.description) kids.push(leaf(id+'d',trunc(p.description,65),3));
+      if(p.tech_stack) kids.push(leaf(id+'t',trunc(Array.isArray(p.tech_stack)?p.tech_stack.join(', '):p.tech_stack,40),3));
+      return {id:id,label:trunc(p.name||'',35),level:2,children:kids};
+    });
+    var prNode = cat('projects','Projects',prKids); if(prNode) root.children.push(prNode);
+
+    return root;
+  }
+
+  // ── Layout ────────────────────────────────────────────────
+  function nw(node) {
+    var w = Math.max((node.label||'').length * 6.8 + 44, 60);
+    if (node.logo) w += 20;
+    if (node.children && node.children.length) w += 14;
+    return Math.min(w, 220);
+  }
+
+  function measure(node) {
+    node._nw = nw(node);
+    var vis = node.children && node.children.length && openMap[node.id];
+    if (mmOri === 'vertical') {
+      if (!vis) { node._w = node._nw + H_PAD; return; }
+      node.children.forEach(measure);
+      node._w = Math.max(node._nw + H_PAD, node.children.reduce(function(s,c){return s+c._w;},0));
+    } else {
+      if (!vis) { node._h = NH + V_PAD; return; }
+      node.children.forEach(measure);
+      node._h = Math.max(NH + V_PAD, node.children.reduce(function(s,c){return s+c._h;},0));
+    }
+  }
+
+  function layout(node, pos) {
+    if (mmOri === 'vertical') {
+      node._y = LY[Math.min(node.level, LY.length-1)];
+      node._x = pos + (node._w - node._nw) / 2;
+      if (node.children && node.children.length && openMap[node.id]) {
+        var cx = pos;
+        node.children.forEach(function(c){ layout(c, cx); cx += c._w; });
+      }
+    } else {
+      node._x = LX[Math.min(node.level, LX.length-1)];
+      node._y = pos + (node._h - NH) / 2;
+      if (node.children && node.children.length && openMap[node.id]) {
+        var cy = pos;
+        node.children.forEach(function(c){ layout(c, cy); cy += c._h; });
+      }
+    }
+  }
+
+  function walk(node, fn) { fn(node); (node.children||[]).forEach(function(c){walk(c,fn);}); }
+
+  // ── Render ────────────────────────────────────────────────
+  var tree;
+  function redraw() {
+    if (!tree) tree = buildTree();
+    measure(tree);
+    layout(tree, 10);
+
+    var mx=0, my=0;
+    walk(tree, function(n){ if(n._x!==undefined){ mx=Math.max(mx,n._x+n._nw); my=Math.max(my,n._y+NH); }});
+    mx+=20; my+=28;
+
+    var cv = document.getElementById('mm-canvas');
+    if (!cv) return;
+    cv.style.width = mx+'px'; cv.style.height = my+'px';
+    cv.innerHTML = '';
+
+    var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.className = 'mm-svg';
+    svg.setAttribute('width', mx); svg.setAttribute('height', my);
+    cv.appendChild(svg);
+
+    renderNode(tree, cv, svg);
+  }
+
+  function renderNode(node, cv, svg) {
+    var div = document.createElement('div');
+    div.className = 'mm-node mm-l'+Math.min(node.level,5);
+    var hasKids = node.children && node.children.length;
+    if (hasKids) div.classList.add('mm-clickable');
+    div.style.left = node._x+'px'; div.style.top = node._y+'px';
+
+    if (node.logo) {
+      var img = document.createElement('img');
+      img.src = node.logo;
+      img.style.cssText = 'width:14px;height:14px;border-radius:2px;object-fit:contain;flex-shrink:0';
+      img.onerror = function(){this.style.display='none';};
+      div.appendChild(img);
+    }
+    var sp = document.createElement('span');
+    sp.textContent = node.label;
+    div.appendChild(sp);
+
+    if (hasKids) {
+      var cr = document.createElement('span');
+      cr.className = 'mm-caret';
+      cr.textContent = mmOri === 'vertical' ? (openMap[node.id] ? '▴' : '▾') : (openMap[node.id] ? '◂' : '▸');
+      div.appendChild(cr);
+      div.addEventListener('click', function(){
+        if (node.level === 0) return;
+        openMap[node.id] = !openMap[node.id];
+        redraw();
+      });
+    }
+    cv.appendChild(div);
+
+    if (hasKids && openMap[node.id]) {
+      node.children.forEach(function(child){
+        var path = document.createElementNS('http://www.w3.org/2000/svg','path');
+        var d;
+        if (mmOri === 'vertical') {
+          var x1=node._x+node._nw/2, y1=node._y+NH, x2=child._x+child._nw/2, y2=child._y, mid=(y1+y2)/2;
+          d='M'+x1+','+y1+' C'+x1+','+mid+' '+x2+','+mid+' '+x2+','+y2;
+        } else {
+          var x1=node._x+node._nw, y1=node._y+NH/2, x2=child._x, y2=child._y+NH/2, mid=(x1+x2)/2;
+          d='M'+x1+','+y1+' C'+mid+','+y1+' '+mid+','+y2+' '+x2+','+y2;
+        }
+        path.setAttribute('d', d);
+        path.setAttribute('fill','none');
+        path.setAttribute('stroke','rgba(15,123,114,.28)');
+        path.setAttribute('stroke-width','1.5');
+        svg.appendChild(path);
+        renderNode(child, cv, svg);
+      });
+    }
+  }
+
+  // ── Tab switch ────────────────────────────────────────────
+  var igRendered = false;
+  window.mmTab = function(tab, btn) {
+    document.querySelectorAll('.bio-tab-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    var pp = document.getElementById('bio-profile-panel');
+    var mp = document.getElementById('bio-mm-panel');
+    var ip = document.getElementById('bio-ig-panel');
+    var sp = document.getElementById('bio-slides-panel');
+    if (pp) pp.style.display = 'none';
+    if (mp) mp.style.display = 'none';
+    if (ip) ip.style.display = 'none';
+    if (sp) sp.style.display = 'none';
+    if (tab === 'mindmap') {
+      if (mp) mp.style.display = 'block';
+      if (!rendered) { rendered = true; redraw(); }
+    } else if (tab === 'infographic') {
+      if (ip) ip.style.display = 'block';
+      if (!igRendered) { igRendered = true; buildInfographic(); }
+    } else if (tab === 'slides') {
+      if (sp) sp.style.display = 'block';
+      if (window.initSlides) window.initSlides();
+    } else {
+      if (pp) pp.style.display = '';
+    }
+  };
+
+  window.mmToggleOri = function(btn) {
+    mmOri = mmOri === 'vertical' ? 'horizontal' : 'vertical';
+    btn.textContent = mmOri === 'vertical' ? '⇄ Switch to horizontal' : '⇅ Switch to vertical';
+    redraw();
+  };
+
+  // ── Infographic ───────────────────────────────────────────
+  function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function buildInfographic() {
+    var root = document.getElementById('ig-root');
+    if (!root) return;
+    var d = _d;
+    var now = new Date();
+    var nowDec = now.getFullYear() + now.getMonth()/12;
+
+    function parseD(s) {
+      if (!s) return null;
+      s = (s+'').trim().toLowerCase();
+      if (s === 'present') return nowDec;
+      var m = s.match(/^(\d{4})(?:-(\d{2}))?/);
+      return m ? parseInt(m[1]) + (m[2] ? (parseInt(m[2])-1)/12 : 0) : null;
+    }
+
+    var career = (d.career||[]).slice().sort(function(a,b){return (a.start_date||'')<(b.start_date||'')?-1:1;});
+    var starts = career.map(function(e){return parseD(e.start_date);}).filter(Boolean);
+    var ends   = career.map(function(e){return parseD(e.end_date||'present');}).filter(Boolean);
+    var minY = starts.length ? Math.floor(Math.min.apply(null,starts)) : now.getFullYear()-4;
+    var maxY = ends.length   ? Math.ceil(Math.max.apply(null,ends))    : now.getFullYear();
+    var span = Math.max(maxY - minY, 1);
+    var yearsExp = Math.max(1, Math.round(nowDec - minY));
+
+    var html = '<div class="ig-wrap">';
+
+    // ── Stats row ──
+    var statsArr = [
+      {v: yearsExp,                                              l:'Yrs experience'},
+      {v: career.length||'—',                                   l:'Positions'},
+      {v: (d.ventures||[]).length||'—',                         l:'Ventures'},
+      {v: ((d.pubs||[]).length+(d.projects||[]).length)||'—',   l:'Outputs'},
+    ];
+    html += '<div class="ig-stats">';
+    statsArr.forEach(function(s){ html += '<div class="ig-stat"><div class="ig-stat-val">'+s.v+'</div><div class="ig-stat-lbl">'+s.l+'</div></div>'; });
+    html += '</div>';
+
+    // ── Career Gantt ──
+    if (career.length) {
+      html += '<div class="ig-gantt"><div class="ig-sec-lbl">Career Journey</div>';
+      var step = span <= 10 ? 1 : span <= 20 ? 2 : 5;
+      html += '<div class="ig-axis">';
+      for (var y = minY; y <= maxY; y += step) {
+        var tp = ((y-minY)/span*100).toFixed(1);
+        html += '<span class="ig-tick" style="left:'+tp+'%">'+y+'</span>';
+      }
+      html += '</div>';
+      career.forEach(function(e) {
+        var s = parseD(e.start_date); if (!s) return;
+        var en = parseD(e.end_date||'present') || nowDec;
+        var lp = Math.max(0,((s-minY)/span*100)).toFixed(1);
+        var wp = Math.max(0.8, Math.min(100-parseFloat(lp), ((en-s)/span*100))).toFixed(1);
+        var cur = !e.end_date || (e.end_date+'').trim().toLowerCase()==='present';
+        html += '<div class="ig-bar-row"><div class="ig-blabel">';
+        if (e.logo_url) html += '<img src="'+esc(e.logo_url)+'" style="width:13px;height:13px;border-radius:2px;object-fit:contain;flex-shrink:0" onerror="this.style.display=\'none\'">';
+        html += '<span>'+esc(trunc(e.company_name||'',22))+'</span></div>';
+        html += '<div class="ig-track"><div class="ig-bar'+(cur?' ig-cur':'')+'" style="left:'+lp+'%;width:'+wp+'%" title="'+esc(e.role||e.company_name||'')+'"></div></div></div>';
+      });
+      html += '</div>';
+    }
+
+    // ── Middle 2-col: Expertise + Notable Work ──
+    html += '<div class="ig-2col">';
+
+    html += '<div class="ig-card"><div class="ig-sec-lbl">Expertise Zones</div>';
+    var zones = (d.zones||[]).slice(0,6);
+    if (zones.length) {
+      zones.forEach(function(z,i) {
+        var label = z.zone||z.zone_name||(typeof z==='string'?z:'');
+        html += '<div class="ig-exp-row"><span class="ig-exp-name">'+esc(trunc(label,28))+'</span>';
+        html += '<div class="ig-exp-track"><div class="ig-exp-fill" style="width:'+Math.max(30,100-i*13)+'%"></div></div></div>';
+      });
+    } else {
+      var seen={};
+      career.slice(0,6).forEach(function(e,i){
+        var r=e.role||''; if(!r||seen[r]) return; seen[r]=1;
+        html += '<div class="ig-exp-row"><span class="ig-exp-name">'+esc(trunc(r,28))+'</span>';
+        html += '<div class="ig-exp-track"><div class="ig-exp-fill" style="width:'+Math.max(30,100-i*14)+'%"></div></div></div>';
+      });
+    }
+    html += '</div>';
+
+    html += '<div class="ig-card"><div class="ig-sec-lbl">Notable Work</div>';
+    var nwItems = (d.notable||[]).length ? d.notable.slice(0,5) : career.slice(0,5).map(function(e){return{title:e.role,company_name:e.company_name};});
+    nwItems.forEach(function(n){
+      if (!n.title) return;
+      html += '<div class="ig-nw-item"><div class="ig-nw-dot"></div><div><div class="ig-nw-title">'+esc(trunc(n.title,48))+'</div>';
+      if (n.company_name) html += '<div class="ig-nw-sub">'+esc(trunc(n.company_name,32))+'</div>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+
+    html += '</div>'; // /ig-2col
+
+    // ── Footer 3-col ──
+    var hasFtr = (d.edu&&d.edu.length)||(d.ventures&&d.ventures.length)||((d.pubs||[]).length+(d.projects||[]).length);
+    if (hasFtr) {
+      html += '<div class="ig-3col">';
+      if (d.edu&&d.edu.length) {
+        html += '<div class="ig-fcol ig-edu"><div class="ig-fcol-title">Education</div>';
+        d.edu.slice(0,3).forEach(function(e){
+          var dg=[e.degree,e.field].filter(Boolean).join(', ');
+          html += '<div class="ig-fitem"><div class="ig-fitem-name">'+esc(trunc(e.institution_name||'',26))+'</div>';
+          if(dg) html += '<div class="ig-fitem-sub">'+esc(trunc(dg,30))+'</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+      if (d.ventures&&d.ventures.length) {
+        html += '<div class="ig-fcol ig-vent"><div class="ig-fcol-title">Ventures</div>';
+        d.ventures.slice(0,3).forEach(function(v){
+          html += '<div class="ig-fitem"><div class="ig-fitem-name">'+esc(trunc(v.company_name||'',26))+'</div>';
+          if(v.role) html += '<div class="ig-fitem-sub">'+esc(trunc(v.role,28))+'</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+      var outs = (d.pubs||[]).concat(d.projects||[]).slice(0,4);
+      if (outs.length) {
+        html += '<div class="ig-fcol ig-out"><div class="ig-fcol-title">Publications & Projects</div>';
+        outs.forEach(function(p){
+          var sub=p.venue_or_publication||p.type||'';
+          html += '<div class="ig-fitem"><div class="ig-fitem-name">'+esc(trunc(p.title||p.name||'',26))+'</div>';
+          if(sub) html += '<div class="ig-fitem-sub">'+esc(trunc(sub,28))+'</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>'; // /ig-3col
+    }
+
+    html += '</div>'; // /ig-wrap
+    root.innerHTML = html;
+  }
+}());
+</script>
+
+{% if ctx.sim_bios %}
+<script>
+// ── Slide Decks ──────────────────────────────────────────────────────────
+(function() {
+  var _SD = {{ (ctx.sim_bios or []) | tojson }};
+  var _UN = {{ (ctx.full_name or '') | tojson }};
+  if (!_SD || !_SD.length) return;
+
+  var _ready = false, curDeck = 0, curSlide = 0, _cache = [];
+  var LC = ['#0f7b72','#1976d2','#7b1fa2','#e64a19','#f9a825'];
+  var LB = ['rgba(15,123,114,.11)','rgba(25,118,210,.11)','rgba(123,31,162,.11)','rgba(230,74,25,.11)','rgba(249,168,37,.11)'];
+
+  function fmt(n) {
+    if (n == null) return '—';
+    return n >= 1000 ? '$' + (n/1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k' : '$' + n;
+  }
+  function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function trunc(s,n) { s=s||''; return s.length>n ? s.slice(0,n)+'…' : s; }
+
+  function buildSlides(deck) {
+    var slides = [];
+    var layers = deck.layers || [];
+    var avail = deck.availability || 'available';
+    var availText = {available:'Taking clients', limited:'Limited availability', unavailable:'Not available'}[avail] || avail;
+    var svcs = (deck.services || []).slice(0,5);
+
+    // Cover slide
+    slides.push({ type:'cover', html:
+      '<div class="slide-header">'
+      + '<div class="slide-header-label">Wealth Simulation</div>'
+      + '<div class="slide-header-title">' + esc(deck.label) + '</div>'
+      + '<div class="slide-header-sub">' + esc(_UN) + '</div>'
+      + '</div>'
+      + '<div class="slide-body">'
+      + (deck.narrative ? '<div style="font-size:.84rem;line-height:1.65;opacity:.88">' + esc(trunc(deck.narrative, 260)) + '</div>' : '')
+      + '<div class="slide-avail-badge ' + esc(avail) + '">' + esc(availText) + '</div>'
+      + (svcs.length ? '<div class="slide-svc-chips">' + svcs.map(function(s){ return '<span class="slide-svc-chip">'+esc(s)+'</span>'; }).join('') + '</div>' : '')
+      + '</div>'
+    });
+
+    // One slide per layer
+    layers.forEach(function(layer) {
+      var li = Math.max(0, (layer.layer_number||1) - 1);
+      var color = LC[li] || LC[0];
+      var bg = LB[li] || LB[0];
+      var streams = (layer.income_streams || []).slice(0, 4);
+      var streamsHtml = '';
+      if (streams.length) {
+        streamsHtml = '<div class="slide-streams">' + streams.map(function(s) {
+          var lo = s.est_monthly_low, hi = s.est_monthly_high;
+          var range = (lo != null || hi != null) ? fmt(lo) + ' – ' + fmt(hi) + '/mo' : '';
+          return '<div class="slide-stream-card">'
+            + '<div class="slide-stream-name">' + esc(s.name) + '</div>'
+            + (range ? '<div class="slide-stream-range">' + esc(range) + '</div>' : '')
+            + (s.platform ? '<div class="slide-stream-meta">' + esc(trunc(s.platform, 34)) + '</div>' : '')
+            + '</div>';
+        }).join('') + '</div>';
+      }
+      slides.push({ type:'layer', html:
+        '<div class="slide-header">'
+        + '<div style="margin-bottom:.32rem"><span class="slide-layer-num" style="background:'+bg+';color:'+color+'">Layer '+layer.layer_number+'</span>'
+        + (layer.income_type ? '&ensp;<span style="font-size:.69rem;color:var(--muted)">'+esc(layer.income_type)+'</span>' : '')
+        + '</div>'
+        + '<div class="slide-header-title" style="color:'+color+'">'+esc(layer.layer_name)+'</div>'
+        + '</div>'
+        + '<div class="slide-body">'
+        + (layer.ai_narrative ? '<div style="font-size:.81rem;color:var(--muted);line-height:1.65;margin-bottom:.45rem">'+esc(trunc(layer.ai_narrative, 400))+'</div>' : '')
+        + streamsHtml
+        + '</div>'
+      });
+    });
+
+    // Income summary slide (all streams)
+    var allStreams = [];
+    layers.forEach(function(layer) {
+      var li = Math.max(0, (layer.layer_number||1) - 1);
+      (layer.income_streams||[]).forEach(function(s) { allStreams.push({ color: LC[li]||LC[0], s: s }); });
+    });
+    if (allStreams.length) {
+      var totLo = 0, totHi = 0;
+      allStreams.forEach(function(r) { totLo += (r.s.est_monthly_low||0); totHi += (r.s.est_monthly_high||0); });
+      var rows = allStreams.slice(0,12).map(function(r) {
+        var s = r.s;
+        var lo = s.est_monthly_low, hi = s.est_monthly_high;
+        var range = (lo != null || hi != null) ? fmt(lo) + ' – ' + fmt(hi) : '—';
+        var auto = {low:'Low',medium:'Med',high:'High',full:'Full'}[s.automation_level] || '';
+        return '<tr>'
+          + '<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+r.color+';margin-right:6px;vertical-align:middle"></span>'+esc(trunc(s.name,30))+'</td>'
+          + '<td class="range-cell">'+esc(range)+'/mo</td>'
+          + '<td style="color:var(--muted)">'+esc(auto)+'</td>'
+          + '</tr>';
+      }).join('');
+      slides.push({ type:'summary', html:
+        '<div class="slide-header">'
+        + '<div class="slide-header-label">Income Potential</div>'
+        + '<div class="slide-header-title">Monthly Revenue Landscape</div>'
+        + '<div class="slide-header-sub" style="color:var(--accent);font-size:.93rem;font-weight:700;margin-top:.28rem">'+fmt(totLo)+' – '+fmt(totHi)+' / month</div>'
+        + '</div>'
+        + '<div class="slide-body" style="overflow:auto">'
+        + '<table class="slide-income-table"><thead><tr><th>Income Stream</th><th>Est. Monthly</th><th>Automation</th></tr></thead>'
+        + '<tbody>'+rows+'</tbody></table>'
+        + '</div>'
+      });
+    }
+    return slides;
+  }
+
+  function render() {
+    var deck = _SD[curDeck];
+    if (!_cache[curDeck]) _cache[curDeck] = buildSlides(deck);
+    var slides = _cache[curDeck];
+    var viewer = document.getElementById('slide-viewer');
+    if (!viewer || !slides.length) return;
+    var si = Math.min(curSlide, slides.length - 1);
+    var slide = slides[si];
+    var isCover = slide.type === 'cover';
+    var dots = slides.map(function(_, i) {
+      return '<div class="slide-dot'+(i===si?' active':'')+'" onclick="window._sDot('+i+')" title="Slide '+(i+1)+'"></div>';
+    }).join('');
+    viewer.innerHTML =
+      '<div class="slide active'+(isCover?' slide-cover':'')+'">'
+      + slide.html
+      + '<div class="slide-footer">'
+      + '<button class="slide-nav-btn" onclick="window._sNav(-1)"'+(si===0?' disabled':'')+' aria-label="Previous">'
+      + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
+      + '</button>'
+      + '<div class="slide-dots">'+dots+'</div>'
+      + '<div style="display:flex;align-items:center;gap:.55rem">'
+      + '<span class="slide-counter">'+(si+1)+' / '+slides.length+'</span>'
+      + '<button class="slide-nav-btn" onclick="window._sNav(1)"'+(si>=slides.length-1?' disabled':'')+' aria-label="Next">'
+      + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+      + '</button>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function selectDeck(idx) {
+    curDeck = idx; curSlide = 0;
+    document.querySelectorAll('.slides-deck-pill').forEach(function(p, i) { p.classList.toggle('active', i===idx); });
+    render();
+  }
+
+  window._sNav = function(dir) {
+    if (!_cache[curDeck]) _cache[curDeck] = buildSlides(_SD[curDeck]);
+    curSlide = Math.max(0, Math.min(_cache[curDeck].length-1, curSlide+dir));
+    render();
+  };
+  window._sDot = function(idx) { curSlide = idx; render(); };
+
+  window.initSlides = function() {
+    if (_ready) return;
+    _ready = true;
+    var nav = document.getElementById('slides-deck-nav');
+    if (nav && _SD.length > 1) {
+      _SD.forEach(function(deck, i) {
+        var btn = document.createElement('button');
+        btn.className = 'slides-deck-pill' + (i===0?' active':'');
+        btn.textContent = deck.label;
+        btn.onclick = function() { selectDeck(i); };
+        nav.appendChild(btn);
+      });
+    }
+    selectDeck(0);
+  };
+
+  // ── PDF export ────────────────────────────────────────────────────────
+  function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  window.exportSlidePDF = function() {
+    var btn = document.getElementById('slides-export-btn');
+    if (btn && btn.disabled) return;
+    var deck = _SD[curDeck];
+    if (!_cache[curDeck]) _cache[curDeck] = buildSlides(deck);
+    var slides = _cache[curDeck];
+    if (!slides || !slides.length) return;
+
+    if (btn) { btn.disabled = true; btn.innerHTML = btn.innerHTML.replace(/Download PDF.*/, 'Starting…'); }
+
+    var PX_W = 1280, PX_H = 720; // 16:9 render canvas
+    var MM_W = 297, MM_H = 167;  // PDF page size (mm, ~16:9)
+
+    // Resolve current theme CSS variables for the off-screen container
+    var cs = getComputedStyle(document.documentElement);
+    var themeVars = ['--bg','--bg2','--text','--muted','--accent','--accent-hover','--border','--card-bg','--card-shadow'];
+    var varStr = themeVars.map(function(v){ return v+':'+cs.getPropertyValue(v).trim(); }).join(';');
+
+    // Build the render box (attached to DOM so CSS rules apply)
+    var box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:-9999px;top:0;width:'+PX_W+'px;height:'+PX_H+'px;overflow:hidden;font-family:inherit;'+varStr;
+    document.body.appendChild(box);
+
+    function setStatus(msg) {
+      if (btn) {
+        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ' + esc(msg);
+      }
+    }
+
+    function cleanup(errMsg) {
+      try { document.body.removeChild(box); } catch(e){}
+      if (btn) { btn.disabled = false; }
+      if (errMsg) {
+        if (btn) setStatus('Download PDF');
+        // restore icon
+        if (btn) btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PDF';
+        console.error('PDF export:', errMsg);
+      }
+    }
+
+    Promise.all([
+      window.jspdf ? Promise.resolve() : loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+      window.html2canvas ? Promise.resolve() : loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+    ]).then(function() {
+      var jsPDF = window.jspdf.jsPDF;
+      var pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [MM_W, MM_H] });
+      var chain = Promise.resolve();
+
+      slides.forEach(function(slide, i) {
+        chain = chain.then(function() {
+          setStatus((i+1) + ' / ' + slides.length + '…');
+          var isCover = slide.type === 'cover';
+          box.innerHTML =
+            '<div class="slide-viewer" style="width:'+PX_W+'px;height:'+PX_H+'px;border:none;border-radius:0;overflow:hidden">'
+            + '<div class="slide active'+(isCover?' slide-cover':'')+'" style="height:'+PX_H+'px;min-height:0;display:flex;flex-direction:column">'
+            + slide.html
+            + '<div class="slide-footer" style="flex-shrink:0">'
+            + '<span style="font-size:.65rem;opacity:.55">'+esc(deck.label)+'</span>'
+            + '<span></span>'
+            + '<span class="slide-counter">'+(i+1)+' / '+slides.length+'</span>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
+          // Let browser paint
+          return new Promise(function(res){ requestAnimationFrame(function(){ setTimeout(res, 60); }); });
+        }).then(function() {
+          return html2canvas(box.firstChild, {
+            width: PX_W, height: PX_H, scale: 1,
+            useCORS: true, logging: false, backgroundColor: null,
+            windowWidth: PX_W, windowHeight: PX_H,
+          });
+        }).then(function(canvas) {
+          if (i > 0) pdf.addPage([MM_W, MM_H], 'landscape');
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, MM_W, MM_H);
+        });
+      });
+
+      return chain.then(function() {
+        var filename = (deck.label || 'Simulacrum').replace(/[\/\\:*?"<>|]/g, '-') + ' — Slide Deck.pdf';
+        pdf.save(filename);
+        cleanup();
+        if (btn) btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PDF';
+      });
+    }).catch(function(err) {
+      cleanup('Failed: ' + (err && err.message || err));
+    });
+  };
 }());
 </script>
 {% endif %}

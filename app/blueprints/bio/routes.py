@@ -137,6 +137,27 @@ def _assemble_context(user_id: str, bp: BioPage | None = None) -> dict:
         availability = getattr(vis, 'availability', 'available') or 'available'
         narrative = layer1.ai_narrative if layer1 and layer1.ai_narrative else None
         label = zone_sim.expertise_zone or zone_sim.name or 'Expertise Area'
+        # Full layer + stream data for slide deck rendering
+        layers_data = []
+        for layer in zone_sim.layers:
+            streams_data = []
+            for s in layer.income_streams:
+                streams_data.append({
+                    'name': s.name,
+                    'description': (s.description or '')[:200],
+                    'platform': s.platform or '',
+                    'est_monthly_low': s.est_monthly_low,
+                    'est_monthly_high': s.est_monthly_high,
+                    'automation_level': s.automation_level or '',
+                    'launch_timeline_weeks': s.launch_timeline_weeks,
+                })
+            layers_data.append({
+                'layer_number': layer.layer_number,
+                'layer_name': layer.layer_name,
+                'income_type': layer.income_type or '',
+                'ai_narrative': (layer.ai_narrative or '')[:500],
+                'income_streams': streams_data,
+            })
         # sim_bios: every individual simulation (no dedup)
         sim_bios.append({
             'id': zone_sim.id,
@@ -144,6 +165,7 @@ def _assemble_context(user_id: str, bp: BioPage | None = None) -> dict:
             'narrative': narrative,
             'services': unique_services,
             'availability': availability,
+            'layers': layers_data,
         })
         # sim_zones: deduped by zone name (for summary cards)
         zone_key = label.strip().lower()
