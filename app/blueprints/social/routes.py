@@ -310,11 +310,14 @@ def activity_feed():
     enriched = []
     for ev in paginated.items:
         profile = UserProfile.query.filter_by(user_id=ev.user_id).first()
+        bp = BioPage.query.filter_by(
+            user_id=ev.user_id, status=BioPage.STATUS_PUBLISHED,
+        ).first()
         enriched.append({
             'event': ev.to_dict(),
             'actor_name': profile.display_name if profile else 'A connection',
             'actor_avatar': profile.avatar_path if profile else None,
-            'actor_slug': profile.username if profile else None,
+            'actor_slug': profile.username if (profile and bp) else None,
         })
 
     return render_template(
@@ -349,10 +352,13 @@ def api_feed():
     enriched = []
     for ev in paginated.items:
         profile = UserProfile.query.filter_by(user_id=ev.user_id).first()
+        bp = BioPage.query.filter_by(
+            user_id=ev.user_id, status=BioPage.STATUS_PUBLISHED,
+        ).first()
         d = ev.to_dict()
         d['actor_name'] = profile.display_name if profile else 'A connection'
         d['actor_avatar'] = profile.avatar_path if profile else None
-        d['actor_slug'] = profile.username if profile else None
+        d['actor_slug'] = profile.username if (profile and bp) else None
         enriched.append(d)
 
     return jsonify({'events': enriched, 'has_more': paginated.has_next})
@@ -692,6 +698,9 @@ def my_chats():
     for c in chats:
         owner = User.query.get(c.owner_user_id)
         profile = UserProfile.query.filter_by(user_id=c.owner_user_id).first()
+        owner_bp = BioPage.query.filter_by(
+            user_id=c.owner_user_id, status=BioPage.STATUS_PUBLISHED,
+        ).first()
         last_msg = (
             PlatformChatMessage.query
             .filter_by(chat_id=c.id)
@@ -702,7 +711,7 @@ def my_chats():
             'chat': c.to_dict(),
             'owner_name': owner.full_name if owner else 'Unknown',
             'owner_avatar': profile.avatar_path if profile else None,
-            'owner_slug': profile.username if profile else None,
+            'owner_slug': profile.username if (profile and owner_bp) else None,
             'last_message': last_msg.content[:100] if last_msg else '',
             'last_message_role': last_msg.role if last_msg else None,
             'last_message_at': last_msg.created_at.isoformat() if last_msg else c.created_at.isoformat(),

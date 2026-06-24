@@ -63,6 +63,48 @@ def profile_page(username):
             except Exception:
                 db.session.rollback()
 
+        # Build connections panel — shows the page owner's network
+        connections_panel = None
+        if current_user.is_authenticated:
+            try:
+                from app.models.social import UserConnection
+                from sqlalchemy import or_ as _or
+                owner_id = profile.user_id
+                first_ids = UserConnection.first_degree_ids(owner_id)
+                conns_1st = []
+                for _uid in first_ids:
+                    _up = UserProfile.query.filter_by(user_id=_uid).first()
+                    if _up:
+                        _bp2 = BioPage.query.filter_by(
+                            user_id=_uid, status=BioPage.STATUS_PUBLISHED,
+                        ).first()
+                        if not _bp2:
+                            continue
+                        conns_1st.append({
+                            'display_name': _up.display_name or _up.username or '',
+                            'avatar_path': _up.avatar_path or '',
+                            'slug': _bp2.slug,
+                        })
+                second_ids = UserConnection.second_degree_ids(owner_id)
+                first_set = set(first_ids)
+                all_known = first_set | second_ids | {owner_id}
+                third_ids = set()
+                for _sid in list(second_ids)[:8]:
+                    for _r in UserConnection.query.filter(
+                        _or(UserConnection.user_a_id == _sid,
+                            UserConnection.user_b_id == _sid)
+                    ).all():
+                        _other = _r.user_b_id if _r.user_a_id == _sid else _r.user_a_id
+                        if _other not in all_known:
+                            third_ids.add(_other)
+                connections_panel = {
+                    'connections_1st': conns_1st,
+                    'count_2nd': len(second_ids),
+                    'count_3rd': len(third_ids),
+                }
+            except Exception:
+                pass
+
         return render_template(
             'public/bio_page.html',
             bio_page=bio_page,
@@ -72,6 +114,7 @@ def profile_page(username):
             is_owner=is_owner,
             slug=slug,
             hide_owner_bar=request.args.get('embed') == '1',
+            connections_panel=connections_panel,
         )
 
     # ── Fallback: legacy profile page ────────────────────────────────────
@@ -319,12 +362,70 @@ def explore():
     )
 
 
+_CATEGORY_KEYWORDS = {
+    'Technology': [
+        'tech', 'software', 'engineering', 'developer', 'coding', 'programmer',
+        'data', 'ai', 'ml', 'machine learning', 'artificial intelligence',
+        'cloud', 'devops', 'cybersecurity', 'security', 'saas', 'platform',
+        'digital', 'it ', 'information technology', 'network', 'infrastructure',
+        'product management', 'product manager', 'analytics', 'automation',
+        'robotics', 'iot', 'blockchain', 'web development', 'mobile',
+    ],
+    'Finance': [
+        'financ', 'investment', 'banking', 'accounting', 'wealth',
+        'trading', 'fintech', 'cfo', 'economic', 'capital', 'fund',
+        'equity', 'debt', 'credit', 'audit', 'tax', 'insurance',
+        'asset management', 'portfolio', 'venture', 'private equity',
+        'hedge fund', 'treasury', 'risk management', 'actuarial',
+    ],
+    'Marketing': [
+        'marketing', 'brand', 'branding', 'advertising', 'content',
+        'seo', 'social media', 'growth', 'pr ', 'public relations',
+        'communications', 'campaign', 'demand generation', 'copywriting',
+        'influencer', 'email marketing', 'digital marketing', 'cmo',
+        'market research', 'media buying', 'affiliate',
+    ],
+    'Design': [
+        'design', 'ux', 'ui ', 'user experience', 'user interface',
+        'graphic', 'visual', 'art director', 'animation', 'typography',
+        'creative director', 'illustrat', 'motion', 'product design',
+        'brand identity', 'web design', 'industrial design', 'fashion',
+    ],
+    'Consulting': [
+        'consult', 'advisor', 'advisory', 'strategy', 'strategic',
+        'management', 'operations', 'business development', 'transformation',
+        'change management', 'process improvement', 'executive coach',
+        'organizational', 'business analyst', 'project management', 'pmo',
+    ],
+    'Healthcare': [
+        'health', 'medical', 'clinical', 'pharma', 'biotech',
+        'nurs', 'physician', 'doctor', 'wellness', 'hospital',
+        'patient', 'therapy', 'therapist', 'dental', 'surgeon',
+        'public health', 'nutrition', 'mental health', 'biology',
+        'life science', 'healthcare', 'medicine',
+    ],
+    'Legal': [
+        'legal', 'law', 'attorney', 'lawyer', 'compliance',
+        'regulat', 'counsel', 'litigation', 'contract', 'paralegal',
+        'intellectual property', 'patent', 'corporate law', 'employment law',
+        'arbitration', 'mediation', 'juris',
+    ],
+    'Education': [
+        'educat', 'teach', 'training', 'learning', 'coach',
+        'academic', 'universit', 'school', 'curriculum', 'professor',
+        'instructor', 'tutor', 'e-learning', 'elearning', 'workshop',
+        'facilitator', 'career development', 'leadership development',
+    ],
+}
+
+
 def _zone_to_category(zone: str) -> str:
     """Map free-text expertise zone to one of the explore category pills."""
     z = (zone or '').lower()
-    for cat in _EXPLORE_CATEGORIES[:-1]:  # skip 'Other'
-        if cat.lower() in z:
-            return cat
+    for cat, keywords in _CATEGORY_KEYWORDS.items():
+        for kw in keywords:
+            if kw in z:
+                return cat
     return 'Other'
 
 
