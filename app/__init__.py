@@ -226,6 +226,7 @@ def create_app(config_name=None):
             ArtifactDependency, BundleTypeConfig,
         )
         from app.models.discount import SimulationDiscount
+        from app.models.simulation_video import SimulationVideo
         return dict(
             db=db, User=User, Resume=Resume, Simulation=Simulation,
             SimulationLayer=SimulationLayer, IncomeStream=IncomeStream,

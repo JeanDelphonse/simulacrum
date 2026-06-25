@@ -744,6 +744,17 @@
     .slides-export-btn { flex-shrink: 0; padding: .3rem .8rem; border: 1px solid var(--border); border-radius: 6px; background: none; font-size: .72rem; font-weight: 500; color: var(--muted); cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: .38rem; transition: all .15s; white-space: nowrap; }
     .slides-export-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
     .slides-export-btn:disabled { opacity: .5; cursor: default; }
+    /* ── Video tab ──────────────────────────────────────────── */
+    .bio-video-panel { padding: 1.5rem 0; }
+    .bio-video-list { display: flex; flex-direction: column; gap: 1.5rem; }
+    .bio-video-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .bio-video-label { padding: .75rem 1.25rem; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .bio-video-wrap { position: relative; }
+    .bio-video-wrap--square { aspect-ratio: 1 / 1; }
+    .bio-video-wrap--landscape { aspect-ratio: 16 / 9; }
+    .bio-video-wrap--vertical { aspect-ratio: 9 / 16; max-width: 360px; }
+    .bio-video-player { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+    .bio-video-duration { position: absolute; bottom: .55rem; right: .6rem; background: rgba(0,0,0,.72); color: #fff; font-size: .7rem; font-weight: 600; padding: .18rem .45rem; border-radius: 4px; pointer-events: none; }
     .slide-cover { background: linear-gradient(140deg, var(--accent) 0%, #0a5c56 100%); }
     .slide-cover .slide-header { border-bottom-color: rgba(255,255,255,.18); }
     .slide-cover .slide-header-label { color: rgba(255,255,255,.65); }
@@ -919,6 +930,7 @@
     <button class="bio-tab-btn" onclick="mmTab('mindmap',this)">Career Map</button>
     <button class="bio-tab-btn" onclick="mmTab('infographic',this)">Infographic</button>
     {% if ctx.sim_bios %}<button class="bio-tab-btn" onclick="mmTab('slides',this)">Slide Decks</button>{% endif %}
+    {% if ctx.sim_videos %}<button class="bio-tab-btn" onclick="mmTab('video',this)">Video</button>{% endif %}
   </div>
 
   <!-- ── Mind map panel ──────────────────────────────────────────────── -->
@@ -949,6 +961,31 @@
     <div id="slide-viewer" class="slide-viewer"></div>
     {% else %}
     <div style="text-align:center;padding:3rem;color:var(--muted);font-size:.87rem">No simulation decks available.</div>
+    {% endif %}
+  </div>
+
+  <!-- ── Video panel (FR-VOICE-11) ────────────────────────────────────── -->
+  <div id="bio-video-panel" style="display:none" class="bio-video-panel">
+    {% if ctx.sim_videos %}
+    <div class="bio-video-list">
+      {% for v in ctx.sim_videos %}
+      <div class="bio-video-item">
+        <div class="bio-video-label">{{ v.sim_label }}</div>
+        <div class="bio-video-wrap bio-video-wrap--{{ v.format }}">
+          <video class="bio-video-player" controls preload="metadata"
+                 {% if v.thumbnail_path %}poster="{{ url_for('static', filename=v.thumbnail_path) }}"{% endif %}>
+            <source src="{{ url_for('static', filename=v.video_path) }}" type="video/mp4">
+            Your browser does not support video playback.
+          </video>
+          {% if v.duration_label %}
+          <span class="bio-video-duration">{{ v.duration_label }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem;color:var(--muted);font-size:.87rem">No video overviews available.</div>
     {% endif %}
   </div>
 
@@ -2131,10 +2168,12 @@ async function publishNow() {
     var mp = document.getElementById('bio-mm-panel');
     var ip = document.getElementById('bio-ig-panel');
     var sp = document.getElementById('bio-slides-panel');
+    var vp = document.getElementById('bio-video-panel');
     if (pp) pp.style.display = 'none';
     if (mp) mp.style.display = 'none';
     if (ip) ip.style.display = 'none';
     if (sp) sp.style.display = 'none';
+    if (vp) vp.style.display = 'none';
     if (tab === 'mindmap') {
       if (mp) mp.style.display = 'block';
       if (!rendered) { rendered = true; redraw(); }
@@ -2144,6 +2183,8 @@ async function publishNow() {
     } else if (tab === 'slides') {
       if (sp) sp.style.display = 'block';
       if (window.initSlides) window.initSlides();
+    } else if (tab === 'video') {
+      if (vp) vp.style.display = 'block';
     } else {
       if (pp) pp.style.display = '';
     }

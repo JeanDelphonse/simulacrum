@@ -180,6 +180,30 @@ def _assemble_context(user_id: str, bp: BioPage | None = None) -> dict:
     ctx['sim_bios'] = sim_bios
     ctx['sim_zones'] = sim_zones
 
+    # ── Videos embedded on bio page (FR-VOICE-11) ─────────────────────────
+    try:
+        from app.models.simulation_video import SimulationVideo
+        videos = SimulationVideo.query.filter_by(
+            user_id=user_id, embedded_on_bio=True, status='complete',
+        ).order_by(SimulationVideo.created_at.desc()).all()
+        sim_videos = []
+        for v in videos:
+            zone_sim = Simulation.query.get(v.simulation_id)
+            sim_label = (zone_sim.expertise_zone or zone_sim.name) if zone_sim else 'Simulation'
+            dur = v.duration_seconds or 0
+            sim_videos.append({
+                'id':               v.id,
+                'sim_label':        sim_label,
+                'video_path':       v.video_path,
+                'thumbnail_path':   v.thumbnail_path,
+                'duration_seconds': dur,
+                'duration_label':   f'{dur // 60}:{dur % 60:02d}' if dur else '',
+                'format':           v.format,
+            })
+        ctx['sim_videos'] = sim_videos
+    except Exception:
+        ctx['sim_videos'] = []
+
     # Apply section overrides from bio page
     if bp:
         sections = bp.sections

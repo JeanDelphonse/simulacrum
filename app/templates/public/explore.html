@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='simi_logo.jpg') }}">
   <title>Explore professionals on Simulacrum</title>
   <meta name="description" content="Discover professionals powered by Simulacrum. Chat with AI assistants, explore services, and connect with talent.">
   <meta property="og:title" content="Explore professionals on Simulacrum">
@@ -175,6 +176,8 @@
     }
     .degree-1 { background: #dcfce7; color: #16a34a; }
     .degree-2 { background: #dbeafe; color: #1d4ed8; }
+    .video-badge { display: inline-flex; align-items: center; gap: .25rem; font-size: .68rem; font-weight: 700; padding: .14rem .45rem; border-radius: 999px; background: #fef3c7; color: #b45309; margin-left: .4rem; vertical-align: middle; }
+    .video-badge svg { width: 9px; height: 9px; }
 
     /* ── Empty state ── */
     .empty-state { text-align: center; padding: 4rem 1.5rem; color: #9ca3af; }
@@ -257,6 +260,7 @@
             {% if c.degree == 1 %}<span class="degree-badge degree-1">1st</span>
             {% elif c.degree == 2 %}<span class="degree-badge degree-2" title="2nd · via {{ c.via_name }}">2nd</span>
             {% endif %}
+            {% if c.has_video %}<span class="video-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Video</span>{% endif %}
           </div>
           <div class="card-zone">{{ c.category }}</div>
         </div>
@@ -303,6 +307,7 @@
             {% if c.degree == 1 %}<span class="degree-badge degree-1">1st</span>
             {% elif c.degree == 2 %}<span class="degree-badge degree-2" title="2nd · via {{ c.via_name }}">2nd</span>
             {% endif %}
+            {% if c.has_video %}<span class="video-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Video</span>{% endif %}
           </div>
           <div class="card-zone">{{ c.category }}</div>
         </div>

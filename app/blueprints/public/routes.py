@@ -314,12 +314,21 @@ def explore():
         like_count = getattr(bp, 'like_count', 0) or 0
         lead_count = bp.contact_form_count or 0
 
-        # FR-SOC-02 updated ranking: views×1 + likes×3 + chats×5 + leads×10
+        try:
+            from app.models.simulation_video import SimulationVideo
+            has_video = SimulationVideo.query.filter_by(
+                user_id=bp.user_id, embedded_on_bio=True, status='complete',
+            ).first() is not None
+        except Exception:
+            has_video = False
+
+        # FR-VOICE-11 updated ranking: views×1 + likes×3 + chats×5 + leads×10 + has_video×8
         engagement = (
             (bp.view_count or 0) * 1
             + like_count * 3
             + chat_count * 5
             + lead_count * 10
+            + (8 if has_video else 0)
         )
 
         degree = None
@@ -340,6 +349,7 @@ def explore():
             'category': _zone_to_category(zone),
             'chat_count': chat_count,
             'like_count': like_count,
+            'has_video': has_video,
             'view_count': bp.view_count or 0,
             'engagement': engagement,
             'degree': degree,
