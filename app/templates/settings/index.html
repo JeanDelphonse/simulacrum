@@ -245,8 +245,8 @@
 .bp-testimonial-item { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: .7rem; margin-bottom: .5rem; position: relative; }
 .bp-testimonial-item .t-quote { font-size: .83rem; font-style: italic; margin-bottom: .25rem; color: rgba(255,255,255,.7); font-family: 'DM Sans', sans-serif; }
 .bp-testimonial-item .t-name { font-size: .78rem; font-weight: 600; color: #e8eaf0; font-family: 'DM Sans', sans-serif; }
-.bp-t-delete { position: absolute; top: .5rem; right: .5rem; background: none; border: none; color: rgba(255,255,255,.3); cursor: pointer; font-size: .88rem; }
-.bp-t-delete:hover { color: #fca5a5; }
+.bp-t-delete { background: none; border: 1px solid rgba(252,165,165,.35); border-radius: 4px; color: #fca5a5; cursor: pointer; font-size: .72rem; padding: .2rem .55rem; margin-top: .4rem; display: inline-block; }
+.bp-t-delete:hover { background: rgba(252,165,165,.1); }
 .bp-upload-area { border: 2px dashed rgba(255,255,255,.15); border-radius: 8px; padding: .8rem; text-align: center; font-size: .82rem; color: #94a3b8; cursor: pointer; transition: border-color .12s; font-family: 'DM Sans', sans-serif; }
 .bp-upload-area:hover { border-color: #0F7B72; }
 .bp-upload-area input[type=file] { display: none; }
@@ -652,7 +652,12 @@
             <div class="bp-editor-body" id="bp-career-body">
               <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Auto-populated from your resume. Add, edit, or reorder entries.</div>
               <div id="career-list"></div>
-              <button class="bp-add-t-toggle" onclick="bio003OpenAdd('career')">+ Add position</button>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
+                <button class="bp-add-t-toggle" onclick="bio003OpenAdd('career')">+ Add position</button>
+                <button class="bp-add-t-toggle" id="bio003-import-career-btn" onclick="bio003ImportCareer()" style="background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);color:#f5c842">↓ Parse from bio</button>
+                <button class="bp-add-t-toggle" id="bio003-fetch-logos-btn" onclick="bio003FetchLogos()" style="background:rgba(77,217,196,.06);border-color:rgba(77,217,196,.3);color:#4dd9c4">⬡ Fetch logos</button>
+              </div>
+              <div id="bio003-import-career-status" style="font-size:.75rem;margin-top:.4rem;display:none"></div>
               <div id="career-add-form" class="bio003-add-form" style="display:none"></div>
             </div>
           </div>
@@ -2255,7 +2260,7 @@ async function regenerateBio() {
       div.innerHTML =
         '<p class="t-quote">"' + _esc(t.quote) + '"</p>' +
         '<div class="t-name">' + _esc(t.name) + (t.title ? ', ' + _esc(t.title) : '') + '</div>' +
-        '<button class="bp-t-delete" data-id="' + t.id + '" title="Delete">✕</button>';
+        '<button class="bp-t-delete" data-id="' + t.id + '">Delete</button>';
       list.appendChild(div);
     });
     list.querySelectorAll('.bp-t-delete').forEach(function(btn) {
@@ -2380,11 +2385,18 @@ async function regenerateBio() {
     if (!list) return;
     if (!arr.length) { list.innerHTML = '<div style="font-size:.78rem;color:rgba(255,255,255,.3);padding:.35rem 0">No entries yet.</div>'; return; }
     list.innerHTML = arr.map(function(e, i) {
+      var logoHtml = '';
+      if (key === 'career' && e.logo_url) {
+        logoHtml = '<img src="' + _esc(e.logo_url) + '" style="width:18px;height:18px;border-radius:3px;object-fit:contain;flex-shrink:0" onerror="this.style.display=\'none\'">';
+      }
       return '<div class="bp-testimonial-item" style="display:flex;align-items:center;justify-content:space-between;gap:.5rem">' +
-        '<span style="font-size:.8rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _LABELS[key](e) + '</span>' +
+        '<div style="display:flex;align-items:center;gap:.4rem;flex:1;min-width:0">' +
+        logoHtml +
+        '<span style="font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _LABELS[key](e) + '</span>' +
+        '</div>' +
         '<div style="display:flex;gap:.3rem;flex-shrink:0">' +
         '<button class="btn btn-ghost btn-sm" style="padding:.2rem .55rem;font-size:.72rem" onclick="bio003Edit(' + JSON.stringify(key) + ',' + i + ')">Edit</button>' +
-        '<button class="btn btn-ghost btn-sm" style="padding:.2rem .55rem;font-size:.72rem;color:#fca5a5" onclick="bio003Del(' + JSON.stringify(key) + ',' + i + ')">✕</button>' +
+        '<button class="btn btn-ghost btn-sm" style="padding:.2rem .55rem;font-size:.72rem;color:#fca5a5;border:1px solid rgba(252,165,165,.35)" onclick="bio003Del(' + JSON.stringify(key) + ',' + i + ')">Delete</button>' +
         '</div></div>';
     }).join('');
   }
@@ -2394,6 +2406,86 @@ async function regenerateBio() {
     window.bio003State[key].splice(idx, 1);
     _render(key, window.bio003State[key]);
     if (typeof saveProfile === 'function') saveProfile();
+  };
+
+  window.bio003ImportCareer = function() {
+    var bioEl = document.getElementById('bioEditor');
+    var bio = bioEl ? bioEl.value.trim() : '';
+    if (!bio) { alert('Your bio is empty. Write or generate a bio first.'); return; }
+    var btn = document.getElementById('bio003-import-career-btn');
+    var statusEl = document.getElementById('bio003-import-career-status');
+    if (btn) { btn.disabled = true; btn.textContent = 'Parsing…'; }
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'rgba(255,255,255,.5)'; statusEl.textContent = 'Extracting career entries from your bio…'; }
+    fetch(ROOT2 + '/api/settings/career/import', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bio: bio}),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) { throw new Error(d.error); }
+      var entries = d.entries || [];
+      if (!entries.length) {
+        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = 'No work history found in bio.'; }
+        return;
+      }
+      var existing = window.bio003State.career || [];
+      var added = 0;
+      entries.forEach(function(e) {
+        var dup = existing.some(function(x) {
+          return x.company_name === e.company_name && x.role === e.role;
+        });
+        if (!dup) { existing.push(e); added++; }
+      });
+      window.bio003State.career = existing;
+      _render('career', existing);
+      if (typeof saveProfile === 'function') saveProfile();
+      if (statusEl) {
+        statusEl.style.color = '#4dd9c4';
+        statusEl.textContent = added + ' entr' + (added === 1 ? 'y' : 'ies') + ' added' + (entries.length - added > 0 ? ', ' + (entries.length - added) + ' duplicate(s) skipped' : '') + '.';
+      }
+    })
+    .catch(function(err) {
+      if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = err.message || 'Parse failed. Try again.'; }
+    })
+    .finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = '↓ Parse from bio'; }
+    });
+  };
+
+  window.bio003FetchLogos = function() {
+    var entries = window.bio003State.career || [];
+    if (!entries.length) { alert('No career entries yet. Add positions first.'); return; }
+    var btn = document.getElementById('bio003-fetch-logos-btn');
+    var statusEl = document.getElementById('bio003-import-career-status');
+    if (btn) { btn.disabled = true; btn.textContent = 'Fetching…'; }
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'rgba(255,255,255,.5)'; statusEl.textContent = 'Searching for company logos…'; }
+    fetch(ROOT2 + '/api/settings/career/logos', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({entries: entries}),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var logos = d.logos || [];
+      var found = 0;
+      logos.forEach(function(logoUrl, i) {
+        if (logoUrl && entries[i]) { entries[i].logo_url = logoUrl; found++; }
+      });
+      window.bio003State.career = entries;
+      _render('career', entries);
+      if (typeof saveProfile === 'function') saveProfile();
+      if (statusEl) {
+        statusEl.style.color = found > 0 ? '#4dd9c4' : 'rgba(255,255,255,.4)';
+        statusEl.textContent = found + ' logo' + (found === 1 ? '' : 's') + ' found out of ' + entries.length + '.';
+      }
+    })
+    .catch(function() {
+      if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = 'Logo fetch failed. Try again.'; }
+    })
+    .finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = '⬡ Fetch logos'; }
+    });
   };
 
   // ── Form definitions per section ──
@@ -3106,7 +3198,7 @@ function openGenericWizard(provider) {
   document.getElementById('wzSteps').innerHTML = def.steps.map((s,i) =>
     `<div style="display:flex;gap:.5rem;margin-bottom:.35rem;align-items:flex-start">
       <span style="display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;border-radius:50%;background:#00a896;color:#fff;font-size:.65rem;font-weight:700;margin-top:.1rem">${i+1}</span>
-      <span style="font-size:.82rem;color:rgba(255,255,255,.8)">${s}</span>
+      <span style="font-size:.82rem;color:#111">${s}</span>
     </div>`
   ).join('');
   const noteEl = document.getElementById('wzNote');
