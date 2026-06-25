@@ -110,6 +110,27 @@ def create_prospect_tier_checkout_session(
     return {'checkout_url': session.url, 'session_id': session.id}
 
 
+def create_voice_training_checkout(user_id: str, success_url: str, cancel_url: str) -> dict:
+    """Create a $4.99 Stripe Checkout Session for voice training add-on."""
+    s = _stripe()
+    session = s.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': 'usd',
+                'product_data': {'name': 'Voice Training — Simulacrum AI'},
+                'unit_amount': 499,
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={'user_id': user_id, 'product': 'voice_training'},
+    )
+    return {'checkout_url': session.url, 'session_id': session.id}
+
+
 def construct_webhook_event(payload: bytes, sig_header: str) -> object:
     s = _stripe()
     return s.Webhook.construct_event(

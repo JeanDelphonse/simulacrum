@@ -121,6 +121,7 @@ def create_app(config_name=None):
     from app.blueprints.social import social_bp
     app.logger.info('startup: social_bp imported')
     from app.blueprints.onboarding import onboarding_bp
+    from app.blueprints.voice import voice_bp
     app.logger.info('startup: onboarding_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -148,6 +149,7 @@ def create_app(config_name=None):
     app.register_blueprint(corporate_bp)
     app.register_blueprint(social_bp)
     app.register_blueprint(onboarding_bp)
+    app.register_blueprint(voice_bp)
 
     # Register page routes
     from app.blueprints.pages import pages_bp

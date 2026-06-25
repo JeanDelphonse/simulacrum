@@ -37,6 +37,11 @@ class User(UserMixin, db.Model):
     # onboarding wizard (SIM-PRD-ONBOARD-001)
     onboarding_step = db.Column(db.Integer, default=1, nullable=False, server_default='1')
     onboarding_completed_at = db.Column(db.DateTime, nullable=True)
+    # voice training (SIM-PRD-VOICE-001)
+    elevenlabs_voice_id       = db.Column(db.String(50),  nullable=True)
+    voice_trained_at          = db.Column(db.DateTime,    nullable=True)
+    voice_consent_accepted_at = db.Column(db.DateTime,    nullable=True)
+    voice_training_paid_at    = db.Column(db.DateTime,    nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

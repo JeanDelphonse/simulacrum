@@ -72,7 +72,18 @@ def stripe_webhook():
     elif event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         meta = session.get('metadata') or {}
-        if meta.get('product') == 'prospect_tier_upgrade':
+        if meta.get('product') == 'voice_training':
+            user_id = meta.get('user_id')
+            if user_id:
+                from app.models.user import User
+                user = User.query.get(user_id)
+                if user and not user.voice_training_paid_at:
+                    from datetime import datetime as _dt
+                    user.voice_training_paid_at = _dt.utcnow()
+                    db.session.commit()
+                    logger.info('Voice training unlocked for user %s', user_id)
+
+        elif meta.get('product') == 'prospect_tier_upgrade':
             sim_id = meta.get('simulation_id')
             try:
                 upgrade_to_tier = int(meta.get('upgrade_to_tier', 0))

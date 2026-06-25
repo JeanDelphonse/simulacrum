@@ -486,6 +486,21 @@ def settings_trust_controls():
     )
 
 
+@pages_bp.route('/settings/voice')
+@login_required
+def settings_voice():
+    from app.models.user import User
+    user = User.query.get(current_user.id)
+    return render_template(
+        'settings/index.html',
+        active_tab='voice',
+        voice_paid=bool(user and user.voice_training_paid_at),
+        voice_trained=bool(user and user.voice_trained_at),
+        voice_trained_at=user.voice_trained_at if user else None,
+        voice_consent_given=bool(user and user.voice_consent_accepted_at),
+    )
+
+
 @pages_bp.route('/api/simulations/<sim_id>/unlock-layers', methods=['PUT'])
 @login_required
 def toggle_unlock_layers(sim_id):
