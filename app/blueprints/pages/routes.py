@@ -86,7 +86,7 @@ def _sim_pricing() -> dict:
         }
 
 
-def _get_recent_bio_pages(limit: int = 8) -> list:
+def _get_recent_bio_pages(limit: int = 4) -> list:
     """FR-SOC-08: Most recently published bio pages for the landing sidebar."""
     try:
         from app.models.bio_page import BioPage
@@ -114,6 +114,41 @@ def _get_recent_bio_pages(limit: int = 8) -> list:
         return []
 
 
+def _get_hero_cards(limit: int = 4) -> list:
+    """4 randomly selected published users with at least one simulation."""
+    import random
+    try:
+        from app.models.bio_page import BioPage
+        from app.models.profile import UserProfile as _UP
+        from app.models.simulation import Simulation as _Sim
+        from app.blueprints.public.routes import _zone_to_category
+        from sqlalchemy import exists
+        rows = db.session.query(BioPage, _UP).join(
+            _UP, BioPage.user_id == _UP.user_id,
+        ).filter(
+            BioPage.status == BioPage.STATUS_PUBLISHED,
+            exists().where(_Sim.user_id == BioPage.user_id),
+        ).all()
+        if len(rows) > limit:
+            rows = random.sample(rows, limit)
+        cards = []
+        for bp, p in rows:
+            sim = _Sim.query.filter_by(user_id=bp.user_id).order_by(_Sim.created_at.desc()).first()
+            zone = sim.expertise_zone if sim else ''
+            cards.append({
+                'slug': bp.slug,
+                'display_name': p.display_name or '',
+                'tagline': (p.tagline or '')[:120],
+                'avatar_path': p.avatar_path or '',
+                'like_count': getattr(bp, 'like_count', 0) or 0,
+                'category': _zone_to_category(zone),
+            })
+        return cards
+    except Exception as _e:
+        logger.warning('_get_hero_cards failed: %s', _e)
+        return []
+
+
 @pages_bp.route('/')
 def index():
     data = _get_landing_data()
@@ -122,7 +157,8 @@ def index():
                            trust_stats=data['trust_stats'],
                            sim_price_usd=_sim_price_usd(),
                            sim_pricing=_sim_pricing(),
-                           recent_bio_pages=_get_recent_bio_pages())
+                           recent_bio_pages=_get_recent_bio_pages(),
+                           hero_cards=_get_hero_cards())
 
 
 @pages_bp.route('/dashboard')
@@ -480,9 +516,12 @@ def resumes_view():
 def resume_detail(resume_id):
     from flask import current_app
     from app.models.resume import Resume
+    from app.models.bio_page import BioPage
     resume = Resume.query.filter_by(id=resume_id, user_id=current_user.id).first_or_404()
     stripe_pk = current_app.config.get('STRIPE_PUBLISHABLE_KEY', '')
-    return render_template('resumes/detail.html', resume=resume, stripe_pk=stripe_pk)
+    bio_page = BioPage.query.filter_by(user_id=current_user.id).first()
+    bio_slug = bio_page.slug if bio_page else None
+    return render_template('resumes/detail.html', resume=resume, stripe_pk=stripe_pk, bio_slug=bio_slug)
 
 
 @pages_bp.route('/samples/marcus')
