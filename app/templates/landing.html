@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='simi_logo.jpg') }}">
   <title>Simulacrum — Upload your resume. We'll show you five ways to turn it into income.</title>
   <meta name="description" content="Simulacrum reads your career, builds your professional bio page, and deploys AI agents to find clients, book calls, and grow your income — all from one resume upload. Free forever.">
   <link rel="canonical" href="https://simulacrumai.io">
@@ -169,23 +170,30 @@
   .hero-trust { font-size: 13px; color: rgba(255,255,255,.42); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .hero-trust-sep { color: rgba(255,255,255,.18); }
 
-  /* Bio preview card */
-  .hero-card {
-    flex-shrink: 0; width: 300px;
-    background: #fff; border-radius: 18px;
-    box-shadow: 0 24px 64px rgba(0,0,0,.38);
-    overflow: hidden;
+  /* Hero user cards grid — same style as explore page */
+  .hero-cards-grid {
+    flex-shrink: 0; width: 460px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; align-self: center;
   }
-  .hc-top { background: linear-gradient(135deg, var(--navy), var(--navy-mid)); padding: 24px 20px 18px; }
-  .hc-avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--teal); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 10px; }
-  .hc-name  { color: #fff; font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; }
-  .hc-title { color: var(--teal-light); font-size: 12px; font-weight: 500; margin-top: 2px; }
-  .hc-body  { padding: 14px 18px; }
-  .hc-btn   { background: var(--gold); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 7px; display: inline-block; margin-bottom: 12px; }
-  .hc-chat  { background: #f8fafc; border: 1px solid rgba(0,0,0,.07); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
-  .hc-chat-name { font-weight: 700; color: var(--dark); font-size: 12px; margin-bottom: 3px; }
-  .hc-live  { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
-  .hc-dot   { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+  .hero-cards-grid .hc {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    padding: 1.125rem; box-shadow: 0 4px 20px rgba(0,0,0,.18);
+    transition: box-shadow .15s, border-color .15s;
+    display: flex; flex-direction: column; text-decoration: none; color: inherit;
+  }
+  .hero-cards-grid .hc:hover { box-shadow: 0 8px 28px rgba(0,0,0,.26); border-color: #0e7490; }
+  .card-top { display: flex; gap: .65rem; align-items: flex-start; margin-bottom: .65rem; }
+  .card-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
+  .card-avatar-placeholder { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #0e7490, #059669); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: 700; }
+  .card-meta { flex: 1; min-width: 0; }
+  .card-name { font-weight: 700; font-size: .85rem; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-zone { font-size: .68rem; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+  .card-tagline { font-size: .8rem; color: #6b7280; line-height: 1.5; margin-bottom: .65rem; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+  .card-link { font-size: .75rem; font-weight: 600; color: #0e7490; padding: .28rem .7rem; border: 1px solid #0e7490; border-radius: 7px; transition: background .12s, color .12s; white-space: nowrap; }
+  .card-link:hover { background: #0e7490; color: #fff; }
+  .card-like { font-size: .73rem; color: #9ca3af; display: flex; align-items: center; gap: .3rem; }
+  .card-like svg { width: 11px; height: 11px; }
 
   /* ── Problem ─────────────────────────────────────────────────────── */
   #problem { background: var(--white); }
@@ -402,7 +410,7 @@
 
   /* ── Responsive ──────────────────────────────────────────────────── */
   @media (max-width: 1024px) {
-    .hero-card { display: none; }
+    .hero-cards-grid { display: none; }
     .footer-grid { grid-template-columns: 1fr 1fr; }
     .about-inner { grid-template-columns: 1fr; }
     .about-visual { display: none; }
@@ -550,30 +558,40 @@
         <span>Bio page + AI chat included</span>
       </div>
     </div>
-    <!-- Bio page preview card -->
-    <div class="hero-card">
-      <div class="hc-top">
-        <div class="hc-avatar">SC</div>
-        <div class="hc-name">Sarah Chen</div>
-        <div class="hc-title">Product Strategy Consultant</div>
-      </div>
-      <div class="hc-body">
-        <div class="hc-btn">Book a call</div>
-        <div class="hc-chat">
-          <div class="hc-chat-name">Sarah's assistant</div>
-          Ask me about Sarah's services, availability, and expertise…
+    <!-- Live user bio cards -->
+    {% if hero_cards %}
+    <div class="hero-cards-grid">
+      {% for c in hero_cards %}
+      <a class="hc" href="/u/{{ c.slug }}">
+        <div class="card-top">
+          {% if c.avatar_path %}
+          <img class="card-avatar" src="{{ url_for('public.serve_avatar', filename=c.avatar_path) }}" alt="{{ c.display_name }}" loading="lazy">
+          {% else %}
+          <div class="card-avatar-placeholder">{{ c.display_name[0]|upper if c.display_name else '?' }}</div>
+          {% endif %}
+          <div class="card-meta">
+            <div class="card-name">{{ c.display_name }}</div>
+            <div class="card-zone">{{ c.category }}</div>
+          </div>
         </div>
-        <div class="hc-live">
-          <span class="hc-dot"></span>
-          <span>Live 24/7 · Powered by Simulacrum</span>
+        {% if c.tagline %}<p class="card-tagline">{{ c.tagline }}</p>{% endif %}
+        <div class="card-footer">
+          {% if c.like_count %}
+          <span class="card-like">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            {{ c.like_count }}
+          </span>
+          {% else %}<span></span>{% endif %}
+          <span class="card-link">View Bio →</span>
         </div>
-      </div>
+      </a>
+      {% endfor %}
     </div>
+    {% endif %}
   </div>
 </section>
 
 <!-- ── BIO PAGE SIDEBAR (FR-SOC-08) ──────────────────────────────── -->
-{% if recent_bio_pages %}
 <section id="bio-sidebar-strip">
   <div class="lp-c">
     <div class="bss-inner">
@@ -597,7 +615,6 @@
     </div>
   </div>
 </section>
-{% endif %}
 
 <!-- ── PROBLEM ──────────────────────────────────────────────────────── -->
 <section id="problem" class="lp-s">
@@ -793,7 +810,7 @@
           <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>White-label &amp; custom branding</span></div>
           <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Priority API access &amp; SLA</span></div>
         </div>
-        <a href="mailto:valuemanager.management@gmail.com?subject=Corporate%20Licensing%20Enquiry" class="btn" style="width:100%;justify-content:center;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);">Contact sales →</a>
+        <a href="mailto:simi@simulacrumai.io?subject=Corporate%20Licensing%20Enquiry" class="btn" style="width:100%;justify-content:center;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);">Contact sales →</a>
       </div>
     </div>
   </div>
@@ -1017,8 +1034,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span class="footer-copy">© 2026 Simulacrum · Bay Area Experiences Ventures · simulacrumai.io</span>
-      <span class="footer-copy">Built with Claude</span>
+      <span class="footer-copy">© 2026 SimulacrumAI.io · Bay Area Experiences Ventures</span>
     </div>
   </div>
 </footer>
