@@ -86,7 +86,7 @@ def _sim_pricing() -> dict:
         }
 
 
-def _get_recent_bio_pages(limit: int = 4) -> list:
+def _get_recent_bio_pages(limit: int = 8) -> list:
     """FR-SOC-08: Most recently published bio pages for the landing sidebar."""
     try:
         from app.models.bio_page import BioPage

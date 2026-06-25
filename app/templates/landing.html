@@ -442,6 +442,7 @@
 
   /* ── Bio page sidebar strip (FR-SOC-08) ─────────────────────────── */
   #bio-sidebar-strip { background: var(--white); border-bottom: 1px solid var(--border); padding: 28px 0; }
+  .bss-wrap { display: flex; flex-direction: column; gap: 12px; }
   .bss-inner { display: flex; align-items: center; gap: 20px; overflow-x: auto; scrollbar-width: none; padding: 0 4px; }
   .bss-inner::-webkit-scrollbar { display: none; }
   .bss-label { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
@@ -464,12 +465,8 @@
   .bss-info { flex: 1; min-width: 0; }
   .bss-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bss-likes { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .bss-cta {
-    flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--teal);
-    white-space: nowrap; padding: 7px 14px; border: 1px solid var(--teal);
-    border-radius: 8px; text-decoration: none; transition: background .12s, color .12s;
-  }
-  .bss-cta:hover { background: var(--teal); color: #fff; }
+  .bss-cta { font-size: 13px; font-weight: 600; color: var(--teal); text-decoration: none; padding: 0 4px; }
+  .bss-cta:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -594,23 +591,25 @@
 <!-- ── BIO PAGE SIDEBAR (FR-SOC-08) ──────────────────────────────── -->
 <section id="bio-sidebar-strip">
   <div class="lp-c">
-    <div class="bss-inner">
-      <span class="bss-label">On Simulacrum</span>
-      {% for p in recent_bio_pages %}
-      <a class="bss-card" href="{{ url_for('public.profile_page', username=p.slug) }}">
-        {% if p.avatar_path %}
-        <img class="bss-avatar"
-             src="{{ url_for('public.serve_avatar', filename=p.avatar_path) }}"
-             alt="{{ p.display_name }}" loading="lazy">
-        {% else %}
-        <div class="bss-placeholder">{{ p.display_name[0] if p.display_name else '?' }}</div>
-        {% endif %}
-        <div class="bss-info">
-          <div class="bss-name">{{ p.display_name }}</div>
-          {% if p.like_count %}<div class="bss-likes">♥ {{ p.like_count }}</div>{% endif %}
-        </div>
-      </a>
-      {% endfor %}
+    <div class="bss-wrap">
+      <div class="bss-inner">
+        <span class="bss-label">On Simulacrum</span>
+        {% for p in recent_bio_pages %}
+        <a class="bss-card" href="{{ url_for('public.profile_page', username=p.slug) }}">
+          {% if p.avatar_path %}
+          <img class="bss-avatar"
+               src="{{ url_for('public.serve_avatar', filename=p.avatar_path) }}"
+               alt="{{ p.display_name }}" loading="lazy">
+          {% else %}
+          <div class="bss-placeholder">{{ p.display_name[0] if p.display_name else '?' }}</div>
+          {% endif %}
+          <div class="bss-info">
+            <div class="bss-name">{{ p.display_name }}</div>
+            {% if p.like_count %}<div class="bss-likes">♥ {{ p.like_count }}</div>{% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
       <a class="bss-cta" href="{{ url_for('public.explore') }}">Browse all →</a>
     </div>
   </div>
