@@ -39,6 +39,7 @@ _ROUTING: dict[str, ModelTier] = {
     'affiliate_partnerships':      ModelTier.HAIKU,
     'compound_projections':        ModelTier.HAIKU,
     'dca_schedule':                ModelTier.HAIKU,
+    'linkedin_optimization':        ModelTier.HAIKU,
     'pitch_deck_outline':          ModelTier.HAIKU,
     'sow_template':                ModelTier.HAIKU,
     'rate_negotiation':            ModelTier.HAIKU,   # fixed-section coaching script

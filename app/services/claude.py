@@ -177,7 +177,7 @@ Generate 3-5 income streams. Be specific — reference actual job titles, compan
 
     response = _client().messages.create(
         model=_model(),
-        max_tokens=3000,
+        max_tokens=5000,
         messages=[{'role': 'user', 'content': prompt}],
     )
     _log_interaction(AIInteraction.TYPE_LAYER_GENERATE, user_id, simulation_id, response.usage)
@@ -185,6 +185,9 @@ Generate 3-5 income streams. Be specific — reference actual job titles, compan
     raw = response.content[0].text.strip()
     if raw.startswith('```'):
         raw = raw.split('\n', 1)[1].rsplit('```', 1)[0]
+    if response.stop_reason == 'max_tokens':
+        logger.warning('Layer %d response truncated at max_tokens for simulation %s', layer_number, simulation_id)
+        raw = raw.rsplit(',', 1)[0] + ']}}'
     return json.loads(raw)
 
 
@@ -199,6 +202,16 @@ AGENT_ACTION_TYPES = {
                  'options': ['project', 'retainer', 'hourly', 'fractional'], 'required': True},
                 {'key': 'tone', 'label': 'Tone', 'type': 'select',
                  'options': ['professional', 'warm', 'direct', 'concise'], 'required': False},
+            ],
+        },
+        'linkedin_optimization': {
+            'label': 'Optimize LinkedIn Headline, About & Featured',
+            'description': 'Rewrite LinkedIn headline, About section, and Featured block for inbound consulting leads.',
+            'prompt_form': [
+                {'key': 'open_to_engagements', 'label': 'Currently open to new engagements?', 'type': 'select',
+                 'options': ['yes', 'no', 'selectively'], 'required': True},
+                {'key': 'profile_focus', 'label': 'Profile focus', 'type': 'select',
+                 'options': ['consulting availability', 'specific industry focus', 'both'], 'required': False},
             ],
         },
         'cold_email_campaign': {
@@ -818,6 +831,18 @@ AGENT_ACTION_TYPES = {
     },
 }
 
+# Merge registry agents (agents.json) into AGENT_ACTION_TYPES.
+# Registry entries fill gaps; existing hardcoded entries are not overwritten
+# so legacy behaviour is preserved for agents already in the dict.
+try:
+    from app.services.agent_registry import AGENT_ACTION_TYPES as _registry_types
+    for _rl, _ragents in _registry_types.items():
+        AGENT_ACTION_TYPES.setdefault(_rl, {})
+        for _rat, _rmeta in _ragents.items():
+            AGENT_ACTION_TYPES[_rl].setdefault(_rat, _rmeta)
+except Exception:
+    pass
+
 
 def execute_agent_action(
     action_type: str,
@@ -973,8 +998,8 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         'consulting_proposal', 'sales_page', 'ebook_guide',
     }
     _ACTION_MAX_TOKENS = {
-        'cold_email_campaign': 8192,
-        'outreach_email':      4096,
+        'cold_email_campaign': 16384,
+        'outreach_email':      8192,
     }
     max_tokens = _ACTION_MAX_TOKENS.get(
         action_type,

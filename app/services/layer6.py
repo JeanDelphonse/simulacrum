@@ -67,23 +67,30 @@ def _dispatch_window_minutes(cadence: str) -> float:
 # Cold start (FR-ORCH-08, FR-ORCH-09)
 # ---------------------------------------------------------------------------
 
-COLD_START_PRIORS = {
-    'rate_card': 0.80, 'linkedin_optimize': 0.75, 'booking_page': 0.70,
-    'cold_email_campaign': 0.65, 'consulting_outreach': 0.60, 'outreach_email': 0.55,
-    'role_search': 0.50, 'speaking_proposals': 0.48, 'coaching_curriculum': 0.45,
-    'workshop_content': 0.42, 'course_framework': 0.40, 'sales_page': 0.38,
-    'ebook_guide': 0.35, 'seo_content_calendar': 0.33, 'launch_email_sequence': 0.30,
-    'referral_network': 0.28, 'social_proof': 0.25, 'membership_structure': 0.23,
-    'affiliate_program': 0.20, 'newsletter_monetization': 0.20, 'youtube_podcast': 0.18,
-    'saas_product_spec': 0.18, 'portfolio_analysis': 0.15, 'compound_growth': 0.15,
-    'real_estate_strategy': 0.15, 'tax_optimization': 0.15, 'entity_structure': 0.13,
-    'investment_policy_statement': 0.13, 'fund_recommendations': 0.10, 'dca_schedule': 0.05,
-}
-
-COLD_START_SEQUENCE = [
-    'rate_card', 'linkedin_optimize', 'booking_page',
-    'cold_email_campaign', 'consulting_outreach',
-]
+# Load cold-start priors and sequence from config/agents.json (FR-MAP-01).
+# Fall back to hardcoded values if the registry is unavailable at import time.
+try:
+    from app.services.agent_registry import (
+        COLD_START_PRIORS as COLD_START_PRIORS,
+        COLD_START_SEQUENCE as COLD_START_SEQUENCE,
+    )
+except Exception:
+    COLD_START_PRIORS = {
+        'rate_card': 0.80, 'linkedin_optimization': 0.75, 'booking_page': 0.70,
+        'cold_email_campaign': 0.65, 'consulting_outreach': 0.60, 'outreach_email': 0.55,
+        'role_search': 0.50, 'speaking_proposals': 0.48, 'group_coaching': 0.45,
+        'workshop_curriculum': 0.42, 'course_curriculum': 0.40, 'sales_page': 0.38,
+        'ebook_outline': 0.35, 'seo_content_calendar': 0.33, 'launch_sequence': 0.30,
+        'referral_network': 0.28, 'membership': 0.23, 'affiliate_program': 0.20,
+        'newsletter': 0.20, 'video_podcast': 0.18, 'saas_product_spec': 0.18,
+        'income_allocation': 0.15, 'projections': 0.15, 'real_estate_strategy': 0.15,
+        'tax_optimization': 0.15, 'entity_structure': 0.13,
+        'investment_policy': 0.13, 'fund_recommendations': 0.10, 'dca_schedule': 0.05,
+    }
+    COLD_START_SEQUENCE = [
+        'rate_card', 'linkedin_optimization', 'booking_page',
+        'cold_email_campaign', 'consulting_outreach',
+    ]
 
 # Trust level presets (ENH-09)
 TRUST_PRESETS = {
@@ -345,24 +352,21 @@ def score_action(action_type: str, source_layer: int, outcomes_for_layer: list[d
 
 # Static prerequisite map: action_type -> list of action_types that must complete first.
 # This is a simplified DAG; real implementation can be made dynamic from agent_actions data.
-ACTION_PREREQUISITES: dict[str, list[str]] = {
-    # Layer 2 leveraged delivery benefits from L1 income proof
-    'speaking_proposals': ['consulting_outreach'],
-    'group_coaching_program': ['consulting_rate_card'],
-    # Layer 3 products need a validated audience
-    'course_curriculum': ['group_coaching_program'],
-    'product_sales_page': ['course_curriculum'],
-    'launch_email_sequence': ['product_sales_page'],
-    # Layer 4 automation needs existing products/list
-    'seo_content_calendar': ['product_sales_page'],
-    'lead_magnet_funnel': ['launch_email_sequence'],
-    'newsletter_monetization': ['lead_magnet_funnel'],
-    'saas_product_spec': ['course_curriculum'],
-    # Layer 5 wealth deployment needs income from automation
-    'income_allocation': ['lead_magnet_funnel'],
-    'compound_growth_model': ['income_allocation'],
-    'dca_schedule': ['income_allocation'],
-}
+# Prerequisite DAG loaded from config/agents.json (FR-MAP-01).
+try:
+    from app.services.agent_registry import ACTION_PREREQUISITES as ACTION_PREREQUISITES
+except Exception:
+    ACTION_PREREQUISITES: dict[str, list[str]] = {
+        'speaking_proposals': ['consulting_outreach'],
+        'sales_page': ['course_curriculum'],
+        'launch_sequence': ['sales_page'],
+        'lead_magnet_funnel': ['launch_sequence'],
+        'newsletter': ['lead_magnet_funnel'],
+        'saas_product_spec': ['course_curriculum'],
+        'projections': ['income_allocation'],
+        'dca_schedule': ['fund_recommendations', 'income_allocation'],
+        'estate_planning': ['entity_structure', 'income_allocation'],
+    }
 
 
 def _count_unblocked(action_type: str, completed_types: set[str],
@@ -798,30 +802,43 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
     except Exception as _spe:
         logger.warning('Posterior snapshot failed for cycle %s: %s', cycle.id, _spe)
 
-    # Fire escalation notifications (best-effort, must not raise)
+    # Fire escalation notifications + emails (best-effort, must not raise)
     try:
         from app.services.notification_service import send_notification as _send_notif
+        from app.services.email_service import send_escalation_email as _send_esc_email
+        from app.models.user import User as _User
         from flask import request as _req, has_request_context as _hrc
-        _base = ''
+        _base = 'https://simulacrumai.io'
         if _hrc():
             _base = _req.host_url.rstrip('/')
+        _user = _User.query.get(sim.user_id)
         for _entry, _within in dispatch_entries:
             if not _within:
                 _action_label = _entry.action_type.replace('_', ' ').title()
+                _reason = _entry.escalation_reason or 'autonomy boundary exceeded'
+                _gcc_url = f'{_base}/simulations/{simulation_id}/gcc'
                 _send_notif(
                     user_id=sim.user_id,
                     notification_type='escalation',
                     title=f'{_action_label} needs your approval',
                     body=(
                         f'The orchestrator cannot continue until you approve or reject '
-                        f'this action: {_action_label}. '
-                        f'Reason: {_entry.escalation_reason or "autonomy boundary exceeded"}.'
+                        f'this action: {_action_label}. Reason: {_reason}.'
                     ),
-                    cta_url=f'{_base}/simulations/{simulation_id}/layer6',
+                    cta_url=_gcc_url,
                     cta_label='Review in GCC →',
                     simulation_id=simulation_id,
                     priority='high',
                 )
+                if _user and _user.email:
+                    _send_esc_email(
+                        to_email=_user.email,
+                        name=_user.full_name or _user.email,
+                        title=f'{_action_label} needs your approval',
+                        description=f'Reason: {_reason}.',
+                        action_url=_gcc_url,
+                        sim_name=sim.name or sim.expertise_zone or 'your simulation',
+                    )
     except Exception as _ne:
         logger.warning('Escalation notification failed: %s', _ne)
 
@@ -875,7 +892,59 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
     except Exception as _lce:
         logger.warning('Lifecycle transition check failed for %s: %s', simulation_id, _lce)
 
+    # Cycle report email (best-effort — must not raise)
+    try:
+        _send_cycle_report(sim, config, cycle, dispatch_entries)
+    except Exception as _cre:
+        logger.warning('Cycle report email failed for %s: %s', simulation_id, _cre)
+
     return cycle.to_dict()
+
+
+def _send_cycle_report(sim, config, cycle, dispatch_entries: list) -> None:
+    """Build and send the end-of-cycle report email to the simulation owner."""
+    from app.models.user import User
+    from app.services.email_service import send_cycle_report_email
+
+    user = User.query.get(sim.user_id)
+    if not user or not user.email:
+        return
+
+    sim_name = sim.name or sim.expertise_zone or 'your simulation'
+    gcc_url = f'https://simulacrumai.io/simulations/{sim.id}/gcc'
+
+    dispatched = []
+    escalated = []
+    for entry, within_bounds in dispatch_entries:
+        label = entry.action_type.replace('_', ' ').title()
+        if within_bounds:
+            dispatched.append({'action_type': entry.action_type, 'label': label})
+        else:
+            escalated.append({
+                'action_type': entry.action_type,
+                'label': label,
+                'reason': entry.escalation_reason or 'Autonomy boundary exceeded',
+            })
+
+    cadence_minutes = CADENCE_MINUTES.get(config.cadence, 1440)
+    next_cycle_dt = datetime.utcnow() + timedelta(minutes=cadence_minutes)
+    next_cycle_str = next_cycle_dt.strftime('%B %d, %Y at %H:%M UTC')
+
+    send_cycle_report_email(
+        to_email=user.email,
+        name=user.full_name or user.email,
+        sim_name=sim_name,
+        sim_id=sim.id,
+        cycle_number=cycle.cycle_number,
+        phase=cycle.phase,
+        actions_scored=cycle.actions_scored or 0,
+        dispatched=dispatched,
+        escalated=escalated,
+        user_insight=cycle.user_insight or '',
+        cycle_steps=cycle.cycle_steps,
+        next_cycle_at=next_cycle_str,
+        gcc_url=gcc_url,
+    )
 
 
 def _execute_action_sync(entry) -> None:
@@ -920,6 +989,14 @@ def _execute_action_sync(entry) -> None:
             dispatch_source='orchestrator',
             action_id=agent_action.id,
         )
+        # The Claude API call above can take 5-10 min. MySQL drops idle connections
+        # before that (wait_timeout ~300s). Dispose the pool now so every subsequent
+        # write gets a fresh connection without relying on the reactive retry in
+        # _log_interaction.
+        try:
+            db.engine.dispose()
+        except Exception:
+            pass
         artifact = result if isinstance(result, str) else str(result)
         agent_action.artifact = artifact
         agent_action.status = AgentAction.STATUS_COMPLETE
@@ -1058,6 +1135,10 @@ def _execute_action_sync(entry) -> None:
             logger.warning('Agent complete notification failed: %s', _ne2)
 
     except Exception as exc:
+        try:
+            db.engine.dispose()
+        except Exception:
+            pass
         agent_action.status = AgentAction.STATUS_FAILED
         agent_action.error_message = str(exc)
         entry.status = Layer6ActionQueue.STATUS_FAILED
@@ -1105,7 +1186,6 @@ def _check_autonomy_bounds(action_type: str, config) -> tuple[bool, str]:
         'waitlist_landing_page': 'email_funnels',
         'linkedin_optimization': 'linkedin',
         'corporate_training_outreach': 'linkedin',
-        'booking_page': 'calendar',
         'seo_content_calendar': 'content_publishing',
         'youtube_podcast_strategy': 'content_publishing',
     }
