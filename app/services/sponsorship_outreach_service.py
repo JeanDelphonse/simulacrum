@@ -260,22 +260,44 @@ def execute_sponsorship_outreach(
     rate_card = discovery.get('rate_card', {})
     discovery_duration = round(time.time() - t_start, 2)
 
-    # Pass 2: generate outreach emails
+    # Pass 2: generate outreach emails — run concurrently to avoid sequential latency
     t_emails = time.time()
-    sponsor_records = []
-    for s in sponsors_raw:
-        email_draft = _generate_email(s, user_inputs, publisher_name, api_key, sonnet_model)
-        sponsor_records.append({
-            'company_name': s.get('company_name', ''),
-            'website': s.get('website', ''),
-            'contact_title': s.get('contact_title', 'Marketing Team'),
-            'fit_reasoning': s.get('fit_reasoning', ''),
-            'proposed_rate_per_issue': s.get('proposed_rate_per_issue', ''),
-            'proposed_monthly_rate': s.get('proposed_monthly_rate', ''),
-            'email_draft': email_draft,
-            'send_status': 'draft',
-        })
+    from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
+
+    def _gen(s):
+        return s, _generate_email(s, user_inputs, publisher_name, api_key, sonnet_model)
+
+    sponsor_records_map = {}
+    with ThreadPoolExecutor(max_workers=min(len(sponsors_raw), 5)) as _pool:
+        futures = {_pool.submit(_gen, s): i for i, s in enumerate(sponsors_raw)}
+        for fut in _as_completed(futures):
+            idx = futures[fut]
+            try:
+                s, email_draft = fut.result()
+            except Exception as _ee:
+                s = sponsors_raw[idx]
+                email_draft = {'subject': '', 'body': '', 'placement_format': 'solo'}
+                logger.warning('Email generation failed for sponsor %d: %s', idx, _ee)
+            sponsor_records_map[idx] = {
+                'company_name': s.get('company_name', ''),
+                'website': s.get('website', ''),
+                'contact_title': s.get('contact_title', 'Marketing Team'),
+                'fit_reasoning': s.get('fit_reasoning', ''),
+                'proposed_rate_per_issue': s.get('proposed_rate_per_issue', ''),
+                'proposed_monthly_rate': s.get('proposed_monthly_rate', ''),
+                'email_draft': email_draft,
+                'send_status': 'draft',
+            }
+    sponsor_records = [sponsor_records_map[i] for i in sorted(sponsor_records_map)]
     email_duration = round(time.time() - t_emails, 2)
+
+    # Dispose DB pool before CRM write — API calls above can take 2+ min and
+    # GoDaddy MySQL drops idle connections (~60-120s wait_timeout).
+    try:
+        from app.extensions import db as _db
+        _db.engine.dispose()
+    except Exception:
+        pass
 
     # Save sponsor contacts to CRM (FR-CRM-03)
     try:
