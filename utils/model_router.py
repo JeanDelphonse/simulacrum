@@ -39,6 +39,17 @@ _ROUTING: dict[str, ModelTier] = {
     'affiliate_partnerships':      ModelTier.HAIKU,
     'compound_projections':        ModelTier.HAIKU,
     'dca_schedule':                ModelTier.HAIKU,
+    'pitch_deck_outline':          ModelTier.HAIKU,
+    'sow_template':                ModelTier.HAIKU,
+    'rate_negotiation':            ModelTier.HAIKU,   # fixed-section coaching script
+    'workshop_roi':                ModelTier.HAIKU,   # structured ROI calculation table
+    'competitive_pricing':         ModelTier.HAIKU,   # structured competitor analysis → recommendation
+    'testimonial_system':          ModelTier.HAIKU,   # templated sequence + form + display copy
+    'lapsed_buyer_reactivation':   ModelTier.HAIKU,   # 3-email reactivation sequence
+    'template_pack_spec':          ModelTier.HAIKU,   # structured product definition from templates
+    'client_winback':              ModelTier.HAIKU,   # 3-email win-back sequence
+    'compound_growth':             ModelTier.HAIKU,   # projection table, mathematical template
+    'insurance_gap_analysis':      ModelTier.HAIKU,   # structured gap analysis + recommendations
     # Orchestrator / system calls
     'orchestrator_reasoning':      ModelTier.HAIKU,
     'prefill_input_generation':    ModelTier.HAIKU,
