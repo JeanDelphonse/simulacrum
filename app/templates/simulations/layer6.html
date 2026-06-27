@@ -2831,7 +2831,7 @@ function saveL6Settings() {
       msg.textContent = L6_CONFIGURED ? 'Settings saved.' : 'Layer 6 activated!';
       msg.className = 'l6s-msg ok';
       document.getElementById('l6SettingsBtn').classList.add('l6-active');
-      setTimeout(() => closeL6Settings(), 1200);
+      setTimeout(() => window.location.reload(), 1200);
     })
     .catch(() => { msg.textContent = 'Save failed. Please try again.'; msg.className = 'l6s-msg err'; })
     .finally(() => { btn.disabled = false; btn.textContent = L6_CONFIGURED ? 'Save changes' : 'Activate Layer 6'; });
@@ -2845,18 +2845,8 @@ function toggleL6Pause() {
 
   fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/' + endpoint, { method: 'POST' })
     .then(r => r.json())
-    .then(() => {
-      const nowActive = !isActive;
-      btn.dataset.active = nowActive ? 'true' : 'false';
-      btn.textContent = nowActive ? 'Pause' : 'Resume';
-      const dot = document.getElementById('l6sStatusDot');
-      const txt = document.getElementById('l6sStatusText');
-      dot.className = 'l6s-status-dot ' + (nowActive ? 'active' : 'inactive');
-      txt.textContent = nowActive ? 'Active' : 'Paused';
-      document.getElementById('l6SettingsBtn').classList.toggle('l6-active', nowActive);
-    })
-    .catch(() => {})
-    .finally(() => { btn.disabled = false; });
+    .then(() => { setTimeout(() => window.location.reload(), 400); })
+    .catch(() => { btn.disabled = false; });
 }
 
 // ── Escalations tab ──────────────────────────────────────────────────────────
