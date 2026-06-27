@@ -136,6 +136,129 @@ def _apply_config(cfg: Layer6Config, data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# AI-suggested defaults
+# ---------------------------------------------------------------------------
+
+@layer6_bp.route('/<sim_id>/layer6/suggest', methods=['GET'])
+@login_required
+def suggest_config(sim_id):
+    """Return Claude-suggested Layer 6 defaults based on simulation data and integrations."""
+    sim, err, code = _get_sim_or_404(sim_id)
+    if err:
+        return err, code
+
+    # Simulation income streams
+    layers_info = []
+    for layer in sim.layers:
+        streams = [s.name for s in layer.income_streams]
+        layers_info.append(f"Layer {layer.layer_number} ({layer.layer_name or ''}): {', '.join(streams) or 'none'}")
+
+    # Connected integrations
+    from app.models.integration import UserIntegration
+    integ_rows = UserIntegration.query.filter_by(
+        user_id=current_user.id, disconnected_at=None,
+    ).filter(UserIntegration.health_status != 'expired').all()
+    connected = [i.provider for i in integ_rows]
+
+    # Visibility / services for this simulation
+    from app.models.profile import SimulationVisibility
+    vis = SimulationVisibility.query.filter_by(
+        simulation_id=sim_id, user_id=current_user.id,
+    ).first()
+    services = (vis.services_list if vis else []) or []
+
+    context = "\n".join([
+        f"Simulation: {sim.name or 'Untitled'}",
+        f"Expertise zone: {sim.expertise_zone or 'General'}",
+        *layers_info,
+        f"Connected integrations: {', '.join(connected) or 'none'}",
+        f"Services offered: {', '.join(services) or 'not specified'}",
+    ])
+
+    prompt = (
+        "You are configuring the Layer 6 autonomous growth orchestrator for a career wealth simulation.\n"
+        "Choose the most sensible default autonomy boundaries given this context.\n\n"
+        f"{context}\n\n"
+        "Guidelines:\n"
+        "- cadence: 'daily' for active consulting/outreach-heavy, 'every_3_days' for mixed, 'weekly' for passive-income-heavy\n"
+        "- actions_per_cycle: 2–3 for simple setups, 4–5 for multi-stream setups\n"
+        "- spend_ceiling: 0 if no paid integrations, 10–25 if apollo connected\n"
+        "- contact_scope: 'any_researched' if apollo connected, 'linkedin_connections' if only linkedin, else 'uploaded_only'\n"
+        "- trust_level: 'review_all' safest for first-timers; 'balanced' if clear outreach/consulting streams exist\n"
+        "- channel_approvals.linkedin: true ONLY if linkedin is in connected integrations\n"
+        "- channel_approvals.calendar: true if coaching/consulting streams present\n"
+        "- channel_approvals.content: true if course/content/digital-product streams present\n"
+        "- blocked_actions: always block 'tax' and 'invest'; block 'social' only if no social/content streams; block 'cold_email' only if no outreach streams\n"
+        "- reason: one short sentence explaining the key settings choice (max 120 chars)\n\n"
+        "Return ONLY a JSON object, no markdown:\n"
+        '{"cadence":"every_3_days","actions_per_cycle":3,"spend_ceiling":0,"contact_scope":"uploaded_only",'
+        '"trust_level":"balanced","channel_approvals":{"email":true,"email_funnels":true,"linkedin":false,'
+        '"calendar":false,"content":false},"blocked_actions":["tax","invest"],"reason":"..."}'
+    )
+
+    import json as _json
+    from flask import current_app
+    suggestion: dict = {}
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
+        resp = client.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=400,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        suggestion = _json.loads(raw)
+    except Exception as e:
+        current_app.logger.warning('L6 suggest failed: %s', e)
+
+    # Validate and sanitise
+    valid_cadences = {'daily', 'every_3_days', 'weekly'}
+    valid_scopes   = {'uploaded_only', 'linkedin_connections', 'any_researched'}
+    valid_trust    = {'review_all', 'balanced', 'full_auto'}
+    valid_blocked  = {'tax', 'invest', 'social', 'cold_email'}
+
+    cadence = suggestion.get('cadence', 'every_3_days')
+    if cadence not in valid_cadences:
+        cadence = 'every_3_days'
+
+    scope = suggestion.get('contact_scope', 'uploaded_only')
+    if scope not in valid_scopes:
+        scope = 'uploaded_only'
+
+    trust = suggestion.get('trust_level', 'balanced')
+    if trust not in valid_trust:
+        trust = 'balanced'
+
+    ch = suggestion.get('channel_approvals') or {}
+    linkedin_ok = 'linkedin' in connected
+    channel_approvals = {
+        'email':         bool(ch.get('email', True)),
+        'email_funnels': bool(ch.get('email_funnels', True)),
+        'linkedin':      bool(ch.get('linkedin', False)) and linkedin_ok,
+        'calendar':      bool(ch.get('calendar', False)),
+        'content':       bool(ch.get('content', False)),
+    }
+
+    blocked = [b for b in (suggestion.get('blocked_actions') or []) if b in valid_blocked]
+
+    return jsonify({
+        'cadence':          cadence,
+        'actions_per_cycle': max(1, min(10, int(suggestion.get('actions_per_cycle', 3)))),
+        'spend_ceiling':    max(0.0, float(suggestion.get('spend_ceiling', 0))),
+        'contact_scope':    scope,
+        'trust_level':      trust,
+        'channel_approvals': channel_approvals,
+        'blocked_actions':  blocked,
+        'reason':           str(suggestion.get('reason', ''))[:160],
+    }), 200
+
+
+# ---------------------------------------------------------------------------
 # Trust Controls (ENH-09)
 # ---------------------------------------------------------------------------
 
@@ -206,16 +329,15 @@ def roi_card(sim_id):
 @login_required
 def run_cycle(sim_id):
     """Manually trigger an orchestrator cycle outside the cadence schedule."""
-    sim, err, code = _get_sim_or_404(sim_id)
-    if err:
-        return err, code
-    _, err, code = _get_config_or_404(sim_id)
-    if err:
-        return err, code
-
-    from app.services.layer6 import run_orchestrator_cycle
-    from app.models.layer6 import Layer6ActionQueue
     try:
+        sim, err, code = _get_sim_or_404(sim_id)
+        if err:
+            return err, code
+        _, err, code = _get_config_or_404(sim_id)
+        if err:
+            return err, code
+
+        from app.services.layer6 import run_orchestrator_cycle
         cycle_data = run_orchestrator_cycle(sim_id, force_rerun=True)
         if cycle_data.get('skipped'):
             return jsonify(cycle_data), 200
@@ -1092,11 +1214,12 @@ def create_share_token(sim_id):
 # ---------------------------------------------------------------------------
 
 _NODE_CATALOG = [
-    {'id':'L1','label':'Active Income Agent','tier':1,'color':'#0D1B3E','hub':False,'sub':False,'parent':None,'conditional':False},
-    {'id':'L2','label':'Leveraged Income Agent','tier':1,'color':'#1B3A6B','hub':False,'sub':False,'parent':None,'conditional':False},
-    {'id':'L3','label':'Productized Agent','tier':1,'color':'#0F7B72','hub':False,'sub':False,'parent':None,'conditional':False},
-    {'id':'L4','label':'Automated Residual Agent','tier':1,'color':'#0F7B72','hub':False,'sub':False,'parent':None,'conditional':False},
-    {'id':'L5','label':'Wealth Deployment Agent','tier':1,'color':'#C9952A','hub':False,'sub':False,'parent':None,'conditional':False},
+    # ── Orchestrator infrastructure nodes ─────────────────────────────────────
+    {'id':'L1','label':'Active Income','tier':1,'color':'#0D1B3E','hub':False,'sub':False,'parent':None,'conditional':False},
+    {'id':'L2','label':'Leveraged Income','tier':1,'color':'#1B3A6B','hub':False,'sub':False,'parent':None,'conditional':False},
+    {'id':'L3','label':'Productized Income','tier':1,'color':'#0F7B72','hub':False,'sub':False,'parent':None,'conditional':False},
+    {'id':'L4','label':'Automated Residual','tier':1,'color':'#0F7B72','hub':False,'sub':False,'parent':None,'conditional':False},
+    {'id':'L5','label':'Wealth Deployment','tier':1,'color':'#C9952A','hub':False,'sub':False,'parent':None,'conditional':False},
     {'id':'ORC','label':'L6 Orchestrator','tier':2,'color':'#FFFFFF','hub':True,'sub':False,'parent':None,'conditional':False},
     {'id':'DAG','label':'Dependency Graph','tier':3,'color':'#BA7517','hub':False,'sub':False,'parent':None,'conditional':False},
     {'id':'BAY','label':'Bayesian Outcome Model','tier':3,'color':'#BA7517','hub':False,'sub':False,'parent':None,'conditional':False},
@@ -1117,41 +1240,154 @@ _NODE_CATALOG = [
     {'id':'SPD','label':'Spend Ceiling','tier':6,'color':'#1B3A6B','hub':False,'sub':True,'parent':'AUT','conditional':False},
     {'id':'QHR','label':'Quiet Hours','tier':6,'color':'#1B3A6B','hub':False,'sub':True,'parent':'AUT','conditional':False},
     {'id':'LOG','label':'Execution Audit Log','tier':7,'color':'#444444','hub':False,'sub':False,'parent':None,'conditional':False},
+]
 
-    # ── L1 child agent nodes ──────────────────────────────────────────────────
-    {'id':'CO','label':'Consulting Outreach','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'consulting_outreach'},
-    {'id':'CEC','label':'Cold Email Campaign','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'cold_email_campaign'},
-    {'id':'OEM','label':'Outreach Email','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'outreach_email'},
-    {'id':'RC','label':'Rate Card','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'rate_card'},
-    {'id':'BP','label':'Booking Page','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'booking_page'},
-    {'id':'CPP','label':'Consulting Proposal','tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'consulting_proposal'},
+# ── Agent nodes — built from config/agents.json (FR-MAP-01) ─────────────────
+# Layer parent IDs and colours match the infrastructure nodes above.
+_LAYER_PARENT_IDS = {1: 'L1', 2: 'L2', 3: 'L3', 4: 'L4', 5: 'L5'}
+_LAYER_COLORS     = {
+    1: '#1a3a6b', 2: '#2a4a8b', 3: '#1a9e94', 4: '#0ea89e', 5: '#d9a830',
+}
+# Stable 3-char IDs for the 49 registry agents (preserved from original catalog
+# where they existed; new entries use generated codes).
+_REGISTRY_NODE_IDS: dict[str, str] = {
+    # L1
+    'rate_card':              'RC',
+    'linkedin_optimization':  'LIO',
+    'booking_page':           'BP',
+    'cold_email_campaign':    'CEC',
+    'consulting_outreach':    'CO',
+    'role_search':            'RLS',
+    'consulting_proposal':    'CPP',
+    'sow_template':           'SOW',
+    'agreement_template':     'AGT',
+    'referral_network':       'RFN',
+    'negotiation_script':     'NGS',
+    # L2
+    'speaking_proposals':     'SPK',
+    'speaker_fee_rider':      'SFR',
+    'group_coaching':         'GCO',
+    'workshop_curriculum':    'WKC',
+    'corporate_training':     'CTP',
+    'waitlist_landing_page':  'WLP',
+    'alumni_reactivation':    'ALR',
+    'roi_calculator':         'ROI',
+    # L3
+    'course_curriculum':      'CRF',
+    'pricing_research':       'PRC',
+    'sales_page':             'SAP',
+    'ebook_outline':          'EBO',
+    'ab_test_plan':           'ABT',
+    'membership':             'MST',
+    'launch_sequence':        'LES',
+    'affiliate_program':      'AFF',
+    'testimonials':           'TST',
+    'lapsed_buyer':           'LPB',
+    # L4
+    'seo_content_calendar':   'SEO',
+    'lead_magnet_funnel':     'FDN',
+    'newsletter':             'NMO',
+    'saas_product_spec':      'SPS',
+    'ip_licensing':           'IPL',
+    'affiliate_partnerships': 'APR',
+    'video_podcast':          'VPC',
+    'community':              'CMT',
+    'programmatic_ads':       'PGA',
+    'client_winback':         'CWB',
+    # L5
+    'income_allocation':      'PAN',
+    'projections':            'CGW',
+    'fund_recommendations':   'FND',
+    'investment_policy':      'IPS',
+    'real_estate_strategy':   'RES',
+    'entity_structure':       'ENS',
+    'tax_optimization':       'TXO',
+    'dca_schedule':           'DCS',
+    'insurance_review':       'INR',
+    'estate_planning':        'ESP',
+}
+# Legacy alias mappings so old action_type strings still resolve to a node id
+_REGISTRY_NODE_ID_ALIASES: dict[str, str] = {
+    'linkedin_optimize':            'LIO',
+    'coaching_curriculum':          'GCO',
+    'workshop_content':             'WKC',
+    'corporate_training_proposal':  'CTP',
+    'course_framework':             'CRF',
+    'launch_email_sequence':        'LES',
+    'membership_structure':         'MST',
+    'funnel_design':                'FDN',
+    'newsletter_monetization':      'NMO',
+    'portfolio_analysis':           'PAN',
+    'compound_growth':              'CGW',
+    'rate_negotiation':             'NGS',
+    'consulting_agreement':         'AGT',
+    'investment_policy_statement':  'IPS',
+    'insurance_gap_analysis':       'INR',
+    'competitive_pricing':          'PRC',
+    'youtube_podcast':              'VPC',
+    'community_flywheel':           'CMT',
+    'testimonial_system':           'TST',
+    'lapsed_buyer_reactivation':    'LPB',
+    'ebook_guide':                  'EBO',
+    # legacy agents still in DB but not in agents.json (rendered as L1 sub-nodes)
+    'outreach_email':               'OEM',
+    'social_proof':                 'SCP',
+}
 
-    # ── L2 child agent nodes ──────────────────────────────────────────────────
-    {'id':'SPK','label':'Speaking Proposals','tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'speaking_proposals'},
-    {'id':'CCC','label':'Coaching Curriculum','tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'coaching_curriculum'},
-    {'id':'WKC','label':'Workshop Content','tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'workshop_content'},
-    {'id':'CTP','label':'Corp Training Proposal','tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'corporate_training_proposal'},
+try:
+    from app.services.agent_registry import get_all_agents as _get_all_agents, is_hub_node as _is_hub_node
+    for _a in _get_all_agents():
+        _nid = _REGISTRY_NODE_IDS.get(_a['action_type'])
+        if not _nid:
+            continue
+        _NODE_CATALOG.append({
+            'id':          _nid,
+            'label':       _a['label'].split(' &')[0].split(' (')[0][:35],
+            'tier':        1,
+            'color':       _LAYER_COLORS.get(_a['layer'], '#888888'),
+            'hub':         _is_hub_node(_a['action_type']),
+            'sub':         True,
+            'parent':      _LAYER_PARENT_IDS.get(_a['layer'], 'L1'),
+            'conditional': False,
+            'action_type': _a['action_type'],
+            'layer':       _a['layer'],
+        })
+except Exception:
+    # Fallback: keep the 21 legacy agent nodes (pre-AGENTMAP hardcoded catalog)
+    _NODE_CATALOG += [
+        {'id':'CO', 'label':'Consulting Outreach',  'tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'consulting_outreach'},
+        {'id':'CEC','label':'Cold Email Campaign',   'tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'cold_email_campaign'},
+        {'id':'OEM','label':'Outreach Email',         'tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'outreach_email'},
+        {'id':'RC', 'label':'Rate Card',              'tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'rate_card'},
+        {'id':'BP', 'label':'Booking Page',           'tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'booking_page'},
+        {'id':'CPP','label':'Consulting Proposal',    'tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'consulting_proposal'},
+        {'id':'SPK','label':'Speaking Proposals',     'tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'speaking_proposals'},
+        {'id':'CCC','label':'Coaching Curriculum',    'tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'coaching_curriculum'},
+        {'id':'WKC','label':'Workshop Content',       'tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'workshop_content'},
+        {'id':'CTP','label':'Corp Training Proposal', 'tier':1,'color':'#2a4a8b','hub':False,'sub':True,'parent':'L2','conditional':False,'action_type':'corporate_training_proposal'},
+        {'id':'CRF','label':'Course Framework',       'tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'course_framework'},
+        {'id':'SAP','label':'Sales Page',             'tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'sales_page'},
+        {'id':'LES','label':'Launch Email Seq.',      'tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'launch_email_sequence'},
+        {'id':'MST','label':'Membership Structure',   'tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'membership_structure'},
+        {'id':'SEO','label':'SEO Content Calendar',   'tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'seo_content_calendar'},
+        {'id':'FDN','label':'Funnel Design',           'tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'funnel_design'},
+        {'id':'NMO','label':'Newsletter Monetiz.',     'tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'newsletter_monetization'},
+        {'id':'SPS','label':'SaaS Product Spec',       'tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'saas_product_spec'},
+        {'id':'PAN','label':'Portfolio Analysis',      'tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'portfolio_analysis'},
+        {'id':'CGW','label':'Compound Growth',         'tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'compound_growth'},
+        {'id':'DCS','label':'DCA Schedule',            'tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'dca_schedule'},
+    ]
 
-    # ── L3 child agent nodes ──────────────────────────────────────────────────
-    {'id':'CRF','label':'Course Framework','tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'course_framework'},
-    {'id':'SAP','label':'Sales Page','tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'sales_page'},
-    {'id':'LES','label':'Launch Email Seq.','tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'launch_email_sequence'},
-    {'id':'MST','label':'Membership Structure','tier':1,'color':'#1a9e94','hub':False,'sub':True,'parent':'L3','conditional':False,'action_type':'membership_structure'},
-
-    # ── L4 child agent nodes ──────────────────────────────────────────────────
-    {'id':'SEO','label':'SEO Content Calendar','tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'seo_content_calendar'},
-    {'id':'FDN','label':'Funnel Design','tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'funnel_design'},
-    {'id':'NMO','label':'Newsletter Monetiz.','tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'newsletter_monetization'},
-    {'id':'SPS','label':'SaaS Product Spec','tier':1,'color':'#0ea89e','hub':False,'sub':True,'parent':'L4','conditional':False,'action_type':'saas_product_spec'},
-
-    # ── L5 child agent nodes ──────────────────────────────────────────────────
-    {'id':'PAN','label':'Portfolio Analysis','tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'portfolio_analysis'},
-    {'id':'CGW','label':'Compound Growth','tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'compound_growth'},
-    {'id':'DCS','label':'DCA Schedule','tier':1,'color':'#d9a830','hub':False,'sub':True,'parent':'L5','conditional':False,'action_type':'dca_schedule'},
+# Add legacy agent nodes that aren't in agents.json but may still exist in the DB
+_NODE_CATALOG += [
+    {'id':'OEM','label':'Outreach Email',  'tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'outreach_email'},
+    {'id':'SCP','label':'Social Proof',    'tier':1,'color':'#1a3a6b','hub':False,'sub':True,'parent':'L1','conditional':False,'action_type':'social_proof'},
 ]
 
 # Quick lookup: action_type → node id (for state computation)
 _AGENT_NODE_MAP = {n['action_type']: n['id'] for n in _NODE_CATALOG if n.get('action_type')}
+# Merge in alias mappings so old action_type strings in DB still resolve to a node id
+_AGENT_NODE_MAP.update({k: v for k, v in _REGISTRY_NODE_ID_ALIASES.items() if k not in _AGENT_NODE_MAP})
 # Layer membership for each agent node id
 _AGENT_PARENT_MAP = {n['id']: n['parent'] for n in _NODE_CATALOG if n.get('action_type')}
 
