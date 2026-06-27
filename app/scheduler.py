@@ -14,8 +14,27 @@ logger = logging.getLogger(__name__)
 _scheduler = None
 
 
+def _refresh_pool(app):
+    """Dispose the connection pool so the next DB access gets a fresh connection.
+
+    APScheduler reuses threads between ticks. The scoped session for this thread
+    may hold a checked-out connection from the previous job invocation. If MySQL
+    dropped that connection during the idle interval, engine.dispose() alone won't
+    help — the session still holds the stale connection. Call session.remove()
+    first to return the connection to the pool, then dispose to close all pooled
+    connections. The next DB access opens a clean connection.
+    """
+    try:
+        from app.extensions import db
+        db.session.remove()
+        db.engine.dispose()
+    except Exception:
+        pass
+
+
 def _layer6_cycle_job(app):
     with app.app_context():
+        _refresh_pool(app)
         try:
             from app.tasks.layer6 import run_layer6_cycles
             run_layer6_cycles()
@@ -25,6 +44,7 @@ def _layer6_cycle_job(app):
 
 def _layer6_cleanup_job(app):
     with app.app_context():
+        _refresh_pool(app)
         try:
             from app.tasks.layer6 import cleanup_stale_actions
             cleanup_stale_actions()
@@ -34,6 +54,7 @@ def _layer6_cleanup_job(app):
 
 def _proactive_alerts_job(app):
     with app.app_context():
+        _refresh_pool(app)
         try:
             from app.services.proactive_alerts_service import check_proactive_alerts
             check_proactive_alerts()
@@ -43,6 +64,7 @@ def _proactive_alerts_job(app):
 
 def _alert_digest_job(app):
     with app.app_context():
+        _refresh_pool(app)
         try:
             from app.services.proactive_alerts_service import send_alert_digest
             send_alert_digest()
