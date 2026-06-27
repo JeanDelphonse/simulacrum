@@ -1072,7 +1072,7 @@ def _execute_action_sync(entry) -> None:
         logger.info('Layer 6 sync action %s (%s) completed', entry.id, entry.action_type)
 
         # Post-completion: dispatch outreach emails based on trust level
-        if entry.action_type == 'outreach_email':
+        if entry.action_type in ('outreach_email', 'consulting_outreach'):
             try:
                 from app.tasks.agent import _dispatch_outreach_emails
                 _dispatch_outreach_emails(agent_action.id, entry.simulation_id, sim.user_id if sim else None)

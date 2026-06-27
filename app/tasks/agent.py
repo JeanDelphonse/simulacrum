@@ -108,7 +108,7 @@ def execute_agent_action_task(action_id: str):
         logger.info('AgentAction %s completed — version %d created', action_id, new_version_number)
 
         # Post-completion: dispatch outreach emails based on trust level
-        if action_type == 'outreach_email':
+        if action_type in ('outreach_email', 'consulting_outreach'):
             try:
                 _dispatch_outreach_emails(action_id, simulation_id, user_id)
             except Exception as exc:
