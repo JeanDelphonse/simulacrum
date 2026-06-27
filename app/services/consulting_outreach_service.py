@@ -392,25 +392,39 @@ def skip_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
 
 
 def _try_apollo_send(prospect_dict, user_id, action):
-    """Attempt to send one email via Apollo. Silent failure — non-blocking."""
-    try:
-        from app.models.integration import UserIntegration
-        rec = UserIntegration.query.filter_by(user_id=user_id, provider='apollo').first()
-        if not rec or not rec.access_token_enc:
-            return
-        from app.services.token_crypto import decrypt_token
-        from app.services.apollo_client import ApolloClient
-        token = decrypt_token(rec.access_token_enc)
-        client = ApolloClient(token)
-        email_draft = prospect_dict.get('email_draft', {})
-        client.send_email(
-            to_email=prospect_dict.get('email', ''),
-            subject=email_draft.get('subject', ''),
-            body=email_draft.get('body', ''),
-            from_name='',
+    """Send one outreach email via SendGrid. Apollo is used for research only — it has no
+    direct-send API. Silent failure — non-blocking."""
+    email_draft = prospect_dict.get('email_draft', {})
+    crm_id = prospect_dict.get('crm_contact_id')
+    simulation_id = action.simulation_id if action else None
+
+    if crm_id and simulation_id and email_draft.get('subject'):
+        try:
+            from app.services.outreach_email_service import send_outreach_email as _soe
+            from app.models.user import User as _User
+            _user = _User.query.get(user_id)
+            _from_email = (_user.email if _user else None) or 'noreply@simulacrumai.io'
+            _from_name = (_user.full_name or _from_email) if _user else 'Simulacrum'
+            body_text = email_draft.get('body', '')
+            html_body = '<br>'.join(body_text.split('\n')) if body_text else ''
+            result = _soe(
+                simulation_id=simulation_id,
+                contact_id=crm_id,
+                subject=email_draft['subject'],
+                html_body=html_body,
+                from_email=_from_email,
+                from_name=_from_name,
+                action_id=str(action.id) if action else None,
+            )
+            logger.info('Outreach email sent via SendGrid to contact %s: %s',
+                        crm_id, result.get('status'))
+        except Exception as exc:
+            logger.warning('SendGrid outreach send failed (non-fatal): %s', exc)
+    else:
+        logger.warning(
+            'Outreach email skipped — missing crm_contact_id=%s, simulation_id=%s, subject=%s',
+            crm_id, simulation_id, bool(email_draft.get('subject')),
         )
-    except Exception as exc:
-        logger.warning('Apollo send attempt failed (non-fatal): %s', exc)
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────

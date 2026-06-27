@@ -477,7 +477,13 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
             step1 = p['sequence'][0]
             try:
                 _try_apollo_send(
-                    {'email': email, 'email_draft': {'subject': step1.get('subject', ''), 'body': step1.get('body', '')}},
+                    {
+                        'email': email,
+                        'email_draft': {'subject': step1.get('subject', ''), 'body': step1.get('body', '')},
+                        'crm_contact_id': p.get('crm_contact_id'),
+                        'first_name': p.get('first_name', ''),
+                        'last_name': p.get('last_name', ''),
+                    },
                     user_id, action_obj,
                 )
                 step1['send_status'] = 'sent'
