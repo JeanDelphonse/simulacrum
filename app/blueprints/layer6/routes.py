@@ -3,8 +3,11 @@ Layer 6 API — Autonomous Growth Orchestrator endpoints.
 All routes are mounted under /api/simulations/<sim_id>/layer6/
 """
 from __future__ import annotations
+import logging
 from datetime import datetime, timedelta
 from flask import request, jsonify, Response, stream_with_context
+
+logger = logging.getLogger(__name__)
 from flask_login import login_required, current_user
 from app.blueprints.layer6 import layer6_bp
 from app.extensions import db
@@ -46,6 +49,8 @@ def _get_config_or_404(sim_id: str):
     cfg = Layer6Config.query.filter_by(simulation_id=sim_id).first()
     if not cfg:
         return None, jsonify({'error': 'Layer 6 not set up for this simulation'}), 404
+    if not cfg.is_active:
+        return None, jsonify({'error': 'Layer 6 is paused for this simulation'}), 400
     return cfg, None, None
 
 
