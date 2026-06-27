@@ -1073,6 +1073,11 @@
 }
 .gcc-settings-btn:hover { color: var(--gcc-navy); background: var(--gcc-surface); }
 .gcc-settings-btn.l6-active { color: var(--gcc-teal); }
+.gcc-settings-btn.l6-pulse { animation: l6-pulse 1.6s ease-in-out 3; }
+@keyframes l6-pulse {
+  0%, 100% { color: var(--gcc-muted); }
+  50% { color: var(--gcc-teal); transform: scale(1.2); }
+}
 
 /* ── Layer 6 settings modal ──────────────────────────────────────────────── */
 .l6s-overlay {
@@ -1102,6 +1107,13 @@
 }
 .l6s-close:hover { color: var(--gcc-navy); background: var(--gcc-surface); }
 .l6s-body { padding: 1.25rem 1.5rem; }
+/* AI suggestion indicators */
+.l6s-suggest-loader { display: none; align-items: center; gap: .5rem; font-size: .78rem; color: var(--gcc-muted); margin-bottom: .85rem; }
+.l6s-suggest-spinner { width: 14px; height: 14px; border: 2px solid rgba(15,123,114,.25); border-top-color: var(--gcc-teal); border-radius: 50%; animation: l6-spin .7s linear infinite; flex-shrink: 0; }
+@keyframes l6-spin { to { transform: rotate(360deg); } }
+.l6s-suggest-note { display: none; font-size: .75rem; color: #0a5c56; background: rgba(15,123,114,.08); border: 1px solid rgba(15,123,114,.22); border-radius: 6px; padding: .45rem .75rem; margin-bottom: .85rem; line-height: 1.45; }
+.l6s-suggested select, .l6s-suggested input[type="number"] { border-color: rgba(15,123,114,.55) !important; box-shadow: 0 0 0 2px rgba(15,123,114,.1); }
+.l6s-suggested-cb label::after { content: ' ✦'; color: var(--gcc-teal); font-size: .65rem; }
 .l6s-status-bar {
   display: flex; align-items: center; gap: 0.75rem;
   padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem;
@@ -1330,7 +1342,8 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
         </div>
         <div class="jrn-focus-btns">
           <div class="jrn-run-group">
-            <button class="jrn-btn-run" onclick="runCycleNow(this)">&#9654; Run Cycle</button>
+            <button class="jrn-btn-run" onclick="runCycleNow(this)"
+              {% if layer6_config and not layer6_config.is_active %}disabled title="Resume Layer 6 in Settings to run a cycle"{% endif %}>&#9654; Run Cycle</button>
             <span class="jrn-next-run" id="jrnNextRun" data-next-run-class="jrn-next-run"></span>
           </div>
           <button class="jrn-btn-simi" onclick="openCopilot()">&#10022; Ask Simi</button>
@@ -1339,15 +1352,15 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
 
       {# Adaptive Learning Insight card (ENH-08) — shown when latest cycle has user_insight #}
       {% if latest_cycle and latest_cycle.user_insight %}
-      <div id="insightCard" style="background:rgba(15,123,114,.12);border:1px solid rgba(15,123,114,.3);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;">
+      <div id="insightCard" style="background:rgba(15,123,114,.10);border:1px solid rgba(15,123,114,.28);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;">
         <div style="display:flex;align-items:flex-start;gap:.85rem;">
           <span style="font-size:1.1rem;flex-shrink:0;margin-top:.05rem">💡</span>
-          <div style="flex:1;font-size:.875rem;line-height:1.55;color:rgba(255,255,255,.85)">
-            <strong style="color:#4dd9c4;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.3rem">Cycle {{ latest_cycle.cycle_number }} · AI insight</strong>
+          <div style="flex:1;font-size:.875rem;line-height:1.55;color:#0D1B3E">
+            <strong style="color:#0F7B72;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.3rem">Cycle {{ latest_cycle.cycle_number }} · AI insight</strong>
             {{ latest_cycle.user_insight }}
           </div>
           <button onclick="document.getElementById('insightCard').style.display='none';localStorage.setItem('insight_dismissed_{{ latest_cycle.id }}','1')"
-                  style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-size:1rem;flex-shrink:0;padding:.15rem"
+                  style="background:none;border:none;color:rgba(0,0,0,.3);cursor:pointer;font-size:1rem;flex-shrink:0;padding:.15rem"
                   title="Dismiss">✕</button>
         </div>
         {% if latest_cycle.cycle_steps %}
@@ -1609,7 +1622,8 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
       <div class="gcc-section-header" style="margin-bottom:1.25rem">
         <h2>Cycle History</h2>
         <div style="display:flex;gap:0.5rem;align-items:center">
-          <button class="gcc-run-btn" id="runCycleBtn">▶ Run Cycle</button>
+          <button class="gcc-run-btn" id="runCycleBtn"
+            {% if layer6_config and not layer6_config.is_active %}disabled title="Resume Layer 6 in Settings to run a cycle"{% endif %}>▶ Run Cycle</button>
           <span class="jrn-next-run" id="cycNextRun" data-next-run-class="jrn-next-run"></span>
           <button class="cyc-view-btn active" id="btnHistory" onclick="showCycleView('history')">History</button>
           <button class="cyc-view-btn" id="btnDiff" onclick="showCycleView('diff')">Diff</button>
@@ -1664,6 +1678,8 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
        Tab 6 — Visuals
     ──────────────────────────────────────────────────────────────────────── #}
     <div class="gcc-tab-panel gcc-visuals-panel" data-panel="visuals" role="tabpanel">
+
+      {# ── Orchestrator Diagram ── #}
       <div class="gcc-section-header" style="margin-bottom:0">
         <h2>Orchestrator Diagram</h2>
         <div style="display:flex;gap:0.5rem;align-items:center">
@@ -1671,6 +1687,120 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
         </div>
       </div>
       {% include 'simulations/_orchestrator_diagram.html' %}
+
+      {# ── Video Overview (FR-VOICE-06 → FR-VOICE-10) ── #}
+      <div style="margin-top:2rem;border-top:1px solid var(--gcc-border);padding-top:1.75rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+          <div>
+            <h2 style="margin:0 0 .2rem">Video Overview</h2>
+            <p style="font-size:.79rem;color:var(--gcc-muted);margin:0">Generate a narrated 60-90 second simulation overview in your own voice.</p>
+          </div>
+          {% if not voice_trained %}
+          <a href="/settings/voice" style="font-size:.78rem;color:var(--gcc-teal);border:1px solid rgba(15,123,114,.3);border-radius:7px;padding:.3rem .8rem;text-decoration:none;white-space:nowrap">
+            {% if not voice_paid %}Train your voice — $4.99{% else %}Complete voice training{% endif %} →
+          </a>
+          {% endif %}
+        </div>
+
+        {% if not voice_trained %}
+        {# Locked state #}
+        <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:2rem;text-align:center;max-width:480px">
+          <div style="font-size:2rem;margin-bottom:.6rem">🎙️</div>
+          <div style="font-weight:600;font-size:.9rem;margin-bottom:.4rem">Voice training required</div>
+          <p style="font-size:.79rem;color:var(--gcc-muted);line-height:1.6">Train your voice model in Settings → Voice to unlock video generation. One-time $4.99 setup, then unlimited videos.</p>
+        </div>
+
+        {% else %}
+        {# ── Create video UI ── #}
+        <div id="videoCreatePanel" style="max-width:640px">
+
+          {# Section selector #}
+          <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:1.1rem;margin-bottom:1rem">
+            <div style="font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gcc-muted);margin-bottom:.75rem">Sections to include</div>
+            <div style="display:flex;flex-wrap:wrap;gap:.5rem" id="sectionPills">
+              {% for sec in [('Opening', True, True), ('Wealth Pyramid', False, True), ('Agents', False, True), ('Results', False, True), ('Income', False, True), ('Best Win', False, True), ('CTA', True, True)] %}
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:.79rem;cursor:{% if sec[1] %}default{% else %}pointer{% endif %};color:{% if sec[1] %}var(--gcc-muted){% else %}inherit{% endif %}">
+                <input type="checkbox" name="section" value="{{ sec[0] }}" checked {% if sec[1] %}disabled{% endif %} style="accent-color:var(--gcc-teal)">
+                {{ sec[0] }}{% if sec[1] %} <span style="font-size:.65rem;color:var(--gcc-muted)">(always on)</span>{% endif %}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# Format selector #}
+          <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:1.1rem;margin-bottom:1rem">
+            <div style="font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gcc-muted);margin-bottom:.75rem">Format</div>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap" id="formatPills">
+              {% for fmt, label, note in [('square','Square','1080×1080 · LinkedIn default'),('landscape','Landscape','1920×1080 · Bio page / website'),('vertical','Vertical','1080×1920 · Stories')] %}
+              <label style="display:flex;align-items:center;gap:.4rem;font-size:.79rem;cursor:pointer;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.4rem .75rem;transition:border-color .15s">
+                <input type="radio" name="videoFormat" value="{{ fmt }}" {% if fmt == 'square' %}checked{% endif %} style="accent-color:var(--gcc-teal)">
+                <span>{{ label }}</span><span style="font-size:.67rem;color:var(--gcc-muted)"> · {{ note }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# Generate script button #}
+          <button id="genScriptBtn" onclick="generateVideoScript(this)" class="btn btn-teal" style="width:100%;justify-content:center;margin-bottom:.75rem">Generate Script</button>
+
+          {# Script textarea (hidden until generated) #}
+          <div id="scriptArea" style="display:none;margin-bottom:.75rem">
+            <div style="font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gcc-muted);margin-bottom:.4rem">Script — review &amp; edit before generating</div>
+            <textarea id="videoScript" rows="8" style="width:100%;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.75rem;font-size:.82rem;color:inherit;font-family:inherit;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
+            <button id="createVideoBtn" onclick="createVideo(this)" class="btn btn-teal" style="width:100%;justify-content:center;margin-top:.6rem">Create Video</button>
+          </div>
+
+          {# Progress indicator #}
+          <div id="videoProgress" style="display:none;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:1.5rem;text-align:center;margin-bottom:.75rem">
+            <div style="font-size:1.4rem;margin-bottom:.5rem">⚙️</div>
+            <div style="font-weight:600;font-size:.87rem;margin-bottom:.3rem">Creating your video…</div>
+            <div id="videoProgressMsg" style="font-size:.77rem;color:var(--gcc-muted)">Generating narration audio…</div>
+          </div>
+
+        </div>
+
+        {# ── Video player (shown after creation) ── #}
+        <div id="videoPlayerSection" style="display:none;max-width:560px;margin-top:1rem">
+          <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden">
+            <video id="latestVideoPlayer" controls style="width:100%;display:block;background:#000"></video>
+            <div style="padding:.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+              <span id="latestVideoDur" style="font-size:.77rem;color:var(--gcc-muted)"></span>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                <a id="downloadBtn" href="#" download style="font-size:.77rem;padding:.28rem .7rem;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:inherit;text-decoration:none;transition:border-color .15s">⬇ Download</a>
+                <button id="linkedinShareBtn" onclick="shareLinkedIn()" style="font-size:.77rem;padding:.28rem .7rem;border:1px solid rgba(15,123,114,.3);border-radius:6px;background:none;color:var(--gcc-teal);cursor:pointer;transition:all .15s">LinkedIn</button>
+                <label style="display:flex;align-items:center;gap:.35rem;font-size:.77rem;cursor:pointer">
+                  <input type="checkbox" id="embedToggle" onchange="toggleEmbed(this)" style="accent-color:var(--gcc-teal)">
+                  Embed on bio
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# ── Video history ── #}
+        {% if sim_videos %}
+        <div style="max-width:640px;margin-top:1.5rem">
+          <div style="font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gcc-muted);margin-bottom:.75rem">History</div>
+          <div id="videoHistory" style="display:flex;flex-direction:column;gap:.5rem">
+            {% for v in sim_videos %}
+            <div class="video-hist-row" id="vhrow-{{ v.id }}" style="display:flex;align-items:center;gap:.75rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.65rem .9rem">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.8rem;font-weight:600">{{ v.format|title }} · {{ v.duration_label or '—' }}</div>
+                <div style="font-size:.71rem;color:var(--gcc-muted)">{{ v.created_at }} · {{ v.status }}</div>
+              </div>
+              {% if v.status == 'complete' %}
+              <button onclick="loadHistoryVideo('{{ v.id }}','{{ v.stream_url }}','{{ v.duration_label }}',{{ v.embedded_on_bio|lower }})" style="font-size:.72rem;padding:.2rem .55rem;border:1px solid rgba(255,255,255,.12);border-radius:5px;background:none;color:inherit;cursor:pointer">▶ Play</button>
+              {% endif %}
+              <button onclick="deleteVideo('{{ v.id }}')" style="font-size:.72rem;padding:.2rem .55rem;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:none;color:rgba(220,38,38,.7);cursor:pointer">✕</button>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% endif %}{# end voice_trained #}
+      </div>{# end video section #}
+
     </div>
 
   </div>{# end .gcc-content #}
@@ -1689,6 +1819,15 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
     </div>
 
     <div class="l6s-body">
+
+      {# AI suggestion loader + reason (only for first-time setup) #}
+      {% if not cfg %}
+      <div class="l6s-suggest-loader" id="l6sSuggestLoader">
+        <div class="l6s-suggest-spinner"></div>
+        Analysing your simulation…
+      </div>
+      <div class="l6s-suggest-note" id="l6sSuggestNote"></div>
+      {% endif %}
 
       {# Status bar (only when already configured) #}
       {% if cfg %}
@@ -2526,11 +2665,109 @@ copilotBtn.addEventListener('mouseleave', () => {
 const L6_CONFIGURED = {{ 'true' if layer6_config else 'false' }};
 
 function openL6Settings()  { document.getElementById('l6sOverlay').classList.add('open'); }
-function closeL6Settings() { document.getElementById('l6sOverlay').classList.remove('open'); document.getElementById('l6sMsg').textContent = ''; }
+function closeL6Settings() {
+  document.getElementById('l6sOverlay').classList.remove('open');
+  document.getElementById('l6sMsg').textContent = '';
+  // Mark as seen so configured users don't get it again on next visit
+  try { localStorage.setItem('gcc_l6_seen_{{ sim.id }}', '1'); } catch(_) {}
+}
 
 document.getElementById('l6sOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeL6Settings();
 });
+
+// ── Auto-open on GCC visit ───────────────────────────────────────────────────
+// Show every time if not yet configured; show once (first visit) if already configured.
+(function() {
+  var seenKey = 'gcc_l6_seen_{{ sim.id }}';
+  var alreadySeen = false;
+  try { alreadySeen = !!localStorage.getItem(seenKey); } catch(_) {}
+  if (!L6_CONFIGURED || !alreadySeen) {
+    setTimeout(function() {
+      openL6Settings();
+      if (L6_CONFIGURED) {
+        try { localStorage.setItem(seenKey, '1'); } catch(_) {}
+      } else {
+        _loadL6Suggestions();
+      }
+    }, 700);
+  }
+  // Pulse the gear button when L6 not yet configured
+  if (!L6_CONFIGURED) {
+    var btn = document.getElementById('l6SettingsBtn');
+    if (btn) { btn.classList.add('l6-pulse'); btn.addEventListener('animationend', function() { btn.classList.remove('l6-pulse'); }, {once: true}); }
+  }
+})();
+
+// ── L6 AI suggestion pre-fill ────────────────────────────────────────────────
+function _l6MarkSuggested(el) {
+  if (!el) return;
+  el.closest('.l6s-field') && el.closest('.l6s-field').classList.add('l6s-suggested');
+  el.closest('.l6s-toggle-row') && el.closest('.l6s-toggle-row').classList.add('l6s-suggested-cb');
+}
+
+function _l6SetCheck(id, val) {
+  var el = document.getElementById(id);
+  if (el) { el.checked = !!val; _l6MarkSuggested(el); }
+}
+
+async function _loadL6Suggestions() {
+  var loader = document.getElementById('l6sSuggestLoader');
+  var note   = document.getElementById('l6sSuggestNote');
+  if (loader) loader.style.display = 'flex';
+  try {
+    var res = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/layer6/suggest');
+    if (!res.ok) return;
+    var s = await res.json();
+
+    // Cadence
+    var cadenceEl = document.getElementById('l6sCadence');
+    if (cadenceEl) { cadenceEl.value = s.cadence; _l6MarkSuggested(cadenceEl); }
+
+    // Actions per cycle
+    var actEl = document.getElementById('l6sActionsPerCycle');
+    if (actEl) { actEl.value = s.actions_per_cycle; _l6MarkSuggested(actEl); }
+
+    // Spend ceiling
+    var spendEl = document.getElementById('l6sSpendCeiling');
+    if (spendEl) { spendEl.value = s.spend_ceiling; _l6MarkSuggested(spendEl); }
+
+    // Contact scope
+    var scopeEl = document.getElementById('l6sContactScope');
+    if (scopeEl) { scopeEl.value = s.contact_scope; _l6MarkSuggested(scopeEl); }
+
+    // Trust level (radio + visual cards)
+    if (s.trust_level) {
+      var radio = document.querySelector('input[name="l6sTrustLevel"][value="' + s.trust_level + '"]');
+      if (radio) { radio.checked = true; previewTrust(s.trust_level); }
+    }
+
+    // Channel approvals
+    var ch = s.channel_approvals || {};
+    _l6SetCheck('l6sChEmail',    ch.email);
+    _l6SetCheck('l6sChFunnel',   ch.email_funnels);
+    _l6SetCheck('l6sChLinkedin', ch.linkedin);
+    _l6SetCheck('l6sChCalendar', ch.calendar);
+    _l6SetCheck('l6sChContent',  ch.content);
+
+    // Blocked actions
+    var blocked = s.blocked_actions || [];
+    _l6SetCheck('l6sBlkTax',      blocked.indexOf('tax')        > -1);
+    _l6SetCheck('l6sBlkInvest',   blocked.indexOf('invest')     > -1);
+    _l6SetCheck('l6sBlkSocial',   blocked.indexOf('social')     > -1);
+    _l6SetCheck('l6sBlkColdEmail',blocked.indexOf('cold_email') > -1);
+
+    // Reason note
+    if (note && s.reason) {
+      note.textContent = '✦ ' + s.reason;
+      note.style.display = 'block';
+    }
+  } catch(e) {
+    console.warn('L6 suggest failed:', e);
+  } finally {
+    if (loader) loader.style.display = 'none';
+  }
+}
 
 const _TRUST_PRESETS = {
   full_auto:  { email: true,  email_funnels: true,  linkedin: true,  calendar: true,  content_publishing: true  },
@@ -3367,5 +3604,155 @@ function _cycBookings(bookings) {
     window.initAgentNetwork(SIM_ID, API, {});
   }
 })();
+</script>
+
+<script>
+// ── Video Overview (FR-VOICE-06 → FR-VOICE-10) ──────────────────────────────
+
+var _latestVideoId = null;
+
+function _selectedSections() {
+  return Array.from(document.querySelectorAll('[name="section"]:checked'))
+    .map(function(el) { return el.value; });
+}
+
+function _selectedFormat() {
+  var r = document.querySelector('[name="videoFormat"]:checked');
+  return r ? r.value : 'square';
+}
+
+function generateVideoScript(btn) {
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  var sections = _selectedSections();
+  var fmt = _selectedFormat();
+  fetch('/api/voice/simulations/' + SIM_ID + '/generate-script', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({sections: sections, format: fmt}),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) { alert(d.error); return; }
+    document.getElementById('videoScript').value = d.script || '';
+    document.getElementById('scriptArea').style.display = 'block';
+    btn.textContent = 'Regenerate Script';
+  })
+  .catch(function(e) { alert('Script generation failed: ' + e); })
+  .finally(function() { btn.disabled = false; });
+}
+
+function createVideo(btn) {
+  var script = document.getElementById('videoScript').value.trim();
+  if (!script) { alert('Script is empty.'); return; }
+  var fmt = _selectedFormat();
+
+  btn.disabled = true;
+  document.getElementById('scriptArea').style.display = 'none';
+  document.getElementById('genScriptBtn').style.display = 'none';
+  var prog = document.getElementById('videoProgress');
+  prog.style.display = 'block';
+  document.getElementById('videoProgressMsg').textContent = 'Generating narration audio…';
+
+  fetch('/api/voice/simulations/' + SIM_ID + '/create-video', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({script: script, format: fmt}),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    prog.style.display = 'none';
+    if (d.error) { alert(d.error); return; }
+    _latestVideoId = d.id;
+    _showVideoPlayer(d.stream_url, d.duration_label, d.embedded_on_bio || false);
+    // Append to history
+    _prependHistoryRow(d);
+  })
+  .catch(function(e) {
+    prog.style.display = 'none';
+    alert('Video creation failed: ' + e);
+  })
+  .finally(function() {
+    btn.disabled = false;
+    document.getElementById('genScriptBtn').style.display = '';
+    document.getElementById('scriptArea').style.display = 'block';
+  });
+}
+
+function _showVideoPlayer(streamUrl, durLabel, embedded) {
+  var sec = document.getElementById('videoPlayerSection');
+  var vid = document.getElementById('latestVideoPlayer');
+  vid.src = streamUrl;
+  vid.load();
+  document.getElementById('latestVideoDur').textContent = durLabel || '';
+  document.getElementById('downloadBtn').href = streamUrl;
+  document.getElementById('embedToggle').checked = !!embedded;
+  sec.style.display = 'block';
+}
+
+function loadHistoryVideo(videoId, streamUrl, durLabel, embedded) {
+  _latestVideoId = videoId;
+  _showVideoPlayer(streamUrl, durLabel, embedded);
+  var sec = document.getElementById('videoPlayerSection');
+  sec.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function deleteVideo(videoId) {
+  if (!confirm('Delete this video? This cannot be undone.')) return;
+  fetch('/api/voice/videos/' + videoId, {method: 'DELETE'})
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) { alert(d.error); return; }
+    var row = document.getElementById('vhrow-' + videoId);
+    if (row) row.remove();
+    if (_latestVideoId === videoId) {
+      document.getElementById('videoPlayerSection').style.display = 'none';
+      _latestVideoId = null;
+    }
+  })
+  .catch(function(e) { alert('Delete failed: ' + e); });
+}
+
+function toggleEmbed(checkbox) {
+  if (!_latestVideoId) return;
+  fetch('/api/voice/videos/' + _latestVideoId + '/embed', {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({embed: checkbox.checked}),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) { if (d.error) { alert(d.error); checkbox.checked = !checkbox.checked; } })
+  .catch(function() { checkbox.checked = !checkbox.checked; });
+}
+
+function shareLinkedIn() {
+  if (!_latestVideoId) return;
+  fetch('/api/voice/videos/' + _latestVideoId + '/share-caption', {method: 'GET'})
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var caption = d.caption || 'Check out my latest career wealth simulation on Simulacrum AI.';
+    var shareUrl = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(window.location.origin);
+    // Open share dialog; user can paste caption
+    navigator.clipboard && navigator.clipboard.writeText(caption).catch(function(){});
+    window.open(shareUrl, '_blank', 'width=600,height=500');
+  })
+  .catch(function() {
+    window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(window.location.origin), '_blank', 'width=600,height=500');
+  });
+}
+
+function _prependHistoryRow(v) {
+  var hist = document.getElementById('videoHistory');
+  if (!hist) return;
+  var row = document.createElement('div');
+  row.className = 'video-hist-row';
+  row.id = 'vhrow-' + v.id;
+  row.style.cssText = 'display:flex;align-items:center;gap:.75rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.65rem .9rem';
+  row.innerHTML = '<div style="flex:1;min-width:0"><div style="font-size:.8rem;font-weight:600">' + (v.format||'square') + ' · ' + (v.duration_label||'—') + '</div>'
+    + '<div style="font-size:.71rem;color:var(--gcc-muted)">just now · complete</div></div>'
+    + '<button onclick="loadHistoryVideo(\'' + v.id + '\',\'' + v.stream_url + '\',\'' + (v.duration_label||'') + '\',' + (v.embedded_on_bio||false) + ')" style="font-size:.72rem;padding:.2rem .55rem;border:1px solid rgba(255,255,255,.12);border-radius:5px;background:none;color:inherit;cursor:pointer">▶ Play</button>'
+    + '<button onclick="deleteVideo(\'' + v.id + '\')" style="font-size:.72rem;padding:.2rem .55rem;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:none;color:rgba(220,38,38,.7);cursor:pointer">✕</button>';
+  hist.insertBefore(row, hist.firstChild);
+}
 </script>
 {% endblock %}
