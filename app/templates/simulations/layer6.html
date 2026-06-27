@@ -1954,6 +1954,15 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
         </div>
       </div>
 
+      <div class="l6s-section-label" style="margin-top:1.25rem">Email routing</div>
+      <div class="l6s-toggle-row" style="background:rgba(201,149,42,.07);border-radius:6px;padding:.5rem .75rem">
+        <label for="l6sSandboxEmail" style="font-weight:500">Route all outreach to simi@simulacrumai.io</label>
+        <input type="checkbox" id="l6sSandboxEmail" {% if cfg and cfg.sandbox_email_routing %}checked{% endif %}>
+      </div>
+      <div style="font-size:.78rem;color:var(--gcc-muted);margin:.35rem .1rem 0">
+        When enabled, every agent-generated outreach email is redirected to simi@simulacrumai.io instead of the real contact address. Use this to test sequences before going live.
+      </div>
+
       <div class="l6s-msg" id="l6sMsg"></div>
     </div>
 
@@ -2810,6 +2819,7 @@ function _l6sPayload() {
       content:        document.getElementById('l6sChContent').checked,
     },
     blocked_actions: blocked,
+    sandbox_email_routing: document.getElementById('l6sSandboxEmail').checked,
   };
 }
 

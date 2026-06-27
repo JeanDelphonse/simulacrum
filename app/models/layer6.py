@@ -34,6 +34,7 @@ class Layer6Config(db.Model):
     _quiet_hours = db.Column('quiet_hours', db.Text, nullable=True)
     explore_phase_end_month = db.Column(db.Integer, nullable=False, default=3)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    sandbox_email_routing = db.Column(db.Boolean, nullable=False, default=False)
     trust_level = db.Column(db.String(20), nullable=False, default='balanced')
     # SIM-REQ-LIFECYCLE-001 — stored at creation from PlatformSettings defaults
     active_cycle_limit = db.Column(db.Integer, nullable=False, default=30)
@@ -95,6 +96,7 @@ class Layer6Config(db.Model):
             'quiet_hours': self.quiet_hours,
             'explore_phase_end_month': self.explore_phase_end_month,
             'is_active': self.is_active,
+            'sandbox_email_routing': self.sandbox_email_routing,
             'trust_level': self.trust_level,
             'active_cycle_limit': self.active_cycle_limit,
             'maintenance_frequency_hours': self.maintenance_frequency_hours,

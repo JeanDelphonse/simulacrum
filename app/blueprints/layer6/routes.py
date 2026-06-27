@@ -136,6 +136,8 @@ def _apply_config(cfg: Layer6Config, data: dict) -> None:
         cfg.explore_phase_end_month = max(1, int(data['explore_phase_end_month']))
     if 'trust_level' in data and data['trust_level'] in {'full_auto', 'balanced', 'review_all'}:
         cfg.trust_level = data['trust_level']
+    if 'sandbox_email_routing' in data:
+        cfg.sandbox_email_routing = bool(data['sandbox_email_routing'])
 
 
 # ---------------------------------------------------------------------------

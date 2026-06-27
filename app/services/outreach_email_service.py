@@ -38,6 +38,17 @@ def send_outreach_email(
 
     to_email = contact.email.lower().strip()
 
+    # Sandbox routing: send to simi@simulacrumai.io instead of the real contact
+    _sandbox_addr = 'simi@simulacrumai.io'
+    try:
+        from app.models.layer6 import Layer6Config as _L6Cfg
+        _cfg = _L6Cfg.query.filter_by(simulation_id=simulation_id).first()
+        if _cfg and _cfg.sandbox_email_routing:
+            logger.info('Sandbox routing: redirecting outreach for contact %s to %s', contact_id, _sandbox_addr)
+            to_email = _sandbox_addr
+    except Exception as _se:
+        logger.warning('Sandbox routing check failed: %s', _se)
+
     if EmailSuppression.is_suppressed(to_email):
         return {'status': 'skipped', 'reason': 'suppressed'}
 
