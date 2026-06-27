@@ -28,31 +28,22 @@ def _log_interaction(interaction_type, user_id, simulation_id, usage, model=None
             model=model or _model(),
         )
 
+    # Dispose the pool before writing — this function is always called after a
+    # long-running Claude API call, so the idle MySQL connection may have been
+    # dropped by the server. Dispose ensures the next acquire opens a fresh one.
+    try:
+        db.engine.dispose()
+    except Exception:
+        pass
     try:
         db.session.add(_build())
         db.session.commit()
     except Exception as exc:
-        _logger.warning('_log_interaction first attempt failed (%s): %s', type(exc).__name__, exc)
-        # Recover the session so the rest of the cycle can continue
+        _logger.warning('_log_interaction failed, skipping: %s', exc)
         try:
             db.session.rollback()
         except Exception:
             pass
-        # One retry — dispose the pool so the next acquire opens a fresh connection.
-        # db.engine.dispose() does not touch the session or detach any loaded objects.
-        try:
-            try:
-                db.engine.dispose()
-            except Exception:
-                pass
-            db.session.add(_build())
-            db.session.commit()
-        except Exception as exc2:
-            _logger.error('_log_interaction retry failed, skipping: %s', exc2)
-            try:
-                db.session.rollback()
-            except Exception:
-                pass
 
 
 def extract_expertise_zones(parsed_text: str, user_id: str) -> list:
