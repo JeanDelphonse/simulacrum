@@ -3132,11 +3132,13 @@ function _renderDiffCards(cards) {
     const delta = c.delta || 0;
     const cls   = delta > 0 ? 'diff-delta-pos' : delta < 0 ? 'diff-delta-neg' : 'diff-delta-flat';
     const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '—';
-    const valFmt = c.format === 'dollars' ? `$${(c.current||0).toFixed(2)}` : (c.current || 0);
-    const priorFmt = c.format === 'dollars' ? `$${(c.prior||0).toFixed(2)}` : (c.prior || 0);
+    const isDollars = c.format === 'dollars';
+    const valFmt   = isDollars ? `$${(c.current||0).toFixed(2)}` : (c.current || 0);
+    const priorFmt = isDollars ? `$${(c.prior||0).toFixed(2)}` : (c.prior || 0);
+    const deltaFmt = isDollars ? `$${Math.abs(delta).toFixed(2)}` : Math.abs(delta);
     return `<div class="diff-card">
       <div class="diff-card-label">${c.label}</div>
-      <div class="diff-card-val">${valFmt}<span class="diff-delta ${cls}">${arrow} ${Math.abs(delta)}</span></div>
+      <div class="diff-card-val">${valFmt}<span class="diff-delta ${cls}">${arrow} ${deltaFmt}</span></div>
       <div class="diff-card-prior">Prior: ${priorFmt}</div>
     </div>`;
   }).join('');

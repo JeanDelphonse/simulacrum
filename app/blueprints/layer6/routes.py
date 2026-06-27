@@ -2070,8 +2070,77 @@ def cycle_diff(sim_id):
 
     # Summary cards
     from app.models.contact import Contact
-    cur_contacts  = Contact.query.filter_by(user_id=sim.user_id, source_cycle_id=current_id).count()
+    from app.models.outreach_email import EmailLog
+    from app.models.ai_interaction import AIInteraction
+
+    cur_contacts   = Contact.query.filter_by(user_id=sim.user_id, source_cycle_id=current_id).count()
     prior_contacts = Contact.query.filter_by(user_id=sim.user_id, source_cycle_id=prior_id).count() if prior_id else 0
+
+    # Time windows for email + cost queries
+    _cur_start = current_cycle.cycle_started_at
+    _cur_end   = current_cycle.cycle_completed_at or datetime.utcnow()
+    _pri_start = prior_cycle.cycle_started_at if prior_cycle else None
+    _pri_end   = (prior_cycle.cycle_completed_at or datetime.utcnow()) if prior_cycle else None
+
+    # Emails Sent — logged by outreach_email_service within this cycle window
+    cur_emails = EmailLog.query.filter(
+        EmailLog.simulation_id == sim_id,
+        EmailLog.sent_at >= _cur_start,
+        EmailLog.sent_at <= _cur_end,
+    ).count()
+    prior_emails = EmailLog.query.filter(
+        EmailLog.simulation_id == sim_id,
+        EmailLog.sent_at >= _pri_start,
+        EmailLog.sent_at <= _pri_end,
+    ).count() if prior_cycle else 0
+
+    # Replies — replied_at set by SendGrid inbound parse webhook
+    cur_replies = EmailLog.query.filter(
+        EmailLog.simulation_id == sim_id,
+        EmailLog.replied_at.isnot(None),
+        EmailLog.replied_at >= _cur_start,
+        EmailLog.replied_at <= _cur_end,
+    ).count()
+    prior_replies = EmailLog.query.filter(
+        EmailLog.simulation_id == sim_id,
+        EmailLog.replied_at.isnot(None),
+        EmailLog.replied_at >= _pri_start,
+        EmailLog.replied_at <= _pri_end,
+    ).count() if prior_cycle else 0
+
+    # Cycle Cost — sum AI interaction tokens within cycle window
+    _COST_RATES = {
+        'claude-haiku-4-5-20251001': (0.80,  4.00),
+        'claude-haiku-4-5':          (0.80,  4.00),
+        'claude-sonnet-4-6':         (3.00, 15.00),
+        'claude-sonnet-4-5':         (3.00, 15.00),
+        'claude-opus-4-6':           (15.00, 75.00),
+        'claude-opus-4-5':           (15.00, 75.00),
+        'claude-fable-5':            (3.00, 15.00),
+    }
+    _DEFAULT_RATES = (3.00, 15.00)
+
+    def _sum_cost(interactions):
+        total = 0.0
+        for ia in interactions:
+            inp_rate, out_rate = _COST_RATES.get(ia.model or '', _DEFAULT_RATES)
+            total += ((ia.prompt_tokens or 0) * inp_rate +
+                      (ia.completion_tokens or 0) * out_rate) / 1_000_000
+        return round(total, 4)
+
+    cur_interactions = AIInteraction.query.filter(
+        AIInteraction.simulation_id == sim_id,
+        AIInteraction.created_at >= _cur_start,
+        AIInteraction.created_at <= _cur_end,
+    ).all()
+    prior_interactions = AIInteraction.query.filter(
+        AIInteraction.simulation_id == sim_id,
+        AIInteraction.created_at >= _pri_start,
+        AIInteraction.created_at <= _pri_end,
+    ).all() if prior_cycle else []
+
+    cur_cost   = _sum_cost(cur_interactions)
+    prior_cost = _sum_cost(prior_interactions)
 
     summary_cards = [
         {
@@ -2082,21 +2151,21 @@ def cycle_diff(sim_id):
         },
         {
             'label': 'Emails Sent',
-            'current': 0,
-            'prior': 0,
-            'delta': 0,
+            'current': cur_emails,
+            'prior': prior_emails,
+            'delta': cur_emails - prior_emails,
         },
         {
             'label': 'Replies',
-            'current': 0,
-            'prior': 0,
-            'delta': 0,
+            'current': cur_replies,
+            'prior': prior_replies,
+            'delta': cur_replies - prior_replies,
         },
         {
             'label': 'Cycle Cost',
-            'current': 0.0,
-            'prior': 0.0,
-            'delta': 0.0,
+            'current': cur_cost,
+            'prior': prior_cost,
+            'delta': round(cur_cost - prior_cost, 4),
             'format': 'dollars',
         },
     ]
