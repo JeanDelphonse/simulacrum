@@ -49,8 +49,6 @@ def _get_config_or_404(sim_id: str):
     cfg = Layer6Config.query.filter_by(simulation_id=sim_id).first()
     if not cfg:
         return None, jsonify({'error': 'Layer 6 not set up for this simulation'}), 404
-    if not cfg.is_active:
-        return None, jsonify({'error': 'Layer 6 is paused for this simulation'}), 400
     return cfg, None, None
 
 
@@ -338,9 +336,11 @@ def run_cycle(sim_id):
         sim, err, code = _get_sim_or_404(sim_id)
         if err:
             return err, code
-        _, err, code = _get_config_or_404(sim_id)
+        cfg, err, code = _get_config_or_404(sim_id)
         if err:
             return err, code
+        if not cfg.is_active:
+            return jsonify({'error': 'Layer 6 is paused for this simulation'}), 400
 
         from app.services.layer6 import run_orchestrator_cycle
         cycle_data = run_orchestrator_cycle(sim_id, force_rerun=True)
