@@ -294,8 +294,20 @@ def send_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
     if p.get('send_status') == 'sent':
         return p, None  # already sent, no-op
 
-    p['send_status'] = 'sent'
-    p['sent_at'] = datetime.datetime.utcnow().isoformat()
+    # Attempt send BEFORE marking status — only mark 'sent' if it actually goes through
+    sent_ok = _try_apollo_send(p, user_id, action)
+
+    if sent_ok:
+        p['send_status'] = 'sent'
+        p['sent_at'] = datetime.datetime.utcnow().isoformat()
+    else:
+        # Leave send_status as 'draft' so the next dispatch attempt can retry
+        current.content = json.dumps(data, ensure_ascii=False)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return None, 'Send failed — see server logs'
 
     # Advance CRM contact to 'active' + log activity
     crm_id = p.get('crm_contact_id')
@@ -317,9 +329,6 @@ def send_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
                 created_by='user',
             )
             db.session.add(activity)
-
-    # Attempt Apollo individual send (best-effort)
-    _try_apollo_send(p, user_id, action)
 
     # Persist updated JSON in place (not a new version — status change only)
     current.content = json.dumps(data, ensure_ascii=False)
@@ -393,38 +402,44 @@ def skip_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
 
 def _try_apollo_send(prospect_dict, user_id, action):
     """Send one outreach email via SendGrid. Apollo is used for research only — it has no
-    direct-send API. Silent failure — non-blocking."""
+    direct-send API. Returns True if the email was actually sent, False otherwise."""
     email_draft = prospect_dict.get('email_draft', {})
     crm_id = prospect_dict.get('crm_contact_id')
     simulation_id = action.simulation_id if action else None
 
-    if crm_id and simulation_id and email_draft.get('subject'):
-        try:
-            from app.services.outreach_email_service import send_outreach_email as _soe
-            from app.models.user import User as _User
-            _user = _User.query.get(user_id)
-            _from_email = (_user.email if _user else None) or 'noreply@simulacrumai.io'
-            _from_name = (_user.full_name or _from_email) if _user else 'Simulacrum'
-            body_text = email_draft.get('body', '')
-            html_body = '<br>'.join(body_text.split('\n')) if body_text else ''
-            result = _soe(
-                simulation_id=simulation_id,
-                contact_id=crm_id,
-                subject=email_draft['subject'],
-                html_body=html_body,
-                from_email=_from_email,
-                from_name=_from_name,
-                action_id=str(action.id) if action else None,
-            )
-            logger.info('Outreach email sent via SendGrid to contact %s: %s',
-                        crm_id, result.get('status'))
-        except Exception as exc:
-            logger.warning('SendGrid outreach send failed (non-fatal): %s', exc)
-    else:
+    if not crm_id or not simulation_id or not email_draft.get('subject'):
         logger.warning(
             'Outreach email skipped — missing crm_contact_id=%s, simulation_id=%s, subject=%s',
             crm_id, simulation_id, bool(email_draft.get('subject')),
         )
+        return False
+
+    try:
+        from app.services.outreach_email_service import send_outreach_email as _soe
+        from app.models.user import User as _User
+        from flask import current_app as _ca
+        _user = _User.query.get(user_id)
+        # Use the platform-verified sender address — personal email addresses cannot
+        # be verified as SendGrid senders and will be rejected with 403.
+        _from_email = _ca.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
+        _from_name = (_user.full_name or '') if _user else 'Simulacrum'
+        body_text = email_draft.get('body', '')
+        html_body = '<br>'.join(body_text.split('\n')) if body_text else ''
+        result = _soe(
+            simulation_id=simulation_id,
+            contact_id=crm_id,
+            subject=email_draft['subject'],
+            html_body=html_body,
+            from_email=_from_email,
+            from_name=_from_name,
+            action_id=str(action.id) if action else None,
+        )
+        status = result.get('status')
+        logger.info('Outreach email to contact %s: %s', crm_id, status)
+        return status == 'sent'
+    except Exception as exc:
+        logger.warning('SendGrid outreach send failed (non-fatal): %s', exc)
+        return False
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
