@@ -16,34 +16,35 @@ def _model():
 
 def _log_interaction(interaction_type, user_id, simulation_id, usage, model=None):
     import logging as _logging
+    from sqlalchemy import insert as _sa_insert
     _logger = _logging.getLogger(__name__)
 
-    def _build():
-        return AIInteraction(
-            user_id=user_id,
-            simulation_id=simulation_id,
-            interaction_type=interaction_type,
-            prompt_tokens=usage.input_tokens if usage else None,
-            completion_tokens=usage.output_tokens if usage else None,
-            model=model or _model(),
-        )
+    from utils.id_gen import generate_id as _gen_id
+    from datetime import datetime as _dt
+    row = {
+        'id':                 _gen_id(),
+        'user_id':            user_id,
+        'simulation_id':      simulation_id,
+        'interaction_type':   interaction_type,
+        'prompt_tokens':      usage.input_tokens if usage else None,
+        'completion_tokens':  usage.output_tokens if usage else None,
+        'model':              model or _model(),
+        'created_at':         _dt.utcnow(),
+    }
 
-    # Dispose the pool before writing — this function is always called after a
-    # long-running Claude API call, so the idle MySQL connection may have been
-    # dropped by the server. Dispose ensures the next acquire opens a fresh one.
+    # This is always called after a long Claude API call. The scoped db.session
+    # holds a checked-out connection that MySQL may have dropped. Dispose clears
+    # the pool; engine.begin() then opens a fresh connection, bypassing the stale
+    # session entirely.
     try:
         db.engine.dispose()
     except Exception:
         pass
     try:
-        db.session.add(_build())
-        db.session.commit()
+        with db.engine.begin() as _conn:
+            _conn.execute(_sa_insert(AIInteraction).values(**row))
     except Exception as exc:
         _logger.warning('_log_interaction failed, skipping: %s', exc)
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
 
 
 def extract_expertise_zones(parsed_text: str, user_id: str) -> list:
