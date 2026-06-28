@@ -187,20 +187,26 @@ def _assemble_context(user_id: str, bp: BioPage | None = None) -> dict:
             user_id=user_id, embedded_on_bio=True, status='complete',
         ).order_by(SimulationVideo.created_at.desc()).all()
         sim_videos = []
+        video_by_sim_id: dict = {}
         for v in videos:
             zone_sim = Simulation.query.get(v.simulation_id)
             sim_label = (zone_sim.expertise_zone or zone_sim.name) if zone_sim else 'Simulation'
             dur = v.duration_seconds or 0
-            sim_videos.append({
+            entry = {
                 'id':               v.id,
+                'simulation_id':    v.simulation_id,
                 'sim_label':        sim_label,
-                'video_path':       v.video_path,
-                'thumbnail_path':   v.thumbnail_path,
+                'stream_url':       f'/api/voice/videos/{v.id}/public-stream',
+                'thumbnail_url':    f'/api/voice/videos/{v.id}/public-thumb' if v.thumbnail_path else '',
                 'duration_seconds': dur,
                 'duration_label':   f'{dur // 60}:{dur % 60:02d}' if dur else '',
                 'format':           v.format,
-            })
+            }
+            sim_videos.append(entry)
+            video_by_sim_id.setdefault(v.simulation_id, entry)
         ctx['sim_videos'] = sim_videos
+        for bio in ctx.get('sim_bios', []):
+            bio['video'] = video_by_sim_id.get(bio['id'])
     except Exception:
         ctx['sim_videos'] = []
 

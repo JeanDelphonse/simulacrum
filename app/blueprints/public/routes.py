@@ -159,6 +159,26 @@ def profile_page(username):
             'unique_services': unique_services,
         })
 
+    # Attach embedded videos to sim_bios (one per simulation, newest first)
+    try:
+        from app.models.simulation_video import SimulationVideo
+        _vids = SimulationVideo.query.filter_by(
+            user_id=profile.user_id, embedded_on_bio=True, status='complete',
+        ).order_by(SimulationVideo.created_at.desc()).all()
+        _video_by_sim: dict = {}
+        for _v in _vids:
+            _dur = _v.duration_seconds or 0
+            _video_by_sim.setdefault(_v.simulation_id, {
+                'stream_url':      f'/api/voice/videos/{_v.id}/public-stream',
+                'thumbnail_url':   f'/api/voice/videos/{_v.id}/public-thumb' if _v.thumbnail_path else '',
+                'duration_label':  f'{_dur // 60}:{_dur % 60:02d}' if _dur else '',
+                'format':          _v.format,
+            })
+        for _b in sim_bios:
+            _b['video'] = _video_by_sim.get(_b['id'])
+    except Exception:
+        pass
+
     booking_url = profile.effective_booking_url()
     is_owner = current_user.is_authenticated and current_user.id == profile.user_id
     bio_sections = _parse_bio(profile.bio) if profile.bio else None

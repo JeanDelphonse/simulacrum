@@ -755,6 +755,10 @@
     .bio-video-wrap--vertical { aspect-ratio: 9 / 16; max-width: 360px; }
     .bio-video-player { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
     .bio-video-duration { position: absolute; bottom: .55rem; right: .6rem; background: rgba(0,0,0,.72); color: #fff; font-size: .7rem; font-weight: 600; padding: .18rem .45rem; border-radius: 4px; pointer-events: none; }
+    .sim-bio-video-wrap { position: relative; margin-top: 1rem; border-radius: 8px; overflow: hidden; background: #000; }
+    .sim-bio-video-wrap--square { aspect-ratio: 1 / 1; }
+    .sim-bio-video-wrap--landscape { aspect-ratio: 16 / 9; }
+    .sim-bio-video-wrap--vertical { aspect-ratio: 9 / 16; max-width: 300px; }
     .slide-cover { background: linear-gradient(140deg, var(--accent) 0%, #0a5c56 100%); }
     .slide-cover .slide-header { border-bottom-color: rgba(255,255,255,.18); }
     .slide-cover .slide-header-label { color: rgba(255,255,255,.65); }
@@ -973,8 +977,8 @@
         <div class="bio-video-label">{{ v.sim_label }}</div>
         <div class="bio-video-wrap bio-video-wrap--{{ v.format }}">
           <video class="bio-video-player" controls preload="metadata"
-                 {% if v.thumbnail_path %}poster="{{ url_for('static', filename=v.thumbnail_path) }}"{% endif %}>
-            <source src="{{ url_for('static', filename=v.video_path) }}" type="video/mp4">
+                 {% if v.thumbnail_url %}poster="{{ v.thumbnail_url }}"{% endif %}>
+            <source src="{{ v.stream_url }}" type="video/mp4">
             Your browser does not support video playback.
           </video>
           {% if v.duration_label %}
@@ -1046,6 +1050,15 @@
             {% if bio.services %}
             <div class="sim-bio-services">
               {% for svc in bio.services %}<span class="sim-bio-pill">{{ svc }}</span>{% endfor %}
+            </div>
+            {% endif %}
+            {% if bio.video %}
+            <div class="sim-bio-video-wrap sim-bio-video-wrap--{{ bio.video.format }}">
+              <video class="bio-video-player" controls preload="metadata"
+                     {% if bio.video.thumbnail_path %}poster="{{ url_for('static', filename=bio.video.thumbnail_path) }}"{% endif %}>
+                <source src="{{ url_for('static', filename=bio.video.video_path) }}" type="video/mp4">
+              </video>
+              {% if bio.video.duration_label %}<span class="bio-video-duration">{{ bio.video.duration_label }}</span>{% endif %}
             </div>
             {% endif %}
           </div>
