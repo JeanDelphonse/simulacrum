@@ -331,7 +331,7 @@ def test_outreach_email():
     try:
         import sendgrid as sg_module
         from sendgrid.helpers.mail import (
-            Mail, TrackingSettings, OpenTracking, ClickTracking,
+            Mail, From, TrackingSettings, OpenTracking, ClickTracking,
         )
         html_body = (
             '<p>This is a <strong>production outreach email test</strong> from SimulacrumAI.io.</p>'
@@ -340,7 +340,7 @@ def test_outreach_email():
             '<p style="color:#6b7280;font-size:12px;">Sent via Admin → Test Outreach Email</p>'
         )
         message = Mail(
-            from_email=(sender_email, sender_name),
+            from_email=From(sender_email, sender_name),
             to_emails=to_addr,
             subject='[Simulacrum Test] Outreach email pipeline check',
             html_content=html_body,

@@ -60,11 +60,11 @@ def send_outreach_email(
     try:
         import sendgrid as sg_module
         from sendgrid.helpers.mail import (
-            Mail, TrackingSettings, OpenTracking, ClickTracking,
+            Mail, From, TrackingSettings, OpenTracking, ClickTracking,
         )
 
         message = Mail(
-            from_email=(from_email, from_name),
+            from_email=From(from_email, from_name),
             to_emails=to_email,
             subject=subject,
             html_content=html_body,
