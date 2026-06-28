@@ -144,6 +144,18 @@
     </div>
   </section>
 
+  <!-- ── Outreach Email Test ─────────────────────────────────────────────── -->
+  <section class="admin-section">
+    <h2>Outreach Email Test</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">Send a real outreach-pipeline email (SendGrid + open/click tracking) to verify delivery is working. Defaults to your admin email.</p>
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <input type="email" id="testOutreachTo" placeholder="{{ current_user.email }}" value="{{ current_user.email }}"
+             style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:.875rem;width:260px">
+      <button class="btn btn-secondary btn-sm" onclick="sendOutreachTest()" id="outreachTestBtn">Send Test Email</button>
+      <span id="outreachTestMsg" style="font-size:.82rem;display:none"></span>
+    </div>
+  </section>
+
   <section class="admin-section">
     <h2>Revenue Dashboard</h2>
     <div class="stats-grid">
@@ -446,6 +458,36 @@ async function toggleUserActive(uid, reactivate) {
   } else {
     const d = await r.json();
     alert(d.error || 'Action failed');
+  }
+}
+
+// ── Outreach email test ──────────────────────────────────────────────────────
+async function sendOutreachTest() {
+  const btn = document.getElementById('outreachTestBtn');
+  const msg = document.getElementById('outreachTestMsg');
+  const to  = document.getElementById('testOutreachTo').value.trim();
+  if (!to) { msg.style.display='inline'; msg.style.color='#dc2626'; msg.textContent='Enter a recipient address.'; return; }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  msg.style.display = 'none';
+  try {
+    const r = await fetch(ROOT + '/api/admin/test-outreach-email', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ to }),
+    });
+    const d = await r.json();
+    msg.style.display = 'inline';
+    if (r.ok) {
+      msg.style.color = '#16a34a';
+      msg.textContent = `✓ Sent to ${d.to} (SG status ${d.status_code}, id: ${d.message_id || 'n/a'})`;
+    } else {
+      msg.style.color = '#dc2626';
+      msg.textContent = `✗ ${d.error || 'Send failed'}`;
+    }
+  } catch (e) {
+    msg.style.display = 'inline'; msg.style.color = '#dc2626'; msg.textContent = 'Network error';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Send Test Email';
   }
 }
 

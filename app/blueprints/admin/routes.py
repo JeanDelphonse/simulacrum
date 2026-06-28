@@ -308,6 +308,64 @@ def list_users():
     } for u in users]), 200
 
 
+# ── POST /api/admin/test-outreach-email ─────────────────────────────────────
+
+@admin_bp.route('/test-outreach-email', methods=['POST'])
+@login_required
+@admin_required
+def test_outreach_email():
+    """Send a real outreach-pipeline test email to the requesting admin."""
+    from flask import current_app
+    data = request.get_json(silent=True) or {}
+    to_addr = (data.get('to') or current_user.email or '').strip()
+    if not to_addr:
+        return jsonify({'error': 'No recipient address'}), 400
+
+    api_key = current_app.config.get('SENDGRID_API_KEY', '')
+    if not api_key:
+        return jsonify({'error': 'SENDGRID_API_KEY is not configured on this server'}), 500
+
+    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
+    sender_name  = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
+
+    try:
+        import sendgrid as sg_module
+        from sendgrid.helpers.mail import (
+            Mail, TrackingSettings, OpenTracking, ClickTracking,
+        )
+        html_body = (
+            '<p>This is a <strong>production outreach email test</strong> from SimulacrumAI.io.</p>'
+            '<p>If you received this, the outreach email pipeline (SendGrid + open/click tracking) '
+            'is working correctly.</p>'
+            '<p style="color:#6b7280;font-size:12px;">Sent via Admin → Test Outreach Email</p>'
+        )
+        message = Mail(
+            from_email=(sender_email, sender_name),
+            to_emails=to_addr,
+            subject='[Simulacrum Test] Outreach email pipeline check',
+            html_content=html_body,
+        )
+        message.tracking_settings = TrackingSettings(
+            open_tracking=OpenTracking(enable=True),
+            click_tracking=ClickTracking(enable=True, enable_text=True),
+        )
+        message.custom_arg = [
+            ('simulation_id', 'admin_test'),
+            ('contact_id',    'admin_test'),
+            ('step_id',       'smoke_test'),
+        ]
+        client = sg_module.SendGridAPIClient(api_key)
+        response = client.send(message)
+        msg_id = response.headers.get('X-Message-Id', '')
+        AuditLog.log('admin_outreach_email_test', user_id=current_user.id,
+                     metadata={'to': to_addr, 'status': response.status_code, 'msg_id': msg_id})
+        db.session.commit()
+        return jsonify({'ok': True, 'to': to_addr, 'status_code': response.status_code, 'message_id': msg_id}), 200
+    except Exception as exc:
+        current_app.logger.error('admin test-outreach-email failed: %s', exc, exc_info=True)
+        return jsonify({'error': str(exc)}), 500
+
+
 # ── GET /api/admin/users/<user_id> ──────────────────────────────────────────
 
 @admin_bp.route('/users/<user_id>', methods=['GET'])
