@@ -1,5 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Admin Panel{% endblock %}
+{% block head %}
+<style>
+.user-status-badge { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:.15rem .5rem; border-radius:20px; }
+.user-status-badge.active { background:rgba(34,197,94,.12); color:#4ade80; }
+.user-status-badge.deactivated { background:rgba(220,38,38,.12); color:#f87171; }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-container">
   <nav class="admin-subnav">
@@ -179,11 +186,11 @@
   <section class="admin-section">
     <h2>Users (Top 50)</h2>
     <table class="admin-table" id="usersTable">
-      <thead><tr><th>Name</th><th>Email</th><th>Simulations</th><th>Spend</th><th>Joined</th><th>Public Profile</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th>Simulations</th><th>Spend</th><th>Joined</th><th>Public Profile</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>
         {% for u in users %}
         {% set profile = profiles.get(u.id) %}
-        <tr>
+        <tr id="user-row-{{ u.id }}">
           <td>{{ u.full_name }}</td>
           <td>{{ u.email }}</td>
           <td>{{ u.simulation_count }}</td>
@@ -198,11 +205,64 @@
             <span style="font-size:.78rem;color:rgba(255,255,255,.2)">—</span>
             {% endif %}
           </td>
+          <td>
+            {% if u.deleted_at %}
+            <span class="user-status-badge deactivated" data-uid="{{ u.id }}">Deactivated</span>
+            {% else %}
+            <span class="user-status-badge active" data-uid="{{ u.id }}">Active</span>
+            {% endif %}
+          </td>
+          <td style="white-space:nowrap">
+            <button onclick="openUserEdit('{{ u.id }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(255,255,255,.2);border-radius:5px;background:none;color:rgba(255,255,255,.8);cursor:pointer;margin-right:.3rem">Edit</button>
+            {% if u.deleted_at %}
+            <button onclick="toggleUserActive('{{ u.id }}', true)" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(34,197,94,.4);border-radius:5px;background:none;color:#4ade80;cursor:pointer">Reactivate</button>
+            {% else %}
+            <button onclick="toggleUserActive('{{ u.id }}', false)" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(220,38,38,.4);border-radius:5px;background:none;color:#f87171;cursor:pointer">Deactivate</button>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </section>
+</div>
+
+<!-- ── User Edit Modal ──────────────────────────────────────────────────── -->
+<div id="userEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#1a2236;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:2rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+      <h3 style="margin:0;font-size:1rem">Edit User Profile</h3>
+      <button onclick="closeUserEdit()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+    </div>
+    <input type="hidden" id="editUserId">
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Full Name</label>
+        <input id="editFullName" type="text" maxlength="100" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Username</label>
+        <input id="editUsername" type="text" maxlength="30" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Display Name</label>
+        <input id="editDisplayName" type="text" maxlength="100" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Tagline</label>
+        <input id="editTagline" type="text" maxlength="200" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Bio</label>
+        <textarea id="editBio" rows="5" maxlength="10000" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem">
+      <button onclick="closeUserEdit()" style="padding:.45rem 1rem;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:.85rem">Cancel</button>
+      <button onclick="saveUserEdit()" style="padding:.45rem 1rem;border:none;border-radius:7px;background:#0f7b72;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600" id="saveUserEditBtn">Save Changes</button>
+    </div>
+    <div id="editUserMsg" style="margin-top:.75rem;font-size:.8rem;text-align:center;display:none"></div>
+  </div>
 </div>
 {% endblock %}
 {% block scripts %}
@@ -325,6 +385,69 @@ async function saveProspectTierConfig() {
 }
 
 loadProspectTierConfig();
+
+// ── User management ──────────────────────────────────────────────────────────
+async function openUserEdit(uid) {
+  const r = await fetch(ROOT + '/api/admin/users/' + uid);
+  if (!r.ok) { alert('Could not load user'); return; }
+  const d = await r.json();
+  document.getElementById('editUserId').value = uid;
+  document.getElementById('editFullName').value = d.full_name || '';
+  document.getElementById('editUsername').value = d.username || '';
+  document.getElementById('editDisplayName').value = d.display_name || '';
+  document.getElementById('editTagline').value = d.tagline || '';
+  document.getElementById('editBio').value = d.bio || '';
+  document.getElementById('editUserMsg').style.display = 'none';
+  const modal = document.getElementById('userEditModal');
+  modal.style.display = 'flex';
+}
+
+function closeUserEdit() {
+  document.getElementById('userEditModal').style.display = 'none';
+}
+
+document.getElementById('userEditModal').addEventListener('click', function(e) {
+  if (e.target === this) closeUserEdit();
+});
+
+async function saveUserEdit() {
+  const uid = document.getElementById('editUserId').value;
+  const btn = document.getElementById('saveUserEditBtn');
+  const msg = document.getElementById('editUserMsg');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const r = await fetch(ROOT + '/api/admin/users/' + uid + '/profile', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      full_name:    document.getElementById('editFullName').value,
+      username:     document.getElementById('editUsername').value,
+      display_name: document.getElementById('editDisplayName').value,
+      tagline:      document.getElementById('editTagline').value,
+      bio:          document.getElementById('editBio').value,
+    }),
+  });
+  btn.disabled = false; btn.textContent = 'Save Changes';
+  if (r.ok) {
+    msg.style.display = 'block'; msg.style.color = '#4ade80'; msg.textContent = 'Saved!';
+    setTimeout(closeUserEdit, 1000);
+  } else {
+    const d = await r.json();
+    msg.style.display = 'block'; msg.style.color = '#f87171'; msg.textContent = d.error || 'Save failed';
+  }
+}
+
+async function toggleUserActive(uid, reactivate) {
+  const action = reactivate ? 'reactivate' : 'deactivate';
+  const label = reactivate ? 'reactivate' : 'deactivate';
+  if (!confirm(`Are you sure you want to ${label} this user?`)) return;
+  const r = await fetch(ROOT + '/api/admin/users/' + uid + '/' + action, { method: 'POST' });
+  if (r.ok) {
+    location.reload();
+  } else {
+    const d = await r.json();
+    alert(d.error || 'Action failed');
+  }
+}
 
 // Load price history
 fetch(ROOT + '/api/admin/settings/simulation_price').then(r => r.json()).then(data => {

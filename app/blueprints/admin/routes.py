@@ -303,8 +303,102 @@ def list_users():
         'simulation_count': u.simulation_count,
         'total_spend_usd': u.total_spend / 100,
         'is_admin': u.is_admin,
+        'is_deactivated': u.deleted_at is not None,
         'created_at': u.created_at.isoformat(),
     } for u in users]), 200
+
+
+# ── GET /api/admin/users/<user_id> ──────────────────────────────────────────
+
+@admin_bp.route('/users/<user_id>', methods=['GET'])
+@login_required
+@admin_required
+def get_user(user_id):
+    from app.models.profile import UserProfile
+    u = User.query.get_or_404(user_id)
+    profile = UserProfile.query.filter_by(user_id=u.id).first()
+    return jsonify({
+        'id':             u.id,
+        'email':          u.email,
+        'full_name':      u.full_name or '',
+        'is_deactivated': u.deleted_at is not None,
+        'username':       profile.username if profile else '',
+        'display_name':   profile.display_name or '' if profile else '',
+        'tagline':        profile.tagline or '' if profile else '',
+        'bio':            profile.bio or '' if profile else '',
+    }), 200
+
+
+# ── PUT /api/admin/users/<user_id>/profile ───────────────────────────────────
+
+@admin_bp.route('/users/<user_id>/profile', methods=['PUT'])
+@login_required
+@admin_required
+def admin_update_user_profile(user_id):
+    from datetime import datetime
+    from app.models.profile import UserProfile
+    import re
+    u = User.query.get_or_404(user_id)
+    data = request.get_json(force=True, silent=True) or {}
+
+    if 'full_name' in data:
+        u.full_name = (data['full_name'] or '').strip()[:100] or None
+
+    profile = UserProfile.query.filter_by(user_id=u.id).first()
+    if profile:
+        if 'username' in data:
+            username = (data['username'] or '').lower().strip()
+            if username and re.match(r'^[a-z0-9-]{3,30}$', username):
+                conflict = UserProfile.query.filter(
+                    UserProfile.username == username,
+                    UserProfile.id != profile.id,
+                ).first()
+                if conflict:
+                    return jsonify({'error': 'Username already taken'}), 409
+                profile.username = username
+        if 'display_name' in data:
+            profile.display_name = (data['display_name'] or '').strip()[:100] or None
+        if 'tagline' in data:
+            profile.tagline = (data['tagline'] or '').strip()[:200] or None
+        if 'bio' in data:
+            profile.bio = (data['bio'] or '').strip()[:10000] or None
+        profile.updated_at = datetime.utcnow()
+
+    AuditLog.log('admin_user_profile_updated', user_id=current_user.id,
+                 metadata={'target_user_id': user_id, 'fields': list(data.keys())})
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+# ── POST /api/admin/users/<user_id>/deactivate ───────────────────────────────
+
+@admin_bp.route('/users/<user_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+def deactivate_user(user_id):
+    from datetime import datetime
+    u = User.query.get_or_404(user_id)
+    if u.id == current_user.id:
+        return jsonify({'error': 'Cannot deactivate your own account'}), 400
+    u.deleted_at = datetime.utcnow()
+    AuditLog.log('admin_user_deactivated', user_id=current_user.id,
+                 metadata={'target_user_id': user_id})
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+# ── POST /api/admin/users/<user_id>/reactivate ───────────────────────────────
+
+@admin_bp.route('/users/<user_id>/reactivate', methods=['POST'])
+@login_required
+@admin_required
+def reactivate_user(user_id):
+    u = User.query.get_or_404(user_id)
+    u.deleted_at = None
+    AuditLog.log('admin_user_reactivated', user_id=current_user.id,
+                 metadata={'target_user_id': user_id})
+    db.session.commit()
+    return jsonify({'ok': True}), 200
 
 
 @admin_bp.route('/user/profile', methods=['GET'])
