@@ -201,6 +201,155 @@ def generate_bio():
     return jsonify({'bio': bio_text})
 
 
+def _run_career_extraction(source_text: str) -> list:
+    """Call Claude Haiku to extract career entries from arbitrary professional text."""
+    import json as _json
+    import anthropic as _anthropic
+    client = _anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
+    response = client.messages.create(
+        model='claude-haiku-4-5-20251001',
+        max_tokens=2000,
+        messages=[{
+            'role': 'user',
+            'content': (
+                'Extract all work experience entries from this professional text. '
+                'Return ONLY a valid JSON array with no other text. Each element must have: '
+                'company_name (required), role (required), start_date (YYYY-MM or ""), '
+                'end_date (YYYY-MM or "Present" or ""), description (1-2 sentences or ""), '
+                'company_url (if mentioned, else ""). '
+                'If no work history is found return [].\n\nText:\n' + source_text[:10000]
+            ),
+        }],
+    )
+    raw = response.content[0].text.strip()
+    if '```' in raw:
+        raw = raw.split('```')[1]
+        if raw.startswith('json'):
+            raw = raw[4:]
+    entries = _json.loads(raw)
+    if not isinstance(entries, list):
+        return []
+    clean = []
+    for e in entries[:20]:
+        if isinstance(e, dict) and e.get('company_name') and e.get('role'):
+            clean.append({
+                'company_name': str(e.get('company_name', ''))[:200],
+                'company_url':  str(e.get('company_url', '') or ''),
+                'role':         str(e.get('role', ''))[:200],
+                'start_date':   str(e.get('start_date', '') or ''),
+                'end_date':     str(e.get('end_date', '') or ''),
+                'description':  str(e.get('description', '') or '')[:500],
+            })
+    return clean
+
+
+@profile_bp.route('/api/settings/career/import', methods=['POST'])
+@login_required
+def import_career_from_bio():
+    data = request.get_json(force=True, silent=True) or {}
+    bio_text = (data.get('bio') or '').strip()
+    if not bio_text:
+        return jsonify({'error': 'No bio text provided'}), 400
+    try:
+        clean = _run_career_extraction(bio_text)
+        return jsonify({'entries': clean})
+    except Exception as e:
+        current_app.logger.error('Career import from bio failed: %s', e)
+        return jsonify({'error': 'Failed to parse bio. Please try again.'}), 500
+
+
+@profile_bp.route('/api/settings/career/import-from-resume/<resume_id>', methods=['POST'])
+@login_required
+def import_career_from_resume(resume_id):
+    """Extract career history from a resume and auto-save to profile (skips if already populated)."""
+    from datetime import datetime
+    from app.models.resume import Resume
+    resume = Resume.query.filter_by(id=resume_id, user_id=current_user.id).first()
+    if not resume or not resume.parsed_text:
+        return jsonify({'error': 'Resume not found'}), 404
+    profile = _get_or_create_profile(current_user)
+    if profile.career_history:
+        return jsonify({'ok': True, 'skipped': True, 'reason': 'career_history already set'}), 200
+    try:
+        entries = _run_career_extraction(resume.parsed_text)
+        if entries:
+            profile.career_history = entries
+            profile.updated_at = datetime.utcnow()
+            db.session.commit()
+        return jsonify({'ok': True, 'count': len(entries)}), 200
+    except Exception as e:
+        current_app.logger.error('Career import from resume failed: %s', e)
+        return jsonify({'error': 'Extraction failed'}), 500
+
+
+def _extract_domain(url: str) -> str:
+    from urllib.parse import urlparse
+    try:
+        if not url.startswith('http'):
+            url = 'https://' + url
+        host = urlparse(url).netloc or urlparse(url).path.split('/')[0]
+        return host.replace('www.', '').split(':')[0].strip()
+    except Exception:
+        return ''
+
+
+def _search_company_domain(company_name: str) -> str:
+    import requests as _req
+    try:
+        r = _req.get(
+            'https://api.duckduckgo.com/',
+            params={'q': company_name + ' official site', 'format': 'json',
+                    'no_html': '1', 'skip_disambig': '1'},
+            timeout=6,
+            headers={'User-Agent': 'Mozilla/5.0'},
+        )
+        data = r.json()
+        for key in ('OfficialSite', 'AbstractURL'):
+            url = (data.get(key) or '').strip()
+            if url:
+                domain = _extract_domain(url)
+                if domain:
+                    return domain
+        # fall back to related topics
+        for topic in (data.get('RelatedTopics') or [])[:3]:
+            url = (topic.get('FirstURL') or '')
+            if url and 'duckduckgo' not in url:
+                domain = _extract_domain(url)
+                if domain:
+                    return domain
+    except Exception:
+        pass
+    return ''
+
+
+@profile_bp.route('/api/settings/career/logos', methods=['POST'])
+@login_required
+def fetch_career_logos():
+    import requests as _req
+    data = request.get_json(force=True, silent=True) or {}
+    entries = data.get('entries', [])
+    logos = []
+    for entry in entries[:20]:
+        company_name = (entry.get('company_name') or '').strip()
+        company_url  = (entry.get('company_url')  or '').strip()
+        logo_url = None
+        domain = ''
+        if company_url:
+            domain = _extract_domain(company_url)
+        if not domain and company_name:
+            domain = _search_company_domain(company_name)
+        if domain:
+            candidate = f'https://logo.clearbit.com/{domain}?size=64'
+            try:
+                head = _req.head(candidate, timeout=4, allow_redirects=True)
+                if head.status_code == 200 and 'image' in head.headers.get('Content-Type', ''):
+                    logo_url = candidate
+            except Exception:
+                pass
+        logos.append(logo_url)
+    return jsonify({'logos': logos})
+
+
 @profile_bp.route('/api/settings/profile/avatar', methods=['POST'])
 @login_required
 def upload_avatar():

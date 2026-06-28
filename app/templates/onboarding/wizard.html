@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='simi_logo.jpg') }}">
   <title>Welcome to SimulacrumAI.io — Get Started</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -779,9 +780,11 @@
           resumeUploaded = true;
           resumeId = r.data.id || null;
           contBtn.disabled = false;
-          // Background: extract expertise zones for the dashboard (fire-and-forget)
           if (resumeId) {
+            // Background: extract expertise zones for the dashboard
             api('POST', '/api/resumes/' + resumeId + '/extract-zones').catch(() => {});
+            // Background: populate career history from resume (skips if already set)
+            api('POST', '/api/settings/career/import-from-resume/' + resumeId).catch(() => {});
           }
         } else {
           showError('step2Error', r.data.error || 'Upload failed. Please try again.');
@@ -1098,6 +1101,14 @@
           const bioR = await api('POST', '/api/settings/profile/bio/generate');
           if (bioR.ok && bioR.data.bio) {
             await api('PUT', '/api/settings/profile', { bio: bioR.data.bio });
+            // 3. Populate career history from the generated bio (skips if already set via resume)
+            btn.innerHTML = '<span class="spinner"></span>&nbsp;Populating your career timeline…';
+            try {
+              const careerR = await api('POST', '/api/settings/career/import', { bio: bioR.data.bio });
+              if (careerR.ok && careerR.data.entries && careerR.data.entries.length) {
+                await api('PUT', '/api/settings/profile', { career_history: careerR.data.entries });
+              }
+            } catch (_) { /* non-critical */ }
           }
         } catch (_) { /* non-critical — preview works even without bio text */ }
 
