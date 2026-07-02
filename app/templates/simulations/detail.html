@@ -150,6 +150,10 @@
 
 .slide-form-group { margin-bottom: .9rem; }
 .slide-label { display: block; font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .3rem; font-family: 'DM Sans', sans-serif; }
+.slide-suggested .slide-input,
+.slide-suggested .slide-select,
+.slide-suggested .slide-textarea { border-color: rgba(15,123,114,.45); background: rgba(15,123,114,.03); }
+.slide-suggested .slide-label::after { content: ' · suggested'; color: #0F7B72; font-weight: 500; text-transform: none; letter-spacing: 0; }
 .slide-input, .slide-select, .slide-textarea {
   width: 100%; padding: .55rem .75rem; border: 1px solid #d0d5dd; border-radius: 8px;
   font-size: .875rem; color: var(--navy); font-family: 'DM Sans', sans-serif; box-sizing: border-box;
@@ -191,6 +195,11 @@
 <div class="pyr-page">
 
   {# ── Page Header ──────────────────────────────────────────────────────── #}
+  <a href="{{ url_for('pages.dashboard') }}"
+     style="display:inline-flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--muted);font-family:'DM Sans',sans-serif;text-decoration:none;margin-bottom:1.25rem;">
+    ← Dashboard
+  </a>
+
   <div class="pyr-header">
     <div>
       <h1 class="pyr-title">{{ simulation.name }}</h1>
@@ -213,6 +222,9 @@
     <div class="pyr-header-actions">
       <button class="btn btn-ghost btn-sm" onclick="pyrExportPDF()">↓ Export PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="pyrShare()">Share</button>
+      {% if is_owner and simulation.agent_selection_confirmed_at %}
+      <a href="{{ url_for('pages.simulation_setup', sim_id=simulation.id) }}" class="btn btn-ghost btn-sm">Manage Agents</a>
+      {% endif %}
       <a href="{{ url_for('pages.layer6_view', sim_id=simulation.id) }}" class="btn btn-primary btn-sm">⚡ Growth Command Center</a>
     </div>
   </div>
@@ -685,11 +697,87 @@ function openSlideover(agent, layerNum) {
   html += '<div class="slide-error" id="slideError"></div>';
 
   document.getElementById('slideBody').innerHTML = html;
+
+  // Pre-fill: localStorage draft first, then last_inputs from backend
+  var _lsKey = 'sim_draft_' + SIM_ID + '_' + agent.action_type;
+  var _lsDraft = {};
+  try { _lsDraft = JSON.parse(localStorage.getItem(_lsKey) || '{}'); } catch(e) {}
+  var hasDraft = Object.keys(_lsDraft).length > 0;
+  var saved = hasDraft ? _lsDraft : (agent.last_inputs || {});
+  var hasSaved = Object.keys(saved).length > 0;
+  (agent.prompt_form || []).forEach(function(f) {
+    var el = document.getElementById('sf-' + f.key);
+    if (!el || !(f.key in saved)) return;
+    if (f.type === 'toggle') { el.checked = !!saved[f.key]; }
+    else { el.value = saved[f.key]; }
+  });
+
+  // Persist to localStorage on every keystroke so values survive panel close
+  (agent.prompt_form || []).forEach(function(f) {
+    var el = document.getElementById('sf-' + f.key);
+    if (!el) return;
+    el.addEventListener(f.type === 'toggle' ? 'change' : 'input', function() {
+      try {
+        var draft = {};
+        (agent.prompt_form || []).forEach(function(ff) {
+          var fEl = document.getElementById('sf-' + ff.key);
+          if (!fEl) return;
+          var v = ff.type === 'toggle' ? fEl.checked : fEl.value;
+          if (v !== '' && v !== false) draft[ff.key] = v;
+        });
+        if (Object.keys(draft).length) localStorage.setItem(_lsKey, JSON.stringify(draft));
+        else localStorage.removeItem(_lsKey);
+      } catch(e) {}
+    });
+  });
+
   document.getElementById('slideBackdrop').classList.add('open');
   document.getElementById('slidePanel').classList.add('open');
+
+  // When no prior inputs exist, fetch AI-suggested defaults asynchronously
+  if (!hasSaved && agent.prompt_form && agent.prompt_form.length > 0) {
+    fetch(ROOT + '/api/simulations/' + SIM_ID + '/agents/' + agent.action_type + '/prefill')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.prefill) return;
+        var prefill = data.prefill;
+        (agent.prompt_form || []).forEach(function(f) {
+          var el = document.getElementById('sf-' + f.key);
+          if (!el || !prefill.hasOwnProperty(f.key)) return;
+          // Only apply if the user hasn't typed anything yet
+          var isEmpty = f.type === 'toggle' ? false : !el.value.trim();
+          if (!isEmpty) return;
+          if (f.type === 'toggle') { el.checked = !!prefill[f.key]; }
+          else if (f.type === 'select') { el.value = prefill[f.key]; }
+          else { el.value = prefill[f.key]; }
+          // Mark the group as AI-suggested so the label shows the hint
+          var group = el.closest('.slide-form-group');
+          if (group) group.classList.add('slide-suggested');
+          // Remove suggested styling when user edits the field
+          el.addEventListener('input', function() {
+            if (group) group.classList.remove('slide-suggested');
+          }, { once: true });
+        });
+      })
+      .catch(function() {});
+  }
 }
 
 function closeSlideover() {
+  // Snapshot current form values so they reload next time the panel opens
+  if (_currentAgent && (_currentAgent.prompt_form || []).length > 0) {
+    var _lsClose = 'sim_draft_' + SIM_ID + '_' + _currentAgent.action_type;
+    try {
+      var _draft = {};
+      (_currentAgent.prompt_form || []).forEach(function(f) {
+        var el = document.getElementById('sf-' + f.key);
+        if (!el) return;
+        var v = f.type === 'toggle' ? el.checked : el.value.trim();
+        if (v !== '' && v !== false) _draft[f.key] = v;
+      });
+      if (Object.keys(_draft).length) localStorage.setItem(_lsClose, JSON.stringify(_draft));
+    } catch(e) {}
+  }
   document.getElementById('slideBackdrop').classList.remove('open');
   document.getElementById('slidePanel').classList.remove('open');
   _currentAgent = null;
@@ -768,24 +856,31 @@ async function slideRunAgent() {
 
   runBtn.disabled = true;
   runBtn.textContent = 'Dispatching…';
+  // Save action type + label before closeSlideover nulls _currentAgent
+  const _runActionType = _currentAgent.action_type;
+  const _runLabel = _currentAgent.label;
+  const _runPrevStatus = _currentAgent.status;
   closeSlideover();
 
   // Optimistic UI — set card to running
-  _setAgentStatusOptimistic(_currentAgent.action_type, 'running');
+  _setAgentStatusOptimistic(_runActionType, 'running');
 
-  const res = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/agents/' + _currentAgent.action_type + '/run', {
+  const res = await fetch(ROOT + '/api/simulations/' + SIM_ID + '/agents/' + _runActionType + '/run', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ params }),
   });
   const data = await res.json();
 
   if (!res.ok) {
-    _setAgentStatusOptimistic(_currentAgent.action_type, _currentAgent.status); // revert
+    _setAgentStatusOptimistic(_runActionType, _runPrevStatus); // revert
     pyrToast((data.message || data.error || 'Failed to dispatch agent'));
     return;
   }
 
-  pyrToast((data.label || _currentAgent.label) + ' is running — you will see the result in your Action Queue.');
+  // Inputs are now saved in the DB — clear the localStorage draft
+  try { localStorage.removeItem('sim_draft_' + SIM_ID + '_' + _runActionType); } catch(e) {}
+
+  pyrToast((_runLabel) + ' is running — you will see the result in your Action Queue.');
 
   // Start polling
   if (!_polling) {

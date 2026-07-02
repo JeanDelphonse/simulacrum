@@ -35,6 +35,11 @@ class Simulation(db.Model):
     error_message = db.Column(db.Text, nullable=True)
     unlock_all_layers = db.Column(db.Boolean, nullable=False, default=False)
     lifecycle_phase = db.Column(db.String(15), nullable=False, default='active')
+    # Agent Selector (SIM-PRD-AGENTSEL-001)
+    _selected_agents = db.Column('selected_agents', db.Text, nullable=True)       # JSON list of action_types
+    _agent_relevance_scores = db.Column('agent_relevance_scores', db.Text, nullable=True)  # JSON dict
+    _agent_personalized_descriptions = db.Column('agent_personalized_descriptions', db.Text, nullable=True)  # JSON dict
+    agent_selection_confirmed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -45,6 +50,36 @@ class Simulation(db.Model):
                                      cascade='all, delete-orphan')
     activities = db.relationship('CollabActivity', backref='simulation', lazy='dynamic',
                                  cascade='all, delete-orphan')
+
+    @property
+    def selected_agents(self):
+        if self._selected_agents:
+            return json.loads(self._selected_agents)
+        return []
+
+    @selected_agents.setter
+    def selected_agents(self, value):
+        self._selected_agents = json.dumps(value) if value is not None else None
+
+    @property
+    def agent_relevance_scores(self):
+        if self._agent_relevance_scores:
+            return json.loads(self._agent_relevance_scores)
+        return {}
+
+    @agent_relevance_scores.setter
+    def agent_relevance_scores(self, value):
+        self._agent_relevance_scores = json.dumps(value) if value is not None else None
+
+    @property
+    def agent_personalized_descriptions(self):
+        if self._agent_personalized_descriptions:
+            return json.loads(self._agent_personalized_descriptions)
+        return {}
+
+    @agent_personalized_descriptions.setter
+    def agent_personalized_descriptions(self, value):
+        self._agent_personalized_descriptions = json.dumps(value) if value is not None else None
 
     def get_prospect_count(self) -> int:
         """Return the prospect count for this simulation based on its current tier."""

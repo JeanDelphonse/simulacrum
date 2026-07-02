@@ -30,27 +30,59 @@ MODELS = {
 _ROUTING: dict[str, ModelTier] = {
     # ── HAIKU — extraction, classification, structured output ─────────────
     'expertise_zone_extraction':   ModelTier.HAIKU,
+    # L1
     'role_search':                 ModelTier.HAIKU,
     'booking_page':                ModelTier.HAIKU,
     'roi_calculator':              ModelTier.HAIKU,
-    'speaker_fee_rider':           ModelTier.HAIKU,
-    'ab_test_plan':                ModelTier.HAIKU,
-    'competitor_research':         ModelTier.HAIKU,
-    'affiliate_partnerships':      ModelTier.HAIKU,
-    'compound_projections':        ModelTier.HAIKU,
-    'dca_schedule':                ModelTier.HAIKU,
-    'linkedin_optimization':        ModelTier.HAIKU,
+    'linkedin_optimization':       ModelTier.HAIKU,
     'pitch_deck_outline':          ModelTier.HAIKU,
     'sow_template':                ModelTier.HAIKU,
-    'rate_negotiation':            ModelTier.HAIKU,   # fixed-section coaching script
-    'workshop_roi':                ModelTier.HAIKU,   # structured ROI calculation table
-    'competitive_pricing':         ModelTier.HAIKU,   # structured competitor analysis → recommendation
-    'testimonial_system':          ModelTier.HAIKU,   # templated sequence + form + display copy
-    'lapsed_buyer_reactivation':   ModelTier.HAIKU,   # 3-email reactivation sequence
-    'template_pack_spec':          ModelTier.HAIKU,   # structured product definition from templates
-    'client_winback':              ModelTier.HAIKU,   # 3-email win-back sequence
-    'compound_growth':             ModelTier.HAIKU,   # projection table, mathematical template
-    'insurance_gap_analysis':      ModelTier.HAIKU,   # structured gap analysis + recommendations
+    'negotiation_script':          ModelTier.HAIKU,
+    'agreement_template':          ModelTier.HAIKU,
+    'referral_network':            ModelTier.HAIKU,
+    # L2 — structured lists, templates, email sequences
+    'speaker_fee_rider':           ModelTier.HAIKU,
+    'speaking_proposals':          ModelTier.HAIKU,
+    'group_coaching':              ModelTier.HAIKU,
+    'workshop_curriculum':         ModelTier.HAIKU,
+    'corporate_training':          ModelTier.HAIKU,
+    'waitlist_landing_page':       ModelTier.HAIKU,
+    'alumni_reactivation':         ModelTier.HAIKU,
+    # L3 — outlines, frameworks, email sequences
+    'ab_test_plan':                ModelTier.HAIKU,
+    'pricing_research':            ModelTier.HAIKU,
+    'ebook_outline':               ModelTier.HAIKU,
+    'membership':                  ModelTier.HAIKU,
+    'launch_sequence':             ModelTier.HAIKU,
+    'affiliate_program':           ModelTier.HAIKU,
+    'testimonials':                ModelTier.HAIKU,
+    'lapsed_buyer':                ModelTier.HAIKU,
+    # L4 — strategy plans, calendars, funnels
+    'affiliate_partnerships':      ModelTier.HAIKU,
+    'client_winback':              ModelTier.HAIKU,
+    'newsletter':                  ModelTier.HAIKU,
+    'lead_magnet_funnel':          ModelTier.HAIKU,
+    'community':                   ModelTier.HAIKU,
+    'ip_licensing':                ModelTier.HAIKU,
+    'programmatic_ads':            ModelTier.HAIKU,
+    'seo_content_calendar':        ModelTier.HAIKU,
+    # L5 — financial strategy, projections, allocation
+    'income_allocation':           ModelTier.HAIKU,
+    'projections':                 ModelTier.HAIKU,
+    'fund_recommendations':        ModelTier.HAIKU,
+    'real_estate_strategy':        ModelTier.HAIKU,
+    'insurance_review':            ModelTier.HAIKU,
+    # Structured calculation/analysis helpers (all layers)
+    'compound_projections':        ModelTier.HAIKU,
+    'dca_schedule':                ModelTier.HAIKU,
+    'workshop_roi':                ModelTier.HAIKU,
+    'competitive_pricing':         ModelTier.HAIKU,
+    'testimonial_system':          ModelTier.HAIKU,
+    'lapsed_buyer_reactivation':   ModelTier.HAIKU,
+    'template_pack_spec':          ModelTier.HAIKU,
+    'compound_growth':             ModelTier.HAIKU,
+    'insurance_gap_analysis':      ModelTier.HAIKU,
+    'competitor_research':         ModelTier.HAIKU,
     # Orchestrator / system calls
     'orchestrator_reasoning':      ModelTier.HAIKU,
     'prefill_input_generation':    ModelTier.HAIKU,
@@ -59,17 +91,20 @@ _ROUTING: dict[str, ModelTier] = {
     'resume_consent_disclosure':   ModelTier.HAIKU,
     'contact_score':               ModelTier.HAIKU,
     'intent_classify':             ModelTier.HAIKU,
-    'consulting_outreach_research': ModelTier.HAIKU,   # Pass 2 signal extraction
-    'consulting_outreach_email':    ModelTier.SONNET,  # email writing (10 calls)
-    # ── SONNET — chat copilot conversational turns ───────────────────────
+    'consulting_outreach_research': ModelTier.HAIKU,
+    # ── SONNET — conversational, creative, long-form copy ────────────────
+    'consulting_outreach_email':   ModelTier.SONNET,  # 10 deeply personalized emails
     'chat_copilot':                ModelTier.SONNET,
+    'bio_chat_complex':            ModelTier.SONNET,
+    'course_curriculum':           ModelTier.SONNET,  # full multi-module curriculum
+    'sales_page':                  ModelTier.SONNET,  # long-form persuasive copy
+    'video_podcast':               ModelTier.SONNET,  # 3 full episode scripts
+    'saas_product_spec':           ModelTier.SONNET,  # complex product specification
     # ── HAIKU — bio chat classification and simple questions ─────────────
     'bio_chat_classify':           ModelTier.HAIKU,
     'bio_chat_simple':             ModelTier.HAIKU,
-    # ── SONNET — bio chat complex questions ──────────────────────────────
-    'bio_chat_complex':            ModelTier.SONNET,
     # ── OPUS — high-precision legal/financial documents ───────────────────
-    'investment_policy_statement': ModelTier.OPUS,
+    'investment_policy':           ModelTier.OPUS,   # detailed IPS document
     'tax_optimization':            ModelTier.OPUS,
     'entity_structure':            ModelTier.OPUS,
     'estate_planning':             ModelTier.OPUS,
@@ -77,23 +112,34 @@ _ROUTING: dict[str, ModelTier] = {
 }
 
 
+def _canonical(action_type: str) -> str:
+    """Resolve legacy action_type aliases so routing never depends on which
+    name variant was stored. Lazy import avoids a module-load cycle."""
+    try:
+        from app.services.agent_registry import resolve_alias
+        return resolve_alias(action_type)
+    except Exception:
+        return action_type
+
+
 def get_model(action_type: str) -> str:
     """Return the Claude model ID for a given action_type.
 
-    Falls back to SONNET for any action_type not in the routing table.
+    Aliases are resolved to their canonical name first, then falls back to
+    SONNET for any action_type not in the routing table.
 
     Examples:
         get_model('cold_email_campaign')       → 'claude-sonnet-4-6'
         get_model('dca_schedule')              → 'claude-haiku-4-5-20251001'
         get_model('tax_optimization')          → 'claude-opus-4-6'
     """
-    tier = _ROUTING.get(action_type, ModelTier.SONNET)
+    tier = _ROUTING.get(_canonical(action_type), ModelTier.SONNET)
     return MODELS[tier]
 
 
 def get_tier(action_type: str) -> ModelTier:
     """Return the ModelTier enum for an action_type. Useful for logging."""
-    return _ROUTING.get(action_type, ModelTier.SONNET)
+    return _ROUTING.get(_canonical(action_type), ModelTier.SONNET)
 
 
 def use_batch_api(dispatch_source: str) -> bool:

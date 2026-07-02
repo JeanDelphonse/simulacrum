@@ -274,6 +274,36 @@
   background: #f8fafc; border: 1px solid #e2e8f0;
   font-size: 13px; color: #64748b;
 }
+
+/* ── Saved params panel ────────────────────────────────────────────────────── */
+.av-params-bar {
+  background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+  padding: 0 24px;
+}
+.av-params-toggle {
+  display: flex; align-items: center; gap: 8px;
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: #64748b;
+  padding: 10px 0; letter-spacing: .02em;
+}
+.av-params-toggle:hover { color: #0d8395; }
+.av-params-toggle svg { transition: transform .18s; }
+.av-params-toggle.open svg { transform: rotate(90deg); }
+.av-params-body {
+  display: none; padding-bottom: 14px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;
+}
+.av-params-body.hidden { display: none; }
+.av-param-group { display: flex; flex-direction: column; gap: 4px; }
+.av-param-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+.av-param-input {
+  font-size: 13px; color: #0f172a; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: 5px 8px; width: 100%; box-sizing: border-box;
+}
+.av-param-input:focus { outline: none; border-color: #0d8395; box-shadow: 0 0 0 2px rgba(13,131,149,.12); }
+select.av-param-input { cursor: pointer; }
+textarea.av-param-input { resize: vertical; min-height: 60px; }
 </style>
 {% endblock %}
 
@@ -306,6 +336,36 @@
       {% if action.archived_at %}Archived{% else %}Draft{% endif %}
     </span>
   </header>
+
+  {% if prompt_form %}
+  <div class="av-params-bar" id="avParamsBar">
+    <button type="button" class="av-params-toggle" id="avParamsToggle" aria-expanded="false">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><polygon points="2,1 9,5 2,9"/></svg>
+      Parameters
+    </button>
+    <div class="av-params-body hidden" id="avParamsBody">
+      {% for f in prompt_form %}
+      <div class="av-param-group">
+        <label class="av-param-label" for="avp-{{ f.key }}">{{ f.label }}{% if f.required %} *{% endif %}</label>
+        {% set saved_val = action.user_inputs.get(f.key, '') %}
+        {% if f.type == 'select' %}
+        <select class="av-param-input" id="avp-{{ f.key }}">
+          {% for opt in f.options or [] %}
+          <option{% if opt == saved_val %} selected{% endif %}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+        {% elif f.type == 'textarea' %}
+        <textarea class="av-param-input" id="avp-{{ f.key }}" rows="3">{{ saved_val }}</textarea>
+        {% elif f.type == 'toggle' %}
+        <input type="checkbox" class="av-param-input" id="avp-{{ f.key }}"{% if saved_val %} checked{% endif %} style="width:auto;accent-color:#0d8395;">
+        {% else %}
+        <input type="text" class="av-param-input" id="avp-{{ f.key }}" value="{{ saved_val }}" placeholder="{{ f.label }}">
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   {% if is_co %}
   <div class="co-body">
@@ -655,7 +715,18 @@
       if (!confirm('Re-run this campaign? It will generate a fresh set of prospects and emails.')) return;
       $rerunBtn.disabled = true;
       try {
-        const r = await fetch(ROOT+'/api/artifacts/'+ARTIFACT_ID+'/rerun', {method:'POST'});
+        const params = {};
+        document.querySelectorAll('[id^="avp-"]').forEach(el => {
+          const key = el.id.slice(4);
+          params[key] = el.type === 'checkbox' ? el.checked : el.value.trim();
+        });
+        const body = Object.keys(params).length
+          ? JSON.stringify({user_inputs: params}) : undefined;
+        const r = await fetch(ROOT+'/api/artifacts/'+ARTIFACT_ID+'/rerun', {
+          method: 'POST',
+          headers: body ? {'Content-Type': 'application/json'} : {},
+          body,
+        });
         const d = await r.json();
         if (!r.ok) throw new Error(d.detail||d.error);
         alert('Re-run dispatched. Refresh in a few seconds to see the new campaign.');
@@ -674,6 +745,17 @@
     $unarchive.addEventListener('click', async () => {
       const r = await fetch(ROOT+'/api/artifacts/'+ARTIFACT_ID+'/unarchive', {method:'POST'});
       if (r.ok) window.location.reload();
+    });
+  }
+
+  // Params toggle (shared with non-co path)
+  const $paramsToggle = document.getElementById('avParamsToggle');
+  const $paramsBody   = document.getElementById('avParamsBody');
+  if ($paramsToggle && $paramsBody) {
+    $paramsToggle.addEventListener('click', () => {
+      const open = $paramsBody.classList.toggle('hidden');
+      $paramsToggle.classList.toggle('open', !open);
+      $paramsToggle.setAttribute('aria-expanded', String(!open));
     });
   }
 
@@ -803,11 +885,37 @@
     markDirty();
   });
 
+  // Params toggle
+  const $paramsToggle = document.getElementById('avParamsToggle');
+  const $paramsBody   = document.getElementById('avParamsBody');
+  if ($paramsToggle && $paramsBody) {
+    $paramsToggle.addEventListener('click', () => {
+      const open = $paramsBody.classList.toggle('hidden');
+      $paramsToggle.classList.toggle('open', !open);
+      $paramsToggle.setAttribute('aria-expanded', String(!open));
+    });
+  }
+
+  function _collectParams() {
+    const params = {};
+    document.querySelectorAll('[id^="avp-"]').forEach(el => {
+      const key = el.id.slice(4);
+      params[key] = el.type === 'checkbox' ? el.checked : el.value.trim();
+    });
+    return params;
+  }
+
   $rerunBtn.addEventListener('click', async () => {
     if (!confirm('Re-run this artifact? It will overwrite the current version with a fresh agent run.')) return;
     $rerunBtn.disabled = true;
     try {
-      const r = await fetch(ROUTES.rerun, {method: 'POST'});
+      const params = _collectParams();
+      const body = Object.keys(params).length ? JSON.stringify({user_inputs: params}) : undefined;
+      const r = await fetch(ROUTES.rerun, {
+        method: 'POST',
+        headers: body ? {'Content-Type': 'application/json'} : {},
+        body,
+      });
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail || d.error);
       alert('Re-run dispatched. Refresh in a few seconds to see the new version.');

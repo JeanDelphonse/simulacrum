@@ -1,0 +1,3846 @@
+{
+  "version": "1.0",
+  "document_id": "SIM-PRD-AGENTMAP-001",
+  "total_agents": 49,
+  "agents": [
+    {
+      "action_type": "rate_card",
+      "layer": 1,
+      "label": "Generate Rate Card & Capability One-Pager",
+      "description": "Create a formatted rate card with service tiers and a capability one-pager.",
+      "model": "sonnet",
+      "cold_start_chain": true,
+      "cold_start_order": 1,
+      "cold_start_prior": 0.8,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "stripe"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "user.professional_title",
+        "user.positioning"
+      ],
+      "bio_page_update": true,
+      "hub_node": true,
+      "hub_label": "Root node — feeds all layers",
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "target_rate",
+          "label": "Target hourly or day rate (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "engagement_preference",
+          "label": "Preferred engagement type",
+          "type": "select",
+          "options": [
+            "fixed-project",
+            "retainer",
+            "hourly",
+            "both"
+          ],
+          "required": true
+        },
+        {
+          "key": "client_outcomes",
+          "label": "Three outcomes clients achieve working with you",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "payment_link_clicked"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.9,
+        "training": 0.8,
+        "coaching": 0.8,
+        "engineering": 0.75,
+        "operations": 0.85,
+        "marketing": 0.75,
+        "finance": 0.75,
+        "design": 0.7,
+        "sales": 0.7,
+        "leadership": 0.85,
+        "technology": 0.75,
+        "healthcare": 0.75,
+        "education": 0.75,
+        "legal": 0.7,
+        "real_estate": 0.7
+      },
+      "description_template": "Rate card and pricing tiers for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "linkedin_optimization",
+      "layer": 1,
+      "label": "Optimize LinkedIn Headline, About & Featured",
+      "description": "Rewrite LinkedIn headline, About section, and Featured block for inbound consulting leads.",
+      "model": "haiku",
+      "cold_start_chain": true,
+      "cold_start_order": 2,
+      "cold_start_prior": 0.75,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card tiers and positioning feed LinkedIn headline and About section"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "linkedin"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "user.positioning",
+        "user.career_history",
+        "artifact:rate_card"
+      ],
+      "bio_page_update": true,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "open_to_engagements",
+          "label": "Currently open to new engagements?",
+          "type": "select",
+          "options": [
+            "yes",
+            "no",
+            "selectively"
+          ],
+          "required": true
+        },
+        {
+          "key": "profile_focus",
+          "label": "Profile focus",
+          "type": "select",
+          "options": [
+            "consulting availability",
+            "specific industry focus",
+            "both"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "bio_page_view_from_linkedin",
+          "linkedin_profile_view"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.8,
+        "training": 0.75,
+        "coaching": 0.8,
+        "engineering": 0.7,
+        "operations": 0.65,
+        "marketing": 0.9,
+        "finance": 0.65,
+        "design": 0.75,
+        "sales": 0.85,
+        "leadership": 0.85,
+        "technology": 0.75,
+        "healthcare": 0.65,
+        "education": 0.7,
+        "legal": 0.65,
+        "real_estate": 0.7
+      },
+      "description_template": "LinkedIn headline and profile for {primary_expertise} experts"
+    },
+    {
+      "action_type": "booking_page",
+      "layer": 1,
+      "label": "Create Booking Page Configuration",
+      "description": "Generate a complete booking page spec ready for Calendly or Cal.com.",
+      "model": "haiku",
+      "cold_start_chain": true,
+      "cold_start_order": 3,
+      "cold_start_prior": 0.7,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Service tiers from rate card feed booking session types and pricing"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "cal_com"
+      ],
+      "data_dependencies": [
+        "artifact:rate_card",
+        "user.display_name"
+      ],
+      "bio_page_update": true,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "meeting_types",
+          "label": "Meeting types to offer",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "available_days",
+          "label": "Available days",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "paid_session_rate",
+          "label": "Paid session rate (USD, optional)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "booking_created",
+          "booking_completed"
+        ],
+        "negative": [
+          "booking_cancelled",
+          "booking_no_show"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.85,
+        "training": 0.9,
+        "coaching": 0.95,
+        "engineering": 0.45,
+        "operations": 0.6,
+        "marketing": 0.65,
+        "finance": 0.6,
+        "design": 0.8,
+        "sales": 0.65,
+        "leadership": 0.6,
+        "technology": 0.5,
+        "healthcare": 0.9,
+        "education": 0.9,
+        "legal": 0.75,
+        "real_estate": 0.65
+      },
+      "description_template": "Booking page configuration for {primary_expertise} engagements"
+    },
+    {
+      "action_type": "cold_email_campaign",
+      "layer": 1,
+      "label": "Execute Cold Email Campaign",
+      "description": "Research and build a 25-company prospect list with a 3-step email sequence per company.",
+      "model": "sonnet",
+      "cold_start_chain": true,
+      "cold_start_order": 4,
+      "cold_start_prior": 0.65,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "apollo",
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "artifact:rate_card",
+        "artifact:booking_page",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "target_company_size",
+          "label": "Target company size",
+          "type": "select",
+          "options": [
+            "startup",
+            "SMB",
+            "mid-market",
+            "enterprise"
+          ],
+          "required": true
+        },
+        {
+          "key": "pain_point",
+          "label": "Pain point or business outcome you address",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "daily_send_limit",
+          "label": "Daily send limit",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "email_replied",
+          "email_opened",
+          "booking_created"
+        ],
+        "negative": [
+          "email_bounced",
+          "email_unsubscribed"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.85,
+        "training": 0.6,
+        "coaching": 0.55,
+        "engineering": 0.55,
+        "operations": 0.65,
+        "marketing": 0.85,
+        "finance": 0.6,
+        "design": 0.6,
+        "sales": 0.9,
+        "leadership": 0.6,
+        "technology": 0.6,
+        "healthcare": 0.5,
+        "education": 0.5,
+        "legal": 0.6,
+        "real_estate": 0.7
+      },
+      "description_template": "Cold outreach campaign targeting {primary_expertise} buyers"
+    },
+    {
+      "action_type": "consulting_outreach",
+      "layer": 1,
+      "label": "Execute Consulting Outreach Campaign (×10)",
+      "description": "10 deeply personalized emails to senior decision-makers — each prospect researched individually across 6 signal categories.",
+      "model": "sonnet",
+      "cold_start_chain": true,
+      "cold_start_order": 5,
+      "cold_start_prior": 0.6,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card positions services in personalized outreach"
+        },
+        {
+          "action_type": "booking_page",
+          "data_flow": "Booking URL embedded in personalized emails"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "apollo",
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "artifact:rate_card",
+        "artifact:booking_page",
+        "artifact:linkedin_profile",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "target_industries",
+          "label": "Target industries (comma-separated)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "value_proposition",
+          "label": "Your value proposition in 1–2 sentences",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "tone",
+          "label": "Tone",
+          "type": "select",
+          "options": [
+            "balanced",
+            "conservative",
+            "aggressive"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "email_replied",
+          "email_opened",
+          "booking_created",
+          "proposal_requested"
+        ],
+        "negative": [
+          "email_bounced",
+          "email_unsubscribed"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.95,
+        "training": 0.7,
+        "coaching": 0.65,
+        "engineering": 0.65,
+        "operations": 0.8,
+        "marketing": 0.8,
+        "finance": 0.75,
+        "design": 0.6,
+        "sales": 0.85,
+        "leadership": 0.75,
+        "technology": 0.7,
+        "healthcare": 0.65,
+        "education": 0.6,
+        "legal": 0.7,
+        "real_estate": 0.7
+      },
+      "description_template": "Consulting outreach to {primary_expertise} decision-makers"
+    },
+    {
+      "action_type": "role_search",
+      "layer": 1,
+      "label": "Search Active Fractional & Contract Roles",
+      "description": "Surface 15–20 active fractional and contract postings matched to your Expertise Zone.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card tiers calibrate role search by rate range and engagement type"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "apollo"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "user.positioning"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "location_preference",
+          "label": "Location preference",
+          "type": "select",
+          "options": [
+            "remote",
+            "hybrid",
+            "on-site",
+            "any"
+          ],
+          "required": true
+        },
+        {
+          "key": "minimum_monthly_rate",
+          "label": "Minimum acceptable monthly rate (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "industries_to_exclude",
+          "label": "Industries or company types to exclude",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "contact_converted_to_active"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.75,
+        "training": 0.4,
+        "coaching": 0.35,
+        "engineering": 0.9,
+        "operations": 0.85,
+        "marketing": 0.7,
+        "finance": 0.85,
+        "design": 0.7,
+        "sales": 0.65,
+        "leadership": 0.85,
+        "technology": 0.9,
+        "healthcare": 0.65,
+        "education": 0.4,
+        "legal": 0.75,
+        "real_estate": 0.5
+      },
+      "description_template": "Fractional and contract {primary_expertise} role opportunities"
+    },
+    {
+      "action_type": "consulting_proposal",
+      "layer": 1,
+      "label": "Generate Consulting Proposal & SOW",
+      "description": "Create a fully structured consulting proposal and companion Statement of Work.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.55,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card tiers set engagement pricing in proposals"
+        }
+      ],
+      "triggered_by": [
+        "email_replied_with_interest",
+        "booking_completed"
+      ],
+      "integrations": [
+        "pandadoc"
+      ],
+      "data_dependencies": [
+        "artifact:rate_card",
+        "contacts.target_contact",
+        "user.positioning"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "client_name",
+          "label": "Client or company name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "project_scope",
+          "label": "Project scope and objectives",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "payment_milestones",
+          "label": "Payment milestones",
+          "type": "select",
+          "options": [
+            "50% upfront / 50% delivery",
+            "100% upfront",
+            "phased monthly"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "document_completed",
+          "document_viewed"
+        ],
+        "negative": [
+          "document_declined"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.9,
+        "training": 0.65,
+        "coaching": 0.6,
+        "engineering": 0.65,
+        "operations": 0.75,
+        "marketing": 0.7,
+        "finance": 0.7,
+        "design": 0.6,
+        "sales": 0.8,
+        "leadership": 0.7,
+        "technology": 0.65,
+        "healthcare": 0.6,
+        "education": 0.55,
+        "legal": 0.75,
+        "real_estate": 0.6
+      },
+      "description_template": "Consulting proposal template for {primary_expertise} projects"
+    },
+    {
+      "action_type": "sow_template",
+      "layer": 1,
+      "label": "Statement of Work Template",
+      "description": "Generate a milestone-based SOW with deliverables, timeline, acceptance criteria, and payment schedule.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        {
+          "action_type": "consulting_proposal",
+          "data_flow": "Proposal scope and deliverables feed SOW terms and milestones"
+        }
+      ],
+      "triggered_by": [
+        "proposal_signed"
+      ],
+      "integrations": [
+        "pandadoc",
+        "stripe"
+      ],
+      "data_dependencies": [
+        "artifact:proposal",
+        "contacts.target_contact"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "project_name",
+          "label": "Project name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "deliverables",
+          "label": "Key deliverables (one per line)",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "payment_schedule",
+          "label": "Payment schedule",
+          "type": "select",
+          "options": [
+            "50% upfront / 50% on delivery",
+            "Milestone-based",
+            "Monthly retainer"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "document_completed"
+        ],
+        "negative": [
+          "document_declined"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.9,
+        "training": 0.6,
+        "coaching": 0.55,
+        "engineering": 0.7,
+        "operations": 0.75,
+        "marketing": 0.65,
+        "finance": 0.65,
+        "design": 0.7,
+        "sales": 0.65,
+        "leadership": 0.65,
+        "technology": 0.7,
+        "healthcare": 0.55,
+        "education": 0.5,
+        "legal": 0.85,
+        "real_estate": 0.55
+      },
+      "description_template": "Statement of Work template for {primary_expertise} engagements"
+    },
+    {
+      "action_type": "agreement_template",
+      "layer": 1,
+      "label": "Generate Consulting Agreement Template",
+      "description": "Create a plain-English consulting agreement with scope, IP, confidentiality, and payment terms.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.45,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card payment terms feed agreement template clauses"
+        }
+      ],
+      "triggered_by": [
+        "sow_signed",
+        "proposal_signed"
+      ],
+      "integrations": [
+        "pandadoc"
+      ],
+      "data_dependencies": [
+        "artifact:rate_card",
+        "contacts.target_contact",
+        "user.display_name"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "payment_terms",
+          "label": "Payment terms",
+          "type": "select",
+          "options": [
+            "net-15",
+            "net-30",
+            "50% upfront"
+          ],
+          "required": true
+        },
+        {
+          "key": "clauses",
+          "label": "Additional clauses or special terms",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "document_completed"
+        ],
+        "negative": [
+          "document_declined"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.85,
+        "training": 0.65,
+        "coaching": 0.65,
+        "engineering": 0.65,
+        "operations": 0.7,
+        "marketing": 0.65,
+        "finance": 0.7,
+        "design": 0.65,
+        "sales": 0.7,
+        "leadership": 0.65,
+        "technology": 0.65,
+        "healthcare": 0.65,
+        "education": 0.6,
+        "legal": 0.95,
+        "real_estate": 0.7
+      },
+      "description_template": "Consulting agreement template for {primary_expertise} clients"
+    },
+    {
+      "action_type": "referral_network",
+      "layer": 1,
+      "label": "Activate Referral Network (×15 Messages)",
+      "description": "Draft 15 personalized referral request messages to top contacts.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.28,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card defines the offer in partner referral messaging"
+        },
+        {
+          "action_type": "linkedin_optimization",
+          "data_flow": "LinkedIn profile feeds partner credibility narrative"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "apollo",
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "user.positioning",
+        "artifact:rate_card",
+        "artifact:linkedin_profile"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "top_referrers",
+          "label": "Top 3–5 people to ask (names or roles)",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "referral_type",
+          "label": "What you're asking them to refer",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "referral_incentive",
+          "label": "Referral incentive (if any)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "referral_received",
+          "email_replied"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.85,
+        "training": 0.75,
+        "coaching": 0.8,
+        "engineering": 0.5,
+        "operations": 0.65,
+        "marketing": 0.75,
+        "finance": 0.65,
+        "design": 0.7,
+        "sales": 0.85,
+        "leadership": 0.85,
+        "technology": 0.55,
+        "healthcare": 0.8,
+        "education": 0.75,
+        "legal": 0.8,
+        "real_estate": 0.85
+      },
+      "description_template": "Referral network activation for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "negotiation_script",
+      "layer": 1,
+      "label": "Rate Negotiation Coaching Script",
+      "description": "Generate a scenario-specific negotiation script with opening, counter-offer, and walk-away tactics.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.35,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card walk-away rates anchor negotiation script"
+        }
+      ],
+      "triggered_by": [
+        "proposal_sent",
+        "price_objection_detected"
+      ],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:rate_card",
+        "contacts.target_contact"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "offered_rate",
+          "label": "Rate offered by client (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "client_size",
+          "label": "Client company size",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "walkaway_rate",
+          "label": "Your walk-away rate (USD)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed_above_walk_away"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.8,
+        "training": 0.65,
+        "coaching": 0.7,
+        "engineering": 0.6,
+        "operations": 0.65,
+        "marketing": 0.65,
+        "finance": 0.7,
+        "design": 0.6,
+        "sales": 0.9,
+        "leadership": 0.8,
+        "technology": 0.6,
+        "healthcare": 0.6,
+        "education": 0.6,
+        "legal": 0.8,
+        "real_estate": 0.75
+      },
+      "description_template": "Rate negotiation coaching for {primary_expertise} contracts"
+    },
+    {
+      "action_type": "speaking_proposals",
+      "layer": 2,
+      "label": "Research & Submit Speaking Proposals",
+      "description": "Find 20 matched conferences and podcasts with pre-drafted CFP proposals.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.48,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card tiers inform speaking fee positioning and credibility"
+        },
+        {
+          "action_type": "linkedin_optimization",
+          "data_flow": "LinkedIn profile feeds speaker bio in pitches"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "apollo",
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "user.positioning",
+        "artifact:linkedin_profile"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "event_type",
+          "label": "Event type",
+          "type": "select",
+          "options": [
+            "in-person conferences",
+            "virtual events",
+            "podcasts",
+            "all"
+          ],
+          "required": true
+        },
+        {
+          "key": "talk_format",
+          "label": "Preferred talk format",
+          "type": "select",
+          "options": [
+            "keynote (45 min)",
+            "breakout (20 min)",
+            "panel",
+            "any"
+          ],
+          "required": true
+        },
+        {
+          "key": "geographic_regions",
+          "label": "Geographic regions (optional)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "speaking_engagement_confirmed",
+          "email_replied"
+        ],
+        "negative": [
+          "email_bounced"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.8,
+        "training": 0.85,
+        "coaching": 0.75,
+        "engineering": 0.65,
+        "operations": 0.65,
+        "marketing": 0.8,
+        "finance": 0.65,
+        "design": 0.65,
+        "sales": 0.7,
+        "leadership": 0.9,
+        "technology": 0.75,
+        "healthcare": 0.7,
+        "education": 0.9,
+        "legal": 0.65,
+        "real_estate": 0.6
+      },
+      "description_template": "Speaking proposals for {primary_expertise} conferences and events"
+    },
+    {
+      "action_type": "speaker_fee_rider",
+      "layer": 2,
+      "label": "Speaker Fee Structure & Rider",
+      "description": "Create a tiered speaker fee structure, rider document, and negotiation response template.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.3,
+      "prerequisites": [
+        {
+          "action_type": "speaking_proposals",
+          "data_flow": "Speaking pitch content and positioning feed the fee rider"
+        }
+      ],
+      "triggered_by": [
+        "speaking_engagement_confirmed"
+      ],
+      "integrations": [
+        "pandadoc"
+      ],
+      "data_dependencies": [
+        "artifact:speaking_pitch",
+        "contacts.event_coordinator"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "speaking_stage",
+          "label": "Speaking stage",
+          "type": "select",
+          "options": [
+            "building visibility (free)",
+            "ready to charge"
+          ],
+          "required": true
+        },
+        {
+          "key": "keynote_fee",
+          "label": "Target keynote fee (USD, optional)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "logistical_requirements",
+          "label": "Logistical requirements (travel, AV, etc.)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "document_completed"
+        ],
+        "negative": [
+          "document_declined"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.75,
+        "training": 0.85,
+        "coaching": 0.7,
+        "engineering": 0.55,
+        "operations": 0.6,
+        "marketing": 0.75,
+        "finance": 0.6,
+        "design": 0.6,
+        "sales": 0.65,
+        "leadership": 0.85,
+        "technology": 0.65,
+        "healthcare": 0.65,
+        "education": 0.85,
+        "legal": 0.65,
+        "real_estate": 0.55
+      },
+      "description_template": "Speaker fee structure for {primary_expertise} keynotes"
+    },
+    {
+      "action_type": "group_coaching",
+      "layer": 2,
+      "label": "Design Group Coaching Program & Curriculum",
+      "description": "Create a structured multi-week group coaching program with CRM setup.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.45,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card tiers set cohort pricing anchors"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "stripe",
+        "cal_com",
+        "kajabi",
+        "convertkit"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "artifact:rate_card"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "duration_weeks",
+          "label": "Program duration (weeks)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "transformation_goal",
+          "label": "Transformation goal for participants",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "cohort_size",
+          "label": "Target cohort size",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "price_per_participant",
+          "label": "Price per participant (USD)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "waitlist_signup",
+          "booking_created"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.65,
+        "training": 0.85,
+        "coaching": 0.95,
+        "engineering": 0.4,
+        "operations": 0.55,
+        "marketing": 0.65,
+        "finance": 0.6,
+        "design": 0.55,
+        "sales": 0.65,
+        "leadership": 0.8,
+        "technology": 0.5,
+        "healthcare": 0.75,
+        "education": 0.85,
+        "legal": 0.5,
+        "real_estate": 0.5
+      },
+      "description_template": "Group coaching program for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "workshop_curriculum",
+      "layer": 2,
+      "label": "Workshop Curriculum & Facilitator Guide",
+      "description": "Generate a full workshop curriculum with facilitator guide, exercises, and slide outline.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.42,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card tiers inform workshop pricing structure"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "stripe",
+        "cal_com",
+        "kajabi"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "artifact:rate_card"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "workshop_duration",
+          "label": "Workshop duration",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "participant_outcome",
+          "label": "Primary outcome participants achieve",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "participant_level",
+          "label": "Participant level",
+          "type": "select",
+          "options": [
+            "beginner",
+            "intermediate",
+            "advanced",
+            "mixed"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "booking_created"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.75,
+        "training": 0.95,
+        "coaching": 0.85,
+        "engineering": 0.55,
+        "operations": 0.7,
+        "marketing": 0.65,
+        "finance": 0.55,
+        "design": 0.65,
+        "sales": 0.65,
+        "leadership": 0.8,
+        "technology": 0.6,
+        "healthcare": 0.75,
+        "education": 0.95,
+        "legal": 0.55,
+        "real_estate": 0.5
+      },
+      "description_template": "Workshop curriculum for {primary_expertise} training programs"
+    },
+    {
+      "action_type": "corporate_training",
+      "layer": 2,
+      "label": "Corporate Training Buyer Outreach",
+      "description": "Identify 25 companies with L&D leads, training deck outline, and 5 outreach emails.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.4,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Service pricing feeds training program proposals"
+        },
+        {
+          "action_type": "workshop_curriculum",
+          "data_flow": "Workshop curriculum becomes base for custom corporate training"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "apollo",
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "artifact:rate_card",
+        "artifact:workshop_curriculum",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "target_company_sizes",
+          "label": "Target company sizes",
+          "type": "select",
+          "options": [
+            "SMB",
+            "mid-market",
+            "enterprise",
+            "all"
+          ],
+          "required": true
+        },
+        {
+          "key": "buyer_departments",
+          "label": "Buyer departments (L&D, HR, etc.)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "workshop_duration",
+          "label": "Preferred workshop duration",
+          "type": "select",
+          "options": [
+            "half-day",
+            "full-day",
+            "multi-day"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "email_replied",
+          "booking_created"
+        ],
+        "negative": [
+          "email_bounced"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.8,
+        "training": 0.95,
+        "coaching": 0.75,
+        "engineering": 0.6,
+        "operations": 0.75,
+        "marketing": 0.7,
+        "finance": 0.65,
+        "design": 0.6,
+        "sales": 0.75,
+        "leadership": 0.9,
+        "technology": 0.65,
+        "healthcare": 0.75,
+        "education": 0.9,
+        "legal": 0.6,
+        "real_estate": 0.5
+      },
+      "description_template": "Corporate training program for {primary_expertise} teams"
+    },
+    {
+      "action_type": "waitlist_landing_page",
+      "layer": 2,
+      "label": "Waitlist Landing Page & Email Sequence",
+      "description": "Build landing page copy and a 3-email confirmation sequence for your first cohort.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.38,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "kajabi",
+        "convertkit"
+      ],
+      "data_dependencies": [
+        "user.display_name",
+        "user.positioning"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "program_name",
+          "label": "Program name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "start_date_price",
+          "label": "Target start date and price",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "application_type",
+          "label": "Application type",
+          "type": "select",
+          "options": [
+            "email only",
+            "full application (name, role, company, goals)"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "waitlist_signup",
+          "subscriber_added"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.55,
+        "training": 0.75,
+        "coaching": 0.8,
+        "engineering": 0.55,
+        "operations": 0.55,
+        "marketing": 0.85,
+        "finance": 0.5,
+        "design": 0.8,
+        "sales": 0.75,
+        "leadership": 0.55,
+        "technology": 0.65,
+        "healthcare": 0.65,
+        "education": 0.75,
+        "legal": 0.45,
+        "real_estate": 0.5
+      },
+      "description_template": "Waitlist landing page for your {primary_expertise} program launch"
+    },
+    {
+      "action_type": "alumni_reactivation",
+      "layer": 2,
+      "label": "Cohort Graduation & Alumni Reactivation",
+      "description": "Create a graduation ceremony guide, alumni onboarding sequence, and re-enrollment offer.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.3,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "contacts.inactive_contacts"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "multiple_cohorts",
+          "label": "Planning multiple cohorts?",
+          "type": "select",
+          "options": [
+            "yes",
+            "no",
+            "maybe"
+          ],
+          "required": true
+        },
+        {
+          "key": "alumni_offer",
+          "label": "Alumni re-enrollment offer",
+          "type": "select",
+          "options": [
+            "discounted repeat",
+            "advanced cohort",
+            "referral incentive"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "email_replied",
+          "payment_completed"
+        ],
+        "negative": [
+          "email_unsubscribed"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.6,
+        "training": 0.85,
+        "coaching": 0.8,
+        "engineering": 0.4,
+        "operations": 0.5,
+        "marketing": 0.7,
+        "finance": 0.5,
+        "design": 0.55,
+        "sales": 0.6,
+        "leadership": 0.6,
+        "technology": 0.45,
+        "healthcare": 0.65,
+        "education": 0.85,
+        "legal": 0.45,
+        "real_estate": 0.45
+      },
+      "description_template": "Alumni reactivation for past {primary_expertise} students and clients"
+    },
+    {
+      "action_type": "roi_calculator",
+      "layer": 2,
+      "label": "Workshop & Cohort ROI Calculator",
+      "description": "Calculate ROI and recommend optimal delivery cadence for workshops and cohorts.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.35,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Rate card billing rates anchor the ROI calculation baseline"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:rate_card",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "prep_hours",
+          "label": "Hours to prep one workshop",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "current_rate",
+          "label": "Current hourly consulting rate (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "quarterly_capacity",
+          "label": "Workshops you can run per quarter",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "proposal_conversion_rate_increase"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.85,
+        "training": 0.9,
+        "coaching": 0.7,
+        "engineering": 0.6,
+        "operations": 0.8,
+        "marketing": 0.65,
+        "finance": 0.85,
+        "design": 0.55,
+        "sales": 0.85,
+        "leadership": 0.75,
+        "technology": 0.6,
+        "healthcare": 0.65,
+        "education": 0.8,
+        "legal": 0.6,
+        "real_estate": 0.6
+      },
+      "description_template": "ROI calculator for {primary_expertise} programs and services"
+    },
+    {
+      "action_type": "course_curriculum",
+      "layer": 3,
+      "label": "Design Full Online Course Curriculum",
+      "description": "Generate a complete course architecture with module outlines and platform setup checklist.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.4,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Consulting pricing informs course price positioning and target audience"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "kajabi"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "user.positioning",
+        "artifact:rate_card"
+      ],
+      "bio_page_update": false,
+      "hub_node": true,
+      "hub_label": "L3 hub — feeds products and licensing",
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "course_title",
+          "label": "Course title",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "target_student",
+          "label": "Describe your target student",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "hosting_platform",
+          "label": "Hosting platform",
+          "type": "select",
+          "options": [
+            "Teachable",
+            "Maven",
+            "Kajabi",
+            "Udemy",
+            "other"
+          ],
+          "required": false
+        },
+        {
+          "key": "price_point",
+          "label": "Target price point (USD)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "course_enrollment",
+          "payment_completed"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.75,
+        "training": 0.9,
+        "coaching": 0.85,
+        "engineering": 0.65,
+        "operations": 0.7,
+        "marketing": 0.7,
+        "finance": 0.65,
+        "design": 0.7,
+        "sales": 0.65,
+        "leadership": 0.75,
+        "technology": 0.7,
+        "healthcare": 0.75,
+        "education": 0.95,
+        "legal": 0.65,
+        "real_estate": 0.6
+      },
+      "description_template": "Online course curriculum for {primary_expertise} learners"
+    },
+    {
+      "action_type": "pricing_research",
+      "layer": 3,
+      "label": "Competing Course Research & Pricing Strategy",
+      "description": "Analyze 5–10 competitor courses and recommend positioning and pricing strategy.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.35,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "market_niche",
+          "label": "Market or niche to research",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "research_depth",
+          "label": "Research depth",
+          "type": "select",
+          "options": [
+            "competitive analysis only",
+            "full pricing strategy",
+            "both"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.7,
+        "training": 0.75,
+        "coaching": 0.7,
+        "engineering": 0.6,
+        "operations": 0.65,
+        "marketing": 0.8,
+        "finance": 0.8,
+        "design": 0.65,
+        "sales": 0.8,
+        "leadership": 0.65,
+        "technology": 0.65,
+        "healthcare": 0.6,
+        "education": 0.7,
+        "legal": 0.55,
+        "real_estate": 0.6
+      },
+      "description_template": "Pricing research for {primary_expertise} digital products"
+    },
+    {
+      "action_type": "sales_page",
+      "layer": 3,
+      "label": "Write Course or Product Sales Page",
+      "description": "Generate a complete 1,500–2,500 word sales page in HTML format.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.38,
+      "prerequisites": [
+        {
+          "action_type": "course_curriculum",
+          "data_flow": "Course structure feeds sales page module preview and outcomes"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "kajabi"
+      ],
+      "data_dependencies": [
+        "artifact:course",
+        "artifact:pricing_research",
+        "user.positioning"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "product_name",
+          "label": "Product name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "transformation",
+          "label": "Primary transformation (before → after)",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "price",
+          "label": "Price (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "early_testimonials",
+          "label": "Early testimonials or beta feedback",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "page_view",
+          "payment_completed"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.65,
+        "training": 0.8,
+        "coaching": 0.8,
+        "engineering": 0.5,
+        "operations": 0.55,
+        "marketing": 0.9,
+        "finance": 0.55,
+        "design": 0.8,
+        "sales": 0.9,
+        "leadership": 0.6,
+        "technology": 0.55,
+        "healthcare": 0.65,
+        "education": 0.8,
+        "legal": 0.5,
+        "real_estate": 0.55
+      },
+      "description_template": "Sales page for {primary_expertise} course or program"
+    },
+    {
+      "action_type": "ebook_outline",
+      "layer": 3,
+      "label": "E-Book / Digital Guide Outline & Listing",
+      "description": "Draft a full e-book outline with introduction, chapters, conclusion, and Gumroad listing.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.35,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "stripe"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "user.positioning"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "guide_problem",
+          "label": "Problem this guide solves",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "guide_depth",
+          "label": "Guide depth",
+          "type": "select",
+          "options": [
+            "quick guide (5,000 words)",
+            "definitive guide (15,000+ words)"
+          ],
+          "required": true
+        },
+        {
+          "key": "guide_type",
+          "label": "Free or paid?",
+          "type": "select",
+          "options": [
+            "free lead magnet",
+            "paid product"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "lead_magnet_download"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.75,
+        "training": 0.85,
+        "coaching": 0.8,
+        "engineering": 0.65,
+        "operations": 0.7,
+        "marketing": 0.75,
+        "finance": 0.65,
+        "design": 0.65,
+        "sales": 0.6,
+        "leadership": 0.75,
+        "technology": 0.7,
+        "healthcare": 0.7,
+        "education": 0.85,
+        "legal": 0.65,
+        "real_estate": 0.6
+      },
+      "description_template": "E-book outline on {primary_expertise} for your target audience"
+    },
+    {
+      "action_type": "ab_test_plan",
+      "layer": 3,
+      "label": "Product A/B Test & Pricing Experiment Plan",
+      "description": "Design an A/B test plan with sample size calculation, success metric, and decision rules.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.28,
+      "prerequisites": [
+        {
+          "action_type": "sales_page",
+          "data_flow": "Sales page headlines and CTAs become test variants"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:sales_page"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "current_price",
+          "label": "Current price (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "alternative_prices",
+          "label": "Alternative prices to test",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "conversion_metric",
+          "label": "Primary conversion metric",
+          "type": "text",
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "conversion_rate_increase"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.5,
+        "training": 0.5,
+        "coaching": 0.45,
+        "engineering": 0.75,
+        "operations": 0.65,
+        "marketing": 0.9,
+        "finance": 0.65,
+        "design": 0.75,
+        "sales": 0.75,
+        "leadership": 0.45,
+        "technology": 0.8,
+        "healthcare": 0.45,
+        "education": 0.5,
+        "legal": 0.4,
+        "real_estate": 0.45
+      },
+      "description_template": "A/B pricing experiment for {primary_expertise} products"
+    },
+    {
+      "action_type": "membership",
+      "layer": 3,
+      "label": "Design Membership Community Structure",
+      "description": "Create tier structure, 12-week content calendar, and churn-prevention sequence.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.23,
+      "prerequisites": [
+        {
+          "action_type": "course_curriculum",
+          "data_flow": "Course modules form membership content library"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "stripe",
+        "kajabi"
+      ],
+      "data_dependencies": [
+        "artifact:course",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "platform",
+          "label": "Community platform",
+          "type": "select",
+          "options": [
+            "Circle",
+            "Skool",
+            "Mighty Networks",
+            "Discord",
+            "other"
+          ],
+          "required": true
+        },
+        {
+          "key": "monthly_price",
+          "label": "Monthly price (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "community_name",
+          "label": "Community name",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "subscription_created",
+          "payment_completed"
+        ],
+        "negative": [
+          "subscription_cancelled"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.6,
+        "training": 0.75,
+        "coaching": 0.85,
+        "engineering": 0.5,
+        "operations": 0.55,
+        "marketing": 0.75,
+        "finance": 0.55,
+        "design": 0.6,
+        "sales": 0.65,
+        "leadership": 0.75,
+        "technology": 0.6,
+        "healthcare": 0.65,
+        "education": 0.85,
+        "legal": 0.5,
+        "real_estate": 0.55
+      },
+      "description_template": "Membership community structure for {primary_expertise} practitioners"
+    },
+    {
+      "action_type": "launch_sequence",
+      "layer": 3,
+      "label": "Generate 7-Email Product Launch Sequence",
+      "description": "Write a full 7-email launch sequence with subject lines, body copy, and send schedule.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.3,
+      "prerequisites": [
+        {
+          "action_type": "course_curriculum",
+          "data_flow": "Course content drives launch email messaging and storytelling"
+        },
+        {
+          "action_type": "sales_page",
+          "data_flow": "Sales page copy and CTAs anchor the launch sequence narrative"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "convertkit"
+      ],
+      "data_dependencies": [
+        "artifact:course",
+        "artifact:sales_page"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "product_name_price",
+          "label": "Product name and price",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "days_before_launch",
+          "label": "Days before launch to start sequence",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "early_bird",
+          "label": "Early bird offer (if any)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "email_opened",
+          "email_replied",
+          "payment_completed"
+        ],
+        "negative": [
+          "email_unsubscribed"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.55,
+        "training": 0.75,
+        "coaching": 0.75,
+        "engineering": 0.45,
+        "operations": 0.55,
+        "marketing": 0.9,
+        "finance": 0.5,
+        "design": 0.65,
+        "sales": 0.8,
+        "leadership": 0.55,
+        "technology": 0.55,
+        "healthcare": 0.55,
+        "education": 0.75,
+        "legal": 0.45,
+        "real_estate": 0.5
+      },
+      "description_template": "7-email launch sequence for your {primary_expertise} product"
+    },
+    {
+      "action_type": "affiliate_program",
+      "layer": 3,
+      "label": "Build Affiliate Recruitment Program",
+      "description": "Define commission structure, identify 20 potential affiliates, and write recruitment emails.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.2,
+      "prerequisites": [
+        {
+          "action_type": "course_curriculum",
+          "data_flow": "Course product enables affiliate commissions"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "apollo"
+      ],
+      "data_dependencies": [
+        "artifact:course",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "commission_rate",
+          "label": "Commission rate",
+          "type": "select",
+          "options": [
+            "10%",
+            "20%",
+            "30%",
+            "other"
+          ],
+          "required": true
+        },
+        {
+          "key": "commission_type",
+          "label": "Commission type",
+          "type": "select",
+          "options": [
+            "one-time",
+            "recurring on renewals"
+          ],
+          "required": true
+        },
+        {
+          "key": "program_type",
+          "label": "Program type",
+          "type": "select",
+          "options": [
+            "open (public)",
+            "curated (invite-only)"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "affiliate_signup",
+          "affiliate_sale",
+          "payment_completed"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.5,
+        "training": 0.65,
+        "coaching": 0.65,
+        "engineering": 0.45,
+        "operations": 0.5,
+        "marketing": 0.85,
+        "finance": 0.5,
+        "design": 0.6,
+        "sales": 0.8,
+        "leadership": 0.5,
+        "technology": 0.55,
+        "healthcare": 0.5,
+        "education": 0.65,
+        "legal": 0.45,
+        "real_estate": 0.5
+      },
+      "description_template": "Affiliate program for {primary_expertise} course or product"
+    },
+    {
+      "action_type": "testimonials",
+      "layer": 3,
+      "label": "Student Testimonial & Case Study System",
+      "description": "Create a testimonial collection sequence, intake form, and formatted display copy.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.25,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "contacts.clients"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "student_count",
+          "label": "Approx. number of past students/clients",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "testimonial_format",
+          "label": "Testimonial format",
+          "type": "select",
+          "options": [
+            "short quotes",
+            "long case studies",
+            "video scripts"
+          ],
+          "required": true
+        },
+        {
+          "key": "request_timing",
+          "label": "When to request testimonials",
+          "type": "select",
+          "options": [
+            "mid-course",
+            "at completion",
+            "30 days post-completion"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "testimonial_received"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.8,
+        "training": 0.8,
+        "coaching": 0.85,
+        "engineering": 0.55,
+        "operations": 0.65,
+        "marketing": 0.8,
+        "finance": 0.6,
+        "design": 0.75,
+        "sales": 0.75,
+        "leadership": 0.7,
+        "technology": 0.6,
+        "healthcare": 0.8,
+        "education": 0.8,
+        "legal": 0.65,
+        "real_estate": 0.7
+      },
+      "description_template": "Testimonial and case study system for {primary_expertise} clients"
+    },
+    {
+      "action_type": "lapsed_buyer",
+      "layer": 3,
+      "label": "Reactivation Campaign for Lapsed Buyers",
+      "description": "Write a 3-email reactivation sequence with segmentation logic and projected revenue.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.22,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "contacts.past_buyers"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "lapsed_threshold",
+          "label": "Lapsed buyer threshold",
+          "type": "select",
+          "options": [
+            "30 days",
+            "60 days",
+            "90 days"
+          ],
+          "required": true
+        },
+        {
+          "key": "reengagement_offer",
+          "label": "Re-engagement offer",
+          "type": "select",
+          "options": [
+            "discount",
+            "bonus module",
+            "check-in call"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "email_replied"
+        ],
+        "negative": [
+          "email_unsubscribed"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.55,
+        "training": 0.7,
+        "coaching": 0.7,
+        "engineering": 0.4,
+        "operations": 0.5,
+        "marketing": 0.8,
+        "finance": 0.5,
+        "design": 0.6,
+        "sales": 0.75,
+        "leadership": 0.5,
+        "technology": 0.5,
+        "healthcare": 0.55,
+        "education": 0.7,
+        "legal": 0.45,
+        "real_estate": 0.5
+      },
+      "description_template": "Reactivation campaign for lapsed {primary_expertise} buyers"
+    },
+    {
+      "action_type": "seo_content_calendar",
+      "layer": 4,
+      "label": "Create 90-Day SEO Content Calendar",
+      "description": "Generate a 90-day SEO content calendar with 36 post titles and 5 drafted articles.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.33,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Service descriptions feed SEO keyword targets and content pillars"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "linkedin"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "artifact:rate_card"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "content_domain",
+          "label": "Primary content domain or topic",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "target_reader",
+          "label": "Target reader",
+          "type": "select",
+          "options": [
+            "practitioner",
+            "executive",
+            "general professional"
+          ],
+          "required": true
+        },
+        {
+          "key": "publishing_frequency",
+          "label": "Publishing frequency (posts/week)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "page_view",
+          "subscriber_added",
+          "lead_magnet_download"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.65,
+        "training": 0.7,
+        "coaching": 0.7,
+        "engineering": 0.55,
+        "operations": 0.65,
+        "marketing": 0.9,
+        "finance": 0.55,
+        "design": 0.65,
+        "sales": 0.7,
+        "leadership": 0.6,
+        "technology": 0.65,
+        "healthcare": 0.6,
+        "education": 0.7,
+        "legal": 0.55,
+        "real_estate": 0.65
+      },
+      "description_template": "90-day SEO content calendar for {primary_expertise} authority"
+    },
+    {
+      "action_type": "lead_magnet_funnel",
+      "layer": 4,
+      "label": "Build Automated Lead Magnet & Email Funnel",
+      "description": "Create a complete funnel: lead magnet, opt-in page, thank-you page, and 5-email nurture sequence.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.28,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "convertkit"
+      ],
+      "data_dependencies": [
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "lead_magnet_type",
+          "label": "Lead magnet type",
+          "type": "select",
+          "options": [
+            "checklist",
+            "mini-course",
+            "toolkit",
+            "assessment",
+            "generate for me"
+          ],
+          "required": true
+        },
+        {
+          "key": "funnel_goal",
+          "label": "Primary funnel goal",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "email_platform",
+          "label": "Email platform",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "subscriber_added",
+          "lead_magnet_download"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.7,
+        "training": 0.75,
+        "coaching": 0.8,
+        "engineering": 0.5,
+        "operations": 0.6,
+        "marketing": 0.9,
+        "finance": 0.55,
+        "design": 0.65,
+        "sales": 0.8,
+        "leadership": 0.6,
+        "technology": 0.6,
+        "healthcare": 0.65,
+        "education": 0.75,
+        "legal": 0.5,
+        "real_estate": 0.6
+      },
+      "description_template": "Lead magnet funnel for {primary_expertise} audience"
+    },
+    {
+      "action_type": "newsletter",
+      "layer": 4,
+      "label": "Newsletter Monetization Strategy",
+      "description": "Build a sponsorship rate card, paid tier structure, and 4-week editorial calendar.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.2,
+      "prerequisites": [
+        {
+          "action_type": "seo_content_calendar",
+          "data_flow": "Content calendar feeds newsletter topics and editorial schedule"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "convertkit"
+      ],
+      "data_dependencies": [
+        "artifact:content_calendar",
+        "user.positioning"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "list_size",
+          "label": "Current subscriber count",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "open_rate",
+          "label": "Average open rate (%)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "monetization_model",
+          "label": "Monetization model",
+          "type": "select",
+          "options": [
+            "sponsorships",
+            "paid tiers",
+            "both"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "subscriber_added",
+          "sponsor_inquiry",
+          "payment_completed"
+        ],
+        "negative": [
+          "email_unsubscribed"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.7,
+        "training": 0.75,
+        "coaching": 0.7,
+        "engineering": 0.65,
+        "operations": 0.65,
+        "marketing": 0.8,
+        "finance": 0.7,
+        "design": 0.65,
+        "sales": 0.65,
+        "leadership": 0.8,
+        "technology": 0.75,
+        "healthcare": 0.65,
+        "education": 0.8,
+        "legal": 0.65,
+        "real_estate": 0.65
+      },
+      "description_template": "Newsletter monetization strategy for {primary_expertise} readers"
+    },
+    {
+      "action_type": "saas_product_spec",
+      "layer": 4,
+      "label": "SaaS Product Specification",
+      "description": "Write a 10–15 page product spec for a micro-SaaS built on your methodology.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.18,
+      "prerequisites": [
+        {
+          "action_type": "rate_card",
+          "data_flow": "Consulting frameworks identify productizable patterns for SaaS"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "user.expertise_zones",
+        "artifact:rate_card"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "problem_to_solve",
+          "label": "Problem this SaaS solves",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "target_customer",
+          "label": "Target customer",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "pricing_model",
+          "label": "Pricing model",
+          "type": "select",
+          "options": [
+            "per-seat",
+            "usage-based",
+            "flat monthly",
+            "other"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "waitlist_signup"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.3,
+        "training": 0.2,
+        "coaching": 0.2,
+        "engineering": 0.95,
+        "operations": 0.45,
+        "marketing": 0.4,
+        "finance": 0.35,
+        "design": 0.5,
+        "sales": 0.35,
+        "leadership": 0.4,
+        "technology": 0.9,
+        "healthcare": 0.3,
+        "education": 0.3,
+        "legal": 0.25,
+        "real_estate": 0.2
+      },
+      "description_template": "SaaS product spec for {primary_expertise} workflow automation"
+    },
+    {
+      "action_type": "ip_licensing",
+      "layer": 4,
+      "label": "IP Licensing Outreach & Agreement Template",
+      "description": "Draft a licensing one-pager, identify 15 licensee targets, and write a licensing agreement.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.15,
+      "prerequisites": [
+        {
+          "action_type": "course_curriculum",
+          "data_flow": "Course methodology becomes licensable IP"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "pandadoc"
+      ],
+      "data_dependencies": [
+        "artifact:course",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "ip_to_license",
+          "label": "What IP are you licensing?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "target_licensees",
+          "label": "Target licensee type",
+          "type": "select",
+          "options": [
+            "companies",
+            "training firms",
+            "educational institutions",
+            "individual coaches"
+          ],
+          "required": true
+        },
+        {
+          "key": "licensing_model",
+          "label": "Licensing model",
+          "type": "select",
+          "options": [
+            "per-seat",
+            "annual flat fee",
+            "revenue share"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "document_completed"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.55,
+        "training": 0.6,
+        "coaching": 0.55,
+        "engineering": 0.6,
+        "operations": 0.55,
+        "marketing": 0.5,
+        "finance": 0.55,
+        "design": 0.6,
+        "sales": 0.5,
+        "leadership": 0.55,
+        "technology": 0.65,
+        "healthcare": 0.5,
+        "education": 0.6,
+        "legal": 0.85,
+        "real_estate": 0.5
+      },
+      "description_template": "IP licensing strategy for {primary_expertise} frameworks and systems"
+    },
+    {
+      "action_type": "affiliate_partnerships",
+      "layer": 4,
+      "label": "Affiliate & Referral Partnership Opportunities",
+      "description": "Curate 20 affiliate programs with fit scores and draft a recruitment program.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.18,
+      "prerequisites": [
+        {
+          "action_type": "newsletter",
+          "data_flow": "Newsletter subscriber count feeds sponsor and affiliate pitch credibility"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "apollo",
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "artifact:newsletter_template",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "tools_already_recommend",
+          "label": "Tools or products you already recommend",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "affiliate_direction",
+          "label": "Affiliate direction",
+          "type": "select",
+          "options": [
+            "inbound",
+            "outbound",
+            "both"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "affiliate_signup",
+          "affiliate_sale",
+          "email_replied"
+        ],
+        "negative": [
+          "email_bounced"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.6,
+        "training": 0.65,
+        "coaching": 0.65,
+        "engineering": 0.45,
+        "operations": 0.55,
+        "marketing": 0.85,
+        "finance": 0.5,
+        "design": 0.55,
+        "sales": 0.8,
+        "leadership": 0.55,
+        "technology": 0.55,
+        "healthcare": 0.5,
+        "education": 0.65,
+        "legal": 0.45,
+        "real_estate": 0.55
+      },
+      "description_template": "Affiliate partnership opportunities in the {primary_expertise} ecosystem"
+    },
+    {
+      "action_type": "video_podcast",
+      "layer": 4,
+      "label": "YouTube / Podcast Content Strategy & 3 Episode Scripts",
+      "description": "Create a show strategy, 24-episode content plan, and 3 fully scripted episodes.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.18,
+      "prerequisites": [
+        {
+          "action_type": "seo_content_calendar",
+          "data_flow": "Content calendar feeds episode topics and distribution schedule"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:content_calendar",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt_form": [
+        {
+          "key": "format",
+          "label": "Format",
+          "type": "select",
+          "options": [
+            "long-form YouTube",
+            "short-form YouTube",
+            "audio podcast",
+            "video podcast"
+          ],
+          "required": true
+        },
+        {
+          "key": "production_frequency",
+          "label": "Publishing frequency (episodes/month)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "end_cta",
+          "label": "Primary end-of-episode CTA",
+          "type": "select",
+          "options": [
+            "product",
+            "mailing list",
+            "consultation"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "subscriber_added"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.65,
+        "training": 0.8,
+        "coaching": 0.75,
+        "engineering": 0.6,
+        "operations": 0.55,
+        "marketing": 0.8,
+        "finance": 0.6,
+        "design": 0.7,
+        "sales": 0.65,
+        "leadership": 0.8,
+        "technology": 0.7,
+        "healthcare": 0.7,
+        "education": 0.8,
+        "legal": 0.6,
+        "real_estate": 0.6
+      },
+      "description_template": "YouTube and podcast strategy for {primary_expertise} thought leadership"
+    },
+    {
+      "action_type": "community",
+      "layer": 4,
+      "label": "Community Flywheel Activation Plan",
+      "description": "Build a content-to-community strategy with engagement calendar and paid tier upgrade pathway.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.15,
+      "prerequisites": [
+        {
+          "action_type": "newsletter",
+          "data_flow": "Newsletter audience seeds community membership"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:newsletter_template",
+        "user.expertise_zones"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "audience_size",
+          "label": "Current audience size (subscribers/followers)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "highest_engagement_platform",
+          "label": "Highest engagement platform",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "follow_reason",
+          "label": "Primary reason people follow you",
+          "type": "select",
+          "options": [
+            "entertainment",
+            "education",
+            "career advancement"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "community_member_joined"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.65,
+        "training": 0.8,
+        "coaching": 0.85,
+        "engineering": 0.55,
+        "operations": 0.6,
+        "marketing": 0.75,
+        "finance": 0.55,
+        "design": 0.65,
+        "sales": 0.65,
+        "leadership": 0.8,
+        "technology": 0.65,
+        "healthcare": 0.7,
+        "education": 0.85,
+        "legal": 0.55,
+        "real_estate": 0.55
+      },
+      "description_template": "Community flywheel for {primary_expertise} practitioners"
+    },
+    {
+      "action_type": "programmatic_ads",
+      "layer": 4,
+      "label": "Programmatic Ad Strategy & Copy Set",
+      "description": "Create a full ad strategy brief with 10 copy variations across three creative angles.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.15,
+      "prerequisites": [
+        {
+          "action_type": "seo_content_calendar",
+          "data_flow": "High-traffic articles identified for ad placement"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:content_calendar"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "product_to_advertise",
+          "label": "Product or service to advertise",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "monthly_ad_budget",
+          "label": "Monthly ad budget (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "ad_platforms",
+          "label": "Target ad platforms",
+          "type": "text",
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "ad_revenue_received",
+          "page_view"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.4,
+        "training": 0.4,
+        "coaching": 0.4,
+        "engineering": 0.65,
+        "operations": 0.45,
+        "marketing": 0.9,
+        "finance": 0.5,
+        "design": 0.6,
+        "sales": 0.7,
+        "leadership": 0.4,
+        "technology": 0.7,
+        "healthcare": 0.5,
+        "education": 0.5,
+        "legal": 0.4,
+        "real_estate": 0.6
+      },
+      "description_template": "Programmatic ad strategy targeting {primary_expertise} buyers"
+    },
+    {
+      "action_type": "client_winback",
+      "layer": 4,
+      "label": "Client Win-Back Campaign (Lapsed L1/L2)",
+      "description": "Write a 3-email win-back sequence for lapsed consulting or coaching clients.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.18,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [
+        "internal_email"
+      ],
+      "data_dependencies": [
+        "contacts.churned_clients"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "lapsed_threshold",
+          "label": "Lapsed client threshold",
+          "type": "select",
+          "options": [
+            "3 months",
+            "6 months",
+            "1 year"
+          ],
+          "required": true
+        },
+        {
+          "key": "reengagement_offer",
+          "label": "Re-engagement offer",
+          "type": "select",
+          "options": [
+            "reduced-rate",
+            "new service tier",
+            "check-in only"
+          ],
+          "required": true
+        },
+        {
+          "key": "estimated_lapsed_clients",
+          "label": "Estimated lapsed client count",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "payment_completed",
+          "email_replied"
+        ],
+        "negative": [
+          "email_unsubscribed"
+        ]
+      },
+      "expertise_relevance": {
+        "consulting": 0.8,
+        "training": 0.75,
+        "coaching": 0.75,
+        "engineering": 0.5,
+        "operations": 0.65,
+        "marketing": 0.75,
+        "finance": 0.6,
+        "design": 0.65,
+        "sales": 0.8,
+        "leadership": 0.65,
+        "technology": 0.55,
+        "healthcare": 0.7,
+        "education": 0.7,
+        "legal": 0.65,
+        "real_estate": 0.7
+      },
+      "description_template": "Win-back campaign for lapsed {primary_expertise} clients"
+    },
+    {
+      "action_type": "income_allocation",
+      "layer": 5,
+      "label": "Personalized Income Allocation Strategy",
+      "description": "Generate a monthly income allocation breakdown across all asset classes.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.15,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "income.total_income",
+        "income.monthly_recurring"
+      ],
+      "bio_page_update": false,
+      "hub_node": true,
+      "hub_label": "L5 hub — drives all wealth deployment",
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "monthly_income",
+          "label": "Average monthly income (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "monthly_expenses",
+          "label": "Monthly fixed expenses (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "risk_tolerance",
+          "label": "Risk tolerance",
+          "type": "select",
+          "options": [
+            "conservative",
+            "moderate",
+            "aggressive"
+          ],
+          "required": true
+        },
+        {
+          "key": "investment_horizon",
+          "label": "Investment horizon (years)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.9,
+        "training": 0.85,
+        "coaching": 0.85,
+        "engineering": 0.85,
+        "operations": 0.85,
+        "marketing": 0.85,
+        "finance": 0.95,
+        "design": 0.8,
+        "sales": 0.85,
+        "leadership": 0.9,
+        "technology": 0.85,
+        "healthcare": 0.85,
+        "education": 0.85,
+        "legal": 0.85,
+        "real_estate": 0.9
+      },
+      "description_template": "Income allocation strategy for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "projections",
+      "layer": 5,
+      "label": "Compound Growth Projections",
+      "description": "Model compound growth at Years 1, 3, 5, 10, 15, and 20 under three return scenarios.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.15,
+      "prerequisites": [
+        {
+          "action_type": "income_allocation",
+          "data_flow": "Allocation splits feed 10-year projection model"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "income.by_layer",
+        "income.growth_rates"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "monthly_deploy",
+          "label": "Monthly investment amount (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "years_to_model",
+          "label": "Years to model",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "return_assumption",
+          "label": "Return assumption",
+          "type": "select",
+          "options": [
+            "conservative (6%)",
+            "moderate (8%)",
+            "aggressive (10%)"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.88,
+        "training": 0.85,
+        "coaching": 0.85,
+        "engineering": 0.85,
+        "operations": 0.85,
+        "marketing": 0.83,
+        "finance": 0.95,
+        "design": 0.8,
+        "sales": 0.85,
+        "leadership": 0.88,
+        "technology": 0.85,
+        "healthcare": 0.85,
+        "education": 0.85,
+        "legal": 0.85,
+        "real_estate": 0.9
+      },
+      "description_template": "Compound growth projections for {primary_expertise} income"
+    },
+    {
+      "action_type": "fund_recommendations",
+      "layer": 5,
+      "label": "Index Fund & ETF Recommendations",
+      "description": "Curate 8–12 recommended funds with a model portfolio allocation.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.1,
+      "prerequisites": [
+        {
+          "action_type": "income_allocation",
+          "data_flow": "Investment allocation drives fund selection and risk weighting"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:allocation_plan",
+        "user.risk_tolerance"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "diversification",
+          "label": "Geographic diversification",
+          "type": "select",
+          "options": [
+            "US-only",
+            "international",
+            "global"
+          ],
+          "required": true
+        },
+        {
+          "key": "esg_preference",
+          "label": "ESG preference",
+          "type": "select",
+          "options": [
+            "yes",
+            "no",
+            "don't mind"
+          ],
+          "required": false
+        },
+        {
+          "key": "account_type",
+          "label": "Account type",
+          "type": "select",
+          "options": [
+            "taxable account",
+            "IRA",
+            "401(k)",
+            "mix"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "investment_executed"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.85,
+        "training": 0.83,
+        "coaching": 0.83,
+        "engineering": 0.85,
+        "operations": 0.83,
+        "marketing": 0.8,
+        "finance": 0.95,
+        "design": 0.8,
+        "sales": 0.83,
+        "leadership": 0.85,
+        "technology": 0.85,
+        "healthcare": 0.83,
+        "education": 0.83,
+        "legal": 0.83,
+        "real_estate": 0.85
+      },
+      "description_template": "Index fund and ETF portfolio for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "investment_policy",
+      "layer": 5,
+      "label": "Personal Investment Policy Statement (IPS)",
+      "description": "Draft a complete 2-page IPS with objectives, allocation, rebalancing triggers, and review cadence.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.13,
+      "prerequisites": [
+        {
+          "action_type": "fund_recommendations",
+          "data_flow": "Fund selection feeds IPS targets and allocation percentages"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:fund_recommendations"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "financial_goals",
+          "label": "Primary financial goals",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "min_return",
+          "label": "Minimum acceptable annual return (%)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "rebalance_triggers",
+          "label": "Rebalancing triggers (e.g. ±5% drift)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.85,
+        "training": 0.83,
+        "coaching": 0.83,
+        "engineering": 0.83,
+        "operations": 0.83,
+        "marketing": 0.8,
+        "finance": 0.95,
+        "design": 0.8,
+        "sales": 0.83,
+        "leadership": 0.85,
+        "technology": 0.83,
+        "healthcare": 0.83,
+        "education": 0.83,
+        "legal": 0.85,
+        "real_estate": 0.88
+      },
+      "description_template": "Investment policy statement for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "real_estate_strategy",
+      "layer": 5,
+      "label": "Real Estate Entry Strategy",
+      "description": "Build a real estate strategy brief with market comparisons and acquisition checklist.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.15,
+      "prerequisites": [
+        {
+          "action_type": "income_allocation",
+          "data_flow": "Income level feeds real estate affordability analysis"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "income.total_income",
+        "user.real_estate_holdings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "investable_capital",
+          "label": "Investable capital (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "investment_vehicle",
+          "label": "Investment vehicle",
+          "type": "select",
+          "options": [
+            "direct property ownership",
+            "REITs",
+            "real estate syndications",
+            "compare all"
+          ],
+          "required": true
+        },
+        {
+          "key": "hold_period",
+          "label": "Hold period preference",
+          "type": "select",
+          "options": [
+            "short-term flip",
+            "medium-term rental",
+            "long-term appreciation"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.75,
+        "training": 0.73,
+        "coaching": 0.73,
+        "engineering": 0.75,
+        "operations": 0.75,
+        "marketing": 0.73,
+        "finance": 0.9,
+        "design": 0.75,
+        "sales": 0.78,
+        "leadership": 0.78,
+        "technology": 0.75,
+        "healthcare": 0.75,
+        "education": 0.73,
+        "legal": 0.8,
+        "real_estate": 0.98
+      },
+      "description_template": "Real estate entry strategy for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "entity_structure",
+      "layer": 5,
+      "label": "Business Entity Structure Recommendation",
+      "description": "Compare sole proprietor, LLC, S-Corp, and C-Corp with a transition checklist.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.13,
+      "prerequisites": [
+        {
+          "action_type": "income_allocation",
+          "data_flow": "Income level determines optimal entity type for tax efficiency"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "income.total_income",
+        "user.location"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "current_entity",
+          "label": "Current entity type",
+          "type": "select",
+          "options": [
+            "none",
+            "sole proprietor",
+            "LLC",
+            "S-Corp",
+            "C-Corp"
+          ],
+          "required": true
+        },
+        {
+          "key": "annual_revenue",
+          "label": "Annual revenue (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "raise_investment",
+          "label": "Planning to raise investment?",
+          "type": "select",
+          "options": [
+            "yes",
+            "no",
+            "maybe"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.9,
+        "training": 0.83,
+        "coaching": 0.83,
+        "engineering": 0.83,
+        "operations": 0.85,
+        "marketing": 0.8,
+        "finance": 0.9,
+        "design": 0.8,
+        "sales": 0.83,
+        "leadership": 0.88,
+        "technology": 0.83,
+        "healthcare": 0.85,
+        "education": 0.83,
+        "legal": 0.95,
+        "real_estate": 0.88
+      },
+      "description_template": "Business entity structure for {primary_expertise} practice"
+    },
+    {
+      "action_type": "tax_optimization",
+      "layer": 5,
+      "label": "Tax Optimization Strategy",
+      "description": "Create a tax optimization brief with entity structure, retirement accounts, and deduction list.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.15,
+      "prerequisites": [
+        {
+          "action_type": "income_allocation",
+          "data_flow": "Income sources drive deduction strategy and tax bucket analysis"
+        },
+        {
+          "action_type": "entity_structure",
+          "data_flow": "Entity type drives tax strategy and deduction eligibility"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:allocation_plan",
+        "artifact:entity_structure",
+        "income.by_layer"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "business_entity",
+          "label": "Business entity",
+          "type": "select",
+          "options": [
+            "none / sole proprietor",
+            "LLC",
+            "S-Corp",
+            "C-Corp"
+          ],
+          "required": true
+        },
+        {
+          "key": "annual_gross_income",
+          "label": "Annual gross income (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "has_retirement_account",
+          "label": "Retirement account type",
+          "type": "select",
+          "options": [
+            "SEP-IRA",
+            "Solo 401k",
+            "none"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.9,
+        "training": 0.85,
+        "coaching": 0.85,
+        "engineering": 0.85,
+        "operations": 0.85,
+        "marketing": 0.83,
+        "finance": 0.98,
+        "design": 0.82,
+        "sales": 0.85,
+        "leadership": 0.88,
+        "technology": 0.85,
+        "healthcare": 0.85,
+        "education": 0.85,
+        "legal": 0.9,
+        "real_estate": 0.9
+      },
+      "description_template": "Tax optimization strategy for {primary_expertise} income"
+    },
+    {
+      "action_type": "dca_schedule",
+      "layer": 5,
+      "label": "Dollar-Cost Averaging Schedule & Contribution Plan",
+      "description": "Build a DCA schedule table and brokerage-specific setup guide.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.05,
+      "prerequisites": [
+        {
+          "action_type": "fund_recommendations",
+          "data_flow": "Fund tickers feed recurring buy orders"
+        },
+        {
+          "action_type": "income_allocation",
+          "data_flow": "Allocation amounts set DCA recurring contribution amounts"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [
+        "alpaca"
+      ],
+      "data_dependencies": [
+        "artifact:fund_recommendations",
+        "artifact:allocation_plan"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "brokerage",
+          "label": "Brokerage account",
+          "type": "select",
+          "options": [
+            "Fidelity",
+            "Schwab",
+            "Vanguard",
+            "Robinhood",
+            "Alpaca",
+            "other"
+          ],
+          "required": true
+        },
+        {
+          "key": "contribution_amount",
+          "label": "Monthly contribution amount (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "contribution_frequency",
+          "label": "Contribution frequency",
+          "type": "select",
+          "options": [
+            "weekly",
+            "bi-weekly",
+            "monthly"
+          ],
+          "required": true
+        }
+      ],
+      "signals": {
+        "positive": [
+          "investment_executed"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.85,
+        "training": 0.83,
+        "coaching": 0.83,
+        "engineering": 0.85,
+        "operations": 0.83,
+        "marketing": 0.8,
+        "finance": 0.95,
+        "design": 0.8,
+        "sales": 0.83,
+        "leadership": 0.85,
+        "technology": 0.85,
+        "healthcare": 0.83,
+        "education": 0.83,
+        "legal": 0.83,
+        "real_estate": 0.88
+      },
+      "description_template": "Dollar-cost averaging schedule for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "insurance_review",
+      "layer": 5,
+      "label": "Insurance Gap Analysis & Coverage Recommendation",
+      "description": "Identify coverage gaps and recommend E&O, disability, life, and health policy parameters.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.12,
+      "prerequisites": [
+        {
+          "action_type": "income_allocation",
+          "data_flow": "Income level determines coverage needs and policy sizing"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "income.total_income",
+        "user.family_status"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "current_coverage",
+          "label": "Current coverage types (if any)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "annual_income",
+          "label": "Annual income (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "l1_consulting_volume",
+          "label": "Annual consulting revenue (USD, for E&O sizing)",
+          "type": "text",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.83,
+        "training": 0.8,
+        "coaching": 0.8,
+        "engineering": 0.8,
+        "operations": 0.8,
+        "marketing": 0.78,
+        "finance": 0.9,
+        "design": 0.78,
+        "sales": 0.8,
+        "leadership": 0.83,
+        "technology": 0.8,
+        "healthcare": 0.95,
+        "education": 0.8,
+        "legal": 0.83,
+        "real_estate": 0.83
+      },
+      "description_template": "Insurance gap analysis for {primary_expertise} professionals"
+    },
+    {
+      "action_type": "estate_planning",
+      "layer": 5,
+      "label": "Estate Planning Trigger Checklist & Beneficiary Review",
+      "description": "Build a documents checklist, beneficiary audit, and business succession brief.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_prior": 0.1,
+      "prerequisites": [
+        {
+          "action_type": "entity_structure",
+          "data_flow": "Entity structure feeds trust recommendations and succession planning"
+        },
+        {
+          "action_type": "income_allocation",
+          "data_flow": "Income level and asset allocation inform estate size and planning urgency"
+        }
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "artifact:entity_recommendation",
+        "income.total_income",
+        "user.family_status"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt_form": [
+        {
+          "key": "has_will",
+          "label": "Do you have a will?",
+          "type": "select",
+          "options": [
+            "yes",
+            "no",
+            "in progress"
+          ],
+          "required": true
+        },
+        {
+          "key": "has_dependents",
+          "label": "Do you have dependents?",
+          "type": "select",
+          "options": [
+            "yes",
+            "no"
+          ],
+          "required": true
+        },
+        {
+          "key": "business_assets",
+          "label": "Do you have business assets to protect?",
+          "type": "select",
+          "options": [
+            "yes",
+            "no"
+          ],
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [],
+        "negative": []
+      },
+      "expertise_relevance": {
+        "consulting": 0.83,
+        "training": 0.8,
+        "coaching": 0.8,
+        "engineering": 0.8,
+        "operations": 0.8,
+        "marketing": 0.78,
+        "finance": 0.93,
+        "design": 0.78,
+        "sales": 0.8,
+        "leadership": 0.85,
+        "technology": 0.8,
+        "healthcare": 0.83,
+        "education": 0.8,
+        "legal": 0.95,
+        "real_estate": 0.9
+      },
+      "description_template": "Estate planning checklist for {primary_expertise} professionals"
+    }
+  ],
+  "aliases": {
+    "linkedin_optimize": "linkedin_optimization",
+    "coaching_curriculum": "group_coaching",
+    "workshop_content": "workshop_curriculum",
+    "corporate_training_proposal": "corporate_training",
+    "workshop_roi": "roi_calculator",
+    "ebook_guide": "ebook_outline",
+    "newsletter_monetization": "newsletter",
+    "youtube_podcast": "video_podcast",
+    "community_flywheel": "community",
+    "portfolio_analysis": "income_allocation",
+    "compound_growth": "projections",
+    "rate_negotiation": "negotiation_script",
+    "consulting_agreement": "agreement_template",
+    "investment_policy_statement": "investment_policy",
+    "insurance_gap_analysis": "insurance_review",
+    "competitive_pricing": "pricing_research",
+    "membership_structure": "membership",
+    "launch_email_sequence": "launch_sequence",
+    "lapsed_buyer_reactivation": "lapsed_buyer",
+    "testimonial_system": "testimonials",
+    "funnel_design": "lead_magnet_funnel",
+    "course_framework": "course_curriculum"
+  }
+}

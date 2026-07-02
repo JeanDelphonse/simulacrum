@@ -1,0 +1,458 @@
+ENGINEERING SPECIFICATION
+Scheduled Action Steps + Internal Email Engine
+Multi-Step Sequences · Conditional Execution · Internal SMTP · Apollo Discovery-Only · 11 Agents
+Document ID
+SIM-PRD-STEPS-001
+Version
+1.0
+Scope
+Two interconnected specifications. Part A: Scheduled Action Steps — multi-step artifacts where each step executes on a future cycle with conditional evaluation (no_reply, no_signature, no_purchase). Part B: Internal Email Engine — all outreach emails are sent from the Simulacrum application via a transactional email provider (not Apollo). Apollo is rearchitected to discovery-only.
+Architecture change
+Apollo's role changes from discovery + delivery to discovery only. Apollo People Search API remains for contact enrichment (emails, phones, titles, company data). All email sending moves to an internal SMTP/API integration (SendGrid, Postmark, or Amazon SES). This gives the orchestrator full control over email timing, follow-ups, conditions, and tracking.
+Why together
+Scheduled steps require email delivery. If email delivery depends on Apollo, the orchestrator cannot control step timing — Apollo's sequence scheduler owns the timing. Moving email delivery internal gives the orchestrator full authority over when each step fires, under what conditions, and with what content.
+Connects to
+SIM-PRD-ORCH-001 v2.0 (cycle engine), SIM-PRD-WIRE-001 v1.1 (integration wiring — Apollo section updated), SIM-PRD-DIFF-001 (CRM auto-save), SIM-PRD-SETTINGS-001 (integration settings).
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+June 2026
+This document changes how Simulacrum sends email. Previously: agents generated emails and deployed them to Apollo for delivery. Now: agents generate emails and the orchestrator delivers them directly via the platform's transactional email provider. Apollo is used only for finding contacts (People Search). The orchestrator owns the full email lifecycle: send, track opens/clicks, detect bounces, evaluate reply conditions, and schedule follow-ups.
+Part B — Internal Email Engine
+Implement this BEFORE Part A. Scheduled steps that send email require the email engine to exist.
+B.1 Apollo Rearchitecture
+Capability
+Before (v1)
+After (v2)
+Contact discovery
+Apollo People Search API ✓
+Apollo People Search API ✓ — UNCHANGED
+Email enrichment
+Apollo returns verified emails ✓
+Apollo returns verified emails ✓ — UNCHANGED
+Phone enrichment
+Apollo returns phone numbers ✓
+Apollo returns phone numbers ✓ — UNCHANGED
+Company data
+Apollo returns company info ✓
+Apollo returns company info ✓ — UNCHANGED
+Email sending
+Apollo sequences + individual sends
+REMOVED — moved to Internal Email Engine
+Email tracking
+Apollo webhooks (sent, replied, bounced)
+REMOVED — tracked internally via email provider webhooks
+Sequence scheduling
+Apollo manages step timing
+REMOVED — orchestrator manages via action_steps
+B.2 Email Provider Selection
+Provider
+Assessment
+SendGrid
+Best overall for Simulacrum. Generous free tier (100 emails/day). Robust API. Open/click tracking built in. Webhook for bounces, delivered, opened, clicked. Suppression list management. Dynamic templates. Dedicated IP available at scale. Recommended.
+Postmark
+Best deliverability. Designed for transactional email. Fast delivery. Excellent bounce handling. No marketing email allowed (outreach is technically marketing — verify ToS). Higher cost per email.
+Amazon SES
+Lowest cost ($0.10 per 1,000 emails). Requires more build (tracking, bounce handling, suppression lists are manual). Good for high volume. More DevOps overhead.
+Recommendation: SendGrid as primary. The platform stores the SendGrid API key in platform_settings (not per-user — Simulacrum sends on behalf of users). Each user's 'from' address is their configured reply-to email from Settings → Profile.
+B.3 Email Sending Architecture
+# Internal email send function — replaces all Apollo email sends
+import sendgrid
+from sendgrid.helpers.mail import Mail, TrackingSettings, OpenTracking, ClickTracking
+def send_email(simulation_id, contact_id, step_id, subject, html_body, from_email, from_name):
+    contact = Contact.get(contact_id)
+    if not contact.email:
+        return {'status': 'skipped', 'reason': 'no_email'} 
+    # Check suppression list (bounced, unsubscribed)
+    if EmailSuppression.is_suppressed(contact.email):
+        return {'status': 'skipped', 'reason': 'suppressed'}
+    message = Mail(
+        from_email=(from_email, from_name),
+        to_emails=contact.email,
+        subject=subject,
+        html_content=html_body,
+    )
+    # Custom headers for tracking
+    message.header('X-Simulacrum-Simulation', simulation_id)
+    message.header('X-Simulacrum-Contact', contact_id)
+    message.header('X-Simulacrum-Step', step_id or 'direct')
+    # Unique args for webhook attribution
+    message.custom_arg('simulation_id', simulation_id)
+    message.custom_arg('contact_id', contact_id)
+    message.custom_arg('step_id', step_id or '')
+    # Enable open and click tracking
+    message.tracking_settings = TrackingSettings(
+        open_tracking=OpenTracking(True),
+        click_tracking=ClickTracking(True, True),
+    )
+    # Reply-to: the user's email (not Simulacrum's)
+    message.reply_to = from_email
+    sg = sendgrid.SendGridAPIClient(SENDGRID_API_KEY)
+    response = sg.send(message)
+    # Log the send
+    EmailLog.create(
+        simulation_id=simulation_id,
+        contact_id=contact_id,
+        step_id=step_id,
+        subject=subject,
+        status='sent',
+        provider_message_id=response.headers.get('X-Message-Id'),
+        sent_at=datetime.utcnow(),
+    )
+    # Update CRM: contact was emailed
+    contact.last_outreach_at = datetime.utcnow()
+    contact.outreach_count = (contact.outreach_count or 0) + 1
+    if contact.pipeline_stage == 'prospect':
+        contact.pipeline_stage = 'active'
+    db.session.commit()
+    return {'status': 'sent', 'message_id': response.headers.get('X-Message-Id')}
+B.4 Email Tracking via Webhooks
+# SendGrid Event Webhook → /api/webhooks/sendgrid
+@bp.route('/api/webhooks/sendgrid', methods=['POST'])
+def handle_sendgrid_webhook():
+    events = request.json
+    for event in events:
+        sim_id = event.get('simulation_id')
+        contact_id = event.get('contact_id')
+        step_id = event.get('step_id')
+        event_type = event.get('event')  # delivered, open, click, bounce, dropped
+        log = EmailLog.query.filter_by(
+            provider_message_id=event.get('sg_message_id')).first()
+        if not log: continue
+        if event_type == 'delivered':
+            log.delivered_at = datetime.utcnow()
+        elif event_type == 'open':
+            log.opened_at = log.opened_at or datetime.utcnow()
+            log.open_count = (log.open_count or 0) + 1
+        elif event_type == 'click':
+            log.clicked_at = log.clicked_at or datetime.utcnow()
+            log.click_count = (log.click_count or 0) + 1
+        elif event_type in ('bounce', 'dropped'):
+            log.bounced_at = datetime.utcnow()
+            log.bounce_reason = event.get('reason', '')
+            # Add to suppression list
+            EmailSuppression.create(
+                email=event.get('email'),
+                reason=event_type,
+                detail=event.get('reason', ''),
+            )
+        # Create integration signal for Bayesian model
+        IntegrationSignal.create(
+            simulation_id=sim_id,
+            signal_type=f'email_{event_type}',
+            source='internal_email',
+            contact_id=contact_id,
+            value=1.0,
+            weight=0.5 if event_type=='open' else 1.0,
+            direction='-' if event_type in ('bounce','dropped') else '+',
+        )
+    db.session.commit()
+    return '', 200
+B.5 Reply Detection
+SendGrid does not natively detect replies. Reply detection uses one of two approaches:
+Approach 1 — Inbound Parse: SendGrid's Inbound Parse webhook receives replies to a routing address (reply-{contact_id}@mail.simulacrumai.io). The webhook extracts the sender, subject, and body. Matched to the original email via contact_id in the routing address. Creates an 'email_replied' signal.
+Approach 2 — IMAP polling: A Celery beat task polls the user's configured reply-to email inbox via IMAP every 15 minutes. Matches replies by subject line (Re: [original subject]) and sender email (contact's email). Creates an 'email_replied' signal. Requires user to grant IMAP access in Settings → Integrations.
+Recommendation: Approach 1 (Inbound Parse) for reliability. The from address is the user's name but the reply-to routes through Simulacrum's mail server for tracking. The user sees replies in their own inbox AND Simulacrum captures them.
+B.6 Email Schema
+CREATE TABLE email_logs (
+    id                  CHAR(9) PRIMARY KEY,
+    simulation_id       CHAR(9) NOT NULL,
+    contact_id          CHAR(9) NOT NULL REFERENCES contacts(id),
+    step_id             CHAR(9) NULL REFERENCES action_steps(id),
+    action_id           CHAR(9) NULL REFERENCES layer6_action_queue(id),
+    subject             VARCHAR(255) NOT NULL,
+    from_email          VARCHAR(255) NOT NULL,
+    from_name           VARCHAR(255) NOT NULL,
+    to_email            VARCHAR(255) NOT NULL,
+    provider_message_id VARCHAR(100) NULL UNIQUE,
+    status              VARCHAR(20) DEFAULT 'sent',
+    sent_at             TIMESTAMP NULL,
+    delivered_at        TIMESTAMP NULL,
+    opened_at           TIMESTAMP NULL,
+    open_count          INT DEFAULT 0,
+    clicked_at          TIMESTAMP NULL,
+    click_count         INT DEFAULT 0,
+    replied_at          TIMESTAMP NULL,
+    bounced_at          TIMESTAMP NULL,
+    bounce_reason       VARCHAR(500) NULL,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE email_suppressions (
+    id          CHAR(9) PRIMARY KEY,
+    email       VARCHAR(255) NOT NULL UNIQUE,
+    reason      VARCHAR(20) NOT NULL,  -- bounce, unsubscribe, complaint
+    detail      VARCHAR(500) NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+Every email sent by the platform is logged in email_logs with full tracking. The Cycle Diff's email activity section reads from this table. The CRM contact's last_outreach_at and outreach_count are updated on every send. Bounced emails add the address to email_suppressions — all future sends to that address are skipped.
+Part A — Scheduled Action Steps
+A.1 Concept
+An action step is a sub-action within an agent's artifact that executes on a future cycle. The parent agent produces the full multi-step artifact on its first run. The orchestrator creates action_step records for each future step and evaluates them during every subsequent cycle. Steps execute when their scheduled time arrives AND their condition is met. Steps are skipped when their condition is no longer relevant (prospect already replied, document already signed).
+A.2 Schema
+CREATE TABLE action_steps (
+    id              CHAR(9) PRIMARY KEY,
+    parent_action_id CHAR(9) NOT NULL REFERENCES layer6_action_queue(id),
+    simulation_id   CHAR(9) NOT NULL,
+    step_number     INT NOT NULL,
+    total_steps     INT NOT NULL,
+    action_type     VARCHAR(50) NOT NULL,
+    step_type       VARCHAR(50) NOT NULL,
+    subject         VARCHAR(255) NULL,
+    payload         JSON NOT NULL,
+    scheduled_for   TIMESTAMP NOT NULL,
+    condition_type  VARCHAR(30) NULL,
+    condition_ref   CHAR(9) NULL,
+    status          VARCHAR(20) DEFAULT 'scheduled',
+    executed_at     TIMESTAMP NULL,
+    skipped_at      TIMESTAMP NULL,
+    skip_reason     VARCHAR(200) NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(parent_action_id, step_number)
+);
+A.3 Step Types
+Step type
+What it does when executed
+email_send
+Sends an email to the contact via the Internal Email Engine. Payload contains: subject, html_body, contact_id. The 'from' address is the user's reply-to from Settings → Profile.
+email_followup
+Same as email_send but the subject is 'Re: [original subject]' to thread with the initial email. Payload references the parent email's subject.
+proposal_followup
+Sends a follow-up email about an unsigned PandaDoc document. Payload: document_id, follow-up email content. Uses Internal Email Engine, not PandaDoc.
+linkedin_post
+Publishes a LinkedIn post via ugcPosts API. Payload: post content, UTM link. Used for launch_sequence LinkedIn announcements.
+convertkit_broadcast
+Sends a ConvertKit broadcast. Payload: subject, body, segment tags. Used for launch_sequence email steps.
+drip_release
+Triggers a Kajabi module release or ConvertKit drip email. Payload: module_id or sequence step. Used for course_curriculum drip schedules.
+A.4 Condition Types
+Condition
+Evaluates
+Skip behavior
+no_reply
+contact.replied_at IS NULL since step creation
+If the contact replied to any email after the initial send, skip this follow-up. Reason: 'Prospect replied on [date]'.
+no_signature
+PandaDoc document status != 'completed'
+If the document was signed, skip the follow-up. Reason: 'Document signed on [date]'.
+no_purchase
+No LayerIncomeRecord for this contact
+If the contact made a purchase, skip the re-engagement. Reason: 'Purchase completed on [date]'.
+no_booking
+No BOOKING_CREATED for this contact
+If the contact booked a call, skip the follow-up. Reason: 'Call booked on [date]'.
+none (null)
+Always execute when scheduled_for arrives
+Unconditional step. Used for launch_sequence emails that send regardless of engagement.
+A.5 Orchestrator Integration
+# Added to the Schedule step of every cycle:
+def schedule(simulation_id, scored_agents, user_prefs):
+    dispatched, escalated = [], []
+    # ══ CHECK SCHEDULED STEPS FIRST ══
+    due_steps = ActionStep.query.filter(
+        ActionStep.simulation_id == simulation_id,
+        ActionStep.status == 'scheduled',
+        ActionStep.scheduled_for <= datetime.utcnow(),
+    ).order_by(ActionStep.scheduled_for).all()
+    for step in due_steps:
+        if evaluate_condition(step):
+            execute_step(step)  # sends email, posts, etc.
+            step.status = 'executed'
+            step.executed_at = datetime.utcnow()
+        else:
+            step.status = 'skipped'
+            step.skipped_at = datetime.utcnow()
+    # ══ THEN SCORE AND DISPATCH NEW AGENTS ══
+    # ... existing scoring and dispatch logic ...
+def evaluate_condition(step):
+    if step.condition_type is None:
+        return True  # unconditional
+    contact = Contact.get(step.condition_ref) if step.condition_ref else None
+    if step.condition_type == 'no_reply':
+        replied = EmailLog.query.filter(
+            EmailLog.contact_id == step.condition_ref,
+            EmailLog.replied_at.isnot(None),
+            EmailLog.replied_at > step.created_at,
+        ).first()
+        if replied:
+            step.skip_reason = f'Prospect replied on {replied.replied_at.date()}'
+            return False
+        return True
+    elif step.condition_type == 'no_signature':
+        # Check PandaDoc document status
+        doc = PandaDocDocument.get(step.condition_ref)
+        if doc and doc.status == 'completed':
+            step.skip_reason = f'Document signed on {doc.completed_at.date()}'
+            return False
+        return True
+    elif step.condition_type == 'no_purchase':
+        income = LayerIncomeRecord.query.filter_by(
+            contact_id=step.condition_ref).first()
+        if income:
+            step.skip_reason = f'Purchase on {income.created_at.date()}'
+            return False
+        return True
+    elif step.condition_type == 'no_booking':
+        booking = IntegrationSignal.query.filter(
+            IntegrationSignal.contact_id == step.condition_ref,
+            IntegrationSignal.signal_type == 'booking_created',
+        ).first()
+        if booking:
+            step.skip_reason = f'Call booked on {booking.created_at.date()}'
+            return False
+        return True
+    return True  # unknown condition → execute
+A.6 Agent Step Specifications — All 11 Multi-Step Agents
+Agent
+L
+Step 1
+Step 2
+Step 3
+Condition
+cold_email_campaign
+L1
+Send intro email (0h)
+Follow-up 1 (72h)
+Breakup email (168h)
+no_reply per contact
+consulting_outreach
+L1
+Send personalized email (0h)
+Follow-up (72h)
+Final check-in (120h)
+no_reply per contact
+consulting_proposal
+L1
+Send proposal via PandaDoc (0h)
+Nudge email (120h)
+—
+no_signature
+speaking_proposals
+L2
+Send pitch email (0h)
+Follow-up (168h)
+—
+no_reply per coordinator
+corporate_training
+L2
+Send pitch email (0h)
+Follow-up (120h)
+—
+no_reply
+launch_sequence
+L3
+Pre-launch email (0h)
+Launch day email (72h)
+Post-launch recap (168h)
+none (unconditional)
+alumni_reactivation
+L2
+Re-engage email 1 (0h)
+Value-add email (96h)
+Final offer (168h)
+no_reply per contact
+sponsorship_outreach
+L4
+Sponsor pitch (0h)
+Follow-up (120h)
+Final pitch (240h)
+no_reply
+partnership_proposal
+L4
+Partner pitch (0h)
+Follow-up (120h)
+Final pitch (240h)
+no_reply
+lapsed_buyer
+L3
+Re-engage email (0h)
+Value reminder (72h)
+Win-back offer (168h)
+no_purchase
+client_winback
+L4
+Check-in email (0h)
+Value-add (72h)
+Special offer (168h)
+no_reply
+A.7 Agent Artifact with Steps — Example
+# consulting_outreach produces this artifact:
+{
+    'contacts': [
+        {'first_name': 'Sarah', 'last_name': 'Chen', 'email': 's.chen@acmeai.com', ...}
+    ],
+    'emails': [
+        {
+            'contact_index': 0,
+            'subject': 'Quick question about Acme AI\'s ML infrastructure',
+            'html_body': '<p>Hi Sarah, I noticed your team is scaling...</p>',
+        }
+    ],
+    'steps': [
+        {
+            'step_number': 1,
+            'step_type': 'email_send',
+            'delay_hours': 0,
+            'per_contact': true,
+            'condition': null,
+            'payload_ref': 'emails[contact_index]'
+        },
+        {
+            'step_number': 2,
+            'step_type': 'email_followup',
+            'delay_hours': 72,
+            'per_contact': true,
+            'condition': {'type': 'no_reply'},
+            'payload': {
+                'subject_prefix': 'Re: ',
+                'html_body': '<p>Hi {{first_name}}, just circling back...'
+            }
+        },
+        {
+            'step_number': 3,
+            'step_type': 'email_followup',
+            'delay_hours': 120,
+            'per_contact': true,
+            'condition': {'type': 'no_reply'},
+            'payload': {
+                'subject_prefix': 'Re: ',
+                'html_body': '<p>Hi {{first_name}}, last note from me...'
+            }
+        }
+    ]
+}
+# The orchestrator creates action_steps records:
+# For EACH contact × EACH step:
+#   contact Sarah Chen × step 1 → scheduled_for = now
+#   contact Sarah Chen × step 2 → scheduled_for = now + 72h, condition = no_reply
+#   contact Sarah Chen × step 3 → scheduled_for = now + 120h, condition = no_reply
+# For 10 contacts × 3 steps = 30 action_step records
+A.8 Step Lifecycle
+Status
+Meaning
+scheduled
+Step is waiting. Its scheduled_for time has not arrived yet. The orchestrator checks it every cycle but does not execute.
+executed
+Step fired. The email was sent, the post was published, or the broadcast was delivered. executed_at is set.
+skipped
+Step was due but the condition was no longer relevant. skip_reason explains why (e.g. 'Prospect replied on 2026-06-05'). The step is permanently skipped.
+cancelled
+The parent action or the simulation was cancelled. All pending steps are cancelled. No email sends. No execution.
+Functional Requirements
+Part B — Internal Email Engine
+FR-EMAIL-01: All outreach emails are sent from the Simulacrum platform via a transactional email provider (SendGrid recommended). Apollo is no longer used for email delivery. Apollo's role is discovery only (People Search API for contact enrichment).
+FR-EMAIL-02: The send_email() function accepts: simulation_id, contact_id, step_id, subject, html_body, from_email, from_name. It checks the suppression list before sending. Bounced and unsubscribed addresses are permanently suppressed.
+FR-EMAIL-03: Email tracking via SendGrid Event Webhook: delivered, open (with count), click (with count), bounce, and dropped events. Each event creates an IntegrationSignal for the Bayesian model. Bounce events add the address to email_suppressions.
+FR-EMAIL-04: Reply detection via SendGrid Inbound Parse. Replies route through reply-{contact_id}@mail.simulacrumai.io. Matched to the original email via contact_id. Creates an 'email_replied' signal. The user also receives the reply in their own inbox via the reply-to header.
+FR-EMAIL-05: email_logs table stores every email sent: simulation, contact, step, subject, from/to, provider message ID, and full tracking timestamps (sent, delivered, opened, clicked, replied, bounced). The Cycle Diff and CRM contact history read from this table.
+FR-EMAIL-06: CRM contact records are updated on every email send: last_outreach_at, outreach_count. Pipeline stage advances from 'prospect' to 'active' on first send. Consistent with CRM pipeline state machine (SIM-PRD-CRM-001).
+Part A — Scheduled Action Steps
+FR-STEP-01: action_steps table stores sub-actions with: parent_action_id, step_number, step_type, payload, scheduled_for (UTC timestamp), condition_type, condition_ref, and status (scheduled/executed/skipped/cancelled). UNIQUE on (parent_action_id, step_number).
+FR-STEP-02: 11 agents produce multi-step artifacts with a steps[] array: cold_email (3 steps), consulting_outreach (3), consulting_proposal (2), speaking_proposals (2), corporate_training (2), launch_sequence (3), alumni_reactivation (3), sponsorship_outreach (3), partnership_proposal (3), lapsed_buyer (3), client_winback (3).
+FR-STEP-03: When a multi-step agent completes, the orchestrator reads the steps[] array and creates one action_step record per contact × per step. A consulting_outreach with 10 contacts × 3 steps = 30 action_step records. Step 1 executes immediately (delay_hours = 0). Steps 2+ have future scheduled_for timestamps.
+FR-STEP-04: The orchestrator's Schedule step checks for due action_steps BEFORE scoring and dispatching new agents. Due steps (scheduled_for <= now AND status = 'scheduled') are evaluated for their condition and either executed or skipped.
+FR-STEP-05: 5 condition types: no_reply (contact has not replied since step creation), no_signature (PandaDoc document not signed), no_purchase (no income record for contact), no_booking (no Cal.com booking for contact), none/null (unconditional — always execute). Conditions are evaluated at execution time, not at creation time.
+FR-STEP-06: Skipped steps store skip_reason explaining why (e.g. 'Prospect replied on 2026-06-05'). Skipped steps are visible in the Cycle Diff and Journey tab. The user can see that the orchestrator intelligently chose not to send a follow-up because the prospect already engaged.
+FR-STEP-07: When a simulation is paused, all scheduled steps remain in 'scheduled' status but are not evaluated. When resumed, overdue steps are evaluated on the next cycle. When cancelled, all scheduled steps are set to 'cancelled'.
+FR-STEP-08: The per_contact flag in the agent's steps[] array indicates whether the step should be created per-contact (10 contacts × 1 step = 10 action_step records) or once globally (1 action_step record regardless of contact count). Email steps are per-contact. LinkedIn posts and ConvertKit broadcasts are global.
+SIM-PRD-STEPS-001  ·  Scheduled Action Steps + Internal Email Engine  ·  v1.0  ·  April 2026
+Jean Moussa Delphonse  ·  Bay Area Experiences Ventures  ·  Confidential

@@ -1,0 +1,94 @@
+=== TABLE 1 ===
+Product Requirements Document Expertise-Matched Agent Selector AI-Recommended Agent Mix · Layer Cards · Toggle Tiles · Expertise Relevance Scoring · Strategy-First Onboarding
+=== TABLE 2 ===
+Document ID | SIM-PRD-AGENTSEL-001
+Version | 1.0
+Route | /simulations/:id — the agent selector appears as the first interaction on a new simulation (before Cycle 1). After launch, the selector moves to Settings → Simulation → Agent Selection for ongoing customization.
+Scope | An expertise-matched agent selector that pre-selects the optimal agent mix based on the user's resume. The user sees 5 layer cards with toggle tiles for each agent. Pre-selected agents show 'Recommended' badges. The user reviews, toggles on/off, and launches. The orchestrator only scores selected agents — no blind exploration of irrelevant agents.
+Problem solved | Today the orchestrator explores all 49 agents blind. A tourism consultant wastes 5-10 cycles while the system discovers that saas_product_spec is irrelevant. The agent selector lets the user choose their income strategy on Day 1 — the AI recommends, the user confirms, the orchestrator executes within that scope.
+Design principle | Agent selection is a strategy decision, not a technical configuration. The UI says 'Choose your income strategy' not 'Configure agent dispatch parameters.' The user feels ownership of what they are building.
+Connects to | SIM-PRD-ORCH-001 v2.0 (dispatch scope), SIM-PRD-ONBOARD-001 v1.1 (post-wizard flow), SIM-PRD-ENHANCE-001 (progressive onboarding layer locks), SIM-PRD-AGENTMAP-001 (agents.json config), SIM-PRD-GCC-003 v3.1 (simulation page).
+Author | Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date | June 2026
+=== TABLE 3 ===
+# | Step | What happens
+1 | Resume analyzed | During onboarding (SIM-PRD-ONBOARD-001 Step 2), Claude extracts expertise zones. After extraction, the AI runs expertise_relevance scoring across all 49 agents. Each agent receives a combined relevance score based on the user's expertise zones. Agents scoring above the threshold (default: 0.80) are pre-selected.
+2 | Selector shown | After the onboarding wizard completes and the user lands on /simulations/:id for the first time, the agent selector is displayed as the simulation's initial state (before Cycle 1). Heading: 'Choose your income strategy.' 5 layer cards with toggle tiles.
+3 | User reviews | The user expands each layer card, sees which agents are pre-selected (Recommended badge), reads personalized descriptions, and toggles agents on or off. Locked agents (prerequisites not met, layer not unlocked) are visible but not toggleable.
+4 | User launches | 'Launch simulation with [N] agents →' button at the bottom. On click: selected agent IDs are saved to the simulation record. The cold start chain fires (only selected L1 agents). Cycle 1 begins.
+5 | Ongoing edits | After launch, the selector moves to Settings → Simulation → Agent Selection. The user can toggle agents on/off anytime. New selections take effect on the next cycle. Turning off an agent does not undo its completed work.
+=== TABLE 4 ===
+def calculate_agent_relevance(user_expertise_zones, agents_config):     '''     For each agent, sum the relevance scores for each of the     user's expertise zones. Normalize by zone count to prevent     users with more zones from selecting everything.     '''     results = {}     zone_count = len(user_expertise_zones)      for agent_id, agent in agents_config.items():         relevance = agent.get('expertise_relevance', {})         total = 0         matched = 0          for zone in user_expertise_zones:             # Fuzzy match: 'tour guide training' matches 'training'             for keyword, score in relevance.items():                 if keyword.lower() in zone.lower() or zone.lower() in keyword.lower():                     total += score                     matched += 1                     break  # one match per zone per agent          # Normalize: average relevance across matched zones         normalized = total / max(zone_count, 1)          results[agent_id] = {             'score': round(normalized, 2),             'matched_zones': matched,             'recommended': normalized >= RELEVANCE_THRESHOLD,  # default: 0.40         }      return results
+=== TABLE 5 ===
+Agent | L | Score | Selected | Matched zones
+rate_card | L1 | 0.82 | ✓ Yes | operations, consulting, training
+consulting_outreach | L1 | 0.78 | ✓ Yes | consulting, operations
+cold_email_campaign | L1 | 0.72 | ✓ Yes | consulting, operations
+booking_page | L1 | 0.68 | ✓ Yes | booking, consulting
+linkedin_optimization | L1 | 0.65 | ✓ Yes | consulting, operations
+referral_network | L1 | 0.55 | ✓ Yes | consulting, networking
+role_search | L1 | 0.35 | ○ No | operations
+workshop_curriculum | L2 | 0.88 | ✓ Yes | training, operations, customer experience
+speaking_proposals | L2 | 0.62 | ✓ Yes | training, expertise
+corporate_training | L2 | 0.75 | ✓ Yes | training, operations
+group_coaching | L2 | 0.52 | ✓ Yes | training, coaching
+course_curriculum | L3 | 0.72 | ✓ Yes | training, operations, systems
+ebook_outline | L3 | 0.55 | ✓ Yes | operations, training
+sales_page | L3 | 0.48 | ✓ Yes | — (required by course)
+saas_product_spec | L4 | 0.18 | ○ No | — (low relevance for tourism)
+ip_licensing | L4 | 0.22 | ○ No | — (low relevance)
+programmatic_ads | L4 | 0.12 | ○ No | — (low relevance)
+seo_content_calendar | L4 | 0.65 | ✓ Yes | operations, training, tourism
+newsletter | L4 | 0.58 | ✓ Yes | operations, expertise
+=== TABLE 6 ===
+Element | Specification
+Card structure | Each layer is a collapsible card. Header: layer color accent bar (4px left border), layer name ('L1 · Active Income' in 16px bold), selected count ('6 agents' teal pill), expand/collapse chevron. Body: agent toggle tiles. Footer: layer description (1 sentence explaining the layer's income model).
+Default state | L1 expanded (most important, user should review first). L2 collapsed with count. L3 collapsed with count. L4 collapsed + locked badge ('Unlocks after first product sale'). L5 collapsed + locked badge ('Unlocks after automated income').
+Locked layers | L4 and L5 are visible but dimmed. Agent tiles inside are visible but not toggleable. A lock badge on the header shows the unlock condition. The user sees what is coming but cannot select agents in locked layers. They unlock via progressive onboarding milestones (SIM-PRD-ENHANCE-001).
+Layer summary | Below the agent tiles: 'Recommended for your expertise: [N] of [total] agents selected.' If the user has toggled off all recommended agents in a layer, a subtle warning: 'No agents selected in this layer — this income stream will not be built.'
+Select all / None | 'Select recommended' link in the header resets to AI recommendations. 'Clear all' link deselects everything in the layer. These are convenience shortcuts, not required.
+=== TABLE 7 ===
+Element | Specification
+Tile layout | Horizontal row per agent. Left: toggle switch (24px, teal when on, grey when off). Center: agent display_name (14px, 500 weight), personalized description (12px muted, 1 line). Right: badge area (Recommended / Triggered / Locked).
+Toggle switch | Standard iOS-style toggle. On = teal (#0F7B72). Off = grey (#D0D5DD). Click toggles. Smooth 200ms transition. Toggling on adds the agent to selected_agents. Toggling off removes it.
+Personalized description | The description is NOT the generic agents.json description. It is personalized to the user's expertise zones during resume extraction. Example: generic = 'Designs a 1-day workshop.' Personalized = 'Workshop design for tour guide training programs' (for a tourism consultant) or 'Workshop design for AI engineering teams' (for a tech leader).
+Recommended badge | Teal pill: 'Recommended' — shown on agents pre-selected by the AI. Only appears on agents with relevance score above threshold. The badge persists even if the user toggles the agent off (so they remember it was recommended).
+Triggered badge | Gold pill: 'Auto' — shown on triggered agents (consulting_proposal, sow_template, agreement_template, negotiation_script, speaker_fee_rider). These agents fire on events regardless of toggle state. The toggle for triggered agents is always on and not toggleable. Tooltip: 'This agent fires automatically when a prospect responds.'
+Locked state | Lock icon (grey, 14px) replaces the toggle. Agent name in muted grey. Tooltip: 'Requires: [prerequisite agent names].' The user cannot toggle a locked agent. It unlocks automatically when its prerequisites complete.
+Layer-locked state | Same as locked but with the layer lock message: 'Available when Layer [N] unlocks.' Agent visible but fully dimmed.
+Integration badge | Small integration icon(s) (12px) below the description: Stripe, Apollo, Cal.com, etc. Shows which integrations this agent uses. If an integration is disconnected, a warning dot (coral) appears on the icon.
+Cost estimate | Right-aligned, subtle: '~$0.12' in 10px muted. Shows estimated API cost per dispatch. Helps the user understand the cost impact of their selections.
+=== TABLE 8 ===
+Persona | L1 focus | L2 focus | L3 focus | L4 focus
+Consultant | rate_card, outreach, proposal, referral | workshops, speaking, corporate | course, ebook, testimonials | SEO, newsletter, lead magnet
+Engineer | rate_card, cold_email, outreach, linkedin | speaking, group coaching, ROI calc | course, SaaS spec, membership | SEO, newsletter, community
+Creative | rate_card, booking, linkedin, referral | workshops, speaking, waitlist | ebook, course, affiliate | content, podcast, ads
+Executive | rate_card, outreach, referral, negotiation | speaking, corporate training | course, licensing, membership | newsletter, community
+Educator | rate_card, booking, outreach, linkedin | workshops, coaching, training, alumni | course, membership, ebook, launch | content, newsletter, lead magnet
+=== TABLE 9 ===
+Behavior | How agent selection changes it
+Bayesian scoring scope | The orchestrator only scores agents in the selected_agents set. Non-selected agents receive no posterior updates and are never dispatched. This narrows the explore/exploit space and accelerates convergence.
+Cold start chain | Only selected L1 agents from the chain run on Cycle 1. If the user deselects booking_page, the cold start chain skips it: rate_card → linkedin → cold_email → consulting_outreach. The chain adapts to the selection.
+Triggered agents | Triggered agents (consulting_proposal, sow_template, agreement_template, negotiation_script, speaker_fee_rider) always fire on their trigger events regardless of selection. They are not toggleable — they are event-driven, not strategy-driven.
+Progressive onboarding | Layer locks (L4, L5) are independent of agent selection. A user cannot pre-select L4 agents and have them run before the layer unlocks. The selector shows L4/L5 agents for visibility but they remain locked until milestones are met.
+Re-selection | When the user toggles an agent on mid-simulation, it becomes eligible immediately. If the agent has prerequisites and they are all met, it can dispatch on the next cycle. Its Bayesian prior initializes at the default from agents.json.
+Deselecting a completed agent | The completed artifact remains. CRM contacts remain. The agent simply stops being eligible for future dispatches. Example: the user ran cold_email for 3 batches and decides to stop — toggling it off stops future batches while keeping all 30 contacts.
+Cost impact | Selecting 15 agents instead of 49 reduces the explore phase cost by ~60%. Fewer agents scored = fewer dispatched = fewer API calls. Active phase cost drops from ~$15-21 to ~$6-9.
+=== TABLE 10 ===
+-- Agent selection stored on the simulation record ALTER TABLE simulations     ADD COLUMN selected_agents JSON NOT NULL DEFAULT '[]',     ADD COLUMN agent_relevance_scores JSON NULL,     ADD COLUMN agent_selection_confirmed_at TIMESTAMP NULL;  -- selected_agents example: -- ['rate_card', 'linkedin_optimization', 'booking_page', --  'cold_email_campaign', 'consulting_outreach', 'referral_network', --  'workshop_curriculum', 'speaking_proposals', 'corporate_training', --  'group_coaching', 'course_curriculum', 'ebook_outline', --  'seo_content_calendar', 'newsletter', 'lead_magnet_funnel']  -- agent_relevance_scores example (computed during resume extraction): -- {'rate_card': {'score': 0.82, 'recommended': true}, --  'saas_product_spec': {'score': 0.18, 'recommended': false}, ...}  -- Orchestrator dispatch filter: def get_eligible_agents(simulation):     selected = set(simulation.selected_agents)     triggered = set(TRIGGERED_AGENT_IDS)  # always eligible     eligible = selected | triggered      return [         agent for agent in AGENTS_CONFIG         if agent['id'] in eligible         and prerequisites_met(agent, simulation)         and layer_unlocked(agent['layer'], simulation)         and agent['id'] not in currently_running(simulation)     ]
+=== TABLE 11 ===
+// New field added to each agent in agents.json: "expertise_relevance": {     "consulting": 0.85,     "training": 0.70,     "coaching": 0.60,     "engineering": 0.40,     "operations": 0.75,     "marketing": 0.50,     "finance": 0.20,     "design": 0.30,     "sales": 0.55,     "leadership": 0.65,     "technology": 0.45,     "healthcare": 0.25,     "education": 0.70,     "legal": 0.15,     "real_estate": 0.10 }  // Personalized description template: "description_template": "Workshop design for {primary_expertise} programs" // Rendered: "Workshop design for tour guide training programs"
+=== TABLE 12 ===
+User asks | Simi responds
+'Which agents should I turn on?' | 'Based on your expertise in tourism operations, I recommended 15 agents. The ones you might consider adding are group_coaching (your training background makes cohort programs a natural fit) and testimonials (you have 2 clients who could provide social proof).'
+'Why isn't saas_product_spec recommended?' | 'Your expertise is in operations and training — not software product development. saas_product_spec works best for engineers and tech leaders who can productize their frameworks into software. You could turn it on, but your time is better spent on workshops and courses.'
+'What happens if I turn off cold email?' | 'Your 30 contacts from the 3 batches already sent remain in your CRM. Follow-up action steps already scheduled will still fire. But no new cold email batches will be sent. Consulting outreach (which you still have on) will continue finding prospects.'
+'Set up my agents for workshops and speaking' | Simi navigates to the agent selector (Settings → Simulation → Agent Selection), calls get_form_fields, and uses fill_form to toggle on: workshop_curriculum, speaking_proposals, corporate_training, speaker_fee_rider. Shows confirmation banner.
+=== TABLE 13 ===
+Scenario | Handling
+User selects zero agents | The launch button is disabled. Message: 'Select at least 1 agent to start your simulation.' rate_card is required — it cannot be deselected (it is the root node of the entire DAG).
+User deselects rate_card | Not allowed. rate_card is always on. It is the foundation of all other agents. The toggle is visible but locked on with tooltip: 'Required — rate_card feeds pricing to all other agents.'
+User selects an agent whose prereq is deselected | Warning shown below the agent tile: 'This agent requires [prereq] — turn it on?' with a quick-toggle link for the prerequisite. The agent can still be selected (it will stay locked until the prereq runs).
+Resume extraction fails | Persona template fallback. The selector pre-loads the 'Consultant' template (most common). The user can switch templates via a dropdown: 'I am a: Consultant / Engineer / Creative / Executive / Educator.'
+User changes expertise zones later | Re-running resume extraction (Settings → Profile → Re-upload) triggers relevance recalculation. A notification: 'Your expertise changed. We have updated recommendations. Review your agent selection.' Non-selected agents with new high scores get a 'Newly recommended' badge.
+Mid-simulation selection change | Changes take effect on the next cycle. The orchestrator re-reads selected_agents before each Harvest step. No restart needed. Newly selected agents initialize with their default Bayesian prior.

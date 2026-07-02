@@ -797,37 +797,43 @@
       <div id="unlockLayersSection" class="settings-section" style="margin-top:2.5rem" data-loaded="0">
         <div class="settings-section-title" style="margin-bottom:.5rem;border:none;padding:0">Progressive Onboarding</div>
         <p class="settings-hint" style="margin-bottom:1rem">By default, layers unlock progressively as you complete key milestones. Turn this off to access all layers immediately.</p>
-        <div id="unlockLayersList" style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+        <div id="unlockLayersList" style="font-size:.875rem;color:#4B5563">Loading…</div>
       </div>
     </div>
     {% endif %}
     {% if active_tab == 'visibility' %}
     <script>
     (function() {
-      if (document.getElementById('unlockLayersSection') && document.getElementById('unlockLayersSection').dataset.loaded === '0') {
-        document.getElementById('unlockLayersSection').dataset.loaded = '1';
-        fetch(ROOT + '/api/simulations', { credentials: 'same-origin' })
-          .then(r => r.json())
-          .then(function(data) {
-            var sims = (data.simulations || data || []).filter(function(s) { return s.status === 'complete'; });
-            if (!sims.length) { document.getElementById('unlockLayersList').textContent = 'No completed simulations.'; return; }
-            var html = '';
-            sims.forEach(function(s) {
-              var checked = s.unlock_all_layers ? 'checked' : '';
-              html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
-                '<div><div style="font-size:.875rem;font-weight:500">' + s.name + '</div></div>' +
-                '<label class="toggle-switch" style="flex-shrink:0">' +
-                '<input type="checkbox" ' + checked + ' onchange="toggleUnlockLayers(\'' + s.id + '\', this.checked)">' +
-                '<span class="toggle-slider"></span></label>' +
-                '</div>';
-            });
-            document.getElementById('unlockLayersList').innerHTML = html;
-          })
-          .catch(function() { document.getElementById('unlockLayersList').textContent = 'Could not load simulations.'; });
-      }
+      var _root = (typeof ROOT !== 'undefined' ? ROOT : (window.ROOT || ''));
+      var listEl = document.getElementById('unlockLayersList');
+      var section = document.getElementById('unlockLayersSection');
+      if (!section || !listEl || section.dataset.loaded === '1') return;
+      section.dataset.loaded = '1';
+      fetch(_root + '/api/simulations', { credentials: 'same-origin' })
+        .then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          var sims = (Array.isArray(data) ? data : (data.simulations || [])).filter(function(s) { return s.status !== 'deleted'; });
+          if (!sims.length) { listEl.textContent = 'No simulations found.'; return; }
+          var html = '';
+          sims.forEach(function(s) {
+            var checked = s.unlock_all_layers ? 'checked' : '';
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+              '<div><div style="font-size:.875rem;font-weight:500;color:#0D1B3E">' + s.name + '</div><div style="font-size:.72rem;color:#9CA3AF">' + (s.status || '') + '</div></div>' +
+              '<label class="toggle-switch" style="flex-shrink:0">' +
+              '<input type="checkbox" ' + checked + ' onchange="toggleUnlockLayers(\'' + s.id + '\', this.checked)">' +
+              '<span class="toggle-slider"></span></label>' +
+              '</div>';
+          });
+          listEl.innerHTML = html;
+        })
+        .catch(function(err) { listEl.textContent = 'Could not load simulations: ' + err.message; });
     })();
     function toggleUnlockLayers(simId, val) {
-      fetch(ROOT + '/api/simulations/' + simId + '/unlock-layers', {
+      var _root = (typeof ROOT !== 'undefined' ? ROOT : (window.ROOT || ''));
+      fetch(_root + '/api/simulations/' + simId + '/unlock-layers', {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ unlock_all_layers: val }),

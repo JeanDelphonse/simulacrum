@@ -38,12 +38,16 @@ def send_outreach_email(
 
     to_email = contact.email.lower().strip()
 
-    # Sandbox routing: send to simi@simulacrumai.io instead of the real contact
-    _sandbox_addr = 'simi@simulacrumai.io'
+    # Sandbox routing: redirect to the simulation owner's email instead of the real contact
     try:
         from app.models.layer6 import Layer6Config as _L6Cfg
+        from app.models.simulation import Simulation as _Sim
+        from app.models.user import User as _User
         _cfg = _L6Cfg.query.filter_by(simulation_id=simulation_id).first()
         if _cfg and _cfg.sandbox_email_routing:
+            _sim = _Sim.query.get(simulation_id)
+            _owner = _User.query.get(_sim.user_id) if _sim else None
+            _sandbox_addr = (_owner.email if _owner and _owner.email else 'simi@simulacrumai.io')
             logger.info('Sandbox routing: redirecting outreach for contact %s to %s', contact_id, _sandbox_addr)
             to_email = _sandbox_addr
     except Exception as _se:
@@ -61,6 +65,7 @@ def send_outreach_email(
         import sendgrid as sg_module
         from sendgrid.helpers.mail import (
             Mail, From, TrackingSettings, OpenTracking, ClickTracking,
+            Header, CustomArg,
         )
 
         message = Mail(
@@ -72,17 +77,17 @@ def send_outreach_email(
 
         # Custom headers for webhook attribution
         message.header = [
-            ('X-Simulacrum-Simulation', simulation_id),
-            ('X-Simulacrum-Contact', contact_id),
-            ('X-Simulacrum-Step', step_id or 'direct'),
+            Header('X-Simulacrum-Simulation', simulation_id),
+            Header('X-Simulacrum-Contact', contact_id),
+            Header('X-Simulacrum-Step', step_id or 'direct'),
         ]
 
         # Unique args so webhook events can be attributed
         message.custom_arg = [
-            ('simulation_id', simulation_id),
-            ('contact_id', contact_id),
-            ('step_id', step_id or ''),
-            ('action_id', action_id or ''),
+            CustomArg('simulation_id', simulation_id),
+            CustomArg('contact_id', contact_id),
+            CustomArg('step_id', step_id or ''),
+            CustomArg('action_id', action_id or ''),
         ]
 
         # Open and click tracking

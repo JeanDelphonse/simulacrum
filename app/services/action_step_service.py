@@ -112,6 +112,14 @@ def create_steps_from_artifact(
     if not step_config:
         return 0
 
+    # Idempotency guard — the unique constraint uq_step_action_num only covers
+    # (agent_action_id, step_number), which collides for per-contact agents.
+    # Guard here instead so a second call (e.g. Celery retry) is a no-op.
+    existing = ActionStep.query.filter_by(agent_action_id=agent_action_id).count()
+    if existing > 0:
+        logger.info('Steps already exist for action %s (%d) — skipping', agent_action_id, existing)
+        return existing
+
     # Parse artifact
     try:
         data = _json.loads(artifact_json) if isinstance(artifact_json, str) else artifact_json
@@ -221,44 +229,56 @@ def _extract_contacts(data: dict, action_type: str) -> dict:
 
 def _build_subject(step_def: dict, step_num: int, data: dict, contact_data: dict) -> str:
     """Derive a subject for the step record."""
+    # cold_email_campaign: content lives in prospect.sequence[step_num-1]
+    sequence = contact_data.get('sequence') or []
+    if sequence and step_num <= len(sequence):
+        return sequence[step_num - 1].get('subject', '')
+
     if step_num == 1:
-        # Pull from the matching email draft in the artifact
         emails = data.get('emails') or []
         contact_idx = contact_data.get('contact_index', 0)
         for em in emails:
             if em.get('contact_index') == contact_idx:
                 return em.get('subject', '')
-        # Fallback: first email
         if emails:
             return emails[0].get('subject', '')
-    # Follow-up: prefix the original subject
+
+    # Follow-up fallback: "Re: <original subject>"
     payload = step_def.get('payload') or {}
     prefix = payload.get('subject_prefix', 'Re: ')
-    original = data.get('emails', [{}])[0].get('subject', '') if data.get('emails') else ''
+    original = (data.get('emails') or [{}])[0].get('subject', '')
     return f'{prefix}{original}' if original else ''
 
 
 def _build_payload(step_def: dict, data: dict, contact_data: dict) -> dict:
     """Build the execution payload for the step."""
     payload = dict(step_def.get('payload') or {})
-    contact_idx = contact_data.get('contact_index', 0)
+    step_num = step_def.get('step_number', 1)
 
-    # For step 1, embed the actual email body
-    if step_def.get('step_number') == 1:
-        emails = data.get('emails') or []
-        for em in emails:
-            if em.get('contact_index') == contact_idx:
-                payload['html_body'] = em.get('html_body', '')
-                payload['subject'] = em.get('subject', '')
-                break
-        if not payload.get('html_body') and emails:
-            payload['html_body'] = emails[0].get('html_body', '')
-            payload['subject'] = emails[0].get('subject', '')
+    # cold_email_campaign: content lives in prospect.sequence[step_num-1]
+    sequence = contact_data.get('sequence') or []
+    if sequence and step_num <= len(sequence):
+        seq_step = sequence[step_num - 1]
+        payload['subject']   = seq_step.get('subject', '')
+        payload['html_body'] = seq_step.get('body', '')
+    else:
+        # Other agents: embed from data.emails (step 1 only)
+        contact_idx = contact_data.get('contact_index', 0)
+        if step_num == 1:
+            emails = data.get('emails') or []
+            for em in emails:
+                if em.get('contact_index') == contact_idx:
+                    payload['html_body'] = em.get('html_body', '')
+                    payload['subject']   = em.get('subject', '')
+                    break
+            if not payload.get('html_body') and emails:
+                payload['html_body'] = emails[0].get('html_body', '')
+                payload['subject']   = emails[0].get('subject', '')
 
-    # Store contact metadata for template rendering in follow-ups
+    # Contact metadata for template rendering
     if contact_data:
         payload['first_name'] = contact_data.get('first_name', '')
-        payload['last_name'] = contact_data.get('last_name', '')
+        payload['last_name']  = contact_data.get('last_name', '')
         payload['contact_id'] = contact_data.get('crm_contact_id', '')
 
     return payload
@@ -368,8 +388,30 @@ def _execute_email_step(step, payload: dict, from_email: str, from_name: str) ->
         logger.warning('email step %s has no contact_id in payload', step.id)
         return False
 
-    subject = step.subject or payload.get('subject', '(no subject)')
+    subject   = step.subject or payload.get('subject', '')
     html_body = payload.get('html_body', '')
+
+    # Fallback for steps created before the sequence-extraction fix: if the
+    # payload has no body, pull it directly from the artifact at send time.
+    if not html_body and step.agent_action_id:
+        fb_subject, html_body = _lookup_cold_email_content(
+            step.agent_action_id, contact_id, step.step_number
+        )
+        if not subject and fb_subject:
+            subject = fb_subject
+
+    if not html_body:
+        logger.warning(
+            'email step %s: body is empty after artifact lookup — skipping to avoid 400 from SendGrid',
+            step.id,
+        )
+        return False
+
+    if not subject:
+        subject = '(no subject)'
+
+    # Ensure body is proper HTML (artifact may contain plain text or markdown)
+    html_body = _to_html(html_body)
 
     # Render template variables
     first_name = payload.get('first_name', '')
@@ -388,6 +430,70 @@ def _execute_email_step(step, payload: dict, from_email: str, from_name: str) ->
         action_id=step.agent_action_id,
     )
     return result.get('status') == 'sent'
+
+
+def _to_html(text: str) -> str:
+    """
+    Convert plain-text email body to HTML.
+    If the text already looks like HTML (starts with a tag), return it unchanged.
+    Otherwise:
+      - converts **bold** / *italic* markdown
+      - splits double-newlines into <p> paragraphs
+      - converts single newlines to <br>
+    Wraps the result in a minimal styled <div>.
+    """
+    import re
+    t = (text or '').strip()
+    if not t:
+        return t
+    # Already HTML — leave untouched
+    if re.search(r'<(p|br|div|html|table|strong|em|b|i)\b', t, re.I):
+        return t
+
+    # Markdown inline: **bold** → <strong>, *italic* → <em>
+    t = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', t)
+    t = re.sub(r'\*(.+?)\*',     r'<em>\1</em>',         t)
+
+    # Split into paragraphs on blank lines
+    paragraphs = re.split(r'\n{2,}', t)
+    html_parts = []
+    for para in paragraphs:
+        para = para.strip()
+        if para:
+            # Single newlines within a paragraph → <br>
+            para = para.replace('\n', '<br>\n')
+            html_parts.append(f'<p style="margin:0 0 12px 0;">{para}</p>')
+
+    body_html = '\n'.join(html_parts)
+    return (
+        '<div style="font-family:Arial,sans-serif;font-size:15px;'
+        'line-height:1.6;color:#222;">\n'
+        + body_html
+        + '\n</div>'
+    )
+
+
+def _lookup_cold_email_content(action_id: str, contact_id: str, step_number: int):
+    """
+    Pull (subject, body) from a cold_email_campaign artifact's prospect.sequence.
+    Returns ('', '') when the artifact can't be read or the contact/step isn't found.
+    """
+    import json as _json
+    try:
+        from app.models.agent_action import AgentAction
+        action = AgentAction.query.get(action_id)
+        if not action or not action.artifact:
+            return '', ''
+        data = _json.loads(action.artifact)
+        for prospect in (data.get('prospects') or []):
+            if prospect.get('crm_contact_id') == contact_id:
+                sequence = prospect.get('sequence') or []
+                if step_number <= len(sequence):
+                    seq_step = sequence[step_number - 1]
+                    return seq_step.get('subject', ''), seq_step.get('body', '')
+    except Exception as exc:
+        logger.warning('_lookup_cold_email_content failed for action %s: %s', action_id, exc)
+    return '', ''
 
 
 def _execute_convertkit_step(step, payload: dict, user_id: str) -> bool:

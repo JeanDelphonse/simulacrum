@@ -869,95 +869,100 @@ Page content:
     # ── Stage 4 — Email verification ─────────────────────────────────────────
 
     def _verify_emails(self, prospects: list, user_id: str, skip_verification: bool = False) -> list:
+        from concurrent.futures import ThreadPoolExecutor
         from app.services.contact_lookup import get_next_fallback_email
         provider, api_key = _get_verifier_config()
-        verified          = []
-        used_fallbacks    = set()
 
-        for prospect in prospects:
-            # Apollo-sourced: already verified
-            if prospect.email_verified:
-                verified.append(prospect)
-                continue
+        # Split into fast paths (no HTTP needed) vs candidates that require verification
+        pre_verified = []
+        skip_verify  = []
+        needs_fallback = []
+        to_verify    = []   # (prospect, [candidates])
 
-            # Direct email from web page: verify it
-            emails_to_check = []
-            if prospect.email:
-                emails_to_check = [prospect.email]
-            elif prospect.email_candidates:
-                emails_to_check = prospect.email_candidates
+        for p in prospects:
+            if p.email_verified:
+                pre_verified.append(p)
+            elif not (p.email or p.email_candidates):
+                needs_fallback.append(p)
+            elif skip_verification:
+                p.email_source = 'unverified'
+                p.email_verified = False
+                skip_verify.append(p)
+            else:
+                candidates = [p.email] if p.email else list(p.email_candidates or [])
+                to_verify.append((p, candidates))
 
-            if not emails_to_check:
-                self._discarded_count += 1
-                fb_email = get_next_fallback_email(user_id, used_fallbacks)
-                used_fallbacks.add(fb_email)
-                prospect.email = fb_email
-                prospect.email_verified = True
-                prospect.email_source = 'fallback_default'
-                prospect.email_confidence = 1.0
-                self._save_no_email_contact(prospect, user_id)
-                verified.append(prospect)
-                continue
-
-            if skip_verification:
-                # Budget exhausted — use email as-is without verifying
-                prospect.email_source = 'unverified'
-                prospect.email_verified = False
-                verified.append(prospect)
-                continue
-
+        # Parallel verification — HTTP calls are independent per prospect
+        def _verify_one_prospect(args):
+            prospect, candidates = args
+            cost  = 0
             found = False
-            for candidate in emails_to_check:
+            risky = False
+            for candidate in candidates:
                 result = _verify_one_email(candidate, provider, api_key)
-                self._verification_cents += 1  # ~$0.01 per call (Hunter rate)
-
+                cost += 1
                 if result.status == 'valid':
-                    prospect.email           = candidate
-                    prospect.email_verified  = True
-                    prospect.email_source    = 'pattern_verified'
+                    prospect.email            = candidate
+                    prospect.email_verified   = True
+                    prospect.email_source     = 'pattern_verified'
                     prospect.email_confidence = result.confidence
-                    verified.append(prospect)
                     found = True
                     break
                 if result.status == 'risky':
-                    prospect.email           = candidate
-                    prospect.email_verified  = True
-                    prospect.email_source    = 'pattern_risky'
+                    prospect.email            = candidate
+                    prospect.email_verified   = True
+                    prospect.email_source     = 'pattern_risky'
                     prospect.email_confidence = result.confidence
                     prospect.email_risk_note  = result.risk_reason
-                    verified.append(prospect)
-                    self._risky_count += 1
                     found = True
+                    risky = True
                     break
                 if result.status == 'unknown':
-                    # Retry once then skip
                     retry = _verify_one_email(candidate, provider, api_key)
-                    self._verification_cents += 1
+                    cost += 1
                     if retry.status in ('valid', 'risky'):
-                        prospect.email          = candidate
-                        prospect.email_verified = True
-                        prospect.email_source   = f'pattern_{retry.status}'
+                        prospect.email            = candidate
+                        prospect.email_verified   = True
+                        prospect.email_source     = f'pattern_{retry.status}'
                         prospect.email_confidence = retry.confidence
                         if retry.status == 'risky':
                             prospect.email_risk_note = retry.risk_reason
-                            self._risky_count += 1
-                        verified.append(prospect)
+                            risky = True
                         found = True
                         break
                 # 'invalid' → try next candidate
+            return prospect, found, risky, cost
 
-            if not found:
-                self._discarded_count += 1
-                fb_email = get_next_fallback_email(user_id, used_fallbacks)
-                used_fallbacks.add(fb_email)
-                prospect.email = fb_email
-                prospect.email_verified = True
-                prospect.email_source = 'fallback_default'
-                prospect.email_confidence = 1.0
-                self._save_no_email_contact(prospect, user_id)
-                verified.append(prospect)
+        workers = min(8, len(to_verify)) if to_verify else 1
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            results = list(pool.map(_verify_one_prospect, to_verify))
 
-        return verified
+        verified_prospects = []
+        fallback_needed = list(needs_fallback)
+
+        for prospect, found, risky, cost in results:
+            self._verification_cents += cost
+            if risky:
+                self._risky_count += 1
+            if found:
+                verified_prospects.append(prospect)
+            else:
+                fallback_needed.append(prospect)
+
+        # Fallback assignment must be serial (unique email per prospect)
+        used_fallbacks: set = set()
+        for prospect in fallback_needed:
+            self._discarded_count += 1
+            fb_email = get_next_fallback_email(user_id, used_fallbacks)
+            used_fallbacks.add(fb_email)
+            prospect.email            = fb_email
+            prospect.email_verified   = True
+            prospect.email_source     = 'fallback_default'
+            prospect.email_confidence = 1.0
+            self._save_no_email_contact(prospect, user_id)
+            verified_prospects.append(prospect)
+
+        return pre_verified + skip_verify + verified_prospects
 
     def _save_no_email_contact(self, prospect: Prospect, user_id: str):
         """No-op: prospects without a verified email are not saved to CRM."""

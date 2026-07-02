@@ -289,8 +289,9 @@
 .jrn3-st-in_progress { background: #C9952A; animation: jrn-pulse 1.2s ease-in-out infinite; }
 .jrn3-st-pending   { background: transparent; border: 2px solid #d0d5dd; color: var(--gcc-muted); }
 .jrn3-st-failed    { background: #E85D4A; }
-.jrn3-st-escalated { background: #7c3aed; }
-.jrn3-st-rejected  { background: #9ca3af; }
+.jrn3-st-escalated  { background: #7c3aed; }
+.jrn3-st-rejected   { background: #9ca3af; }
+.jrn3-st-cancelled  { background: #d97706; }
 .jrn3-a-name { flex: 1; font-size: .84rem; color: var(--gcc-navy); font-family: 'DM Sans', sans-serif; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jrn3-a-badge { font-size: .68rem; font-weight: 500; padding: .1rem .45rem; border-radius: 100px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
 .jrn3-badge-complete   { background: #dcfce7; color: #15803d; }
@@ -299,9 +300,21 @@
 .jrn3-badge-failed     { background: #fee2e2; color: #b91c1c; }
 .jrn3-badge-escalated  { background: #ede9fe; color: #6d28d9; }
 .jrn3-badge-rejected   { background: #f3f4f6; color: #9ca3af; }
+.jrn3-badge-cancelled  { background: #fef3c7; color: #92400e; }
 .jrn3-a-date { font-size: .72rem; color: #b0b8c4; min-width: 82px; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
 .jrn3-a-artifact { font-size: .72rem; color: var(--gcc-teal); text-decoration: none; min-width: 105px; text-align: right; font-family: 'DM Sans', sans-serif; flex-shrink: 0; white-space: nowrap; }
 .jrn3-a-artifact:hover { text-decoration: underline; }
+.jrn3-action-controls { display: flex; align-items: center; gap: .3rem; min-width: 105px; justify-content: flex-end; flex-shrink: 0; }
+.jrn3-btn-ctrl {
+  font-size: .68rem; font-weight: 600; font-family: 'DM Sans', sans-serif;
+  border-radius: 4px; padding: .18rem .5rem; cursor: pointer; border: none;
+  white-space: nowrap; transition: opacity .15s;
+}
+.jrn3-btn-ctrl:hover { opacity: .8; }
+.jrn3-btn-ctrl:disabled { opacity: .4; cursor: not-allowed; }
+.jrn3-btn-stop    { background: #fee2e2; color: #b91c1c; }
+.jrn3-btn-restart { background: #e0f2fe; color: #0369a1; }
+.jrn3-btn-retry   { background: #f0fdf4; color: #15803d; }
 .jrn3-empty { font-size: .82rem; color: var(--gcc-muted); text-align: center; padding: 1rem 0; font-family: 'DM Sans', sans-serif; }
 
 /* ── Action Queue ────────────────────────────────────────────────────────── */
@@ -1202,6 +1215,7 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
   {# ── Persistent header ───────────────────────────────────────────────────── #}
   <div class="gcc-header">
     <div class="gcc-header-left">
+      <a href="/simulations/{{ sim.id }}" style="font-size:.82rem;color:var(--gcc-muted);text-decoration:none;margin-right:.25rem;" title="Back to simulation">← Back</a>
       <span class="gcc-sim-name">{{ sim.name }}</span>
       {% if latest_cycle %}
         <span class="gcc-phase-badge {% if latest_cycle.phase == 'explore' %}phase-explore{% else %}phase-exploit{% endif %}">
@@ -1956,11 +1970,11 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
 
       <div class="l6s-section-label" style="margin-top:1.25rem">Email routing</div>
       <div class="l6s-toggle-row" style="background:rgba(201,149,42,.07);border-radius:6px;padding:.5rem .75rem">
-        <label for="l6sSandboxEmail" style="font-weight:500">Route all outreach to simi@simulacrumai.io</label>
+        <label for="l6sSandboxEmail" style="font-weight:500">Route all outreach to {{ current_user.email }}</label>
         <input type="checkbox" id="l6sSandboxEmail" {% if cfg and cfg.sandbox_email_routing %}checked{% endif %}>
       </div>
       <div style="font-size:.78rem;color:var(--gcc-muted);margin:.35rem .1rem 0">
-        When enabled, every agent-generated outreach email is redirected to simi@simulacrumai.io instead of the real contact address. Use this to test sequences before going live.
+        When enabled, every agent-generated outreach email is redirected to {{ current_user.email }} instead of the real contact address. Use this to test sequences before going live.
       </div>
 
       <div class="l6s-msg" id="l6sMsg"></div>
@@ -2069,7 +2083,11 @@ function switchTab(name) {
   const url = new URL(window.location);
   url.searchParams.set('tab', name);
   history.replaceState(null, '', url);
-  if (name === 'journey') loadJourney();
+  if (name === 'journey') {
+    loadJourney();
+  } else {
+    if (_jrnPollTimer) { clearInterval(_jrnPollTimer); _jrnPollTimer = null; }
+  }
 }
 
 // ── Journey v3 (GCC-003) ─────────────────────────────────────────────────────
@@ -2080,6 +2098,7 @@ var _jrnNextCycleAt  = null;
 var _jrnSimStatus    = null;
 var _jrnCycleRunning = false;
 var _jrnCountdownTimer = null;
+var _jrnPollTimer = null;
 
 function _updateNextRunEl() {
   ['jrnNextRun', 'cycNextRun', 'visNextRun', 'anvNextRun'].forEach(function(id) {
@@ -2233,19 +2252,37 @@ function renderJourneyV3(data) {
     } else {
       layer.actions.forEach(function(row) {
         var stClass = 'jrn3-st-' + row.status;
-        var stIcon  = {complete:'✓', in_progress:'⟳', pending:'', failed:'⚠', escalated:'⬆', rejected:'—'}[row.status] || '';
+        var stIcon  = {complete:'✓', in_progress:'⟳', pending:'', failed:'⚠', escalated:'⬆', rejected:'—', cancelled:'✕'}[row.status] || '';
         var badgeCls = 'jrn3-badge-' + row.status;
-        var badgeLabel = {complete:'complete', in_progress:'in progress', pending:'pending', failed:'failed', escalated:'escalated', rejected:'rejected'}[row.status] || row.status;
-        var artifactHtml = (row.status === 'complete' && row.has_artifact)
-          ? '<a class="jrn3-a-artifact" href="/simulations/' + SIM_ID + '/artifacts/' + row.id + '">View artifact →</a>'
-          : '<span style="min-width:105px;display:inline-block"></span>';
+        var badgeLabel = {complete:'complete', in_progress:'in progress', pending:'pending', failed:'failed', escalated:'escalated', rejected:'rejected', cancelled:'cancelled'}[row.status] || row.status;
+
+        var controlsHtml;
+        if (row.status === 'complete' && row.has_artifact) {
+          controlsHtml = '<a class="jrn3-a-artifact" href="/simulations/' + SIM_ID + '/artifacts/' + row.id + '">View artifact →</a>';
+        } else if (row.id && row.status === 'in_progress') {
+          controlsHtml = '<div class="jrn3-action-controls">' +
+            '<button class="jrn3-btn-ctrl jrn3-btn-stop" onclick="jrnStopAgent(\'' + row.id + '\',this)">Stop</button>' +
+            '<button class="jrn3-btn-ctrl jrn3-btn-restart" onclick="jrnRestartAgent(\'' + row.id + '\',this)">Restart</button>' +
+            '</div>';
+        } else if (row.id && row.status === 'pending') {
+          controlsHtml = '<div class="jrn3-action-controls">' +
+            '<button class="jrn3-btn-ctrl jrn3-btn-stop" onclick="jrnStopAgent(\'' + row.id + '\',this)">Stop</button>' +
+            '<button class="jrn3-btn-ctrl jrn3-btn-restart" onclick="jrnRestartAgent(\'' + row.id + '\',this)">Start</button>' +
+            '</div>';
+        } else if (row.id && (row.status === 'failed' || row.status === 'cancelled')) {
+          controlsHtml = '<div class="jrn3-action-controls">' +
+            '<button class="jrn3-btn-ctrl jrn3-btn-retry" onclick="jrnRestartAgent(\'' + row.id + '\',this)">Retry</button>' +
+            '</div>';
+        } else {
+          controlsHtml = '<span style="min-width:105px;display:inline-block"></span>';
+        }
 
         html += '<div class="jrn3-action-row">' +
           '<span class="jrn3-st-icon ' + stClass + '">' + stIcon + '</span>' +
           '<span class="jrn3-a-name">' + esc(row.label) + '</span>' +
           '<span class="jrn3-a-badge ' + badgeCls + '">' + badgeLabel + '</span>' +
           '<span class="jrn3-a-date">' + (row.date || '—') + '</span>' +
-          artifactHtml +
+          controlsHtml +
           '</div>';
       });
     }
@@ -2256,6 +2293,20 @@ function renderJourneyV3(data) {
   html += '</div>'; // jrn3-accordion
 
   document.getElementById('jrnContent').innerHTML = html;
+
+  // Auto-refresh every 5 s while any agent is running or pending
+  var hasActive = layers.some(function(l) {
+    return l.actions.some(function(a) {
+      return a.status === 'in_progress' || a.status === 'pending';
+    });
+  });
+  if (hasActive) {
+    if (!_jrnPollTimer) {
+      _jrnPollTimer = setInterval(function() { loadJourney(true); }, 5000);
+    }
+  } else {
+    if (_jrnPollTimer) { clearInterval(_jrnPollTimer); _jrnPollTimer = null; }
+  }
 }
 
 function toggleJrn3Layer(ln) {
@@ -2271,6 +2322,33 @@ function toggleJrn3Layer(ln) {
 
 // Keep old name as alias for other callers
 function toggleJrnLayer(ln) { toggleJrn3Layer(ln); }
+
+function jrnStopAgent(actionId, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/agents/' + actionId + '/stop', {
+    method: 'POST', credentials: 'same-origin',
+  }).then(function(r) { return r.json(); }).then(function() {
+    loadJourney(true);
+  }).catch(function() {
+    btn.disabled = false;
+    btn.textContent = 'Stop';
+  });
+}
+
+function jrnRestartAgent(actionId, btn) {
+  btn.disabled = true;
+  var origLabel = btn.textContent;
+  btn.textContent = '…';
+  fetch(ROOT + '/api/simulations/' + SIM_ID + '/agents/' + actionId + '/restart', {
+    method: 'POST', credentials: 'same-origin',
+  }).then(function(r) { return r.json(); }).then(function() {
+    loadJourney(true);
+  }).catch(function() {
+    btn.disabled = false;
+    btn.textContent = origLabel;
+  });
+}
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

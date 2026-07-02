@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='simi_logo.jpg') }}">
 <title>{{ sim.name }} — ROI Report</title>
 <meta property="og:title" content="{{ sim.name }} — {{ roi_ratio }}x ROI">
 <meta property="og:description" content="Captured ${{ '{:,.0f}'.format(total_income) }} from a ${{ '{:,.0f}'.format(cost_usd) }} simulation.">

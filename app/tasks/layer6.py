@@ -26,6 +26,9 @@ def dispatch_layer6_action(self, queue_entry_id: str):
     from app.services.claude import execute_agent_action
     from datetime import datetime
 
+    # Release any stale connection before the first DB access
+    db.session.remove()
+
     entry = Layer6ActionQueue.query.get(queue_entry_id)
     if not entry:
         logger.warning('Layer6ActionQueue entry %s not found', queue_entry_id)
@@ -64,29 +67,61 @@ def dispatch_layer6_action(self, queue_entry_id: str):
     db.session.add(agent_action)
     db.session.flush()
 
-    # Re-fetch entry and update real agent_action_id
+    # Re-fetch entry and update real agent_action_id; store task ID for revocation
     entry = Layer6ActionQueue.query.get(queue_entry_id)
     entry.agent_action_id = agent_action.id
+    agent_action.celery_task_id = self.request.id
     db.session.commit()
 
-    from app.services.layer6 import _get_active_integrations, _build_integration_user_inputs
+    from app.services.layer6 import _get_active_integrations, _build_integration_user_inputs, _find_reusable_artifact
     _active_integrations = _get_active_integrations(sim.user_id)
     _injected_inputs = _build_integration_user_inputs(entry.action_type, _active_integrations, sim)
 
-    try:
-        result = execute_agent_action(
-            action_type=entry.action_type,
-            layer_number=entry.source_layer,
-            expertise_zone=sim.expertise_zone,
-            parsed_text=parsed_text,
-            user_inputs=_injected_inputs,
-            user_id=sim.user_id,
-            simulation_id=entry.simulation_id,
-            action_id=agent_action.id,
-            prospect_count=sim.get_prospect_count(),
-        )
+    # Extract scalars now while sim is attached; used after session.close() below.
+    _expertise_zone  = sim.expertise_zone
+    _sim_user_id     = sim.user_id
+    _prospect_count  = sim.get_prospect_count()
+    _action_type     = entry.action_type
+    _source_layer    = entry.source_layer
+    _simulation_id   = entry.simulation_id
+    _agent_action_id = agent_action.id
 
-        artifact = result if isinstance(result, str) else str(result)
+    try:
+        _reuse_artifact, _prior_action = _find_reusable_artifact(
+            _simulation_id, _action_type, _injected_inputs
+        )
+        if _reuse_artifact is not None:
+            artifact = _reuse_artifact
+            _prior_action._archived_artifact = _prior_action.artifact
+            _prior_action.archived_at = datetime.utcnow()
+            _prior_action.artifact = None
+            db.session.commit()
+            logger.info('Artifact reuse: %s sim=%s (skipped API call)', _action_type, _simulation_id)
+        else:
+            # Return the DB connection to the pool before the long Claude/research call.
+            db.session.close()
+            result = execute_agent_action(
+                action_type=_action_type,
+                layer_number=_source_layer,
+                expertise_zone=_expertise_zone,
+                parsed_text=parsed_text,
+                user_inputs=_injected_inputs,
+                user_id=_sim_user_id,
+                simulation_id=_simulation_id,
+                action_id=_agent_action_id,
+                prospect_count=_prospect_count,
+            )
+            artifact = result if isinstance(result, str) else str(result)
+            # Re-attach objects that were detached by session.close().
+            agent_action = AgentAction.query.get(_agent_action_id)
+            entry = Layer6ActionQueue.query.get(queue_entry_id)
+
+        # Re-read status — may have been cancelled while the Claude call was in flight
+        agent_action = AgentAction.query.get(_agent_action_id)
+        if agent_action and agent_action.status == AgentAction.STATUS_CANCELLED:
+            logger.info('Layer6 AgentAction %s cancelled during execution — discarding result', agent_action.id)
+            return
+
         agent_action.artifact = artifact
         agent_action.status = AgentAction.STATUS_COMPLETE
         agent_action.completed_at = datetime.utcnow()
@@ -111,58 +146,78 @@ def dispatch_layer6_action(self, queue_entry_id: str):
         if entry.action_type == 'outreach_email':
             try:
                 from app.tasks.agent import _dispatch_outreach_emails
-                _dispatch_outreach_emails(agent_action.id, entry.simulation_id, sim.user_id)
+                _dispatch_outreach_emails(agent_action.id, entry.simulation_id, _sim_user_id)
             except Exception as _de:
                 logger.warning('outreach_email post-send dispatch failed: %s', _de)
 
         if entry.action_type == 'cold_email_campaign':
             try:
                 from app.tasks.agent import _dispatch_cold_email_campaign
-                _dispatch_cold_email_campaign(agent_action.id, entry.simulation_id, sim.user_id)
+                _dispatch_cold_email_campaign(agent_action.id, entry.simulation_id, _sim_user_id)
             except Exception as _de:
                 logger.warning('cold_email_campaign post-send dispatch failed: %s', _de)
 
-        # Create scheduled action steps for multi-step agents (SIM-PRD-STEPS-001 A.3)
-        try:
-            from app.services.action_step_service import create_steps_from_artifact, AGENT_STEP_CONFIG
-            if entry.action_type in AGENT_STEP_CONFIG:
-                _n = create_steps_from_artifact(
-                    agent_action_id=agent_action.id,
-                    simulation_id=entry.simulation_id,
-                    action_type=entry.action_type,
-                    artifact_json=artifact,
-                    parent_action_id=entry.id,
-                )
-                if _n:
-                    logger.info('Created %d action steps for %s', _n, entry.action_type)
-        except Exception as _ste:
-            logger.warning('create_steps_from_artifact failed for %s: %s', entry.action_type, _ste)
+        # Create scheduled action steps — skip for reused artifacts (steps exist from prior run)
+        if _reuse_artifact is None:
+            try:
+                from app.services.action_step_service import create_steps_from_artifact, AGENT_STEP_CONFIG
+                if entry.action_type in AGENT_STEP_CONFIG:
+                    _n = create_steps_from_artifact(
+                        agent_action_id=agent_action.id,
+                        simulation_id=entry.simulation_id,
+                        action_type=entry.action_type,
+                        artifact_json=artifact,
+                        parent_action_id=entry.id,
+                    )
+                    if _n:
+                        logger.info('Created %d action steps for %s', _n, entry.action_type)
+            except Exception as _ste:
+                logger.warning('create_steps_from_artifact failed for %s: %s', entry.action_type, _ste)
 
-        # Deploy artifact to integration chain (FR-WIRE-01)
-        try:
-            from app.services.wire_service import deploy_to_integration
-            deploy_to_integration(
-                user_id=sim.user_id,
-                simulation_id=entry.simulation_id,
-                action_id=agent_action.id,
-                action_type=entry.action_type,
-                artifact=artifact,
-                layer_number=entry.source_layer,
-            )
-        except Exception as _we:
-            logger.warning('wire deploy failed for %s: %s', entry.action_type, _we)
+        # Deploy artifact to integration chain — skip for reused (same content already deployed)
+        if _reuse_artifact is None:
+            try:
+                from app.services.wire_service import deploy_to_integration
+                deploy_to_integration(
+                    user_id=_sim_user_id,
+                    simulation_id=entry.simulation_id,
+                    action_id=agent_action.id,
+                    action_type=entry.action_type,
+                    artifact=artifact,
+                    layer_number=entry.source_layer,
+                )
+            except Exception as _we:
+                logger.warning('wire deploy failed for %s: %s', entry.action_type, _we)
 
     except Exception as exc:
         logger.exception('Layer 6 action %s failed: %s', entry.id, exc)
-        agent_action.status = AgentAction.STATUS_FAILED
-        agent_action.error_message = str(exc)
-        db.session.commit()
-        # max_retries=1: attempt retry once; on second failure mark as failed directly
+        # Roll back any failed transaction before writing the failure status.
+        # Without this, a session left in REQUIRES_ROLLBACK state causes the
+        # subsequent commit to raise "Can't reconnect until invalid transaction
+        # is rolled back", leaving the action stuck in_progress forever.
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            action_obj = AgentAction.query.get(_agent_action_id)
+            if action_obj:
+                action_obj.status = AgentAction.STATUS_FAILED
+                action_obj.error_message = str(exc)[:500]
+                db.session.commit()
+        except Exception as _ce:
+            logger.error('Could not persist FAILED status for action %s: %s', _agent_action_id, _ce)
+        # max_retries=1: attempt retry once; on second failure mark queue entry failed
         if self.request.retries < self.max_retries:
             raise self.retry(exc=exc)
         else:
-            entry.status = Layer6ActionQueue.STATUS_FAILED
-            db.session.commit()
+            try:
+                q_entry = Layer6ActionQueue.query.get(queue_entry_id)
+                if q_entry:
+                    q_entry.status = Layer6ActionQueue.STATUS_FAILED
+                    db.session.commit()
+            except Exception as _qe:
+                logger.error('Could not mark queue entry %s failed: %s', queue_entry_id, _qe)
 
 
 @celery.task

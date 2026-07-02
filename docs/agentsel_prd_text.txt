@@ -1,0 +1,38 @@
+1. Agent Selector Flow
+2. Expertise Relevance Scoring
+Every agent in agents.json has an expertise_relevance field ? a dictionary of expertise keywords mapped to relevance scores (0.0-1.0). During resume extraction, the AI identifies the user's expertise zones and calculates a combined relevance score for each agent. Agents above the threshold are pre-selected.
+2.1 Scoring Algorithm
+2.2 Example: Tourism Operations Consultant
+User expertise zones: Operational Systems, Tour Guide Training, Customer Experience, Booking Technology, Seasonal Staffing
+Result: 15 agents pre-selected out of 49. The user sees only the relevant agents highlighted. saas_product_spec, ip_licensing, and programmatic_ads are available but not recommended ? the user can still toggle them on if they want.
+3. Layer Cards
+4. Agent Toggle Tiles
+5. Persona Templates ? Suggested Defaults
+The AI generates personalized recommendations from the resume. But as a fallback (resume extraction fails or is sparse), these persona templates provide reasonable starting selections.
+L5 agents are the same for all personas (income_allocation, entity_structure, tax_optimization, projections, fund_recommendations, dca_schedule). Wealth deployment is universal ? every professional who generates income should deploy it.
+6. Orchestrator Impact
+7. Data Model
+7.1 agents.json Extension
+8. Simi Integration
+Simi is aware of the agent selection and can help the user make informed decisions about which agents to enable.
+9. Edge Cases
+10. Functional Requirements
+Expertise Relevance Scoring
+FR-SEL-01  Each agent in agents.json has an expertise_relevance field mapping expertise keywords to relevance scores (0.0-1.0). During resume extraction, the AI calculates a combined relevance score for each agent based on the user's expertise zones. Agents above the threshold (default: 0.40, admin-configurable) are pre-selected.
+FR-SEL-02  Personalized agent descriptions generated during extraction. Each agent tile shows a description tailored to the user's expertise ('Workshop design for tour guide training programs') not the generic description from agents.json.
+Agent Selector UI
+FR-SEL-03  Agent selector displayed on /simulations/:id before Cycle 1. Heading: 'Choose your income strategy.' 5 layer cards (L1 expanded, L2-L3 collapsed, L4-L5 collapsed + locked). Each card: layer name, selected count, expand/collapse chevron. Select recommended / Clear all shortcuts.
+FR-SEL-04  Agent toggle tiles: toggle switch (teal on/grey off), display name, personalized description, badges (Recommended teal, Auto gold for triggered, Lock grey for locked), integration icons, cost estimate. Triggered agents always on (not toggleable). rate_card always on (root node).
+FR-SEL-05  Locked agents visible but not toggleable. Lock icon + tooltip showing prerequisites. Layer-locked agents dimmed with unlock condition shown. Agents unlock automatically when prerequisites complete or layer unlocks.
+FR-SEL-06  'Launch simulation with [N] agents ?' button saves selected_agents to simulation record and triggers the cold start chain. Button disabled if zero agents selected. Minimum: rate_card (always selected).
+Orchestrator Impact
+FR-SEL-07  Orchestrator only scores and dispatches agents in the selected_agents set. Non-selected agents are excluded from Bayesian scoring. Triggered agents always eligible regardless of selection. Cold start chain adapts: skips deselected chain members.
+FR-SEL-08  selected_agents and agent_relevance_scores stored as JSON on the simulation record. Orchestrator reads selected_agents before each cycle's Harvest step. Changes take effect on the next cycle. No restart required.
+Ongoing Management
+FR-SEL-09  After launch, the selector moves to Settings ? Simulation ? Agent Selection. Same UI: layer cards with toggle tiles. Changes saved via PUT /api/simulation/:id/agents. Toggling on a new agent initializes it with its default Bayesian prior.
+FR-SEL-10  Deselecting a completed agent preserves all artifacts, contacts, and income records. The agent stops being eligible for future dispatch. Scheduled action_steps from the agent continue firing on their original schedule.
+Fallbacks and Simi
+FR-SEL-11  If resume extraction fails or expertise zones are sparse, persona template fallback activates. Dropdown: 'I am a: Consultant / Engineer / Creative / Executive / Educator.' Loads the corresponding template defaults. 5 templates defined with per-layer agent selections.
+FR-SEL-12  Simi is selection-aware: can explain why agents are recommended, suggest adding/removing agents, navigate to the selector and toggle agents via fill_form with confirmation banner, and warn about prerequisite gaps.
+End of SIM-PRD-AGENTSEL-001 ? Expertise-Matched Agent Selector
+Jean Moussa Delphonse ? Bay Area Experiences Ventures ? simulacrumai.io

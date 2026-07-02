@@ -63,6 +63,11 @@ def generate_simulation_task(self, simulation_id: str):
         _errors         = {}
         _lock           = threading.Lock()
 
+        # Release the DB connection back to the pool before the multi-minute Claude
+        # calls.  pool_pre_ping only fires on checkout, so holding the connection
+        # across the wait causes "MySQL server has gone away" on the Phase 2 writes.
+        db.session.remove()
+
         def _call_claude(layer_num):
             with _app.app_context():
                 try:
@@ -162,6 +167,18 @@ def generate_simulation_task(self, simulation_id: str):
 
     except Exception as exc:
         logger.error('Simulation %s failed: %s', simulation_id, exc)
+        # Reset to ERROR so the retry can re-acquire the status lock. Without this,
+        # a failure after the STREAMING transition (e.g. a Phase 2 DB write error)
+        # leaves the simulation permanently locked in STREAMING and the retry
+        # returns early as "already locked" — no completion, no refund.
+        try:
+            db.session.rollback()
+            _sim_fail = Simulation.query.get(simulation_id)
+            if _sim_fail and _sim_fail.status == Simulation.STATUS_STREAMING:
+                _sim_fail.status = Simulation.STATUS_ERROR
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
         try:
             self.retry(exc=exc)
         except self.MaxRetriesExceededError:

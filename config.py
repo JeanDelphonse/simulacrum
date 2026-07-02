@@ -17,26 +17,30 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
     MAIL_DEFAULT_SENDER_NAME = os.environ.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
+    # Placeholder address assigned to prospects with no verified email; sends to
+    # these land in an inbox the operator controls, never a real third party.
+    FALLBACK_CONTACT_EMAIL = os.environ.get('FALLBACK_CONTACT_EMAIL', 'valuemanager.management@gmail.com')
     CLAUDE_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
     CLAUDE_MODEL = 'claude-sonnet-4-6'
+    ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
     STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
     STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
     STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
     SIMULATION_PRICE_CENTS = 69500  # $695.00
     LINKEDIN_CLIENT_ID = os.environ.get('LINKEDIN_CLIENT_ID')
     LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET')
-    LINKEDIN_REDIRECT_URI = os.environ.get('LINKEDIN_REDIRECT_URI', 'http://localhost:5000/api/resumes/linkedin/callback')
+    LINKEDIN_REDIRECT_URI = os.environ.get('LINKEDIN_REDIRECT_URI', 'https://simulacrumai.io/api/resumes/linkedin/callback')
     GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
-    GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5000/api/auth/google/callback')
+    GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'https://simulacrumai.io/api/auth/google/callback')
     ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')  # AES-256 for OAuth tokens
     APOLLO_CLIENT_ID = os.environ.get('APOLLO_CLIENT_ID')
     APOLLO_CLIENT_SECRET = os.environ.get('APOLLO_CLIENT_SECRET')
-    APOLLO_REDIRECT_URI = os.environ.get('APOLLO_REDIRECT_URI', 'http://localhost:5000/api/integrations/apollo/callback')
+    APOLLO_REDIRECT_URI = os.environ.get('APOLLO_REDIRECT_URI', 'https://simulacrumai.io/api/integrations/apollo/callback')
     PANDADOC_CLIENT_ID = os.environ.get('PANDADOC_CLIENT_ID')
     PANDADOC_CLIENT_SECRET = os.environ.get('PANDADOC_CLIENT_SECRET')
-    PANDADOC_REDIRECT_URI = os.environ.get('PANDADOC_REDIRECT_URI', 'http://localhost:5000/api/integrations/pandadoc/callback')
-    BASE_URL = os.environ.get('BASE_URL', 'http://localhost:5000')
+    PANDADOC_REDIRECT_URI = os.environ.get('PANDADOC_REDIRECT_URI', 'https://simulacrumai.io/api/integrations/pandadoc/callback')
+    BASE_URL = os.environ.get('BASE_URL', 'https://simulacrumai.io')
     STRIPE_CLIENT_ID = os.environ.get('STRIPE_CLIENT_ID')                          # ca_xxxx (Connect app client ID)
     STRIPE_CONNECT_WEBHOOK_SECRET = os.environ.get('STRIPE_CONNECT_WEBHOOK_SECRET') # whsec_xxxx for Connect events
     CAL_CLIENT_ID = os.environ.get('CAL_CLIENT_ID')
@@ -66,9 +70,10 @@ class ProductionConfig(Config):
     CELERY_TASK_ALWAYS_EAGER = os.environ.get('REDIS_URL') is None
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,   # test connection before use; auto-reconnect if stale
-        'pool_recycle': 280,     # recycle before GoDaddy's ~300s wait_timeout
+        'pool_recycle': 180,     # recycle well before GoDaddy's ~300s wait_timeout
         'pool_size': 5,
         'max_overflow': 2,
+        'connect_args': {'connect_timeout': 10},
     }
 
     @classmethod

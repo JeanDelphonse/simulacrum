@@ -35,7 +35,7 @@ def start_generation_if_needed(simulation_id: str, app_obj):
             if sim_check and sim_check.status == Simulation.STATUS_STREAMING:
                 # Only rescue if stuck for > 3 minutes (active generation should finish within 2)
                 age = (datetime.utcnow() - sim_check.updated_at) if getattr(sim_check, 'updated_at', None) else timedelta(minutes=5)
-                if age > timedelta(minutes=3):
+                if age > timedelta(minutes=12):
                     logger.warning('Simulation %s stuck in STREAMING for %s — resetting to ERROR', simulation_id, age)
                     sim_check.status = Simulation.STATUS_ERROR
                     db.session.commit()
@@ -74,6 +74,10 @@ def start_generation_if_needed(simulation_id: str, app_obj):
             _results        = {}
             _errors         = {}
             _lock           = _threading.Lock()
+
+            # Release the DB connection before the multi-minute Claude calls so
+            # pool_pre_ping can revalidate it on the Phase 2 checkout.
+            db.session.remove()
 
             def _call_claude(layer_num):
                 with app_obj.app_context():

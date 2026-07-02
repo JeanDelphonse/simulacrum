@@ -504,6 +504,53 @@ def send_feedback_received_email(user_email: str, user_name: str):
         logger.error('Failed to send feedback received email to %s: %s', user_email, e, exc_info=True)
 
 
+def send_escalation_email(
+    to_email: str,
+    name: str,
+    title: str,
+    description: Optional[str],
+    action_url: str,
+    sim_name: str,
+):
+    """Notify the user by email that an item has been escalated and needs their approval."""
+    first = (name or '').strip().split()[0] or 'there'
+    desc_text = (description or '').strip()
+    try:
+        plain = (
+            f'Hi {first},\n\n'
+            f'Your Simulacrum orchestrator has escalated an item that needs your review.\n\n'
+            f'Simulation: {sim_name}\n'
+            f'Action required: {title}\n'
+            + (f'\n{desc_text}\n' if desc_text else '')
+            + f'\nReview it here:\n{action_url}\n\n'
+            f'— SimulacrumAI.io'
+        )
+        html = _html_wrap(
+            _h1('Action required')
+            + _p(f'Hi {first}, your orchestrator has escalated an item that needs your approval.')
+            + f'<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;'
+              f'padding:1rem 1.25rem;margin:0 0 20px;">'
+              f'<div style="font-size:11px;font-weight:700;text-transform:uppercase;'
+              f'letter-spacing:.06em;color:#92400e;margin-bottom:6px;">Simulation · {sim_name}</div>'
+              f'<div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:6px;">{title}</div>'
+              + (f'<div style="font-size:14px;color:#374151;line-height:1.6;">{desc_text}</div>' if desc_text else '')
+              + '</div>'
+            + _btn(action_url, 'Review in GCC →')
+            + _fallback_link(action_url)
+            + _divider()
+            + _p('The orchestrator paused this action until you approve or reject it.', muted=True),
+            preheader=f'Action required: {title}',
+        )
+        _send(
+            subject=f'Action required: {title} — SimulacrumAI.io',
+            recipients=[to_email],
+            body=plain,
+            html=html,
+        )
+    except Exception as e:
+        logger.error('Failed to send escalation email to %s: %s', to_email, e, exc_info=True)
+
+
 def send_admin_new_feedback_email(admin_email: str, submitter_name: str, star_rating: int,
                                    quote_text: str, outcome_text: str, layers: list):
     layer_str = ', '.join(l['label'] for l in layers) if layers else 'None'
@@ -690,3 +737,213 @@ def send_alert_digest_email(user, alerts: list):
         )
     except Exception as e:
         logger.error('Failed to send alert digest to %s: %s', user.email, e, exc_info=True)
+
+
+def send_cycle_report_email(
+    to_email: str,
+    name: str,
+    sim_name: str,
+    sim_id: str,
+    cycle_number: int,
+    phase: str,
+    actions_scored: int,
+    dispatched: list,
+    escalated: list,
+    user_insight: str,
+    cycle_steps,
+    next_cycle_at: str,
+    gcc_url: str,
+):
+    """Send a full cycle report to the user after each Layer 6 orchestrator cycle."""
+    first = (name or '').strip().split()[0] or 'there'
+    phase_label = {'explore': 'Exploration', 'transition': 'Transition', 'exploit': 'Exploit'}.get(phase, phase.title())
+    dispatched_count = len(dispatched)
+    escalated_count = len(escalated)
+    subject = (
+        f'Cycle #{cycle_number} complete — {dispatched_count} agent{"s" if dispatched_count != 1 else ""} dispatched'
+        + (f', {escalated_count} awaiting approval' if escalated_count else '')
+        + f' — SimulacrumAI.io'
+    )
+
+    # ── Plain text ──
+    plain_lines = [
+        f'Hi {first},',
+        f'',
+        f'Cycle #{cycle_number} ({phase_label} phase) has completed for your simulation "{sim_name}".',
+        f'',
+        f'Summary',
+        f'  Agents scored:    {actions_scored}',
+        f'  Agents dispatched: {dispatched_count}',
+        f'  Awaiting approval: {escalated_count}',
+        f'',
+    ]
+    if dispatched:
+        plain_lines.append('Agents dispatched this cycle:')
+        for d in dispatched:
+            plain_lines.append(f'  • {d["label"]}')
+        plain_lines.append('')
+    if escalated:
+        plain_lines.append('Actions awaiting your approval:')
+        for e in escalated:
+            plain_lines.append(f'  • {e["label"]}')
+            if e.get('reason'):
+                plain_lines.append(f'    Reason: {e["reason"]}')
+        plain_lines.append('')
+    if user_insight:
+        plain_lines += ['Orchestrator insight:', user_insight, '']
+    if cycle_steps:
+        steps_list = _parse_cycle_steps(cycle_steps)
+        if steps_list:
+            plain_lines.append('Your to-do items:')
+            for s in steps_list:
+                plain_lines.append(f'  • {s}')
+            plain_lines.append('')
+    plain_lines += [
+        f'Next cycle: {next_cycle_at}',
+        f'',
+        f'View your GCC: {gcc_url}',
+        f'',
+        f'— SimulacrumAI.io',
+    ]
+    plain = '\n'.join(plain_lines)
+
+    # ── HTML ──
+    phase_color = {'explore': '#6366f1', 'transition': '#f59e0b', 'exploit': '#14b8a6'}.get(phase, '#6b7280')
+
+    stat_row = (
+        f'<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:20px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">'
+        f'<tr>'
+        f'<td style="padding:16px;text-align:center;border-right:1px solid #e5e7eb;">'
+        f'<div style="font-size:22px;font-weight:700;color:#111827;">{actions_scored}</div>'
+        f'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Scored</div>'
+        f'</td>'
+        f'<td style="padding:16px;text-align:center;border-right:1px solid #e5e7eb;">'
+        f'<div style="font-size:22px;font-weight:700;color:#14b8a6;">{dispatched_count}</div>'
+        f'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Dispatched</div>'
+        f'</td>'
+        f'<td style="padding:16px;text-align:center;">'
+        f'<div style="font-size:22px;font-weight:700;color:{"#f59e0b" if escalated_count else "#6b7280"};">{escalated_count}</div>'
+        f'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Need approval</div>'
+        f'</td>'
+        f'</tr></table>'
+    )
+
+    dispatched_html = ''
+    if dispatched:
+        rows = ''.join(
+            f'<tr><td style="padding:9px 0;border-top:1px solid #e5e7eb;font-size:14px;color:#111827;">'
+            f'<span style="display:inline-block;width:8px;height:8px;background:#14b8a6;border-radius:50%;margin-right:8px;"></span>'
+            f'{d["label"]}</td></tr>'
+            for d in dispatched
+        )
+        dispatched_html = (
+            f'<p style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 0;">Agents dispatched</p>'
+            f'<table cellpadding="0" cellspacing="0" border="0" style="width:100%;">{rows}</table>'
+        )
+
+    escalated_html = ''
+    if escalated:
+        esc_items = ''.join(
+            f'<div style="margin-bottom:10px;">'
+            f'<div style="font-size:14px;font-weight:700;color:#92400e;">{e["label"]}</div>'
+            + (f'<div style="font-size:13px;color:#78350f;margin-top:2px;">{e["reason"]}</div>' if e.get('reason') else '')
+            + '</div>'
+            for e in escalated
+        )
+        escalated_html = (
+            f'<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:16px 20px;margin:20px 0;">'
+            f'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#92400e;margin-bottom:10px;">Awaiting your approval</div>'
+            + esc_items
+            + '</div>'
+        )
+
+    insight_html = ''
+    if user_insight:
+        insight_html = (
+            f'<div style="background:#f0fdf4;border-left:3px solid #14b8a6;border-radius:0 8px 8px 0;'
+            f'padding:14px 16px;margin:20px 0;">'
+            f'<div style="font-size:12px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Orchestrator insight</div>'
+            f'<div style="font-size:14px;color:#064e3b;line-height:1.65;">{user_insight}</div>'
+            f'</div>'
+        )
+
+    steps_html = ''
+    steps_list = _parse_cycle_steps(cycle_steps) if cycle_steps else []
+    if steps_list:
+        step_rows = ''.join(
+            f'<tr><td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:14px;color:#374151;vertical-align:top;">'
+            f'<span style="font-weight:600;color:#14b8a6;margin-right:8px;">{i + 1}.</span>{s}</td></tr>'
+            for i, s in enumerate(steps_list)
+        )
+        steps_html = (
+            f'<p style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 0;">Your to-do items</p>'
+            f'<table cellpadding="0" cellspacing="0" border="0" style="width:100%;">{step_rows}</table>'
+        )
+
+    next_cycle_html = (
+        f'<div style="background:#f9fafb;border-radius:8px;padding:14px 16px;margin:24px 0 0;font-size:13px;color:#6b7280;">'
+        f'Next cycle scheduled: <strong style="color:#374151;">{next_cycle_at}</strong>'
+        f'</div>'
+    )
+
+    body_html = (
+        _h1(f'Cycle #{cycle_number} complete')
+        + f'<p style="margin:0 0 4px;font-size:13px;color:#6b7280;">{sim_name}</p>'
+        + f'<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;'
+          f'text-transform:uppercase;letter-spacing:.06em;color:#fff;background:{phase_color};margin-bottom:16px;">'
+          f'{phase_label} phase</span>'
+        + stat_row
+        + dispatched_html
+        + escalated_html
+        + insight_html
+        + steps_html
+        + next_cycle_html
+        + _btn(gcc_url, 'View in GCC →')
+        + _fallback_link(gcc_url)
+    )
+    html = _html_wrap(body_html, preheader=f'Cycle #{cycle_number}: {dispatched_count} agents dispatched. Next: {next_cycle_at}.')
+
+    try:
+        _send(subject=subject, recipients=[to_email], body=plain, html=html)
+    except Exception as e:
+        logger.error('Failed to send cycle report email to %s: %s', to_email, e, exc_info=True)
+
+
+def _parse_cycle_steps(cycle_steps) -> list:
+    """Return a list of step strings from whatever format cycle_steps is stored as."""
+    import json as _json
+    if not cycle_steps:
+        return []
+    if isinstance(cycle_steps, list):
+        return [str(s) for s in cycle_steps if s]
+    if isinstance(cycle_steps, str):
+        try:
+            parsed = _json.loads(cycle_steps)
+            if isinstance(parsed, list):
+                return [str(s) for s in parsed if s]
+        except Exception:
+            pass
+        return [s.strip() for s in cycle_steps.split('\n') if s.strip()]
+    return []
+
+
+def send_bcc_signup_notification(user_email: str, user_name: str):
+    try:
+        _send(
+            subject=f'New sign-up: {user_name} <{user_email}>',
+            recipients=['simi@simulacrumai.io'],
+            body=f'New user registered.\n\nName: {user_name}\nEmail: {user_email}',
+        )
+    except Exception as e:
+        logger.error('BCC signup notification failed: %s', e)
+
+
+def send_bcc_simulation_notification(user_email: str, user_name: str, sim_name: str, sim_id):
+    try:
+        _send(
+            subject=f'New simulation: {sim_name} — {user_name}',
+            recipients=['simi@simulacrumai.io'],
+            body=f'New simulation created.\n\nUser: {user_name} <{user_email}>\nSimulation: {sim_name}\nID: {sim_id}',
+        )
+    except Exception as e:
+        logger.error('BCC simulation notification failed: %s', e)

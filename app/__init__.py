@@ -161,6 +161,38 @@ def create_app(config_name=None):
     from app.scheduler import start_scheduler
     start_scheduler(app)
 
+    # Page view tracking middleware (FR-ANALYTICS-10)
+    @app.after_request
+    def _track_page_view(response):
+        try:
+            from flask import request as _req, session as _sess
+            from flask_login import current_user as _cu
+            if (
+                _req.method == 'GET'
+                and response.status_code == 200
+                and not _req.path.startswith(('/static/', '/api/', '/admin', '/_'))
+                and 'text/html' in (response.content_type or '')
+            ):
+                import hashlib as _hl
+                _fp = f"{_req.remote_addr}|{_req.user_agent.string}|{_req.accept_languages}"
+                _vid = _hl.sha256(_fp.encode()).hexdigest()[:64]
+                _ua  = _req.user_agent.string or ''
+                _dev = 'mobile' if any(k in _ua.lower() for k in ('mobile','android','iphone')) \
+                       else 'tablet' if 'tablet' in _ua.lower() else 'desktop'
+                from app.models.page_view import PageView as _PV
+                _PV.record(
+                    path        = _req.path,
+                    visitor_id  = _vid,
+                    session_id  = _sess.get('_id') if _sess else None,
+                    referrer    = _req.referrer,
+                    user_agent  = _ua[:500],
+                    user_id     = _cu.id if _cu.is_authenticated else None,
+                    device_type = _dev,
+                )
+        except Exception:
+            pass
+        return response
+
     # Onboarding gate: redirect incomplete users to /onboarding
     @app.before_request
     def _onboarding_gate():

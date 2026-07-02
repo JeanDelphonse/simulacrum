@@ -8,7 +8,9 @@ EXCLUDES = [
     ".htaccess",        # cPanel owns this — never overwrite it
     "passenger_wsgi.py", # cPanel generates this wrapper — our app lives in wsgi.py
     "*.egg-info", "dist", "build",
-    "simulacrum_deploy.zip",
+    "*.zip",             # never bundle old deploy zips into the new one
+    "*.log",             # server/debug logs
+    "docs",              # PRD/requirements docs — not needed on server
 ]
 
 def should_exclude(path):

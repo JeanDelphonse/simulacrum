@@ -110,6 +110,32 @@ def create_simulation():
     if not resume:
         return jsonify({'error': 'Resume not found'}), 404
 
+    # Return existing pending simulation if one was created in the last 15 minutes
+    # (prevents duplicate submissions from retries / double-clicks)
+    from datetime import datetime, timedelta
+    recent_cutoff = datetime.utcnow() - timedelta(minutes=15)
+    existing = Simulation.query.filter(
+        Simulation.user_id == current_user.id,
+        Simulation.resume_id == data['resume_id'],
+        Simulation.expertise_zone == data['expertise_zone'],
+        Simulation.status == Simulation.STATUS_PENDING,
+        Simulation.created_at >= recent_cutoff,
+    ).order_by(Simulation.created_at.desc()).first()
+    if existing and existing.stripe_payment_intent_id:
+        try:
+            import stripe as _stripe
+            _stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+            pi = _stripe.PaymentIntent.retrieve(existing.stripe_payment_intent_id)
+            return jsonify({
+                'simulation_id': existing.id,
+                'payment_intent_id': pi.id,
+                'client_secret': pi.client_secret,
+                'amount_cents': pi.amount,
+                'is_free': False,
+            }), 200
+        except Exception:
+            pass  # fall through to create a new one if retrieval fails
+
     sim_id = generate_id()
     sim = Simulation(
         id=sim_id,
@@ -123,6 +149,22 @@ def create_simulation():
     db.session.add(sim)
     AuditLog.log('simulation_created', user_id=current_user.id, resource_id=sim_id)
     db.session.commit()
+
+    # BCC notification to ops inbox
+    import threading as _threading
+    _bcc_app = current_app._get_current_object()
+    _bcc_email, _bcc_name, _bcc_sim_name, _bcc_sim_id = (
+        current_user.email, current_user.full_name, data['name'], sim_id,
+    )
+    def _bcc_notify():
+        with _bcc_app.app_context():
+            try:
+                from app.services.email_service import send_bcc_simulation_notification
+                send_bcc_simulation_notification(_bcc_email, _bcc_name, _bcc_sim_name, _bcc_sim_id)
+            except Exception as _e:
+                import logging
+                logging.getLogger(__name__).error('send_bcc_simulation_notification failed: %s', _e)
+    _threading.Thread(target=_bcc_notify, daemon=True).start()
 
     # Resolve current pricing (applies any active discount — FR-DISC-10)
     from app.services.pricing_service import get_current_price
@@ -960,6 +1002,15 @@ def get_pyramid(sim_id):
                 'launch_timeline': f'{s.launch_timeline_weeks}w' if s.launch_timeline_weeks else None,
             })
 
+        # Index the most recent action per type (any terminal status) for last_inputs pre-fill
+        last_completed: dict = {}
+        _terminal = {AgentAction.STATUS_COMPLETE, AgentAction.STATUS_FAILED, 'cancelled'}
+        for a in all_actions:
+            if a.status in _terminal and a.layer_number == n:
+                prev = last_completed.get(a.action_type)
+                if prev is None or a.created_at > prev.created_at:
+                    last_completed[a.action_type] = a
+
         # Build agent list with statuses
         agents_list = []
         for at, defn in layer_agent_defs.items():
@@ -972,12 +1023,15 @@ def get_pyramid(sim_id):
                 missing = [p for p in prereqs if p not in completed_types]
                 status = 'locked' if missing else 'ready'
 
+            last_action = last_completed.get(at)
             agents_list.append({
                 'action_type': at,
                 'label': defn.get('label', at.replace('_', ' ').title()),
                 'description': defn.get('description', ''),
                 'status': status,
                 'prompt_form': defn.get('prompt_form', []),
+                'last_inputs': last_action.user_inputs if last_action else {},
+                'artifact_id': last_action.id if last_action else None,
                 'missing_prereqs': (
                     [p for p in ACTION_PREREQUISITES.get(at, []) if p not in completed_types]
                     if status == 'locked' else []
@@ -1037,6 +1091,53 @@ def get_pyramid(sim_id):
     }), 200
 
 
+@simulations_bp.route('/<sim_id>/agents/<action_type>/prefill', methods=['GET'])
+@login_required
+def get_agent_prefill(sim_id, action_type):
+    """Return high-probability prefill values for an agent's prompt form.
+
+    Uses PrefillEngine (6-source priority chain: Bayesian corrections →
+    upstream artifacts → prior AgentContext → expertise zone → resume → defaults).
+    Generated values are persisted to AgentContext so repeated visits return
+    the same suggestions without re-running the engine.
+    """
+    from app.services.claude import AGENT_ACTION_TYPES
+    from app.services.prefill_engine import PrefillEngine
+    from app.models.agent_context import AgentContext
+    from app.models.resume import Resume
+
+    sim, _ = _check_sim_access(sim_id)
+    if not sim:
+        return jsonify({'error': 'Not found'}), 404
+
+    layer_number = next(
+        (ln for ln, agents in AGENT_ACTION_TYPES.items() if action_type in agents),
+        None,
+    )
+    if layer_number is None:
+        return jsonify({'error': 'Unknown action_type'}), 404
+
+    prompt_form = AGENT_ACTION_TYPES[layer_number].get(action_type, {}).get('prompt_form', [])
+    if not prompt_form:
+        return jsonify({'prefill': {}}), 200
+
+    resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
+    engine = PrefillEngine(simulation=sim, resume=resume,
+                           action_type=action_type, layer_number=layer_number)
+    fields = engine.generate()  # {key: {value, confidence, source, tooltip}}
+
+    flat = {k: v['value'] for k, v in fields.items() if v.get('value')}
+
+    # Persist so subsequent visits return the same values without re-running the engine.
+    # When the user actually runs the agent, AgentContext.save_inputs() overwrites these
+    # with their real choices, which then become the next prefill via Source 3.
+    if flat:
+        AgentContext.save_inputs(sim_id, layer_number, flat)
+        db.session.commit()
+
+    return jsonify({'prefill': flat}), 200
+
+
 @simulations_bp.route('/<sim_id>/agents/<action_type>/run', methods=['POST'])
 @login_required
 def run_agent(sim_id, action_type):
@@ -1081,12 +1182,17 @@ def run_agent(sim_id, action_type):
     db.session.add(action)
     db.session.commit()
 
-    # Dispatch Celery task
-    try:
-        from app.tasks.agent import execute_agent_action_task
-        execute_agent_action_task.delay(action.id)
-    except Exception:
-        pass  # Worker picks it up via periodic sweep if Celery unavailable
+    # Execute in a daemon thread (same pattern used by re-run and rerun routes)
+    import threading
+    from app.tasks.agent import execute_agent_action_task
+    _app = current_app._get_current_object()
+    _action_id = action.id
+
+    def _run():
+        with _app.app_context():
+            execute_agent_action_task.apply(args=[_action_id])
+
+    threading.Thread(target=_run, daemon=True).start()
 
     return jsonify({
         'action_id': action.id,
@@ -1094,6 +1200,107 @@ def run_agent(sim_id, action_type):
         'layer_number': layer_number,
         'status': 'running',
         'label': defn.get('label', action_type.replace('_', ' ').title()),
+    }), 200
+
+
+def _revoke_agent_task(action):
+    """Send SIGTERM to the Celery worker running this action, releasing the API connection."""
+    if not action.celery_task_id:
+        return
+    try:
+        from celery_worker import celery as _celery
+        _celery.control.revoke(action.celery_task_id, terminate=True, signal='SIGTERM')
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning(
+            'Could not revoke Celery task %s for action %s: %s',
+            action.celery_task_id, action.id, exc,
+        )
+
+
+@simulations_bp.route('/<sim_id>/agents/<action_id>/stop', methods=['POST'])
+@login_required
+def stop_agent(sim_id, action_id):
+    """Stop a running agent: revoke the Celery task (SIGTERM) and mark cancelled."""
+    sim, _ = _check_sim_access(sim_id)
+    if not sim:
+        return jsonify({'error': 'Not found'}), 404
+    if sim.user_id != current_user.id:
+        return jsonify({'error': 'Only the simulation owner can stop agents'}), 403
+
+    action = AgentAction.query.filter_by(id=action_id, simulation_id=sim_id).first()
+    if not action:
+        return jsonify({'error': 'Action not found'}), 404
+    if action.status not in (AgentAction.STATUS_PENDING, AgentAction.STATUS_IN_PROGRESS):
+        return jsonify({'error': f'Cannot stop an action with status "{action.status}"'}), 422
+
+    _revoke_agent_task(action)
+    action.status = AgentAction.STATUS_CANCELLED
+    action.error_message = 'Stopped by user'
+    db.session.commit()
+    return jsonify({'action_id': action_id, 'status': 'cancelled'}), 200
+
+
+@simulations_bp.route('/<sim_id>/agents/<action_id>/restart', methods=['POST'])
+@login_required
+def restart_agent(sim_id, action_id):
+    """Revoke the current action's task (SIGTERM), then re-queue with the same parameters."""
+    sim, _ = _check_sim_access(sim_id)
+    if not sim:
+        return jsonify({'error': 'Not found'}), 404
+    if sim.user_id != current_user.id:
+        return jsonify({'error': 'Only the simulation owner can restart agents'}), 403
+
+    action = AgentAction.query.filter_by(id=action_id, simulation_id=sim_id).first()
+    if not action:
+        return jsonify({'error': 'Action not found'}), 404
+
+    # Revoke and cancel the existing action
+    if action.status in (AgentAction.STATUS_PENDING, AgentAction.STATUS_IN_PROGRESS):
+        _revoke_agent_task(action)
+        action.status = AgentAction.STATUS_CANCELLED
+        action.error_message = 'Restarted by user'
+        db.session.commit()
+
+    saved_action_type = action.action_type
+    saved_user_inputs = action.user_inputs
+
+    layer_number, defn = _get_action_layer(saved_action_type)
+    if layer_number is None:
+        return jsonify({'error': 'Unknown agent type'}), 400
+
+    new_action = AgentAction(
+        id=generate_id(),
+        simulation_id=sim_id,
+        layer_number=layer_number,
+        action_type=saved_action_type,
+        user_inputs=saved_user_inputs,
+        status=AgentAction.STATUS_PENDING,
+        created_by=current_user.id,
+    )
+    db.session.add(new_action)
+    db.session.commit()
+
+    # Dispatch via Celery so the new task also gets a trackable task ID
+    from app.tasks.agent import execute_agent_action_task
+    celery_result = execute_agent_action_task.delay(new_action.id)
+    new_action.celery_task_id = celery_result.id
+
+    # Re-point the cycle queue entry to the new action so the journey tab
+    # shows it under the same cycle slot (otherwise it won't appear at all).
+    from app.models.layer6 import Layer6ActionQueue as _L6Q
+    _queue_entry = _L6Q.query.filter_by(agent_action_id=action_id).first()
+    if _queue_entry:
+        _queue_entry.agent_action_id = new_action.id
+        _queue_entry.status = 'dispatched'
+
+    db.session.commit()
+
+    return jsonify({
+        'action_id': new_action.id,
+        'action_type': saved_action_type,
+        'status': 'running',
+        'label': defn.get('label', saved_action_type.replace('_', ' ').title()),
     }), 200
 
 
@@ -1227,7 +1434,7 @@ def get_journey(sim_id):
         return jsonify({'error': 'Not found'}), 404
 
     status_filter = request.args.get('status', 'all').strip()
-    valid_statuses = {'pending', 'in_progress', 'complete', 'failed'}
+    valid_statuses = {'pending', 'in_progress', 'complete', 'failed', 'cancelled'}
 
     # Latest cycle — scopes action rows to the current run
     latest_cycle = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
@@ -1266,6 +1473,10 @@ def get_journey(sim_id):
                 _agent_map[_a.id] = _a
         _cycle_records = []
         for q in _cycle_queue:
+            # 'queued' = scored by orchestrator but NOT selected for dispatch this cycle.
+            # They appear in suggested_by_layer below but must not inflate the running count.
+            if q.status == 'queued':
+                continue
             _aa = _agent_map.get(q.agent_action_id) if q.agent_action_id else None
             if _aa:
                 _cycle_records.append({
@@ -1287,7 +1498,7 @@ def get_journey(sim_id):
         _cycle_records = []
 
     # Apply optional status filter on top of the cycle scope.
-    _all_display_statuses = valid_statuses | {'escalated', 'rejected'}
+    _all_display_statuses = valid_statuses | {'escalated', 'rejected', 'cancelled'}
     if status_filter in _all_display_statuses:
         display_records = [r for r in _cycle_records if r['status'] == status_filter]
     else:
@@ -1419,3 +1630,149 @@ def get_journey(sim_id):
         'total_actions': len(display_records),
         'status_filter': status_filter,
     }), 200
+
+
+# ---------------------------------------------------------------------------
+# Agent Network — SIM-PRD-AGENTMAP-001
+# ---------------------------------------------------------------------------
+
+@simulations_bp.route('/<sim_id>/agent-network', methods=['GET'])
+@login_required
+def get_agent_network(sim_id):
+    """
+    Return the full 49-agent DAG definition from config/agents.json,
+    enriched with live run status for the given simulation.
+    Used by the Agent Network tab and external tooling.
+    """
+    sim = Simulation.query.get(sim_id)
+    if not sim:
+        return jsonify({'error': 'Simulation not found'}), 404
+    if sim.user_id != current_user.id:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    from app.services.agent_registry import get_all_agents, ACTION_PREREQUISITES
+    from app.models.agent_action import AgentAction
+
+    # Build a quick status map: action_type → most-recent status
+    recent_actions = AgentAction.query.filter_by(
+        simulation_id=sim_id,
+    ).order_by(AgentAction.created_at.desc()).all()
+
+    _status_map: dict[str, str] = {}
+    for aa in recent_actions:
+        if aa.action_type not in _status_map:
+            _status_map[aa.action_type] = aa.status
+
+    all_agents = get_all_agents()
+    completed_types = {at for at, st in _status_map.items()
+                       if st == AgentAction.STATUS_COMPLETE}
+
+    nodes = []
+    for agent in all_agents:
+        at = agent['action_type']
+        prereqs = ACTION_PREREQUISITES.get(at, [])
+        prereqs_met = all(p in completed_types for p in prereqs)
+        status = _status_map.get(at, 'eligible' if prereqs_met else 'locked')
+        nodes.append({
+            'id':            at,
+            'label':         agent['label'],
+            'layer':         agent['layer'],
+            'model':         agent.get('model', 'haiku'),
+            'hub_node':      agent.get('hub_node', False),
+            'integrations':  agent.get('integrations', []),
+            'cold_start':    agent.get('cold_start_chain', False),
+            'cold_start_order': agent.get('cold_start_order'),
+            'status':        status,
+            'prerequisites': prereqs,
+            'disclaimer':    agent.get('disclaimer', False),
+        })
+
+    edges = []
+    for agent in all_agents:
+        for prereq in ACTION_PREREQUISITES.get(agent['action_type'], []):
+            edges.append({
+                'source': prereq,
+                'target': agent['action_type'],
+            })
+
+    return jsonify({
+        'nodes': nodes,
+        'edges': edges,
+        'simulation_id': sim_id,
+        'total_agents': len(nodes),
+    }), 200
+
+
+# ── Agent Selector (SIM-PRD-AGENTSEL-001) ─────────────────────────────────────
+
+@simulations_bp.route('/<sim_id>/agents/confirm', methods=['POST'])
+@login_required
+def confirm_agent_selection(sim_id):
+    """
+    Save selected_agents and mark the simulation as launched.
+    Called by the agent selector UI on first launch.
+    """
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    data = request.get_json() or {}
+    selected = data.get('selected_agents')
+    if not isinstance(selected, list):
+        return jsonify({'error': 'selected_agents must be a list'}), 400
+
+    from app.services.agent_selector import ROOT_AGENT_ID, TRIGGERED_AGENT_IDS
+    from app.services.agent_registry import get_all_agents
+
+    valid_ids = {a['action_type'] for a in get_all_agents()}
+    selected = [at for at in selected if at in valid_ids]
+
+    # Enforce invariants: root always on, triggered always included
+    if ROOT_AGENT_ID not in selected:
+        selected.insert(0, ROOT_AGENT_ID)
+    for at in TRIGGERED_AGENT_IDS:
+        if at not in selected:
+            selected.append(at)
+
+    sim.selected_agents = selected
+    sim.agent_selection_confirmed_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({'selected_agents': selected, 'confirmed': True}), 200
+
+
+@simulations_bp.route('/<sim_id>/agents', methods=['PUT'])
+@login_required
+def update_agent_selection(sim_id):
+    """
+    Update selected_agents post-launch (ongoing management).
+    Changes take effect on the next orchestrator cycle.
+    """
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    data = request.get_json() or {}
+    selected = data.get('selected_agents')
+    if not isinstance(selected, list):
+        return jsonify({'error': 'selected_agents must be a list'}), 400
+
+    from app.services.agent_selector import ROOT_AGENT_ID, TRIGGERED_AGENT_IDS
+    from app.services.agent_registry import get_all_agents
+
+    valid_ids = {a['action_type'] for a in get_all_agents()}
+    selected = [at for at in selected if at in valid_ids]
+
+    if ROOT_AGENT_ID not in selected:
+        selected.insert(0, ROOT_AGENT_ID)
+    for at in TRIGGERED_AGENT_IDS:
+        if at not in selected:
+            selected.append(at)
+
+    sim.selected_agents = selected
+    db.session.commit()
+
+    return jsonify({'selected_agents': selected, 'updated': True}), 200
+
+
+@simulations_bp.route('/<sim_id>/agents/selector-data', methods=['GET'])
+@login_required
+def get_agent_selector_data(sim_id):
+    """Return the full selector payload as JSON (used by edit-mode panel refresh)."""
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    from app.services.agent_selector import get_selector_data
+    return jsonify(get_selector_data(sim)), 200

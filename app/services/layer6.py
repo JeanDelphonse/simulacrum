@@ -122,6 +122,10 @@ def seed_cold_start_priors(simulation_id: str) -> None:
                 simulation_id=simulation_id,
                 posterior_key=key,
                 value=prior_value,
+                # Encode the prior as Beta pseudo-counts of strength 4 so later
+                # Beta-Binomial updates start from this belief, not from 0.5.
+                alpha_count=prior_value * (PRIOR_ALPHA + PRIOR_BETA),
+                beta_count=(1.0 - prior_value) * (PRIOR_ALPHA + PRIOR_BETA),
             ))
     try:
         db.session.commit()
@@ -324,14 +328,20 @@ PHASE_WEIGHTS = {
 
 def score_action(action_type: str, source_layer: int, outcomes_for_layer: list[dict],
                  unblocks_count: int, phase: str, layer_index: int,
-                 _noise_seed: float = None) -> float:
+                 _noise_seed: float = None, signal_posterior: float = None) -> float:
     """
     Phase-dependent Bayesian priority score for an action.
+
+    signal_posterior: mean of this action's webhook-derived signal posteriors
+    (reply/booking/payment rates from integrations). When present it is blended
+    into the yield estimate so integration evidence influences dispatch.
     """
     import random as _rnd
     w = PHASE_WEIGHTS.get(phase, PHASE_WEIGHTS['exploit'])
     alpha, beta = _compute_posterior(outcomes_for_layer)
     posterior_mean = _beta_mean(alpha, beta)
+    if signal_posterior is not None:
+        posterior_mean = 0.7 * posterior_mean + 0.3 * float(signal_posterior)
     dependency_value = min(1.0, math.log1p(unblocks_count) * 0.5)
     layer_weight = 1.0 - (layer_index - 1) / 5.0
     noise = (_noise_seed if _noise_seed is not None else _rnd.random())
@@ -478,37 +488,68 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
     Return all agent action types eligible for dispatch this cycle, with scores.
     Eligibility: prerequisites complete, not blocked, not already queued/running.
     force_rerun=True: skip the completed-type filter so all agents are eligible again.
+
+    Agent selector (SIM-PRD-AGENTSEL-001): if the simulation has a confirmed
+    selected_agents set, only agents in that set are scored/dispatched.
+    Triggered agents are always eligible regardless of selection.
     """
     from app.services.claude import AGENT_ACTION_TYPES
+    from app.services.agent_registry import resolve_alias
     from app.models.layer6 import Layer6ActionQueue
+    from app.models.simulation import Simulation
 
-    blocked = set(config.blocked_actions)
+    # Canonicalize every name set so an agent stored under a legacy alias
+    # (e.g. 'linkedin_optimize') and its canonical name ('linkedin_optimization')
+    # are treated as the same logical agent — otherwise the orchestrator can
+    # dispatch the same agent twice under both names.
+    blocked = {resolve_alias(a) for a in config.blocked_actions}
+    completed_canonical = {resolve_alias(t) for t in completed_types}
     channel_approvals = config.channel_approvals
+
+    # ── Agent selector scope filter ─────────────────────────────────────────
+    sim = Simulation.query.get(simulation_id)
+    if sim and sim.agent_selection_confirmed_at is not None and sim.selected_agents:
+        from app.services.agent_selector import TRIGGERED_AGENT_IDS
+        user_selected = {resolve_alias(a) for a in sim.selected_agents} | TRIGGERED_AGENT_IDS
+    else:
+        user_selected = None  # None = no filter (all agents eligible)
 
     # Gather action types actively in flight (dispatched only — queued rows from prior
     # cycles that were never selected should remain eligible for re-scoring)
     in_flight = {
-        r.action_type for r in Layer6ActionQueue.query.filter(
+        resolve_alias(r.action_type) for r in Layer6ActionQueue.query.filter(
             Layer6ActionQueue.simulation_id == simulation_id,
             Layer6ActionQueue.status == Layer6ActionQueue.STATUS_DISPATCHED,
         ).all()
     }
 
     eligible = []
+    seen: set[str] = set()
     layer_index = 0
     for layer_num, actions in AGENT_ACTION_TYPES.items():
         layer_index += 1
         for action_type, action_def in actions.items():
-            if action_type in blocked:
+            canonical = resolve_alias(action_type)
+            # The merged dict contains both canonical and legacy alias keys —
+            # consider each logical agent once.
+            if canonical in seen:
                 continue
-            if action_type in in_flight:
+            seen.add(canonical)
+
+            # Agent selector scope: skip if not in selected set
+            if user_selected is not None and canonical not in user_selected:
                 continue
-            if not force_rerun and action_type in completed_types:
+
+            if canonical in blocked:
+                continue
+            if canonical in in_flight:
+                continue
+            if not force_rerun and canonical in completed_canonical:
                 continue
 
             # Check prerequisites (always uses real completed_types so order is respected)
-            prereqs = ACTION_PREREQUISITES.get(action_type, [])
-            if not all(p in completed_types for p in prereqs):
+            prereqs = ACTION_PREREQUISITES.get(canonical, [])
+            if not all(resolve_alias(p) in completed_canonical for p in prereqs):
                 continue
 
             # Check channel constraints
@@ -517,10 +558,10 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
                 continue
 
             eligible.append({
-                'action_type': action_type,
+                'action_type': canonical,
                 'source_layer': layer_num,
                 'layer_index': layer_index,
-                'label': action_def.get('label', action_type),
+                'label': action_def.get('label', canonical),
             })
 
     return eligible
@@ -560,6 +601,37 @@ def _dispatch_with_celery(dispatch_entries, simulation_id):
         celery_chain(*dep_sigs).delay()
 
 
+def _refresh_yield_posteriors(simulation_id: str, scored: list[dict],
+                              outcomes_by_layer: dict[int, list[dict]]) -> None:
+    """Write the current outcome-based Beta posterior mean into each scored
+    action's yield:* posterior so snapshots, convergence detection, and the
+    cycle diff reflect the value the orchestrator actually decides on."""
+    from app.extensions import db
+    from app.models.bayesian import BayesianPosterior
+
+    for a in scored:
+        alpha, beta = _compute_posterior(outcomes_by_layer.get(a['source_layer'], []))
+        mean = _beta_mean(alpha, beta)
+        key = f"yield:{a['action_type']}"
+        rec = BayesianPosterior.query.filter_by(
+            simulation_id=simulation_id, posterior_key=key,
+        ).first()
+        if rec is None:
+            db.session.add(BayesianPosterior(
+                simulation_id=simulation_id,
+                posterior_key=key,
+                value=mean,
+                alpha_count=alpha,
+                beta_count=beta,
+            ))
+        else:
+            rec.value = mean
+            rec.alpha_count = alpha
+            rec.beta_count = beta
+            rec.updated_at = datetime.utcnow()
+    db.session.commit()
+
+
 def _snapshot_posteriors(simulation_id: str, cycle_id: str) -> None:
     """Snapshot all Bayesian posteriors at this cycle's Score step (FR-DIFF-10)."""
     from app.extensions import db
@@ -568,13 +640,14 @@ def _snapshot_posteriors(simulation_id: str, cycle_id: str) -> None:
 
     posteriors = BayesianPosterior.query.filter_by(simulation_id=simulation_id).all()
     for bp in posteriors:
-        # posterior_key is 'yield:action_type' — extract action_type
-        parts = bp.posterior_key.split(':', 1)
-        action_type = parts[1] if len(parts) == 2 else bp.posterior_key
+        # Store the FULL posterior_key. Stripping the metric prefix collapsed
+        # 'yield:x', 'reply_rate:x' and 'open_rate:x' onto one action_type,
+        # violating the (cycle_id, action_type) unique constraint and making
+        # convergence/diff logic compare values from different metrics.
         snap = CyclePosteriorSnapshot(
             simulation_id=simulation_id,
             cycle_id=cycle_id,
-            action_type=action_type,
+            action_type=bp.posterior_key[:100],
             posterior_value=bp.value,
         )
         db.session.add(snap)
@@ -686,12 +759,28 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
     )
 
     all_eligible_types = [e['action_type'] for e in eligible]
+
+    # FR-INTEG: webhook signal posteriors feed scoring. Collect every posterior
+    # with real evidence (update_count > 0, excluding the yield:* keys the
+    # scorer itself maintains) and index by the action_type segments of the key
+    # (exact segment match — 'reply_rate:cold_email_campaign' → cold_email_campaign).
+    from app.models.bayesian import BayesianPosterior
+    _signal_map: dict[str, list[float]] = {}
+    for _bp in BayesianPosterior.query.filter(
+        BayesianPosterior.simulation_id == simulation_id,
+        BayesianPosterior.update_count > 0,
+        ~BayesianPosterior.posterior_key.like('yield:%'),
+    ).all():
+        for _seg in _bp.posterior_key.split(':')[1:]:
+            _signal_map.setdefault(_seg, []).append(float(_bp.value))
+
     scored = []
     import hashlib as _hl
     for e in eligible:
         layer_outcomes = outcomes_by_layer.get(e['source_layer'], [])
         unblocks = _count_unblocked(e['action_type'], completed_types, all_eligible_types)
         _seed = int(_hl.md5(f'{e["action_type"]}{cycle_number}'.encode()).hexdigest(), 16) % 10000 / 10000
+        _sig_vals = _signal_map.get(e['action_type'])
         priority = score_action(
             action_type=e['action_type'],
             source_layer=e['source_layer'],
@@ -700,6 +789,7 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
             phase=phase,
             layer_index=e['layer_index'],
             _noise_seed=_seed,
+            signal_posterior=(sum(_sig_vals) / len(_sig_vals)) if _sig_vals else None,
         )
         # Apply integration boost on top of Bayesian score
         priority = round(priority + _integration_boost_for_action(
@@ -795,6 +885,15 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
         logger.warning('Cycle steps generation failed: %s', _se)
 
     db.session.commit()
+
+    # Refresh yield:* posteriors from the outcome-based Beta posterior so the
+    # snapshot/convergence machinery tracks the actual decision variable each
+    # cycle. Without this the seeded cold-start values never change, every
+    # delta is 0, and convergence fires spuriously at convergence_min_cycles.
+    try:
+        _refresh_yield_posteriors(simulation_id, scored, outcomes_by_layer)
+    except Exception as _ype:
+        logger.warning('Yield posterior refresh failed for cycle %s: %s', cycle.id, _ype)
 
     # Snapshot Bayesian posteriors for Cycle Diff (FR-DIFF-10)
     try:
@@ -947,6 +1046,41 @@ def _send_cycle_report(sim, config, cycle, dispatch_entries: list) -> None:
     )
 
 
+# Agents that should NEVER be deduplicated — they query live prospect/contact data
+# each cycle, so identical inputs still produce meaningfully different output.
+_NO_DEDUP_ACTIONS = frozenset({
+    'consulting_outreach',
+    'outreach_email',
+    'cold_email_campaign',
+    'referral_network',
+})
+
+
+def _find_reusable_artifact(simulation_id: str, action_type: str, injected_inputs: dict):
+    """
+    Return (artifact_text, prior_AgentAction) if a completed prior run exists for this
+    simulation + action_type with identical user_inputs, so we can skip the API call.
+    Return (None, None) if no reusable artifact is found.
+    """
+    import json as _json
+    if action_type in _NO_DEDUP_ACTIONS:
+        return None, None
+    from app.models.agent_action import AgentAction
+    prior = (
+        AgentAction.query
+        .filter_by(simulation_id=simulation_id, action_type=action_type,
+                   status=AgentAction.STATUS_COMPLETE)
+        .filter(AgentAction.artifact.isnot(None))
+        .order_by(AgentAction.completed_at.desc())
+        .first()
+    )
+    if not prior:
+        return None, None
+    if _json.dumps(prior.user_inputs, sort_keys=True) != _json.dumps(injected_inputs or {}, sort_keys=True):
+        return None, None
+    return prior.artifact, prior
+
+
 def _execute_action_sync(entry) -> None:
     """Execute a dispatched layer6 action synchronously — no Celery or Redis required."""
     from datetime import datetime as _dt
@@ -961,6 +1095,10 @@ def _execute_action_sync(entry) -> None:
     resume = Resume.query.get(sim.resume_id) if sim and sim.resume_id else None
     parsed_text = resume.parsed_text if resume else ''
 
+    # Cache scalars now — session.remove() below detaches sim, making attribute
+    # access on it raise DetachedInstanceError in all post-completion code.
+    _sim_user_id = sim.user_id if sim else None
+
     agent_action = AgentAction(
         simulation_id=entry.simulation_id,
         layer_number=entry.source_layer,
@@ -973,31 +1111,50 @@ def _execute_action_sync(entry) -> None:
     db.session.commit()
 
     from utils.model_router import get_tier
-    _active_integrations = _get_active_integrations(sim.user_id) if sim else {}
+    _active_integrations = _get_active_integrations(_sim_user_id) if sim else {}
     _injected_inputs = _build_integration_user_inputs(
         entry.action_type, _active_integrations, sim
     )
     try:
-        result = execute_agent_action(
-            action_type=entry.action_type,
-            layer_number=entry.source_layer,
-            expertise_zone=sim.expertise_zone if sim else '',
-            parsed_text=parsed_text,
-            user_inputs=_injected_inputs,
-            user_id=sim.user_id if sim else None,
-            simulation_id=entry.simulation_id,
-            dispatch_source='orchestrator',
-            action_id=agent_action.id,
+        _reuse_artifact, _prior_action = _find_reusable_artifact(
+            entry.simulation_id, entry.action_type, _injected_inputs
         )
-        # The Claude API call above can take 5-10 min. MySQL drops idle connections
-        # before that (wait_timeout ~300s). Dispose the pool now so every subsequent
-        # write gets a fresh connection without relying on the reactive retry in
-        # _log_interaction.
-        try:
-            db.engine.dispose()
-        except Exception:
-            pass
-        artifact = result if isinstance(result, str) else str(result)
+        if _reuse_artifact is not None:
+            artifact = _reuse_artifact
+            _prior_action._archived_artifact = _prior_action.artifact
+            _prior_action.archived_at = _dt.utcnow()
+            _prior_action.artifact = None
+            db.session.commit()
+            logger.info('Artifact reuse: %s sim=%s (skipped API call)', entry.action_type, entry.simulation_id)
+        else:
+            result = execute_agent_action(
+                action_type=entry.action_type,
+                layer_number=entry.source_layer,
+                expertise_zone=sim.expertise_zone if sim else '',
+                parsed_text=parsed_text,
+                user_inputs=_injected_inputs,
+                user_id=sim.user_id if sim else None,
+                simulation_id=entry.simulation_id,
+                dispatch_source='orchestrator',
+                action_id=agent_action.id,
+            )
+            # The Claude API call above can take 5-10 min. MySQL drops idle connections
+            # (wait_timeout ~300s). Dispose the pool AND release the session so the next
+            # write gets a completely fresh connection — engine.dispose() alone is not
+            # enough because the session still holds a reference to the dead connection.
+            _aa_id = agent_action.id
+            _entry_id = entry.id
+            try:
+                db.session.remove()
+                db.engine.dispose()
+            except Exception:
+                pass
+            agent_action = AgentAction.query.get(_aa_id)
+            entry = Layer6ActionQueue.query.get(_entry_id)
+            if agent_action is None or entry is None:
+                logger.error('Re-query after pool reset failed for entry %s', _entry_id)
+                return
+            artifact = result if isinstance(result, str) else str(result)
         agent_action.artifact = artifact
         agent_action.status = AgentAction.STATUS_COMPLETE
         agent_action.completed_at = _dt.utcnow()
@@ -1027,7 +1184,8 @@ def _execute_action_sync(entry) -> None:
                 action_id=agent_action.id, is_current=True,
             ).update({'is_current': False})
 
-        version_label = f'v{new_version_number} — {_dt.utcnow().strftime("%b %d %Y")}'
+        _reuse_tag = ' (reused)' if _reuse_artifact is not None else ''
+        version_label = f'v{new_version_number} — {_dt.utcnow().strftime("%b %d %Y")}{_reuse_tag}'
 
         av = ArtifactVersion(
             id=generate_id(),
@@ -1075,46 +1233,50 @@ def _execute_action_sync(entry) -> None:
         if entry.action_type in ('outreach_email', 'consulting_outreach'):
             try:
                 from app.tasks.agent import _dispatch_outreach_emails
-                _dispatch_outreach_emails(agent_action.id, entry.simulation_id, sim.user_id if sim else None)
+                _dispatch_outreach_emails(agent_action.id, entry.simulation_id, _sim_user_id)
             except Exception as _de:
                 logger.warning('outreach_email post-send dispatch failed: %s', _de)
 
         if entry.action_type == 'cold_email_campaign':
             try:
                 from app.tasks.agent import _dispatch_cold_email_campaign
-                _dispatch_cold_email_campaign(agent_action.id, entry.simulation_id, sim.user_id if sim else None)
+                _dispatch_cold_email_campaign(agent_action.id, entry.simulation_id, _sim_user_id)
             except Exception as _de:
                 logger.warning('cold_email_campaign post-send dispatch failed: %s', _de)
 
         # Create scheduled action steps for multi-step agents (SIM-PRD-STEPS-001 A.3)
-        try:
-            from app.services.action_step_service import create_steps_from_artifact, AGENT_STEP_CONFIG
-            if entry.action_type in AGENT_STEP_CONFIG:
-                _n = create_steps_from_artifact(
-                    agent_action_id=agent_action.id,
-                    simulation_id=entry.simulation_id,
-                    action_type=entry.action_type,
-                    artifact_json=artifact,
-                    parent_action_id=entry.id,
-                )
-                if _n:
-                    logger.info('Created %d action steps for %s (sync)', _n, entry.action_type)
-        except Exception as _ste:
-            logger.warning('create_steps_from_artifact (sync) failed for %s: %s', entry.action_type, _ste)
+        # Skip for reused artifacts — steps already exist from the prior run.
+        if _reuse_artifact is None:
+            try:
+                from app.services.action_step_service import create_steps_from_artifact, AGENT_STEP_CONFIG
+                if entry.action_type in AGENT_STEP_CONFIG:
+                    _n = create_steps_from_artifact(
+                        agent_action_id=agent_action.id,
+                        simulation_id=entry.simulation_id,
+                        action_type=entry.action_type,
+                        artifact_json=artifact,
+                        parent_action_id=entry.id,
+                    )
+                    if _n:
+                        logger.info('Created %d action steps for %s (sync)', _n, entry.action_type)
+            except Exception as _ste:
+                logger.warning('create_steps_from_artifact (sync) failed for %s: %s', entry.action_type, _ste)
 
         # Deploy artifact to integration chain (FR-WIRE-01)
-        try:
-            from app.services.wire_service import deploy_to_integration
-            deploy_to_integration(
-                user_id=sim.user_id if sim else '',
-                simulation_id=entry.simulation_id,
-                action_id=agent_action.id,
-                action_type=entry.action_type,
-                artifact=artifact,
-                layer_number=entry.source_layer,
-            )
-        except Exception as _we:
-            logger.warning('wire deploy failed for %s: %s', entry.action_type, _we)
+        # Skip for reused artifacts — same content already deployed from the prior run.
+        if _reuse_artifact is None:
+            try:
+                from app.services.wire_service import deploy_to_integration
+                deploy_to_integration(
+                    user_id=_sim_user_id or '',
+                    simulation_id=entry.simulation_id,
+                    action_id=agent_action.id,
+                    action_type=entry.action_type,
+                    artifact=artifact,
+                    layer_number=entry.source_layer,
+                )
+            except Exception as _we:
+                logger.warning('wire deploy failed for %s: %s', entry.action_type, _we)
 
         # Notify user of agent completion (best-effort)
         try:
@@ -1123,7 +1285,7 @@ def _execute_action_sync(entry) -> None:
             _base2 = _req2.host_url.rstrip('/') if _hrc2() else ''
             _label2 = entry.action_type.replace('_', ' ').title()
             _sn(
-                user_id=sim.user_id,
+                user_id=_sim_user_id,
                 notification_type='agent_complete',
                 title=f'Your {_label2} agent completed',
                 body=f'{_label2} is ready. {(artifact or "")[:120]}',

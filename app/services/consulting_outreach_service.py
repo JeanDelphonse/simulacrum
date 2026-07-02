@@ -131,37 +131,57 @@ def _extract_signal(raw, category, prospect_name, api_key, haiku_model):
 # ── Pass 2 — deep research per prospect ──────────────────────────────────────
 
 def _deep_research_one(prospect, user_id, expertise_keywords, api_key, haiku_model):
-    """Run 6-category Pass 2 research for one prospect. Returns context dict."""
+    """Run 6-category Pass 2 research for one prospect. Returns context dict.
+    Web searches run in parallel (max 3 concurrent); extractions follow in parallel."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     name = prospect.display_name
     company = prospect.company_name or ''
     industry = prospect.industry or ''
-    context = {}
 
-    # 1. LinkedIn activity
-    raw = _web_search(f'{name} linkedin post article 2025 2026', api_key, haiku_model)
-    context['linkedin_activity'] = _extract_signal(raw, 'recent LinkedIn activity', name, api_key, haiku_model)
+    # Search queries per category (None = skip)
+    _queries = {
+        'linkedin_activity':  f'{name} linkedin post article 2025 2026',
+        'company_news':       f'{company} news announcement funding 2025 2026',
+        'conferences_events': f'{name} speaker conference podcast panel 2025 2026',
+        'hiring_signals':     f'{company} hiring {expertise_keywords} job opening' if company and expertise_keywords else None,
+        'public_pain_points': f'{company} challenges growth problem 2025 2026',
+    }
+    _category_labels = {
+        'linkedin_activity':  'recent LinkedIn activity',
+        'company_news':       'recent company news',
+        'conferences_events': 'conference or podcast appearances',
+        'hiring_signals':     'hiring signals matching your expertise',
+        'public_pain_points': 'challenges and business pain points',
+    }
 
-    # 2. Company news
-    raw = _web_search(f'{company} news announcement funding 2025 2026', api_key, haiku_model)
-    context['company_news'] = _extract_signal(raw, 'recent company news', name, api_key, haiku_model)
+    # Step 1: parallel web searches
+    raw_results: dict = {}
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        fs = {ex.submit(_web_search, q, api_key, haiku_model): key
+              for key, q in _queries.items() if q}
+        for f in as_completed(fs):
+            key = fs[f]
+            try:
+                raw_results[key] = f.result()
+            except Exception:
+                raw_results[key] = ''
 
-    # 3. Mutual connections — CRM query, no web search
+    # Step 2: parallel signal extractions (depend only on their own raw result)
+    context: dict = {}
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        fs = {ex.submit(_extract_signal, raw_results.get(key, ''),
+                        label, name, api_key, haiku_model): key
+              for key, label in _category_labels.items()}
+        for f in as_completed(fs):
+            key = fs[f]
+            try:
+                context[key] = f.result()
+            except Exception:
+                context[key] = ''
+
+    # Mutual connections — fast DB query, no need to parallelize
     context['mutual_connections'] = _find_mutual_connections(user_id, company, industry)
-
-    # 4. Conferences / speaking
-    raw = _web_search(f'{name} speaker conference podcast panel 2025 2026', api_key, haiku_model)
-    context['conferences_events'] = _extract_signal(raw, 'conference or podcast appearances', name, api_key, haiku_model)
-
-    # 5. Hiring signals
-    if company and expertise_keywords:
-        raw = _web_search(f'{company} hiring {expertise_keywords} job opening', api_key, haiku_model)
-        context['hiring_signals'] = _extract_signal(raw, 'hiring signals matching your expertise', name, api_key, haiku_model)
-    else:
-        context['hiring_signals'] = ''
-
-    # 6. Public pain points
-    raw = _web_search(f'{company} challenges growth problem 2025 2026', api_key, haiku_model)
-    context['public_pain_points'] = _extract_signal(raw, 'challenges and business pain points', name, api_key, haiku_model)
 
     return context
 
@@ -513,25 +533,20 @@ def execute_consulting_outreach(
         'tone': user_inputs.get('tone', 'balanced'),
     }
 
-    # ── Pass 2 + email generation ─────────────────────────────────────────────
-    t_pass2 = time.time()
-    prospect_records = []
-    total_signals = 0
+    # ── Pass 2 + email generation — parallel across prospects ────────────────
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    for p in prospects:
-        # Pass 2: deep personalization
+    t_pass2 = time.time()
+
+    def _research_and_email(p):
         try:
-            ctx = _deep_research_one(
-                p, user_id, expertise_keywords, api_key, haiku_model,
-            )
+            ctx = _deep_research_one(p, user_id, expertise_keywords, api_key, haiku_model)
         except Exception as exc:
-            logger.warning('Pass 2 deep research failed for %s: %s', p.display_name, exc)
+            logger.warning('Pass 2 research failed for %s: %s', p.display_name, exc)
             ctx = {k: '' for k in SIGNAL_CATEGORIES}
 
         signals_found = sum(1 for v in ctx.values() if v)
-        total_signals += signals_found
 
-        # Email generation
         try:
             email_draft = _generate_one_email(p, ctx, user_info, api_key, sonnet_model)
         except Exception as exc:
@@ -542,7 +557,30 @@ def execute_consulting_outreach(
                 'personalization_signal_used': '',
                 'signal_category': 'none',
             }
+        return ctx, signals_found, email_draft
 
+    # max_workers=3 keeps concurrent Anthropic connections within safe limits
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {executor.submit(_research_and_email, p): i for i, p in enumerate(prospects)}
+        ordered: dict = {}
+        for f in as_completed(futures):
+            idx = futures[f]
+            try:
+                ordered[idx] = f.result()
+            except Exception as exc:
+                logger.warning('Prospect %d failed entirely: %s', idx, exc)
+                p = prospects[idx]
+                ordered[idx] = (
+                    {k: '' for k in SIGNAL_CATEGORIES}, 0,
+                    {'subject': f'Quick question, {p.first_name}',
+                     'body': '', 'personalization_signal_used': '', 'signal_category': 'none'},
+                )
+
+    prospect_records = []
+    total_signals = 0
+    for i, p in enumerate(prospects):
+        ctx, signals_found, email_draft = ordered[i]
+        total_signals += signals_found
         prospect_records.append({
             'first_name': p.first_name,
             'last_name': p.last_name,

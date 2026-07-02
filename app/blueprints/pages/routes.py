@@ -250,9 +250,37 @@ def simulation_view(sim_id):
     if not is_owner and not is_collab:
         from flask import abort
         abort(403)
+
+    # Show agent selector for new simulations that haven't confirmed yet.
+    # Guard: only intercept owner, complete sim, no cycles started.
+    if (is_owner
+            and sim.status == sim.STATUS_COMPLETE
+            and sim.agent_selection_confirmed_at is None):
+        from app.models.layer6 import Layer6Cycle
+        has_cycles = Layer6Cycle.query.filter_by(simulation_id=sim_id).first() is not None
+        if not has_cycles:
+            return redirect(url_for('pages.simulation_setup', sim_id=sim_id))
+
     layers = sorted(sim.layers, key=lambda l: l.layer_number)
     return render_template('simulations/detail.html', simulation=sim, layers=layers,
                            is_owner=is_owner)
+
+
+@pages_bp.route('/simulations/<sim_id>/setup')
+@login_required
+def simulation_setup(sim_id):
+    """Agent selector — shown before Cycle 1 and available as ongoing management."""
+    from app.models.simulation import Simulation
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    from app.services.agent_selector import get_selector_data, PERSONA_NAMES, _PERSONA_DEFAULTS
+    selector = get_selector_data(sim, force_regen_descriptions=True)
+    edit_mode = sim.agent_selection_confirmed_at is not None
+    return render_template(
+        'simulations/agent_selector.html',
+        selector=selector,
+        edit_mode=edit_mode,
+        persona_defaults=_PERSONA_DEFAULTS,
+    )
 
 
 @pages_bp.route('/simulations/<sim_id>/income')
@@ -490,7 +518,24 @@ def settings_trust_controls():
 @login_required
 def settings_voice():
     from app.models.user import User
+    from datetime import datetime as _dt
     user = User.query.get(current_user.id)
+
+    # Verify Stripe Checkout session on success redirect (webhook fallback)
+    session_id = request.args.get('voice_session')
+    if session_id and user and not user.voice_training_paid_at:
+        try:
+            import stripe as _stripe
+            _stripe.api_key = current_app.config.get('STRIPE_SECRET_KEY')
+            cs = _stripe.checkout.Session.retrieve(session_id)
+            if (cs.payment_status == 'paid'
+                    and cs.metadata.get('product') == 'voice_training'
+                    and str(cs.metadata.get('user_id')) == str(user.id)):
+                user.voice_training_paid_at = _dt.utcnow()
+                db.session.commit()
+        except Exception as _e:
+            current_app.logger.warning('Voice session verify failed: %s', _e)
+
     return render_template(
         'settings/index.html',
         active_tab='voice',
@@ -498,6 +543,41 @@ def settings_voice():
         voice_trained=bool(user and user.voice_trained_at),
         voice_trained_at=user.voice_trained_at if user else None,
         voice_consent_given=bool(user and user.voice_consent_accepted_at),
+    )
+
+
+@pages_bp.route('/settings/videos')
+@login_required
+def settings_videos():
+    from app.models.simulation_video import SimulationVideo
+    from app.models.simulation import Simulation
+
+    vids = SimulationVideo.query.filter_by(
+        user_id=current_user.id,
+    ).order_by(SimulationVideo.created_at.desc()).all()
+
+    video_data = []
+    for v in vids:
+        sim = Simulation.query.get(v.simulation_id)
+        sim_label = (sim.expertise_zone or sim.name) if sim else 'Simulation'
+        dur = v.duration_seconds or 0
+        video_data.append({
+            'id':              v.id,
+            'sim_label':       sim_label,
+            'simulation_id':   v.simulation_id,
+            'format':          v.format,
+            'duration_label':  f'{dur // 60}:{dur % 60:02d}' if dur else '',
+            'embedded_on_bio': v.embedded_on_bio,
+            'status':          v.status,
+            'has_video':       bool(v.video_path and v.video_path.endswith('.mp4')),
+            'thumbnail_path':  v.thumbnail_path,
+            'created_at':      v.created_at.strftime('%b %-d, %Y') if v.created_at else '',
+        })
+
+    return render_template(
+        'settings/index.html',
+        active_tab='videos',
+        video_data=video_data,
     )
 
 
@@ -615,6 +695,15 @@ def admin_view():
 
     return render_template('admin/index.html', settings=settings, users=users,
                            profiles=profiles, revenue_stats=revenue_stats)
+
+
+@pages_bp.route('/admin/analytics')
+@login_required
+def admin_analytics_view():
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    return render_template('admin/analytics.html')
 
 
 @pages_bp.route('/admin/feedback')
@@ -1150,6 +1239,33 @@ def gcc_view(sim_id):
     _cycle_count = latest_cycle.cycle_number if latest_cycle else 0
     _active_cycle_limit = int(layer6_config.active_cycle_limit) if layer6_config else 30
 
+    # Voice + video data for Visuals tab (FR-VOICE-06/10)
+    from app.models.user import User as _User
+    _usr = _User.query.get(current_user.id)
+    voice_trained = bool(_usr and _usr.elevenlabs_voice_id)
+    voice_paid    = bool(_usr and _usr.voice_training_paid_at)
+    try:
+        from app.models.simulation_video import SimulationVideo
+        _sim_videos = SimulationVideo.query.filter_by(
+            simulation_id=sim_id, user_id=current_user.id,
+        ).order_by(SimulationVideo.created_at.desc()).all()
+        sim_videos = []
+        for v in _sim_videos:
+            dur = v.duration_seconds or 0
+            sim_videos.append({
+                'id':              v.id,
+                'format':          v.format,
+                'duration_label':  f'{dur // 60}:{dur % 60:02d}' if dur else '',
+                'duration_seconds': dur,
+                'embedded_on_bio': v.embedded_on_bio,
+                'status':          v.status,
+                'has_video':       bool(v.video_path and v.video_path.endswith('.mp4')),
+                'stream_url':      f'/api/voice/videos/{v.id}/stream',
+                'created_at':      v.created_at.strftime('%b %-d, %Y') if v.created_at else '',
+            })
+    except Exception:
+        sim_videos = []
+
     return render_template(
         'simulations/layer6.html',
         sim=sim,
@@ -1180,6 +1296,9 @@ def gcc_view(sim_id):
         lifecycle_phase=sim.lifecycle_phase,
         cycle_count=_cycle_count,
         active_cycle_limit=_active_cycle_limit,
+        voice_trained=voice_trained,
+        voice_paid=voice_paid,
+        sim_videos=sim_videos,
     )
 
 

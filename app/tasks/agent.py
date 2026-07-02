@@ -16,9 +16,17 @@ def execute_agent_action_task(action_id: str):
     from app.models.artifact import ArtifactVersion
     from utils.id_gen import generate_id
 
+    # Release any stale connection inherited from a previous task or worker idle period.
+    # pool_pre_ping only fires on checkout; this forces a fresh checkout.
+    db.session.remove()
+
     action = AgentAction.query.get(action_id)
     if not action:
         logger.error('AgentAction %s not found', action_id)
+        return
+
+    if action.status == AgentAction.STATUS_CANCELLED:
+        logger.info('AgentAction %s cancelled before start — skipping', action_id)
         return
 
     action.status = AgentAction.STATUS_IN_PROGRESS
@@ -44,11 +52,18 @@ def execute_agent_action_task(action_id: str):
         parsed_text = resume.parsed_text if resume else ''
 
         prospect_count = sim.get_prospect_count() if sim else None
+        expertise_zone = sim.expertise_zone if sim else ''
+
+        # Return the DB connection to the pool before the long Claude/research call.
+        # Without this, the connection sits idle for minutes and MySQL drops it
+        # (wait_timeout), causing "server has gone away" errors for the scheduler
+        # and exhausting max_connections on shared hosting.
+        db.session.close()
 
         artifact = execute_agent_action(
             action_type=action_type,
             layer_number=layer_number,
-            expertise_zone=sim.expertise_zone if sim else '',
+            expertise_zone=expertise_zone,
             parsed_text=parsed_text,
             user_inputs=user_inputs,
             user_id=user_id,
@@ -57,6 +72,12 @@ def execute_agent_action_task(action_id: str):
             action_id=action_id,
             prospect_count=prospect_count,
         )
+
+        # Re-read status — may have been cancelled while the Claude call was in flight
+        action = AgentAction.query.get(action_id)
+        if action and action.status == AgentAction.STATUS_CANCELLED:
+            logger.info('AgentAction %s cancelled during execution — discarding result', action_id)
+            return
 
         action.artifact = artifact
         action.status = AgentAction.STATUS_COMPLETE
@@ -267,16 +288,11 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
     if not prospects:
         return
 
-    _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
+    from app.services.contact_lookup import is_fallback_email
 
     # ── Phase 1: upsert ALL named prospects into CRM as 'prospect' ──
     artifact_changed = False
     crm_created = 0
-    used_fallbacks = {
-        p.get('email').strip().lower()
-        for p in prospects
-        if p.get('email') and p.get('email').strip().lower().startswith('valuemanager.management')
-    }
     for p in prospects:
         first = (p.get('first_name') or '').strip()
         last  = (p.get('last_name') or '').strip()
@@ -284,8 +300,7 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
             continue
 
         raw_email = (p.get('email') or '').strip().lower()
-        is_fallback = raw_email.startswith('valuemanager.management') and raw_email.endswith('@gmail.com')
-        if not raw_email or is_fallback:
+        if not raw_email or is_fallback_email(raw_email):
             continue
 
         crm_id = p.get('crm_contact_id')
@@ -396,18 +411,16 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
     if not prospects:
         return
 
-    _FALLBACK_EMAIL = 'valuemanager.management@gmail.com'
+    from flask import current_app
+    from app.services.contact_lookup import is_fallback_email
+    _FALLBACK_EMAIL = current_app.config.get(
+        'FALLBACK_CONTACT_EMAIL', 'valuemanager.management@gmail.com')
 
     # ── Phase 1: upsert ALL named prospects into CRM as 'prospect' ──
     # Real email → match/create by email.
     # No/fallback email → match by name+company, create with unique fallback email.
     artifact_changed = False
     crm_created = 0
-    used_fallbacks = {
-        p.get('email').strip().lower()
-        for p in prospects
-        if p.get('email') and p.get('email').strip().lower().startswith('valuemanager.management')
-    }
     for p in prospects:
         first = (p.get('first_name') or '').strip()
         last  = (p.get('last_name') or '').strip()
@@ -415,8 +428,7 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
             continue
 
         raw_email = (p.get('email') or '').strip().lower()
-        is_fallback = raw_email.startswith('valuemanager.management') and raw_email.endswith('@gmail.com')
-        if not raw_email or is_fallback:
+        if not raw_email or is_fallback_email(raw_email):
             continue
 
         crm_id = p.get('crm_contact_id')
@@ -492,7 +504,7 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
                 # Contact already exists from Phase 1; look up to advance stage
                 crm_id = p.get('crm_contact_id')
                 contact = Contact.query.get(crm_id) if crm_id else None
-                if not contact and email != _FALLBACK_EMAIL:
+                if not contact and not is_fallback_email(email):
                     contact = Contact.query.filter_by(user_id=user_id, email=email.lower().strip()).first()
 
                 if contact:

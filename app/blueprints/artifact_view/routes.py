@@ -101,9 +101,12 @@ def page_full_view(sim_id, artifact_id):
 
     history = ArtifactVersion.history_for(action.id)
     from app.models.integration import UserIntegration
+    from app.services.claude import AGENT_ACTION_TYPES
     li_int = UserIntegration.query.filter_by(
         user_id=current_user.id, provider='linkedin'
     ).first()
+    layer_agents = AGENT_ACTION_TYPES.get(action.layer_number, {})
+    prompt_form = layer_agents.get(action.action_type, {}).get('prompt_form', [])
     return render_template(
         'simulations/artifact_view.html',
         sim=sim,
@@ -112,6 +115,7 @@ def page_full_view(sim_id, artifact_id):
         history=history,
         artifact_name=_plain_name(action.action_type),
         linkedin_connected=bool(li_int and li_int.is_connected),
+        prompt_form=prompt_form,
     )
 
 
@@ -374,11 +378,17 @@ def api_rerun(artifact_id):
         return jsonify({'error': 'forbidden'}), 403
 
     body = request.get_json(silent=True) or {}
-    custom_inputs = body.get('custom_prefill_inputs')
-    if isinstance(custom_inputs, dict) and custom_inputs:
-        merged = dict(action.user_inputs or {})
-        merged.update(custom_inputs)
-        action.user_inputs = merged
+    # user_inputs: explicit replacement from the artifact view params form
+    explicit_inputs = body.get('user_inputs')
+    if isinstance(explicit_inputs, dict) and explicit_inputs:
+        action.user_inputs = explicit_inputs
+    else:
+        # custom_prefill_inputs: automated merge path (GCC orchestrator)
+        custom_inputs = body.get('custom_prefill_inputs')
+        if isinstance(custom_inputs, dict) and custom_inputs:
+            merged = dict(action.user_inputs or {})
+            merged.update(custom_inputs)
+            action.user_inputs = merged
 
     action.status = AgentAction.STATUS_PENDING
     action.error_message = None

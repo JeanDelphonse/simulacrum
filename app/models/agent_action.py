@@ -11,6 +11,7 @@ class AgentAction(db.Model):
     STATUS_IN_PROGRESS = 'in_progress'
     STATUS_COMPLETE = 'complete'
     STATUS_FAILED = 'failed'
+    STATUS_CANCELLED = 'cancelled'
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     simulation_id = db.Column(
@@ -25,6 +26,7 @@ class AgentAction(db.Model):
     archived_at = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(20), nullable=False, default='pending')
     error_message = db.Column(db.Text, nullable=True)
+    celery_task_id = db.Column(db.String(255), nullable=True)
     created_by = db.Column(
         db.String(9), db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True,
     )

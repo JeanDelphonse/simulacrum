@@ -1,0 +1,260 @@
+Product Requirements Document
+Bio Page — Enhanced Sections v1.0
+Career Timeline · Notable Work · Ventures · Education · References · Publications · Project Links
+Document ID
+SIM-PRD-BIO-003
+Version
+1.0
+Scope
+Seven new sections added to the bio page that transform it from a professional business card into a credible, story-driven, Wikipedia-style professional identity. Career Timeline, Notable Work, Ventures, Education & Certifications, References & Press, Publications & Speaking, and Project Links. Each section is auto-populated where possible (from resume extraction) and user-editable in Settings → Profile.
+Origin
+Competitive analysis of Wikipedia biography pages vs Simulacrum bio pages. Wikipedia's depth (career narrative, citations, external links) combined with Simulacrum's interactivity (AI chat, lead capture, booking) creates a bio page that is both credible and convertible.
+Design principle
+Every section that CAN be auto-populated from the resume SHOULD be. The user should see their career timeline already built when they arrive at Settings. Sections requiring new data (Notable Work, Ventures, References) use Simi prompts to guide the user.
+Design source
+Approved template: bio_page_full.jsx (jeanmdelphonse profile). This is the reference implementation for all bio page rendering. 11-section layout with collapsible sections, teal timeline markers, hover-accent work cards, venture grid with status badges, press entries with pull quotes, publication type badges, and project tag chips.
+Connects to
+SIM-PRD-BIO-001 (base bio page), SIM-PRD-BIO-002 v1.1 (PLG), SIM-PRD-ONBOARD-001 v1.1 (wizard Step 5 shows new sections), SIM-PRD-CHAT-001 v1.2 (Simi helps populate sections), SIM-PRD-SETTINGS-001 (Profile editor).
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+June 2026
+The bio page currently has 4 sections: Hero, About, Services, Testimonials. This PRD adds 7 sections that give the page depth, credibility, and narrative. After implementation, the bio page has 11 sections — making it the most comprehensive professional identity page on the internet, combining Wikipedia's authority with LinkedIn's networking and Calendly's booking.
+1. Updated Page Layout — 11 Sections
+The bio page sections appear in this order. Each section is independently visible/hidden via toggles in Settings → Profile → Bio Sections. If a section has no data, it is automatically hidden.
+#
+Section
+Data source
+Auto-populated?
+Status
+1
+Hero
+Resume + avatar
+Yes — name, title, location, photo
+Existing
+2
+About
+Resume
+Yes — positioning paragraph
+Existing
+3
+Career Timeline
+Resume
+Yes — employers, roles, dates
+NEW
+4
+Notable Work
+User input
+No — user enters achievements with outcomes
+NEW
+5
+Ventures
+User input
+No — user enters companies with URLs
+NEW
+6
+Services
+Rate card agent
+Yes — tiers + pricing + Stripe links
+Existing
+7
+Education
+Resume
+Yes — degrees, institutions
+NEW
+8
+References & Press
+User + AI search
+Partial — Simi suggests, user confirms
+NEW
+9
+Publications & Speaking
+User input
+No — user enters articles, talks, podcasts
+NEW
+10
+Project Links
+User input
+No — user enters URLs
+NEW
+11
+Testimonials
+Agent-generated
+Yes — from testimonials agent
+Existing
+Footer (social links, 'Built with Simulacrum' badge, copyright) and Chat widget remain at the bottom, unchanged. The Likes count (SIM-PRD-SOCIAL-001) appears below the Hero.
+2. Career Timeline
+Auto-populated from resume extraction. The user's career history is already in the database — this section displays it as a visual timeline instead of burying it in the About paragraph.
+Element
+Specification
+Section heading
+'Career' in Playfair Display 700, 22px, navy. Optional subtitle: '{N} years of experience across {M} organizations.'
+Timeline layout
+Vertical timeline with a thin line (2px, #E0E0E0) on the left side. Each entry branches off the line with a dot marker (8px circle, teal fill). Most recent entry at the top.
+Entry structure
+Company name (15px bold navy, linked to company website if URL provided), Role/title (13px teal), Date range (12px muted — 'Jan 2018 – Dec 2023 · 6 years'), Description (13px body, 1-2 sentences from resume extraction). Company logo (24px, optional — fetched from Clearbit Logo API if company domain is available).
+Company links
+Company names are hyperlinked to their website. If the user provides a company URL in Settings → Profile → Career, the name becomes a clickable link (opens in new tab). If no URL, the name is plain text. Links use rel='noopener noreferrer'.
+Data source
+career_history JSON on the user profile. Extracted from resume during onboarding (POST /api/profile/resume). Editable in Settings → Profile → Career. Each entry: company_name, company_url, role, start_date, end_date, description.
+Editing
+Settings → Profile → Career. List of entries with add/edit/remove/reorder. Each entry: company name (text), company URL (URL input, optional), role (text), start date (month/year picker), end date (month/year or 'Present'), description (textarea). Drag to reorder.
+Auto-hide
+Section hidden if career_history is empty or null.
+# career_history JSON structure (stored on user profile)career_history = [    {        'company_name': 'Pacific Coast Tours',        'company_url': 'https://pacificcoasttours.com',        'company_domain': 'pacificcoasttours.com',  # for logo fetch        'role': 'VP Operations',        'start_date': '2015-06',        'end_date': '2023-12',        'description': 'Scaled from 40 to 200 employees while maintaining 4.8-star guest rating. Built booking systems, guide training, and seasonal staffing model.',    },    # ... more entries]
+3. Notable Work
+Specific achievements with quantified outcomes. This is proof — not positioning. Each entry shows what the professional did and what happened as a result.
+Element
+Specification
+Section heading
+'Notable Work' in Playfair Display 700, 22px, navy.
+Entry structure
+Achievement title (15px bold navy), outcome with metrics (13px body — 'Scaled from 40 to 200 employees while maintaining 4.8-star rating'), optional link (12px teal — 'View case study →', opens in new tab), optional company tag (11px muted pill — 'at Pacific Coast Tours').
+Card layout
+Each entry as a card with subtle border (1px #E0E0E0). Left accent bar (3px teal) on hover. 3-5 entries recommended. Max 10.
+Links
+Each entry can link to a case study, press article, portfolio piece, or project. URL optional. If provided, the title becomes clickable and a 'View →' link appears.
+Simi assistance
+When this section is empty, Simi can prompt: 'What are 3-5 achievements you are most proud of? Tell me about a project where you delivered measurable results.' Simi helps draft the entries based on the conversation.
+Data source
+notable_work JSON on user profile. Each entry: title, description, outcome_metrics, link_url, link_label, company_name. Editable in Settings → Profile → Notable Work.
+Auto-hide
+Section hidden if notable_work is empty.
+4. Ventures
+Companies founded, co-founded, or currently building. Each entry links to the company website. This section shows the professional is a builder, not just an employee.
+Element
+Specification
+Section heading
+'Ventures' in Playfair Display 700, 22px, navy.
+Entry structure
+Company name (15px bold navy, linked to website), role (13px teal — 'Founder & CEO'), one-line description (13px body), status badge (11px pill — 'Active' green, 'Exited' gold, 'Advisory' purple). Company logo (32px, fetched from Clearbit if domain available).
+Card layout
+Horizontal cards with company logo on the left, text on the right. 2-column grid on desktop, single column on mobile. Each card links to the company website on click.
+Website links
+Company name is always a hyperlink if URL is provided. The entire card is clickable — opens the company website in a new tab. This is the primary external linking mechanism.
+Data source
+ventures JSON on user profile. Each entry: company_name, company_url, company_domain, role, description, status (active/exited/advisory), founded_year. Editable in Settings → Profile → Ventures.
+Auto-hide
+Section hidden if ventures is empty.
+5. Education & Certifications
+Auto-populated from resume extraction for degrees. Certifications are user-added. Institution names link to their websites.
+Element
+Specification
+Section heading
+'Education' in Playfair Display 700, 22px, navy.
+Degree entries
+Institution name (15px bold navy, linked to institution website), degree + field (13px body — 'MS Electrical Engineering'), year (12px muted — '2008'). Institution logo (24px, from Clearbit or a curated university logo set).
+Certifications
+Below degrees, under a 'Certifications' sub-heading. Each entry: certification name (13px bold — 'PMP'), issuing body (13px muted — 'Project Management Institute'), year (12px muted), optional credential URL (12px teal link — 'Verify →').
+Institution links
+Institution names are hyperlinked to their official website. Stanford → stanford.edu, Oregon State → oregonstate.edu. Links open in new tab.
+Data source
+education JSON (auto-populated from resume) + certifications JSON (user-added). Each education entry: institution_name, institution_url, degree, field, year. Each certification: name, issuing_body, year, credential_url. Editable in Settings → Profile → Education.
+Auto-hide
+Section hidden if both education and certifications are empty.
+6. References & Press
+Third-party validation. Links to articles, news mentions, interviews, or reviews that feature the professional. This is the Wikipedia-style citation layer that builds trust through external sources.
+Element
+Specification
+Section heading
+'In the Press' or 'References' in Playfair Display 700, 22px, navy.
+Entry structure
+Article title (14px navy, linked to the article URL), publication name (13px teal bold — 'Tourism Industry Weekly'), date (12px muted — 'March 2026'), optional pull quote (13px italic body — one sentence excerpt from the article). Publication logo/favicon (16px, fetched from the URL domain).
+Card layout
+Compact list layout. Each entry is a single row with publication favicon, title (linked), publication name, and date. Optional expanded view with pull quote on click.
+AI-assisted discovery
+Simi can search the web for articles mentioning the user's name + professional keywords. 'I found 3 articles that mention you. Want me to add them to your References section?' User confirms each. Simi calls web_search with the user's name + expertise — results are suggestions, not auto-added.
+Manual entry
+Settings → Profile → References. Each entry: article_title, article_url, publication_name, published_date, pull_quote (optional). Add/edit/remove/reorder.
+Link behavior
+Article titles are hyperlinked. Click opens the article in a new tab. The publication name is also linked (to the publication's homepage if URL is available).
+Trust signal
+This section is the strongest trust signal on the bio page. Visitors see that third parties have written about or featured this professional. Even 2-3 references dramatically increase perceived credibility.
+Data source
+references JSON on user profile. Editable in Settings → Profile → References.
+Auto-hide
+Section hidden if references is empty.
+7. Publications & Speaking
+Content the professional created: articles, blog posts, conference talks, podcast appearances, books, whitepapers. This section establishes thought leadership.
+Element
+Specification
+Section heading
+'Publications & Speaking' in Playfair Display 700, 22px, navy.
+Type badges
+Each entry has a type badge: 'Article' (teal), 'Talk' (gold), 'Podcast' (purple), 'Book' (navy), 'Whitepaper' (grey). 10px pill, uppercase.
+Entry structure
+Title (14px bold navy, linked to URL), venue/publication (13px muted — 'ATTA Conference 2026' or 'Harvard Business Review'), date (12px muted), type badge. Optional: view count or download count if available.
+Featured entry
+The first entry (or user-selected featured) can be displayed larger with a cover image or screenshot. Full-width card with title, description, and prominent CTA link.
+Data source
+publications JSON on user profile. Each entry: title, url, venue_or_publication, date, type (article/talk/podcast/book/whitepaper), description (optional), featured (boolean). Editable in Settings → Profile → Publications.
+Agent integration
+The seo_content_calendar agent can auto-populate this section when blog articles are published. The speaking_proposals agent can add confirmed speaking engagements. Auto-additions appear as 'Pending review' until the user confirms in Settings.
+Auto-hide
+Section hidden if publications is empty.
+8. Project Links
+Links to specific projects, portfolios, open-source repos, tools, frameworks, or deliverables the professional has created. Each link is a gateway to the professional's actual work.
+Element
+Specification
+Section heading
+'Projects' in Playfair Display 700, 22px, navy.
+Entry structure
+Project name (14px bold navy, linked to URL), one-line description (13px body), technology/tool tags (11px pills — 'Python', 'Flask', 'AI/ML', 'Tourism'), external link icon (ExternalLink 12px teal) indicating the link opens in a new tab.
+Card layout
+2-column grid on desktop. Each card: project name (linked), description, tags, and a screenshot/preview thumbnail (optional, 120px height). Hover: subtle shadow increase.
+Link types
+GitHub repos, Figma designs, live websites, Google Drive folders, Notion pages, YouTube demos. Any URL. The favicon of the linked domain appears next to the project name (16px).
+Data source
+projects JSON on user profile. Each entry: name, url, description, tags (array of strings), thumbnail_url (optional). Editable in Settings → Profile → Projects.
+Auto-hide
+Section hidden if projects is empty.
+9. Data Model — Profile Extensions
+# All new sections are stored as JSON fields on the user profile# This avoids creating 7 new tables for what is essentially# user-editable structured content.ALTER TABLE user_profiles ADD COLUMN career_history JSON NULL;ALTER TABLE user_profiles ADD COLUMN notable_work JSON NULL;ALTER TABLE user_profiles ADD COLUMN ventures JSON NULL;ALTER TABLE user_profiles ADD COLUMN education JSON NULL;ALTER TABLE user_profiles ADD COLUMN certifications JSON NULL;ALTER TABLE user_profiles ADD COLUMN references_press JSON NULL;ALTER TABLE user_profiles ADD COLUMN publications JSON NULL;ALTER TABLE user_profiles ADD COLUMN projects JSON NULL;# Section visibility togglesALTER TABLE user_profiles ADD COLUMN bio_sections_visible JSON    DEFAULT '{        "career_timeline": true,        "notable_work": true,        "ventures": true,        "education": true,        "references": true,        "publications": true,        "projects": true    }';# Sections auto-hide when data is empty regardless of toggle.# The toggle only matters when data exists — it lets the user# hide a populated section if they choose.
+9.1 Resume Extraction Enhancement
+# The resume extraction prompt is enhanced to extract# career_history and education in structured format:EXTRACTION_PROMPT += '''Also extract:- career_history: array of {company_name, role, start_date (YYYY-MM),  end_date (YYYY-MM or 'Present'), description (1-2 sentences)}  ordered most recent first.- education: array of {institution_name, degree, field, year}  ordered most recent first.'''# After extraction, auto-populate company URLs:for entry in career_history:    domain = search_company_domain(entry['company_name'])    if domain:        entry['company_url'] = f'https://{domain}'        entry['company_domain'] = domain
+10. Settings → Profile — Section Editors
+Each new section has a dedicated editor in Settings → Profile. The editors share a common pattern: a list of entries with add/edit/remove/reorder capabilities. Each entry is a card with inline editing.
+Editor
+Fields per entry
+Career
+Company name (text, required), Company URL (URL, optional), Role (text, required), Start date (month/year, required), End date (month/year or 'Present', required), Description (textarea, 1-2 sentences, optional). Drag handle for reorder.
+Notable Work
+Achievement title (text, required), Description with metrics (textarea, required), Link URL (URL, optional), Link label (text, default 'View →'), Company name (text, optional for attribution). Max 10 entries.
+Ventures
+Company name (text, required), Website URL (URL, optional), Role (text, required — Founder, Co-Founder, Advisor, etc.), Description (text, 1 line), Status (dropdown: Active/Exited/Advisory), Founded year (number, optional).
+Education
+Institution name (text, required), Institution URL (URL, optional), Degree (text — BS, MS, MBA, PhD, etc.), Field of study (text), Year (number). Separate sub-section for Certifications: name, issuing body, year, credential URL.
+References
+Article title (text, required), Article URL (URL, required), Publication name (text, required), Published date (date, optional), Pull quote (textarea, optional — 1 sentence excerpt).
+Publications
+Title (text, required), URL (URL, optional), Venue/publication (text, required), Date (date, required), Type (dropdown: Article/Talk/Podcast/Book/Whitepaper), Description (textarea, optional), Featured (toggle).
+Projects
+Project name (text, required), URL (URL, required), Description (text, 1 line), Tags (comma-separated or chip input), Thumbnail URL (URL, optional).
+All editors use the same PUT /api/profile/update endpoint. The entire profile (including all JSON section data) is saved in one call. Consistent with the onboarding wizard's API-reuse pattern (SIM-PRD-ONBOARD-001 v1.1).
+11. SEO and Structured Data Updates
+The new sections add significant SEO value. Career history, education, and publications create keyword-rich content that Google indexes. Structured data expands from Person + Offer to include alumni, employer, and creative work.
+# Enhanced Schema.org JSON-LD for bio pages{  '@context': 'https://schema.org',  '@type': 'Person',  'name': '{user.display_name}',  'jobTitle': '{user.professional_title}',  'alumniOf': [    {      '@type': 'EducationalOrganization',      'name': 'Stanford University',      'url': 'https://stanford.edu'    }  ],  'worksFor': {    '@type': 'Organization',    'name': '{current_company}',    'url': '{current_company_url}'  },  'knowsAbout': ['{expertise_zone_1}', '{expertise_zone_2}'],  'hasCredential': [    {      '@type': 'EducationalOccupationalCredential',      'credentialCategory': 'certification',      'name': 'PMP',      'recognizedBy': {'@type': 'Organization', 'name': 'PMI'}    }  ],  'subjectOf': [    {      '@type': 'Article',      'headline': '{reference.title}',      'publisher': {'@type': 'Organization', 'name': '{reference.publication}'},      'url': '{reference.url}'    }  ],  'makesOffer': [ ... ]  // existing service tiers}
+Google can now show rich results with: education credentials, employer history, certifications, and published articles. A search for 'Elena Vasquez tourism consultant' returns a rich card with her title, employer, education, and services.
+12. Functional Requirements
+Career Timeline
+FR-BIO3-01  Career Timeline section below About. Vertical timeline with teal dot markers, most recent first. Each entry: company name (linked to URL if provided), role, date range, 1-2 sentence description. Company logo via Clearbit Logo API (optional). Auto-populated from resume extraction. Editable in Settings → Profile → Career.
+Notable Work
+FR-BIO3-02  Notable Work section below Career Timeline. 3-10 achievement cards with title, outcome metrics, optional link, and company attribution. Teal left accent on hover. Simi can prompt for achievements and help draft entries. User-input only (not auto-populated). Editable in Settings → Profile → Notable Work.
+Ventures
+FR-BIO3-03  Ventures section below Notable Work. Company cards with logo, name (linked to website), role, one-line description, and status badge (Active green / Exited gold / Advisory purple). 2-column grid. Entire card clickable → opens company website. User-input only. Editable in Settings → Profile → Ventures.
+Education & Certifications
+FR-BIO3-04  Education section below Services. Degree entries (auto-populated from resume): institution name (linked to website), degree + field, year, institution logo. Certifications sub-section (user-added): name, issuing body, year, credential verify link. Editable in Settings → Profile → Education.
+References & Press
+FR-BIO3-05  References section below Education. Compact list: publication favicon, article title (linked), publication name, date, optional pull quote. Simi can search the web for articles mentioning the user and suggest references — user confirms before adding. User can also add manually. Editable in Settings → Profile → References.
+Publications & Speaking
+FR-BIO3-06  Publications section below References. Each entry: title (linked), venue/publication, date, type badge (Article teal / Talk gold / Podcast purple / Book navy / Whitepaper grey). Featured entry displayed larger with optional cover image. seo_content_calendar and speaking_proposals agents can auto-add entries as 'Pending review.' Editable in Settings → Profile → Publications.
+Project Links
+FR-BIO3-07  Projects section below Publications. 2-column card grid: project name (linked), one-line description, technology tags (pills), domain favicon, optional thumbnail. Links to GitHub, Figma, live sites, or any URL. Editable in Settings → Profile → Projects.
+Cross-Cutting
+FR-BIO3-08  All 7 new sections auto-hide when data is empty. Section visibility toggles in Settings → Profile → Bio Sections override auto-hide (user can hide a populated section). Toggles stored as bio_sections_visible JSON on user_profiles.
+FR-BIO3-09  All external links (company websites, article URLs, project URLs, institution websites) open in new tabs with rel='noopener noreferrer'. Links are the primary mechanism for connecting the bio page to the professional's broader online presence.
+FR-BIO3-10  Resume extraction enhanced to auto-populate career_history (employers, roles, dates, descriptions) and education (institutions, degrees, years). Company URLs auto-discovered via domain search. Extraction prompt updated per Section 9.1.
+FR-BIO3-11  Schema.org JSON-LD expanded to include alumniOf, worksFor, knowsAbout, hasCredential, and subjectOf. Google rich results show education, employer, certifications, and press mentions alongside the existing Person + Offer data.
+FR-BIO3-12  All section data stored as JSON fields on user_profiles. Single PUT /api/profile/update saves everything. Consistent with the onboarding wizard's zero-new-API pattern. Settings editors use the common list pattern: add/edit/remove/reorder with inline editing.
+End of SIM-PRD-BIO-003 — Bio Page Enhanced Sections
+Jean Moussa Delphonse · Bay Area Experiences Ventures · simulacrumai.io

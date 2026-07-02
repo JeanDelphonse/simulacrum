@@ -902,3 +902,50 @@ def trigger_payout(partner_id):
     db.session.commit()
 
     return jsonify(payout.to_dict()), 201
+
+
+# ---------------------------------------------------------------------------
+# Analytics API — SIM-PRD-ANALYTICS-001
+# ---------------------------------------------------------------------------
+
+@admin_bp.route('/analytics', methods=['GET'])
+@login_required
+@admin_required
+def get_analytics():
+    """Return all 7 analytics cards + summary for the given date range."""
+    from datetime import datetime as _dt, timedelta as _td
+    from flask import request as _req
+
+    end_str   = _req.args.get('end',   _dt.utcnow().strftime('%Y-%m-%d'))
+    start_str = _req.args.get('start', (_dt.utcnow() - _td(days=30)).strftime('%Y-%m-%d'))
+    try:
+        end_dt   = _dt.strptime(end_str,   '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        start_dt = _dt.strptime(start_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'Invalid date format — use YYYY-MM-DD'}), 400
+
+    from app.services.analytics_service import (
+        get_summary, get_traffic, get_users, get_simulations,
+        get_revenue, get_costs, get_bio, get_email, get_alerts,
+    )
+
+    def _safe(fn, *args):
+        try:
+            return fn(*args)
+        except Exception as exc:
+            import logging as _log
+            _log.getLogger(__name__).warning('analytics %s failed: %s', fn.__name__, exc)
+            return {'error': str(exc)}
+
+    return jsonify({
+        'period':      {'start': start_str, 'end': end_str},
+        'summary':     _safe(get_summary,     start_dt, end_dt),
+        'traffic':     _safe(get_traffic,     start_dt, end_dt),
+        'users':       _safe(get_users,       start_dt, end_dt),
+        'simulations': _safe(get_simulations, start_dt, end_dt),
+        'revenue':     _safe(get_revenue,     start_dt, end_dt),
+        'costs':       _safe(get_costs,       start_dt, end_dt),
+        'bio':         _safe(get_bio,         start_dt, end_dt),
+        'email':       _safe(get_email,       start_dt, end_dt),
+        'alerts':      _safe(get_alerts,      start_dt, end_dt),
+    })

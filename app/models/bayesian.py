@@ -12,6 +12,10 @@ class BayesianPosterior(db.Model):
     posterior_key   = db.Column(db.String(200), nullable=False)
     # e.g. 'reply_rate:cold_email_campaign', 'booking_rate:discovery_call'
     value           = db.Column(db.Numeric(10, 6), nullable=False, default=0.5)
+    # Beta distribution pseudo-counts backing `value` (mean = alpha/(alpha+beta)).
+    # Nullable for pre-migration rows; update_posterior derives them from `value`.
+    alpha_count     = db.Column(db.Numeric(12, 4), nullable=True)
+    beta_count      = db.Column(db.Numeric(12, 4), nullable=True)
     last_direction  = db.Column(db.String(1), nullable=True)   # '+' or '-'
     last_weight     = db.Column(db.Numeric(4, 3), nullable=True)
     update_count    = db.Column(db.Integer, nullable=False, default=0)

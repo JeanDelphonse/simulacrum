@@ -6,6 +6,15 @@ webhook, orchestrator, etc.) to surface an item in the user's Action Queue.
 """
 from datetime import datetime
 
+# Item types that generate an escalation email to the user
+_ESCALATION_EMAIL_TYPES = {
+    'escalation',
+    'agent_approval_required',
+    'escalation_tool_missing',
+    'escalation_tool_expired',
+    'social_post_approval',
+}
+
 # Maps every item_type to its urgency tier, action label, and dismissability.
 # title/description are caller-supplied (already plain-English formatted).
 ACTION_ITEM_TEMPLATES = {
@@ -193,6 +202,9 @@ def create_action_item(
     if emit_sse:
         _emit_sse_created(item)
 
+    if item_type in _ESCALATION_EMAIL_TYPES:
+        _send_escalation_email(item)
+
     return item
 
 
@@ -259,3 +271,34 @@ def _emit_sse_resolved(simulation_id, item_id):
         })
     except Exception:
         pass
+
+
+def _send_escalation_email(item) -> None:
+    """Best-effort escalation email — looks up user + sim and fires the email."""
+    try:
+        from app.models.user import User
+        from app.models.simulation import Simulation
+        from app.services.email_service import send_escalation_email
+        from flask import current_app, request, has_request_context
+
+        user = User.query.get(item.user_id)
+        if not user or not user.email:
+            return
+
+        sim = Simulation.query.get(item.simulation_id)
+        sim_name = (sim.name or sim.expertise_zone or 'your simulation') if sim else 'your simulation'
+
+        base = request.host_url.rstrip('/') if has_request_context() else 'https://simulacrumai.io'
+        action_url = base + (item.action_url or f'/simulations/{item.simulation_id}/gcc')
+
+        send_escalation_email(
+            to_email=user.email,
+            name=user.full_name or user.email,
+            title=item.title,
+            description=item.description,
+            action_url=action_url,
+            sim_name=sim_name,
+        )
+    except Exception as _e:
+        import logging
+        logging.getLogger(__name__).warning('Escalation email failed for item %s: %s', getattr(item, 'id', '?'), _e)

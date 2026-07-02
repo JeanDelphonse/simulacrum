@@ -113,6 +113,12 @@ def register():
 
     db.session.commit()
 
+    try:
+        from app.models.user_event import UserEvent as _UE
+        _UE.track(user.id, _UE.SIGNUP, ip_address=request.remote_addr)
+    except Exception:
+        pass
+
     # Build verify URL while request context is active (url_for needs it).
     from flask import url_for as _url_for
     _verify_url = _url_for('auth.verify_email', token=verify_token, _external=True)
@@ -131,6 +137,12 @@ def register():
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error('send_verification_email failed: %s', e, exc_info=True)
+            try:
+                from app.services.email_service import send_bcc_signup_notification
+                send_bcc_signup_notification(_email, _name)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error('send_bcc_signup_notification failed: %s', e, exc_info=True)
 
     threading.Thread(target=_send, daemon=True).start()
 
@@ -152,6 +164,11 @@ def verify_email(token):
     user.email_verify_token = None
     user.email_verify_token_expires = None
     db.session.commit()
+    try:
+        from app.models.user_event import UserEvent as _UE
+        _UE.track(user.id, _UE.EMAIL_VERIFIED)
+    except Exception:
+        pass
     return render_template('auth/verify_email.html', status='success')
 
 
@@ -199,6 +216,11 @@ def login():
     user.retention_warned_at = None  # reset warning on sign-in (FR-TOS-13)
     AuditLog.log('user_login', user_id=user.id)
     db.session.commit()
+    try:
+        from app.models.user_event import UserEvent as _UE
+        _UE.track(user.id, _UE.LOGIN, ip_address=request.remote_addr)
+    except Exception:
+        pass
 
     needs_onboarding = user.onboarding_completed_at is None
     return jsonify({

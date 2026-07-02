@@ -1,0 +1,899 @@
+﻿Product Requirements Document
+Agent Interaction Mapping + Network Visualization
+49-Agent DAG · Cross-Layer Flow Lines · Integration Routing · Cold Start Chain · Triggered Agents · GCC Agent Network Tab
+Document ID
+SIM-PRD-AGENTMAP-001
+Version
+1.0
+Config source
+config/agents.json — 49 agents, 71KB. This PRD is the human-readable specification of that configuration. The JSON file is the machine-readable implementation. They must stay in sync.
+Scope
+Part A: Documents every agent's prerequisites, data dependencies, integration routing, signal taxonomy, and triggered-by relationships as derived from agents.json. Part B: Specifies the GCC Agent Network tab visualization — a multi-layer graph showing agents as nodes and dependencies as flow lines connecting agents within and across layers.
+Design principle
+The agent network is a directed acyclic graph (DAG). Prerequisites define the edges. The orchestrator walks the DAG to determine dispatch eligibility. The GCC Agent Network tab renders this DAG visually so the user understands why agents run in a specific order and how data flows between them.
+Connects to
+SIM-PRD-ORCH-001 v2.0 (orchestrator DAG walker), SIM-PRD-GCC-003 v3.1 (tab structure), SIM-PRD-CHAT-001 v1.2 (Simi agent status tools), config/agents.json (source of truth).
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+June 2026
+1. Agent Registry Summary
+Metric
+Value
+Total agents
+49
+L1 Active Income
+11 agents (cold start chain: 5)
+L2 Leveraged Income
+8 agents
+L3 Productized Income
+10 agents
+L4 Automated Income
+10 agents
+L5 Wealth Deployment
+10 agents
+Contact-producing agents
+8
+Multi-step agents (action_steps)
+11 (30 total steps)
+Triggered agents (event-driven)
+5
+Agents with integrations
+32
+Agents updating bio page
+4
+Agents with disclaimers (L5)
+10
+Model: Sonnet
+36 agents
+Model: Haiku
+13 agents
+2. Cold Start Chain — Cycle 1 Execution Order
+The cold start chain is a Celery chain (sequential). Each agent depends on the output of the prior agent. This runs exactly once on Cycle 1. After the cold start, the orchestrator switches to Bayesian scoring for dispatch decisions.
+#
+Agent
+Output fed to next
+Integration
+Bio page update
+1
+rate_card
+Tier names + pricing + Stripe links
+Stripe
+Services section
+2
+linkedin_optimization
+Headline + About + positioning
+LinkedIn (copy)
+About section
+3
+booking_page
+Cal.com session URLs
+Cal.com
+Hero CTA
+4
+cold_email_campaign
+Prospect list + email sequences
+Apollo + Email
+—
+5
+consulting_outreach
+Deep-personalized outreach
+Apollo + Email
+—
+After the cold start chain completes, the bio page has: Services (from rate_card), About (from linkedin_optimization), Hero CTA (from booking_page), and 20 contacts in the CRM (from cold_email + consulting_outreach). The simulation is fully operational.
+3. Prerequisite DAG — All 49 Agents
+Prerequisites define the directed edges of the agent DAG. An agent cannot be dispatched until all its prerequisites have completed at least once in this simulation. Data dependencies specify which artifacts or data records the agent reads as input.
+3.1 Active Income (11 agents)
+Agent
+Prerequisites
+Data dependencies
+Triggered by
+rate_card
+— (none)
+user.expertise_zones, user.professional_title, user.positioning
+—
+linkedin_optimization
+rate_card
+user.expertise_zones, user.positioning, user.career_history...
+—
+booking_page
+rate_card
+artifact:rate_card, user.display_name
+—
+cold_email_campaign
+rate_card, booking_page
+artifact:rate_card, artifact:booking_page, user.expertise_zones...
+—
+consulting_outreach
+rate_card, booking_page
+artifact:rate_card, artifact:booking_page, artifact:linkedin_profile...
+—
+role_search
+rate_card
+user.expertise_zones, user.positioning
+—
+consulting_proposal
+rate_card
+artifact:rate_card, contacts.target_contact, user.positioning
+email_replied_with_interest, booking_completed
+sow_template
+consulting_proposal
+artifact:proposal, contacts.target_contact
+proposal_signed
+agreement_template
+rate_card
+artifact:rate_card, contacts.target_contact, user.display_name
+sow_signed, proposal_signed
+referral_network
+rate_card, linkedin_optimization
+user.expertise_zones, user.positioning, artifact:rate_card...
+—
+negotiation_script
+rate_card
+artifact:rate_card, contacts.target_contact
+proposal_sent, price_objection_detected
+3.2 Leveraged Income (8 agents)
+Agent
+Prerequisites
+Data dependencies
+Triggered by
+speaking_proposals
+rate_card, linkedin_optimization
+user.expertise_zones, user.positioning, artifact:linkedin_profile
+—
+speaker_fee_rider
+speaking_proposals
+artifact:speaking_pitch, contacts.event_coordinator
+speaking_engagement_confirmed
+group_coaching
+rate_card
+user.expertise_zones, artifact:rate_card
+—
+corporate_training
+rate_card, workshop_curriculum
+artifact:rate_card, artifact:workshop_curriculum, user.expertise_zones
+—
+workshop_curriculum
+rate_card
+user.expertise_zones, artifact:rate_card
+—
+waitlist_landing_page
+— (none)
+user.display_name, user.positioning
+—
+alumni_reactivation
+— (none)
+contacts.inactive_contacts
+—
+roi_calculator
+rate_card
+artifact:rate_card, user.expertise_zones
+—
+3.3 Productized Income (10 agents)
+Agent
+Prerequisites
+Data dependencies
+Triggered by
+course_curriculum
+rate_card
+user.expertise_zones, user.positioning, artifact:rate_card
+—
+pricing_research
+— (none)
+user.expertise_zones
+—
+sales_page
+course_curriculum
+artifact:course, artifact:pricing_research, user.positioning
+—
+ebook_outline
+— (none)
+user.expertise_zones, user.positioning
+—
+ab_test_plan
+sales_page
+artifact:sales_page
+—
+membership
+course_curriculum
+artifact:course, user.expertise_zones
+—
+launch_sequence
+course_curriculum, sales_page
+artifact:course, artifact:sales_page
+—
+affiliate_program
+course_curriculum
+artifact:course, user.expertise_zones
+—
+testimonials
+— (none)
+contacts.clients
+—
+lapsed_buyer
+— (none)
+contacts.past_buyers
+—
+3.4 Automated Income (10 agents)
+Agent
+Prerequisites
+Data dependencies
+Triggered by
+seo_content_calendar
+rate_card
+user.expertise_zones, artifact:rate_card
+—
+lead_magnet_funnel
+— (none)
+user.expertise_zones
+—
+newsletter
+seo_content_calendar
+artifact:content_calendar, user.positioning
+—
+saas_product_spec
+rate_card
+user.expertise_zones, artifact:rate_card
+—
+ip_licensing
+course_curriculum
+artifact:course, user.expertise_zones
+—
+affiliate_partnerships
+newsletter
+artifact:newsletter_template, user.expertise_zones
+—
+video_podcast
+seo_content_calendar
+artifact:content_calendar, user.expertise_zones
+—
+community
+newsletter
+artifact:newsletter_template, user.expertise_zones
+—
+programmatic_ads
+seo_content_calendar
+artifact:content_calendar
+—
+client_winback
+— (none)
+contacts.churned_clients
+—
+3.5 Wealth Deployment (10 agents)
+Agent
+Prerequisites
+Data dependencies
+Triggered by
+income_allocation
+— (none)
+income.total_income, income.monthly_recurring
+—
+projections
+income_allocation
+income.by_layer, income.growth_rates
+—
+fund_recommendations
+income_allocation
+artifact:allocation_plan, user.risk_tolerance
+—
+investment_policy
+fund_recommendations
+artifact:fund_recommendations
+—
+real_estate_strategy
+income_allocation
+income.total_income, user.real_estate_holdings
+—
+tax_optimization
+income_allocation, entity_structure
+artifact:allocation_plan, artifact:entity_structure, income.by_layer
+—
+entity_structure
+income_allocation
+income.total_income, user.location
+—
+dca_schedule
+fund_recommendations, income_allocation
+artifact:fund_recommendations, artifact:allocation_plan
+—
+insurance_review
+income_allocation
+income.total_income, user.family_status
+—
+estate_planning
+entity_structure, income_allocation
+artifact:entity_recommendation, income.total_income, user.family_status
+—
+4. Integration Routing Map
+Each integration is used by multiple agents. This map shows which agents call which integration and what action they perform. The orchestrator uses this map to validate that the required integration is connected before dispatching an agent.
+4.1 stripe (6 agents)
+Agent
+L
+Action
+Description
+rate_card
+L1
+create_payment_links
+Creates one Stripe Payment Link per tier with metadata: simulation_id, layer, agent, tier_name
+sow_template
+L1
+create_invoice
+Creates milestone-based invoices (e.g., 50% upfront, 50% on completion)
+group_coaching
+L2
+create_payment_link
+Creates payment link for cohort enrollment.
+workshop_curriculum
+L2
+create_payment_link
+Creates payment link for workshop booking.
+ebook_outline
+L3
+create_payment_link
+Creates payment link for ebook purchase.
+membership
+L3
+create_subscription_price
+Creates a recurring Stripe price for the membership.
+4.2 linkedin (2 agents)
+Agent
+L
+Action
+Description
+linkedin_optimization
+L1
+copy_to_clipboard
+LinkedIn API does not support profile editing. Output is copy-to-clipboard for manual update.
+seo_content_calendar
+L4
+publish_post
+Publishes article summaries to LinkedIn via ugcPosts API.
+4.3 cal_com (3 agents)
+Agent
+L
+Action
+Description
+booking_page
+L1
+create_event_types
+Creates 2-3 Cal.com event types via API. Returns booking URLs.
+group_coaching
+L2
+create_event_type
+Creates recurring session slots for the cohort.
+workshop_curriculum
+L2
+create_event_type
+Creates workshop inquiry session type.
+4.4 apollo (8 agents)
+Agent
+L
+Action
+Description
+cold_email_campaign
+L1
+people_search
+Discovers prospects matching ideal client profile. Returns verified email, title, company.
+consulting_outreach
+L1
+people_search_deep
+Two-pass: company search then decision-maker search. Enrichment with LinkedIn data.
+role_search
+L1
+people_search
+Discovery only. Finds prospects matching profile. No outreach sent.
+referral_network
+L1
+people_search
+Finds complementary professionals: adjacent expertise, same target market, non-competing.
+speaking_proposals
+L2
+people_search
+Finds event coordinators, conference organizers, and meetup leaders in the user's industry.
+corporate_training
+L2
+people_search
+Finds L&D directors, HR VPs, and training managers at target companies.
+affiliate_program
+L3
+people_search
+Finds potential affiliate partners: bloggers, influencers, and newsletter owners in the niche.
+affiliate_partnerships
+L4
+people_search
+Finds marketing directors at brands in the user's industry vertical.
+4.5 internal_email (10 agents)
+Agent
+L
+Action
+Description
+cold_email_campaign
+L1
+send_sequence
+Sends Step 1 emails via SendGrid. Creates action_steps for Steps 2-3.
+consulting_outreach
+L1
+send_sequence
+Sends personalized emails via SendGrid. Creates action_steps for follow-ups.
+referral_network
+L1
+send_sequence
+Sends partner intro sequences via SendGrid.
+speaking_proposals
+L2
+send_sequence
+Sends speaking pitch emails via SendGrid.
+corporate_training
+L2
+send_sequence
+Sends training pitch sequences via SendGrid.
+alumni_reactivation
+L2
+send_sequence
+Sends re-engagement emails to existing CRM contacts.
+testimonials
+L3
+send_email
+Sends testimonial request to existing clients in CRM.
+lapsed_buyer
+L3
+send_sequence
+Sends re-engagement emails to past buyers.
+affiliate_partnerships
+L4
+send_sequence
+Sends sponsorship pitch sequences via SendGrid.
+client_winback
+L4
+send_sequence
+Sends win-back emails to churned clients.
+4.6 pandadoc (5 agents)
+Agent
+L
+Action
+Description
+consulting_proposal
+L1
+create_and_send_document
+Creates proposal document from template. Sends for e-signature. Tracks views/opens.
+sow_template
+L1
+create_and_send_document
+Creates SOW from template. Sends for e-signature.
+agreement_template
+L1
+create_and_send_document
+Creates agreement from template. Sends for e-signature.
+speaker_fee_rider
+L2
+create_and_send_document
+Creates speaker rider from template. Sends for e-signature.
+ip_licensing
+L4
+create_document
+Creates a licensing agreement template in PandaDoc.
+4.7 kajabi (5 agents)
+Agent
+L
+Action
+Description
+group_coaching
+L2
+create_product
+Creates a cohort product on Kajabi with enrollment page.
+waitlist_landing_page
+L2
+create_landing_page
+Creates a landing page with email opt-in on Kajabi.
+course_curriculum
+L3
+create_product
+Creates a course product on Kajabi with module structure and drip schedule.
+sales_page
+L3
+create_sales_page
+Creates or updates the sales page for a Kajabi product.
+membership
+L3
+create_membership
+Creates a membership product on Kajabi with recurring billing.
+4.8 convertkit (5 agents)
+Agent
+L
+Action
+Description
+group_coaching
+L2
+create_tag
+Creates 'interest_group_coaching' tag for waitlist.
+waitlist_landing_page
+L2
+create_tag
+Creates a waitlist tag for subscribers.
+launch_sequence
+L3
+create_sequence
+Creates a visual automation sequence in ConvertKit with timed sends.
+lead_magnet_funnel
+L4
+create_form_and_sequence
+Creates opt-in form and welcome email sequence with content delivery.
+newsletter
+L4
+create_broadcast_template
+Creates a reusable newsletter template in ConvertKit.
+4.9 alpaca (1 agents)
+Agent
+L
+Action
+Description
+dca_schedule
+L5
+create_recurring_order
+Sets up recurring buy orders on Alpaca for DCA execution.
+5. Cross-Layer Flow Lines
+Most prerequisites are within the same layer (L1 rate_card → L1 consulting_proposal). But several agents depend on agents from a DIFFERENT layer. These cross-layer dependencies create the flow lines that connect the 5 wealth layers into a unified system.
+Source agent
+From
+Target agent
+To
+What flows
+rate_card
+L1
+workshop_curriculum
+L2
+Pricing tiers inform workshop pricing structure
+rate_card
+L1
+group_coaching
+L2
+Rate card tiers set cohort pricing anchors
+rate_card
+L1
+corporate_training
+L2
+Service pricing feeds training program proposals
+rate_card
+L1
+course_curriculum
+L3
+Consulting pricing informs course price positioning
+rate_card
+L1
+seo_content_calendar
+L4
+Service descriptions feed SEO keyword targets
+rate_card
+L1
+saas_product_spec
+L4
+Consulting frameworks identify productizable patterns
+linkedin_optimization
+L1
+speaking_proposals
+L2
+LinkedIn profile feeds speaker bio in pitches
+workshop_curriculum
+L2
+corporate_training
+L2
+Workshop curriculum becomes base for custom training
+course_curriculum
+L3
+sales_page
+L3
+Course structure feeds sales page module preview
+course_curriculum
+L3
+launch_sequence
+L3
+Course content drives launch email messaging
+course_curriculum
+L3
+membership
+L3
+Course modules form membership content library
+course_curriculum
+L3
+ip_licensing
+L4
+Course methodology becomes licensable IP
+course_curriculum
+L3
+affiliate_program
+L3
+Course product enables affiliate commissions
+sales_page
+L3
+ab_test_plan
+L3
+Sales page headlines and CTAs become test variants
+seo_content_calendar
+L4
+newsletter
+L4
+Content calendar feeds newsletter topics
+seo_content_calendar
+L4
+video_podcast
+L4
+Content calendar feeds episode topics
+seo_content_calendar
+L4
+programmatic_ads
+L4
+High-traffic articles identified for ad placement
+newsletter
+L4
+affiliate_partnerships
+L4
+Newsletter subscriber count feeds sponsor pitches
+newsletter
+L4
+community
+L4
+Newsletter audience seeds community membership
+income_allocation
+L5
+projections
+L5
+Allocation splits feed 10-year projection model
+income_allocation
+L5
+fund_recommendations
+L5
+Investment allocation drives fund selection
+income_allocation
+L5
+dca_schedule
+L5
+Allocation amounts set DCA recurring amounts
+income_allocation
+L5
+entity_structure
+L5
+Income level determines optimal entity type
+income_allocation
+L5
+real_estate_strategy
+L5
+Income level feeds affordability analysis
+income_allocation
+L5
+insurance_review
+L5
+Income level determines coverage needs
+income_allocation
+L5
+tax_optimization
+L5
+Income sources drive deduction strategy
+fund_recommendations
+L5
+investment_policy
+L5
+Fund selection feeds IPS targets
+fund_recommendations
+L5
+dca_schedule
+L5
+Fund tickers feed recurring buy orders
+entity_structure
+L5
+tax_optimization
+L5
+Entity type drives tax strategy
+entity_structure
+L5
+estate_planning
+L5
+Entity structure feeds trust recommendations
+There are 30 dependency edges in the DAG. 7 cross layer boundaries (L1→L2, L1→L3, L1→L4, L2→L2, L3→L3, L3→L4, L4→L4). The L5 agents form a dense internal cluster with income_allocation as the hub node (6 outbound edges). rate_card is the root node of the entire DAG (8 outbound edges).
+6. GCC Agent Network Tab — Visualization Spec
+The Agent Network tab renders the 49-agent DAG as a visual graph. Each agent is a node. Each prerequisite is a directed edge (flow line). The graph is organized by layer (5 horizontal bands). The user sees how data flows from rate_card through all 5 layers.
+6.1 Layout
+Element
+Specification
+Layer bands
+5 horizontal bands stacked vertically. Each band represents one layer. L1 at the top (leftmost in the flow), L5 at the bottom. Band height scales to agent count. Band background: subtle layer-colored tint (L1 teal 4%, L2 gold 4%, L3 purple 4%, L4 coral 4%, L5 navy 4%).
+Layer labels
+Left side of each band: layer number (L1-L5) + layer name ('Active Income') in 14px bold. Agent count badge: '11 agents' in a pill.
+Agent nodes
+Each agent is a rounded rectangle (120×60px). Agent name (12px bold). Layer badge (10px pill). Status icon: green check (completed), teal spinner (in progress), grey lock (locked/prerequisites not met), outline circle (eligible but not yet dispatched). Background: white with subtle border. Hover: teal border + shadow.
+Node positioning
+Within each band, agents are positioned left-to-right in execution order (layer_index). Agents with no prerequisites sit on the left. Agents with prerequisites sit to the right of their dependencies. Auto-layout via dagre or d3-dag.
+Flow lines
+SVG path lines connecting source node (right edge) to target node (left edge). Line color: teal for completed connections, grey dashed for pending. Arrow heads at the target end. Line width: 2px. Hover over a line: tooltip shows what data flows ('Rate card tiers → workshop pricing').
+Cross-layer lines
+Lines that cross layer bands are highlighted with a slightly thicker stroke (3px) and a gradient color transitioning from the source layer color to the target layer color. These are the most important connections — they show how income layers build on each other.
+6.2 Node States
+State
+Icon
+Node style
+When
+Completed
+Green check (✓)
+White bg, teal border, green check badge
+Agent has run at least once in this simulation
+In progress
+Teal spinner
+White bg, teal border, animated spinner
+Agent is currently running in this cycle
+Eligible
+Teal outline ○
+White bg, light teal border
+Prerequisites met but not yet dispatched by orchestrator
+Locked
+Grey lock 🔒
+Grey bg (#F8F9FA), grey border, muted text
+Prerequisites not met. Tooltip: 'Requires: [prereq agent names]'
+Layer locked
+Grey lock + layer
+Grey bg, layer badge dimmed
+The agent's layer is not yet unlocked (progressive onboarding)
+Failed
+Red triangle ⚠
+White bg, coral border, coral text
+Agent failed on last dispatch. Tooltip: 'Failed — will retry next cycle'
+6.3 Interactions
+Interaction
+Behavior
+Click node
+Opens a slide-over detail panel (right side, 380px). Shows: agent description, prerequisites (linked), data dependencies, integration list, Bayesian score + trend (last 3 cycles), artifact link (if completed), estimated cost, and dispatched cycles. 'Run Agent' button if eligible.
+Hover node
+Highlights all edges connected to this node (both inbound and outbound). Dims all other nodes and edges. Shows the agent's local neighborhood in the graph.
+Hover edge
+Tooltip: 'rate_card → workshop_curriculum: Pricing tiers inform workshop pricing structure.' Shows the data flow description from the cross-layer flow table.
+Zoom and pan
+Mouse wheel zooms. Click-drag pans. Pinch-to-zoom on mobile. 'Fit all' button resets to the full graph view. 'Zoom to layer' buttons zoom into a specific layer band.
+Filter by status
+Toggle buttons above the graph: 'All' | 'Completed' | 'Eligible' | 'Locked'. Filtering dims non-matching nodes and edges. Default: All.
+Integration filter
+Dropdown: 'All integrations' | 'Apollo' | 'Stripe' | 'PandaDoc' | etc. Highlights only agents that use the selected integration and their connections. Useful for debugging integration issues.
+6.4 Hub Nodes
+Two agents are the most connected in the DAG: rate_card (8 outbound edges — it feeds nearly every other agent) and income_allocation (6 outbound edges — it feeds all L5 agents). These are visually distinguished:
+Hub node
+Outbound edges
+Visual treatment
+rate_card
+8 (L1→L1, L1→L2, L1→L3, L1→L4)
+Larger node (150×70px). Gold border. Star icon. Label: 'Root node — feeds all layers.'
+income_allocation
+6 (all within L5)
+Larger node (150×70px). Navy border. Hub icon. Label: 'L5 hub — drives all wealth deployment.'
+course_curriculum
+5 (L3→L3, L3→L4)
+Slightly larger node (135×65px). Purple accent. Label: 'L3 hub — feeds products and licensing.'
+7. Signal Taxonomy
+Signals are events that the orchestrator harvests at the start of each cycle. Positive signals increase the Bayesian posterior score for the generating agent. Negative signals decrease it. The orchestrator dispatches agents with the highest scores.
+Signal
+Positive for agents
+Negative for agents
+payment_completed
+rate_card, consulting_proposal, sow_template, speaker_fee_rider, group_coaching, corporate_training, workshop_curriculum, course_curriculum, sales_page, ebook_outline, membership, launch_sequence, lapsed_buyer, ip_licensing, affiliate_partnerships, client_winback
+—
+email_replied
+cold_email_campaign, consulting_outreach, referral_network, speaking_proposals, corporate_training, alumni_reactivation, lapsed_buyer, affiliate_partnerships, client_winback
+—
+email_bounced
+—
+cold_email_campaign, consulting_outreach, referral_network, speaking_proposals, corporate_training, alumni_reactivation, affiliate_partnerships
+email_unsubscribed
+—
+cold_email_campaign, consulting_outreach, alumni_reactivation, launch_sequence, lapsed_buyer, newsletter, client_winback
+booking_created
+booking_page, cold_email_campaign, consulting_outreach, corporate_training, workshop_curriculum, alumni_reactivation
+—
+document_completed
+consulting_proposal, sow_template, agreement_template, speaker_fee_rider, ip_licensing
+—
+email_opened
+cold_email_campaign, consulting_outreach, launch_sequence, newsletter
+—
+document_declined
+—
+consulting_proposal, sow_template, agreement_template, speaker_fee_rider
+subscriber_added
+seo_content_calendar, lead_magnet_funnel, newsletter, video_podcast
+—
+waitlist_signup
+group_coaching, waitlist_landing_page, saas_product_spec
+—
+page_view
+sales_page, seo_content_calendar
+—
+lead_magnet_download
+seo_content_calendar, lead_magnet_funnel
+—
+payment_link_clicked
+rate_card
+—
+bio_page_view_from_linkedin
+linkedin_optimization
+—
+linkedin_profile_view
+linkedin_optimization
+—
+booking_completed
+booking_page
+—
+booking_cancelled
+—
+booking_page
+booking_no_show
+—
+booking_page
+proposal_requested
+consulting_outreach
+—
+contact_converted_to_active
+role_search
+—
+document_viewed
+consulting_proposal
+—
+referral_received
+referral_network
+—
+payment_completed_above_walk_away
+negotiation_script
+—
+speaking_engagement_confirmed
+speaking_proposals
+—
+proposal_conversion_rate_increase
+roi_calculator
+—
+course_enrollment
+course_curriculum
+—
+conversion_rate_increase
+ab_test_plan
+—
+subscription_created
+membership
+—
+subscription_cancelled
+—
+membership
+affiliate_signup
+affiliate_program
+—
+affiliate_sale
+affiliate_program
+—
+testimonial_received
+testimonials
+—
+sponsor_inquiry
+newsletter
+—
+community_member_joined
+community
+—
+ad_revenue_received
+programmatic_ads
+—
+investment_executed
+dca_schedule
+—
+8. Functional Requirements
+Agent Configuration
+FR-MAP-01  config/agents.json is the single source of truth for all 49 agents. The orchestrator reads this file at startup. Every agent property (prerequisites, integrations, signals, cost, model) is defined in this file. No agent behavior is hardcoded in application code.
+FR-MAP-02  The prerequisite DAG has 30 directed edges. The orchestrator walks the DAG before each dispatch: an agent is eligible only if all its prerequisites have completed at least once AND its layer is unlocked AND it is not currently in progress.
+FR-MAP-03  5 agents are cold start chain members (cold_start_chain: true). They execute sequentially via Celery chain on Cycle 1 only. After Cycle 1, all agents are dispatched via Bayesian scoring.
+FR-MAP-04  5 agents are triggered (triggered_by field). They dispatch immediately when a specific signal fires, regardless of Bayesian score: consulting_proposal (reply with interest), sow_template (proposal signed), agreement_template (SOW signed), negotiation_script (price objection), speaker_fee_rider (speaking confirmed).
+Integration Routing
+FR-MAP-05  9 integrations used across 32 agents: Internal Email (10), Apollo (8), Stripe (6), PandaDoc (5), Kajabi (5), ConvertKit (5), Cal.com (3), LinkedIn (2), Alpaca (1). Before dispatching an agent, the orchestrator verifies that all required integrations are connected and tokens are valid.
+FR-MAP-06  If a required integration is disconnected, the agent is skipped with status='integration_missing'. The GCC shows a warning: '[Agent] could not run — [Integration] is not connected. Connect in Settings → Integrations.'
+Agent Network Visualization
+FR-MAP-07  GCC Agent Network tab renders the 49-agent DAG as a visual graph. 5 horizontal layer bands (L1 top, L5 bottom). Agents as rounded-rectangle nodes. Prerequisites as directed flow lines (SVG paths with arrow heads). Auto-layout via dagre or d3-dag.
+FR-MAP-08  Flow lines colored by state: teal for completed connections, grey dashed for pending. Cross-layer lines use gradient colors (source layer color → target layer color) and thicker stroke (3px). Hover tooltip shows data flow description.
+FR-MAP-09  6 node states: Completed (green check), In progress (spinner), Eligible (teal outline), Locked (grey lock with prerequisite tooltip), Layer locked (dimmed), Failed (coral triangle). States update on each cycle completion.
+FR-MAP-10  Click node opens detail panel (380px slide-over): description, prerequisites, data dependencies, integrations, Bayesian score + 3-cycle trend, artifact link, cost, dispatch history. Run Agent button if eligible.
+FR-MAP-11  Hover node highlights local neighborhood (all connected edges and adjacent nodes). Dims everything else. Filter toggles: All/Completed/Eligible/Locked. Integration dropdown filter.
+FR-MAP-12  Hub nodes (rate_card: 8 edges, income_allocation: 6 edges, course_curriculum: 5 edges) rendered larger with distinctive borders. rate_card labeled 'Root node — feeds all layers.'
+Signal Taxonomy
+FR-MAP-13  18 distinct signal types mapped across all 49 agents. Each signal is classified as positive (increases Bayesian posterior) or negative (decreases it). The orchestrator harvests signals from integration webhooks, email tracking, and platform events at the start of each cycle.
+End of SIM-PRD-AGENTMAP-001 — Agent Interaction Mapping + Network Visualization
+Jean Moussa Delphonse · Bay Area Experiences Ventures · simulacrumai.io

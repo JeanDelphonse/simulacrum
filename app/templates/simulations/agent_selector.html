@@ -1,0 +1,533 @@
+{% extends 'base.html' %}
+{% block title %}Choose Your Income Strategy — {{ selector.sim_name }}{% endblock %}
+
+{% block head %}
+<style>
+:root {
+  --navy:   #0D1B3E;
+  --teal:   #0F7B72;
+  --teal-bg: rgba(15,123,114,.08);
+  --muted:  #6b7b8d;
+  --border: rgba(0,0,0,0.07);
+  --surface:#fafbfc;
+  --coral:  #dc2626;
+  --gold:   #C9952A;
+}
+
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+.asel-page { max-width: 760px; margin: 0 auto; padding: 2rem 1rem 6rem; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.asel-header { margin-bottom: 2rem; }
+.asel-eyebrow { font-size: .75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--teal); font-family: 'DM Sans', sans-serif;
+  margin-bottom: .5rem; }
+.asel-title { font-family: 'Playfair Display', serif; font-weight: 700;
+  font-size: 1.8rem; color: var(--navy); margin: 0 0 .5rem; }
+.asel-sub { font-size: .95rem; color: var(--muted); margin: 0;
+  font-family: 'DM Sans', sans-serif; max-width: 560px; }
+
+/* ── Persona fallback bar ─────────────────────────────────────────────────── */
+.asel-persona-bar { display: flex; align-items: center; gap: .75rem;
+  padding: .85rem 1.1rem; background: #f8f9fa; border-radius: 10px;
+  border: 1px solid var(--border); margin-bottom: 1.5rem;
+  font-family: 'DM Sans', sans-serif; flex-wrap: wrap; }
+.asel-persona-label { font-size: .82rem; color: var(--muted); flex-shrink: 0; }
+.asel-persona-select { font-size: .82rem; font-family: 'DM Sans', sans-serif;
+  border: 1px solid rgba(0,0,0,.12); border-radius: 6px; padding: .3rem .55rem;
+  color: var(--navy); background: #fff; cursor: pointer; }
+.asel-persona-btn { font-size: .8rem; font-weight: 600; color: var(--teal);
+  background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; }
+
+/* ── Layer card ───────────────────────────────────────────────────────────── */
+.asel-layers { display: flex; flex-direction: column; gap: .6rem; }
+
+.asel-layer { border-radius: 12px; border: 1px solid var(--border); background: #fff;
+  overflow: hidden; transition: box-shadow .15s; }
+.asel-layer:hover { box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+.asel-layer.locked { opacity: .72; }
+
+.asel-layer-header { display: flex; align-items: center; gap: .75rem;
+  padding: .9rem 1.1rem; cursor: pointer; user-select: none;
+  border-left: 4px solid var(--teal); }
+.asel-layer.locked .asel-layer-header { border-left-color: #D1D5DB; cursor: default; }
+.asel-layer-header:hover { background: var(--surface); }
+
+.asel-layer-name { font-family: 'DM Sans', sans-serif; font-weight: 700;
+  font-size: .95rem; color: var(--navy); flex: 1; }
+.asel-layer-count { font-size: .72rem; font-weight: 700; padding: .15rem .55rem;
+  border-radius: 20px; background: var(--teal-bg); color: var(--teal);
+  font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
+.asel-layer.locked .asel-layer-count { background: #F3F4F6; color: var(--muted); }
+.asel-layer-lock-badge { font-size: .68rem; font-weight: 700; padding: .15rem .5rem;
+  border-radius: 6px; background: #F3F4F6; color: var(--muted);
+  font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: .25rem; }
+.asel-chevron { color: var(--muted); font-size: .8rem; transition: transform .2s; flex-shrink: 0; }
+.asel-chevron.open { transform: rotate(180deg); }
+
+.asel-layer-shortcuts { display: flex; gap: .75rem; padding: .3rem 1.1rem .65rem 1.1rem; }
+.asel-shortcut-link { font-size: .72rem; color: var(--teal); background: none; border: none;
+  cursor: pointer; padding: 0; font-family: 'DM Sans', sans-serif; }
+.asel-shortcut-link:hover { text-decoration: underline; }
+
+.asel-layer-body { padding: 0 1.1rem .75rem; display: none; }
+.asel-layer-body.open { display: block; }
+
+.asel-layer-footer { font-size: .75rem; color: var(--muted); padding: .5rem 1.1rem .85rem;
+  font-family: 'DM Sans', sans-serif; border-top: 1px solid var(--border); margin-top: .5rem; }
+.asel-layer-warning { color: #b45309; font-size: .75rem; padding: .4rem 1.1rem .7rem;
+  border-top: 1px solid var(--border); font-family: 'DM Sans', sans-serif;
+  display: none; margin-top: .25rem; }
+.asel-layer-warning.show { display: block; }
+
+/* ── Agent tile ───────────────────────────────────────────────────────────── */
+.asel-tile { display: flex; align-items: center; gap: .75rem; padding: .65rem 0;
+  border-bottom: 1px solid var(--border); }
+.asel-tile:last-child { border-bottom: none; }
+
+/* Toggle switch */
+.asel-toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+.asel-toggle input { opacity: 0; width: 0; height: 0; }
+.asel-toggle-track { position: absolute; inset: 0; background: #D1D5DB;
+  border-radius: 11px; transition: background .2s; cursor: pointer; }
+.asel-toggle input:checked + .asel-toggle-track { background: var(--teal); }
+.asel-toggle input:disabled + .asel-toggle-track { cursor: default; opacity: .7; }
+.asel-toggle-knob { position: absolute; width: 16px; height: 16px; background: #fff;
+  border-radius: 50%; top: 3px; left: 3px; transition: left .2s;
+  pointer-events: none; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.asel-toggle input:checked ~ .asel-toggle-knob { left: 19px; }
+
+/* Lock icon replacing toggle */
+.asel-lock-icon { width: 38px; height: 22px; display: flex; align-items: center;
+  justify-content: center; color: #D1D5DB; font-size: 1rem; flex-shrink: 0; }
+
+/* Center: name + desc */
+.asel-tile-center { flex: 1; min-width: 0; }
+.asel-tile-name { font-size: .88rem; font-weight: 600; color: var(--navy);
+  font-family: 'DM Sans', sans-serif; margin-bottom: .1rem; }
+.asel-tile-desc { font-size: .78rem; color: var(--muted); font-family: 'DM Sans', sans-serif;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.asel-tile.locked .asel-tile-name,
+.asel-tile.locked .asel-tile-desc { color: #9CA3AF; }
+
+/* Badges */
+.asel-badges { display: flex; gap: .3rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+.asel-badge { font-size: .62rem; font-weight: 700; padding: .12rem .45rem; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: .04em; font-family: 'DM Sans', sans-serif; }
+.asel-badge.recommended { background: var(--teal-bg); color: var(--teal); }
+.asel-badge.auto        { background: rgba(201,149,42,.12); color: #92400e; }
+.asel-badge.locked      { background: #F3F4F6; color: var(--muted); display: flex;
+  align-items: center; gap: .2rem; }
+
+/* Prereq warning */
+.asel-prereq-warn { font-size: .72rem; color: #b45309; margin-top: .2rem;
+  font-family: 'DM Sans', sans-serif; display: none; }
+.asel-prereq-warn.show { display: block; }
+.asel-prereq-link { color: var(--teal); cursor: pointer; text-decoration: underline;
+  background: none; border: none; padding: 0; font-size: .72rem; }
+
+/* ── Launch bar ───────────────────────────────────────────────────────────── */
+.asel-launch-bar { position: fixed; bottom: 0; left: 0; right: 0;
+  background: #fff; border-top: 1px solid var(--border);
+  padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; z-index: 100; flex-wrap: wrap; }
+.asel-launch-count { font-size: .9rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+.asel-launch-count strong { color: var(--navy); }
+.asel-launch-btn { background: var(--navy); color: #fff; border: none; border-radius: 10px;
+  padding: .75rem 1.5rem; font-size: .95rem; font-weight: 700; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: opacity .15s; white-space: nowrap; }
+.asel-launch-btn:hover:not(:disabled) { opacity: .85; }
+.asel-launch-btn:disabled { opacity: .45; cursor: not-allowed; }
+.asel-save-btn { background: var(--teal); color: #fff; border: none; border-radius: 10px;
+  padding: .75rem 1.5rem; font-size: .95rem; font-weight: 700; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: opacity .15s; }
+.asel-save-btn:hover { opacity: .85; }
+
+/* ── Success banner ───────────────────────────────────────────────────────── */
+.asel-success-banner { display: none; position: fixed; top: 1rem; right: 1rem; z-index: 200;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  padding: .75rem 1.1rem; box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  font-family: 'DM Sans', sans-serif; font-size: .88rem; color: var(--navy); max-width: 320px; }
+.asel-success-banner.show { display: block; }
+.asel-success-title { font-weight: 700; margin-bottom: .2rem; }
+
+@media (max-width: 600px) {
+  .asel-tile-desc { display: none; }
+  .asel-launch-bar { flex-direction: column; align-items: stretch; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="asel-page">
+
+  <!-- Back link -->
+  <a href="/simulations/{{ selector.sim_id }}"
+     style="display:inline-flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--muted);font-family:'DM Sans',sans-serif;text-decoration:none;margin-bottom:1.25rem;">
+    ← Back to simulation
+  </a>
+
+  <!-- Header -->
+  <div class="asel-header">
+    <p class="asel-eyebrow">{{ selector.sim_name }}</p>
+    <h1 class="asel-title">Choose your income strategy.</h1>
+    <p class="asel-sub">
+      We recommended {{ selector.layers | map(attribute='agents') | sum(start=[]) | selectattr('recommended') | list | length }}
+      agents based on your expertise in <strong>{{ selector.expertise_zone or 'your field' }}</strong>.
+      Review, adjust, and launch.
+    </p>
+  </div>
+
+  <!-- Persona fallback bar -->
+  <div class="asel-persona-bar">
+    <span class="asel-persona-label">Load a starting template:</span>
+    <select class="asel-persona-select" id="personaSelect">
+      <option value="">— I am a —</option>
+      {% for p in selector.persona_names %}
+      <option value="{{ p }}">{{ p }}</option>
+      {% endfor %}
+    </select>
+    <button class="asel-persona-btn" onclick="applyPersona()">Apply</button>
+    <span class="asel-persona-label" style="margin-left:auto;font-size:.72rem;">
+      <em>Or review the AI recommendations below.</em>
+    </span>
+  </div>
+
+  <!-- Layer cards -->
+  <div class="asel-layers" id="layerContainer">
+    {% for layer in selector.layers %}
+    {% set lid = 'layer-' ~ layer.layer_number %}
+    <div class="asel-layer {% if not layer.unlocked %}locked{% endif %}"
+         id="{{ lid }}"
+         data-layer="{{ layer.layer_number }}"
+         data-unlocked="{{ 'true' if layer.unlocked else 'false' }}">
+
+      <!-- Header row -->
+      <div class="asel-layer-header"
+           onclick="{% if layer.unlocked %}toggleLayer({{ layer.layer_number }}){% endif %}">
+        <span class="asel-layer-name">{{ layer.name }}</span>
+        <span class="asel-layer-count" id="{{ lid }}-count">{{ layer.selected_count }} agents</span>
+        {% if not layer.unlocked %}
+        <span class="asel-layer-lock-badge">
+          🔒 {{ layer.lock_condition }}
+        </span>
+        {% else %}
+        <span class="asel-chevron {% if layer.layer_number == 1 %}open{% endif %}"
+              id="{{ lid }}-chevron">▾</span>
+        {% endif %}
+      </div>
+
+      {% if layer.unlocked %}
+      <!-- Shortcuts -->
+      <div class="asel-layer-shortcuts">
+        <button class="asel-shortcut-link" onclick="selectRecommended({{ layer.layer_number }})">
+          Select recommended
+        </button>
+        <button class="asel-shortcut-link" onclick="clearLayer({{ layer.layer_number }})">
+          Clear all
+        </button>
+      </div>
+
+      <!-- Body: agent tiles -->
+      <div class="asel-layer-body {% if layer.layer_number == 1 %}open{% endif %}"
+           id="{{ lid }}-body">
+        {% for agent in layer.agents %}
+        {% set tid = 'agent-' ~ agent.action_type %}
+        <div class="asel-tile {% if agent.agent_locked or agent.layer_locked %}locked{% endif %}"
+             id="{{ tid }}"
+             data-action="{{ agent.action_type }}"
+             data-layer="{{ layer.layer_number }}"
+             data-recommended="{{ 'true' if agent.recommended else 'false' }}"
+             data-triggered="{{ 'true' if agent.is_triggered else 'false' }}"
+             data-root="{{ 'true' if agent.is_root else 'false' }}"
+             data-prereqs="{{ agent.prerequisites | join(',') }}">
+
+          <!-- Toggle or lock icon -->
+          {% if agent.agent_locked or agent.layer_locked %}
+          <div class="asel-lock-icon" title="{% if agent.layer_locked %}{{ layer.lock_condition }}{% else %}Requires: {{ agent.prerequisites | join(', ') }}{% endif %}">
+            🔒
+          </div>
+          {% else %}
+          <label class="asel-toggle" title="{% if agent.is_root %}Required — feeds all agents{% elif agent.is_triggered %}Fires automatically on events{% endif %}">
+            <input type="checkbox"
+                   id="toggle-{{ agent.action_type }}"
+                   data-action="{{ agent.action_type }}"
+                   {% if agent.selected %}checked{% endif %}
+                   {% if agent.is_root or agent.is_triggered %}disabled{% endif %}
+                   onchange="onToggle('{{ agent.action_type }}', this.checked)">
+            <div class="asel-toggle-track"></div>
+            <div class="asel-toggle-knob"></div>
+          </label>
+          {% endif %}
+
+          <!-- Name + description -->
+          <div class="asel-tile-center">
+            <div class="asel-tile-name">{{ agent.label | replace('Generate ', '') | replace('Create ', '') | replace('Design ', '') | replace('Execute ', '') | replace('Build ', '') | replace('Research & Submit ', '') | replace('Write ', '') }}</div>
+            <div class="asel-tile-desc" id="desc-{{ agent.action_type }}">{{ agent.description }}</div>
+            <!-- Prereq warning (shown if prereq not in selected set) -->
+            {% if agent.prerequisites %}
+            <div class="asel-prereq-warn" id="warn-{{ agent.action_type }}">
+              Requires <strong>{{ agent.prerequisites | join(', ') }}</strong> —
+              <button class="asel-prereq-link" onclick="selectAgent('{{ agent.prerequisites[0] }}')">turn it on</button>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Badges -->
+          <div class="asel-badges">
+            {% if agent.recommended %}
+            <span class="asel-badge recommended">Recommended</span>
+            {% endif %}
+            {% if agent.is_triggered %}
+            <span class="asel-badge auto" title="Fires automatically on trigger events">Auto</span>
+            {% endif %}
+            {% if agent.agent_locked %}
+            <span class="asel-badge locked">🔒 Locked</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Layer footer: description + warning -->
+      <div class="asel-layer-footer" id="{{ lid }}-footer" style="display:none;">
+        {{ layer.description }}
+      </div>
+      <div class="asel-layer-warning" id="{{ lid }}-warning">
+        ⚠ No agents selected in this layer — this income stream will not be built.
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+</div><!-- /asel-page -->
+
+<!-- Launch / Save bar -->
+<div class="asel-launch-bar">
+  <div class="asel-launch-count">
+    <strong id="selectedCount">{{ selector.layers | map(attribute='agents') | sum(start=[]) | selectattr('selected') | list | length }}</strong>
+    agents selected
+  </div>
+  {% if edit_mode %}
+  <button class="asel-save-btn" id="launchBtn" onclick="saveAgents()">
+    Save changes
+  </button>
+  {% else %}
+  <button class="asel-launch-btn" id="launchBtn" onclick="confirmAndLaunch()">
+    Launch simulation with <span id="launchCount">{{ selector.layers | map(attribute='agents') | sum(start=[]) | selectattr('selected') | list | length }}</span> agents →
+  </button>
+  {% endif %}
+</div>
+
+<!-- Success banner -->
+<div class="asel-success-banner" id="successBanner">
+  <div class="asel-success-title" id="successTitle">Launching…</div>
+  <div id="successMsg"></div>
+</div>
+
+<script>
+const SIM_ID = '{{ selector.sim_id }}';
+const EDIT_MODE = {{ 'true' if edit_mode else 'false' }};
+
+// Build state from rendered HTML
+const state = {
+  selected: new Set(),
+  recommended: new Set(),
+  triggered: new Set(),
+  roots: new Set(),
+  personaDefaults: {{ persona_defaults | tojson }},
+};
+
+document.querySelectorAll('.asel-tile').forEach(tile => {
+  const at = tile.dataset.action;
+  if (!at) return;
+  if (tile.dataset.triggered === 'true') state.triggered.add(at);
+  if (tile.dataset.root === 'true') state.roots.add(at);
+  if (tile.dataset.recommended === 'true') state.recommended.add(at);
+  const cb = document.getElementById('toggle-' + at);
+  if (cb && cb.checked) state.selected.add(at);
+});
+
+function onToggle(actionType, isChecked) {
+  if (state.roots.has(actionType)) return; // cannot deselect root
+  if (isChecked) {
+    state.selected.add(actionType);
+  } else {
+    state.selected.delete(actionType);
+  }
+  refresh();
+}
+
+function selectAgent(actionType) {
+  const cb = document.getElementById('toggle-' + actionType);
+  if (cb && !cb.disabled) {
+    cb.checked = true;
+    state.selected.add(actionType);
+    refresh();
+  }
+}
+
+function toggleLayer(layerNum) {
+  const body = document.getElementById('layer-' + layerNum + '-body');
+  const chevron = document.getElementById('layer-' + layerNum + '-chevron');
+  const footer = document.getElementById('layer-' + layerNum + '-footer');
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (chevron) chevron.classList.toggle('open', !isOpen);
+  if (footer) footer.style.display = !isOpen ? 'block' : 'none';
+}
+
+function selectRecommended(layerNum) {
+  document.querySelectorAll(`.asel-tile[data-layer="${layerNum}"]`).forEach(tile => {
+    const at = tile.dataset.action;
+    const cb = document.getElementById('toggle-' + at);
+    if (!cb || cb.disabled) return;
+    const rec = tile.dataset.recommended === 'true';
+    cb.checked = rec;
+    if (rec) state.selected.add(at); else state.selected.delete(at);
+  });
+  // Always keep root
+  state.roots.forEach(r => { state.selected.add(r); const cb = document.getElementById('toggle-' + r); if (cb) cb.checked = true; });
+  refresh();
+}
+
+function clearLayer(layerNum) {
+  document.querySelectorAll(`.asel-tile[data-layer="${layerNum}"]`).forEach(tile => {
+    const at = tile.dataset.action;
+    const cb = document.getElementById('toggle-' + at);
+    if (!cb || cb.disabled) return;
+    cb.checked = false;
+    state.selected.delete(at);
+  });
+  state.roots.forEach(r => { state.selected.add(r); const cb = document.getElementById('toggle-' + r); if (cb) cb.checked = true; });
+  refresh();
+}
+
+function applyPersona() {
+  const persona = document.getElementById('personaSelect').value;
+  if (!persona) return;
+  const defaults = state.personaDefaults[persona] || [];
+  const defaultSet = new Set(defaults);
+  document.querySelectorAll('.asel-tile').forEach(tile => {
+    const at = tile.dataset.action;
+    const cb = document.getElementById('toggle-' + at);
+    if (!cb || cb.disabled) return;
+    const on = defaultSet.has(at);
+    cb.checked = on;
+    if (on) state.selected.add(at); else state.selected.delete(at);
+  });
+  state.roots.forEach(r => { state.selected.add(r); const cb = document.getElementById('toggle-' + r); if (cb) cb.checked = true; });
+  state.triggered.forEach(r => { state.selected.add(r); });
+  refresh();
+}
+
+function refresh() {
+  let total = 0;
+
+  // Update per-layer counts and warnings
+  [1, 2, 3, 4, 5].forEach(layerNum => {
+    const tiles = document.querySelectorAll(`.asel-tile[data-layer="${layerNum}"]`);
+    let layerSelected = 0;
+    tiles.forEach(tile => {
+      const at = tile.dataset.action;
+      if (state.selected.has(at) || state.triggered.has(at) || state.roots.has(at)) layerSelected++;
+    });
+    total += layerSelected;
+    const countEl = document.getElementById('layer-' + layerNum + '-count');
+    if (countEl) countEl.textContent = layerSelected + ' agents';
+
+    // Warning if layer is unlocked and has 0 selected non-triggered non-root
+    const layerEl = document.getElementById('layer-' + layerNum);
+    if (!layerEl || layerEl.dataset.unlocked !== 'true') return;
+    const warnEl = document.getElementById('layer-' + layerNum + '-warning');
+    if (warnEl) {
+      const hasSel = Array.from(tiles).some(t => {
+        const at = t.dataset.action;
+        return state.selected.has(at) && !state.triggered.has(at);
+      });
+      warnEl.classList.toggle('show', !hasSel);
+    }
+  });
+
+  // Prereq warnings per tile
+  document.querySelectorAll('.asel-tile').forEach(tile => {
+    const at = tile.dataset.action;
+    const prereqs = (tile.dataset.prereqs || '').split(',').filter(Boolean);
+    const warnEl = document.getElementById('warn-' + at);
+    if (!warnEl || !prereqs.length) return;
+    const missing = prereqs.some(p => !state.selected.has(p));
+    const tileSelected = state.selected.has(at);
+    warnEl.classList.toggle('show', tileSelected && missing);
+  });
+
+  // Update launch bar
+  document.getElementById('selectedCount').textContent = total;
+  const launchCount = document.getElementById('launchCount');
+  if (launchCount) launchCount.textContent = total;
+  const btn = document.getElementById('launchBtn');
+  if (btn) btn.disabled = (total === 0);
+}
+
+async function confirmAndLaunch() {
+  const btn = document.getElementById('launchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Launching…';
+
+  const selectedList = Array.from(state.selected);
+
+  try {
+    const resp = await fetch(`/api/simulations/${SIM_ID}/agents/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selected_agents: selectedList }),
+    });
+    if (!resp.ok) throw new Error('Server error');
+    showBanner('Simulation launched!', `${selectedList.length} agents are ready. Redirecting…`);
+    setTimeout(() => { window.location.href = `/simulations/${SIM_ID}`; }, 1200);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Launch simulation →';
+    alert('Could not save agent selection. Please try again.');
+  }
+}
+
+async function saveAgents() {
+  const btn = document.getElementById('launchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const selectedList = Array.from(state.selected);
+
+  try {
+    const resp = await fetch(`/api/simulations/${SIM_ID}/agents`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selected_agents: selectedList }),
+    });
+    if (!resp.ok) throw new Error('Server error');
+    showBanner('Saved!', `${selectedList.length} agents selected. Changes take effect on the next cycle.`);
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'Save changes'; }, 2000);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Save changes';
+    alert('Could not save. Please try again.');
+  }
+}
+
+function showBanner(title, msg) {
+  document.getElementById('successTitle').textContent = title;
+  document.getElementById('successMsg').textContent = msg;
+  document.getElementById('successBanner').classList.add('show');
+  setTimeout(() => document.getElementById('successBanner').classList.remove('show'), 4000);
+}
+
+// Initial refresh to set counts / warnings correctly
+refresh();
+
+// Open L1 footer on load
+const l1footer = document.getElementById('layer-1-footer');
+if (l1footer) l1footer.style.display = 'block';
+</script>
+{% endblock %}

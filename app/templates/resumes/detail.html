@@ -15,8 +15,16 @@
     </div>
   </div>
 
+  {% if bio_slug %}
+  <div style="margin-bottom:1rem;">
+    <a href="/u/{{ bio_slug }}" target="_blank" style="font-size:.875rem;color:var(--primary,#0F7B72);text-decoration:none;">
+      View your bio page →
+    </a>
+  </div>
+  {% endif %}
+
   <div id="zonesSection" class="zones-section" {% if not resume.expertise_zones %}style="display:none"{% endif %}>
-    <h2>Expertise Zones</h2>
+    <h2>Expertise Zones  /Goals</h2>
     <div id="zonesList" class="zones-grid">
       {% if resume.expertise_zones %}
         {% for zone in resume.expertise_zones %}

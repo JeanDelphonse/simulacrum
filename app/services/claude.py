@@ -1,8 +1,11 @@
 import json
+import logging
 from flask import current_app
 from app.extensions import db
 from app.models.ai_interaction import AIInteraction
 from utils.model_router import get_model, get_tier
+
+logger = logging.getLogger(__name__)
 
 
 def _client():
@@ -169,7 +172,7 @@ Generate 3-5 income streams. Be specific — reference actual job titles, compan
 
     response = _client().messages.create(
         model=_model(),
-        max_tokens=5000,
+        max_tokens=8000,
         messages=[{'role': 'user', 'content': prompt}],
     )
     _log_interaction(AIInteraction.TYPE_LAYER_GENERATE, user_id, simulation_id, response.usage)
@@ -179,7 +182,10 @@ Generate 3-5 income streams. Be specific — reference actual job titles, compan
         raw = raw.split('\n', 1)[1].rsplit('```', 1)[0]
     if response.stop_reason == 'max_tokens':
         logger.warning('Layer %d response truncated at max_tokens for simulation %s', layer_number, simulation_id)
-        raw = raw.rsplit(',', 1)[0] + ']}}'
+        # Salvage: drop the last (possibly partial) income stream and close the JSON.
+        cut = raw.rfind('},')
+        if cut != -1:
+            raw = raw[:cut + 1] + ']}'
     return json.loads(raw)
 
 
@@ -849,6 +855,13 @@ def execute_agent_action(
     prospect_count: int = None,
 ) -> str:
     """Execute an agent action for a simulation layer. Returns the generated artifact text."""
+    # Resolve legacy aliases up front so model routing, token budgets, custom
+    # execution paths, and contact-agent sets all key off the canonical name —
+    # otherwise the same logical agent gets a different model/budget depending
+    # on which name variant was stored in the DB.
+    from app.services.agent_registry import resolve_alias
+    action_type = resolve_alias(action_type)
+
     layer_name, _, layer_desc = LAYER_DEFINITIONS[layer_number]
     action_meta = AGENT_ACTION_TYPES.get(layer_number, {}).get(action_type)
     if not action_meta:
@@ -984,19 +997,72 @@ Generate the complete artifact for this action. Be specific and draw directly fr
 
     # Action types whose descriptions explicitly demand large output get a higher budget.
     # Everything else defaults to 8192 (was 3000 — the prior limit caused silent truncation).
+    # Canonical names only — action_type is alias-resolved at function entry,
+    # so legacy names (youtube_podcast, course_framework, ...) never match here.
     _LARGE_OUTPUT_ACTIONS = {
-        'seo_content_calendar', 'youtube_podcast', 'workshop_content',
-        'saas_product_spec', 'course_framework', 'coaching_curriculum',
-        'consulting_proposal', 'sales_page', 'ebook_guide',
+        'seo_content_calendar', 'video_podcast', 'workshop_curriculum',
+        'saas_product_spec', 'course_curriculum', 'group_coaching',
+        'consulting_proposal', 'sales_page', 'ebook_outline',
     }
     _ACTION_MAX_TOKENS = {
-        'cold_email_campaign': 16384,
-        'outreach_email':      8192,
+        # ── very large (multi-email / calendar / spec) ───────────────────
+        'cold_email_campaign':    16384,
+        'outreach_email':          8192,
+        # ── long structured output (15 messages / 7 emails / full guide) ─
+        'referral_network':        6144,
+        'speaking_proposals':      6144,
+        'workshop_curriculum':     6144,
+        'launch_sequence':         6144,
+        'lead_magnet_funnel':      6144,
+        # ── medium structured output ─────────────────────────────────────
+        'role_search':             4096,
+        'sow_template':            4096,
+        'agreement_template':      2048,
+        'pitch_deck_outline':      4096,
+        'group_coaching':          4096,
+        'corporate_training':      4096,
+        'waitlist_landing_page':   4096,
+        'alumni_reactivation':     4096,
+        'ebook_outline':           4096,
+        'membership':              4096,
+        'affiliate_program':       4096,
+        'testimonials':            4096,
+        'lapsed_buyer':            4096,
+        'ip_licensing':            4096,
+        'programmatic_ads':        4096,
+        'projections':             4096,
+        # ── short structured output ───────────────────────────────────────
+        'negotiation_script':      3072,
+        'pricing_research':        3072,
+        'newsletter':              3072,
+        'community':               3072,
+        'income_allocation':       3072,
+        'fund_recommendations':    3072,
+        'real_estate_strategy':    3072,
+        'insurance_review':        3072,
+        # ── very short (headline / calculation / schedule) ────────────────
+        'linkedin_optimization':   2048,
+        'roi_calculator':          2048,
+        'booking_page':            2048,
+        'compound_projections':    2048,
+        'dca_schedule':            2048,
+        'workshop_roi':            2048,
+        'competitive_pricing':     2048,
+        'insurance_gap_analysis':  2048,
+        'compound_growth':         2048,
     }
     max_tokens = _ACTION_MAX_TOKENS.get(
         action_type,
         16384 if action_type in _LARGE_OUTPUT_ACTIONS else 8192,
     )
+
+    # Scale cold_email_campaign tokens by prospect count (avoid paying for unused capacity)
+    if action_type == 'cold_email_campaign':
+        try:
+            prospect_count = int(user_inputs.get('prospect_count', 5))
+            max_tokens = min(16384, max(4096, prospect_count * 1000 + 1024))
+        except (TypeError, ValueError):
+            pass
 
     import logging as _log
     _logger = _log.getLogger(__name__)
@@ -1100,11 +1166,11 @@ def _finalize_outreach_email_artifact(
         return json.dumps(data, ensure_ascii=False)
 
     # Fill missing emails with fallback so every prospect is sendable
-    from app.services.contact_lookup import get_next_fallback_email
+    from app.services.contact_lookup import get_next_fallback_email, is_fallback_email
     used_fallbacks = set()
     for p in prospects:
         email = (p.get('email') or '').strip().lower()
-        if not email or email == 'valuemanager.management@gmail.com':
+        if not email or is_fallback_email(email):
             fb_email = get_next_fallback_email(user_id, used_fallbacks)
             p['email'] = fb_email
             used_fallbacks.add(fb_email)

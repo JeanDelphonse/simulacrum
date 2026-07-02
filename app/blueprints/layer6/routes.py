@@ -330,6 +330,157 @@ def roi_card(sim_id):
 # Cycle execution
 # ---------------------------------------------------------------------------
 
+@layer6_bp.route('/<sim_id>/layer6/run/preview', methods=['GET'])
+@login_required
+def run_cycle_preview(sim_id):
+    """
+    Preview what a manual Run Cycle would select — no execution, no side effects.
+
+    Returns:
+    - prior_cycle: agents that ran last cycle + their artifact links
+    - suggested: orchestrator-ranked agents for the next cycle, flagged as
+      is_net_new=True when the agent did not appear in the prior cycle
+    """
+    sim, err, code = _get_sim_or_404(sim_id)
+    if err:
+        return err, code
+    cfg, err, code = _get_config_or_404(sim_id)
+    if err:
+        return err, code
+
+    from app.models.agent_action import AgentAction
+    from app.models.artifact import ArtifactVersion
+    from app.models.layer6 import Layer6Outcome
+    from app.services.layer6 import (
+        build_eligible_actions, score_action, determine_phase,
+        _count_unblocked, _integration_boost_for_action,
+        _get_active_integrations, _ensure_layer_diversity,
+    )
+    import hashlib as _hl
+
+    # ── Prior cycle ──────────────────────────────────────────────────────────
+    last_cycle = Layer6Cycle.query.filter_by(simulation_id=sim_id).order_by(
+        Layer6Cycle.cycle_number.desc()
+    ).first()
+
+    prior_cycle_data = None
+    prior_agent_types: set[str] = set()
+
+    if last_cycle:
+        queue_items = Layer6ActionQueue.query.filter_by(cycle_id=last_cycle.id).order_by(
+            Layer6ActionQueue.priority_score.desc()
+        ).all()
+
+        agent_action_ids = [q.agent_action_id for q in queue_items if q.agent_action_id]
+        has_artifact_set: set[str] = set()
+        if agent_action_ids:
+            for av in ArtifactVersion.query.filter(
+                ArtifactVersion.action_id.in_(agent_action_ids),
+                ArtifactVersion.is_current == True,
+            ).with_entities(ArtifactVersion.action_id).all():
+                has_artifact_set.add(av.action_id)
+
+        prior_agents = []
+        for q in queue_items:
+            prior_agent_types.add(q.action_type)
+            has_art = bool(q.agent_action_id and q.agent_action_id in has_artifact_set)
+            prior_agents.append({
+                'action_type': q.action_type,
+                'label': _ACTION_ARTIFACT_LABELS.get(
+                    q.action_type, q.action_type.replace('_', ' ').title()
+                ),
+                'layer': q.source_layer,
+                'status': q.status,
+                'agent_action_id': q.agent_action_id,
+                'artifact_url': f'/artifacts/{q.agent_action_id}' if has_art else None,
+                'artifact_label': _ACTION_ARTIFACT_LABELS.get(q.action_type),
+                'has_artifact': has_art,
+            })
+
+        prior_cycle_data = {
+            'cycle_id': last_cycle.id,
+            'cycle_number': last_cycle.cycle_number,
+            'phase': last_cycle.phase,
+            'cycle_started_at': last_cycle.cycle_started_at.isoformat(),
+            'cycle_completed_at': (
+                last_cycle.cycle_completed_at.isoformat()
+                if last_cycle.cycle_completed_at else None
+            ),
+            'agents': prior_agents,
+        }
+
+    # ── Next cycle preview ───────────────────────────────────────────────────
+    next_cycle_number = (last_cycle.cycle_number + 1) if last_cycle else 1
+    phase = determine_phase(sim_id, next_cycle_number)
+    n_to_suggest = max(1, min(8, cfg.actions_per_cycle))
+
+    completed_types = {
+        a.action_type for a in AgentAction.query.filter_by(
+            simulation_id=sim_id, status=AgentAction.STATUS_COMPLETE,
+        ).all()
+    }
+
+    outcomes_by_layer: dict[int, list] = {}
+    for o in Layer6Outcome.query.filter_by(simulation_id=sim_id).all():
+        outcomes_by_layer.setdefault(o.layer_number, []).append(o.to_dict())
+
+    active_integrations = _get_active_integrations(sim.user_id)
+
+    eligible = build_eligible_actions(
+        sim_id, cfg, completed_types, phase=phase, force_rerun=True,
+    )
+
+    all_eligible_types = [e['action_type'] for e in eligible]
+    scored = []
+    for e in eligible:
+        layer_outcomes = outcomes_by_layer.get(e['source_layer'], [])
+        unblocks = _count_unblocked(e['action_type'], completed_types, all_eligible_types)
+        _seed = (
+            int(_hl.md5(f'{e["action_type"]}{next_cycle_number}'.encode()).hexdigest(), 16)
+            % 10000 / 10000
+        )
+        priority = score_action(
+            action_type=e['action_type'],
+            source_layer=e['source_layer'],
+            outcomes_for_layer=layer_outcomes,
+            unblocks_count=unblocks,
+            phase=phase,
+            layer_index=e['layer_index'],
+            _noise_seed=_seed,
+        )
+        priority = round(
+            priority + _integration_boost_for_action(e['action_type'], active_integrations),
+            6,
+        )
+        scored.append({**e, 'priority_score': priority})
+
+    if phase == 'explore':
+        selected = _ensure_layer_diversity(scored, n_to_suggest)
+    else:
+        selected = sorted(scored, key=lambda x: x['priority_score'], reverse=True)[:n_to_suggest]
+
+    suggested = [
+        {
+            'action_type': s['action_type'],
+            'label': s['label'],
+            'layer': s['source_layer'],
+            'score': s['priority_score'],
+            'is_net_new': s['action_type'] not in prior_agent_types,
+            'rank': rank,
+        }
+        for rank, s in enumerate(selected, 1)
+    ]
+
+    return jsonify({
+        'phase': phase,
+        'actions_per_cycle': cfg.actions_per_cycle,
+        'prior_cycle': prior_cycle_data,
+        'suggested': suggested,
+        'eligible_count': len(eligible),
+        'net_new_count': sum(1 for s in suggested if s['is_net_new']),
+    }), 200
+
+
 @layer6_bp.route('/<sim_id>/layer6/run', methods=['POST'])
 @login_required
 def run_cycle(sim_id):
@@ -1506,6 +1657,71 @@ _EDGE_CATALOG = [
 ]
 
 
+def _relevant_agent_types(sim, actions):
+    """Canonical action_types relevant to this simulation's run cycle.
+
+    Returns the confirmed agent selection (+ root + triggered agents, matching
+    the orchestrator's own eligibility in build_eligible_actions), unioned with
+    any agent that has actually been queued/run this cycle. Returns None to mean
+    "no filter — show every agent", used pre-launch before a selection exists.
+    """
+    from app.services.agent_registry import resolve_alias
+    ran = {resolve_alias(a.action_type) for a in (actions or [])}
+    if sim and getattr(sim, 'selected_agents', None) and sim.agent_selection_confirmed_at:
+        from app.services.agent_selector import ROOT_AGENT_ID, TRIGGERED_AGENT_IDS
+        selected = {resolve_alias(at) for at in sim.selected_agents}
+        selected.add(resolve_alias(ROOT_AGENT_ID))
+        selected |= {resolve_alias(at) for at in TRIGGERED_AGENT_IDS}
+        return selected | ran
+    # No confirmed selection: show agents that have run if any, else everything.
+    return ran or None
+
+
+def _visible_network(relevant_types):
+    """Filter the static catalog to the agent nodes relevant to the run cycle.
+
+    Keeps every infrastructure node (layers, orchestrator, engines, integrations,
+    etc.) but restricts agent sub-nodes to relevant_types (None = keep all).
+    Crucially, every kept agent node is guaranteed an edge to its layer parent —
+    the hand-authored _EDGE_CATALOG only wired up ~21 legacy agents, leaving the
+    other registry agents as orphan nodes floating unlinked to any layer.
+
+    Returns (nodes, edges) as fresh lists from the catalog (no state applied).
+    """
+    from app.services.agent_registry import resolve_alias
+
+    nodes, kept_ids, seen = [], set(), set()
+    for n in _NODE_CATALOG:
+        if n['id'] in seen:
+            continue
+        if n.get('action_type') and relevant_types is not None:
+            if resolve_alias(n['action_type']) not in relevant_types:
+                continue
+        seen.add(n['id'])
+        nodes.append(n)
+        kept_ids.add(n['id'])
+
+    # Keep only catalog edges whose endpoints both survived (drops edges that
+    # referenced legacy node ids the registry no longer emits).
+    edges = [e for e in _EDGE_CATALOG
+             if e['source'] in kept_ids and e['target'] in kept_ids]
+    existing = {e['id'] for e in edges}
+
+    # Guarantee each agent node connects to its layer parent.
+    for n in nodes:
+        if n.get('action_type') and n.get('parent') in kept_ids:
+            eid = f"{n['parent']}-{n['id']}"
+            if eid not in existing:
+                edges.append({
+                    'id': eid, 'source': n['parent'], 'target': n['id'],
+                    'step': 'schedule', 'bidirectional': False,
+                    'conditional': False, 'fields': ['action_type', 'status'],
+                })
+                existing.add(eid)
+
+    return nodes, edges
+
+
 def _node_states_for_cycle(cycle, actions, log_entries, momentum, config, fintech_on):
     states = {}
     is_done = cycle.cycle_completed_at is not None
@@ -1732,7 +1948,8 @@ def _build_node_payload(node_id, cycle, actions, log_entries, momentum, config):
 @layer6_bp.route('/<sim_id>/layer6/network', methods=['GET'])
 @login_required
 def get_network(sim_id):
-    """Full 26-node network state for the Agent Network Visualization."""
+    """Full network state for the Agent Network Visualization, restricted to
+    the agents relevant to this simulation's run cycle."""
     sim, err, code = _get_sim_or_404(sim_id)
     if err:
         return err, code
@@ -1749,8 +1966,10 @@ def get_network(sim_id):
     config = Layer6Config.query.filter_by(simulation_id=sim_id).first()
 
     if not cycle:
-        nodes = [dict(n, status='idle', badge_count=0, locked=n['conditional']) for n in _NODE_CATALOG]
-        edges = [dict(e, active=False, error=False, locked=e['conditional']) for e in _EDGE_CATALOG]
+        # Pre-launch: no cycle actions, so filter agents by the confirmed selection.
+        cat_nodes, cat_edges = _visible_network(_relevant_agent_types(sim, None))
+        nodes = [dict(n, status='idle', badge_count=0, locked=n['conditional']) for n in cat_nodes]
+        edges = [dict(e, active=False, error=False, locked=e['conditional']) for e in cat_edges]
         return jsonify({'nodes': nodes, 'edges': edges, 'cycle': None}), 200
 
     actions = Layer6ActionQueue.query.filter_by(cycle_id=cycle.id).all()
@@ -1764,8 +1983,9 @@ def get_network(sim_id):
     nstates = _node_states_for_cycle(cycle, actions, log_entries, momentum, config, fintech_on)
     estats = _edge_states_for_cycle(cycle, actions, log_entries, momentum, fintech_on)
 
-    nodes = [dict(n, **nstates.get(n['id'], {'status': 'idle', 'badge_count': 0})) for n in _NODE_CATALOG]
-    edges = [dict(e, **estats.get(e['id'], {'active': False, 'error': False})) for e in _EDGE_CATALOG]
+    cat_nodes, cat_edges = _visible_network(_relevant_agent_types(sim, actions))
+    nodes = [dict(n, **nstates.get(n['id'], {'status': 'idle', 'badge_count': 0})) for n in cat_nodes]
+    edges = [dict(e, **estats.get(e['id'], {'active': False, 'error': False})) for e in cat_edges]
 
     cycle_data = cycle.to_dict()
     if config:
@@ -2302,11 +2522,14 @@ def _validate_share_token(token):
 
 @layer6_bp.route('/share/<token>/network', methods=['GET'])
 def share_get_network(token):
-    """Public read-only: full 26-node network state for a share token."""
+    """Public read-only: network state for a share token, restricted to the
+    agents relevant to this simulation's run cycle."""
     share, sim_id, err = _validate_share_token(token)
     if err:
         resp, code = err
         return resp, code
+
+    sim = Simulation.query.get(sim_id)
 
     cycle_id = request.args.get('cycle_id') or share.cycle_id
     if cycle_id:
@@ -2320,8 +2543,9 @@ def share_get_network(token):
     config = Layer6Config.query.filter_by(simulation_id=sim_id).first()
 
     if not cycle:
-        nodes = [dict(n, status='idle', badge_count=0, locked=n['conditional']) for n in _NODE_CATALOG]
-        edges = [dict(e, active=False, error=False, locked=e['conditional']) for e in _EDGE_CATALOG]
+        cat_nodes, cat_edges = _visible_network(_relevant_agent_types(sim, None))
+        nodes = [dict(n, status='idle', badge_count=0, locked=n['conditional']) for n in cat_nodes]
+        edges = [dict(e, active=False, error=False, locked=e['conditional']) for e in cat_edges]
         return jsonify({'nodes': nodes, 'edges': edges, 'cycle': None}), 200
 
     actions = Layer6ActionQueue.query.filter_by(cycle_id=cycle.id).all()
@@ -2335,8 +2559,9 @@ def share_get_network(token):
     nstates = _node_states_for_cycle(cycle, actions, log_entries, momentum, config, fintech_on)
     estats = _edge_states_for_cycle(cycle, actions, log_entries, momentum, fintech_on)
 
-    nodes = [dict(n, **nstates.get(n['id'], {'status': 'idle', 'badge_count': 0})) for n in _NODE_CATALOG]
-    edges = [dict(e, **estats.get(e['id'], {'active': False, 'error': False})) for e in _EDGE_CATALOG]
+    cat_nodes, cat_edges = _visible_network(_relevant_agent_types(sim, actions))
+    nodes = [dict(n, **nstates.get(n['id'], {'status': 'idle', 'badge_count': 0})) for n in cat_nodes]
+    edges = [dict(e, **estats.get(e['id'], {'active': False, 'error': False})) for e in cat_edges]
 
     cycle_data = cycle.to_dict()
     if config:

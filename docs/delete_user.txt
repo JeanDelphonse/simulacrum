@@ -1,0 +1,201 @@
+-- ============================================================
+--  SIMULACRUM — Wipe all data for a single user
+--  Usage: replace the value in line 1, then run the whole script
+--  Safe to run multiple times (idempotent — no rows = no-op)
+-- ============================================================
+
+SET @uid = 'REPLACE_ME';   -- ← paste the user's id from the users table
+
+-- ── 1. Social / network layer ────────────────────────────────
+DELETE FROM platform_chat_messages
+  WHERE chat_id IN (
+    SELECT id FROM platform_chats
+     WHERE owner_user_id = @uid OR chatter_user_id = @uid);
+
+DELETE FROM platform_chats
+  WHERE owner_user_id = @uid OR chatter_user_id = @uid;
+
+DELETE FROM bio_page_likes    WHERE user_id   = @uid;
+
+DELETE FROM user_connections
+  WHERE user_a_id = @uid OR user_b_id = @uid;
+
+DELETE FROM activity_events   WHERE user_id   = @uid;
+
+-- ── 2. Bio page & visitor chat ───────────────────────────────
+DELETE FROM bio_chat_messages
+  WHERE session_id IN (
+    SELECT id FROM bio_chat_sessions
+     WHERE bio_page_id IN (SELECT id FROM bio_pages WHERE user_id = @uid));
+
+DELETE FROM bio_chat_sessions
+  WHERE bio_page_id IN (SELECT id FROM bio_pages WHERE u
+
+DELETE FROM bio_page_visits
+  WHERE bio_page_id IN (SELECT id FROM bio_pages WHERE user_id = @uid);
+
+DELETE FROM bio_pages         WHERE user_id   = @uid;
+
+-- ── 3. CRM & outreach ────────────────────────────────────────
+DELETE FROM contact_activities
+  WHERE contact_id IN (SELECT id FROM contacts WHERE user_id = @uid);
+
+DELETE FROM contacts          WHERE user_id   = @uid;
+
+-- email_logs are linked to simulations (deleted in step 4);
+-- suppress records are per-email address, not user — le
+
+-- ── 4. Simulation deep children ──────────────────────
+
+-- Layer 6 cycle grandchildren
+DELETE FROM cycle_posterior_snapshots
+  WHERE cycle_id IN (
+    SELECT id FROM layer6_cycles
+     WHERE simulation_id IN (SELECT id FROM simulations
+
+DELETE FROM layer6_execution_log
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+DELETE FROM layer6_action_queue
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM layer6_outcomes
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+DELETE FROM layer6_momentum
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM layer6_cycles
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+-- Action items & share tokens
+DELETE FROM action_items
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+DELETE FROM layer6_share_tokens   WHERE created_by = @uid;
+
+DELETE FROM layer6_configs
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+-- Collaboration chain
+DELETE FROM collab_activities
+  WHERE collaboration_id IN (
+    SELECT id FROM collaborations
+     WHERE simulation_id IN (SELECT id FROM simulations
+
+DELETE FROM collaborations
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+-- Advisor chain
+DELETE FROM advisor_notes
+  WHERE access_id IN (
+    SELECT id FROM advisor_access
+     WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid)
+        OR granted_by = @uid);
+
+DELETE FROM advisor_flags
+  WHERE access_id IN (
+    SELECT id FROM advisor_access
+     WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid)
+        OR granted_by = @uid);
+
+DELETE FROM advisor_access
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid)
+     OR granted_by = @uid;
+
+-- Artifact chain
+DELETE FROM artifact_dependencies
+  WHERE from_artifact_id IN (
+    SELECT id FROM artifact_versions
+     WHERE simulation_id IN (SELECT id FROM simulations
+     OR to_artifact_id IN (
+    SELECT id FROM artifact_versions
+     WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid));
+
+DELETE FROM artifact_versions
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM artifact_bundles      WHERE user_id = @uid;
+
+-- Other simulation children
+DELETE FROM prefill_corrections
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM bayesian_posteriors
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+DELETE FROM agent_context
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM agent_actions
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+DELETE FROM action_steps
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM email_logs
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+DELETE FROM prospect_research_runs
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM simulation_chat_messages
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+DELETE FROM integration_signals
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM income_streams
+  WHERE layer_id IN (
+    SELECT id FROM simulation_layers
+     WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid));
+
+DELETE FROM layer_income_records
+  WHERE simulation_id IN (SELECT id FROM simulations WHE
+
+DELETE FROM simulation_layers
+  WHERE simulation_id IN (SELECT id FROM simulations WHERE user_id = @uid);
+
+DELETE FROM simulation_visibility WHERE user_id = @uid;
+
+DELETE FROM simulations           WHERE user_id = @uid;
+
+-- ── 5. Resumes ───────────────────────────────────────────────
+DELETE FROM resume_consents       WHERE user_id = @uid;
+DELETE FROM resumes               WHERE user_id = @uid;
+
+-- ── 6. Integrations ──────────────────────────────────────────
+DELETE FROM integration_activity_log
+  WHERE integration_id IN (
+    SELECT id FROM user_integrations WHERE user_id = @ui
+
+DELETE FROM integration_audit_log
+  WHERE integration_id IN (
+    SELECT id FROM user_integrations WHERE user_id = @ui
+
+DELETE FROM email_campaigns
+  WHERE integration_id IN (
+    SELECT id FROM user_integrations WHERE user_id = @ui
+
+DELETE FROM user_integrations     WHERE user_id = @uid;
+
+-- ── 7. Profile, sessions & notifications ─────────────
+DELETE FROM profile_inquiries     WHERE profile_user_id = @uid;
+DELETE FROM simulation_visibility WHERE user_id = @uid;
+DELETE FROM user_profiles         WHERE user_id = @uid;
+DELETE FROM user_sessions         WHERE user_id = @uid;
+DELETE FROM notifications         WHERE user_id = @uid;
+DELETE FROM notification_preferences WHERE user_id = @ui
+DELETE FROM social_post_queue
+  WHERE simulation_id IN (SELECT id FROM simulations WHEady null, safe
+
+-- ── 8. Misc ──────────────────────────────────────────
+DELETE FROM user_feedback         WHERE user_id = @uid;
+DELETE FROM published_pages       WHERE user_id = @uid;
+DELETE FROM signing_documents     WHERE user_id = @uid;
+DELETE FROM kajabi_products       WHERE user_id = @uid;
+DELETE FROM referral_signups      WHERE referred_user_id = @uid;
+DELETE FROM commissions           WHERE client_user_id
+DELETE FROM referral_partners     WHERE user_id = @uid;
+DELETE FROM ai_interactions       WHERE user_id = @uid;
+DELETE FROM audit_logs            WHERE user_id = @uid;

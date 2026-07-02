@@ -99,22 +99,45 @@ def format_contacts_for_prompt(contacts: list) -> str:
             parts.append(f'[{c.pipeline_stage}]')
         lines.append('  - ' + ', '.join(p for p in parts if p))
     return '\n'.join(lines)
+def _fallback_email_parts() -> tuple[str, str]:
+    """(local_part, domain) of the configured fallback contact address."""
+    from flask import current_app
+    base = current_app.config.get('FALLBACK_CONTACT_EMAIL', 'valuemanager.management@gmail.com')
+    local, _, domain = base.partition('@')
+    return local, domain
+
+
+def is_fallback_email(email: str) -> bool:
+    """True if the address is the configured fallback (base or numbered variant)."""
+    if not email:
+        return False
+    import re
+    local, domain = _fallback_email_parts()
+    pattern = re.compile(
+        r'^' + re.escape(local) + r'\d*@' + re.escape(domain) + r'$', re.IGNORECASE,
+    )
+    return bool(pattern.match(email.strip()))
+
+
 def get_next_fallback_email(user_id: str, used_emails: set[str] = None) -> str:
     """Find the next available incremented fallback email for the given user_id."""
     from app.models.contact import Contact
     import re
-    
+
     user_id = user_id or '_system'
-    
+    local, domain = _fallback_email_parts()
+
     # Query all contacts for this user starting with the prefix
     contacts = Contact.query.filter(
         Contact.user_id == user_id,
-        Contact.email.like('valuemanager.management%@gmail.com')
+        Contact.email.like(f'{local}%@{domain}')
     ).all()
-    
+
     max_num = 0
-    pattern = re.compile(r'^valuemanager\.management(\d+)@gmail\.com$', re.IGNORECASE)
-    
+    pattern = re.compile(
+        r'^' + re.escape(local) + r'(\d+)@' + re.escape(domain) + r'$', re.IGNORECASE,
+    )
+
     # Check DB contacts
     for c in contacts:
         match = pattern.match(c.email)
@@ -125,7 +148,7 @@ def get_next_fallback_email(user_id: str, used_emails: set[str] = None) -> str:
                     max_num = num
             except ValueError:
                 pass
-                
+
     # Check currently used fallback emails in this batch
     if used_emails:
         for email in used_emails:
@@ -137,8 +160,8 @@ def get_next_fallback_email(user_id: str, used_emails: set[str] = None) -> str:
                         max_num = num
                 except ValueError:
                     pass
-                    
-    return f'valuemanager.management{max_num + 1}@gmail.com'
+
+    return f'{local}{max_num + 1}@{domain}'
 
 
 def record_agent_contacts(
