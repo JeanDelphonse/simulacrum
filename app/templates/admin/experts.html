@@ -71,7 +71,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="admin-shell">
+<div class="sme-page">
   <nav class="admin-subnav">
     <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
     <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
@@ -82,7 +82,6 @@
     <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
   </nav>
 
-  <div class="sme-page">
     <h1 class="sme-title">Simi SME Assignment</h1>
     <p class="sme-sub">Manage subject-matter experts, normalize user expertise into canonical zones, and match users to the best-fit SME.</p>
 
@@ -160,7 +159,6 @@
         <div class="cov-grid" id="covGrid"></div>
       </div>
     </div>
-  </div>
 </div>
 
 <!-- SME create/edit modal -->
