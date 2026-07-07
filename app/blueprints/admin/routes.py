@@ -1665,43 +1665,78 @@ def reassign_expert_users(sme_id):
 
 # ── Users view + zone/SME assignment (FR-SME-05/06/07) ────────────────────────
 
+def _sme_get_or_create_profile(user_id):
+    """Return the user's profile, creating one lazily if missing (profiles are created
+    on demand elsewhere, so an SME action may be the first thing to need one)."""
+    from app.models.profile import UserProfile
+    from app.models.user import User
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if profile:
+        return profile
+    user = User.query.get(user_id)
+    if not user:
+        return None
+    from app.blueprints.profile.routes import _get_or_create_profile
+    return _get_or_create_profile(user)
+
+
 @admin_bp.route('/sme-users', methods=['GET'])
 @login_required
 @admin_required
 def list_sme_users():
-    """Users with canonical zones + assigned SME. Filterable by zone / sme / unassigned."""
+    """FR-SME-09 — table of ALL users with canonical zones + assigned SME.
+
+    Lists every (non-deleted) user, left-joining their profile; users who have not
+    been classified yet appear with empty zones so admins can assign/recompute them.
+    Filterable by zone / sme / unassigned.
+    """
     from app.models.profile import UserProfile
     from app.models.sme import SimiSME
+    from app.models.user import User
     zone = (request.args.get('zone') or '').strip().lower()
     sme_filter = (request.args.get('sme') or '').strip()
     unassigned_only = request.args.get('unassigned') == '1'
 
-    profiles = UserProfile.query.filter(UserProfile._canonical_zones.isnot(None)).all()
+    users = User.query.filter(User.deleted_at.is_(None)).order_by(User.created_at.desc()).all()
+    profiles = {p.user_id: p for p in UserProfile.query.all()}
     smes = {s.id: s for s in SimiSME.query.all()}
 
     rows = []
-    for p in profiles:
-        pz = p.primary_zone
-        if zone and pz != zone and zone not in [z.get('category') for z in p.canonical_zones]:
+    for u in users:
+        p = profiles.get(u.id)
+        czones = p.canonical_zones if p else []
+        pz = p.primary_zone if p else None
+        sme_id = p.sme_id if p else None
+
+        if zone and pz != zone and zone not in [z.get('category') for z in czones]:
             continue
-        if unassigned_only and p.sme_id:
+        if unassigned_only and sme_id:
             continue
-        if sme_filter and p.sme_id != sme_filter:
+        if sme_filter and sme_id != sme_filter:
             continue
-        sme = smes.get(p.sme_id) if p.sme_id else None
+
+        sme = smes.get(sme_id) if sme_id else None
         rows.append({
-            'user_id': p.user_id,
-            'display_name': p.display_name or p.username,
-            'username': p.username,
-            'canonical_zones': p.canonical_zones,
+            'user_id': u.id,
+            'display_name': (p.display_name if p and p.display_name else u.full_name) or u.email,
+            'username': p.username if p else None,
+            'email': u.email,
+            'canonical_zones': czones,
             'primary_zone': pz,
-            'sme_id': p.sme_id,
+            'has_zones': bool(czones),
+            'sme_id': sme_id,
             'sme_name': sme.full_name if sme else None,
-            'assignment_type': p.sme_assignment_type,
-            'needs_reassignment': bool(p.needs_reassignment),
-            'zones_computed_at': p.zones_computed_at.isoformat() if p.zones_computed_at else None,
+            'assignment_type': p.sme_assignment_type if p else None,
+            'needs_reassignment': bool(p.needs_reassignment) if p else False,
+            'zones_computed_at': p.zones_computed_at.isoformat() if (p and p.zones_computed_at) else None,
         })
-    rows.sort(key=lambda r: (r['sme_id'] is not None, r['display_name'].lower()))
+    # Attention first: needs-reassignment, then unassigned-with-zones, then the rest.
+    rows.sort(key=lambda r: (
+        not r['needs_reassignment'],
+        r['sme_id'] is not None,
+        not r['has_zones'],
+        (r['display_name'] or '').lower(),
+    ))
     return jsonify(rows), 200
 
 
@@ -1712,7 +1747,9 @@ def update_user_zones(user_id):
     """FR-SME-05 — admin manually edits a user's canonical zones (manual lock)."""
     from app.models.profile import UserProfile
     from app.services import sme_service
-    profile = UserProfile.query.filter_by(user_id=user_id).first_or_404()
+    profile = _sme_get_or_create_profile(user_id)
+    if not profile:
+        return jsonify({'error': 'User not found'}), 404
     data = request.get_json() or {}
 
     if data.get('reset_to_ai'):
@@ -1756,7 +1793,9 @@ def update_user_zones(user_id):
 def recompute_user_zones(user_id):
     from app.models.profile import UserProfile
     from app.services import sme_service
-    profile = UserProfile.query.filter_by(user_id=user_id).first_or_404()
+    profile = _sme_get_or_create_profile(user_id)
+    if not profile:
+        return jsonify({'error': 'User not found'}), 404
     force = bool((request.get_json() or {}).get('force'))
     sme_service.run_classification_and_assignment(profile, force=force)
     return jsonify({
@@ -1773,7 +1812,9 @@ def assign_user_sme(user_id):
     """FR-SME-06/07 — assign a user to an SME (manual) or trigger auto-match."""
     from app.models.profile import UserProfile
     from app.services import sme_service
-    profile = UserProfile.query.filter_by(user_id=user_id).first_or_404()
+    profile = _sme_get_or_create_profile(user_id)
+    if not profile:
+        return jsonify({'error': 'User not found'}), 404
     data = request.get_json() or {}
 
     if data.get('auto'):

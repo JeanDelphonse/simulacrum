@@ -136,7 +136,7 @@
           </tr></thead>
           <tbody></tbody>
         </table>
-        <div id="usrEmpty" class="empty" style="display:none">No users have canonical zones yet. Run “Recompute zones”.</div>
+        <div id="usrEmpty" class="empty" style="display:none">No users match the current filters. Users classify automatically on resume extraction — or run “Recompute zones” to classify everyone now.</div>
       </div>
     </div>
 
@@ -419,10 +419,11 @@ function renderUsers(){
   const tb = document.querySelector('#usrTable tbody');
   document.getElementById('usrEmpty').style.display = USERS.length ? 'none':'block';
   tb.innerHTML = USERS.map(u => `<tr id="urow-${u.user_id}">
-    <td><b>${esc(u.display_name)}</b><br><span class="muted" style="font-size:.72rem">@${esc(u.username)}</span>
+    <td><b>${esc(u.display_name)}</b><br><span class="muted" style="font-size:.72rem">${u.username?('@'+esc(u.username)):esc(u.email||'')}</span>
       ${u.needs_reassignment?' <span class="badge badge-review">reassign</span>':''}</td>
     <td>${(u.canonical_zones||[]).map(z => z.is_primary
-        ? `<b>${zonePill(z.category)}</b>` : zonePill(z.category)).join('') || '<span class="muted">—</span>'}
+        ? `<b>${zonePill(z.category)}</b>` : zonePill(z.category)).join('')
+        || (u.has_zones===false ? '<span class="muted" style="font-size:.72rem">not classified</span>' : '<span class="muted">—</span>')}
       <button class="btn btn-sec btn-xs" onclick="editUserZones('${u.user_id}')" title="Edit zones">✎</button></td>
     <td><select onchange="assignUser('${u.user_id}', this.value)">${smeOptions(u.sme_id)}</select></td>
     <td>${u.assignment_type?`<span class="badge badge-${u.assignment_type}">${u.assignment_type}</span>`:'<span class="muted">—</span>'}</td>
