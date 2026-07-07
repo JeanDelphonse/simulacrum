@@ -334,6 +334,15 @@ def publish_bio_page():
         db.session.commit()
     except Exception:
         pass
+    # SIM-PRD-OUTREACH-001: auto-enroll new users (bio published, no simulation)
+    # in the 3-email drip. Idempotent and gated on the master toggle inside.
+    try:
+        from app.services.outreach_campaign_service import enroll_new_user
+        enroll_new_user(current_user)
+    except Exception:
+        import logging as _log
+        _log.getLogger(__name__).exception('outreach drip enrollment on publish failed')
+        db.session.rollback()
     return jsonify({'status': bp.status, 'published_at': bp.published_at.isoformat()})
 
 

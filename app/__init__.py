@@ -204,7 +204,7 @@ def create_app(config_name=None):
             return
         # Skip public/auth pages
         _public_prefixes = ('/legal/', '/u/', '/share/', '/samples/', '/ref/',
-                            '/auth/', '/ping', '/sitemap.xml')
+                            '/auth/', '/ping', '/sitemap.xml', '/outreach/')
         if _req.path.startswith(_public_prefixes):
             return
         if _req.path in ('/login', '/register', '/verify-sent', '/forgot-password',

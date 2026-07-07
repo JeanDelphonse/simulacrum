@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Unsubscribe{% endblock %}
+{% block content %}
+<div class="page-container" style="max-width:520px;margin:4rem auto;text-align:center;padding:0 1rem;">
+  {% if ok %}
+    <div style="width:56px;height:56px;border-radius:50%;background:#dcfce7;color:#16a34a;font-size:28px;line-height:56px;margin:0 auto 1.25rem;">&#10003;</div>
+    <h1 style="font-size:1.5rem;color:#0f172a;margin:0 0 .75rem;">You've been unsubscribed</h1>
+    <p style="color:#475569;line-height:1.6;">
+      {% if email %}<strong>{{ email }}</strong> will {% else %}You will {% endif %}
+      no longer receive marketing or outreach emails from Simulacrum.
+    </p>
+    <p style="color:#94a3b8;font-size:.85rem;line-height:1.6;margin-top:1rem;">
+      You'll still receive essential account emails such as receipts and security notices.
+      Changed your mind? Contact <a href="mailto:team@simulacrumai.io" style="color:#14b8a6;">team@simulacrumai.io</a>.
+    </p>
+  {% else %}
+    <div style="width:56px;height:56px;border-radius:50%;background:#fee2e2;color:#b91c1c;font-size:28px;line-height:56px;margin:0 auto 1.25rem;">!</div>
+    <h1 style="font-size:1.5rem;color:#0f172a;margin:0 0 .75rem;">Invalid unsubscribe link</h1>
+    <p style="color:#475569;line-height:1.6;">
+      This unsubscribe link is invalid or has expired. To opt out of outreach emails,
+      email <a href="mailto:team@simulacrumai.io" style="color:#14b8a6;">team@simulacrumai.io</a>.
+    </p>
+  {% endif %}
+  <p style="margin-top:2rem;"><a href="/" style="color:#14b8a6;text-decoration:none;">&larr; Back to Simulacrum</a></p>
+</div>
+{% endblock %}

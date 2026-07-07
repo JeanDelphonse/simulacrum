@@ -150,6 +150,16 @@ def create_simulation():
     AuditLog.log('simulation_created', user_id=current_user.id, resource_id=sim_id)
     db.session.commit()
 
+    # SIM-PRD-OUTREACH-001: creating a simulation graduates the user out of the
+    # new-user drip immediately — no further drip emails send.
+    try:
+        from app.services.outreach_campaign_service import graduate_user
+        graduate_user(current_user.id)
+    except Exception:
+        import logging as _log
+        _log.getLogger(__name__).exception('outreach drip graduation failed')
+        db.session.rollback()
+
     # BCC notification to ops inbox
     import threading as _threading
     _bcc_app = current_app._get_current_object()

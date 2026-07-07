@@ -615,6 +615,36 @@ def get_email(start_dt, end_dt) -> dict:
         'date':         r.bounced_at.date().isoformat() if r.bounced_at else '',
     } for r in bounce_rows]
 
+    # SIM-PRD-OUTREACH-001 (FR-OUT-11): outreach campaign delivery metrics.
+    outreach = {}
+    try:
+        from app.models.outreach_campaign import OutreachSend
+        o_sent = db.session.query(func.count(OutreachSend.id)).filter(
+            OutreachSend.status == 'sent',
+            OutreachSend.sent_at.between(start_dt, end_dt)).scalar() or 0
+        o_opened = db.session.query(func.count(OutreachSend.id)).filter(
+            OutreachSend.status == 'sent',
+            OutreachSend.sent_at.between(start_dt, end_dt),
+            OutreachSend.opened_at.isnot(None)).scalar() or 0
+        o_clicked = db.session.query(func.count(OutreachSend.id)).filter(
+            OutreachSend.status == 'sent',
+            OutreachSend.sent_at.between(start_dt, end_dt),
+            OutreachSend.clicked_at.isnot(None)).scalar() or 0
+        o_drip = db.session.query(func.count(OutreachSend.id)).filter(
+            OutreachSend.status == 'sent', OutreachSend.kind == 'drip',
+            OutreachSend.sent_at.between(start_dt, end_dt)).scalar() or 0
+        o_broadcast = db.session.query(func.count(OutreachSend.id)).filter(
+            OutreachSend.status == 'sent', OutreachSend.kind == 'broadcast',
+            OutreachSend.sent_at.between(start_dt, end_dt)).scalar() or 0
+        outreach = {
+            'sent': o_sent, 'opened': o_opened, 'clicked': o_clicked,
+            'drip_sent': o_drip, 'broadcast_sent': o_broadcast,
+            'open_rate': round(o_opened / max(o_sent, 1) * 100, 1),
+            'click_rate': round(o_clicked / max(o_sent, 1) * 100, 1),
+        }
+    except Exception:
+        outreach = {}
+
     return {
         'summary': {
             'sent': sent, 'opened': opened, 'replied': replied,
@@ -622,6 +652,7 @@ def get_email(start_dt, end_dt) -> dict:
             'open_rate': open_rate, 'reply_rate': reply_rate,
             'bounce_rate': bounce_rate,
         },
+        'outreach':     outreach,
         'chart':        {'labels': labels, **daily},
         'bounce_table': bounce_table,
     }

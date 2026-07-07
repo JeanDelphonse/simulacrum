@@ -949,3 +949,458 @@ def get_analytics():
         'email':       _safe(get_email,       start_dt, end_dt),
         'alerts':      _safe(get_alerts,      start_dt, end_dt),
     })
+
+
+# ---------------------------------------------------------------------------
+# Outreach Email Automation — SIM-PRD-OUTREACH-001
+# ---------------------------------------------------------------------------
+
+_OUTREACH_CONFIG_KEYS = {
+    'outreach_enabled', 'outreach_initial_delay_hours',
+    'outreach_cadence_days', 'outreach_require_approval',
+}
+
+
+@admin_bp.route('/outreach/overview', methods=['GET'])
+@login_required
+@admin_required
+def outreach_overview():
+    """Config, live segment counts, and enrollment/queue summary (FR-OUT-01/02)."""
+    from app.services import outreach_campaign_service as ocs
+    from app.models.outreach_campaign import OutreachEnrollment, OutreachSend
+
+    cfg = ocs.get_config()
+    counts = ocs.segment_counts()
+
+    enrollment_stats = {
+        'active':    OutreachEnrollment.query.filter_by(status='active').count(),
+        'graduated': OutreachEnrollment.query.filter_by(status='graduated').count(),
+        'completed': OutreachEnrollment.query.filter_by(status='completed').count(),
+        'removed':   OutreachEnrollment.query.filter_by(status='removed').count(),
+    }
+    queue_pending = OutreachSend.query.filter(
+        OutreachSend.status.in_(OutreachSend.PENDING_STATUSES)).count()
+    awaiting_approval = OutreachSend.query.filter_by(status='awaiting_approval').count()
+
+    return jsonify({
+        'config': cfg,
+        'segments': counts,
+        'enrollments': enrollment_stats,
+        'queue_pending': queue_pending,
+        'awaiting_approval': awaiting_approval,
+    }), 200
+
+
+@admin_bp.route('/outreach/config', methods=['PUT'])
+@login_required
+@admin_required
+def outreach_update_config():
+    """Update sequence settings: initial delay, cadence, approval mode, master toggle."""
+    data = request.get_json(silent=True) or {}
+    updated = {}
+    for key in _OUTREACH_CONFIG_KEYS:
+        if key not in data:
+            continue
+        val = data[key]
+        if key in ('outreach_enabled', 'outreach_require_approval'):
+            val = 'true' if str(val).lower() in ('true', '1', 'yes', 'on') else 'false'
+        else:
+            try:
+                iv = int(val)
+                if iv < 0:
+                    return jsonify({'error': f'{key} must be non-negative'}), 400
+                val = str(iv)
+            except (TypeError, ValueError):
+                return jsonify({'error': f'{key} must be an integer'}), 400
+        PlatformSetting.set(key, val, updated_by=current_user.id)
+        updated[key] = val
+    if not updated:
+        return jsonify({'error': 'No valid fields provided'}), 400
+    AuditLog.log('outreach_config_updated', user_id=current_user.id, metadata=updated)
+    db.session.commit()
+    from app.services import outreach_campaign_service as ocs
+    return jsonify({'config': ocs.get_config(), 'updated': updated}), 200
+
+
+@admin_bp.route('/outreach/templates', methods=['GET'])
+@login_required
+@admin_required
+def outreach_list_templates():
+    """List all effective templates (drip defaults seeded on demand) (FR-OUT-06)."""
+    from app.services import outreach_campaign_service as ocs
+    from app.models.outreach_campaign import OutreachTemplate
+
+    ocs.seed_default_templates()
+    rows = {t.template_key: t for t in OutreachTemplate.query.all()}
+    out = []
+    for key in OutreachTemplate.DRIP_KEYS:
+        tpl = ocs.get_template(key)
+        row = rows.get(key)
+        out.append({
+            'template_key': key,
+            'name': tpl['name'],
+            'subject': tpl['subject'],
+            'preview_text': tpl['preview_text'],
+            'body': tpl['body'],
+            'is_drip': True,
+            'updated_at': row.updated_at.isoformat() if row and row.updated_at else None,
+        })
+    # Named (non-drip) broadcast templates
+    for t in OutreachTemplate.query.filter_by(is_drip=False).all():
+        out.append(t.to_dict())
+    return jsonify({
+        'templates': out,
+        'tokens': ['first_name', 'bio_url', 'dashboard_url', 'slug'],
+    }), 200
+
+
+@admin_bp.route('/outreach/templates/<template_key>', methods=['GET'])
+@login_required
+@admin_required
+def outreach_get_template(template_key):
+    from app.services import outreach_campaign_service as ocs
+    tpl = ocs.get_template(template_key)
+    if not tpl:
+        return jsonify({'error': 'Unknown template'}), 404
+    return jsonify(tpl), 200
+
+
+@admin_bp.route('/outreach/templates/<template_key>', methods=['PUT'])
+@login_required
+@admin_required
+def outreach_update_template(template_key):
+    """Save template copy — updates the default for all future sends (FR-OUT-06)."""
+    from app.models.outreach_campaign import OutreachTemplate
+    data = request.get_json(silent=True) or {}
+    subject = (data.get('subject') or '').strip()
+    body = (data.get('body') or '').strip()
+    if not subject or not body:
+        return jsonify({'error': 'subject and body are required'}), 400
+
+    row = OutreachTemplate.query.filter_by(template_key=template_key).first()
+    is_drip = template_key in OutreachTemplate.DRIP_KEYS
+    if not row:
+        row = OutreachTemplate(template_key=template_key, is_drip=is_drip, subject=subject, body=body)
+        db.session.add(row)
+    row.subject = subject[:300]
+    row.preview_text = (data.get('preview_text') or '').strip()[:200] or None
+    row.body = body
+    if 'name' in data:
+        row.name = (data.get('name') or '').strip()[:120] or None
+    row.updated_by = current_user.id
+    AuditLog.log('outreach_template_updated', user_id=current_user.id,
+                 metadata={'template_key': template_key})
+    db.session.commit()
+    return jsonify(row.to_dict()), 200
+
+
+@admin_bp.route('/outreach/templates/preview', methods=['POST'])
+@login_required
+@admin_required
+def outreach_preview_template():
+    """Render subject/preview/body with sample tokens for the live preview panel."""
+    from app.services import outreach_campaign_service as ocs
+    data = request.get_json(silent=True) or {}
+    tokens = ocs.sample_tokens()
+    subject = ocs.render_tokens(data.get('subject') or '', tokens)
+    preview = ocs.render_tokens(data.get('preview_text') or '', tokens)
+    body = ocs.render_tokens(data.get('body') or '', tokens)
+    unsub = f'{ocs.BASE_URL}/outreach/unsubscribe/sample'
+    html = ocs.render_email_html(body, unsub, preheader=preview)
+    return jsonify({'subject': subject, 'preview_text': preview, 'html': html}), 200
+
+
+@admin_bp.route('/outreach/queue', methods=['GET'])
+@login_required
+@admin_required
+def outreach_queue():
+    """Scheduled/queued drip emails waiting to send, grouped by email # (FR-OUT-07)."""
+    from app.models.outreach_campaign import OutreachSend
+    status = request.args.get('status')
+    q = OutreachSend.query.filter(OutreachSend.kind == OutreachSend.KIND_DRIP)
+    if status:
+        q = q.filter(OutreachSend.status == status)
+    else:
+        q = q.filter(OutreachSend.status.in_(OutreachSend.PENDING_STATUSES))
+    rows = q.order_by(OutreachSend.scheduled_at.asc()).limit(500).all()
+
+    user_ids = list({r.user_id for r in rows})
+    users = {u.id: u for u in User.query.filter(User.id.in_(user_ids)).all()} if user_ids else {}
+    out = []
+    for r in rows:
+        u = users.get(r.user_id)
+        d = r.to_dict()
+        d['recipient_name'] = (u.full_name if u else None) or r.to_email
+        out.append(d)
+    return jsonify({'queue': out, 'count': len(out)}), 200
+
+
+@admin_bp.route('/outreach/sends/<send_id>', methods=['GET'])
+@login_required
+@admin_required
+def outreach_get_send(send_id):
+    """Pre-rendered instance for editing (FR-OUT-07)."""
+    from app.models.outreach_campaign import OutreachSend
+    from app.services import outreach_campaign_service as ocs
+    send = OutreachSend.query.get_or_404(send_id)
+    d = send.to_dict()
+    unsub = f'{ocs.BASE_URL}/outreach/unsubscribe/preview'
+    d['html'] = ocs.render_email_html(send.body_snapshot, unsub,
+                                      preheader=send.preview_text or '')
+    return jsonify(d), 200
+
+
+@admin_bp.route('/outreach/sends/<send_id>', methods=['PUT'])
+@login_required
+@admin_required
+def outreach_edit_send(send_id):
+    """Instance edit: edit subject/body for this specific send — flags was_edited."""
+    from app.models.outreach_campaign import OutreachSend
+    send = OutreachSend.query.get_or_404(send_id)
+    if send.status not in OutreachSend.PENDING_STATUSES:
+        return jsonify({'error': 'Only pending sends can be edited'}), 409
+    data = request.get_json(silent=True) or {}
+    if 'subject' in data:
+        subject = (data['subject'] or '').strip()
+        if not subject:
+            return jsonify({'error': 'subject cannot be empty'}), 400
+        send.subject = subject[:300]
+    if 'body' in data:
+        body = (data['body'] or '').strip()
+        if not body:
+            return jsonify({'error': 'body cannot be empty'}), 400
+        send.body_snapshot = body
+    if 'preview_text' in data:
+        send.preview_text = (data['preview_text'] or '').strip()[:200] or None
+    send.was_edited = True
+    AuditLog.log('outreach_send_edited', user_id=current_user.id, metadata={'send_id': send_id})
+    db.session.commit()
+    return jsonify(send.to_dict()), 200
+
+
+@admin_bp.route('/outreach/sends/<send_id>/<action>', methods=['POST'])
+@login_required
+@admin_required
+def outreach_send_action(send_id, action):
+    """Per-email controls: pause / resume / skip / send-now / approve (FR-OUT-07/08)."""
+    from app.models.outreach_campaign import OutreachSend
+    from app.services import outreach_campaign_service as ocs
+    send = OutreachSend.query.get_or_404(send_id)
+
+    if action == 'pause':
+        if send.status not in OutreachSend.PENDING_STATUSES:
+            return jsonify({'error': 'Cannot pause a completed send'}), 409
+        send.status = OutreachSend.STATUS_PAUSED
+    elif action == 'resume':
+        if send.status != OutreachSend.STATUS_PAUSED:
+            return jsonify({'error': 'Send is not paused'}), 409
+        send.status = OutreachSend.STATUS_QUEUED
+    elif action == 'skip':
+        if send.status not in OutreachSend.PENDING_STATUSES:
+            return jsonify({'error': 'Cannot skip a completed send'}), 409
+        send.status = OutreachSend.STATUS_SKIPPED
+    elif action == 'approve':
+        if send.status != OutreachSend.STATUS_AWAITING_APPROVAL:
+            return jsonify({'error': 'Send is not awaiting approval'}), 409
+        send.approved_by = current_user.id
+        from datetime import datetime as _dt
+        send.approved_at = _dt.utcnow()
+        send.status = OutreachSend.STATUS_QUEUED
+    elif action == 'send-now':
+        db.session.commit()
+        result = ocs.send_now(send)
+        # Advance enrollment if this was a drip step that sent successfully.
+        if result.get('status') == 'sent':
+            _advance_enrollment_after_send(send)
+        AuditLog.log('outreach_send_now', user_id=current_user.id,
+                     metadata={'send_id': send_id, 'result': result.get('status')})
+        db.session.commit()
+        return jsonify({'result': result, 'send': send.to_dict()}), 200
+    else:
+        return jsonify({'error': 'Unknown action'}), 400
+
+    AuditLog.log(f'outreach_send_{action}', user_id=current_user.id, metadata={'send_id': send_id})
+    db.session.commit()
+    return jsonify(send.to_dict()), 200
+
+
+def _advance_enrollment_after_send(send):
+    """Advance the drip enrollment after a manual send-now of a drip step."""
+    from datetime import timedelta, datetime as _dt
+    from app.models.outreach_campaign import OutreachEnrollment
+    from app.services import outreach_campaign_service as ocs
+    if send.kind != send.KIND_DRIP or not send.enrollment_id:
+        return
+    enrollment = OutreachEnrollment.query.get(send.enrollment_id)
+    if not enrollment or enrollment.status != OutreachEnrollment.STATUS_ACTIVE:
+        return
+    step = send.step_number or (enrollment.current_step + 1)
+    if step <= enrollment.current_step:
+        return
+    enrollment.current_step = step
+    cfg = ocs.get_config()
+    if step >= 3:
+        enrollment.status = OutreachEnrollment.STATUS_COMPLETED
+        enrollment.next_send_at = None
+    else:
+        enrollment.next_send_at = _dt.utcnow() + timedelta(days=cfg['cadence_days'])
+        ocs._materialize_next_send(enrollment, step=step + 1, cfg=cfg)
+
+
+@admin_bp.route('/outreach/sends/approve-all', methods=['POST'])
+@login_required
+@admin_required
+def outreach_approve_all():
+    """Bulk-approve all sends awaiting approval (FR-OUT-08)."""
+    from datetime import datetime as _dt
+    from app.models.outreach_campaign import OutreachSend
+    rows = OutreachSend.query.filter_by(status=OutreachSend.STATUS_AWAITING_APPROVAL).all()
+    now = _dt.utcnow()
+    for r in rows:
+        r.status = OutreachSend.STATUS_QUEUED
+        r.approved_by = current_user.id
+        r.approved_at = now
+    AuditLog.log('outreach_approve_all', user_id=current_user.id, metadata={'count': len(rows)})
+    db.session.commit()
+    return jsonify({'ok': True, 'approved': len(rows)}), 200
+
+
+@admin_bp.route('/outreach/enrollments', methods=['GET'])
+@login_required
+@admin_required
+def outreach_list_enrollments():
+    from app.models.outreach_campaign import OutreachEnrollment
+    status = request.args.get('status', 'active')
+    q = OutreachEnrollment.query
+    if status != 'all':
+        q = q.filter_by(status=status)
+    rows = q.order_by(OutreachEnrollment.created_at.desc()).limit(500).all()
+    user_ids = list({r.user_id for r in rows})
+    users = {u.id: u for u in User.query.filter(User.id.in_(user_ids)).all()} if user_ids else {}
+    out = []
+    for r in rows:
+        u = users.get(r.user_id)
+        d = r.to_dict()
+        d['email'] = u.email if u else None
+        d['full_name'] = u.full_name if u else None
+        out.append(d)
+    return jsonify({'enrollments': out, 'count': len(out)}), 200
+
+
+@admin_bp.route('/outreach/enrollments/<enrollment_id>/remove', methods=['POST'])
+@login_required
+@admin_required
+def outreach_remove_enrollment(enrollment_id):
+    """Remove a user from the sequence — stops all remaining drip emails (FR-OUT-07)."""
+    from app.models.outreach_campaign import OutreachEnrollment, OutreachSend
+    enrollment = OutreachEnrollment.query.get_or_404(enrollment_id)
+    enrollment.status = OutreachEnrollment.STATUS_REMOVED
+    OutreachSend.query.filter(
+        OutreachSend.enrollment_id == enrollment.id,
+        OutreachSend.status.in_(OutreachSend.PENDING_STATUSES),
+    ).update({OutreachSend.status: OutreachSend.STATUS_SKIPPED}, synchronize_session=False)
+    AuditLog.log('outreach_enrollment_removed', user_id=current_user.id,
+                 metadata={'enrollment_id': enrollment_id, 'target_user_id': enrollment.user_id})
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+# ── Broadcast ────────────────────────────────────────────────────────────────
+
+def _broadcast_recipients(data):
+    """Resolve the recipient list for a broadcast request payload."""
+    from datetime import datetime as _dt
+    from app.services import outreach_campaign_service as ocs
+    segment = data.get('segment', 'new')
+    phase = data.get('phase')
+    signup_from = signup_to = None
+    if data.get('signup_from'):
+        try:
+            signup_from = _dt.fromisoformat(data['signup_from'].replace('Z', ''))
+        except ValueError:
+            pass
+    if data.get('signup_to'):
+        try:
+            signup_to = _dt.fromisoformat(data['signup_to'].replace('Z', ''))
+        except ValueError:
+            pass
+    return ocs.resolve_segment(segment, phase=phase,
+                               signup_from=signup_from, signup_to=signup_to)
+
+
+@admin_bp.route('/outreach/broadcast/count', methods=['POST'])
+@login_required
+@admin_required
+def outreach_broadcast_count():
+    """Live recipient count for the selected segment (FR-OUT-09)."""
+    recipients = _broadcast_recipients(request.get_json(silent=True) or {})
+    return jsonify({'count': len(recipients)}), 200
+
+
+@admin_bp.route('/outreach/broadcast/test', methods=['POST'])
+@login_required
+@admin_required
+def outreach_broadcast_test():
+    """Send a test copy with sample tokens to the admin (FR-OUT-09)."""
+    from app.services import outreach_campaign_service as ocs
+    data = request.get_json(silent=True) or {}
+    to_addr = (data.get('to') or current_user.email or '').strip()
+    subject = (data.get('subject') or '').strip()
+    body = (data.get('body') or '').strip()
+    if not to_addr or not subject or not body:
+        return jsonify({'error': 'to, subject, and body are required'}), 400
+    result = ocs.send_test_email(to_addr, subject, body, data.get('preview_text') or '')
+    code = 200 if result.get('status') == 'sent' else 500
+    return jsonify(result), code
+
+
+@admin_bp.route('/outreach/broadcast/send', methods=['POST'])
+@login_required
+@admin_required
+def outreach_broadcast_send():
+    """Send now or schedule a broadcast to a segment (FR-OUT-09).
+
+    Confirmation gate: sends over 50 recipients require confirm=true.
+    """
+    from datetime import datetime as _dt
+    from app.services import outreach_campaign_service as ocs
+    data = request.get_json(silent=True) or {}
+    subject = (data.get('subject') or '').strip()
+    body = (data.get('body') or '').strip()
+    if not subject or not body:
+        return jsonify({'error': 'subject and body are required'}), 400
+
+    recipients = _broadcast_recipients(data)
+    count = len(recipients)
+    if count == 0:
+        return jsonify({'error': 'No eligible recipients in this segment'}), 400
+
+    if count > 50 and not data.get('confirm'):
+        return jsonify({
+            'requires_confirmation': True,
+            'count': count,
+            'message': f'This broadcast will send to {count} recipients. Confirm to proceed.',
+        }), 409
+
+    schedule_at = None
+    if data.get('schedule_at'):
+        try:
+            schedule_at = _dt.fromisoformat(data['schedule_at'].replace('Z', ''))
+        except ValueError:
+            return jsonify({'error': 'schedule_at must be an ISO datetime'}), 400
+
+    result = ocs.create_broadcast(
+        recipients=recipients,
+        subject=subject,
+        body=body,
+        preview_text=data.get('preview_text') or '',
+        template_key=data.get('template_key') or 'broadcast',
+        schedule_at=schedule_at,
+        dispatch=(schedule_at is None),
+    )
+    AuditLog.log('outreach_broadcast_sent', user_id=current_user.id, metadata={
+        'segment': data.get('segment'), 'count': count,
+        'scheduled': bool(schedule_at), 'subject': subject[:120],
+    })
+    db.session.commit()
+    return jsonify({'ok': True, 'recipient_count': count, **result}), 200

@@ -33,6 +33,9 @@ from app.models.bio_page import BioPage, BioChatSession, BioChatMessage
 from app.models.integration_signal import IntegrationSignal
 from app.models.layer6 import ActionItem, CyclePosteriorSnapshot
 from app.models.outreach_email import EmailLog, EmailSuppression
+from app.models.outreach_campaign import (
+    OutreachTemplate, OutreachEnrollment, OutreachSend,
+)
 from app.models.action_step import ActionStep
 from app.models.social import (
     BioPageLike, UserConnection, ActivityEvent,
@@ -62,6 +65,7 @@ __all__ = [
     'BioPage', 'BioChatSession', 'BioChatMessage',
     'IntegrationSignal', 'ActionItem', 'CyclePosteriorSnapshot',
     'EmailLog', 'EmailSuppression',
+    'OutreachTemplate', 'OutreachEnrollment', 'OutreachSend',
     'ActionStep',
     'BioPageLike', 'UserConnection', 'ActivityEvent',
     'PlatformChat', 'PlatformChatMessage',

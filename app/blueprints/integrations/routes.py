@@ -2031,6 +2031,23 @@ def sendgrid_event_webhook():
         event_type = event.get('event')
         sg_message_id = event.get('sg_message_id') or event.get('sg_event_id', '')
 
+        # SIM-PRD-OUTREACH-001: outreach campaign sends carry an outreach_send_id
+        # custom arg. Update the OutreachSend engagement fields when present.
+        outreach_send_id = event.get('outreach_send_id')
+        if outreach_send_id:
+            try:
+                from app.models.outreach_campaign import OutreachSend
+                osend = OutreachSend.query.get(outreach_send_id)
+                if osend:
+                    if event_type == 'open':
+                        osend.opened_at = osend.opened_at or datetime.utcnow()
+                        osend.open_count = (osend.open_count or 0) + 1
+                    elif event_type == 'click':
+                        osend.clicked_at = osend.clicked_at or datetime.utcnow()
+                        osend.click_count = (osend.click_count or 0) + 1
+            except Exception:
+                logger.exception('outreach_send webhook update failed')
+
         log = None
         if sg_message_id:
             log = EmailLog.query.filter_by(provider_message_id=sg_message_id.split('.')[0]).first()

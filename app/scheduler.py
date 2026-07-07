@@ -72,6 +72,19 @@ def _alert_digest_job(app):
             logger.exception('APScheduler: alert digest job failed')
 
 
+def _outreach_drip_job(app):
+    with app.app_context():
+        _refresh_pool(app)
+        try:
+            from app.services.outreach_campaign_service import (
+                process_drip_queue, process_scheduled_broadcasts,
+            )
+            process_drip_queue()
+            process_scheduled_broadcasts()
+        except Exception:
+            logger.exception('APScheduler: outreach drip/broadcast job failed')
+
+
 def start_scheduler(app):
     """Start the background scheduler.  Safe to call multiple times — no-ops if already running.
     If APScheduler is not installed the function logs a warning and returns — the app still starts."""
@@ -131,6 +144,18 @@ def start_scheduler(app):
         minute=0,
         args=[app],
         id='alert-digest-daily',
+        replace_existing=True,
+    )
+
+    # SIM-PRD-OUTREACH-001: drip queue + scheduled broadcasts. Runs every 30 min;
+    # the 12h/Day-7/Day-14 cadence is enforced per-send by scheduled_at, so a
+    # sub-hour tick just means due emails go out promptly.
+    _scheduler.add_job(
+        _outreach_drip_job,
+        'interval',
+        seconds=1800,
+        args=[app],
+        id='outreach-drip-check',
         replace_existing=True,
     )
 

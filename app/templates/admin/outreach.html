@@ -1,0 +1,583 @@
+{% extends 'base.html' %}
+{% block title %}Outreach — Admin{% endblock %}
+{% block head %}
+<style>
+.out-page { max-width:1100px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+.out-title { font-size:1.4rem; font-weight:700; color:#0f172a; margin:0 0 1rem; }
+.out-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+.out-stat { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:.9rem 1rem; }
+.out-stat-label { font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:.3rem; }
+.out-stat-value { font-size:1.5rem; font-weight:800; color:#0f172a; line-height:1.1; }
+.out-tabs { display:flex; gap:.4rem; border-bottom:1px solid #e5e7eb; margin-bottom:1.25rem; flex-wrap:wrap; }
+.out-tab { padding:.5rem .9rem; font-size:.85rem; font-weight:600; color:#6b7280; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; }
+.out-tab.active { color:#0d9488; border-bottom-color:#0d9488; }
+.out-panel { display:none; }
+.out-panel.active { display:block; }
+.out-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem; }
+.out-card h2 { font-size:1rem; font-weight:700; color:#0f172a; margin:0 0 1rem; }
+.out-field { margin-bottom:1rem; }
+.out-field label { display:block; font-size:.78rem; font-weight:600; color:#374151; margin-bottom:.35rem; }
+.out-field input[type=text], .out-field input[type=number], .out-field input[type=email],
+.out-field input[type=datetime-local], .out-field select, .out-field textarea {
+  width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px; padding:.5rem .65rem; font-size:.85rem; color:#111827; font-family:inherit; }
+.out-field textarea { min-height:200px; resize:vertical; line-height:1.55; }
+.out-row { display:flex; gap:1rem; flex-wrap:wrap; }
+.out-row > * { flex:1; min-width:180px; }
+.btn { display:inline-block; padding:.5rem .95rem; font-size:.82rem; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid transparent; }
+.btn-primary { background:#0d9488; color:#fff; }
+.btn-primary:hover { background:#0f766e; }
+.btn-sec { background:#fff; color:#374151; border-color:#d1d5db; }
+.btn-sec:hover { background:#f3f4f6; }
+.btn-danger { background:#fff; color:#b91c1c; border-color:#fca5a5; }
+.btn-danger:hover { background:#fef2f2; }
+.btn-xs { padding:.28rem .55rem; font-size:.72rem; }
+.out-tokens { font-size:.72rem; color:#6b7280; margin-top:.35rem; }
+.out-tokens code { background:#f1f5f9; border-radius:4px; padding:.05rem .3rem; color:#0d9488; cursor:pointer; }
+.out-preview { border:1px solid #e5e7eb; border-radius:8px; background:#f8fafc; padding:0; overflow:hidden; }
+.out-preview-subj { padding:.6rem .85rem; border-bottom:1px solid #e5e7eb; font-size:.82rem; color:#111827; background:#fff; }
+.out-preview iframe { width:100%; height:520px; border:none; background:#f4f6f8; }
+.out-table { width:100%; border-collapse:collapse; font-size:.8rem; }
+.out-table th { background:#f9fafb; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; font-weight:700; padding:.5rem .7rem; text-align:left; border-bottom:1px solid #e5e7eb; }
+.out-table td { padding:.5rem .7rem; border-bottom:1px solid #f3f4f6; color:#374151; }
+.out-table tr:hover td { background:#f9fafb; }
+.pill { display:inline-block; font-size:.68rem; font-weight:700; padding:.15rem .5rem; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; }
+.pill-queued { background:#e0f2fe; color:#0369a1; }
+.pill-awaiting_approval { background:#fef9c3; color:#92400e; }
+.pill-paused { background:#f3f4f6; color:#6b7280; }
+.pill-scheduled { background:#ede9fe; color:#6d28d9; }
+.pill-sent { background:#dcfce7; color:#16a34a; }
+.pill-skipped, .pill-suppressed, .pill-failed { background:#fee2e2; color:#b91c1c; }
+.out-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+@media (max-width:820px){ .out-editor-grid{ grid-template-columns:1fr; } }
+.out-msg { font-size:.8rem; margin-top:.6rem; }
+.out-msg.ok { color:#16a34a; }
+.out-msg.err { color:#b91c1c; }
+.out-toggle { display:flex; align-items:center; gap:.6rem; }
+.out-note { font-size:.78rem; color:#6b7280; line-height:1.5; }
+.modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.55); display:none; align-items:center; justify-content:center; z-index:1000; padding:1rem; }
+.modal-backdrop.open { display:flex; }
+.modal { background:#fff; border-radius:12px; max-width:900px; width:100%; max-height:90vh; overflow:auto; padding:1.5rem; }
+.modal h3 { margin:0 0 1rem; font-size:1.05rem; color:#0f172a; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="out-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link active">Outreach</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
+  </nav>
+
+  <h1 class="out-title">Outreach Email Automation</h1>
+
+  <div class="out-summary" id="outSummary"></div>
+
+  <div class="out-tabs">
+    <button class="out-tab active" data-tab="sequences" onclick="switchTab('sequences')">Automated Drip</button>
+    <button class="out-tab" data-tab="queue" onclick="switchTab('queue')">Queue</button>
+    <button class="out-tab" data-tab="enrollments" onclick="switchTab('enrollments')">Enrollments</button>
+    <button class="out-tab" data-tab="broadcasts" onclick="switchTab('broadcasts')">Broadcasts</button>
+  </div>
+
+  <!-- ── Automated Drip ─────────────────────────────────────────────────── -->
+  <div class="out-panel active" id="panel-sequences">
+    <div class="out-card">
+      <h2>Sequence Settings</h2>
+      <div class="out-row">
+        <div class="out-field">
+          <label>Initial delay (hours after signup)</label>
+          <input type="number" id="cfgDelay" min="0" value="12">
+        </div>
+        <div class="out-field">
+          <label>Cadence between emails (days)</label>
+          <input type="number" id="cfgCadence" min="0" value="7">
+        </div>
+      </div>
+      <div class="out-field out-toggle">
+        <input type="checkbox" id="cfgApproval">
+        <label for="cfgApproval" style="margin:0;">Require approval before drip sends (queue each email as “Awaiting approval”)</label>
+      </div>
+      <div class="out-field out-toggle">
+        <input type="checkbox" id="cfgEnabled">
+        <label for="cfgEnabled" style="margin:0;">Drip enrollment enabled (master switch)</label>
+      </div>
+      <button class="btn btn-primary" onclick="saveConfig()">Save settings</button>
+      <span class="out-msg" id="cfgMsg"></span>
+      <p class="out-note" style="margin-top:.75rem;">
+        The 3-email structure is fixed (Email 1 at initial delay, Email 2 after one cadence, Email 3 after two).
+        New users auto-enroll on bio-page publish when they have no simulation, and graduate out the moment they create one.
+      </p>
+    </div>
+
+    <div class="out-card">
+      <h2>Templates</h2>
+      <div class="out-field">
+        <label>Editing</label>
+        <select id="tplSelect" onchange="loadTemplate()"></select>
+      </div>
+      <div class="out-editor-grid">
+        <div>
+          <div class="out-field">
+            <label>Subject</label>
+            <input type="text" id="tplSubject" oninput="renderTplPreview()">
+          </div>
+          <div class="out-field">
+            <label>Preview text</label>
+            <input type="text" id="tplPreview" oninput="renderTplPreview()">
+          </div>
+          <div class="out-field">
+            <label>Body</label>
+            <textarea id="tplBody" oninput="renderTplPreview()"></textarea>
+            <div class="out-tokens">
+              Tokens (click to insert):
+              <code onclick="insertToken('tplBody','first_name')">{{ '{{first_name}}' }}</code>
+              <code onclick="insertToken('tplBody','bio_url')">{{ '{{bio_url}}' }}</code>
+              <code onclick="insertToken('tplBody','dashboard_url')">{{ '{{dashboard_url}}' }}</code>
+              <code onclick="insertToken('tplBody','slug')">{{ '{{slug}}' }}</code>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="saveTemplate()">Save template</button>
+          <span class="out-msg" id="tplMsg"></span>
+        </div>
+        <div>
+          <label class="out-field" style="display:block;font-size:.78rem;font-weight:600;color:#374151;">Live preview</label>
+          <div class="out-preview">
+            <div class="out-preview-subj" id="tplPrevSubj"></div>
+            <iframe id="tplPrevFrame"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Queue ──────────────────────────────────────────────────────────── -->
+  <div class="out-panel" id="panel-queue">
+    <div class="out-card">
+      <h2 style="display:flex;justify-content:space-between;align-items:center;">
+        Drip Queue
+        <button class="btn btn-sec btn-xs" onclick="approveAll()">Approve all pending</button>
+      </h2>
+      <div class="out-table-wrap">
+        <table class="out-table">
+          <thead><tr><th>Recipient</th><th>Email</th><th>Scheduled</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
+          <tbody id="queueBody"><tr><td colspan="5" style="color:#9ca3af;">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Enrollments ────────────────────────────────────────────────────── -->
+  <div class="out-panel" id="panel-enrollments">
+    <div class="out-card">
+      <h2>
+        Enrollments
+        <select id="enrStatus" onchange="loadEnrollments()" style="font-size:.78rem;padding:.25rem .5rem;border:1px solid #d1d5db;border-radius:6px;margin-left:.5rem;">
+          <option value="active">Active</option>
+          <option value="graduated">Graduated</option>
+          <option value="completed">Completed</option>
+          <option value="removed">Removed</option>
+          <option value="all">All</option>
+        </select>
+      </h2>
+      <div class="out-table-wrap">
+        <table class="out-table">
+          <thead><tr><th>User</th><th>Step</th><th>Next send</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
+          <tbody id="enrBody"><tr><td colspan="5" style="color:#9ca3af;">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Broadcasts ─────────────────────────────────────────────────────── -->
+  <div class="out-panel" id="panel-broadcasts">
+    <div class="out-card">
+      <h2>Compose Broadcast</h2>
+      <div class="out-editor-grid">
+        <div>
+          <div class="out-field">
+            <label>Segment</label>
+            <select id="bcSegment" onchange="onSegmentChange()">
+              <option value="new">New users (bio page, no simulation)</option>
+              <option value="existing">Existing users (has a simulation)</option>
+              <option value="existing_phase">Existing users by phase</option>
+              <option value="all">All users</option>
+            </select>
+          </div>
+          <div class="out-field" id="bcPhaseField" style="display:none;">
+            <label>Phase</label>
+            <select id="bcPhase" onchange="refreshCount()">
+              <option value="active">Active</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="dormant">Dormant</option>
+            </select>
+          </div>
+          <div class="out-row">
+            <div class="out-field">
+              <label>Signed up from (optional)</label>
+              <input type="datetime-local" id="bcFrom" onchange="refreshCount()">
+            </div>
+            <div class="out-field">
+              <label>Signed up to (optional)</label>
+              <input type="datetime-local" id="bcTo" onchange="refreshCount()">
+            </div>
+          </div>
+          <p class="out-note">Recipients: <strong id="bcCount">—</strong> (suppressed &amp; unsubscribed addresses excluded automatically)</p>
+          <hr style="border:none;border-top:1px solid #f1f5f9;margin:1rem 0;">
+          <div class="out-field">
+            <label>Start from template (optional)</label>
+            <select id="bcTemplate" onchange="loadBroadcastTemplate()"><option value="">— Blank —</option></select>
+          </div>
+          <div class="out-field">
+            <label>Subject</label>
+            <input type="text" id="bcSubject" oninput="renderBcPreview()">
+          </div>
+          <div class="out-field">
+            <label>Preview text</label>
+            <input type="text" id="bcPreview" oninput="renderBcPreview()">
+          </div>
+          <div class="out-field">
+            <label>Body</label>
+            <textarea id="bcBody" oninput="renderBcPreview()"></textarea>
+            <div class="out-tokens">
+              Tokens:
+              <code onclick="insertToken('bcBody','first_name')">{{ '{{first_name}}' }}</code>
+              <code onclick="insertToken('bcBody','bio_url')">{{ '{{bio_url}}' }}</code>
+              <code onclick="insertToken('bcBody','dashboard_url')">{{ '{{dashboard_url}}' }}</code>
+              <code onclick="insertToken('bcBody','slug')">{{ '{{slug}}' }}</code>
+            </div>
+          </div>
+          <div class="out-field">
+            <label>Schedule (optional — leave blank to send now)</label>
+            <input type="datetime-local" id="bcSchedule">
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <button class="btn btn-sec" onclick="sendTest()">Send test to me</button>
+            <button class="btn btn-primary" onclick="sendBroadcast()">Send / Schedule</button>
+          </div>
+          <span class="out-msg" id="bcMsg"></span>
+        </div>
+        <div>
+          <label style="display:block;font-size:.78rem;font-weight:600;color:#374151;margin-bottom:.35rem;">Live preview</label>
+          <div class="out-preview">
+            <div class="out-preview-subj" id="bcPrevSubj"></div>
+            <iframe id="bcPrevFrame"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Instance edit modal -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <h3>Edit queued email</h3>
+    <div class="out-field">
+      <label>Subject</label>
+      <input type="text" id="editSubject">
+    </div>
+    <div class="out-field">
+      <label>Body</label>
+      <textarea id="editBody" style="min-height:260px;"></textarea>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+      <button class="btn btn-sec" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveInstanceEdit()">Save edits</button>
+    </div>
+    <span class="out-msg" id="editMsg"></span>
+  </div>
+</div>
+
+<!-- Confirmation modal (>50 recipients) -->
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal" style="max-width:460px;">
+    <h3>Confirm broadcast</h3>
+    <p class="out-note" id="confirmText"></p>
+    <div class="out-field">
+      <label>Type <strong>SEND</strong> to confirm</label>
+      <input type="text" id="confirmInput" placeholder="SEND">
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+      <button class="btn btn-sec" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmSend()">Send now</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const ROOT = '';
+const OUT = ROOT + '/api/admin/outreach';
+let TEMPLATES = [];
+let EDIT_ID = null;
+
+async function jget(url){ const r = await fetch(url, {credentials:'same-origin'}); return r.json(); }
+async function jsend(url, method, body){
+  const r = await fetch(url, {method, credentials:'same-origin',
+    headers:{'Content-Type':'application/json'}, body: body?JSON.stringify(body):null});
+  let data = {}; try { data = await r.json(); } catch(e){}
+  return {ok:r.ok, status:r.status, data};
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(s){ if(!s) return '—'; const d=new Date(s+ (s.endsWith('Z')?'':'Z')); return d.toLocaleString(); }
+
+function switchTab(name){
+  document.querySelectorAll('.out-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.out-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='queue') loadQueue();
+  if(name==='enrollments') loadEnrollments();
+}
+
+function insertToken(fieldId, token){
+  const el = document.getElementById(fieldId);
+  const open = String.fromCharCode(123, 123);   // double open-brace
+  const close = String.fromCharCode(125, 125);   // double close-brace
+  const t = open + token + close;
+  const start = el.selectionStart != null ? el.selectionStart : el.value.length;
+  const end = el.selectionEnd != null ? el.selectionEnd : start;
+  el.value = el.value.slice(0, start) + t + el.value.slice(end);
+  el.dispatchEvent(new Event('input'));
+  el.focus();
+}
+
+// ── Overview ──
+async function loadOverview(){
+  const d = await jget(OUT+'/overview');
+  const c = d.config||{}, s = d.segments||{}, e = d.enrollments||{};
+  document.getElementById('outSummary').innerHTML = `
+    <div class="out-stat"><div class="out-stat-label">New users</div><div class="out-stat-value">${s.new??0}</div></div>
+    <div class="out-stat"><div class="out-stat-label">Existing users</div><div class="out-stat-value">${s.existing??0}</div></div>
+    <div class="out-stat"><div class="out-stat-label">Active in drip</div><div class="out-stat-value">${e.active??0}</div></div>
+    <div class="out-stat"><div class="out-stat-label">Graduated</div><div class="out-stat-value">${e.graduated??0}</div></div>
+    <div class="out-stat"><div class="out-stat-label">Queue pending</div><div class="out-stat-value">${d.queue_pending??0}</div></div>
+    <div class="out-stat"><div class="out-stat-label">Awaiting approval</div><div class="out-stat-value">${d.awaiting_approval??0}</div></div>`;
+  document.getElementById('cfgDelay').value = c.initial_delay_hours ?? 12;
+  document.getElementById('cfgCadence').value = c.cadence_days ?? 7;
+  document.getElementById('cfgApproval').checked = !!c.require_approval;
+  document.getElementById('cfgEnabled').checked = c.enabled !== false;
+}
+
+async function saveConfig(){
+  const body = {
+    outreach_initial_delay_hours: document.getElementById('cfgDelay').value,
+    outreach_cadence_days: document.getElementById('cfgCadence').value,
+    outreach_require_approval: document.getElementById('cfgApproval').checked,
+    outreach_enabled: document.getElementById('cfgEnabled').checked,
+  };
+  const r = await jsend(OUT+'/config','PUT',body);
+  const m = document.getElementById('cfgMsg');
+  m.textContent = r.ok ? 'Saved.' : ('Error: '+(r.data.error||r.status));
+  m.className = 'out-msg ' + (r.ok?'ok':'err');
+  if(r.ok) loadOverview();
+}
+
+// ── Templates ──
+async function loadTemplates(){
+  const d = await jget(OUT+'/templates');
+  TEMPLATES = d.templates||[];
+  const sel = document.getElementById('tplSelect');
+  const bcSel = document.getElementById('bcTemplate');
+  sel.innerHTML = '';
+  bcSel.innerHTML = '<option value="">— Blank —</option>';
+  TEMPLATES.forEach(t=>{
+    const label = t.name || t.template_key;
+    sel.insertAdjacentHTML('beforeend', `<option value="${t.template_key}">${esc(label)}</option>`);
+    bcSel.insertAdjacentHTML('beforeend', `<option value="${t.template_key}">${esc(label)}</option>`);
+  });
+  loadTemplate();
+}
+function currentTpl(){ const k=document.getElementById('tplSelect').value; return TEMPLATES.find(t=>t.template_key===k); }
+function loadTemplate(){
+  const t = currentTpl(); if(!t) return;
+  document.getElementById('tplSubject').value = t.subject||'';
+  document.getElementById('tplPreview').value = t.preview_text||'';
+  document.getElementById('tplBody').value = t.body||'';
+  renderTplPreview();
+}
+let _tplTimer=null;
+function renderTplPreview(){
+  clearTimeout(_tplTimer);
+  _tplTimer = setTimeout(async ()=>{
+    const body = {subject:document.getElementById('tplSubject').value,
+      preview_text:document.getElementById('tplPreview').value,
+      body:document.getElementById('tplBody').value};
+    const r = await jsend(OUT+'/templates/preview','POST',body);
+    if(r.ok){ document.getElementById('tplPrevSubj').textContent = 'Subject: '+r.data.subject;
+      document.getElementById('tplPrevFrame').srcdoc = r.data.html; }
+  }, 350);
+}
+async function saveTemplate(){
+  const t = currentTpl(); if(!t) return;
+  const body = {subject:document.getElementById('tplSubject').value,
+    preview_text:document.getElementById('tplPreview').value,
+    body:document.getElementById('tplBody').value, name:t.name};
+  const r = await jsend(OUT+'/templates/'+t.template_key,'PUT',body);
+  const m = document.getElementById('tplMsg');
+  m.textContent = r.ok?'Saved — future sends use this copy.':('Error: '+(r.data.error||r.status));
+  m.className='out-msg '+(r.ok?'ok':'err');
+  if(r.ok){ Object.assign(t, body); }
+}
+
+// ── Queue ──
+async function loadQueue(){
+  const d = await jget(OUT+'/queue');
+  const rows = d.queue||[];
+  const tb = document.getElementById('queueBody');
+  if(!rows.length){ tb.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;">No queued emails.</td></tr>'; return; }
+  tb.innerHTML = rows.map(r=>{
+    const edited = r.was_edited?' <span style="color:#d97706;font-size:.68rem;">(edited)</span>':'';
+    let actions = `<button class="btn btn-sec btn-xs" onclick="openEditModal('${r.id}')">Edit</button> `;
+    if(r.status==='awaiting_approval') actions += `<button class="btn btn-sec btn-xs" onclick="sendAction('${r.id}','approve')">Approve</button> `;
+    if(r.status==='paused') actions += `<button class="btn btn-sec btn-xs" onclick="sendAction('${r.id}','resume')">Resume</button> `;
+    else actions += `<button class="btn btn-sec btn-xs" onclick="sendAction('${r.id}','pause')">Pause</button> `;
+    actions += `<button class="btn btn-sec btn-xs" onclick="sendAction('${r.id}','send-now')">Send now</button> `;
+    actions += `<button class="btn btn-danger btn-xs" onclick="sendAction('${r.id}','skip')">Skip</button>`;
+    return `<tr>
+      <td>${esc(r.recipient_name)}<br><span style="color:#9ca3af;font-size:.72rem;">${esc(r.to_email)}</span></td>
+      <td>Email ${r.step_number||'?'}${edited}</td>
+      <td>${fmtDate(r.scheduled_at)}</td>
+      <td><span class="pill pill-${r.status}">${r.status.replace('_',' ')}</span></td>
+      <td style="text-align:right;">${actions}</td></tr>`;
+  }).join('');
+}
+async function sendAction(id, action){
+  if(action==='skip' && !confirm('Skip this email? It will not be sent.')) return;
+  const r = await jsend(OUT+'/sends/'+id+'/'+action,'POST',{});
+  if(!r.ok) alert('Error: '+(r.data.error||r.status));
+  loadQueue(); loadOverview();
+}
+async function approveAll(){
+  if(!confirm('Approve all emails awaiting approval?')) return;
+  const r = await jsend(OUT+'/sends/approve-all','POST',{});
+  if(r.ok) alert('Approved '+r.data.approved+' emails.');
+  loadQueue(); loadOverview();
+}
+async function openEditModal(id){
+  EDIT_ID = id;
+  const d = await jget(OUT+'/sends/'+id);
+  document.getElementById('editSubject').value = d.subject||'';
+  document.getElementById('editBody').value = d.body_snapshot||'';
+  document.getElementById('editMsg').textContent='';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal(){ document.getElementById('editModal').classList.remove('open'); EDIT_ID=null; }
+async function saveInstanceEdit(){
+  if(!EDIT_ID) return;
+  const body = {subject:document.getElementById('editSubject').value, body:document.getElementById('editBody').value};
+  const r = await jsend(OUT+'/sends/'+EDIT_ID,'PUT',body);
+  const m = document.getElementById('editMsg');
+  if(r.ok){ closeEditModal(); loadQueue(); }
+  else { m.textContent = 'Error: '+(r.data.error||r.status); m.className='out-msg err'; }
+}
+
+// ── Enrollments ──
+async function loadEnrollments(){
+  const status = document.getElementById('enrStatus').value;
+  const d = await jget(OUT+'/enrollments?status='+status);
+  const rows = d.enrollments||[];
+  const tb = document.getElementById('enrBody');
+  if(!rows.length){ tb.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;">No enrollments.</td></tr>'; return; }
+  tb.innerHTML = rows.map(r=>{
+    const rm = (r.status==='active') ? `<button class="btn btn-danger btn-xs" onclick="removeEnrollment('${r.id}')">Remove</button>` : '';
+    return `<tr>
+      <td>${esc(r.full_name||'—')}<br><span style="color:#9ca3af;font-size:.72rem;">${esc(r.email||'')}</span></td>
+      <td>${r.current_step}/3</td>
+      <td>${fmtDate(r.next_send_at)}</td>
+      <td><span class="pill pill-${r.status==='active'?'queued':(r.status==='graduated'||r.status==='completed'?'sent':'skipped')}">${r.status}</span></td>
+      <td style="text-align:right;">${rm}</td></tr>`;
+  }).join('');
+}
+async function removeEnrollment(id){
+  if(!confirm('Remove this user from the sequence? All remaining drip emails will stop.')) return;
+  const r = await jsend(OUT+'/enrollments/'+id+'/remove','POST',{});
+  if(!r.ok) alert('Error: '+(r.data.error||r.status));
+  loadEnrollments(); loadOverview();
+}
+
+// ── Broadcasts ──
+function bcPayload(){
+  const p = {segment:document.getElementById('bcSegment').value};
+  if(p.segment==='existing_phase') p.phase = document.getElementById('bcPhase').value;
+  const f=document.getElementById('bcFrom').value, t=document.getElementById('bcTo').value;
+  if(f) p.signup_from=f; if(t) p.signup_to=t;
+  return p;
+}
+function onSegmentChange(){
+  document.getElementById('bcPhaseField').style.display =
+    document.getElementById('bcSegment').value==='existing_phase' ? 'block':'none';
+  refreshCount();
+}
+async function refreshCount(){
+  const r = await jsend(OUT+'/broadcast/count','POST',bcPayload());
+  document.getElementById('bcCount').textContent = r.ok ? r.data.count : '—';
+}
+function loadBroadcastTemplate(){
+  const k = document.getElementById('bcTemplate').value;
+  const t = TEMPLATES.find(x=>x.template_key===k);
+  if(t){ document.getElementById('bcSubject').value=t.subject||'';
+    document.getElementById('bcPreview').value=t.preview_text||'';
+    document.getElementById('bcBody').value=t.body||''; renderBcPreview(); }
+}
+let _bcTimer=null;
+function renderBcPreview(){
+  clearTimeout(_bcTimer);
+  _bcTimer=setTimeout(async ()=>{
+    const body={subject:document.getElementById('bcSubject').value,
+      preview_text:document.getElementById('bcPreview').value,
+      body:document.getElementById('bcBody').value};
+    const r=await jsend(OUT+'/templates/preview','POST',body);
+    if(r.ok){ document.getElementById('bcPrevSubj').textContent='Subject: '+r.data.subject;
+      document.getElementById('bcPrevFrame').srcdoc=r.data.html; }
+  },350);
+}
+async function sendTest(){
+  const body={to:'', subject:document.getElementById('bcSubject').value,
+    preview_text:document.getElementById('bcPreview').value, body:document.getElementById('bcBody').value};
+  const r=await jsend(OUT+'/broadcast/test','POST',body);
+  const m=document.getElementById('bcMsg');
+  m.textContent = r.ok?'Test sent to your email.':('Error: '+(r.data.error||r.data.reason||r.status));
+  m.className='out-msg '+(r.ok?'ok':'err');
+}
+function buildBroadcastBody(confirm){
+  const p = bcPayload();
+  p.subject=document.getElementById('bcSubject').value;
+  p.preview_text=document.getElementById('bcPreview').value;
+  p.body=document.getElementById('bcBody').value;
+  const sch=document.getElementById('bcSchedule').value;
+  if(sch) p.schedule_at=sch;
+  if(confirm) p.confirm=true;
+  return p;
+}
+async function sendBroadcast(){
+  const r=await jsend(OUT+'/broadcast/send','POST',buildBroadcastBody(false));
+  if(r.status===409 && r.data.requires_confirmation){
+    document.getElementById('confirmText').textContent = r.data.message;
+    document.getElementById('confirmInput').value='';
+    document.getElementById('confirmModal').classList.add('open');
+    return;
+  }
+  finishBroadcast(r);
+}
+function closeConfirm(){ document.getElementById('confirmModal').classList.remove('open'); }
+async function confirmSend(){
+  if(document.getElementById('confirmInput').value.trim()!=='SEND'){ alert('Type SEND to confirm.'); return; }
+  const r=await jsend(OUT+'/broadcast/send','POST',buildBroadcastBody(true));
+  closeConfirm(); finishBroadcast(r);
+}
+function finishBroadcast(r){
+  const m=document.getElementById('bcMsg');
+  if(r.ok){ m.textContent = `Done — ${r.data.recipient_count} recipients, ${r.data.sent||0} sent${r.data.created&&!r.data.sent?', '+r.data.created+' scheduled':''}.`;
+    m.className='out-msg ok'; loadOverview(); }
+  else { m.textContent='Error: '+(r.data.error||r.status); m.className='out-msg err'; }
+}
+
+// init
+loadOverview();
+loadTemplates();
+refreshCount();
+</script>
+{% endblock %}

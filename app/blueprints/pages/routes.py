@@ -715,6 +715,44 @@ def admin_feedback_view():
     return render_template('admin/feedback.html')
 
 
+@pages_bp.route('/admin/outreach')
+@login_required
+def admin_outreach_view():
+    """Admin Outreach Email Automation panel (SIM-PRD-OUTREACH-001, FR-OUT-01)."""
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    return render_template('admin/outreach.html')
+
+
+@pages_bp.route('/outreach/unsubscribe/<token>', methods=['GET', 'POST'])
+def outreach_unsubscribe(token):
+    """One-click unsubscribe from marketing outreach (CAN-SPAM, FR-OUT-10).
+
+    Public — no login required. Adds the address to the suppression list, which all
+    outreach sends check first. Transactional emails are unaffected.
+    """
+    from app.extensions import db
+    from app.services.outreach_campaign_service import parse_unsubscribe_token
+    from app.models.outreach_email import EmailSuppression
+    from utils.id_gen import generate_id
+
+    email = parse_unsubscribe_token(token)
+    if not email:
+        return render_template('public/unsubscribe.html', ok=False, email=None), 400
+
+    existing = EmailSuppression.query.filter_by(email=email.lower().strip()).first()
+    if not existing:
+        db.session.add(EmailSuppression(
+            id=generate_id(),
+            email=email.lower().strip(),
+            reason='unsubscribe',
+            detail='outreach one-click unsubscribe',
+        ))
+        db.session.commit()
+    return render_template('public/unsubscribe.html', ok=True, email=email)
+
+
 @pages_bp.route('/admin/partners')
 @login_required
 def admin_partners_view():
