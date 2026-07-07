@@ -19,6 +19,22 @@ from app.services.linkedin import get_auth_url, exchange_code_for_token, crawl_p
 from utils.id_gen import generate_id
 
 
+def _maybe_classify_and_assign_sme(user_id):
+    """SIM-PRD-SME-001 — normalize the user's expertise into canonical zones and
+    auto-match an SME. Best-effort: swallow all errors so it never blocks the
+    resume flow (rolls back its own partial work on failure)."""
+    try:
+        from app.models.profile import UserProfile
+        from app.services import sme_service
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return
+        sme_service.run_classification_and_assignment(profile, force=False)
+    except Exception as exc:
+        db.session.rollback()
+        logger.warning('SME classify/assign skipped for %s: %s', user_id, exc)
+
+
 def _get_current_versions():
     return (
         PlatformSetting.get('tos_version', '1.0'),
@@ -320,6 +336,9 @@ def extract_zones(resume_id):
         zones = extract_expertise_zones(resume.parsed_text, current_user.id)
         resume.expertise_zones = zones
         db.session.commit()
+        # SIM-PRD-SME-001 FR-SME-04: normalize free-form zones into canonical
+        # categories and auto-match an SME. Best-effort — never block extraction.
+        _maybe_classify_and_assign_sme(current_user.id)
         return jsonify({'expertise_zones': zones}), 200
     except Exception as e:
         return jsonify({'error': f'Zone extraction failed: {str(e)}'}), 500

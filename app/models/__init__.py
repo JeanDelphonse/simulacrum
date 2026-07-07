@@ -41,6 +41,7 @@ from app.models.social import (
     BioPageLike, UserConnection, ActivityEvent,
     PlatformChat, PlatformChatMessage,
 )
+from app.models.sme import SimiSME, ExpertiseCategory
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -69,4 +70,5 @@ __all__ = [
     'ActionStep',
     'BioPageLike', 'UserConnection', 'ActivityEvent',
     'PlatformChat', 'PlatformChatMessage',
+    'SimiSME', 'ExpertiseCategory',
 ]

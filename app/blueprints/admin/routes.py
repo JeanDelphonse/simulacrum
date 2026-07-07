@@ -1,3 +1,4 @@
+import logging
 from flask import request, jsonify
 from flask_login import login_required, current_user
 from functools import wraps
@@ -1404,3 +1405,449 @@ def outreach_broadcast_send():
     })
     db.session.commit()
     return jsonify({'ok': True, 'recipient_count': count, **result}), 200
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SIM-PRD-SME-001 — Simi SME Assignment
+# Subject-matter experts, expertise-zone taxonomy, auto zone assignment,
+# user-to-SME matching, coverage map. All endpoints admin-only under /api/admin.
+# ═══════════════════════════════════════════════════════════════════════════
+
+_VALID_URL_SCHEMES = ('http://', 'https://')
+
+
+def _validate_sme_payload(data, categories, existing=None):
+    """Return (clean_dict, error). Shared by create + edit."""
+    first = (data.get('first_name') or '').strip()
+    last = (data.get('last_name') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    if not first or not last:
+        return None, 'First name and last name are required'
+    if not email or '@' not in email:
+        return None, 'A valid email is required'
+
+    zones = data.get('zones') or []
+    if not isinstance(zones, list) or not zones:
+        return None, 'At least one expertise zone is required'
+    zones = [z.strip().lower() for z in zones if isinstance(z, str) and z.strip()]
+    valid = set(categories)
+    bad = [z for z in zones if z not in valid]
+    if bad:
+        return None, f'Unknown expertise zone(s): {", ".join(bad)}'
+
+    bio_url = (data.get('bio_url') or '').strip() or None
+    if bio_url and not bio_url.startswith(_VALID_URL_SCHEMES):
+        return None, 'Bio URL must start with http:// or https://'
+
+    try:
+        capacity = int(data.get('capacity', 50))
+    except (TypeError, ValueError):
+        return None, 'Capacity must be a number'
+    if capacity < 0:
+        return None, 'Capacity cannot be negative'
+
+    status = (data.get('status') or 'active').strip().lower()
+    if status not in ('active', 'inactive'):
+        return None, 'Status must be active or inactive'
+
+    return {
+        'first_name': first[:80],
+        'last_name': last[:80],
+        'email': email[:160],
+        'bio_url': bio_url[:500] if bio_url else None,
+        'phone': ((data.get('phone') or '').strip() or None),
+        'zones': zones,
+        'capacity': capacity,
+        'status': status,
+    }, None
+
+
+# ── Expertise category taxonomy (FR-SME-03) ───────────────────────────────────
+
+@admin_bp.route('/expertise-categories', methods=['GET'])
+@login_required
+@admin_required
+def list_expertise_categories():
+    from app.services import sme_service
+    include_inactive = request.args.get('all') == '1'
+    from app.models.sme import ExpertiseCategory
+    if include_inactive:
+        cats = ExpertiseCategory.query.order_by(
+            ExpertiseCategory.sort_order, ExpertiseCategory.name,
+        ).all()
+    else:
+        cats = sme_service.active_categories()
+    return jsonify([c.to_dict() for c in cats]), 200
+
+
+@admin_bp.route('/expertise-categories', methods=['POST'])
+@login_required
+@admin_required
+def create_expertise_category():
+    import re
+    from app.models.sme import ExpertiseCategory
+    from utils.id_gen import generate_id
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    slug = (data.get('slug') or name).strip().lower()
+    slug = re.sub(r'[^a-z0-9]+', '-', slug).strip('-')
+    if not slug:
+        return jsonify({'error': 'Could not derive a slug from the name'}), 400
+    if ExpertiseCategory.query.filter_by(slug=slug).first():
+        return jsonify({'error': f'Category slug "{slug}" already exists'}), 409
+
+    max_order = db.session.query(db.func.coalesce(db.func.max(ExpertiseCategory.sort_order), 0)).scalar()
+    cat = ExpertiseCategory(
+        id=generate_id(), name=name[:80], slug=slug[:80],
+        is_active=True, sort_order=(max_order or 0) + 10,
+    )
+    db.session.add(cat)
+    AuditLog.log('expertise_category_created', user_id=current_user.id, metadata={'slug': slug})
+    db.session.commit()
+    return jsonify(cat.to_dict()), 201
+
+
+@admin_bp.route('/expertise-categories/<cat_id>', methods=['PUT'])
+@login_required
+@admin_required
+def update_expertise_category(cat_id):
+    from app.models.sme import ExpertiseCategory
+    cat = ExpertiseCategory.query.get_or_404(cat_id)
+    data = request.get_json() or {}
+    if 'name' in data and data['name'].strip():
+        cat.name = data['name'].strip()[:80]
+    if 'is_active' in data:
+        cat.is_active = bool(data['is_active'])
+    if 'sort_order' in data:
+        try:
+            cat.sort_order = int(data['sort_order'])
+        except (TypeError, ValueError):
+            pass
+    db.session.commit()
+    return jsonify(cat.to_dict()), 200
+
+
+# ── SME CRUD (FR-SME-01/02) ───────────────────────────────────────────────────
+
+@admin_bp.route('/experts', methods=['GET'])
+@login_required
+@admin_required
+def list_experts():
+    from app.models.sme import SimiSME
+    q = (request.args.get('q') or '').strip().lower()
+    status = (request.args.get('status') or '').strip().lower()
+    query = SimiSME.query
+    if status in ('active', 'inactive'):
+        query = query.filter_by(status=status)
+    smes = query.order_by(SimiSME.first_name, SimiSME.last_name).all()
+    if q:
+        smes = [
+            s for s in smes
+            if q in s.full_name.lower() or q in s.email.lower()
+            or any(q in z for z in s.zones)
+        ]
+    return jsonify([s.to_dict() for s in smes]), 200
+
+
+@admin_bp.route('/experts', methods=['POST'])
+@login_required
+@admin_required
+def create_expert():
+    from app.models.sme import SimiSME
+    from app.services import sme_service
+    from utils.id_gen import generate_id
+    data = request.get_json() or {}
+    clean, err = _validate_sme_payload(data, sme_service.active_category_slugs())
+    if err:
+        return jsonify({'error': err}), 400
+    if SimiSME.query.filter_by(email=clean['email']).first():
+        return jsonify({'error': 'An SME with this email already exists'}), 409
+
+    sme = SimiSME(id=generate_id())
+    sme.first_name = clean['first_name']
+    sme.last_name = clean['last_name']
+    sme.email = clean['email']
+    sme.bio_url = clean['bio_url']
+    sme.phone = clean['phone']
+    sme.zones = clean['zones']
+    sme.capacity = clean['capacity']
+    sme.status = clean['status']
+    db.session.add(sme)
+    AuditLog.log('sme_created', user_id=current_user.id, resource_id=sme.id,
+                 metadata={'email': sme.email, 'zones': sme.zones})
+    db.session.commit()
+    return jsonify(sme.to_dict()), 201
+
+
+@admin_bp.route('/experts/<sme_id>', methods=['GET'])
+@login_required
+@admin_required
+def get_expert(sme_id):
+    from app.models.sme import SimiSME
+    sme = SimiSME.query.get_or_404(sme_id)
+    return jsonify(sme.to_dict(include_users=True)), 200
+
+
+@admin_bp.route('/experts/<sme_id>', methods=['PUT'])
+@login_required
+@admin_required
+def update_expert(sme_id):
+    from app.models.sme import SimiSME
+    from app.services import sme_service
+    sme = SimiSME.query.get_or_404(sme_id)
+    data = request.get_json() or {}
+    clean, err = _validate_sme_payload(data, sme_service.active_category_slugs(), existing=sme)
+    if err:
+        return jsonify({'error': err}), 400
+    dup = SimiSME.query.filter(SimiSME.email == clean['email'], SimiSME.id != sme.id).first()
+    if dup:
+        return jsonify({'error': 'Another SME already uses this email'}), 409
+
+    zones_changed = set(sme.zones) != set(clean['zones'])
+    was_active = sme.is_active
+
+    sme.first_name = clean['first_name']
+    sme.last_name = clean['last_name']
+    sme.email = clean['email']
+    sme.bio_url = clean['bio_url']
+    sme.phone = clean['phone']
+    sme.zones = clean['zones']
+    sme.capacity = clean['capacity']
+    sme.status = clean['status']
+
+    flagged = 0
+    # Changing zones does not auto-reassign existing users — flag them for review (FR-SME-02).
+    if zones_changed and sme.assigned_count > 0:
+        sme.needs_review = True
+        flagged = sme_service.flag_sme_users_for_reassignment(sme, commit=False)
+    # Deactivation stops new assignments and flags existing users for reassignment.
+    if was_active and not sme.is_active and sme.assigned_count > 0:
+        flagged = max(flagged, sme_service.flag_sme_users_for_reassignment(sme, commit=False))
+
+    AuditLog.log('sme_updated', user_id=current_user.id, resource_id=sme.id,
+                 metadata={'zones_changed': zones_changed, 'flagged': flagged})
+    db.session.commit()
+    return jsonify({**sme.to_dict(), 'flagged_for_review': flagged}), 200
+
+
+@admin_bp.route('/experts/<sme_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+def deactivate_expert(sme_id):
+    from app.models.sme import SimiSME
+    from app.services import sme_service
+    sme = SimiSME.query.get_or_404(sme_id)
+    sme.status = SimiSME.STATUS_INACTIVE
+    flagged = sme_service.flag_sme_users_for_reassignment(sme, commit=False)
+    AuditLog.log('sme_deactivated', user_id=current_user.id, resource_id=sme.id,
+                 metadata={'flagged': flagged})
+    db.session.commit()
+    return jsonify({'ok': True, 'flagged_for_reassignment': flagged}), 200
+
+
+@admin_bp.route('/experts/<sme_id>/reassign-users', methods=['POST'])
+@login_required
+@admin_required
+def reassign_expert_users(sme_id):
+    """Bulk auto-rematch all users currently assigned to this SME (FR-SME-02)."""
+    from app.models.sme import SimiSME
+    from app.services import sme_service
+    sme = SimiSME.query.get_or_404(sme_id)
+    rematched, unassigned = sme_service.reassign_sme_users(sme, commit=False)
+    sme.needs_review = False
+    AuditLog.log('sme_users_reassigned', user_id=current_user.id, resource_id=sme.id,
+                 metadata={'rematched': rematched, 'unassigned': unassigned})
+    db.session.commit()
+    return jsonify({'ok': True, 'rematched': rematched, 'unassigned': unassigned}), 200
+
+
+# ── Users view + zone/SME assignment (FR-SME-05/06/07) ────────────────────────
+
+@admin_bp.route('/sme-users', methods=['GET'])
+@login_required
+@admin_required
+def list_sme_users():
+    """Users with canonical zones + assigned SME. Filterable by zone / sme / unassigned."""
+    from app.models.profile import UserProfile
+    from app.models.sme import SimiSME
+    zone = (request.args.get('zone') or '').strip().lower()
+    sme_filter = (request.args.get('sme') or '').strip()
+    unassigned_only = request.args.get('unassigned') == '1'
+
+    profiles = UserProfile.query.filter(UserProfile._canonical_zones.isnot(None)).all()
+    smes = {s.id: s for s in SimiSME.query.all()}
+
+    rows = []
+    for p in profiles:
+        pz = p.primary_zone
+        if zone and pz != zone and zone not in [z.get('category') for z in p.canonical_zones]:
+            continue
+        if unassigned_only and p.sme_id:
+            continue
+        if sme_filter and p.sme_id != sme_filter:
+            continue
+        sme = smes.get(p.sme_id) if p.sme_id else None
+        rows.append({
+            'user_id': p.user_id,
+            'display_name': p.display_name or p.username,
+            'username': p.username,
+            'canonical_zones': p.canonical_zones,
+            'primary_zone': pz,
+            'sme_id': p.sme_id,
+            'sme_name': sme.full_name if sme else None,
+            'assignment_type': p.sme_assignment_type,
+            'needs_reassignment': bool(p.needs_reassignment),
+            'zones_computed_at': p.zones_computed_at.isoformat() if p.zones_computed_at else None,
+        })
+    rows.sort(key=lambda r: (r['sme_id'] is not None, r['display_name'].lower()))
+    return jsonify(rows), 200
+
+
+@admin_bp.route('/sme-users/<user_id>/zones', methods=['PUT'])
+@login_required
+@admin_required
+def update_user_zones(user_id):
+    """FR-SME-05 — admin manually edits a user's canonical zones (manual lock)."""
+    from app.models.profile import UserProfile
+    from app.services import sme_service
+    profile = UserProfile.query.filter_by(user_id=user_id).first_or_404()
+    data = request.get_json() or {}
+
+    if data.get('reset_to_ai'):
+        sme_service.classify_user_zones(profile, force=True, commit=True)
+        return jsonify({'ok': True, 'canonical_zones': profile.canonical_zones, 'source': 'ai'}), 200
+
+    zones = data.get('canonical_zones')
+    if not isinstance(zones, list):
+        return jsonify({'error': 'canonical_zones must be a list'}), 400
+    valid = set(sme_service.active_category_slugs())
+    clean = []
+    for z in zones:
+        cat = (z.get('category') or '').strip().lower()
+        if cat not in valid:
+            return jsonify({'error': f'Unknown category: {cat}'}), 400
+        clean.append({
+            'category': cat,
+            'confidence': float(z.get('confidence', 1.0)),
+            'is_primary': bool(z.get('is_primary')),
+        })
+    # Exactly one primary; default to first if none flagged.
+    primaries = [z for z in clean if z['is_primary']]
+    if clean and not primaries:
+        clean[0]['is_primary'] = True
+    elif len(primaries) > 1:
+        for z in clean:
+            z['is_primary'] = False
+        primaries[0]['is_primary'] = True
+
+    profile.canonical_zones = clean
+    profile.zones_computed_at = None  # manual lock — not overwritten by re-runs
+    AuditLog.log('sme_user_zones_edited', user_id=current_user.id, resource_id=user_id,
+                 metadata={'zones': [z['category'] for z in clean]})
+    db.session.commit()
+    return jsonify({'ok': True, 'canonical_zones': profile.canonical_zones, 'source': 'manual'}), 200
+
+
+@admin_bp.route('/sme-users/<user_id>/recompute-zones', methods=['POST'])
+@login_required
+@admin_required
+def recompute_user_zones(user_id):
+    from app.models.profile import UserProfile
+    from app.services import sme_service
+    profile = UserProfile.query.filter_by(user_id=user_id).first_or_404()
+    force = bool((request.get_json() or {}).get('force'))
+    sme_service.run_classification_and_assignment(profile, force=force)
+    return jsonify({
+        'ok': True,
+        'canonical_zones': profile.canonical_zones,
+        'sme_id': profile.sme_id,
+    }), 200
+
+
+@admin_bp.route('/sme-users/<user_id>/assign', methods=['POST'])
+@login_required
+@admin_required
+def assign_user_sme(user_id):
+    """FR-SME-06/07 — assign a user to an SME (manual) or trigger auto-match."""
+    from app.models.profile import UserProfile
+    from app.services import sme_service
+    profile = UserProfile.query.filter_by(user_id=user_id).first_or_404()
+    data = request.get_json() or {}
+
+    if data.get('auto'):
+        sme = sme_service.auto_assign_sme(profile, force_over_capacity=bool(data.get('force')))
+        return jsonify({'ok': True, 'sme_id': profile.sme_id,
+                        'sme_name': sme.full_name if sme else None,
+                        'assignment_type': profile.sme_assignment_type}), 200
+
+    sme_id = data.get('sme_id')  # may be None to clear
+    try:
+        sme_service.manual_assign_sme(profile, sme_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    AuditLog.log('sme_user_assigned', user_id=current_user.id, resource_id=user_id,
+                 metadata={'sme_id': sme_id, 'type': 'manual'})
+    db.session.commit()
+    return jsonify({'ok': True, 'sme_id': profile.sme_id,
+                    'assignment_type': profile.sme_assignment_type}), 200
+
+
+# ── Bulk actions + coverage map (FR-SME-08/09) ────────────────────────────────
+
+@admin_bp.route('/sme/assign-unassigned', methods=['POST'])
+@login_required
+@admin_required
+def sme_assign_unassigned():
+    from app.services import sme_service
+    count = sme_service.assign_unassigned()
+    AuditLog.log('sme_bulk_assign_unassigned', user_id=current_user.id, metadata={'assigned': count})
+    db.session.commit()
+    return jsonify({'ok': True, 'assigned': count}), 200
+
+
+@admin_bp.route('/sme/rebalance', methods=['POST'])
+@login_required
+@admin_required
+def sme_rebalance():
+    from app.services import sme_service
+    slug = ((request.get_json() or {}).get('zone') or '').strip().lower()
+    if not slug:
+        return jsonify({'error': 'zone slug is required'}), 400
+    moved = sme_service.rebalance_zone(slug)
+    AuditLog.log('sme_rebalance', user_id=current_user.id, metadata={'zone': slug, 'moved': moved})
+    db.session.commit()
+    return jsonify({'ok': True, 'moved': moved}), 200
+
+
+@admin_bp.route('/sme/recompute-all-zones', methods=['POST'])
+@login_required
+@admin_required
+def sme_recompute_all_zones():
+    """FR-SME-04 — bulk recompute canonical zones for all users (admin on-demand)."""
+    from app.models.profile import UserProfile
+    from app.services import sme_service
+    force = bool((request.get_json() or {}).get('force'))
+    profiles = UserProfile.query.all()
+    processed = 0
+    for p in profiles:
+        try:
+            sme_service.classify_user_zones(p, force=force, commit=False)
+            sme_service.auto_assign_sme(p, commit=False)
+            processed += 1
+        except Exception as exc:
+            db.session.rollback()
+            logging.getLogger(__name__).warning('recompute zones failed for %s: %s', p.user_id, exc)
+    db.session.commit()
+    AuditLog.log('sme_recompute_all', user_id=current_user.id, metadata={'processed': processed})
+    db.session.commit()
+    return jsonify({'ok': True, 'processed': processed}), 200
+
+
+@admin_bp.route('/sme/coverage', methods=['GET'])
+@login_required
+@admin_required
+def sme_coverage():
+    from app.services import sme_service
+    return jsonify(sme_service.coverage_map()), 200

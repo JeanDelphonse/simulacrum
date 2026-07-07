@@ -31,6 +31,12 @@ class UserProfile(db.Model):
     # SIM-PRD-QR-001: bio page QR code (generated on publish / slug / photo change)
     qr_code_url           = db.Column(db.String(500), nullable=True)
     qr_generated_at       = db.Column(db.DateTime, nullable=True)
+    # SIM-PRD-SME-001: canonical expertise zones + SME assignment
+    _canonical_zones      = db.Column('canonical_zones', db.Text, nullable=True)  # JSON [{category, confidence, is_primary}]
+    sme_id                = db.Column(db.String(9), db.ForeignKey('simi_smes.id'), nullable=True, index=True)
+    sme_assignment_type   = db.Column(db.String(10), nullable=True)  # 'auto' | 'manual'
+    needs_reassignment    = db.Column(db.Boolean, nullable=False, default=False)
+    zones_computed_at     = db.Column(db.DateTime, nullable=True)
     created_at            = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at            = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -107,6 +113,34 @@ class UserProfile(db.Model):
         self._bio_sections_visible = json.dumps(v) if v is not None else None
 
     user = db.relationship('User', backref=db.backref('profile', uselist=False))
+    sme = db.relationship('SimiSME', foreign_keys=[sme_id])
+
+    # ── SIM-PRD-SME-001: canonical zones ────────────────────────────────────
+    @property
+    def canonical_zones(self):
+        """Ordered list of {category, confidence, is_primary}."""
+        if self._canonical_zones:
+            try:
+                return json.loads(self._canonical_zones)
+            except (ValueError, TypeError):
+                return []
+        return []
+
+    @canonical_zones.setter
+    def canonical_zones(self, value):
+        self._canonical_zones = json.dumps(value) if value else None
+
+    @property
+    def primary_zone(self):
+        for z in self.canonical_zones:
+            if z.get('is_primary'):
+                return z.get('category')
+        zones = self.canonical_zones
+        return zones[0]['category'] if zones else None
+
+    @property
+    def secondary_zones(self):
+        return [z.get('category') for z in self.canonical_zones if not z.get('is_primary')]
 
     @property
     def completeness(self):

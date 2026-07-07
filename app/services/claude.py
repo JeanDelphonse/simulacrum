@@ -90,6 +90,57 @@ Example format:
     return json.loads(raw)
 
 
+def classify_canonical_zones(
+    professional_title: str,
+    expertise_text: str,
+    categories: list,
+    user_id: str,
+) -> list:
+    """SIM-PRD-SME-001 FR-SME-04 — map a user's free-form expertise into canonical categories.
+
+    `categories` is the list of active canonical slugs (e.g. ['technology','finance',...]).
+    Returns a list of {"category": slug, "confidence": 0.0-1.0} ordered by confidence,
+    for every category scoring above 0.3. Uses Haiku (cheap, fast). Never raises — returns
+    [] on any failure so callers can fall back to the Unassigned queue.
+    """
+    slugs = ', '.join(categories)
+    prompt = f"""Classify this professional into expertise categories.
+Categories: {slugs}.
+Title: {professional_title or 'Unknown'}
+Expertise: {expertise_text or 'Unknown'}
+Return JSON only (no markdown fences): [{{"category": str, "confidence": 0.0-1.0}}]
+ordered by confidence descending, for every category scoring above 0.3.
+Only use category slugs from the list above."""
+
+    try:
+        model = get_model('expertise_zone_extraction')  # HAIKU tier
+        response = _client().messages.create(
+            model=model,
+            max_tokens=500,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        _log_interaction(AIInteraction.TYPE_ZONE_EXTRACT, user_id, None, response.usage, model=model)
+        raw = response.content[0].text.strip()
+        if raw.startswith('```'):
+            raw = raw.split('\n', 1)[1].rsplit('```', 1)[0]
+        parsed = json.loads(raw)
+        valid = set(categories)
+        out = []
+        for z in parsed:
+            cat = (z.get('category') or '').strip().lower()
+            if cat in valid:
+                try:
+                    conf = float(z.get('confidence', 0))
+                except (TypeError, ValueError):
+                    conf = 0.0
+                out.append({'category': cat, 'confidence': round(conf, 3)})
+        out.sort(key=lambda z: z['confidence'], reverse=True)
+        return out
+    except Exception as exc:
+        logger.warning('classify_canonical_zones failed for user %s: %s', user_id, exc)
+        return []
+
+
 def normalize_linkedin_text(raw_html_or_text: str, user_id: str) -> str:
     """Normalize crawled LinkedIn data into standard resume-like prose."""
     prompt = f"""You are given raw crawled data from a LinkedIn profile. Convert it into a clean, structured professional resume format as plain text. Include: Professional Summary, Work Experience (with specific deliverables/achievements for each role), Skills, and Education.

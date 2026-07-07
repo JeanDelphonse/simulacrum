@@ -753,6 +753,16 @@ def outreach_unsubscribe(token):
     return render_template('public/unsubscribe.html', ok=True, email=email)
 
 
+@pages_bp.route('/admin/experts')
+@login_required
+def admin_experts_view():
+    """Admin Simi SME Assignment panel (SIM-PRD-SME-001, FR-SME-01/09)."""
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    return render_template('admin/experts.html')
+
+
 @pages_bp.route('/admin/partners')
 @login_required
 def admin_partners_view():

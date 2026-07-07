@@ -1,0 +1,543 @@
+{% extends 'base.html' %}
+{% block title %}Experts — Admin{% endblock %}
+{% block head %}
+<style>
+.sme-page { max-width:1180px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+.sme-title { font-size:1.4rem; font-weight:700; color:#0f172a; margin:0 0 .35rem; }
+.sme-sub { font-size:.85rem; color:#6b7280; margin:0 0 1.25rem; }
+.sme-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+.sme-stat { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:.9rem 1rem; }
+.sme-stat-label { font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:.3rem; }
+.sme-stat-value { font-size:1.6rem; font-weight:800; color:#0f172a; line-height:1.1; }
+.sme-tabs { display:flex; gap:.4rem; border-bottom:1px solid #e5e7eb; margin-bottom:1.25rem; flex-wrap:wrap; }
+.sme-tab { padding:.5rem .9rem; font-size:.85rem; font-weight:600; color:#6b7280; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; }
+.sme-tab.active { color:#0d9488; border-bottom-color:#0d9488; }
+.sme-panel { display:none; }
+.sme-panel.active { display:block; }
+.sme-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem; }
+.sme-toolbar { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem; }
+.sme-toolbar input[type=text], .sme-toolbar select {
+  border:1px solid #d1d5db; border-radius:6px; padding:.45rem .6rem; font-size:.83rem; color:#111827; font-family:inherit; }
+.sme-toolbar .spacer { flex:1; }
+.btn { display:inline-block; padding:.5rem .95rem; font-size:.82rem; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid transparent; text-decoration:none; }
+.btn-primary { background:#0d9488; color:#fff; }
+.btn-primary:hover { background:#0f766e; }
+.btn-sec { background:#fff; color:#374151; border-color:#d1d5db; }
+.btn-sec:hover { background:#f3f4f6; }
+.btn-danger { background:#fff; color:#b91c1c; border-color:#fca5a5; }
+.btn-danger:hover { background:#fef2f2; }
+.btn-xs { padding:.28rem .55rem; font-size:.72rem; }
+.sme-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.sme-table th { background:#f9fafb; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; font-weight:700; padding:.5rem .7rem; text-align:left; border-bottom:1px solid #e5e7eb; cursor:pointer; white-space:nowrap; }
+.sme-table td { padding:.55rem .7rem; border-bottom:1px solid #f1f5f9; color:#374151; vertical-align:middle; }
+.sme-table tr:hover td { background:#fafafa; }
+.pill { display:inline-block; padding:.12rem .5rem; border-radius:999px; font-size:.68rem; font-weight:700; margin:.1rem .15rem .1rem 0; text-transform:capitalize; }
+.badge { display:inline-block; padding:.12rem .5rem; border-radius:6px; font-size:.68rem; font-weight:700; }
+.badge-active { background:#dcfce7; color:#166534; }
+.badge-inactive { background:#f3f4f6; color:#6b7280; }
+.badge-auto { background:#e0f2fe; color:#075985; }
+.badge-manual { background:#fef3c7; color:#92400e; }
+.badge-review { background:#fee2e2; color:#991b1b; }
+.cap-bar { display:inline-flex; align-items:center; gap:.4rem; }
+.cap-track { width:70px; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden; }
+.cap-fill { height:100%; background:#0d9488; }
+.cap-fill.over { background:#dc2626; }
+.muted { color:#9ca3af; }
+/* modal */
+.sme-modal-bg { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none; align-items:flex-start; justify-content:center; z-index:1000; overflow-y:auto; padding:3rem 1rem; }
+.sme-modal-bg.open { display:flex; }
+.sme-modal { background:#fff; border-radius:12px; width:100%; max-width:560px; padding:1.5rem; }
+.sme-modal h2 { font-size:1.1rem; font-weight:700; color:#0f172a; margin:0 0 1rem; }
+.field { margin-bottom:.9rem; }
+.field label { display:block; font-size:.76rem; font-weight:600; color:#374151; margin-bottom:.3rem; }
+.field input[type=text], .field input[type=email], .field input[type=number], .field input[type=url], .field select {
+  width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px; padding:.5rem .65rem; font-size:.85rem; color:#111827; font-family:inherit; }
+.field-row { display:flex; gap:.8rem; } .field-row > * { flex:1; }
+.zone-select { display:flex; flex-wrap:wrap; gap:.4rem; }
+.zone-chip { padding:.3rem .65rem; border:1px solid #d1d5db; border-radius:999px; font-size:.75rem; cursor:pointer; user-select:none; background:#fff; color:#374151; text-transform:capitalize; }
+.zone-chip.sel { background:#0d9488; color:#fff; border-color:#0d9488; }
+.modal-actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.25rem; }
+.form-err { color:#b91c1c; font-size:.78rem; margin-top:.5rem; min-height:1rem; }
+.cov-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.85rem; }
+.cov-cell { border:1px solid #e5e7eb; border-radius:10px; padding:.9rem; background:#fff; }
+.cov-cell.gap { border-color:#fca5a5; background:#fff5f5; }
+.cov-cell h3 { margin:0 0 .5rem; font-size:.9rem; color:#0f172a; text-transform:capitalize; }
+.cov-metric { font-size:.78rem; color:#374151; display:flex; justify-content:space-between; margin:.2rem 0; }
+.cov-gap-label { color:#dc2626; font-size:.72rem; font-weight:700; margin-top:.5rem; }
+.empty { text-align:center; color:#9ca3af; padding:2rem 1rem; font-size:.85rem; }
+.detail-users { margin-top:.6rem; }
+.detail-users .du-row { display:flex; align-items:center; gap:.6rem; padding:.4rem 0; border-bottom:1px solid #f1f5f9; font-size:.8rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-shell">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
+    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link active">Experts</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
+  </nav>
+
+  <div class="sme-page">
+    <h1 class="sme-title">Simi SME Assignment</h1>
+    <p class="sme-sub">Manage subject-matter experts, normalize user expertise into canonical zones, and match users to the best-fit SME.</p>
+
+    <div class="sme-summary" id="smeSummary"></div>
+
+    <div class="sme-tabs">
+      <button class="sme-tab active" data-tab="experts">Experts</button>
+      <button class="sme-tab" data-tab="users">Users</button>
+      <button class="sme-tab" data-tab="unassigned">Unassigned</button>
+      <button class="sme-tab" data-tab="coverage">Coverage map</button>
+    </div>
+
+    <!-- EXPERTS -->
+    <div class="sme-panel active" id="panel-experts">
+      <div class="sme-card">
+        <div class="sme-toolbar">
+          <input type="text" id="expSearch" placeholder="Search name, email, zone…">
+          <select id="expStatus">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <span class="spacer"></span>
+          <button class="btn btn-primary" onclick="openSmeModal()">+ Add SME</button>
+        </div>
+        <table class="sme-table" id="expTable">
+          <thead><tr>
+            <th data-sort="name">Name</th><th data-sort="email">Email</th>
+            <th>Expertise zones</th><th data-sort="assigned">Assigned</th>
+            <th data-sort="status">Status</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        <div id="expEmpty" class="empty" style="display:none">No SMEs yet. Click “Add SME” to create the first one.</div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="sme-panel" id="panel-users">
+      <div class="sme-card">
+        <div class="sme-toolbar">
+          <select id="usrZone"><option value="">All zones</option></select>
+          <select id="usrSme"><option value="">All SMEs</option></select>
+          <span class="spacer"></span>
+          <button class="btn btn-sec" onclick="bulkAssignUnassigned()">Assign unassigned</button>
+          <button class="btn btn-sec" onclick="openRebalance()">Rebalance</button>
+          <button class="btn btn-sec" onclick="recomputeAll()">Recompute zones</button>
+        </div>
+        <table class="sme-table" id="usrTable">
+          <thead><tr>
+            <th>User</th><th>Canonical zones</th><th>Assigned SME</th><th>Type</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        <div id="usrEmpty" class="empty" style="display:none">No users have canonical zones yet. Run “Recompute zones”.</div>
+      </div>
+    </div>
+
+    <!-- UNASSIGNED -->
+    <div class="sme-panel" id="panel-unassigned">
+      <div class="sme-card">
+        <div class="sme-toolbar">
+          <span style="font-size:.85rem;color:#374151;font-weight:600">Users with no matching active SME</span>
+          <span class="spacer"></span>
+          <button class="btn btn-sec" onclick="bulkAssignUnassigned()">Try auto-assign all</button>
+        </div>
+        <div id="unassignedList"></div>
+        <div id="unassignedEmpty" class="empty" style="display:none">🎉 Everyone with canonical zones is assigned to an SME.</div>
+      </div>
+    </div>
+
+    <!-- COVERAGE -->
+    <div class="sme-panel" id="panel-coverage">
+      <div class="sme-card">
+        <div class="cov-grid" id="covGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SME create/edit modal -->
+<div class="sme-modal-bg" id="smeModalBg">
+  <div class="sme-modal">
+    <h2 id="smeModalTitle">Add SME</h2>
+    <input type="hidden" id="smeId">
+    <div class="field-row">
+      <div class="field"><label>First name *</label><input type="text" id="smeFirst"></div>
+      <div class="field"><label>Last name *</label><input type="text" id="smeLast"></div>
+    </div>
+    <div class="field"><label>Email * (unique)</label><input type="email" id="smeEmail"></div>
+    <div class="field-row">
+      <div class="field"><label>Bio URL (optional)</label><input type="url" id="smeBio" placeholder="https://…"></div>
+      <div class="field"><label>Phone (optional)</label><input type="text" id="smePhone"></div>
+    </div>
+    <div class="field">
+      <label>Expertise zones * (select at least one)</label>
+      <div class="zone-select" id="smeZones"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Capacity (max users)</label><input type="number" id="smeCapacity" value="50" min="0"></div>
+      <div class="field"><label>Status</label>
+        <select id="smeStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+      </div>
+    </div>
+    <div class="form-err" id="smeErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sec" onclick="closeSmeModal()">Cancel</button>
+      <button class="btn btn-primary" id="smeSaveBtn" onclick="saveSme()">Save SME</button>
+    </div>
+  </div>
+</div>
+
+<!-- SME detail modal -->
+<div class="sme-modal-bg" id="detailModalBg">
+  <div class="sme-modal" style="max-width:620px">
+    <h2 id="detailTitle">SME detail</h2>
+    <div id="detailBody"></div>
+    <div class="modal-actions"><button class="btn btn-sec" onclick="closeDetail()">Close</button></div>
+  </div>
+</div>
+
+<script>
+const API = '/api/admin';
+let CATEGORIES = [];      // [{name, slug, ...}]
+let SMES = [];            // cache of list
+let selectedZones = new Set();
+const ZONE_COLORS = ['#0d9488','#2563eb','#db2777','#7c3aed','#ea580c','#0891b2','#65a30d','#ca8a04','#4f46e5','#dc2626'];
+
+function zoneColor(slug){
+  const i = CATEGORIES.findIndex(c => c.slug === slug);
+  const idx = i >= 0 ? i : Math.abs(hashStr(slug)) % ZONE_COLORS.length;
+  return ZONE_COLORS[idx % ZONE_COLORS.length];
+}
+function hashStr(s){ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))|0; return h; }
+function zonePill(slug){
+  const c = zoneColor(slug);
+  return `<span class="pill" style="background:${c}22;color:${c}">${slug}</span>`;
+}
+function esc(s){ return (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+async function api(path, opts){
+  const r = await fetch(API + path, Object.assign({headers:{'Content-Type':'application/json'}}, opts||{}));
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.error || ('HTTP '+r.status));
+  return data;
+}
+
+// ── Tabs ──
+document.querySelectorAll('.sme-tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.sme-tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.sme-panel').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  if(t.dataset.tab === 'users') loadUsers();
+  if(t.dataset.tab === 'unassigned') loadUnassigned();
+  if(t.dataset.tab === 'coverage') loadCoverage();
+});
+
+// ── Summary ──
+async function loadSummary(){
+  const [smes, users] = await Promise.all([api('/experts'), api('/sme-users')]);
+  SMES = smes;
+  const active = smes.filter(s => s.status === 'active').length;
+  const assignedUsers = users.filter(u => u.sme_id).length;
+  const unassigned = users.filter(u => !u.sme_id).length;
+  document.getElementById('smeSummary').innerHTML = [
+    ['SMEs', smes.length], ['Active', active],
+    ['Assigned users', assignedUsers], ['Unassigned', unassigned],
+  ].map(([l,v]) => `<div class="sme-stat"><div class="sme-stat-label">${l}</div><div class="sme-stat-value">${v}</div></div>`).join('');
+}
+
+// ── Experts table ──
+let expSort = {key:'name', dir:1};
+async function loadExperts(){
+  const q = document.getElementById('expSearch').value.trim();
+  const status = document.getElementById('expStatus').value;
+  const params = new URLSearchParams();
+  if(q) params.set('q', q);
+  if(status) params.set('status', status);
+  SMES = await api('/experts?' + params.toString());
+  renderExperts();
+  populateSmeFilter();
+}
+function renderExperts(){
+  const tb = document.querySelector('#expTable tbody');
+  let rows = SMES.slice();
+  const {key, dir} = expSort;
+  rows.sort((a,b) => {
+    let av, bv;
+    if(key==='name'){ av=a.full_name.toLowerCase(); bv=b.full_name.toLowerCase(); }
+    else if(key==='email'){ av=a.email; bv=b.email; }
+    else if(key==='assigned'){ av=a.assigned_count; bv=b.assigned_count; }
+    else { av=a.status; bv=b.status; }
+    return (av<bv?-1:av>bv?1:0)*dir;
+  });
+  document.getElementById('expEmpty').style.display = rows.length ? 'none':'block';
+  tb.innerHTML = rows.map(s => {
+    const pct = s.capacity>0 ? Math.min(100, Math.round(s.assigned_count/s.capacity*100)) : 0;
+    const over = s.assigned_count > s.capacity;
+    return `<tr>
+      <td><b>${esc(s.full_name)}</b>${s.needs_review?' <span class="badge badge-review">review</span>':''}</td>
+      <td class="muted">${esc(s.email)}</td>
+      <td>${s.zones.map(zonePill).join('') || '<span class="muted">—</span>'}</td>
+      <td><span class="cap-bar"><span class="cap-track"><span class="cap-fill ${over?'over':''}" style="width:${pct}%"></span></span>${s.assigned_count} / ${s.capacity}</span></td>
+      <td><span class="badge badge-${s.status}">${s.status}</span></td>
+      <td style="white-space:nowrap;text-align:right">
+        <button class="btn btn-sec btn-xs" onclick="showDetail('${s.id}')">View</button>
+        <button class="btn btn-sec btn-xs" onclick="editSme('${s.id}')">Edit</button>
+        ${s.status==='active' ? `<button class="btn btn-danger btn-xs" onclick="deactivateSme('${s.id}')">Deactivate</button>`:''}
+      </td></tr>`;
+  }).join('');
+}
+document.querySelectorAll('#expTable th[data-sort]').forEach(th => th.onclick = () => {
+  const k = th.dataset.sort;
+  expSort.dir = expSort.key===k ? -expSort.dir : 1;
+  expSort.key = k; renderExperts();
+});
+document.getElementById('expSearch').oninput = debounce(loadExperts, 300);
+document.getElementById('expStatus').onchange = loadExperts;
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+// ── SME modal ──
+function renderZoneChips(sel){
+  selectedZones = new Set(sel || []);
+  document.getElementById('smeZones').innerHTML = CATEGORIES.map(c =>
+    `<span class="zone-chip ${selectedZones.has(c.slug)?'sel':''}" data-slug="${c.slug}" onclick="toggleZone(this)">${c.name}</span>`).join('');
+}
+function toggleZone(el){
+  const s = el.dataset.slug;
+  if(selectedZones.has(s)){ selectedZones.delete(s); el.classList.remove('sel'); }
+  else { selectedZones.add(s); el.classList.add('sel'); }
+}
+function openSmeModal(prefillZone){
+  document.getElementById('smeModalTitle').textContent = 'Add SME';
+  ['smeId','smeFirst','smeLast','smeEmail','smeBio','smePhone'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('smeCapacity').value = 50;
+  document.getElementById('smeStatus').value = 'active';
+  document.getElementById('smeErr').textContent = '';
+  renderZoneChips(prefillZone ? [prefillZone] : []);
+  document.getElementById('smeModalBg').classList.add('open');
+}
+function editSme(id){
+  const s = SMES.find(x => x.id===id); if(!s) return;
+  document.getElementById('smeModalTitle').textContent = 'Edit SME';
+  document.getElementById('smeId').value = s.id;
+  document.getElementById('smeFirst').value = s.first_name;
+  document.getElementById('smeLast').value = s.last_name;
+  document.getElementById('smeEmail').value = s.email;
+  document.getElementById('smeBio').value = s.bio_url || '';
+  document.getElementById('smePhone').value = s.phone || '';
+  document.getElementById('smeCapacity').value = s.capacity;
+  document.getElementById('smeStatus').value = s.status;
+  document.getElementById('smeErr').textContent = '';
+  renderZoneChips(s.zones);
+  document.getElementById('smeModalBg').classList.add('open');
+}
+function closeSmeModal(){ document.getElementById('smeModalBg').classList.remove('open'); }
+async function saveSme(){
+  const id = document.getElementById('smeId').value;
+  const payload = {
+    first_name: document.getElementById('smeFirst').value,
+    last_name: document.getElementById('smeLast').value,
+    email: document.getElementById('smeEmail').value,
+    bio_url: document.getElementById('smeBio').value,
+    phone: document.getElementById('smePhone').value,
+    zones: Array.from(selectedZones),
+    capacity: document.getElementById('smeCapacity').value,
+    status: document.getElementById('smeStatus').value,
+  };
+  const btn = document.getElementById('smeSaveBtn'); btn.disabled = true;
+  try {
+    const res = await api(id ? '/experts/'+id : '/experts', {method: id?'PUT':'POST', body: JSON.stringify(payload)});
+    closeSmeModal();
+    if(res.flagged_for_review) alert(res.flagged_for_review + ' assigned user(s) flagged for review after zone/status change.');
+    await loadSummary(); await loadExperts();
+  } catch(e){ document.getElementById('smeErr').textContent = e.message; }
+  finally { btn.disabled = false; }
+}
+async function deactivateSme(id){
+  const s = SMES.find(x=>x.id===id);
+  if(!confirm(`Deactivate ${s.full_name}? New assignments stop and their ${s.assigned_count} user(s) will be flagged for reassignment.`)) return;
+  const res = await api('/experts/'+id+'/deactivate', {method:'POST'});
+  if(res.flagged_for_reassignment) {
+    if(confirm(`${res.flagged_for_reassignment} user(s) flagged. Auto-reassign them to other SMEs now?`))
+      await api('/experts/'+id+'/reassign-users', {method:'POST'});
+  }
+  await loadSummary(); await loadExperts();
+}
+
+// ── SME detail ──
+async function showDetail(id){
+  const s = await api('/experts/'+id);
+  document.getElementById('detailTitle').textContent = s.full_name;
+  const users = s.assigned_users || [];
+  document.getElementById('detailBody').innerHTML = `
+    <div style="font-size:.83rem;color:#374151;line-height:1.7">
+      <div>${esc(s.email)}${s.phone?' · '+esc(s.phone):''}</div>
+      ${s.bio_url?`<div><a href="${esc(s.bio_url)}" target="_blank" rel="noopener" style="color:#0d9488">Bio / profile ↗</a></div>`:''}
+      <div style="margin:.5rem 0">${s.zones.map(zonePill).join('')}</div>
+      <div><b>${s.assigned_count} / ${s.capacity}</b> users assigned · <span class="badge badge-${s.status}">${s.status}</span></div>
+    </div>
+    <div class="detail-users">${
+      users.length ? users.map(u => `<div class="du-row">
+        <b>${esc(u.display_name)}</b>
+        ${u.primary_zone?zonePill(u.primary_zone):''}
+        <span class="badge badge-${u.assignment_type||'auto'}">${u.assignment_type||'auto'}</span>
+        <span class="spacer" style="flex:1"></span>
+        <button class="btn btn-sec btn-xs" onclick="closeDetail();gotoUser('${u.user_id}')">Reassign</button>
+      </div>`).join('') : '<div class="empty">No users assigned.</div>'
+    }</div>`;
+  document.getElementById('detailModalBg').classList.add('open');
+}
+function closeDetail(){ document.getElementById('detailModalBg').classList.remove('open'); }
+function gotoUser(uid){
+  document.querySelector('.sme-tab[data-tab="users"]').click();
+  setTimeout(()=>{ const el=document.getElementById('urow-'+uid); if(el){ el.scrollIntoView({block:'center'}); el.style.background='#fef9c3'; } }, 400);
+}
+
+// ── Users view ──
+let USERS = [];
+async function loadUsers(){
+  const zone = document.getElementById('usrZone').value;
+  const sme = document.getElementById('usrSme').value;
+  const params = new URLSearchParams();
+  if(zone) params.set('zone', zone);
+  if(sme) params.set('sme', sme);
+  USERS = await api('/sme-users?' + params.toString());
+  renderUsers();
+}
+function smeOptions(sel){
+  return ['<option value="">— Unassigned —</option>'].concat(
+    SMES.filter(s=>s.status==='active').map(s =>
+      `<option value="${s.id}" ${s.id===sel?'selected':''}>${esc(s.full_name)} (${s.zones.join(', ')})</option>`)).join('');
+}
+function renderUsers(){
+  const tb = document.querySelector('#usrTable tbody');
+  document.getElementById('usrEmpty').style.display = USERS.length ? 'none':'block';
+  tb.innerHTML = USERS.map(u => `<tr id="urow-${u.user_id}">
+    <td><b>${esc(u.display_name)}</b><br><span class="muted" style="font-size:.72rem">@${esc(u.username)}</span>
+      ${u.needs_reassignment?' <span class="badge badge-review">reassign</span>':''}</td>
+    <td>${(u.canonical_zones||[]).map(z => z.is_primary
+        ? `<b>${zonePill(z.category)}</b>` : zonePill(z.category)).join('') || '<span class="muted">—</span>'}
+      <button class="btn btn-sec btn-xs" onclick="editUserZones('${u.user_id}')" title="Edit zones">✎</button></td>
+    <td><select onchange="assignUser('${u.user_id}', this.value)">${smeOptions(u.sme_id)}</select></td>
+    <td>${u.assignment_type?`<span class="badge badge-${u.assignment_type}">${u.assignment_type}</span>`:'<span class="muted">—</span>'}</td>
+    <td style="text-align:right"><button class="btn btn-sec btn-xs" onclick="autoAssign('${u.user_id}')">Auto</button></td>
+  </tr>`).join('');
+}
+document.getElementById('usrZone').onchange = loadUsers;
+document.getElementById('usrSme').onchange = loadUsers;
+async function assignUser(uid, smeId){
+  await api('/sme-users/'+uid+'/assign', {method:'POST', body: JSON.stringify({sme_id: smeId || null})});
+  await loadSummary(); await loadExperts(); await loadUsers();
+}
+async function autoAssign(uid){
+  const res = await api('/sme-users/'+uid+'/assign', {method:'POST', body: JSON.stringify({auto:true})});
+  if(!res.sme_id) alert('No active SME covers this user\'s primary zone — left in Unassigned queue.');
+  await loadSummary(); await loadExperts(); await loadUsers();
+}
+async function editUserZones(uid){
+  const u = USERS.find(x=>x.user_id===uid);
+  const slugs = CATEGORIES.map(c=>c.slug);
+  const current = (u.canonical_zones||[]).map(z=>z.category);
+  const input = prompt(
+    'Comma-separated canonical zones (first = primary). Available: '+slugs.join(', ')+
+    '\nEnter "ai" to reset to AI classification.',
+    current.join(', '));
+  if(input===null) return;
+  if(input.trim().toLowerCase()==='ai'){
+    await api('/sme-users/'+uid+'/zones', {method:'PUT', body: JSON.stringify({reset_to_ai:true})});
+  } else {
+    const cats = input.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+    const bad = cats.filter(c=>!slugs.includes(c));
+    if(bad.length){ alert('Unknown zones: '+bad.join(', ')); return; }
+    const zones = cats.map((c,i)=>({category:c, confidence:1.0, is_primary:i===0}));
+    try { await api('/sme-users/'+uid+'/zones', {method:'PUT', body: JSON.stringify({canonical_zones:zones})}); }
+    catch(e){ alert(e.message); return; }
+  }
+  await loadUsers();
+}
+
+// ── Unassigned queue ──
+async function loadUnassigned(){
+  const rows = await api('/sme-users?unassigned=1');
+  const el = document.getElementById('unassignedList');
+  document.getElementById('unassignedEmpty').style.display = rows.length ? 'none':'block';
+  el.innerHTML = rows.map(u => `<div class="du-row" style="padding:.7rem 0">
+    <b>${esc(u.display_name)}</b>
+    ${u.primary_zone?zonePill(u.primary_zone):'<span class="muted">no primary zone</span>'}
+    <span style="flex:1"></span>
+    ${u.primary_zone
+      ? `<span class="muted" style="font-size:.75rem">No active SME covers <b>${u.primary_zone}</b>.</span>
+         <button class="btn btn-primary btn-xs" onclick="openSmeModal('${u.primary_zone}')">Create SME</button>`
+      : '<span class="muted" style="font-size:.75rem">Recompute zones first.</span>'}
+    <button class="btn btn-sec btn-xs" onclick="autoAssign('${u.user_id}')">Retry auto</button>
+  </div>`).join('');
+}
+
+// ── Bulk actions ──
+async function bulkAssignUnassigned(){
+  const res = await api('/sme/assign-unassigned', {method:'POST'});
+  alert(res.assigned + ' user(s) auto-assigned.');
+  await refreshAll();
+}
+async function openRebalance(){
+  const slug = prompt('Rebalance which zone? '+CATEGORIES.map(c=>c.slug).join(', '));
+  if(!slug) return;
+  const res = await api('/sme/rebalance', {method:'POST', body: JSON.stringify({zone: slug.trim().toLowerCase()})});
+  alert(res.moved + ' user(s) redistributed.');
+  await refreshAll();
+}
+async function recomputeAll(){
+  if(!confirm('Re-classify canonical zones for ALL users? Manual edits are preserved. This calls the AI classifier per user.')) return;
+  const res = await api('/sme/recompute-all-zones', {method:'POST'});
+  alert('Recomputed zones for ' + res.processed + ' user(s).');
+  await refreshAll();
+}
+async function refreshAll(){
+  await loadSummary(); await loadExperts();
+  if(document.getElementById('panel-users').classList.contains('active')) loadUsers();
+  if(document.getElementById('panel-unassigned').classList.contains('active')) loadUnassigned();
+}
+
+// ── Coverage map ──
+async function loadCoverage(){
+  const rows = await api('/sme/coverage');
+  document.getElementById('covGrid').innerHTML = rows.map(r => `
+    <div class="cov-cell ${r.is_gap?'gap':''}">
+      <h3>${zonePill(r.slug)} ${esc(r.category)}</h3>
+      <div class="cov-metric"><span>Active SMEs</span><b>${r.sme_count}</b></div>
+      <div class="cov-metric"><span>Users (primary)</span><b>${r.user_count}</b></div>
+      <div class="cov-metric"><span>Total capacity</span><b>${r.capacity}</b></div>
+      ${r.is_gap?'<div class="cov-gap-label">⚠ Gap — users with no SME</div>':''}
+    </div>`).join('');
+}
+
+// ── Filters populate ──
+function populateSmeFilter(){
+  const sel = document.getElementById('usrSme');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All SMEs</option>' +
+    SMES.map(s => `<option value="${s.id}">${esc(s.full_name)}</option>`).join('');
+  sel.value = cur;
+}
+function populateZoneFilter(){
+  document.getElementById('usrZone').innerHTML = '<option value="">All zones</option>' +
+    CATEGORIES.map(c => `<option value="${c.slug}">${c.name}</option>`).join('');
+}
+
+// ── Init ──
+(async function init(){
+  CATEGORIES = await api('/expertise-categories');
+  populateZoneFilter();
+  await loadSummary();
+  await loadExperts();
+})();
+</script>
+{% endblock %}
