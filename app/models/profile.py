@@ -28,6 +28,9 @@ class UserProfile(db.Model):
     show_booking_btn      = db.Column(db.Boolean, default=True)
     is_published          = db.Column(db.Boolean, default=False)
     noindex               = db.Column(db.Boolean, default=False)
+    # SIM-PRD-QR-001: bio page QR code (generated on publish / slug / photo change)
+    qr_code_url           = db.Column(db.String(500), nullable=True)
+    qr_generated_at       = db.Column(db.DateTime, nullable=True)
     created_at            = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at            = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

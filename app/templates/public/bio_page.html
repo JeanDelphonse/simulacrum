@@ -171,6 +171,23 @@
       transition: background .15s, color .15s;
     }
     .hero-meta-booking:hover { background: var(--accent); color: #fff; }
+    /* ── QR code card (SIM-PRD-QR-001) ─────────────────────────────── */
+    .hero-qr { margin-left: auto; align-self: flex-start; flex-shrink: 0; text-align: center; }
+    .hero-qr-card {
+      position: relative; display: inline-block; background: #fff; padding: 8px;
+      border: 1px solid rgba(0,0,0,.06); border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08); line-height: 0;
+    }
+    .hero-qr-img { display: block; width: 112px; height: 112px; border-radius: 6px; }
+    .hero-qr-caption { font-size: 9px; color: var(--muted); margin-top: 4px; letter-spacing: .03em; }
+    .hero-qr-dl {
+      position: absolute; top: 5px; right: 5px; width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.92); border: 1px solid rgba(0,0,0,.06);
+      border-radius: 6px; color: var(--accent); opacity: 0; transition: opacity .15s ease;
+    }
+    .hero-qr-card:hover .hero-qr-dl, .hero-qr-card:focus .hero-qr-dl { opacity: 1; }
+    @media (hover: none) { .hero-qr-dl { opacity: 1; } }
     .ask-simi-bubble {
       display: inline-flex; align-items: center; gap: .35rem;
       padding: .28rem .75rem; border-radius: 100px;
@@ -582,6 +599,9 @@
     .tag-chip { font-size: .68rem; background: var(--tag-bg); color: var(--tag-color); border-radius: 20px; padding: .15rem .55rem; }
 
     /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .hero-qr-img { width: 80px; height: 80px; }
+    }
     @media (max-width: 640px) {
       .hero-inner { flex-direction: column; gap: 1.25rem; }
       .hero-text h1 { font-size: 1.625rem; }
@@ -591,6 +611,9 @@
       .testimonials-grid { grid-template-columns: 1fr; }
       .ventures-grid { grid-template-columns: 1fr; }
       .projects-grid { grid-template-columns: 1fr 1fr; }
+      /* QR relocates below the Hero, centered (SIM-PRD-QR-001 FR-QR-02) */
+      .hero-qr { margin-left: 0; align-self: center; }
+      .hero-qr-img { width: 96px; height: 96px; }
     }
     @media (max-width: 420px) {
       .projects-grid { grid-template-columns: 1fr; }
@@ -925,6 +948,21 @@
         </div>
 
       </div>
+
+      {% if ctx.qr_code_url %}
+      <!-- ── QR code (SIM-PRD-QR-001) ─────────────────────────────────── -->
+      <div class="hero-qr">
+        <a class="hero-qr-card" href="{{ ctx.qr_code_url }}?v={{ ctx.qr_version }}"
+           download="{{ slug }}-simulacrum-qr.png" title="Download QR code" aria-label="Download QR code">
+          <img class="hero-qr-img" src="{{ ctx.qr_code_url }}?v={{ ctx.qr_version }}"
+               alt="QR code linking to {{ ctx.full_name }}'s page" width="112" height="112" loading="lazy">
+          <span class="hero-qr-dl" aria-hidden="true">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </span>
+        </a>
+        {% if ctx.qr_show_caption %}<div class="hero-qr-caption">Scan to view</div>{% endif %}
+      </div>
+      {% endif %}
     </div>
   </section>
 

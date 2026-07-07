@@ -443,7 +443,12 @@
         <button class="s-btn-sm" id="share-badge-btn">Website badge</button>
         <button class="s-btn-sm" id="share-card-btn">Inline card</button>
         <button class="s-btn-sm" id="share-email-btn">Email signature</button>
+        <a class="s-btn-sm" id="share-qr-btn" href="/static/qr/{{ slug }}.png"
+           download="{{ slug }}-simulacrum-qr.png">Download QR code</a>
       </div>
+      <p class="share-qr-hint" style="font-size:.72rem;color:#9ca3af;margin:.5rem 0 0;">
+        Add this QR to your business card, email signature, or conference badge.
+      </p>
       <button class="share-skip" id="share-skip-btn">Skip for now</button>
     </div>
   </div>

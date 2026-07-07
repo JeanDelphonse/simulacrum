@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 instance/
 uploads/
+app/static/qr/
 *.db
 *.sqlite
 .venv/

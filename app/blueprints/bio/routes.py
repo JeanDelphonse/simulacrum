@@ -243,6 +243,12 @@ def _assemble_context(user_id: str, bp: BioPage | None = None) -> dict:
     ctx['projects']         = profile.projects
     ctx['bio_sections_visible'] = profile.bio_sections_visible
 
+    # SIM-PRD-QR-001: bio page QR code
+    ctx['qr_code_url'] = profile.qr_code_url or None
+    ctx['qr_version'] = int(profile.qr_generated_at.timestamp()) if profile.qr_generated_at else 0
+    qr_cfg = (bp.sections.get('qr') if bp else None) or {}
+    ctx['qr_show_caption'] = qr_cfg.get('show_caption', True)
+
     return ctx
 
 
@@ -304,6 +310,15 @@ def publish_bio_page():
     if profile and not profile.is_published:
         profile.is_published = True
     db.session.commit()
+    # SIM-PRD-QR-001: generate the branded QR code on publish (idempotent).
+    if profile:
+        try:
+            from app.services.qr_service import generate_bio_qr
+            generate_bio_qr(profile)
+        except Exception:
+            import logging as _log
+            _log.getLogger(__name__).exception('QR generation on publish failed')
+            db.session.rollback()
     # Emit activity event for connections' feeds
     try:
         from app.models.social import ActivityEvent
@@ -594,6 +609,11 @@ def update_bio_settings():
         bp.show_badge = bool(data['show_badge'])
     if 'show_on_explore' in data:
         bp.show_on_explore = bool(data['show_on_explore'])
+    # SIM-PRD-QR-001: 'Scan to view' micro-caption toggle (default on)
+    if 'qr_show_caption' in data:
+        s = bp.sections
+        s.setdefault('qr', {})['show_caption'] = bool(data['qr_show_caption'])
+        bp.sections = s
 
     bp.updated_at = datetime.utcnow()
     try:

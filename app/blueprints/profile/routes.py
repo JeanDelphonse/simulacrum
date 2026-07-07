@@ -83,6 +83,7 @@ def get_profile():
 def update_profile():
     data = request.get_json(force=True, silent=True) or {}
     profile = _get_or_create_profile(current_user)
+    _qr_slug_changed = None  # old slug, set when the username changes
 
     if 'username' in data:
         username = data['username'].lower().strip()
@@ -98,6 +99,9 @@ def update_profile():
         if conflict:
             return jsonify({'error': 'Username already taken'}), 409
         if profile.username != username:
+            # SIM-PRD-QR-001: slug changed → QR points to a new URL. Regenerate
+            # (and delete the old file) after commit.
+            _qr_slug_changed = profile.username
             profile.username = username
 
     str_fields = {
@@ -136,6 +140,12 @@ def update_profile():
 
     profile.updated_at = datetime.utcnow()
     db.session.commit()
+
+    # SIM-PRD-QR-001: regenerate QR when the slug changed (published pages only)
+    if _qr_slug_changed is not None:
+        from app.services.qr_service import regenerate_for_profile
+        regenerate_for_profile(profile, old_slug=_qr_slug_changed)
+
     return jsonify(_profile_dict(profile))
 
 
@@ -377,6 +387,11 @@ def upload_avatar():
     profile = _get_or_create_profile(current_user)
     profile.avatar_path = os.path.join('avatars', current_user.id, filename)
     db.session.commit()
+
+    # SIM-PRD-QR-001: new center avatar → regenerate QR (published pages only)
+    from app.services.qr_service import regenerate_for_profile
+    regenerate_for_profile(profile)
+
     return jsonify({'avatar_path': profile.avatar_path})
 
 
