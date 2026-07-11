@@ -30,6 +30,26 @@
   flex-shrink: 0;
   gap: 1rem;
 }
+/* SIM-PRD-SME-002 — Your Simi Expert card */
+.sme-expert-card { border:1px solid #99f6e4; background:#f0fdfa; border-radius:12px; padding:1rem 1.15rem; margin-bottom:1rem; }
+.sme-expert-hd { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start; }
+.sme-expert-eyebrow { font-size:.66rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#0d9488; }
+.sme-expert-name { font-size:1.05rem; font-weight:700; color:#0f172a; margin-top:.15rem; }
+.sme-expert-zone { font-size:.78rem; color:#6b7280; }
+.sme-expert-contact { font-size:.78rem; display:flex; flex-direction:column; gap:.15rem; text-align:right; }
+.sme-expert-contact a { color:#0d9488; text-decoration:none; }
+.sme-rec-list { margin-top:.9rem; display:flex; flex-direction:column; gap:.6rem; }
+.sme-rec { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:.65rem .8rem; }
+.sme-rec-type { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#0d9488; }
+.sme-rec-rationale { font-size:.83rem; color:#374151; margin:.25rem 0 .5rem; }
+.sme-rec-actions { display:flex; gap:.5rem; }
+.sme-rec-apply { background:#0d9488; color:#fff; border:none; border-radius:6px; padding:.4rem .8rem; font-size:.76rem; font-weight:600; cursor:pointer; }
+.sme-rec-apply:hover { background:#0f766e; }
+.sme-rec-dismiss { background:#fff; color:#6b7280; border:1px solid #d1d5db; border-radius:6px; padding:.4rem .8rem; font-size:.76rem; font-weight:600; cursor:pointer; }
+.sme-rec-done { font-size:.82rem; color:#166534; font-weight:600; }
+.sme-expert-empty { font-size:.8rem; color:#6b7280; margin-top:.6rem; }
+.sme-expert-foot { margin-top:.75rem; font-size:.75rem; }
+.sme-expert-foot a { color:#0d9488; text-decoration:none; }
 .gcc-header-left { display: flex; align-items: center; gap: 0.75rem; }
 .gcc-sim-name { font-size: 1.1rem; font-weight: 700; color: var(--gcc-navy); }
 .gcc-phase-badge {
@@ -1291,6 +1311,43 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
        Tab 1 — Action Queue
     ──────────────────────────────────────────────────────────────────────── #}
     <div class="gcc-tab-panel" data-panel="queue" role="tabpanel">
+      {# ── SIM-PRD-SME-002 §5 — Your Simi Expert card + pending recommendations ── #}
+      {% if sme_expert is defined and sme_expert %}
+      <div class="sme-expert-card" id="smeExpertCard">
+        <div class="sme-expert-hd">
+          <div>
+            <div class="sme-expert-eyebrow">Your Simi Expert</div>
+            <div class="sme-expert-name">{{ sme_expert.name }}</div>
+            <div class="sme-expert-zone">{{ (sme_expert.zone or '') | capitalize }} expert</div>
+          </div>
+          <div class="sme-expert-contact">
+            {% if sme_expert.email %}<a href="mailto:{{ sme_expert.email }}">{{ sme_expert.email }}</a>{% endif %}
+            {% if sme_expert.phone %}<span>{{ sme_expert.phone }}</span>{% endif %}
+            {% if sme_expert.bio_url %}<a href="{{ sme_expert.bio_url }}" target="_blank" rel="noopener">View bio ↗</a>{% endif %}
+          </div>
+        </div>
+        {% if sme_pending %}
+        <div class="sme-rec-list">
+          {% for rec in sme_pending %}
+          <div class="sme-rec" id="smeRec-{{ rec.id }}" data-rec-id="{{ rec.id }}">
+            <div class="sme-rec-type">{{ rec.type.replace('_',' ') | capitalize }}{% if not rec.is_one_click %} · advisory{% endif %}</div>
+            <div class="sme-rec-rationale">{{ rec.rationale }}</div>
+            <div class="sme-rec-actions">
+              {% if rec.is_one_click %}
+              <button class="sme-rec-apply" onclick="applyRec('{{ rec.id }}')">Apply this change</button>
+              {% endif %}
+              <button class="sme-rec-dismiss" onclick="dismissRec('{{ rec.id }}')">Dismiss</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="sme-expert-empty">No pending recommendations. Your expert reviews your simulation and suggests improvements here.</div>
+        {% endif %}
+        <div class="sme-expert-foot"><a href="/settings/profile#simi-expert">Manage your expert →</a></div>
+      </div>
+      {% endif %}
+
       {% if active_items %}
         <div class="aq-list" id="actionQueueList">
           {% for item in active_items %}
@@ -2402,6 +2459,26 @@ function dismissItem(itemId) {
       setTimeout(() => { card.remove(); updateQueueCount(); }, 350);
     }
   }).catch(() => {});
+}
+
+// ── SIM-PRD-SME-002 — apply / dismiss an SME recommendation (user is the actor) ──
+async function applyRec(recId) {
+  const card = document.getElementById('smeRec-' + recId);
+  try {
+    const r = await fetch(ROOT + '/api/sme-advisor/recommendations/' + recId + '/apply', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'same-origin',
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Could not apply');
+    if (card) { card.style.opacity = '.5'; card.innerHTML = '<div class="sme-rec-done">✓ Applied — takes effect next cycle.</div>'; }
+  } catch (e) { alert(e.message); }
+}
+function dismissRec(recId) {
+  const card = document.getElementById('smeRec-' + recId);
+  fetch(ROOT + '/api/sme-advisor/recommendations/' + recId + '/dismiss', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'same-origin',
+    body: JSON.stringify({}),
+  }).then(r => r.json()).then(d => { if (card) card.remove(); }).catch(() => {});
 }
 
 // ── Social post approval ─────────────────────────────────────────────────────

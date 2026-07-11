@@ -111,7 +111,7 @@
           <thead><tr>
             <th data-sort="name">Name</th><th data-sort="email">Email</th>
             <th>Expertise zones</th><th data-sort="assigned">Assigned</th>
-            <th data-sort="status">Status</th><th></th>
+            <th data-sort="status">Status</th><th>Console</th><th></th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -285,7 +285,12 @@ function renderExperts(){
       <td class="muted">${esc(s.email)}</td>
       <td>${s.zones.map(zonePill).join('') || '<span class="muted">—</span>'}</td>
       <td><span class="cap-bar"><span class="cap-track"><span class="cap-fill ${over?'over':''}" style="width:${pct}%"></span></span>${s.assigned_count} / ${s.capacity}</span></td>
-      <td><span class="badge badge-${s.status}">${s.status}</span></td>
+      <td><span class="badge badge-${s.status}">${s.status}</span>${s.can_view_l5?' <span class="badge badge-active" title="Finance/Consulting — full Layer 5 access">L5</span>':''}</td>
+      <td style="white-space:nowrap">
+        ${s.has_login
+          ? `<span class="badge badge-active">enabled</span> <button class="btn btn-sec btn-xs" onclick="revokeLogin('${s.id}')">Revoke</button>`
+          : `<button class="btn btn-sec btn-xs" onclick="provisionLogin('${s.id}')">Enable login</button>`}
+      </td>
       <td style="white-space:nowrap;text-align:right">
         <button class="btn btn-sec btn-xs" onclick="showDetail('${s.id}')">View</button>
         <button class="btn btn-sec btn-xs" onclick="editSme('${s.id}')">Edit</button>
@@ -368,6 +373,23 @@ async function deactivateSme(id){
       await api('/experts/'+id+'/reassign-users', {method:'POST'});
   }
   await loadSummary(); await loadExperts();
+}
+
+// ── SME console login (SIM-PRD-SME-002) ──
+async function provisionLogin(id){
+  const s = SMES.find(x=>x.id===id);
+  if(!confirm(`Enable SME console login for ${s.full_name}? They'll be able to sign in with ${s.email} and get a set-password email if the account is new.`)) return;
+  try {
+    const res = await api('/experts/'+id+'/provision-login', {method:'POST'});
+    alert(res.created ? 'Account created — a set-password email was sent.' : 'Existing account linked. They can sign in now.');
+    await loadExperts();
+  } catch(e){ alert(e.message); }
+}
+async function revokeLogin(id){
+  const s = SMES.find(x=>x.id===id);
+  if(!confirm(`Revoke console login for ${s.full_name}? They will lose SME console access immediately.`)) return;
+  try { await api('/experts/'+id+'/revoke-login', {method:'POST'}); await loadExperts(); }
+  catch(e){ alert(e.message); }
 }
 
 // ── SME detail ──

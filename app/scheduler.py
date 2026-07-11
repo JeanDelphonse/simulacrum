@@ -85,6 +85,19 @@ def _outreach_drip_job(app):
             logger.exception('APScheduler: outreach drip/broadcast job failed')
 
 
+def _sme_rec_expiry_job(app):
+    """SIM-PRD-SME-002 §4 — auto-expire untouched recommendations past their window."""
+    with app.app_context():
+        _refresh_pool(app)
+        try:
+            from app.services.sme_console_service import expire_stale_recommendations
+            n = expire_stale_recommendations()
+            if n:
+                logger.info('APScheduler: expired %d stale SME recommendations', n)
+        except Exception:
+            logger.exception('APScheduler: SME recommendation expiry job failed')
+
+
 def start_scheduler(app):
     """Start the background scheduler.  Safe to call multiple times — no-ops if already running.
     If APScheduler is not installed the function logs a warning and returns — the app still starts."""
@@ -156,6 +169,17 @@ def start_scheduler(app):
         seconds=1800,
         args=[app],
         id='outreach-drip-check',
+        replace_existing=True,
+    )
+
+    # SIM-PRD-SME-002: expire untouched SME recommendations once a day.
+    _scheduler.add_job(
+        _sme_rec_expiry_job,
+        'cron',
+        hour=3,
+        minute=30,
+        args=[app],
+        id='sme-rec-expiry-daily',
         replace_existing=True,
     )
 

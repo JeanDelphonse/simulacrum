@@ -123,6 +123,8 @@ def create_app(config_name=None):
     from app.blueprints.onboarding import onboarding_bp
     from app.blueprints.voice import voice_bp
     app.logger.info('startup: onboarding_bp imported')
+    from app.blueprints.sme import sme_bp, sme_user_bp
+    app.logger.info('startup: sme_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -150,6 +152,8 @@ def create_app(config_name=None):
     app.register_blueprint(social_bp)
     app.register_blueprint(onboarding_bp)
     app.register_blueprint(voice_bp)
+    app.register_blueprint(sme_bp, url_prefix='/api/sme')
+    app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 
     # Register page routes
     from app.blueprints.pages import pages_bp
@@ -199,8 +203,9 @@ def create_app(config_name=None):
         from flask import redirect as _redirect, request as _req
         from flask_login import current_user as _cu
 
-        # Skip API calls, static files, and the onboarding route itself
-        if _req.path.startswith(('/api/', '/static/', '/onboarding')):
+        # Skip API calls, static files, the onboarding route itself, and the SME console
+        # (SMEs are advisors — their linked login need not complete the user onboarding).
+        if _req.path.startswith(('/api/', '/static/', '/onboarding', '/sme')):
             return
         # Skip public/auth pages
         _public_prefixes = ('/legal/', '/u/', '/share/', '/samples/', '/ref/',
@@ -235,6 +240,21 @@ def create_app(config_name=None):
             return render_template('500.html'), 500
         except Exception:
             return '<h1>500 Internal Server Error</h1>', 500
+
+    # SIM-PRD-SME-002 — expose whether the current login is an SME (for the nav link).
+    @app.context_processor
+    def _inject_sme_flag():
+        from flask_login import current_user as _cu
+        is_sme = False
+        try:
+            if _cu.is_authenticated:
+                from app.models.sme import SimiSME
+                is_sme = db.session.query(SimiSME.id).filter_by(
+                    auth_user_id=_cu.id, status=SimiSME.STATUS_ACTIVE,
+                ).first() is not None
+        except Exception:
+            is_sme = False
+        return {'current_user_is_sme': is_sme}
 
     # Shell context
     @app.shell_context_processor

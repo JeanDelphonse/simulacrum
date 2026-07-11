@@ -324,6 +324,14 @@ def settings_profile():
         'public_sim':  public_sim,
     }
     resume_text = (resume.parsed_text or '').strip() if resume else ''
+    # SIM-PRD-SME-002 — 'Your Simi Expert' + opt-out state
+    sme_expert = None
+    sme_opted_out = bool(profile and getattr(profile, 'sme_opted_out', False))
+    try:
+        from app.services.sme_console_service import expert_card as _ec
+        sme_expert = _ec(profile)
+    except Exception:
+        sme_expert = None
     return render_template(
         'settings/index.html',
         active_tab='profile',
@@ -331,6 +339,8 @@ def settings_profile():
         has_source_data=has_source_data,
         resume_text=resume_text,
         completeness_breakdown=completeness_breakdown,
+        sme_expert=sme_expert,
+        sme_opted_out=sme_opted_out,
     )
 
 
@@ -761,6 +771,56 @@ def admin_experts_view():
         from flask import abort
         abort(403)
     return render_template('admin/experts.html')
+
+
+# ---------------------------------------------------------------------------
+# SIM-PRD-SME-002 — SME console (advisor workspace)
+# ---------------------------------------------------------------------------
+
+def _require_sme():
+    """Return the active SimiSME behind this login, or abort 403."""
+    from app.services.sme_console_service import get_sme_for_login
+    sme = get_sme_for_login(current_user)
+    if not sme:
+        from flask import abort
+        abort(403)
+    return sme
+
+
+@pages_bp.route('/sme')
+@login_required
+def sme_console():
+    """SME console home — caseload dashboard with triage (FR-SMV-09)."""
+    sme = _require_sme()
+    return render_template('sme/console.html', sme=sme, active_view='caseload')
+
+
+@pages_bp.route('/sme/recommendations')
+@login_required
+def sme_recommendations():
+    sme = _require_sme()
+    return render_template('sme/console.html', sme=sme, active_view='recommendations')
+
+
+@pages_bp.route('/sme/profile')
+@login_required
+def sme_profile():
+    sme = _require_sme()
+    return render_template('sme/console.html', sme=sme, active_view='profile')
+
+
+@pages_bp.route('/sme/users/<user_id>')
+@login_required
+def sme_user_detail(user_id):
+    """Read-only drill-down into one assigned user + recommendation composer (FR-SMV-03/04)."""
+    from app.services.sme_console_service import assigned_profile, log_denial
+    sme = _require_sme()
+    profile = assigned_profile(sme, user_id)
+    if not profile:
+        log_denial(sme, user_id)
+        from flask import abort
+        abort(404)
+    return render_template('sme/user_detail.html', sme=sme, target_user_id=user_id)
 
 
 @pages_bp.route('/admin/partners')
@@ -1287,6 +1347,18 @@ def gcc_view(sim_id):
     _cycle_count = latest_cycle.cycle_number if latest_cycle else 0
     _active_cycle_limit = int(layer6_config.active_cycle_limit) if layer6_config else 30
 
+    # SIM-PRD-SME-002 §5 — 'Your Simi Expert' card + pending recommendations
+    sme_expert = None
+    sme_pending = []
+    try:
+        from app.services import sme_console_service as _smc
+        sme_expert = _smc.expert_card(profile)
+        if sme_expert:
+            sme_pending = [r.to_dict(include_sme=True)
+                           for r in _smc.pending_recommendations(current_user.id, simulation_id=sim_id)]
+    except Exception as _e:
+        logger.warning('gcc expert card build failed: %s', _e)
+
     # Voice + video data for Visuals tab (FR-VOICE-06/10)
     from app.models.user import User as _User
     _usr = _User.query.get(current_user.id)
@@ -1347,6 +1419,8 @@ def gcc_view(sim_id):
         voice_trained=voice_trained,
         voice_paid=voice_paid,
         sim_videos=sim_videos,
+        sme_expert=sme_expert,
+        sme_pending=sme_pending,
     )
 
 

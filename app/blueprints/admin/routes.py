@@ -1663,6 +1663,101 @@ def reassign_expert_users(sme_id):
     return jsonify({'ok': True, 'rematched': rematched, 'unassigned': unassigned}), 200
 
 
+# ── SME console login provisioning (SIM-PRD-SME-002 FR-SMV-01) ────────────────
+
+@admin_bp.route('/experts/<sme_id>/provision-login', methods=['POST'])
+@login_required
+@admin_required
+def provision_expert_login(sme_id):
+    """Enable console login for an SME by linking (or creating) a User for their email.
+
+    An existing account with that email is linked and marked verified. A brand-new
+    account is created verified with a password-reset token, and a set-password email
+    is sent so the SME can choose their own credentials.
+    """
+    import secrets
+    from datetime import datetime, timedelta
+    from app.models.sme import SimiSME
+    from app.models.user import User
+    from app.extensions import bcrypt
+    from utils.id_gen import generate_id as _gen
+
+    sme = SimiSME.query.get_or_404(sme_id)
+    if sme.auth_user_id:
+        return jsonify({'ok': True, 'already_provisioned': True, 'auth_user_id': sme.auth_user_id}), 200
+
+    email = sme.email.lower().strip()
+    user = User.query.filter_by(email=email).first()
+    created = False
+    if user:
+        # Don't hijack a privileged account by accident — but linking is fine; SME role
+        # is additive and independent of is_admin.
+        user.email_verified = True
+    else:
+        created = True
+        reset_token = secrets.token_urlsafe(32)
+        user = User(
+            id=_gen(),
+            email=email,
+            full_name=sme.full_name,
+            email_verified=True,
+            password_hash=bcrypt.generate_password_hash(
+                secrets.token_urlsafe(24), rounds=current_app.config['BCRYPT_LOG_ROUNDS'],
+            ).decode('utf-8'),
+            password_reset_token=reset_token,
+            password_reset_expires=datetime.utcnow() + timedelta(days=7),
+            onboarding_completed_at=datetime.utcnow(),  # SMEs skip the user onboarding wizard
+        )
+        db.session.add(user)
+        db.session.flush()
+
+    sme.auth_user_id = user.id
+    AuditLog.log('sme_login_provisioned', user_id=current_user.id, resource_id=sme.id,
+                 metadata={'auth_user_id': user.id, 'created': created})
+    db.session.commit()
+
+    # Send a set-password email to a newly created account (best-effort).
+    if created:
+        try:
+            from app.services.email_service import send_password_reset_email
+            send_password_reset_email(user.email, user.full_name, user.password_reset_token)
+        except Exception as exc:
+            logging.getLogger(__name__).warning('SME set-password email failed: %s', exc)
+
+    return jsonify({'ok': True, 'created': created, 'auth_user_id': user.id}), 200
+
+
+@admin_bp.route('/experts/<sme_id>/revoke-login', methods=['POST'])
+@login_required
+@admin_required
+def revoke_expert_login(sme_id):
+    """Disable console login for an SME (unlink the auth account; the User row is kept)."""
+    from app.models.sme import SimiSME
+    sme = SimiSME.query.get_or_404(sme_id)
+    prev = sme.auth_user_id
+    sme.auth_user_id = None
+    AuditLog.log('sme_login_revoked', user_id=current_user.id, resource_id=sme.id,
+                 metadata={'auth_user_id': prev})
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+# ── SME access audit (SIM-PRD-SME-002 FR-SMV-10) ──────────────────────────────
+
+@admin_bp.route('/experts/<sme_id>/access-log', methods=['GET'])
+@login_required
+@admin_required
+def expert_access_log(sme_id):
+    """Recent SME access-log entries for admin privacy review."""
+    from app.models.sme import SimiSME, SmeAccessLog
+    SimiSME.query.get_or_404(sme_id)
+    rows = (
+        SmeAccessLog.query.filter_by(sme_id=sme_id)
+        .order_by(SmeAccessLog.created_at.desc()).limit(200).all()
+    )
+    return jsonify([r.to_dict() for r in rows]), 200
+
+
 # ── Users view + zone/SME assignment (FR-SME-05/06/07) ────────────────────────
 
 def _sme_get_or_create_profile(user_id):
@@ -1817,8 +1912,13 @@ def assign_user_sme(user_id):
         return jsonify({'error': 'User not found'}), 404
     data = request.get_json() or {}
 
+    from app.services import sme_console_service
+    prev_sme_id = profile.sme_id
+
     if data.get('auto'):
         sme = sme_service.auto_assign_sme(profile, force_over_capacity=bool(data.get('force')))
+        if sme and profile.sme_id != prev_sme_id:
+            sme_console_service.notify_assignment(profile, sme)
         return jsonify({'ok': True, 'sme_id': profile.sme_id,
                         'sme_name': sme.full_name if sme else None,
                         'assignment_type': profile.sme_assignment_type}), 200
@@ -1831,6 +1931,11 @@ def assign_user_sme(user_id):
     AuditLog.log('sme_user_assigned', user_id=current_user.id, resource_id=user_id,
                  metadata={'sme_id': sme_id, 'type': 'manual'})
     db.session.commit()
+    if profile.sme_id and profile.sme_id != prev_sme_id:
+        from app.models.sme import SimiSME
+        sme = SimiSME.query.get(profile.sme_id)
+        if sme:
+            sme_console_service.notify_assignment(profile, sme)
     return jsonify({'ok': True, 'sme_id': profile.sme_id,
                     'assignment_type': profile.sme_assignment_type}), 200
 

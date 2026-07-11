@@ -119,6 +119,10 @@ def auto_assign_sme(profile: UserProfile, force_over_capacity: bool = False, com
     then stable round-robin by id. Never overwrites a manual assignment. On no match the
     user lands in the Unassigned queue (sme_id = None). Returns the assigned SimiSME or None.
     """
+    # SIM-PRD-SME-002 FR-SMV-08: a user who opted out is never auto-re-matched.
+    if getattr(profile, 'sme_opted_out', False):
+        return None
+
     # Manual pins are never overwritten by auto-matching (FR-SME-07).
     if profile.sme_assignment_type == 'manual' and profile.sme_id:
         return SimiSME.query.get(profile.sme_id)
@@ -201,6 +205,7 @@ def assign_unassigned():
     profiles = UserProfile.query.filter(
         UserProfile.sme_id.is_(None),
         UserProfile._canonical_zones.isnot(None),
+        UserProfile.sme_opted_out.is_(False),  # FR-SMV-08: don't re-match opted-out users
     ).all()
     assigned = 0
     for p in profiles:

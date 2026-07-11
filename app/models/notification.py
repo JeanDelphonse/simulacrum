@@ -18,6 +18,9 @@ EMAIL_DEFAULTS = {
     'retention_warning': {'email_enabled': True,  'digest_mode': False},
     'milestone':         {'email_enabled': True,  'digest_mode': False},
     'chat_action':       {'email_enabled': True,  'digest_mode': False},
+    # SIM-PRD-SME-002 — advisor transparency touchpoints
+    'sme_assignment':    {'email_enabled': True,  'digest_mode': False},
+    'sme_recommendation':{'email_enabled': True,  'digest_mode': False},
 }
 
 

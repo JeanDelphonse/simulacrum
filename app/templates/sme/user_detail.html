@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% block title %}Advisor View{% endblock %}
+{% block head %}
+<style>
+.sud { max-width:1180px; margin:0 auto; padding:1.25rem 1rem 3rem; }
+.sud-banner { background:#0f766e; color:#ccfbf1; font-size:.78rem; padding:.55rem .9rem; border-radius:8px; margin-bottom:1rem; display:flex; align-items:center; gap:.6rem; }
+.sud-back { font-size:.82rem; color:#0d9488; text-decoration:none; }
+.sud-hd { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin:.5rem 0 1rem; }
+.sud-name { font-size:1.35rem; font-weight:700; color:#0f172a; margin:0; }
+.sud-meta { font-size:.82rem; color:#6b7280; margin-top:.25rem; }
+.sud-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:1.25rem; align-items:start; }
+@media(max-width:900px){ .sud-grid { grid-template-columns:1fr; } }
+.card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.1rem 1.2rem; margin-bottom:1.1rem; }
+.card h2 { font-size:.95rem; font-weight:700; color:#0f172a; margin:0 0 .8rem; }
+.roster-item { border:1px solid #e5e7eb; border-radius:8px; padding:.6rem .75rem; margin-bottom:.55rem; cursor:pointer; }
+.roster-item.sel { border-color:#0d9488; background:#f0fdfa; }
+.roster-top { display:flex; justify-content:space-between; gap:.5rem; font-size:.85rem; font-weight:600; color:#0f172a; }
+.roster-sub { font-size:.72rem; color:#6b7280; margin-top:.2rem; }
+.phase { font-size:.66rem; font-weight:700; padding:.1rem .45rem; border-radius:999px; text-transform:capitalize; }
+.phase-active { background:#dcfce7; color:#166534; } .phase-maintenance { background:#fef9c3; color:#854d0e; } .phase-dormant { background:#f3f4f6; color:#6b7280; }
+.layer { border:1px solid #e5e7eb; border-radius:8px; margin-bottom:.6rem; overflow:hidden; }
+.layer-hd { background:#f9fafb; padding:.5rem .7rem; font-size:.78rem; font-weight:700; color:#334155; display:flex; justify-content:space-between; }
+.agent-row { display:flex; align-items:center; gap:.5rem; padding:.4rem .7rem; border-top:1px solid #f1f5f9; font-size:.8rem; }
+.agent-dot { width:8px; height:8px; border-radius:50%; flex:none; }
+.dot-on { background:#0d9488; } .dot-off { background:#d1d5db; }
+.agent-name { flex:1; color:#374151; }
+.agent-score { font-size:.72rem; color:#6b7280; font-variant-numeric:tabular-nums; }
+.sig-pill { display:inline-block; background:#eff6ff; color:#1d4ed8; border-radius:999px; padding:.15rem .55rem; font-size:.72rem; font-weight:600; margin:.15rem .2rem .15rem 0; }
+.artifact { border:1px solid #e5e7eb; border-radius:8px; padding:.55rem .7rem; margin-bottom:.5rem; font-size:.8rem; }
+.artifact-hd { display:flex; justify-content:space-between; font-weight:600; color:#0f172a; }
+.artifact-body { margin-top:.35rem; color:#4b5563; white-space:pre-wrap; max-height:180px; overflow:auto; font-size:.76rem; }
+.gated { color:#a16207; font-style:italic; }
+.field { margin-bottom:.75rem; }
+.field label { display:block; font-size:.74rem; font-weight:600; color:#374151; margin-bottom:.3rem; }
+.field select, .field input, .field textarea { width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px; padding:.5rem .6rem; font-size:.82rem; color:#111827; font-family:inherit; }
+.field textarea { min-height:80px; resize:vertical; }
+.btn { display:inline-block; padding:.55rem 1rem; font-size:.82rem; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid transparent; }
+.btn-primary { background:#0d9488; color:#fff; } .btn-primary:hover { background:#0f766e; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.preview { background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:.7rem .85rem; font-size:.78rem; color:#334155; margin:.5rem 0; }
+.rec-item { border-bottom:1px solid #f1f5f9; padding:.55rem 0; font-size:.8rem; }
+.rec-item:last-child { border-bottom:none; }
+.status-pill { display:inline-block; padding:.1rem .45rem; border-radius:6px; font-size:.66rem; font-weight:700; text-transform:capitalize; }
+.st-pending { background:#eff6ff; color:#1d4ed8; } .st-applied { background:#dcfce7; color:#166534; }
+.st-dismissed { background:#f3f4f6; color:#6b7280; } .st-expired { background:#faf5ff; color:#7c3aed; }
+.muted { color:#9ca3af; } .empty { color:#9ca3af; font-size:.82rem; padding:.75rem 0; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="sud">
+  <div class="sud-banner">🛈 Advisor view — read-only. You advise; the user acts. This visit is logged.</div>
+  <a class="sud-back" href="/sme">← Back to caseload</a>
+
+  <div class="sud-hd">
+    <div>
+      <h1 class="sud-name" id="uName">Loading…</h1>
+      <div class="sud-meta" id="uMeta"></div>
+    </div>
+  </div>
+
+  <div class="sud-grid">
+    <div>
+      <div class="card">
+        <h2>Simulations</h2>
+        <div id="roster"><div class="empty">Loading…</div></div>
+      </div>
+      <div class="card">
+        <h2>Agents by layer <span class="muted" id="simLabel"></span></h2>
+        <div id="agents"><div class="empty">Select a simulation above.</div></div>
+      </div>
+      <div class="card">
+        <h2>Signal pipeline</h2>
+        <div id="signals"><div class="empty">Select a simulation above.</div></div>
+      </div>
+      <div class="card">
+        <h2>Artifacts</h2>
+        <div id="artifacts"><div class="empty">Select a simulation above.</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Recommend a change</h2>
+        <div class="field">
+          <label>Type</label>
+          <select id="recType">
+            <option value="swap_agent">Swap an agent</option>
+            <option value="add_agent">Add an agent</option>
+            <option value="remove_agent">Remove an agent</option>
+            <option value="adjust_rate">Adjust a rate</option>
+            <option value="revise_artifact">Revise an artifact</option>
+            <option value="note">Note / encouragement</option>
+          </select>
+        </div>
+        <div class="field" id="fldLayer">
+          <label>Layer</label>
+          <select id="recLayer"></select>
+        </div>
+        <div class="field" id="fldFrom" style="display:none">
+          <label>Replace / remove agent</label>
+          <select id="recFrom"></select>
+        </div>
+        <div class="field" id="fldTo" style="display:none">
+          <label>Add agent</label>
+          <select id="recTo"></select>
+        </div>
+        <div class="field" id="fldValue" style="display:none">
+          <label>Suggested value</label>
+          <input type="text" id="recValue" placeholder="e.g. $250/hr">
+        </div>
+        <div class="field">
+          <label>Rationale (the user sees this)</label>
+          <textarea id="recRationale" placeholder="Explain why — reference scores, pipeline, or fit."></textarea>
+        </div>
+        <div class="preview" id="recPreview">Preview appears here.</div>
+        <button class="btn btn-primary" id="recSubmit">Send recommendation</button>
+        <span id="recMsg" style="margin-left:.6rem;font-size:.78rem;color:#166534"></span>
+      </div>
+
+      <div class="card">
+        <h2>Recommendation history</h2>
+        <div id="recHistory"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const UID = '{{ target_user_id }}';
+const API = '/api/sme';
+let CURRENT_SIM = null;
+let AGENTS_BY_LAYER = [];
+const LAYER_NAMES = {1:'L1 · Active Income',2:'L2 · Leveraged Delivery',3:'L3 · Digital Products',4:'L4 · Automation & IP',5:'L5 · Wealth Deployment'};
+
+async function api(path, opts){
+  const r = await fetch(API + path, Object.assign({headers:{'Content-Type':'application/json'}}, opts||{}));
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error || ('HTTP '+r.status));
+  return d;
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function money(n){ return '$' + Number(n||0).toLocaleString(undefined,{maximumFractionDigits:0}); }
+
+async function loadOverview(){
+  const d = await api('/users/' + UID);
+  document.getElementById('uName').textContent = d.user.display_name || d.user.username || 'User';
+  document.getElementById('uMeta').textContent = (d.user.primary_zone ? d.user.primary_zone + ' · ' : '') +
+    (d.can_view_l5 ? 'Full Layer 5 access' : 'Layer 5 financials hidden for your zone');
+  // roster
+  const r = document.getElementById('roster');
+  if(!d.roster.length){ r.innerHTML = '<div class="empty">No simulations.</div>'; }
+  else {
+    r.innerHTML = d.roster.map(s => `<div class="roster-item" data-sim="${s.id}" onclick="selectSim('${s.id}','${esc(s.name)}')">
+      <div class="roster-top"><span>${esc(s.name)}</span><span class="phase phase-${s.lifecycle_phase}">${s.lifecycle_phase}</span></div>
+      <div class="roster-sub">${s.cycle_count} cycles · ${money(s.headline_income)} · ${esc(s.expertise_zone||'')}</div>
+    </div>`).join('');
+    // auto-select first
+    if(d.roster[0]) selectSim(d.roster[0].id, d.roster[0].name);
+  }
+  renderHistory(d.recommendation_history);
+}
+
+function renderHistory(hist){
+  const h = document.getElementById('recHistory');
+  if(!hist || !hist.length){ h.innerHTML = '<div class="empty">No recommendations yet.</div>'; return; }
+  h.innerHTML = hist.map(x => `<div class="rec-item">
+    <div><strong>${esc(x.type.replace(/_/g,' '))}</strong> <span class="status-pill st-${x.status}">${x.status}</span></div>
+    <div class="muted" style="margin-top:.2rem">${esc(x.rationale)}</div>
+  </div>`).join('');
+}
+
+async function selectSim(simId, name){
+  CURRENT_SIM = simId;
+  document.querySelectorAll('.roster-item').forEach(el => el.classList.toggle('sel', el.dataset.sim === simId));
+  document.getElementById('simLabel').textContent = '· ' + name;
+  const d = await api('/users/' + UID + '/simulations/' + simId);
+  AGENTS_BY_LAYER = d.agents_by_layer;
+  renderAgents(d.agents_by_layer);
+  renderSignals(d.signals);
+  renderArtifacts(d.artifacts);
+  buildComposerOptions();
+}
+
+function renderAgents(layers){
+  document.getElementById('agents').innerHTML = layers.map(L => `
+    <div class="layer">
+      <div class="layer-hd"><span>${esc(L.name)}</span><span class="muted">${L.selected_count}/${L.total_count}</span></div>
+      ${L.agents.map(a => `<div class="agent-row">
+        <span class="agent-dot ${a.selected?'dot-on':'dot-off'}"></span>
+        <span class="agent-name">${esc(a.label)}</span>
+        <span class="agent-score">${a.bayesian_score!=null?('score '+a.bayesian_score):''}${a.last_outcome?(' · '+esc(a.last_outcome.status)):''}</span>
+      </div>`).join('')}
+    </div>`).join('');
+}
+function renderSignals(sig){
+  const counts = Object.entries(sig.counts||{});
+  const pills = counts.length ? counts.map(([k,v]) => `<span class="sig-pill">${esc(k.replace(/_/g,' '))}: ${v}</span>`).join('') : '<span class="muted">No signals yet.</span>';
+  const recent = (sig.recent||[]).slice(0,8).map(s => `<div style="font-size:.75rem;color:#6b7280;padding:.15rem 0">${esc(s.signal_type.replace(/_/g,' '))} · ${new Date(s.created_at).toLocaleDateString()}</div>`).join('');
+  document.getElementById('signals').innerHTML = pills + '<div style="margin-top:.5rem">' + recent + '</div>';
+}
+function renderArtifacts(arts){
+  const el = document.getElementById('artifacts');
+  if(!arts.length){ el.innerHTML = '<div class="empty">No completed artifacts.</div>'; return; }
+  el.innerHTML = arts.map(a => `<div class="artifact">
+    <div class="artifact-hd"><span>${esc(a.action_type.replace(/_/g,' '))}</span><span class="muted">L${a.layer_number}</span></div>
+    <div class="artifact-body ${a.gated?'gated':''}">${esc((a.artifact||'').slice(0,1200))}</div>
+  </div>`).join('');
+}
+
+// ── Composer ──
+function buildComposerOptions(){
+  const layerSel = document.getElementById('recLayer');
+  layerSel.innerHTML = AGENTS_BY_LAYER.map(L => `<option value="${L.layer_number}">${esc(L.name)}</option>`).join('');
+  refreshAgentSelects();
+}
+function refreshAgentSelects(){
+  const layerNum = parseInt(document.getElementById('recLayer').value || '1', 10);
+  const L = AGENTS_BY_LAYER.find(x => x.layer_number === layerNum) || {agents:[]};
+  const selected = L.agents.filter(a => a.selected);
+  const notSelected = L.agents.filter(a => !a.selected);
+  document.getElementById('recFrom').innerHTML = selected.map(a => `<option value="${a.action_type}">${esc(a.label)}</option>`).join('') || '<option value="">(none selected)</option>';
+  document.getElementById('recTo').innerHTML = notSelected.map(a => `<option value="${a.action_type}">${esc(a.label)}</option>`).join('') || '<option value="">(all selected)</option>';
+  updatePreview();
+}
+function typeUI(){
+  const t = document.getElementById('recType').value;
+  const show = (id,on) => document.getElementById(id).style.display = on?'block':'none';
+  show('fldLayer', ['swap_agent','add_agent','remove_agent'].includes(t));
+  show('fldFrom', ['swap_agent','remove_agent'].includes(t));
+  show('fldTo', ['swap_agent','add_agent'].includes(t));
+  show('fldValue', t==='adjust_rate');
+  updatePreview();
+}
+function updatePreview(){
+  const t = document.getElementById('recType').value;
+  const from = document.getElementById('recFrom');
+  const to = document.getElementById('recTo');
+  const val = document.getElementById('recValue').value;
+  const rationale = document.getElementById('recRationale').value;
+  let head = '';
+  if(t==='swap_agent') head = `Swap ${from.selectedOptions[0]?.text||'?'} → ${to.selectedOptions[0]?.text||'?'}`;
+  else if(t==='add_agent') head = `Add ${to.selectedOptions[0]?.text||'?'}`;
+  else if(t==='remove_agent') head = `Remove ${from.selectedOptions[0]?.text||'?'}`;
+  else if(t==='adjust_rate') head = `Adjust rate → ${esc(val||'(value)')}`;
+  else if(t==='revise_artifact') head = 'Revise an artifact';
+  else head = 'Note';
+  const oneClick = ['swap_agent','add_agent','remove_agent','adjust_rate'].includes(t);
+  document.getElementById('recPreview').innerHTML =
+    `<strong>${esc(head)}</strong>` + (oneClick?' <span class="muted">(one-click apply)</span>':' <span class="muted">(advisory only)</span>') +
+    (rationale?`<div style="margin-top:.35rem">${esc(rationale)}</div>`:'');
+}
+
+document.getElementById('recType').onchange = typeUI;
+document.getElementById('recLayer').onchange = refreshAgentSelects;
+['recFrom','recTo','recValue','recRationale'].forEach(id => document.getElementById(id).oninput = updatePreview);
+
+document.getElementById('recSubmit').onclick = async () => {
+  const t = document.getElementById('recType').value;
+  const rationale = document.getElementById('recRationale').value.trim();
+  if(!rationale){ setMsg('A rationale is required.', true); return; }
+  const layerNum = document.getElementById('recLayer').value;
+  const payload = {};
+  if(['swap_agent','add_agent','remove_agent'].includes(t)) payload.layer = 'L'+layerNum;
+  if(['swap_agent','remove_agent'].includes(t)) payload.from = document.getElementById('recFrom').value || null;
+  if(['swap_agent','add_agent'].includes(t)) payload.to = document.getElementById('recTo').value || null;
+  if(t==='adjust_rate') payload.value = document.getElementById('recValue').value;
+  try {
+    await api('/users/' + UID + '/recommendations', {method:'POST', body: JSON.stringify({
+      type: t, rationale, payload, simulation_id: (t==='note'?null:CURRENT_SIM),
+    })});
+    setMsg('Sent.');
+    document.getElementById('recRationale').value = '';
+    const d = await api('/users/' + UID);
+    renderHistory(d.recommendation_history);
+  } catch(e){ setMsg(e.message, true); }
+};
+function setMsg(m, err){
+  const el = document.getElementById('recMsg');
+  el.style.color = err?'#b91c1c':'#166534'; el.textContent = m;
+  if(!err) setTimeout(()=>el.textContent='', 2500);
+}
+
+typeUI();
+loadOverview().catch(e => { document.getElementById('uName').textContent = 'Error: ' + e.message; });
+</script>
+{% endblock %}

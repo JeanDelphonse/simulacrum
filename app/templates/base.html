@@ -35,6 +35,9 @@
       {% if current_user.is_admin %}
       <a href="{{ url_for('pages.admin_view') }}" class="nav-link">Admin</a>
       {% endif %}
+      {% if current_user_is_sme %}
+      <a href="{{ url_for('pages.sme_console') }}" class="nav-link">SME Console</a>
+      {% endif %}
       <a href="{{ url_for('pages.settings_profile') }}" class="nav-link">Settings</a>
       <span class="nav-user">{{ current_user.full_name }}</span>
       <button class="btn btn-ghost" id="signOutBtn">Sign out</button>

@@ -29,7 +29,15 @@ def _maybe_classify_and_assign_sme(user_id):
         profile = UserProfile.query.filter_by(user_id=user_id).first()
         if not profile:
             return
+        prev_sme_id = profile.sme_id
         sme_service.run_classification_and_assignment(profile, force=False)
+        # SIM-PRD-SME-002 §5 — notify the user when newly matched with an SME.
+        if profile.sme_id and profile.sme_id != prev_sme_id:
+            from app.models.sme import SimiSME
+            from app.services import sme_console_service
+            sme = SimiSME.query.get(profile.sme_id)
+            if sme:
+                sme_console_service.notify_assignment(profile, sme)
     except Exception as exc:
         db.session.rollback()
         logger.warning('SME classify/assign skipped for %s: %s', user_id, exc)

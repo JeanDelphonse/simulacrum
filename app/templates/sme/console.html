@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}SME Console{% endblock %}
+{% block head %}
+<style>
+.smc { max-width:1180px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+.smc-hd { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:.5rem; flex-wrap:wrap; }
+.smc-title { font-size:1.4rem; font-weight:700; color:#0f172a; margin:0; }
+.smc-sub { font-size:.85rem; color:#6b7280; margin:.3rem 0 1.25rem; }
+.smc-l5 { display:inline-block; font-size:.7rem; font-weight:700; padding:.15rem .55rem; border-radius:999px; }
+.smc-l5.on { background:#dcfce7; color:#166534; }
+.smc-l5.off { background:#f3f4f6; color:#6b7280; }
+.smc-tabs { display:flex; gap:.4rem; border-bottom:1px solid #e5e7eb; margin-bottom:1.25rem; flex-wrap:wrap; }
+.smc-tab { padding:.5rem .9rem; font-size:.85rem; font-weight:600; color:#6b7280; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; text-decoration:none; }
+.smc-tab.active { color:#0d9488; border-bottom-color:#0d9488; }
+.smc-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+.smc-stat { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:.9rem 1rem; }
+.smc-stat-label { font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:.3rem; }
+.smc-stat-value { font-size:1.6rem; font-weight:800; color:#0f172a; line-height:1.1; }
+.smc-panel { display:none; }
+.smc-panel.active { display:block; }
+.smc-table { width:100%; border-collapse:collapse; font-size:.83rem; background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; }
+.smc-table th { background:#f9fafb; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; font-weight:700; padding:.55rem .75rem; text-align:left; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+.smc-table td { padding:.6rem .75rem; border-bottom:1px solid #f1f5f9; color:#374151; vertical-align:middle; }
+.smc-table tr:last-child td { border-bottom:none; }
+.smc-table tr.clickable:hover td { background:#f0fdfa; cursor:pointer; }
+.flag { display:inline-block; padding:.1rem .5rem; border-radius:999px; font-size:.66rem; font-weight:700; margin:.1rem .15rem .1rem 0; }
+.flag-stalled { background:#fef2f2; color:#b91c1c; }
+.flag-unread { background:#eff6ff; color:#1d4ed8; }
+.flag-notviewed { background:#fefce8; color:#a16207; }
+.flag-reassign { background:#fff7ed; color:#9a3412; }
+.status-pill { display:inline-block; padding:.12rem .5rem; border-radius:6px; font-size:.68rem; font-weight:700; text-transform:capitalize; }
+.st-pending { background:#eff6ff; color:#1d4ed8; }
+.st-applied { background:#dcfce7; color:#166534; }
+.st-dismissed { background:#f3f4f6; color:#6b7280; }
+.st-expired { background:#faf5ff; color:#7c3aed; }
+.muted { color:#9ca3af; }
+.smc-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem; max-width:640px; }
+.field { margin-bottom:.9rem; }
+.field label { display:block; font-size:.76rem; font-weight:600; color:#374151; margin-bottom:.3rem; }
+.field input { width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px; padding:.5rem .65rem; font-size:.85rem; color:#111827; font-family:inherit; }
+.btn { display:inline-block; padding:.5rem .95rem; font-size:.82rem; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid transparent; }
+.btn-primary { background:#0d9488; color:#fff; } .btn-primary:hover { background:#0f766e; }
+.empty { text-align:center; color:#9ca3af; padding:2.5rem 1rem; font-size:.9rem; }
+.note { background:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:.7rem .9rem; font-size:.8rem; color:#115e59; margin-bottom:1.25rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="smc">
+  <div class="smc-hd">
+    <div>
+      <h1 class="smc-title">SME Console</h1>
+      <p class="smc-sub">
+        {{ sme.full_name }} · {{ sme.zones | join(', ') }}
+        {% if sme.can_view_l5 %}<span class="smc-l5 on">Full Layer 5 access</span>
+        {% else %}<span class="smc-l5 off">Layer 5 financials hidden</span>{% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="smc-tabs">
+    <a class="smc-tab" data-view="caseload" href="/sme">Caseload</a>
+    <a class="smc-tab" data-view="recommendations" href="/sme/recommendations">My Recommendations</a>
+    <a class="smc-tab" data-view="profile" href="/sme/profile">Profile</a>
+  </div>
+
+  <div class="note">
+    You are an <strong>advisor</strong>. Everything here is read-only — you influence a simulation
+    only through recommendations the user applies. Every view is logged and visible to the user.
+  </div>
+
+  <!-- Caseload -->
+  <div class="smc-panel" data-panel="caseload">
+    <div class="smc-summary" id="caseSummary"></div>
+    <table class="smc-table" id="caseTable">
+      <thead><tr>
+        <th>User</th><th>Zone</th><th>Sims</th><th>Income</th>
+        <th>Last activity</th><th>Flags</th>
+      </tr></thead>
+      <tbody id="caseBody"><tr><td colspan="6" class="muted" style="padding:1.5rem">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Recommendations -->
+  <div class="smc-panel" data-panel="recommendations">
+    <div class="smc-summary" id="recSummary"></div>
+    <table class="smc-table">
+      <thead><tr>
+        <th>User</th><th>Type</th><th>Rationale</th><th>Status</th><th>Issued</th>
+      </tr></thead>
+      <tbody id="recBody"><tr><td colspan="5" class="muted" style="padding:1.5rem">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Profile -->
+  <div class="smc-panel" data-panel="profile">
+    <div class="smc-card">
+      <div class="field"><label>Name</label><input type="text" id="pfName" disabled></div>
+      <div class="field"><label>Email</label><input type="text" id="pfEmail" disabled></div>
+      <div class="field"><label>Zones (admin-managed)</label><input type="text" id="pfZones" disabled></div>
+      <div class="field"><label>Phone</label><input type="text" id="pfPhone"></div>
+      <div class="field"><label>Bio URL</label><input type="text" id="pfBio"></div>
+      <button class="btn btn-primary" id="pfSave">Save contact details</button>
+      <span id="pfMsg" style="margin-left:.75rem;font-size:.8rem;color:#166534"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const SME_API = '/api/sme';
+const VIEW = '{{ active_view }}';
+
+async function api(path, opts){
+  const r = await fetch(SME_API + path, Object.assign({headers:{'Content-Type':'application/json'}}, opts||{}));
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error || ('HTTP '+r.status));
+  return d;
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function money(n){ return '$' + Number(n||0).toLocaleString(undefined,{maximumFractionDigits:0}); }
+function ago(iso){ if(!iso) return '—'; const d=new Date(iso); const days=Math.floor((Date.now()-d)/86400000);
+  return days<=0?'today':(days+'d ago'); }
+
+// activate tab
+document.querySelectorAll('.smc-tab').forEach(t => {
+  if(t.dataset.view === VIEW) t.classList.add('active');
+});
+document.querySelectorAll('.smc-panel').forEach(p => {
+  if(p.dataset.panel === VIEW) p.classList.add('active');
+});
+
+async function loadCaseload(){
+  try {
+    const d = await api('/caseload');
+    document.getElementById('caseSummary').innerHTML = [
+      ['Assigned users', d.users.length],
+      ['Capacity', d.sme.capacity],
+      ['Stalled', d.users.filter(u=>u.flags.stalled).length],
+      ['Unread advice', d.users.filter(u=>u.flags.unread).length],
+    ].map(([l,v]) => `<div class="smc-stat"><div class="smc-stat-label">${l}</div><div class="smc-stat-value">${v}</div></div>`).join('');
+    const b = document.getElementById('caseBody');
+    if(!d.users.length){ b.innerHTML = '<tr><td colspan="6" class="empty">No users assigned yet.</td></tr>'; return; }
+    b.innerHTML = d.users.map(u => {
+      let flags = '';
+      if(u.needs_reassignment) flags += '<span class="flag flag-reassign">reassignment requested</span>';
+      if(u.flags.stalled) flags += '<span class="flag flag-stalled">stalled</span>';
+      if(u.flags.unread) flags += `<span class="flag flag-unread">${u.unread_recommendations} unread</span>`;
+      if(u.flags.not_viewed) flags += '<span class="flag flag-notviewed">not viewed</span>';
+      return `<tr class="clickable" onclick="location.href='/sme/users/${u.user_id}'">
+        <td><strong>${esc(u.display_name)}</strong></td>
+        <td>${esc(u.primary_zone||'—')}</td>
+        <td>${u.sim_count}</td>
+        <td>${money(u.headline_income)}</td>
+        <td>${ago(u.last_activity)}</td>
+        <td>${flags||'<span class="muted">—</span>'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e){ document.getElementById('caseBody').innerHTML = `<tr><td colspan="6" class="empty">${esc(e.message)}</td></tr>`; }
+}
+
+async function loadRecs(){
+  try {
+    const d = await api('/recommendations');
+    document.getElementById('recSummary').innerHTML = [
+      ['Total issued', d.total],
+      ['Apply rate', d.apply_rate==null?'—':(Math.round(d.apply_rate*100)+'%')],
+    ].map(([l,v]) => `<div class="smc-stat"><div class="smc-stat-label">${l}</div><div class="smc-stat-value">${v}</div></div>`).join('');
+    const b = document.getElementById('recBody');
+    if(!d.recommendations.length){ b.innerHTML = '<tr><td colspan="5" class="empty">No recommendations issued yet.</td></tr>'; return; }
+    b.innerHTML = d.recommendations.map(r => `<tr>
+      <td>${esc(r.user_name)}</td>
+      <td>${esc(r.type.replace(/_/g,' '))}</td>
+      <td style="max-width:360px">${esc(r.rationale)}</td>
+      <td><span class="status-pill st-${r.status}">${r.status}</span></td>
+      <td>${ago(r.created_at)}</td>
+    </tr>`).join('');
+  } catch(e){ document.getElementById('recBody').innerHTML = `<tr><td colspan="5" class="empty">${esc(e.message)}</td></tr>`; }
+}
+
+async function loadProfile(){
+  try {
+    const s = await api('/profile');
+    document.getElementById('pfName').value = s.full_name || '';
+    document.getElementById('pfEmail').value = s.email || '';
+    document.getElementById('pfZones').value = (s.zones||[]).join(', ');
+    document.getElementById('pfPhone').value = s.phone || '';
+    document.getElementById('pfBio').value = s.bio_url || '';
+  } catch(e){ /* ignore */ }
+}
+const pfSave = document.getElementById('pfSave');
+if(pfSave) pfSave.onclick = async () => {
+  try {
+    await api('/profile', {method:'PUT', body: JSON.stringify({
+      phone: document.getElementById('pfPhone').value,
+      bio_url: document.getElementById('pfBio').value,
+    })});
+    document.getElementById('pfMsg').textContent = 'Saved.';
+    setTimeout(()=>document.getElementById('pfMsg').textContent='', 2000);
+  } catch(e){ document.getElementById('pfMsg').style.color='#b91c1c'; document.getElementById('pfMsg').textContent = e.message; }
+};
+
+if(VIEW==='caseload') loadCaseload();
+if(VIEW==='recommendations') loadRecs();
+if(VIEW==='profile') loadProfile();
+</script>
+{% endblock %}
