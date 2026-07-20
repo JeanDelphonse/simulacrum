@@ -42,6 +42,9 @@ from app.models.social import (
     PlatformChat, PlatformChatMessage,
 )
 from app.models.sme import SimiSME, ExpertiseCategory, SmeRecommendation, SmeAccessLog
+from app.models.corporate import (
+    CorporateAccount, CorporateEmployee, CreditRedemption, OrgInvoice, OrgSmePod,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -71,4 +74,5 @@ __all__ = [
     'BioPageLike', 'UserConnection', 'ActivityEvent',
     'PlatformChat', 'PlatformChatMessage',
     'SimiSME', 'ExpertiseCategory', 'SmeRecommendation', 'SmeAccessLog',
+    'CorporateAccount', 'CorporateEmployee', 'CreditRedemption', 'OrgInvoice', 'OrgSmePod',
 ]

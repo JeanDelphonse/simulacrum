@@ -10,6 +10,43 @@ def _stripe():
     return stripe
 
 
+def create_org_invoice(org, inv) -> str | None:
+    """Create + send a Stripe invoice for an org credit purchase (SIM-PRD-ORG-001).
+
+    Uses Stripe Invoicing (ACH/wire/card, net terms). Returns the Stripe invoice
+    id, or None if Stripe is unconfigured/unavailable (the OrgInvoice record
+    remains the source of truth so PO/manual invoices still work).
+    """
+    if not current_app.config.get('STRIPE_SECRET_KEY'):
+        return None
+    s = _stripe()
+    customer = s.Customer.create(
+        name=org.org_name,
+        email=org.contact_email,
+        metadata={'org_id': org.id},
+    )
+    s.InvoiceItem.create(
+        customer=customer.id,
+        amount=inv.amount_cents,
+        currency='usd',
+        description=f'{inv.credits} Simulacrum simulation credits'
+                    + (f' (PO {inv.po_number})' if inv.po_number else ''),
+    )
+    invoice = s.Invoice.create(
+        customer=customer.id,
+        collection_method='send_invoice',
+        days_until_due=inv.net_terms,
+        metadata={'org_id': org.id, 'org_invoice_id': inv.id,
+                  'po_number': inv.po_number or ''},
+    )
+    try:
+        invoice.finalize_invoice()
+        invoice.send_invoice()
+    except Exception as exc:  # finalize/send is best-effort
+        logger.warning('org invoice finalize/send failed: %s', exc)
+    return invoice.id
+
+
 def create_payment_intent(
     user_id: str,
     simulation_id: str,

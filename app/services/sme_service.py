@@ -107,9 +107,31 @@ def recount_sme(sme: SimiSME):
     sme.assigned_count = UserProfile.query.filter_by(sme_id=sme.id).count()
 
 
-def _candidates_for(primary_slug: str):
+def _candidates_for(primary_slug: str, allowed_ids: set | None = None):
     active = SimiSME.query.filter_by(status=SimiSME.STATUS_ACTIVE).all()
-    return [s for s in active if primary_slug in s.zones]
+    cands = [s for s in active if primary_slug in s.zones]
+    if allowed_ids is not None:
+        cands = [s for s in cands if s.id in allowed_ids]
+    return cands
+
+
+def _org_pod_ids(profile: UserProfile) -> set | None:
+    """SIM-PRD-ORG-001: the SME pod covering this member's org, or None.
+
+    Returns None when the member has no org or the org has no pod (so matching
+    falls back to the global pool).
+    """
+    org_id = getattr(profile, 'org_id', None)
+    if not org_id:
+        return None
+    try:
+        from app.models.corporate import OrgSmePod
+        ids = {r[0] for r in OrgSmePod.query
+               .filter_by(org_id=org_id)
+               .with_entities(OrgSmePod.sme_id).all()}
+        return ids or None
+    except Exception:
+        return None
 
 
 def auto_assign_sme(profile: UserProfile, force_over_capacity: bool = False, commit: bool = True):
@@ -138,7 +160,12 @@ def auto_assign_sme(profile: UserProfile, force_over_capacity: bool = False, com
             db.session.commit()
         return None
 
-    candidates = _candidates_for(primary)
+    # SIM-PRD-ORG-001: constrain to the org's SME pod when one exists; fall back
+    # to the global pool if no pod SME covers the member's primary zone.
+    pod_ids = _org_pod_ids(profile)
+    candidates = _candidates_for(primary, allowed_ids=pod_ids)
+    if pod_ids and not candidates:
+        candidates = _candidates_for(primary)
     if not force_over_capacity:
         with_room = [c for c in candidates if c.headroom > 0]
         # Only drop over-capacity SMEs if at least one has room; otherwise keep all

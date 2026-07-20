@@ -29,10 +29,14 @@
   <img src="{{ org.white_label_logo_url }}" alt="{{ org.white_label_name or org.org_name }}" class="org-logo">
   {% endif %}
 
-  <h1>Your career resources are ready{% if emp.full_name %}, {{ emp.full_name.split()[0] }}{% endif %}.</h1>
+  {% if link_closed %}
+  <h1>This invite link is no longer active.</h1>
+  <p class="subtitle">The link from {{ org.display_name }} has expired or reached its limit. Please ask your organization for a new one.</p>
+  {% else %}
+  <h1>{{ org.display_name }} has sponsored your Simulacrum access{% if emp and emp.full_name %}, {{ emp.full_name.split()[0] }}{% endif %}.</h1>
   <p class="subtitle">
-    {{ org.white_label_name or org.org_name }} has prepared a personalized career wealth simulation
-    for you as part of your transition support. Create your free account to access it.
+    Create your free account to run a personalized career wealth simulation and build
+    a professional bio page — sponsored by {{ org.display_name }}.
   </p>
 
   <ul class="layer-list">
@@ -42,43 +46,54 @@
     <li>Get a 5-layer income plan from active consulting to passive assets</li>
   </ul>
 
-  <div id="alreadyMsg" class="already-msg">You're already registered. Redirecting to your dashboard…</div>
+  <p class="subtitle" style="background:#f0fdfa;border-radius:8px;padding:12px 16px;font-size:.82rem;margin-bottom:24px">
+    <strong>What {{ org.display_name }} can see:</strong> that you activated and started a simulation —
+    <em>not</em> what you build. Your account, bio page, resume, and work are yours to keep, even if the sponsorship ends.
+  </p>
 
-  <a href="/register?invite={{ token }}&email={{ emp.email | urlencode }}" class="btn" id="createBtn">
-    Create Your Free Account
-  </a>
-  <a href="/login?invite={{ token }}" class="btn btn-secondary">
-    I Already Have an Account
-  </a>
+  <div id="alreadyMsg" class="already-msg">You're already registered. Setting up your account…</div>
+
+  {% if via_link %}
+  <a href="/register?join={{ token }}" class="btn" id="createBtn">Create Your Free Account</a>
+  <a href="/login?join={{ token }}" class="btn btn-secondary">I Already Have an Account</a>
+  {% else %}
+  <a href="/register?invite={{ token }}&email={{ emp.email | urlencode }}" class="btn" id="createBtn">Create Your Free Account</a>
+  <a href="/login?invite={{ token }}" class="btn btn-secondary">I Already Have an Account</a>
+  {% endif %}
 
   <p class="disclaimer">
-    This invite is unique to {{ emp.email }}. It expires once your account is activated.<br>
+    {% if emp %}This invite is unique to {{ emp.email }}.{% endif %}
     Powered by <strong>Simulacrum</strong> — Career Wealth Platform.
   </p>
+  {% endif %}
 </div>
 
+{% if not link_closed %}
 <script>
-// If already logged in via cookie, auto-accept
+// If already logged in via cookie, auto-accept and route into onboarding.
 (async () => {
   try {
     const resp = await fetch('/api/settings/profile');
-    if (resp.ok) {
-      const user = await resp.json();
-      if (user && user.id) {
-        document.getElementById('alreadyMsg').style.display = 'block';
-        const acceptResp = await fetch('/api/corporate/invite/{{ token }}/accept', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: user.id }),
-        });
-        if (acceptResp.ok) {
-          const data = await acceptResp.json();
-          setTimeout(() => { window.location.href = '/dashboard'; }, 1200);
-        }
-      }
+    if (!resp.ok) return;
+    const user = await resp.json();
+    if (!user || !user.id) return;
+    document.getElementById('alreadyMsg').style.display = 'block';
+    {% if via_link %}
+    const acceptResp = await fetch('/api/corporate/join/{{ token }}/accept', { method: 'POST' });
+    {% else %}
+    const acceptResp = await fetch('/api/corporate/invite/{{ token }}/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+    {% endif %}
+    if (acceptResp.ok) {
+      const data = await acceptResp.json();
+      setTimeout(() => { window.location.href = data.next || '/dashboard'; }, 1000);
     }
   } catch (_) {}
 })();
 </script>
+{% endif %}
 </body>
 </html>

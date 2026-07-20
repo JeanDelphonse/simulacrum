@@ -189,7 +189,16 @@ def create_simulation():
     sim.discount_applied_percentage = pricing['discount_percentage']
     sim.amount_charged_cents = charge_cents
 
-    # 100% discount: activate immediately without Stripe (FR-DISC-06)
+    # SIM-PRD-ORG-001: redeem an org credit if the member's pool has one.
+    # Runs the simulation at no cost to the member; falls through to the normal
+    # self-serve path if the pool is empty/expired — never a hard block.
+    if charge_cents > 0:
+        from app.services.org_service import try_redeem_credit
+        if try_redeem_credit(current_user.id, sim):
+            charge_cents = 0
+            sim.amount_charged_cents = 0
+
+    # 100% discount OR org-funded: activate immediately without Stripe (FR-DISC-06)
     if charge_cents == 0:
         sim.status = Simulation.STATUS_PROCESSING
         db.session.commit()
@@ -640,6 +649,13 @@ def seed_simulation(sim_id):
     new_sim.base_price_at_purchase_cents = pricing['base_price_cents']
     new_sim.discount_applied_percentage = pricing['discount_percentage']
     new_sim.amount_charged_cents = charge_cents
+
+    # SIM-PRD-ORG-001: org credit pool funds forks too (never a hard block).
+    if charge_cents > 0:
+        from app.services.org_service import try_redeem_credit
+        if try_redeem_credit(current_user.id, new_sim):
+            charge_cents = 0
+            new_sim.amount_charged_cents = 0
 
     if charge_cents == 0:
         new_sim.status = Simulation.STATUS_PROCESSING

@@ -105,6 +105,18 @@ def profile_page(username):
             except Exception:
                 pass
 
+        # SIM-PRD-ORG-001: sponsor co-brand badge (unless the member opted out).
+        org_cobrand = None
+        if not getattr(profile, 'hide_org_cobrand', False):
+            try:
+                from app.services import org_service
+                _org = org_service.member_org(profile.user_id)
+                if _org:
+                    org_cobrand = {'name': _org.display_name,
+                                   'logo_url': _org.white_label_logo_url}
+            except Exception:
+                pass
+
         return render_template(
             'public/bio_page.html',
             bio_page=bio_page,
@@ -115,6 +127,7 @@ def profile_page(username):
             slug=slug,
             hide_owner_bar=request.args.get('embed') == '1',
             connections_panel=connections_panel,
+            org_cobrand=org_cobrand,
         )
 
     # ── Fallback: legacy profile page ────────────────────────────────────

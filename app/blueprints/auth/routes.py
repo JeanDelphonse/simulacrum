@@ -111,6 +111,18 @@ def register():
         except Exception:
             pass  # referral attribution failure must never block registration
 
+    # SIM-PRD-ORG-001: email-domain auto-join. If this address matches an org's
+    # registered domain, link the new user into that org's population so they
+    # can draw from its credit pool. Failure must never block registration.
+    try:
+        from app.services import org_service
+        org = org_service.org_for_email_domain(user.email)
+        if org:
+            org_service.link_member(org, user.id, user.email, user.full_name,
+                                    join_source='domain')
+    except Exception:
+        pass
+
     db.session.commit()
 
     try:

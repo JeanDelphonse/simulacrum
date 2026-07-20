@@ -202,12 +202,29 @@ def dashboard():
         current_user.partner_welcome_shown = True
         _db.session.commit()
 
+    # SIM-PRD-ORG-001: sponsoring-org banner + what-the-org-can-see transparency.
+    org_banner = None
+    try:
+        from app.services import org_service
+        _org = org_service.member_org(current_user.id)
+        if _org:
+            from app.models.profile import UserProfile as _UP
+            _prof = _UP.query.filter_by(user_id=current_user.id).first()
+            org_banner = {'name': _org.display_name,
+                          'logo_url': _org.white_label_logo_url,
+                          'is_admin': _org.admin_user_id == current_user.id,
+                          'org_id': _org.id,
+                          'hide_cobrand': bool(_prof and _prof.hide_org_cobrand)}
+    except Exception:
+        pass
+
     return render_template('dashboard/index.html',
                            simulations=simulations,
                            last_cycle_map=last_cycle_map,
                            resumes=resumes,
                            pending_collabs=pending_collabs,
                            partner=partner,
+                           org_banner=org_banner,
                            show_partner_welcome=show_partner_welcome)
 
 
@@ -844,8 +861,14 @@ def admin_corporate_view():
         from flask import abort
         abort(403)
     from app.models.corporate import CorporateAccount
+    from datetime import date, timedelta
     orgs = CorporateAccount.query.order_by(CorporateAccount.created_at.desc()).all()
-    return render_template('admin/corporate.html', orgs=orgs)
+    # SIM-PRD-ORG-001 FR-ORG-13: renewal tasks — contracts ending within 30 days.
+    soon = date.today() + timedelta(days=30)
+    renewals = [o for o in orgs
+                if o.contract_end and o.status == CorporateAccount.STATUS_ACTIVE
+                and date.today() <= o.contract_end <= soon]
+    return render_template('admin/corporate.html', orgs=orgs, renewals=renewals)
 
 
 @pages_bp.route('/admin/users/<target_uid>/integrations')

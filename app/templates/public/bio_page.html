@@ -1547,6 +1547,12 @@
     </a>
   </div>
   {% endif %}
+  {% if org_cobrand %}
+  <div class="org-cobrand" style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.9rem;font-size:.72rem;color:var(--muted)">
+    {% if org_cobrand.logo_url %}<img src="{{ org_cobrand.logo_url }}" alt="{{ org_cobrand.name }}" style="max-height:20px;opacity:.85">{% endif %}
+    <span>Sponsored by {{ org_cobrand.name }}</span>
+  </div>
+  {% endif %}
   <div style="font-size:.75rem;color:var(--muted);margin-top:.75rem">© {{ ctx.full_name }}</div>
 </footer>
 

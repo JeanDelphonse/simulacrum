@@ -2,6 +2,25 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <div class="dashboard">
+  {# SIM-PRD-ORG-001: sponsoring-org banner + transparency on what the org sees #}
+  {% if org_banner %}
+  <div class="org-banner" style="display:flex;align-items:center;gap:.75rem;background:rgba(79,70,229,.08);border:1px solid rgba(79,70,229,.25);border-radius:12px;padding:.85rem 1.1rem;margin-bottom:1.25rem">
+    {% if org_banner.logo_url %}<img src="{{ org_banner.logo_url }}" alt="{{ org_banner.name }}" style="max-height:32px">{% endif %}
+    <div style="flex:1">
+      <div style="font-weight:600;font-size:.9rem">{{ org_banner.name }} sponsors your Simulacrum access.</div>
+      <div style="font-size:.75rem;color:var(--muted)">They can see that you activated — not what you build. Your account, bio page, and work are yours.</div>
+    </div>
+    {% if org_banner.is_admin %}
+    <a href="/corporate/{{ org_banner.org_id }}" class="btn btn-secondary btn-sm">Org dashboard →</a>
+    {% endif %}
+  </div>
+  <label style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted);margin:-.75rem 0 1.25rem .25rem;cursor:pointer">
+    <input type="checkbox" id="hideCobrand" {% if org_banner.hide_cobrand %}checked{% endif %}
+           onchange="fetch('/api/corporate/cobrand',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hide:this.checked})})">
+    Hide the sponsor badge on my public bio page
+  </label>
+  {% endif %}
+
   <div class="dashboard-header">
     <div>
       <h1>Welcome back, {{ current_user.full_name.split()[0] }}</h1>

@@ -39,6 +39,9 @@ class UserProfile(db.Model):
     zones_computed_at     = db.Column(db.DateTime, nullable=True)
     # SIM-PRD-SME-002: user opted out of having an SME (blocks auto re-match)
     sme_opted_out         = db.Column(db.Boolean, nullable=False, default=False)
+    # SIM-PRD-ORG-001: sponsoring organization + co-brand opt-out
+    org_id                = db.Column(db.String(9), nullable=True, index=True)
+    hide_org_cobrand      = db.Column(db.Boolean, nullable=False, default=False)
     created_at            = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at            = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

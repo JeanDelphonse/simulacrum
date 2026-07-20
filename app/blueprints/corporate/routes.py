@@ -7,17 +7,29 @@ Dashboard at /corporate/<org_id> shows progress for the HR firm.
 """
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from functools import wraps
 
-from flask import request, jsonify, render_template, current_app
+from flask import request, jsonify, render_template, current_app, Response, url_for
 from flask_login import login_required, current_user
 
 from app.blueprints.corporate import corporate_bp
 from app.extensions import db
 from app.models.audit_log import AuditLog
-from app.models.corporate import CorporateAccount, CorporateEmployee
+from app.models.corporate import (
+    CorporateAccount, CorporateEmployee, CreditRedemption, OrgInvoice, OrgSmePod,
+)
+from app.services import org_service
 from utils.id_gen import generate_id
+
+
+def _parse_date(val):
+    if not val:
+        return None
+    try:
+        return datetime.strptime(str(val)[:10], '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
 
 
 # ── Decorators ────────────────────────────────────────────────────────────────
@@ -64,28 +76,63 @@ def list_orgs():
 @corporate_bp.route('/api/corporate/orgs', methods=['POST'])
 @admin_required
 def create_org():
+    """Provision an organization as a credit pool (SIM-PRD-ORG-001).
+
+    Accepts org_type (pilot/cohort/enterprise/partner) and a credit pool; the
+    legacy seat model is still honored when credits are not supplied.
+    """
     data = request.get_json() or {}
     required = ['org_name', 'contact_name', 'contact_email']
     missing = [f for f in required if not data.get(f)]
     if missing:
         return jsonify({'error': f'Missing: {", ".join(missing)}'}), 400
 
-    tier = data.get('license_tier', CorporateAccount.TIER_STARTER)
-    if tier not in CorporateAccount.TIER_SEAT_LIMITS:
-        return jsonify({'error': f'Invalid license_tier. Use: {list(CorporateAccount.TIER_SEAT_LIMITS)}'}), 400
+    org_type = (data.get('org_type') or CorporateAccount.ORG_PILOT).strip()
+    if org_type not in CorporateAccount.ORG_TYPES:
+        return jsonify({'error': f'Invalid org_type. Use: {list(CorporateAccount.ORG_TYPES)}'}), 400
 
-    seat_count = data.get('seat_count') or CorporateAccount.TIER_SEAT_LIMITS[tier]
-    max_seats = CorporateAccount.TIER_SEAT_LIMITS[tier]
-    if seat_count > max_seats:
-        return jsonify({'error': f'{tier} tier supports max {max_seats} seats'}), 400
+    # Credit value is locked at contract time (FR-ORG-04). Default to the
+    # current simulation price so later price changes never alter this contract.
+    credit_value_cents = data.get('credit_value_cents')
+    if not credit_value_cents:
+        try:
+            from app.services.pricing_service import get_current_price
+            credit_value_cents = get_current_price()['base_price_cents']
+        except Exception:
+            credit_value_cents = current_app.config.get('SIMULATION_PRICE_CENTS', 69500)
+
+    credits = int(data.get('credits_purchased') or data.get('credits') or 0)
+
+    contract_start = _parse_date(data.get('contract_start')) or date.today()
+    contract_end = _parse_date(data.get('contract_end'))
+    if not contract_end:
+        days = CorporateAccount.DEFAULT_EXPIRY_DAYS.get(org_type, 365)
+        contract_end = contract_start + timedelta(days=days)
+
+    domains = data.get('auto_join_domains')
+    if isinstance(domains, str):
+        domains = [d.strip().lower() for d in domains.replace(',', ' ').split() if d.strip()]
+    elif isinstance(domains, list):
+        domains = [str(d).strip().lower() for d in domains if str(d).strip()]
+    else:
+        domains = None
 
     org = CorporateAccount(
         id=generate_id(),
         org_name=data['org_name'].strip(),
         contact_name=data['contact_name'].strip(),
         contact_email=data['contact_email'].strip().lower(),
-        license_tier=tier,
-        seat_count=seat_count,
+        org_type=org_type,
+        license_tier=data.get('license_tier', CorporateAccount.TIER_STARTER),
+        seat_count=int(data.get('seat_count') or credits or 25),
+        credits_purchased=credits,
+        credits_remaining=credits,
+        credit_value_cents=int(credit_value_cents),
+        discount_pct=data.get('discount_pct') or 0,
+        auto_join_domains=domains,
+        provisioning_trigger=data.get('provisioning_trigger', CorporateAccount.PROVISION_ON_ISSUE),
+        contract_start=contract_start,
+        contract_end=contract_end,
         white_label_name=data.get('white_label_name'),
         white_label_logo_url=data.get('white_label_logo_url'),
         notes=data.get('notes'),
@@ -93,7 +140,7 @@ def create_org():
     )
     db.session.add(org)
     AuditLog.log('corporate_org_created', user_id=current_user.id, resource_id=org.id,
-                 metadata={'org_name': org.org_name, 'tier': tier})
+                 metadata={'org_name': org.org_name, 'org_type': org_type, 'credits': credits})
     db.session.commit()
     return jsonify(org.to_dict()), 201
 
@@ -133,9 +180,58 @@ def get_org(org, **kwargs):
 @corp_access_required
 def update_org(org, **kwargs):
     data = request.get_json() or {}
-    for field in ('white_label_name', 'white_label_logo_url', 'notes', 'contact_name'):
+    # Org Admins may edit co-branding; the rest is admin-only (contract/pool).
+    editable = ['white_label_name', 'white_label_logo_url', 'notes', 'contact_name']
+    if _is_platform_admin():
+        editable += ['contact_email', 'discount_pct', 'provisioning_trigger']
+    for field in editable:
         if field in data:
             setattr(org, field, data[field])
+    if _is_platform_admin():
+        if 'auto_join_domains' in data:
+            d = data['auto_join_domains']
+            if isinstance(d, str):
+                d = [x.strip().lower() for x in d.replace(',', ' ').split() if x.strip()]
+            org.auto_join_domains = d or None
+        if 'contract_start' in data:
+            org.contract_start = _parse_date(data['contract_start'])
+        if 'contract_end' in data:
+            org.contract_end = _parse_date(data['contract_end'])
+    db.session.commit()
+    return jsonify(org.to_dict()), 200
+
+
+# ── Credit pool management (admin) ────────────────────────────────────────────
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/credits/topup', methods=['POST'])
+@admin_required
+def topup_credits(org_id):
+    org = CorporateAccount.query.get_or_404(org_id)
+    qty = int((request.get_json() or {}).get('quantity') or 0)
+    if qty <= 0:
+        return jsonify({'error': 'quantity must be positive'}), 400
+    org_service.add_credits(org, qty, actor_id=current_user.id)
+    db.session.commit()
+    return jsonify(org.to_dict()), 200
+
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/extend', methods=['POST'])
+@admin_required
+def extend_contract(org_id):
+    """Extend the contract end date (renewal / grace) — keeps credits alive."""
+    org = CorporateAccount.query.get_or_404(org_id)
+    data = request.get_json() or {}
+    new_end = _parse_date(data.get('contract_end'))
+    if not new_end and data.get('days'):
+        base = org.contract_end or date.today()
+        new_end = base + timedelta(days=int(data['days']))
+    if not new_end:
+        return jsonify({'error': 'contract_end or days required'}), 400
+    org.contract_end = new_end
+    if org.status == CorporateAccount.STATUS_EXPIRED:
+        org.status = CorporateAccount.STATUS_ACTIVE
+    AuditLog.log('org_contract_extended', user_id=current_user.id, resource_id=org.id,
+                 metadata={'contract_end': new_end.isoformat()})
     db.session.commit()
     return jsonify(org.to_dict()), 200
 
@@ -173,9 +269,11 @@ def provision_employees(org, **kwargs):
     if not employees_input:
         return jsonify({'error': 'No employees provided'}), 400
 
-    # Seat guard
+    # Seat guard applies only to legacy seat-based orgs. Credit-pool orgs
+    # (ORG-001) never cap invitations — the pool funds SIMULATIONS, not seats,
+    # and bio pages are free/unlimited (FR-ORG-06).
     new_count = len(employees_input)
-    if org.seats_available < new_count:
+    if not org.is_credit_pool and org.seats_available < new_count:
         return jsonify({
             'error': f'Only {org.seats_available} seat(s) available, {new_count} requested',
         }), 400
@@ -202,6 +300,7 @@ def provision_employees(org, **kwargs):
             email=email,
             full_name=name or None,
             status=CorporateEmployee.STATUS_INVITED,
+            join_source=CorporateEmployee.JOIN_CSV,
             invite_token=token,
         )
         db.session.add(emp)
@@ -287,6 +386,15 @@ def accept_invite_api(token):
     emp.activated_at = datetime.utcnow()
     emp.invite_token = None  # consume token
 
+    # Link the member's profile to the org (co-branding + credit redemption).
+    try:
+        from app.models.profile import UserProfile
+        prof = UserProfile.query.filter_by(user_id=user_id).first()
+        if prof and not prof.org_id:
+            prof.org_id = emp.org_id
+    except Exception as exc:
+        current_app.logger.warning('accept_invite profile link failed: %s', exc)
+
     try:
         db.session.commit()
     except Exception as exc:
@@ -294,10 +402,235 @@ def accept_invite_api(token):
         current_app.logger.error('accept_invite commit failed: %s', exc)
         return jsonify({'error': 'Database error'}), 500
 
-    return jsonify({'ok': True, 'org_id': emp.org_id, 'emp_id': emp.id}), 200
+    # Route the member into the standard onboarding wizard (FR-ORG-08).
+    return jsonify({'ok': True, 'org_id': emp.org_id, 'emp_id': emp.id,
+                    'next': '/onboarding'}), 200
 
 
-# ── HTML dashboard ────────────────────────────────────────────────────────────
+# ── Billing & invoicing (FR-ORG-13) ──────────────────────────────────────────
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/invoices', methods=['GET'])
+@corp_access_required
+def list_invoices(org, **kwargs):
+    invoices = (OrgInvoice.query.filter_by(org_id=org.id)
+                .order_by(OrgInvoice.created_at.desc()).all())
+    return jsonify([i.to_dict() for i in invoices]), 200
+
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/invoices', methods=['POST'])
+@admin_required
+def create_invoice(org_id):
+    """Create an invoice via Stripe Invoicing (ACH/wire/card + PO/net terms).
+
+    Provisions credits on ISSUE or on PAYMENT per the org's provisioning_trigger.
+    Stripe is best-effort — the OrgInvoice record is the source of truth so a
+    PO/manual invoice still works when Stripe Invoicing is unconfigured.
+    """
+    org = CorporateAccount.query.get_or_404(org_id)
+    data = request.get_json() or {}
+    credits = int(data.get('credits') or 0)
+    unit_price_cents = int(data.get('unit_price_cents') or org.credit_value_cents or 0)
+    if credits <= 0:
+        return jsonify({'error': 'credits must be positive'}), 400
+    amount_cents = int(data.get('amount_cents') or credits * unit_price_cents)
+
+    inv = OrgInvoice(
+        id=generate_id(), org_id=org.id,
+        po_number=data.get('po_number'),
+        credits=credits, unit_price_cents=unit_price_cents, amount_cents=amount_cents,
+        net_terms=int(data.get('net_terms') or 30),
+        status=OrgInvoice.STATUS_ISSUED, issued_at=datetime.utcnow(),
+    )
+    db.session.add(inv)
+
+    # Best-effort Stripe Invoicing.
+    try:
+        from app.services.stripe_service import create_org_invoice
+        ref = create_org_invoice(org, inv)
+        if ref:
+            inv.stripe_ref = ref
+    except Exception as exc:
+        current_app.logger.warning('Stripe invoicing skipped for org %s: %s', org.id, exc)
+
+    # Provision on issue (trust-based, faster time-to-value).
+    if org.provisioning_trigger == CorporateAccount.PROVISION_ON_ISSUE:
+        _provision_from_invoice(org, inv)
+
+    AuditLog.log('org_invoice_created', user_id=current_user.id, resource_id=org.id,
+                 metadata={'invoice_id': inv.id, 'credits': credits, 'amount_cents': amount_cents})
+    db.session.commit()
+    return jsonify(inv.to_dict()), 201
+
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/invoices/<invoice_id>/pay', methods=['POST'])
+@admin_required
+def mark_invoice_paid(org_id, invoice_id):
+    org = CorporateAccount.query.get_or_404(org_id)
+    inv = OrgInvoice.query.filter_by(id=invoice_id, org_id=org.id).first_or_404()
+    if inv.status == OrgInvoice.STATUS_PAID:
+        return jsonify(inv.to_dict()), 200
+    inv.status = OrgInvoice.STATUS_PAID
+    inv.paid_at = datetime.utcnow()
+    # Provision on payment (for larger contracts).
+    if org.provisioning_trigger == CorporateAccount.PROVISION_ON_PAYMENT:
+        _provision_from_invoice(org, inv)
+    AuditLog.log('org_invoice_paid', user_id=current_user.id, resource_id=org.id,
+                 metadata={'invoice_id': inv.id})
+    db.session.commit()
+    return jsonify(inv.to_dict()), 200
+
+
+def _provision_from_invoice(org, inv):
+    """Add an invoice's credits to the pool and activate the org."""
+    org.credits_purchased = (org.credits_purchased or 0) + inv.credits
+    org.credits_remaining = (org.credits_remaining or 0) + inv.credits
+    if org.status == CorporateAccount.STATUS_PENDING:
+        org.status = CorporateAccount.STATUS_ACTIVE
+        org.activated_at = org.activated_at or datetime.utcnow()
+
+
+# ── Bulk-invite link (shareable) ──────────────────────────────────────────────
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/invite-link', methods=['POST'])
+@corp_access_required
+def create_invite_link(org, **kwargs):
+    """Generate (or rotate) the org's shareable join link (FR-ORG-08)."""
+    data = request.get_json() or {}
+    cap = data.get('cap')
+    expires = _parse_date(data.get('expires_at'))
+    expires_dt = datetime.combine(expires, datetime.min.time()) if expires else None
+    if data.get('rotate'):
+        org.invite_token = CorporateAccount.generate_invite_token()
+        org.invite_uses = 0
+    token = org_service.ensure_invite_link(org, cap=int(cap) if cap else None,
+                                            expires_at=expires_dt)
+    db.session.commit()
+    base = current_app.config.get('BASE_URL', '').rstrip('/')
+    return jsonify({'token': token, 'url': f'{base}/corporate/join/{token}',
+                    'cap': org.invite_cap, 'uses': org.invite_uses}), 200
+
+
+@corporate_bp.route('/corporate/join/<token>', methods=['GET'])
+def join_via_link(token):
+    """Public landing for the shareable org join link."""
+    org = CorporateAccount.query.filter_by(invite_token=token).first_or_404()
+    if not org_service.invite_link_ok(org):
+        return render_template('corporate/invite.html', emp=None, org=org,
+                               token=None, link_closed=True), 410
+    return render_template('corporate/invite.html', emp=None, org=org,
+                           token=token, via_link=True)
+
+
+@corporate_bp.route('/api/corporate/join/<token>/accept', methods=['POST'])
+@login_required
+def join_via_link_accept(token):
+    """Logged-in user joins an org via the shareable link."""
+    org = CorporateAccount.query.filter_by(invite_token=token).first()
+    if not org or not org_service.invite_link_ok(org):
+        return jsonify({'error': 'This invite link is no longer active.'}), 410
+    org_service.link_member(org, current_user.id, current_user.email,
+                            getattr(current_user, 'name', None),
+                            CorporateEmployee.JOIN_LINK)
+    org.invite_uses = (org.invite_uses or 0) + 1
+    db.session.commit()
+    return jsonify({'ok': True, 'org_id': org.id, 'next': '/onboarding'}), 200
+
+
+# ── Activation reminders (FR-ORG-09) ──────────────────────────────────────────
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/remind', methods=['POST'])
+@corp_access_required
+def send_reminders(org, **kwargs):
+    """Manually nudge non-activated members (Org Admin action)."""
+    targets = [e for e in org.employees.filter_by(status=CorporateEmployee.STATUS_INVITED).all()
+               if e.invite_token]
+    sent = 0
+    for emp in targets:
+        if _send_invite_email(emp, org, reminder=True):
+            emp.reminder_count = (emp.reminder_count or 0) + 1
+            emp.last_reminded_at = datetime.utcnow()
+            sent += 1
+    db.session.commit()
+    return jsonify({'sent': sent}), 200
+
+
+# ── Cohort SME pod (admin) ────────────────────────────────────────────────────
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/sme-pod', methods=['GET'])
+@corp_access_required
+def get_sme_pod(org, **kwargs):
+    """SMEs covering this cohort (names + zones). Org Admin sees WHO covers
+    them as a value signal — never the recommendations SMEs make (FR-ORG-11)."""
+    from app.models.sme import SimiSME
+    ids = [r[0] for r in OrgSmePod.query.filter_by(org_id=org.id)
+           .with_entities(OrgSmePod.sme_id).all()]
+    smes = SimiSME.query.filter(SimiSME.id.in_(ids)).all() if ids else []
+    return jsonify([{'id': s.id, 'name': f'{s.first_name} {s.last_name}'.strip(),
+                     'zones': s.zones} for s in smes]), 200
+
+
+@corporate_bp.route('/api/corporate/orgs/<org_id>/sme-pod', methods=['PUT'])
+@admin_required
+def set_sme_pod(org_id):
+    """Assign the SME pod for an org and report cohort coverage (FR-ORG-11)."""
+    org = CorporateAccount.query.get_or_404(org_id)
+    sme_ids = (request.get_json() or {}).get('sme_ids') or []
+    OrgSmePod.query.filter_by(org_id=org.id).delete()
+    for sid in sme_ids:
+        db.session.add(OrgSmePod(org_id=org.id, sme_id=sid))
+    # Re-match existing members to the new pod.
+    from app.models.profile import UserProfile
+    from app.services import sme_service
+    rematched = 0
+    for uid in org_service.member_user_ids(org):
+        prof = UserProfile.query.filter_by(user_id=uid).first()
+        if prof and not prof.sme_opted_out and prof.sme_assignment_type != 'manual':
+            sme_service.auto_assign_sme(prof, commit=False)
+            rematched += 1
+    AuditLog.log('org_sme_pod_set', user_id=current_user.id, resource_id=org.id,
+                 metadata={'sme_ids': sme_ids, 'rematched': rematched})
+    db.session.commit()
+    return jsonify({'sme_ids': sme_ids, 'rematched': rematched,
+                    'coverage': _pod_coverage(org, sme_ids)}), 200
+
+
+def _pod_coverage(org, sme_ids):
+    """Capacity-planning hint: cohort zone demand vs pod zone coverage."""
+    from app.models.sme import SimiSME
+    from app.models.profile import UserProfile
+    zones_demand = {}
+    for uid in org_service.member_user_ids(org):
+        prof = UserProfile.query.filter_by(user_id=uid).first()
+        if prof and prof.primary_zone:
+            zones_demand[prof.primary_zone] = zones_demand.get(prof.primary_zone, 0) + 1
+    covered = set()
+    capacity = 0
+    for s in (SimiSME.query.filter(SimiSME.id.in_(sme_ids)).all() if sme_ids else []):
+        covered.update(s.zones)
+        capacity += (s.capacity or 0)
+    gaps = [z for z in zones_demand if z not in covered]
+    return {'zone_demand': zones_demand, 'covered_zones': sorted(covered),
+            'uncovered_zones': gaps, 'pod_capacity': capacity}
+
+
+# ── Member co-brand opt-out (FR-ORG-12) ───────────────────────────────────────
+
+@corporate_bp.route('/api/corporate/cobrand', methods=['POST'])
+@login_required
+def set_cobrand_pref():
+    """Member hides/shows the sponsor badge on their bio page. The org sponsors
+    access; it does not own the member's public identity."""
+    from app.models.profile import UserProfile
+    hide = bool((request.get_json() or {}).get('hide'))
+    prof = UserProfile.query.filter_by(user_id=current_user.id).first()
+    if not prof:
+        return jsonify({'error': 'No profile'}), 404
+    prof.hide_org_cobrand = hide
+    db.session.commit()
+    return jsonify({'hide_org_cobrand': hide}), 200
+
+
+# ── HTML dashboard — Partner / Org Admin console ──────────────────────────────
 
 @corporate_bp.route('/corporate/<org_id>')
 @login_required
@@ -306,47 +639,87 @@ def dashboard(org_id):
     if not _is_platform_admin() and org.admin_user_id != current_user.id:
         return render_template('public/profile_unpublished.html', username=''), 403
 
-    employees = org.employees.order_by(CorporateEmployee.provisioned_at.desc()).all()
-
-    stats = {
-        'total': len(employees),
-        'invited': sum(1 for e in employees if e.status == CorporateEmployee.STATUS_INVITED),
-        'active': sum(1 for e in employees if e.status == CorporateEmployee.STATUS_ACTIVE),
-        'complete': sum(1 for e in employees if e.status == CorporateEmployee.STATUS_COMPLETE),
-        'seats_available': org.seats_available,
-    }
-
+    metrics = org_service.dashboard_metrics(org)
+    roster = org_service.roster(org)
+    invoices = (OrgInvoice.query.filter_by(org_id=org.id)
+                .order_by(OrgInvoice.created_at.desc()).all())
     return render_template(
         'corporate/dashboard.html',
         org=org,
-        employees=employees,
-        stats=stats,
+        metrics=metrics,
+        roster=roster,
+        invoices=invoices,
     )
+
+
+@corporate_bp.route('/corporate/<org_id>/roster.csv')
+@login_required
+def export_roster_csv(org_id):
+    """CSV roster export (FR-ORG-10) — activation status only."""
+    org = CorporateAccount.query.get_or_404(org_id)
+    if not _is_platform_admin() and org.admin_user_id != current_user.id:
+        from flask import abort
+        abort(403)
+    rows = org_service.roster(org)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(['Name', 'Email', 'Status', 'Bio published', 'Simulation started', 'Activated at'])
+    for r in rows:
+        w.writerow([r['name'], r['email'], r['status'],
+                    'yes' if r['bio_published'] else 'no',
+                    'yes' if r['sim_started'] else 'no', r['activated_at'] or ''])
+    fname = f'{org.display_name.replace(" ", "_")}_roster.csv'
+    return Response(buf.getvalue(), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename="{fname}"'})
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _send_invite_email(emp: CorporateEmployee, org: CorporateAccount):
-    """Send outplacement invite email. Silent failure — non-blocking."""
+def _send_invite_email(emp: CorporateEmployee, org: CorporateAccount, reminder: bool = False) -> bool:
+    """Send a co-branded org invite/reminder. Silent failure — non-blocking.
+
+    Co-branded with the org logo/name (FR-ORG-09), sent via the platform email
+    infrastructure, one clear CTA into the standard onboarding wizard.
+    Returns True on send.
+    """
     try:
         from app.services.email_service import _send
-        org_display = org.white_label_name or org.org_name
+        org_display = org.display_name
         invite_url = (
             f'{current_app.config.get("BASE_URL", "").rstrip("/")}'
             f'/corporate/invite/{emp.invite_token}'
         )
-        subject = f'Your career transition resources are ready — {org_display}'
+        if reminder:
+            subject = f'Reminder: your Simulacrum access from {org_display} is waiting'
+            lead = (f'A quick nudge — {org_display} has sponsored your Simulacrum access '
+                    f'and your invitation is still open.')
+        else:
+            subject = f'{org_display} has sponsored your Simulacrum access'
+            lead = (f'{org_display} has sponsored your access to Simulacrum, a career '
+                    f'wealth simulation platform.')
+        logo_html = (f'<img src="{org.white_label_logo_url}" alt="{org_display}" '
+                     f'style="max-height:48px;margin-bottom:16px">'
+                     if org.white_label_logo_url else '')
         body = (
-            f'Hi {emp.full_name or "there"},\n\n'
-            f'{org_display} has prepared a personalized career wealth simulation for you '
-            f'as part of your transition support package.\n\n'
-            f'Click the link below to access your resources:\n{invite_url}\n\n'
-            f'Your simulation will analyze your career history and show you '
-            f'3–6 income opportunities across 5 layers — consulting, group programs, '
-            f'digital products, automated systems, and wealth building.\n\n'
-            f'This link is unique to you. It expires when you activate your account.\n\n'
-            f'— The {org_display} Transition Team'
+            f'Hi {emp.full_name or "there"},\n\n{lead}\n\n'
+            f'Get started here:\n{invite_url}\n\n'
+            f'Your simulation analyzes your career history and shows income '
+            f'opportunities across 5 layers. Your account, bio page, and work are '
+            f'yours — {org_display} sponsors the access, they do not see what you build.\n\n'
+            f'— {org_display}'
         )
-        _send(to=emp.email, subject=subject, body=body)
+        html = (
+            f'<div style="font-family:sans-serif;max-width:520px">{logo_html}'
+            f'<p>Hi {emp.full_name or "there"},</p><p>{lead}</p>'
+            f'<p><a href="{invite_url}" style="background:#4f46e5;color:#fff;'
+            f'padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">'
+            f'Get started</a></p>'
+            f'<p style="color:#666;font-size:.85rem">Your account, bio page, and work are '
+            f'yours — {org_display} sponsors the access, they do not see what you build.</p>'
+            f'<p style="color:#666;font-size:.85rem">— {org_display}</p></div>'
+        )
+        _send(subject=subject, recipients=[emp.email], body=body, html=html)
+        return True
     except Exception as exc:
         current_app.logger.warning('Invite email failed for %s: %s', emp.email, exc)
+        return False
