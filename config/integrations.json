@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "document_id": "SIM-PRD-CONNECT-001",
+  "comment": "Integration tier registry. Static metadata only — per-user connections live in the user_integrations table (UserIntegration). Tier drives whether/how an integration surfaces to the user: brokered (invisible, platform infra), oauth (one-tap, contextual), advanced (hidden unless sought). 'runtime_provider' is the UserIntegration.provider key; null for brokered (no per-user row).",
+  "integrations": [
+    {
+      "key": "internal_email",
+      "tier": "brokered",
+      "display_name": "Outreach email",
+      "status_label": "Outreach email",
+      "runtime_provider": null,
+      "min_layer": 1,
+      "benefit_copy": "Outreach and sequence sends run on Simulacrum's own email infrastructure.",
+      "powered_by_note": "Sends on the platform domain with your name as sender."
+    },
+    {
+      "key": "apollo",
+      "tier": "brokered",
+      "display_name": "Prospect research",
+      "status_label": "Prospect research",
+      "runtime_provider": "apollo",
+      "min_layer": 1,
+      "benefit_copy": "Prospect research and contact discovery run on the platform's Apollo seats.",
+      "powered_by_note": "Runs on platform seats — no account needed."
+    },
+    {
+      "key": "pandadoc",
+      "tier": "brokered",
+      "display_name": "Documents",
+      "status_label": "Documents",
+      "runtime_provider": "pandadoc",
+      "min_layer": 1,
+      "benefit_copy": "Proposals, SOWs and agreements are generated and sent on the platform account.",
+      "powered_by_note": "You review drafts; recipients sign. No account needed."
+    },
+    {
+      "key": "stripe",
+      "tier": "oauth",
+      "display_name": "Payments",
+      "runtime_provider": "stripe",
+      "min_layer": 1,
+      "triggered_by": "rate_card",
+      "benefit_copy": "get paid",
+      "contextual_prompt": "To get paid, connect your account to receive payments.",
+      "connect_button": "Connect Stripe"
+    },
+    {
+      "key": "cal_com",
+      "tier": "oauth",
+      "display_name": "Calendar",
+      "runtime_provider": "cal",
+      "min_layer": 1,
+      "triggered_by": "booking_page",
+      "benefit_copy": "let prospects book calls",
+      "contextual_prompt": "To let prospects book calls with you, connect your calendar.",
+      "connect_button": "Connect calendar"
+    },
+    {
+      "key": "linkedin",
+      "tier": "oauth",
+      "display_name": "LinkedIn",
+      "runtime_provider": "linkedin",
+      "min_layer": 1,
+      "triggered_by": "linkedin_optimization",
+      "benefit_copy": "update your LinkedIn profile",
+      "contextual_prompt": "To update your LinkedIn profile, connect your account.",
+      "connect_button": "Connect LinkedIn"
+    },
+    {
+      "key": "kajabi",
+      "tier": "advanced",
+      "display_name": "Kajabi",
+      "runtime_provider": "kajabi",
+      "min_layer": 3,
+      "benefit_copy": "Publish courses, memberships and landing pages to your existing Kajabi account.",
+      "advanced_note": "Default: hosted on Simulacrum. Connect Kajabi to publish to your own account."
+    },
+    {
+      "key": "convertkit",
+      "tier": "advanced",
+      "display_name": "ConvertKit",
+      "runtime_provider": "convertkit",
+      "min_layer": 4,
+      "benefit_copy": "Publish newsletters and lead magnets to your existing ConvertKit list.",
+      "advanced_note": "Default: platform-brokered email. Connect ConvertKit to publish to your own list."
+    },
+    {
+      "key": "alpaca",
+      "tier": "advanced",
+      "display_name": "Alpaca",
+      "runtime_provider": "alpaca",
+      "min_layer": 5,
+      "benefit_copy": "Automate dollar-cost-averaging through your own brokerage.",
+      "advanced_note": "Brokerage for DCA automation. Opt-in only, after Layer 5 activates."
+    }
+  ]
+}
