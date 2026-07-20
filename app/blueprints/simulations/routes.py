@@ -987,16 +987,17 @@ def get_pyramid(sim_id):
     if not sim:
         return jsonify({'error': 'Not found'}), 404
 
-    # Agent selector scope (SIM-PRD-AGENTSEL-001): the Launchpad grid must show the
-    # same agents the orchestrator will actually run — the user's confirmed
-    # selection. Mirrors the filter in layer6._get_eligible_agents so /setup, this
-    # detail-page grid, and the orchestrator all agree on the active agent set.
+    # Agent selector scope (SIM-PRD-AGENTSEL-001): the Launchpad grid shows every
+    # agent (active AND inactive) so it matches /setup, but each agent is flagged
+    # `active` = in the user's confirmed selection. The active set mirrors
+    # layer6._get_eligible_agents (the orchestrator's dispatch scope). Inactive
+    # agents render distinctly and are not runnable.
     from app.services.agent_registry import resolve_alias
     if sim.agent_selection_confirmed_at is not None and sim.selected_agents:
         from app.services.agent_selector import TRIGGERED_AGENT_IDS
         selected_scope = {resolve_alias(a) for a in sim.selected_agents} | TRIGGERED_AGENT_IDS
     else:
-        selected_scope = None  # None = no filter (all agents shown, pre-confirmation)
+        selected_scope = None  # None = no selection yet → every agent is active
 
     # Snapshot completed and running action types for this simulation
     all_actions = AgentAction.query.filter_by(simulation_id=sim_id).all()
@@ -1039,10 +1040,10 @@ def get_pyramid(sim_id):
         # Build agent list with statuses
         agents_list = []
         for at, defn in layer_agent_defs.items():
-            # Skip agents outside the user's confirmed selection so the grid
-            # matches /setup and the orchestrator's dispatch scope.
-            if selected_scope is not None and resolve_alias(at) not in selected_scope:
-                continue
+            # Active = in the user's confirmed selection (or all, pre-confirmation).
+            # The grid shows every agent so /setup and the detail page match; inactive
+            # agents are rendered distinctly and are not runnable.
+            is_active = selected_scope is None or resolve_alias(at) in selected_scope
             if at in running_types:
                 status = 'running'
             elif at in completed_types:
@@ -1058,6 +1059,7 @@ def get_pyramid(sim_id):
                 'label': defn.get('label', at.replace('_', ' ').title()),
                 'description': defn.get('description', ''),
                 'status': status,
+                'active': is_active,
                 'prompt_form': defn.get('prompt_form', []),
                 'last_inputs': last_action.user_inputs if last_action else {},
                 'artifact_id': last_action.id if last_action else None,
@@ -1078,10 +1080,12 @@ def get_pyramid(sim_id):
             'opportunities': opportunities,
             'agents': agents_list,
             'counts': {
-                'complete': sum(1 for a in agents_list if a['status'] == 'complete'),
-                'running':  sum(1 for a in agents_list if a['status'] == 'running'),
-                'ready':    sum(1 for a in agents_list if a['status'] == 'ready'),
-                'locked':   sum(1 for a in agents_list if a['status'] == 'locked'),
+                'complete': sum(1 for a in agents_list if a['status'] == 'complete' and a['active']),
+                'running':  sum(1 for a in agents_list if a['status'] == 'running' and a['active']),
+                'ready':    sum(1 for a in agents_list if a['status'] == 'ready' and a['active']),
+                'locked':   sum(1 for a in agents_list if a['status'] == 'locked' and a['active']),
+                'inactive': sum(1 for a in agents_list if not a['active']),
+                'active':   sum(1 for a in agents_list if a['active']),
             },
         })
 

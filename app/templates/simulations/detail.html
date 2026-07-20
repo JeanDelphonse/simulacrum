@@ -39,6 +39,7 @@
 .pyr-count-done    { background: #dcfce7; color: #15803d; }
 .pyr-count-running { background: #fef3c7; color: #b45309; }
 .pyr-count-ready   { background: #ede9fe; color: #7c3aed; }
+.pyr-count-inactive { background: #f3f4f6; color: #9CA3AF; }
 .pyr-priority-badge { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: .15rem .5rem; border-radius: 20px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
 .pyr-priority-high   { background: #fef3c7; color: #b45309; }
 .pyr-priority-medium { background: #f3f4f6; color: var(--muted); }
@@ -100,6 +101,8 @@
 .pyr-agent-card.ready  { border-color: rgba(124,58,237,.3); }
 .pyr-agent-card.running { border-color: rgba(180,83,9,.3); }
 .pyr-agent-card.complete { border-color: rgba(22,163,74,.3); }
+.pyr-agent-card.inactive { opacity: .5; cursor: default; border-style: dashed; background: #fafafa; }
+.pyr-agent-card.inactive:hover { transform: none; box-shadow: none; }
 
 .pyr-agent-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800; margin-bottom: .6rem; font-family: 'DM Sans', sans-serif; }
 .icon-complete { background: rgba(22,163,74,.1);   color: #16a34a; }
@@ -112,6 +115,7 @@
 .agent-status-running  { background: #fef3c7; color: #b45309; }
 .agent-status-ready    { background: #ede9fe; color: #7c3aed; }
 .agent-status-locked   { background: #f3f4f6; color: #9CA3AF; }
+.agent-status-inactive { background: #f3f4f6; color: #9CA3AF; }
 
 .pyr-agent-name { font-size: .8rem; font-weight: 600; color: var(--navy); margin-bottom: .25rem; font-family: 'DM Sans', sans-serif; line-height: 1.3; }
 .pyr-agent-desc { font-size: .7rem; color: var(--muted); line-height: 1.4; font-family: 'DM Sans', sans-serif; }
@@ -566,18 +570,32 @@ function renderAgentGrid(layer) {
   const execCountsEl = document.getElementById('exec-counts-' + layer.layer_number);
   if (!grid) return;
 
-  // Update status counts in layer header
+  // Update status counts in layer header (active agents only)
   const c = layer.counts;
   var pills = '';
   if (c.complete > 0) pills += '<span class="pyr-count-pill pyr-count-done">' + c.complete + ' done</span>';
   if (c.running  > 0) pills += '<span class="pyr-count-pill pyr-count-running">' + c.running + ' running</span>';
   if (c.ready    > 0) pills += '<span class="pyr-count-pill pyr-count-ready">' + c.ready + ' ready</span>';
+  if (c.inactive > 0) pills += '<span class="pyr-count-pill pyr-count-inactive">' + c.inactive + ' inactive</span>';
   if (countsEl) countsEl.innerHTML = pills;
   if (execCountsEl) {
-    execCountsEl.textContent = layer.agents.length + ' agents · ' + c.complete + ' complete · ' + c.ready + ' ready';
+    var _activeN = (typeof c.active === 'number') ? c.active : layer.agents.length;
+    execCountsEl.textContent = _activeN + ' active · ' + c.complete + ' complete · ' + c.ready + ' ready' +
+      (c.inactive > 0 ? ' · ' + c.inactive + ' inactive' : '');
   }
 
   grid.innerHTML = layer.agents.map(function(agent) {
+    // Inactive = not in the user's confirmed selection. Shown but not runnable.
+    if (agent.active === false) {
+      return '<div class="pyr-agent-card inactive" title="Inactive — enable in Manage Agents">' +
+        '<div class="pyr-agent-icon icon-locked">' + agent.action_type.slice(0,2).toUpperCase() + '</div>' +
+        '<span class="pyr-agent-status agent-status-inactive">Inactive</span>' +
+        '<div class="pyr-agent-name">' + escHtml(agent.label) + '</div>' +
+        '<div class="pyr-agent-desc">' + escHtml(agent.description) + '</div>' +
+        '<div class="pyr-agent-action grey">Enable in Manage Agents</div>' +
+        '</div>';
+    }
+
     const cls = _statusClass(agent.status);
     const iconCls = _iconClass(agent.status);
     const statusBadge = 'agent-status-' + cls;
