@@ -155,6 +155,29 @@ def toggle_like(slug: str):
             except Exception:
                 pass
 
+        # User-to-user: notify the bio owner whenever an authenticated user likes
+        # their page. Skip self-likes and anonymous likers (no identity to show).
+        if current_user.is_authenticated and current_user.id != bp.user_id:
+            try:
+                from app.models.notification import Notification
+                from app.models.profile import UserProfile
+                _prof = UserProfile.query.filter_by(user_id=current_user.id).first()
+                _liker = ((_prof.display_name if _prof and _prof.display_name else None)
+                          or (getattr(current_user, 'full_name', '') or '').strip()
+                          or 'Someone')
+                db.session.add(Notification(
+                    id=generate_id(),
+                    user_id=bp.user_id,
+                    notification_type='bio_like',
+                    title=f'{_liker} liked your bio page',
+                    body=f'{_liker} liked your professional page.',
+                    cta_url=f'/u/{bp.slug}',
+                    cta_label='View page',
+                    priority='normal',
+                ))
+            except Exception:
+                pass
+
     try:
         db.session.commit()
         if liked and current_user.is_authenticated and bp.simulation_id:

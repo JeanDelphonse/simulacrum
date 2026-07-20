@@ -50,9 +50,11 @@ for _agent in _agents_flat:
     if _agent.get('disclaimer'):
         _meta['disclaimer'] = True
     AGENT_ACTION_TYPES[_layer][_agent['action_type']] = _meta
-    # Register every old alias so legacy action_type strings still resolve
-    for _old_name in _reverse_aliases.get(_agent['action_type'], []):
-        AGENT_ACTION_TYPES[_layer].setdefault(_old_name, _meta)
+    # NOTE: legacy aliases are intentionally NOT registered as separate keys
+    # here — doing so inflated per-layer agent lists and progress-ring
+    # denominators (e.g. layer 1 showed 14 instead of 11).  Legacy action_type
+    # strings are resolved to their canonical name via resolve_alias() at every
+    # lookup site instead.
 
 # Prerequisite DAG: {action_type: [prerequisite_action_types]}
 ACTION_PREREQUISITES: dict[str, list[str]] = {}

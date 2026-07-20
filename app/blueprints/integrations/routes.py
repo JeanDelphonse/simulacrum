@@ -1904,6 +1904,13 @@ def _mark_connected(integration: UserIntegration, detail: str = 'OAuth connected
     integration.consecutive_failures = 0
     _log_activity(integration.user_id, integration.provider,
                   'OAuth connected', 'outbound', 'success', detail)
+    # SIM-PRD-CONNECT-001 (FR-CON-04): activate any artifacts that were waiting on
+    # this integration — no re-run required — and notify the user.
+    try:
+        from app.services.integration_activation import activate_pending_connections
+        activate_pending_connections(integration.user_id, integration.provider)
+    except Exception:
+        pass
 
 
 def _mark_disconnected(integration: UserIntegration):

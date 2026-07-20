@@ -240,7 +240,13 @@ Generate 3-5 income streams. Be specific — reference actual job titles, compan
     return json.loads(raw)
 
 
-AGENT_ACTION_TYPES = {
+# DEPRECATED — retained for reference only; NOT used at runtime.  The live
+# AGENT_ACTION_TYPES is rebuilt from config/agents.json below (the single
+# source of truth per SIM-PRD-AGENTMAP-001).  Do not add agents here; add them
+# to agents.json.  This dict still contains stale/legacy entries (outreach_email,
+# social_proof, pitch_deck_outline, alias duplicates) which is exactly why it is
+# no longer authoritative.
+_LEGACY_HARDCODED_AGENTS = {
     1: {
         'outreach_email': {
             'label': 'Draft Consulting Outreach Emails (×10)',
@@ -880,17 +886,14 @@ AGENT_ACTION_TYPES = {
     },
 }
 
-# Merge registry agents (agents.json) into AGENT_ACTION_TYPES.
-# Registry entries fill gaps; existing hardcoded entries are not overwritten
-# so legacy behaviour is preserved for agents already in the dict.
-try:
-    from app.services.agent_registry import AGENT_ACTION_TYPES as _registry_types
-    for _rl, _ragents in _registry_types.items():
-        AGENT_ACTION_TYPES.setdefault(_rl, {})
-        for _rat, _rmeta in _ragents.items():
-            AGENT_ACTION_TYPES[_rl].setdefault(_rat, _rmeta)
-except Exception:
-    pass
+# Build AGENT_ACTION_TYPES exclusively from config/agents.json via the registry
+# — the single source of truth (SIM-PRD-AGENTMAP-001).  Only the canonical
+# action_type of each agent appears here, so per-layer agent lists and progress
+# rings reflect the configured agent count exactly (e.g. layer 1 == 11).  Legacy
+# name variants are mapped to canonical via agent_registry.resolve_alias() at
+# every lookup site, so they never inflate these lists.
+from app.services.agent_registry import AGENT_ACTION_TYPES as _registry_types
+AGENT_ACTION_TYPES = {_layer: dict(_agents) for _layer, _agents in _registry_types.items()}
 
 
 def execute_agent_action(
@@ -946,6 +949,17 @@ def execute_agent_action(
     inputs_formatted = '\n'.join(
         f'- {k}: {v}' for k, v in user_inputs.items() if v
     ) or 'None provided'
+
+    # Resolve the effective prospect count up front for cold_email_campaign so BOTH
+    # the research target and the "generate exactly N" constraint below are bounded.
+    # The orchestrator dispatches with prospect_count=None; without this the agent
+    # chases its "25-company" description, over-generates, exhausts the token budget,
+    # and gets truncated — the primary cause of slow Cold Email runs.
+    if action_type == 'cold_email_campaign' and not prospect_count:
+        try:
+            prospect_count = int(user_inputs.get('prospect_count') or 5)
+        except (TypeError, ValueError):
+            prospect_count = 5
 
     # outreach_email / cold_email_campaign: pull verified prospects from CRM
     # contacts (have real emails). Fall back to research engine if CRM is empty.
@@ -1008,7 +1022,9 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             'One entry per prospect from the research list above. '
             'Use the prospect email addresses provided. '
             'Step 1 is the initial outreach. Step 2 is a follow-up (day 7). '
-            'Step 3 is a final follow-up (day 14). All subjects and bodies must be complete and ready to send.'
+            'Step 3 is a final follow-up (day 14). All subjects and bodies must be complete and ready to send. '
+            'Keep step 1 focused (under ~150 words); step 2 and step 3 are short nudges '
+            '(3-4 sentences each) — do not repeat step 1 at length.'
         )
 
     # Inject prospect limit constraint for all contact-producing agents (FR-TIER-07)
@@ -1107,13 +1123,10 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         16384 if action_type in _LARGE_OUTPUT_ACTIONS else 8192,
     )
 
-    # Scale cold_email_campaign tokens by prospect count (avoid paying for unused capacity)
+    # Scale cold_email_campaign tokens to the (already-resolved) prospect count so
+    # we don't allocate — and let the model fill — 16k tokens of unused capacity.
     if action_type == 'cold_email_campaign':
-        try:
-            prospect_count = int(user_inputs.get('prospect_count', 5))
-            max_tokens = min(16384, max(4096, prospect_count * 1000 + 1024))
-        except (TypeError, ValueError):
-            pass
+        max_tokens = min(16384, max(3072, (prospect_count or 5) * 900 + 1024))
 
     import logging as _log
     _logger = _log.getLogger(__name__)
@@ -1432,12 +1445,19 @@ def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dic
         return ''
     try:
         from app.models.contact import Contact
+        from sqlalchemy import or_ as _or
+        # Only NOT-yet-contacted prospects — otherwise the same top-scoring contacts
+        # (advanced to 'active' after their first email) get re-selected and
+        # re-emailed every cycle. When this pool is exhausted the caller falls back
+        # to the research engine, which sources NEW prospects from Apollo.
         contacts = Contact.query.filter(
             Contact.user_id == user_id,
             Contact.is_archived.is_(False),
             Contact.do_not_contact.is_(False),
             Contact.email.isnot(None),
-            Contact.pipeline_stage.in_(['prospect', 'active', 'lead']),
+            Contact.pipeline_stage == 'prospect',
+            Contact.last_contacted_at.is_(None),
+            _or(Contact.outreach_count == 0, Contact.outreach_count.is_(None)),
         ).order_by(Contact.qualifying_score.desc()).limit(prospect_count or 5).all()
 
         if not contacts:

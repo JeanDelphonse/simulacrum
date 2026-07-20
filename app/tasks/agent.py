@@ -82,6 +82,10 @@ def execute_agent_action_task(action_id: str):
         action.artifact = artifact
         action.status = AgentAction.STATUS_COMPLETE
         action.completed_at = datetime.utcnow()
+        # SIM-PRD-CONNECT-001: mark 'connect to activate' if a needed one-tap
+        # integration isn't connected (the artifact is still fully generated).
+        from app.services.integration_activation import evaluate_activation_state
+        evaluate_activation_state(action, user_id)
         db.session.flush()
 
         # Determine version number (count existing versions + 1)
@@ -487,6 +491,20 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
         for idx, p in step1_prospects:
             email = p.get('email') or _FALLBACK_EMAIL
             step1 = p['sequence'][0]
+
+            # Resolve the CRM contact up front and SKIP anyone already contacted —
+            # this is the hard guard that stops re-sending the same email to the
+            # same contacts on later cycles, regardless of what was sourced.
+            crm_id = p.get('crm_contact_id')
+            contact = Contact.query.get(crm_id) if crm_id else None
+            if not contact and not is_fallback_email(email):
+                contact = Contact.query.filter_by(user_id=user_id, email=email.lower().strip()).first()
+            if contact and ((contact.outreach_count or 0) > 0
+                            or contact.last_contacted_at is not None
+                            or contact.do_not_contact):
+                step1['send_status'] = 'skipped'
+                continue
+
             try:
                 _try_apollo_send(
                     {
@@ -500,12 +518,6 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
                 )
                 step1['send_status'] = 'sent'
                 step1['sent_at'] = datetime.datetime.utcnow().isoformat()
-
-                # Contact already exists from Phase 1; look up to advance stage
-                crm_id = p.get('crm_contact_id')
-                contact = Contact.query.get(crm_id) if crm_id else None
-                if not contact and not is_fallback_email(email):
-                    contact = Contact.query.filter_by(user_id=user_id, email=email.lower().strip()).first()
 
                 if contact:
                     contact.advance_stage('active', created_by='orchestrator',

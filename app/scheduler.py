@@ -32,70 +32,75 @@ def _refresh_pool(app):
         pass
 
 
-def _layer6_cycle_job(app):
+def _run_with_retry(app, label, fn):
+    """Run a scheduled job with a fresh DB connection, retrying ONCE if the pooled
+    connection was reset. On shared hosting MySQL drops idle connections, so a
+    job's first query can fail with "server has gone away" even after _refresh_pool
+    — disposing the pool and retrying gets a clean connection instead of failing
+    the whole job (which would skip that tick's work entirely)."""
+    from sqlalchemy.exc import OperationalError, DBAPIError
     with app.app_context():
         _refresh_pool(app)
         try:
-            from app.tasks.layer6 import run_layer6_cycles
-            run_layer6_cycles()
+            fn()
+        except (OperationalError, DBAPIError) as exc:
+            logger.warning('APScheduler: %s hit a stale DB connection (%s) — '
+                           'disposing pool and retrying once', label, exc.__class__.__name__)
+            _refresh_pool(app)
+            try:
+                fn()
+            except Exception:
+                logger.exception('APScheduler: %s failed after retry', label)
         except Exception:
-            logger.exception('APScheduler: layer6 cycle job failed')
+            logger.exception('APScheduler: %s failed', label)
+
+
+def _layer6_cycle_job(app):
+    def _run():
+        from app.tasks.layer6 import run_layer6_cycles
+        run_layer6_cycles()
+    _run_with_retry(app, 'layer6 cycle job', _run)
 
 
 def _layer6_cleanup_job(app):
-    with app.app_context():
-        _refresh_pool(app)
-        try:
-            from app.tasks.layer6 import cleanup_stale_actions
-            cleanup_stale_actions()
-        except Exception:
-            logger.exception('APScheduler: layer6 stale-cleanup job failed')
+    def _run():
+        from app.tasks.layer6 import cleanup_stale_actions
+        cleanup_stale_actions()
+    _run_with_retry(app, 'layer6 stale-cleanup job', _run)
 
 
 def _proactive_alerts_job(app):
-    with app.app_context():
-        _refresh_pool(app)
-        try:
-            from app.services.proactive_alerts_service import check_proactive_alerts
-            check_proactive_alerts()
-        except Exception:
-            logger.exception('APScheduler: proactive alerts job failed')
+    def _run():
+        from app.services.proactive_alerts_service import check_proactive_alerts
+        check_proactive_alerts()
+    _run_with_retry(app, 'proactive alerts job', _run)
 
 
 def _alert_digest_job(app):
-    with app.app_context():
-        _refresh_pool(app)
-        try:
-            from app.services.proactive_alerts_service import send_alert_digest
-            send_alert_digest()
-        except Exception:
-            logger.exception('APScheduler: alert digest job failed')
+    def _run():
+        from app.services.proactive_alerts_service import send_alert_digest
+        send_alert_digest()
+    _run_with_retry(app, 'alert digest job', _run)
 
 
 def _outreach_drip_job(app):
-    with app.app_context():
-        _refresh_pool(app)
-        try:
-            from app.services.outreach_campaign_service import (
-                process_drip_queue, process_scheduled_broadcasts,
-            )
-            process_drip_queue()
-            process_scheduled_broadcasts()
-        except Exception:
-            logger.exception('APScheduler: outreach drip/broadcast job failed')
+    def _run():
+        from app.services.outreach_campaign_service import (
+            process_drip_queue, process_scheduled_broadcasts,
+        )
+        process_drip_queue()
+        process_scheduled_broadcasts()
+    _run_with_retry(app, 'outreach drip/broadcast job', _run)
 
 
 def _sme_rec_expiry_job(app):
     """SIM-PRD-SME-002 §4 — auto-expire untouched recommendations past their window."""
-    with app.app_context():
-        _refresh_pool(app)
-        try:
-            from app.services.sme_console_service import expire_stale_recommendations
-            n = expire_stale_recommendations()
-            if n:
-                logger.info('APScheduler: expired %d stale SME recommendations', n)
-        except Exception:
-            logger.exception('APScheduler: SME recommendation expiry job failed')
+    def _run():
+        from app.services.sme_console_service import expire_stale_recommendations
+        n = expire_stale_recommendations()
+        if n:
+            logger.info('APScheduler: expired %d stale SME recommendations', n)
+    _run_with_retry(app, 'SME recommendation expiry job', _run)
 
 
 def start_scheduler(app):

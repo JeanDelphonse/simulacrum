@@ -284,6 +284,13 @@ def linkedin_oauth_callback():
 
         db.session.commit()
 
+        # SIM-PRD-CONNECT-001 (FR-CON-04): activate artifacts waiting on LinkedIn.
+        try:
+            from app.services.integration_activation import activate_pending_connections
+            activate_pending_connections(current_user.id, 'linkedin')
+        except Exception:
+            pass
+
         return redirect(url_for('pages.resume_detail', resume_id=resume.id))
     except Exception as e:
         logger.error('LinkedIn import failed: %s', e)

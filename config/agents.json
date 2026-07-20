@@ -3841,6 +3841,12 @@
     "lapsed_buyer_reactivation": "lapsed_buyer",
     "testimonial_system": "testimonials",
     "funnel_design": "lead_magnet_funnel",
-    "course_framework": "course_curriculum"
+    "course_framework": "course_curriculum",
+    "outreach_email": "consulting_outreach",
+    "social_proof": "referral_network",
+    "pitch_deck_outline": "consulting_proposal",
+    "template_pack_spec": "ebook_outline",
+    "sponsorship_outreach": "affiliate_partnerships",
+    "investment_thesis": "investment_policy"
   }
 }

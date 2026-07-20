@@ -83,7 +83,7 @@ def _web_search(query, api_key, model):
             response = client.messages.create(
                 model=model,
                 max_tokens=1200,
-                tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': 2}],
+                tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': 1}],
                 messages=messages,
             )
             if response.stop_reason == 'end_turn':
@@ -139,18 +139,17 @@ def _deep_research_one(prospect, user_id, expertise_keywords, api_key, haiku_mod
     company = prospect.company_name or ''
     industry = prospect.industry or ''
 
-    # Search queries per category (None = skip)
+    # Search queries per category (None = skip). Trimmed to the 3 highest-yield
+    # signals for consulting outreach — the two dropped ones (LinkedIn activity,
+    # conference appearances) rarely surface usable hooks for cold prospects and
+    # were the largest contributor to per-prospect research latency.
     _queries = {
-        'linkedin_activity':  f'{name} linkedin post article 2025 2026',
         'company_news':       f'{company} news announcement funding 2025 2026',
-        'conferences_events': f'{name} speaker conference podcast panel 2025 2026',
         'hiring_signals':     f'{company} hiring {expertise_keywords} job opening' if company and expertise_keywords else None,
         'public_pain_points': f'{company} challenges growth problem 2025 2026',
     }
     _category_labels = {
-        'linkedin_activity':  'recent LinkedIn activity',
         'company_news':       'recent company news',
-        'conferences_events': 'conference or podcast appearances',
         'hiring_signals':     'hiring signals matching your expertise',
         'public_pain_points': 'challenges and business pain points',
     }
@@ -420,6 +419,37 @@ def skip_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
     return p, None
 
 
+def _filter_uncontacted(user_id, prospects):
+    """Return only prospects that have NOT been contacted before.
+
+    Each run cycle emails fresh contacts only. Drops: prospects with no email,
+    suppressed emails, and any whose CRM contact has already been emailed
+    (outreach_count > 0 / last_contacted_at set), is do-not-contact, or has
+    advanced past the 'prospect' stage.
+    """
+    from app.models.contact import Contact
+    from app.models.outreach_email import EmailSuppression
+    from sqlalchemy import func as _func
+
+    kept = []
+    for p in prospects:
+        email = (getattr(p, 'email', '') or '').strip().lower()
+        if not email:
+            continue
+        if EmailSuppression.is_suppressed(email):
+            continue
+        c = (Contact.query
+             .filter(Contact.user_id == user_id, _func.lower(Contact.email) == email)
+             .first())
+        if c and (c.do_not_contact
+                  or (c.outreach_count or 0) > 0
+                  or c.last_contacted_at is not None
+                  or c.pipeline_stage in ('active', 'client', 'closed_lost')):
+            continue
+        kept.append(p)
+    return kept
+
+
 def _try_apollo_send(prospect_dict, user_id, action):
     """Send one outreach email via SendGrid. Apollo is used for research only — it has no
     direct-send API. Returns True if the email was actually sent, False otherwise."""
@@ -494,7 +524,10 @@ def execute_consulting_outreach(
     # ── Pass 1: standard research ─────────────────────────────────────────────
     targeting = build_targeting_criteria('consulting_outreach', expertise_zone, user_inputs)
     engine = ProspectResearchEngine()
-    _target = prospect_count or 5
+    # Default to 3 prospects/cycle: Pass 2 runs deep per-prospect web research, so
+    # each additional prospect is expensive. Users can raise this via the agent's
+    # prospect_count parameter on the setup page.
+    _target = prospect_count or 3
     result = engine.research(
         user_id=user_id,
         simulation_id=simulation_id,
@@ -502,7 +535,15 @@ def execute_consulting_outreach(
         targeting=targeting,
         target_count=_target,
     )
-    prospects = result.prospects[:_target]
+    # Only email contacts not previously contacted — fresh outreach each cycle.
+    # (All discovered prospects are still saved to the CRM by the research engine;
+    # this filter just decides who receives an email this run.)
+    _uncontacted = _filter_uncontacted(user_id, result.prospects)
+    _dropped = len(result.prospects) - len(_uncontacted)
+    if _dropped:
+        logger.info('consulting_outreach: skipped %d already-contacted prospect(s); '
+                    '%d fresh contact(s) remain', _dropped, len(_uncontacted))
+    prospects = _uncontacted[:_target]
     pass1_duration = round(time.time() - t_start, 2)
 
     # Populate crm_contact_id for any prospects the engine didn't tag

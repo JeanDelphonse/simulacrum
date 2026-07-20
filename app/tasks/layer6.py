@@ -125,6 +125,10 @@ def dispatch_layer6_action(self, queue_entry_id: str):
         agent_action.artifact = artifact
         agent_action.status = AgentAction.STATUS_COMPLETE
         agent_action.completed_at = datetime.utcnow()
+        # SIM-PRD-CONNECT-001: mark 'connect to activate' if a needed one-tap
+        # integration isn't connected (the artifact is still fully generated).
+        from app.services.integration_activation import evaluate_activation_state
+        evaluate_activation_state(agent_action, _sim_user_id)
 
         entry.status = Layer6ActionQueue.STATUS_COMPLETE
         entry.completed_at = datetime.utcnow()
@@ -142,8 +146,10 @@ def dispatch_layer6_action(self, queue_entry_id: str):
         db.session.commit()
         logger.info('Layer 6 action %s (%s) completed', entry.id, entry.action_type)
 
-        # Post-completion: dispatch outreach emails based on trust level
-        if entry.action_type == 'outreach_email':
+        # Post-completion: dispatch outreach emails based on trust level.
+        # consulting_outreach is included so its per-prospect emails are sent
+        # (or escalated for approval) every cycle — matching the synchronous path.
+        if entry.action_type in ('outreach_email', 'consulting_outreach'):
             try:
                 from app.tasks.agent import _dispatch_outreach_emails
                 _dispatch_outreach_emails(agent_action.id, entry.simulation_id, _sim_user_id)
@@ -273,7 +279,21 @@ def run_layer6_cycles():
         Layer6Config.CADENCE_168H: 10080,
     }
 
-    configs = Layer6Config.query.filter_by(is_active=True).all()
+    # A stale/reset pooled connection (MySQL wait_timeout on shared hosting) can
+    # make this first query fail with "server has gone away". Dispose the pool and
+    # retry once with a fresh connection rather than crashing the whole beat (which
+    # would skip every simulation this tick).
+    from sqlalchemy.exc import OperationalError as _OperationalError
+    try:
+        configs = Layer6Config.query.filter_by(is_active=True).all()
+    except _OperationalError:
+        logger.warning('Layer 6 beat: stale DB connection — disposing pool and retrying')
+        try:
+            db.session.remove()
+            db.engine.dispose()
+        except Exception:
+            pass
+        configs = Layer6Config.query.filter_by(is_active=True).all()
     logger.info('Layer 6 beat: checking %d active configs', len(configs))
 
     for cfg in configs:

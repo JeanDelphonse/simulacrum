@@ -273,7 +273,10 @@ def simulation_setup(sim_id):
     from app.models.simulation import Simulation
     sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
     from app.services.agent_selector import get_selector_data, PERSONA_NAMES, _PERSONA_DEFAULTS
-    selector = get_selector_data(sim, force_regen_descriptions=True)
+    # Use cached descriptions; get_selector_data regenerates automatically when the
+    # cache is empty or the resume/expertise-zone inputs changed. Forcing regen here
+    # made every /setup load block on a Haiku call.
+    selector = get_selector_data(sim)
     edit_mode = sim.agent_selection_confirmed_at is not None
     return render_template(
         'simulations/agent_selector.html',

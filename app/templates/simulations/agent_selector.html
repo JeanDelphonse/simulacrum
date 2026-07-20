@@ -126,6 +126,46 @@
 .asel-prereq-link { color: var(--teal); cursor: pointer; text-decoration: underline;
   background: none; border: none; padding: 0; font-size: .72rem; }
 
+/* ── Parameters expander + panel ──────────────────────────────────────────── */
+.asel-params-btn { font-size: .72rem; font-weight: 600; color: var(--teal);
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  padding: .18rem .5rem; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
+.asel-params-btn:hover { background: var(--teal-bg); }
+.asel-params-btn .caret { transition: transform .2s; display: inline-block; }
+.asel-params-btn.open .caret { transform: rotate(180deg); }
+
+.asel-params { display: none; padding: .75rem .9rem 1rem; margin: 0 0 .65rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  border-top: none; border-top-left-radius: 0; border-top-right-radius: 0; }
+.asel-params.open { display: block; }
+.asel-param-row { margin-bottom: .7rem; }
+.asel-param-row:last-of-type { margin-bottom: .5rem; }
+.asel-param-label { font-size: .74rem; font-weight: 600; color: var(--navy);
+  font-family: 'DM Sans', sans-serif; margin-bottom: .25rem; display: block; }
+.asel-param-label .req { color: var(--coral); margin-left: .15rem; }
+.asel-param-input, .asel-param-select, .asel-param-textarea {
+  width: 100%; box-sizing: border-box; font-size: .82rem; font-family: 'DM Sans', sans-serif;
+  border: 1px solid rgba(0,0,0,.14); border-radius: 7px; padding: .45rem .6rem;
+  color: var(--navy); background: #fff; outline: none; }
+.asel-param-input:focus, .asel-param-select:focus, .asel-param-textarea:focus { border-color: var(--teal); }
+.asel-param-input.suggested, .asel-param-select.suggested, .asel-param-textarea.suggested {
+  background: rgba(15,123,114,.05); border-color: rgba(15,123,114,.35); }
+.asel-params-note { font-size: .72rem; color: var(--teal); font-family: 'DM Sans', sans-serif;
+  margin-bottom: .7rem; display: none; }
+.asel-params-note.show { display: block; }
+.asel-param-textarea { min-height: 68px; resize: vertical; line-height: 1.5; }
+.asel-params-actions { display: flex; align-items: center; gap: .6rem; margin-top: .35rem; }
+.asel-params-save { background: var(--teal); color: #fff; border: none; border-radius: 7px;
+  padding: .4rem .9rem; font-size: .78rem; font-weight: 700; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; }
+.asel-params-save:hover { opacity: .88; }
+.asel-params-save:disabled { opacity: .5; cursor: default; }
+.asel-params-msg { font-size: .74rem; font-family: 'DM Sans', sans-serif; }
+.asel-params-msg.ok { color: var(--teal); }
+.asel-params-msg.err { color: var(--coral); }
+.asel-params-empty { font-size: .76rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+
 /* ── Launch bar ───────────────────────────────────────────────────────────── */
 .asel-launch-bar { position: fixed; bottom: 0; left: 0; right: 0;
   background: #fff; border-top: 1px solid var(--border);
@@ -284,8 +324,47 @@
             {% if agent.agent_locked %}
             <span class="asel-badge locked">🔒 Locked</span>
             {% endif %}
+            {% if agent.params and not (agent.agent_locked or agent.layer_locked) %}
+            <button type="button" class="asel-params-btn" id="paramsbtn-{{ agent.action_type }}"
+                    onclick="toggleParams('{{ agent.action_type }}')"
+                    aria-expanded="false" aria-controls="params-{{ agent.action_type }}">
+              ⚙ Parameters <span class="caret">▾</span>
+            </button>
+            {% endif %}
           </div>
         </div>
+
+        {% if agent.params and not (agent.agent_locked or agent.layer_locked) %}
+        <!-- Editable parameters -->
+        <div class="asel-params" id="params-{{ agent.action_type }}">
+          <div class="asel-params-note" id="paramsnote-{{ agent.action_type }}">✨ Prefilled with likely values for this simulation — edit or keep, then save.</div>
+          {% for p in agent.params %}
+          <div class="asel-param-row">
+            <label class="asel-param-label" for="param-{{ agent.action_type }}-{{ p.key }}">
+              {{ p.label }}{% if p.required %}<span class="req">*</span>{% endif %}
+            </label>
+            {% if p.type == 'textarea' %}
+            <textarea class="asel-param-textarea" id="param-{{ agent.action_type }}-{{ p.key }}"
+                      data-key="{{ p.key }}">{{ p.value }}</textarea>
+            {% elif p.type == 'select' %}
+            <select class="asel-param-select" id="param-{{ agent.action_type }}-{{ p.key }}" data-key="{{ p.key }}">
+              <option value="">— select —</option>
+              {% for opt in p.options %}
+              <option value="{{ opt }}" {% if p.value == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            <input type="text" class="asel-param-input" id="param-{{ agent.action_type }}-{{ p.key }}"
+                   data-key="{{ p.key }}" value="{{ p.value }}">
+            {% endif %}
+          </div>
+          {% endfor %}
+          <div class="asel-params-actions">
+            <button type="button" class="asel-params-save" onclick="saveParams('{{ agent.action_type }}')">Save parameters</button>
+            <span class="asel-params-msg" id="paramsmsg-{{ agent.action_type }}"></span>
+          </div>
+        </div>
+        {% endif %}
         {% endfor %}
       </div>
 
@@ -513,6 +592,82 @@ async function saveAgents() {
     btn.disabled = false;
     btn.textContent = 'Save changes';
     alert('Could not save. Please try again.');
+  }
+}
+
+const _prefillLoaded = new Set();
+
+function toggleParams(actionType) {
+  const panel = document.getElementById('params-' + actionType);
+  const btn = document.getElementById('paramsbtn-' + actionType);
+  if (!panel) return;
+  const open = panel.classList.toggle('open');
+  if (btn) {
+    btn.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  // On first open, prefill empty fields with the highest-probable value for this
+  // simulation (lazy so the page stays fast — computed only for opened agents).
+  if (open && !_prefillLoaded.has(actionType)) {
+    _prefillLoaded.add(actionType);
+    loadSuggestions(actionType, panel);
+  }
+}
+
+async function loadSuggestions(actionType, panel) {
+  const empties = Array.from(panel.querySelectorAll('[data-key]')).filter(el => !el.value.trim());
+  if (!empties.length) return;
+  try {
+    const resp = await fetch(`/api/simulations/${SIM_ID}/agents/${actionType}/prefill-suggestions`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const s = data.suggestions || {};
+    let filled = 0;
+    empties.forEach(el => {
+      const sug = s[el.dataset.key];
+      if (!sug || !sug.value) return;
+      el.value = sug.value;
+      el.classList.add('suggested');
+      if (sug.tooltip) el.title = sug.tooltip;
+      // Drop the "suggested" styling once the user touches the field.
+      el.addEventListener('input', function once() {
+        el.classList.remove('suggested');
+        el.removeEventListener('input', once);
+      });
+      filled++;
+    });
+    if (filled) {
+      const note = document.getElementById('paramsnote-' + actionType);
+      if (note) note.classList.add('show');
+    }
+  } catch (e) { /* non-fatal — leave fields empty */ }
+}
+
+async function saveParams(actionType) {
+  const panel = document.getElementById('params-' + actionType);
+  if (!panel) return;
+  const msg = document.getElementById('paramsmsg-' + actionType);
+  const saveBtn = panel.querySelector('.asel-params-save');
+
+  const inputs = {};
+  panel.querySelectorAll('[data-key]').forEach(el => { inputs[el.dataset.key] = el.value; });
+
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+  if (msg) { msg.textContent = ''; msg.className = 'asel-params-msg'; }
+
+  try {
+    const resp = await fetch(`/api/simulations/${SIM_ID}/agents/${actionType}/params`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs }),
+    });
+    if (!resp.ok) throw new Error('Server error');
+    if (msg) { msg.textContent = 'Saved · applies next cycle'; msg.className = 'asel-params-msg ok'; }
+  } catch (e) {
+    if (msg) { msg.textContent = 'Could not save — try again'; msg.className = 'asel-params-msg err'; }
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save parameters'; }
+    if (msg) setTimeout(() => { if (msg.classList.contains('ok')) { msg.textContent = ''; msg.className = 'asel-params-msg'; } }, 3000);
   }
 }
 

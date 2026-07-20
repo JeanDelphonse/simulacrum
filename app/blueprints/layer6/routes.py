@@ -1230,14 +1230,18 @@ def get_dag(sim_id):
     from app.services.claude import AGENT_ACTION_TYPES
     from app.models.agent_action import AgentAction
     from app.services.layer6 import ACTION_PREREQUISITES
+    from app.services.agent_registry import resolve_alias
 
+    # Nodes are built from AGENT_ACTION_TYPES (canonical action_type only), so
+    # canonicalize every DB-derived name below — otherwise an action stored
+    # under a legacy alias would not match its canonical node.
     completed = {
-        a.action_type for a in AgentAction.query.filter_by(
+        resolve_alias(a.action_type) for a in AgentAction.query.filter_by(
             simulation_id=sim_id, status=AgentAction.STATUS_COMPLETE,
         ).all()
     }
     in_flight = {
-        q.action_type: q.status
+        resolve_alias(q.action_type): q.status
         for q in Layer6ActionQueue.query.filter(
             Layer6ActionQueue.simulation_id == sim_id,
             Layer6ActionQueue.status.in_([
@@ -1250,8 +1254,9 @@ def get_dag(sim_id):
     # Latest AgentAction record per action_type for editor pre-fill
     action_records = {}
     for a in AgentAction.query.filter_by(simulation_id=sim_id).order_by(AgentAction.created_at.desc()).all():
-        if a.action_type not in action_records:
-            action_records[a.action_type] = a
+        _canon = resolve_alias(a.action_type)
+        if _canon not in action_records:
+            action_records[_canon] = a
 
     nodes = []
     for layer_num, actions in AGENT_ACTION_TYPES.items():

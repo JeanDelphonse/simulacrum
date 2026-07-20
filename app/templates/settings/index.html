@@ -337,51 +337,6 @@
       </div>
       {% endif %}
 
-      {# ── SIM-PRD-SME-002 — Your Simi Expert ── #}
-      <div class="settings-section" id="simi-expert">
-        <h2 class="settings-section-title">Your Simi Expert</h2>
-        {% if sme_expert %}
-        <p class="settings-hint">A subject-matter expert can review your simulation and suggest improvements. They have read-only visibility and can never change your simulation — you apply any change yourself.</p>
-        <div style="border:1px solid #99f6e4;background:#f0fdfa;border-radius:10px;padding:1rem 1.15rem;margin:.5rem 0 1rem;">
-          <div style="font-weight:700;color:#0f172a;">{{ sme_expert.name }}</div>
-          <div style="font-size:.82rem;color:#6b7280;margin:.15rem 0 .5rem;">{{ (sme_expert.zone or '') | capitalize }} expert</div>
-          <div style="font-size:.83rem;display:flex;flex-direction:column;gap:.2rem;">
-            {% if sme_expert.email %}<a href="mailto:{{ sme_expert.email }}" style="color:#0d9488;text-decoration:none;">{{ sme_expert.email }}</a>{% endif %}
-            {% if sme_expert.phone %}<span>{{ sme_expert.phone }}</span>{% endif %}
-            {% if sme_expert.bio_url %}<a href="{{ sme_expert.bio_url }}" target="_blank" rel="noopener" style="color:#0d9488;text-decoration:none;">View bio ↗</a>{% endif %}
-          </div>
-        </div>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-          <button class="btn btn-secondary" onclick="smeRequestDifferent()">Request a different expert</button>
-          <button class="btn btn-danger" onclick="smeOptOut()">Opt out of having an expert</button>
-        </div>
-        {% elif sme_opted_out %}
-        <p class="settings-hint">You've opted out of having a Simi Expert. You won't be matched automatically. You can opt back in any time.</p>
-        <button class="btn btn-primary" onclick="smeOptIn()">Opt in to an expert</button>
-        {% else %}
-        <p class="settings-hint">You don't currently have a Simi Expert assigned. When your expertise zones are set, we match you with a relevant expert. You can also opt in now.</p>
-        <button class="btn btn-primary" onclick="smeOptIn()">Match me with an expert</button>
-        {% endif %}
-        <div id="smeMsg" style="margin-top:.6rem;font-size:.82rem;"></div>
-      </div>
-      <script>
-      async function _smePost(path){
-        const r = await fetch('/api/sme-advisor' + path, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:'{}'});
-        const d = await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'Error'); return d;
-      }
-      async function smeOptOut(){
-        if(!confirm('Opt out of having a Simi Expert? Your expert will lose access immediately and pending recommendations are cancelled.')) return;
-        try{ await _smePost('/opt-out'); location.reload(); }catch(e){ smeShow(e.message,true); }
-      }
-      async function smeRequestDifferent(){
-        try{ await _smePost('/request-different'); smeShow('Flagged for reassignment — an admin will match you with a new expert.'); }catch(e){ smeShow(e.message,true); }
-      }
-      async function smeOptIn(){
-        try{ const d=await _smePost('/opt-in'); smeShow(d.assigned?'Matched! Reloading…':'No matching expert available yet — you\'ll be matched when one is.'); if(d.assigned) setTimeout(()=>location.reload(),1200); }catch(e){ smeShow(e.message,true); }
-      }
-      function smeShow(m,err){ const el=document.getElementById('smeMsg'); el.style.color=err?'#b91c1c':'#166534'; el.textContent=m; }
-      </script>
-
       {# ── Section 1: Identity ── #}
       <div class="settings-section">
         <div class="settings-section-title">Identity</div>
@@ -454,6 +409,51 @@
                  value="{{ profile.location or '' }}" placeholder="City, Country">
         </div>
       </div>
+
+      {# ── SIM-PRD-SME-002 — Your Simi Expert ── #}
+      <div class="settings-section" id="simi-expert">
+        <h2 class="settings-section-title">Your Simi Expert</h2>
+        {% if sme_expert %}
+        <p class="settings-hint">A subject-matter expert can review your simulation and suggest improvements. They have read-only visibility and can never change your simulation — you apply any change yourself.</p>
+        <div style="border:1px solid #99f6e4;background:#f0fdfa;border-radius:10px;padding:1rem 1.15rem;margin:.5rem 0 1rem;">
+          <div style="font-weight:700;color:#0f172a;">{{ sme_expert.name }}</div>
+          <div style="font-size:.82rem;color:#6b7280;margin:.15rem 0 .5rem;">{{ (sme_expert.zone or '') | capitalize }} expert</div>
+          <div style="font-size:.83rem;display:flex;flex-direction:column;gap:.2rem;">
+            {% if sme_expert.email %}<a href="mailto:{{ sme_expert.email }}" style="color:#0d9488;text-decoration:none;">{{ sme_expert.email }}</a>{% endif %}
+            {% if sme_expert.phone %}<span>{{ sme_expert.phone }}</span>{% endif %}
+            {% if sme_expert.bio_url %}<a href="{{ sme_expert.bio_url }}" target="_blank" rel="noopener" style="color:#0d9488;text-decoration:none;">View bio ↗</a>{% endif %}
+          </div>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="smeRequestDifferent()">Request a different expert</button>
+          <button class="btn btn-danger" onclick="smeOptOut()">Opt out of having an expert</button>
+        </div>
+        {% elif sme_opted_out %}
+        <p class="settings-hint">You've opted out of having a Simi Expert. You won't be matched automatically. You can opt back in any time.</p>
+        <button class="btn btn-primary" onclick="smeOptIn()">Opt in to an expert</button>
+        {% else %}
+        <p class="settings-hint">You don't currently have a Simi Expert assigned. When your expertise zones are set, we match you with a relevant expert. You can also opt in now.</p>
+        <button class="btn btn-primary" onclick="smeOptIn()">Match me with an expert</button>
+        {% endif %}
+        <div id="smeMsg" style="margin-top:.6rem;font-size:.82rem;"></div>
+      </div>
+      <script>
+      async function _smePost(path){
+        const r = await fetch('/api/sme-advisor' + path, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:'{}'});
+        const d = await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'Error'); return d;
+      }
+      async function smeOptOut(){
+        if(!confirm('Opt out of having a Simi Expert? Your expert will lose access immediately and pending recommendations are cancelled.')) return;
+        try{ await _smePost('/opt-out'); location.reload(); }catch(e){ smeShow(e.message,true); }
+      }
+      async function smeRequestDifferent(){
+        try{ await _smePost('/request-different'); smeShow('Flagged for reassignment — an admin will match you with a new expert.'); }catch(e){ smeShow(e.message,true); }
+      }
+      async function smeOptIn(){
+        try{ const d=await _smePost('/opt-in'); smeShow(d.assigned?'Matched! Reloading…':'No matching expert available yet — you\'ll be matched when one is.'); if(d.assigned) setTimeout(()=>location.reload(),1200); }catch(e){ smeShow(e.message,true); }
+      }
+      function smeShow(m,err){ const el=document.getElementById('smeMsg'); el.style.color=err?'#b91c1c':'#166534'; el.textContent=m; }
+      </script>
 
       {# ── Section 2: Professional Bio (split editor/preview) ── #}
       <div class="settings-section">
@@ -963,66 +963,59 @@
       {% set sg_status        = 'connected' if sg_connected else 'not_connected' %}
 
       {# ════════════════════════════════════════════════════
-         GROUP 1 — Revenue & outreach
+         SIM-PRD-CONNECT-001 — status dashboard, not a checklist.
+         Three tiers: Powered by Simulacrum (brokered, always-on),
+         Your connections (one-tap oauth), Advanced (collapsed, opt-in).
          ════════════════════════════════════════════════════ #}
-      <div class="integ-group-title">Revenue &amp; outreach</div>
-      <div class="integ-grid">
+      <style>
+        .integ-brokered-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-bottom:.5rem}
+        .integ-brokered-row{display:flex;align-items:center;gap:.75rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:.9rem 1rem}
+        .integ-brokered-row .bk-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex:none;box-shadow:0 0 0 3px rgba(34,197,94,.15)}
+        .integ-brokered-row .bk-name{font-weight:600;font-size:.85rem;color:#e8eaf0}
+        .integ-brokered-row .bk-sub{font-size:.72rem;color:rgba(255,255,255,.4)}
+        .integ-brokered-row .bk-status{margin-left:auto;font-size:.68rem;font-weight:600;color:#86efac;text-transform:uppercase;letter-spacing:.04em}
+        .integ-section-sub{font-size:.72rem;font-weight:400;color:rgba(255,255,255,.35);margin:.15rem 0 .75rem;text-transform:none;letter-spacing:0}
+        details.integ-advanced{margin-top:1.5rem;border-top:1px solid rgba(255,255,255,.07);padding-top:1rem}
+        details.integ-advanced>summary{cursor:pointer;font-size:.85rem;font-weight:600;color:#e8eaf0;list-style:none;display:flex;align-items:center;gap:.5rem;user-select:none}
+        details.integ-advanced>summary::-webkit-details-marker{display:none}
+        details.integ-advanced>summary::before{content:'\25B8';color:rgba(255,255,255,.4);transition:transform .15s;display:inline-block}
+        details.integ-advanced[open]>summary::before{transform:rotate(90deg)}
+        details.integ-advanced>summary .adv-hint{font-size:.72rem;font-weight:400;color:rgba(255,255,255,.35)}
+        .integ-card.pulse{animation:integPulse 1.2s ease-out 2}
+        @keyframes integPulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0)}50%{box-shadow:0 0 0 4px rgba(96,165,250,.35)}}
+      </style>
 
-        {# ─── Apollo ─── #}
-        <div class="integ-card" id="card-apollo">
-          <span class="integ-badge {{ apollo_status }}">
-            {% if apollo_status == 'connected' %}Connected
-            {% elif apollo_status == 'expired' %}Expired
-            {% else %}Not connected{% endif %}
-          </span>
-          <div class="integ-card-top">
-            <div class="integ-logo" style="background:#f9731620;color:#f97316">AP</div>
-            <div class="integ-card-info">
-              <div class="integ-card-name">Apollo</div>
-              <div class="integ-card-desc">Email outreach and sequences</div>
-            </div>
-          </div>
-          {% if apollo and apollo.is_connected %}
-          <div class="integ-conn-details">
-            <span class="integ-health"><span class="integ-health-dot {{ apollo.health_status or 'healthy' }}"></span>
-              {% if apollo.health_status == 'healthy' or not apollo.health_status %}Healthy{% else %}{{ apollo.health_status | title }}{% endif %}</span>
-            {% if apollo.connected_at %} &bull; Since {{ apollo.connected_at.strftime('%b %d, %Y') }}{% endif %}
-            {% if apollo.last_api_success_at %} &bull; Last active {{ apollo.last_api_success_at.strftime('%b %d') }}{% endif %}
-          </div>
-          {% endif %}
-          <button onclick="openGenericWizard('apollo')"
-                  class="integ-primary-btn {% if apollo_status == 'connected' %}outlined{% else %}navy{% endif %}">
-            {% if apollo_status == 'connected' %}Reconnect Apollo{% else %}Connect Apollo{% endif %}
-          </button>
-          {% if apollo_status == 'connected' %}
-          <div class="integ-secondary-links">
-            <button class="integ-secondary-link danger" onclick="showDisconnect('apollo','Apollo','cold_email_campaign · consulting_outreach · speaking_proposals')">Disconnect</button>
-            <button class="integ-secondary-link" onclick="toggleManage('apollo')">Settings</button>
-            <button class="integ-secondary-link" onclick="toggleActivity('apollo')">Activity log</button>
-          </div>
-          {% endif %}
-          <div class="integ-agents">Used by: cold_email · consulting_outreach · speaking_proposals +3</div>
-          {% if apollo_status == 'connected' %}
-          <div class="integ-manage-panel" id="manage-apollo">
-            <div class="integ-manage-title">Apollo settings <button class="integ-secondary-link" onclick="toggleManage('apollo')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div class="integ-cfg-row">
-              <div class="integ-cfg-label">Daily send limit</div>
-              <input type="number" class="integ-cfg-input" id="apolloCfgLimit" min="1" max="500"
-                     value="{{ apollo.apollo_daily_limit if apollo else 30 }}" style="width:90px">
-            </div>
-            <div class="integ-cfg-row">
-              <div class="integ-cfg-label">Warmup mode</div>
-              <label class="toggle-switch" style="width:36px;height:20px"><input type="checkbox" id="apolloWarmup"><span class="toggle-slider"></span></label>
-              <div class="settings-hint" style="font-size:.7rem;margin-top:.2rem">Auto-limits sends for new accounts</div>
-            </div>
-            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveApolloConfig()">Save settings</button>
-          </div>
-          <div class="integ-activity-panel" id="activity-apollo">
-            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('apollo')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div id="activity-apollo-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
-          </div>
-          {% endif %}
+      {# ── Powered by Simulacrum (brokered — always on, no action) ── #}
+      <div class="integ-group-title">Powered by Simulacrum</div>
+      <div class="integ-section-sub">Outreach, research and documents run on Simulacrum's own infrastructure — nothing to set up.</div>
+      <div class="integ-brokered-grid">
+        <div class="integ-brokered-row">
+          <span class="bk-dot"></span>
+          <div><div class="bk-name">Outreach email</div><div class="bk-sub">Sends on the platform domain</div></div>
+          <span class="bk-status">Active</span>
         </div>
+        <div class="integ-brokered-row">
+          <span class="bk-dot"></span>
+          <div><div class="bk-name">Prospect research</div><div class="bk-sub">Runs on platform seats</div></div>
+          <span class="bk-status">Active</span>
+        </div>
+        <div class="integ-brokered-row">
+          <span class="bk-dot"></span>
+          <div><div class="bk-name">Documents</div><div class="bk-sub">Proposals, SOWs, agreements</div></div>
+          <span class="bk-status">Active</span>
+        </div>
+      </div>
+
+      {# ── Your connections (one-tap, surfaced contextually as agents run) ── #}
+      <div class="integ-group-title" id="your-connections">Your connections</div>
+      <div class="integ-section-sub">Connect these when an agent needs them — or ahead of time here.</div>
+      {% if stripe_status == 'expired' or cal_status == 'expired' %}
+      <div class="integ-flash err" style="display:flex;align-items:center;gap:.6rem">
+        <span>&#9888;</span>
+        <span>Reconnect your {% if stripe_status == 'expired' %}payments{% endif %}{% if stripe_status == 'expired' and cal_status == 'expired' %} and {% endif %}{% if cal_status == 'expired' %}calendar{% endif %} to keep things running.</span>
+      </div>
+      {% endif %}
+      <div class="integ-grid">
 
         {# ─── Stripe ─── #}
         <div class="integ-card" id="card-stripe">
@@ -1131,64 +1124,58 @@
           {% endif %}
         </div>
 
-        {# ─── PandaDoc ─── #}
-        <div class="integ-card" id="card-pandadoc">
-          <span class="integ-badge {{ pd_status }}">
-            {% if pd_status == 'connected' %}Connected{% else %}Not connected{% endif %}
-          </span>
+        {# ─── LinkedIn ─── #}
+        <div class="integ-card" id="card-linkedin">
+          {% if linkedin_enabled %}
+            {% if linkedin_resume %}
+              <span class="integ-badge connected">Connected</span>
+            {% else %}
+              <span class="integ-badge not_connected">Not connected</span>
+            {% endif %}
+          {% else %}
+            <span class="integ-badge legal">Legal review</span>
+          {% endif %}
           <div class="integ-card-top">
-            <div class="integ-logo" style="background:#16a34a20;color:#16a34a">PD</div>
+            <div class="integ-logo" style="background:#0a66c220;color:#0a66c2">LI</div>
             <div class="integ-card-info">
-              <div class="integ-card-name">PandaDoc</div>
-              <div class="integ-card-desc">E-signature and contracts</div>
+              <div class="integ-card-name">LinkedIn</div>
+              <div class="integ-card-desc">Profile and content distribution</div>
             </div>
           </div>
-          {% if pandadoc_int and pandadoc_int.is_connected %}
-          <div class="integ-conn-details">
-            <span class="integ-health"><span class="integ-health-dot {{ pandadoc_int.health_status or 'healthy' }}"></span>Healthy</span>
-            {% if pandadoc_int.connected_at %} &bull; Since {{ pandadoc_int.connected_at.strftime('%b %d, %Y') }}{% endif %}
-          </div>
-          {% endif %}
-          <button onclick="openGenericWizard('pandadoc')"
-                  class="integ-primary-btn {% if pd_status == 'connected' %}outlined{% else %}navy{% endif %}">
-            {% if pd_status == 'connected' %}Reconnect PandaDoc{% else %}Connect PandaDoc{% endif %}
-          </button>
-          {% if pd_status == 'connected' %}
-          <div class="integ-secondary-links">
-            <button class="integ-secondary-link danger" onclick="showDisconnect('pandadoc','PandaDoc','consulting_proposal · coaching_agreement · service_agreement · nda')">Disconnect</button>
-            <button class="integ-secondary-link" onclick="toggleManage('pandadoc')">Settings</button>
-            <button class="integ-secondary-link" onclick="toggleActivity('pandadoc')">Activity log</button>
-          </div>
-          {% endif %}
-          <div class="integ-agents">Used by: consulting_proposal · coaching_agreement · service_agreement · nda</div>
-          {% if pd_status == 'connected' %}
-          <div class="integ-manage-panel" id="manage-pandadoc">
-            <div class="integ-manage-title">PandaDoc settings <button class="integ-secondary-link" onclick="toggleManage('pandadoc')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div class="integ-cfg-row">
-              <div class="integ-cfg-label">Signature reminder cadence</div>
-              <select class="integ-cfg-input" id="pdCfgReminder" style="width:auto">
-                <option value="3_days">3 days</option>
-                <option value="5_days">5 days</option>
-                <option value="7_days">7 days</option>
-                <option value="off">Off</option>
-              </select>
+          {% if linkedin_enabled %}
+            {% if linkedin_resume %}
+              <div class="integ-conn-details">
+                <span class="integ-health"><span class="integ-health-dot healthy"></span> Connected</span>
+                &nbsp;·&nbsp; Imported {{ linkedin_resume.created_at.strftime('%b %d, %Y') }}
+              </div>
+              <div class="integ-secondary-links">
+                <a class="integ-secondary-link" href="{{ url_for('pages.resume_detail', resume_id=linkedin_resume.id) }}">View profile →</a>
+                <button class="integ-secondary-link danger" onclick="disconnectLinkedIn()">Disconnect</button>
+              </div>
+              <button onclick="startLinkedInInteg(this)" class="integ-primary-btn outlined">↻ Re-sync</button>
+            {% else %}
+              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
+                Connect your LinkedIn profile to import your name, headline, and contact details.
+              </div>
+              <button onclick="startLinkedInInteg(this)" class="integ-primary-btn navy">Connect LinkedIn →</button>
+            {% endif %}
+          {% else %}
+            <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
+              Pending attorney review of the LinkedIn API Terms of Service (FR-LINKEDIN-01).
+              The OAuth flow and content publishing are ready to deploy once legal clearance is received.
             </div>
-            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('pandadoc',{signature_reminder_cadence:document.getElementById('pdCfgReminder').value})">Save</button>
-          </div>
-          <div class="integ-activity-panel" id="activity-pandadoc">
-            <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('pandadoc')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div id="activity-pandadoc-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
-          </div>
+            <button disabled class="integ-primary-btn navy" style="opacity:.35;cursor:not-allowed">Coming soon</button>
           {% endif %}
+          <div class="integ-agents">Supports: content_distribution · connection_import · profile_optimization</div>
         </div>
 
-      </div>{# end revenue grid #}
+      </div>{# end Your connections grid #}
 
-      {# ════════════════════════════════════════════════════
-         GROUP 2 — Audience & products
-         ════════════════════════════════════════════════════ #}
-      <div class="integ-group-title">Audience &amp; products</div>
-      <div class="integ-grid">
+      {# ── Advanced — connect your own tools (opt-in, collapsed) ── #}
+      <details class="integ-advanced">
+        <summary>Connect your own tools <span class="adv-hint">— optional; bring your own Kajabi, ConvertKit or brokerage</span></summary>
+        <div class="integ-section-sub" style="margin-top:.75rem">Most people never need these — platform defaults host courses, email and more. Connect your own only if you already use them.</div>
+        <div class="integ-grid">
 
         {# ─── Kajabi ─── #}
         <div class="integ-card" id="card-kajabi">
@@ -1290,61 +1277,6 @@
           </div>
           {% endif %}
         </div>
-
-        {# ─── LinkedIn ─── #}
-        <div class="integ-card" id="card-linkedin">
-          {% if linkedin_enabled %}
-            {% if linkedin_resume %}
-              <span class="integ-badge connected">Connected</span>
-            {% else %}
-              <span class="integ-badge not_connected">Not connected</span>
-            {% endif %}
-          {% else %}
-            <span class="integ-badge legal">Legal review</span>
-          {% endif %}
-          <div class="integ-card-top">
-            <div class="integ-logo" style="background:#0a66c220;color:#0a66c2">LI</div>
-            <div class="integ-card-info">
-              <div class="integ-card-name">LinkedIn</div>
-              <div class="integ-card-desc">Profile and content distribution</div>
-            </div>
-          </div>
-          {% if linkedin_enabled %}
-            {% if linkedin_resume %}
-              <div class="integ-conn-details">
-                <span class="integ-health"><span class="integ-health-dot healthy"></span> Connected</span>
-                &nbsp;·&nbsp; Imported {{ linkedin_resume.created_at.strftime('%b %d, %Y') }}
-              </div>
-              <div class="integ-secondary-links">
-                <a class="integ-secondary-link" href="{{ url_for('pages.resume_detail', resume_id=linkedin_resume.id) }}">View profile →</a>
-                <button class="integ-secondary-link danger" onclick="disconnectLinkedIn()">Disconnect</button>
-              </div>
-              <button onclick="startLinkedInInteg(this)" class="integ-primary-btn outlined">↻ Re-sync</button>
-            {% else %}
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
-                Connect your LinkedIn profile to import your name, headline, and contact details.
-              </div>
-              <button onclick="startLinkedInInteg(this)" class="integ-primary-btn navy">Connect LinkedIn →</button>
-            {% endif %}
-          {% else %}
-            <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
-              Pending attorney review of the LinkedIn API Terms of Service (FR-LINKEDIN-01).
-              The OAuth flow and content publishing are ready to deploy once legal clearance is received.
-            </div>
-            <button disabled class="integ-primary-btn navy" style="opacity:.35;cursor:not-allowed">Coming soon</button>
-          {% endif %}
-          <div class="integ-agents">Supports: content_distribution · connection_import · profile_optimization</div>
-        </div>
-
-      </div>{# end audience grid #}
-
-      {# ════════════════════════════════════════════════════
-         GROUP 3 — Financial
-         ════════════════════════════════════════════════════ #}
-      <div class="integ-group-title">Financial
-        <span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.3);margin-left:.5rem;text-transform:none;letter-spacing:0">These platforms touch your financial accounts — additional consent required.</span>
-      </div>
-      <div class="integ-grid">
 
         {# ─── Plaid ─── #}
         <div class="integ-card" id="card-plaid">
@@ -1474,10 +1406,10 @@
           {% endif %}
         </div>
 
-      </div>{# end financial grid #}
+      </div>{# end advanced grid #}
 
-      {# ── SendGrid (platform-level) ── #}
-      <div class="integ-group-title">Platform email</div>
+      {# ── SendGrid (platform email — technical/admin) ── #}
+      <div class="integ-group-title" style="font-size:.8rem">Platform email</div>
       <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:1.25rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
           <div style="font-weight:700;font-size:.9rem;color:#e8eaf0;margin-bottom:.2rem">SendGrid
@@ -1502,6 +1434,31 @@
         <strong style="color:rgba(255,255,255,.7)">CAN-SPAM:</strong> Every email includes your business address and a one-click unsubscribe. Hard bounces and unsubscribes permanently block re-outreach.
         &nbsp;&bull;&nbsp; <strong style="color:rgba(255,255,255,.7)">GDPR:</strong> Consult legal counsel before sending to EU contacts at scale. Simulacrum's lawful basis is legitimate interest for B2B outreach.
       </div>
+
+      </details>{# end advanced #}
+
+      {# Deep-link from a contextual "connect to activate" card: ?connect=<key> #}
+      <script>
+        (function () {
+          var params = new URLSearchParams(window.location.search);
+          var key = params.get('connect');
+          if (!key) return;
+          var cardIdByKey = {
+            stripe: 'card-stripe', cal_com: 'card-cal', linkedin: 'card-linkedin',
+            kajabi: 'card-kajabi', convertkit: 'card-convertkit', alpaca: 'card-alpaca'
+          };
+          var advancedKeys = { kajabi: 1, convertkit: 1, alpaca: 1 };
+          var el = document.getElementById(cardIdByKey[key] || '');
+          if (!el) return;
+          if (advancedKeys[key]) {
+            var det = document.querySelector('details.integ-advanced');
+            if (det) det.open = true;
+          }
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('pulse');
+          setTimeout(function () { el.classList.remove('pulse'); }, 2600);
+        })();
+      </script>
 
     </div>{# end integrationsTab #}
     {% endif %}

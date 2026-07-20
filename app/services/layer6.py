@@ -482,6 +482,14 @@ def _build_integration_user_inputs(action_type: str, active_integrations: dict,
     return extras
 
 
+# Agents that must run EVERY cycle rather than once. Unlike normal agents (which
+# drop out of eligibility after their first COMPLETE action), these stay eligible
+# and are guaranteed a dispatch slot each cycle once their prerequisites are met.
+# consulting_outreach re-queries Apollo/CRM for NEW, not-yet-contacted prospects
+# each cycle (it is also in _NO_DEDUP_ACTIONS so it never reuses a prior artifact).
+_RECURRING_ACTIONS = frozenset({'consulting_outreach', 'cold_email_campaign'})
+
+
 def build_eligible_actions(simulation_id: str, config, completed_types: set[str],
                             phase: str, force_rerun: bool = False) -> list[dict[str, Any]]:
     """
@@ -530,8 +538,9 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
         layer_index += 1
         for action_type, action_def in actions.items():
             canonical = resolve_alias(action_type)
-            # The merged dict contains both canonical and legacy alias keys —
-            # consider each logical agent once.
+            # AGENT_ACTION_TYPES is keyed by canonical action_type only; this
+            # dedup is defensive so each logical agent is considered once even if
+            # a legacy alias key ever reappears.
             if canonical in seen:
                 continue
             seen.add(canonical)
@@ -544,7 +553,10 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
                 continue
             if canonical in in_flight:
                 continue
-            if not force_rerun and canonical in completed_canonical:
+            # Recurring agents (e.g. consulting_outreach) stay eligible every cycle;
+            # normal agents drop out once they have a COMPLETE action.
+            if (not force_rerun and canonical in completed_canonical
+                    and canonical not in _RECURRING_ACTIONS):
                 continue
 
             # Check prerequisites (always uses real completed_types so order is respected)
@@ -796,6 +808,10 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
             e['action_type'], active_integrations), 6)
         scored.append({**e, 'priority_score': priority, 'unblocks': unblocks})
 
+    # Capture recurring agents from the FULL scored set before any truncation so
+    # they can be guaranteed a dispatch slot below even if they don't rank top-N.
+    recurring_scored = [a for a in scored if a['action_type'] in _RECURRING_ACTIONS]
+
     # Exploration: ensure at least one action per layer represented
     if phase == 'explore':
         scored = _ensure_layer_diversity(scored, n_to_dispatch)
@@ -807,6 +823,16 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
     if sim.lifecycle_phase == sim.LIFECYCLE_MAINTENANCE:
         threshold = float(config.maintenance_dispatch_threshold)
         scored = [a for a in scored if a['priority_score'] >= threshold]
+
+    # Guarantee recurring agents (consulting_outreach) run every cycle: pin any
+    # that were dropped by top-N truncation or the maintenance threshold to the
+    # front of the dispatch window. They only reach here if eligible this cycle
+    # (prerequisites met and within the user's selected-agents set).
+    if recurring_scored:
+        _present = {a['action_type'] for a in scored}
+        _prepend = [a for a in recurring_scored if a['action_type'] not in _present]
+        if _prepend:
+            scored = _prepend + scored
 
     dispatched_count = 0
     escalated_count = 0
@@ -955,19 +981,29 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
         entries_to_run = [entry.id for entry, within_bounds in dispatch_entries if within_bounds]
         if entries_to_run:
             def _bg_runner(eids, app=_app_obj):
+                # Execute dispatched agents SEQUENTIALLY, not one thread per agent.
+                # Heavy agents (cold_email_campaign, consulting_outreach) make long
+                # Claude/Apollo calls; running them all concurrently exhausts the
+                # DB pool + shared-hosting MySQL connection limit, which surfaces as
+                # "MySQL server has gone away" for the scheduler and other requests.
+                # This whole runner is already a background thread, so nothing is
+                # blocked by serializing the agents.
+                from app.extensions import db as _db
+                from app.models.layer6 import Layer6ActionQueue as _Q
                 for eid in eids:
-                    def _bg_single(entry_id=eid):
+                    try:
                         with app.app_context():
-                            from app.extensions import db as _db
-                            from app.models.layer6 import Layer6ActionQueue as _Q
-                            try:
-                                fresh = _db.session.get(_Q, entry_id)
-                                if fresh and fresh.status == _Q.STATUS_DISPATCHED:
-                                    _execute_action_sync(fresh)
-                            except Exception as ex:
-                                logger.error('Background action queue worker execution failed for entry %s: %s', entry_id, ex)
-
-                    _threading.Thread(target=_bg_single, daemon=True).start()
+                            fresh = _db.session.get(_Q, eid)
+                            if fresh and fresh.status == _Q.STATUS_DISPATCHED:
+                                _execute_action_sync(fresh)
+                    except Exception as ex:
+                        logger.error('Background action execution failed for entry %s: %s', eid, ex)
+                    finally:
+                        # Return this agent's connection to the pool before the next.
+                        try:
+                            _db.session.remove()
+                        except Exception:
+                            pass
 
             _threading.Thread(target=_bg_runner, args=(entries_to_run,), daemon=True).start()
 
@@ -1158,6 +1194,10 @@ def _execute_action_sync(entry) -> None:
         agent_action.artifact = artifact
         agent_action.status = AgentAction.STATUS_COMPLETE
         agent_action.completed_at = _dt.utcnow()
+        # SIM-PRD-CONNECT-001: mark 'connect to activate' if a needed one-tap
+        # integration isn't connected (the artifact is still fully generated).
+        from app.services.integration_activation import evaluate_activation_state
+        evaluate_activation_state(agent_action, _sim_user_id)
         entry.status = Layer6ActionQueue.STATUS_COMPLETE
         entry.completed_at = _dt.utcnow()
         entry.outcome_summary = artifact[:500] if artifact else ''

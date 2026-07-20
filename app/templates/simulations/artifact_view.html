@@ -83,6 +83,24 @@
 }
 .av-banner button { margin-left: auto; }
 
+/* ── Contextual "connect to activate" card (SIM-PRD-CONNECT-001) ──────────── */
+.av-connect-card {
+  background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 14px;
+}
+.av-connect-icon { font-size: 20px; line-height: 1; }
+.av-connect-text { display: flex; flex-direction: column; gap: 2px; }
+.av-connect-text strong { font-size: 13px; font-weight: 700; color: #9a3412; }
+.av-connect-text span { font-size: 13px; color: #b45309; }
+.av-connect-btn {
+  margin-left: auto; white-space: nowrap;
+  background: #ea580c; border: 1px solid #ea580c; color: #fff;
+  font-weight: 600; font-size: 13px; text-decoration: none;
+  padding: 8px 16px; border-radius: 8px; transition: background .15s;
+}
+.av-connect-btn:hover { background: #c2410c; }
+
 .av-sidebar {
   position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
   background: #fff; border-left: 1px solid #e2e8f0;
@@ -383,6 +401,16 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
   </div>
   {% else %}
   <main class="av-body">
+    {% if connect_card %}
+    <div class="av-connect-card" role="status">
+      <div class="av-connect-icon" aria-hidden="true">🔌</div>
+      <div class="av-connect-text">
+        <strong>Ready to activate</strong>
+        <span>{{ connect_card.prompt }}</span>
+      </div>
+      <a class="av-connect-btn" href="{{ connect_card.href }}">{{ connect_card.button }}</a>
+    </div>
+    {% endif %}
     <div id="avDraftBanner" class="av-banner" style="display:none;">
       <span>You have unsaved changes from a previous session.</span>
       <button type="button" class="av-btn" id="avRestoreDraft">Restore</button>

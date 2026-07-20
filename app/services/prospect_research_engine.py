@@ -529,12 +529,28 @@ class ProspectResearchEngine:
         token  = decrypt_token(rec.access_token_enc)
         client = ApolloClient(token)
 
+        # Advance the Apollo page as the user's agent-sourced CRM grows, so each
+        # run cycle surfaces NEW prospects instead of re-fetching the same first
+        # page every time (which the caller would then filter out as already
+        # contacted).
+        per_page = min(count, 50) or 25
+        try:
+            from app.models.contact import Contact
+            already = Contact.query.filter(
+                Contact.user_id == user_id,
+                Contact.source.in_(['agent_action', 'agent_generated']),
+            ).count()
+            page = (already // per_page) + 1
+        except Exception:
+            page = 1
+
         people = client.people_search(
             person_titles=targeting.job_titles[:5],
             person_seniorities=targeting.seniorities,
             organization_num_employees_ranges=targeting.company_sizes,
             person_locations=targeting.geographies,
-            per_page=min(count, 50),
+            per_page=per_page,
+            page=page,
         )
         self._apollo_calls += 1
 

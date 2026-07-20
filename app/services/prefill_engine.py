@@ -669,9 +669,11 @@ class PrefillEngine:
     """Generates a prefill payload for a given action type in a simulation."""
 
     def __init__(self, simulation, resume, action_type: str, layer_number: int):
+        from app.services.agent_registry import resolve_alias
         self.simulation   = simulation
         self.resume       = resume
-        self.action_type  = action_type
+        # Canonicalize legacy aliases — AGENT_ACTION_TYPES is keyed by canonical name.
+        self.action_type  = resolve_alias(action_type)
         self.layer_number = layer_number
         self._parsed_text = (resume.parsed_text or '') if resume else ''
         self._expertise_zone = simulation.expertise_zone or ''

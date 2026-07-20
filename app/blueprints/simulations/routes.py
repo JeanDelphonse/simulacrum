@@ -32,6 +32,10 @@ _LAYER_META: dict = {
 def _get_action_layer(action_type: str):
     """Return (layer_number, agent_def) for a given action_type, or (None, {})."""
     from app.services.claude import AGENT_ACTION_TYPES
+    from app.services.agent_registry import resolve_alias
+    # AGENT_ACTION_TYPES is keyed by canonical action_type only — resolve legacy
+    # aliases stored in the DB before looking up.
+    action_type = resolve_alias(action_type)
     for ln, agents in AGENT_ACTION_TYPES.items():
         if action_type in agents:
             return ln, agents[action_type]
@@ -983,6 +987,17 @@ def get_pyramid(sim_id):
     if not sim:
         return jsonify({'error': 'Not found'}), 404
 
+    # Agent selector scope (SIM-PRD-AGENTSEL-001): the Launchpad grid must show the
+    # same agents the orchestrator will actually run — the user's confirmed
+    # selection. Mirrors the filter in layer6._get_eligible_agents so /setup, this
+    # detail-page grid, and the orchestrator all agree on the active agent set.
+    from app.services.agent_registry import resolve_alias
+    if sim.agent_selection_confirmed_at is not None and sim.selected_agents:
+        from app.services.agent_selector import TRIGGERED_AGENT_IDS
+        selected_scope = {resolve_alias(a) for a in sim.selected_agents} | TRIGGERED_AGENT_IDS
+    else:
+        selected_scope = None  # None = no filter (all agents shown, pre-confirmation)
+
     # Snapshot completed and running action types for this simulation
     all_actions = AgentAction.query.filter_by(simulation_id=sim_id).all()
     completed_types: set = {a.action_type for a in all_actions if a.status == AgentAction.STATUS_COMPLETE}
@@ -1024,6 +1039,10 @@ def get_pyramid(sim_id):
         # Build agent list with statuses
         agents_list = []
         for at, defn in layer_agent_defs.items():
+            # Skip agents outside the user's confirmed selection so the grid
+            # matches /setup and the orchestrator's dispatch scope.
+            if selected_scope is not None and resolve_alias(at) not in selected_scope:
+                continue
             if at in running_types:
                 status = 'running'
             elif at in completed_types:
@@ -1113,12 +1132,17 @@ def get_agent_prefill(sim_id, action_type):
     """
     from app.services.claude import AGENT_ACTION_TYPES
     from app.services.prefill_engine import PrefillEngine
+    from app.services.agent_registry import resolve_alias
     from app.models.agent_context import AgentContext
     from app.models.resume import Resume
 
     sim, _ = _check_sim_access(sim_id)
     if not sim:
         return jsonify({'error': 'Not found'}), 404
+
+    # Resolve legacy aliases so old name variants map to the canonical agent
+    # (AGENT_ACTION_TYPES is keyed by canonical action_type only).
+    action_type = resolve_alias(action_type)
 
     layer_number = next(
         (ln for ln, agents in AGENT_ACTION_TYPES.items() if action_type in agents),
@@ -1436,8 +1460,9 @@ def upgrade_prospect_tier(sim_id):
 def get_journey(sim_id):
     """Return journey data for GCC Journey tab v3."""
     from app.services.claude import AGENT_ACTION_TYPES
+    from app.services.agent_registry import resolve_alias
     from app.models.layer6 import Layer6Outcome, Layer6Cycle, Layer6ActionQueue, Layer6Config
-    from sqlalchemy import func, distinct as sa_distinct
+    from sqlalchemy import func
 
     sim, _ = _check_sim_access(sim_id)
     if not sim:
@@ -1556,7 +1581,7 @@ def get_journey(sim_id):
                 None,
             )
             if _fb:
-                _defn = AGENT_ACTION_TYPES.get(_n, {}).get(_fb.action_type, {})
+                _defn = AGENT_ACTION_TYPES.get(_n, {}).get(resolve_alias(_fb.action_type), {})
                 suggested_by_layer[_n] = _defn.get('label', _fb.action_type.replace('_', ' ').title())
             else:
                 # Nothing run yet — suggest the first defined agent type for this layer
@@ -1583,19 +1608,18 @@ def get_journey(sim_id):
     for n in range(1, 6):
         meta = _LAYER_META.get(n, {})
         layer_agent_defs = AGENT_ACTION_TYPES.get(n, {})
-        all_agent_types = list(layer_agent_defs.keys())
-        total_agents = len(all_agent_types)
 
-        # Unique complete (unfiltered — progress ring always shows true completion)
-        unique_complete = db.session.query(
-            func.count(sa_distinct(AgentAction.action_type))
-        ).filter(
-            AgentAction.simulation_id == sim_id,
-            AgentAction.action_type.in_(all_agent_types),
-            AgentAction.status == AgentAction.STATUS_COMPLETE,
-        ).scalar() or 0
-
-        pct = round((unique_complete / total_agents) * 100) if total_agents else 0
+        # Progress is scoped to the agents scheduled to run in the LATEST cycle for
+        # this layer — the dispatched set. `_cycle_records` already excludes
+        # 'queued' items (scored by the orchestrator but not selected to run this
+        # cycle), so its per-layer count is exactly "agents to run for the cycle".
+        # Denominator = agents to run this cycle; numerator = those complete.
+        # (Previously this divided by every agent defined in the layer.)
+        _cycle_layer = [r for r in _cycle_records if r['layer_number'] == n]
+        cycle_total = len({r['action_type'] for r in _cycle_layer})
+        cycle_complete = len({r['action_type'] for r in _cycle_layer
+                              if r['status'] == 'complete'})
+        pct = round((cycle_complete / cycle_total) * 100) if cycle_total else 0
         layer_income = income_by_layer.get(n, 0)
 
         # Action rows for this layer (filtered)
@@ -1619,8 +1643,8 @@ def get_journey(sim_id):
             'label': meta.get('label', f'Layer {n}'),
             'color': meta.get('color', '#0F7B72'),
             'completion_pct': pct,
-            'unique_complete': unique_complete,
-            'total_agents': total_agents,
+            'unique_complete': cycle_complete,
+            'total_agents': cycle_total,
             'total_actions': len(layer_rows_raw),
             'layer_income': layer_income,
             'suggested_action': suggested_by_layer.get(n),
@@ -1777,6 +1801,74 @@ def update_agent_selection(sim_id):
     db.session.commit()
 
     return jsonify({'selected_agents': selected, 'updated': True}), 200
+
+
+@simulations_bp.route('/<sim_id>/agents/<action_type>/params', methods=['PUT'])
+@login_required
+def update_agent_params(sim_id, action_type):
+    """Set/edit an agent's parameters from the setup page.
+
+    Persists to AgentContext (per simulation + layer), the same store the
+    orchestrator's prefill engine reads — so edits take effect on the next cycle.
+    """
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    data = request.get_json() or {}
+    inputs = data.get('inputs')
+    if not isinstance(inputs, dict):
+        return jsonify({'error': 'inputs must be an object'}), 400
+
+    from app.services.agent_registry import resolve_alias, get_agent_meta
+    meta = get_agent_meta(resolve_alias(action_type))
+    if not meta:
+        return jsonify({'error': 'Unknown action_type'}), 404
+
+    layer_number = meta['layer']
+    # Only accept keys declared in this agent's prompt_form.
+    allowed_keys = {f['key'] for f in meta.get('prompt_form', [])}
+    clean = {k: v for k, v in inputs.items() if k in allowed_keys}
+
+    # Persist exactly what was submitted (empty string clears a value). This is a
+    # save, not a run, so required fields are not enforced here.
+    for key, value in clean.items():
+        AgentContext.upsert(sim_id, layer_number, key, value)
+    db.session.commit()
+
+    stored = AgentContext.get_for_layer(sim_id, layer_number)
+    saved = {k: stored.get(k) for k in allowed_keys}
+    return jsonify({'saved': saved, 'action_type': action_type, 'layer': layer_number}), 200
+
+
+@simulations_bp.route('/<sim_id>/agents/<action_type>/prefill-suggestions', methods=['GET'])
+@login_required
+def agent_prefill_suggestions(sim_id, action_type):
+    """Best-probable values for an agent's parameters for THIS simulation.
+
+    Uses the same heuristic PrefillEngine the orchestrator uses at dispatch (no
+    LLM, no persistence), so the setup page previews exactly what the agent would
+    run with. The frontend fills only empty fields.
+    """
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    from app.services.agent_registry import resolve_alias, get_agent_meta
+    from app.services.prefill_engine import PrefillEngine
+    from app.models.resume import Resume
+
+    canonical = resolve_alias(action_type)
+    meta = get_agent_meta(canonical)
+    if not meta:
+        return jsonify({'error': 'Unknown action_type'}), 404
+
+    layer_number = meta['layer']
+    resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
+    engine = PrefillEngine(simulation=sim, resume=resume,
+                           action_type=canonical, layer_number=layer_number)
+    fields = engine.generate()  # {key: {value, confidence, source, tooltip}}
+    suggestions = {
+        k: {'value': v.get('value', ''),
+            'confidence': v.get('confidence'),
+            'tooltip': v.get('tooltip')}
+        for k, v in fields.items() if v.get('value')
+    }
+    return jsonify({'suggestions': suggestions}), 200
 
 
 @simulations_bp.route('/<sim_id>/agents/selector-data', methods=['GET'])

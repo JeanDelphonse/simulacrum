@@ -102,11 +102,17 @@ def page_full_view(sim_id, artifact_id):
     history = ArtifactVersion.history_for(action.id)
     from app.models.integration import UserIntegration
     from app.services.claude import AGENT_ACTION_TYPES
+    from app.services.agent_registry import resolve_alias
     li_int = UserIntegration.query.filter_by(
         user_id=current_user.id, provider='linkedin'
     ).first()
+    # Resolve legacy aliases — AGENT_ACTION_TYPES is keyed by canonical name only.
     layer_agents = AGENT_ACTION_TYPES.get(action.layer_number, {})
-    prompt_form = layer_agents.get(action.action_type, {}).get('prompt_form', [])
+    prompt_form = layer_agents.get(resolve_alias(action.action_type), {}).get('prompt_form', [])
+    # SIM-PRD-CONNECT-001: contextual "connect to activate" card. One integration,
+    # one reason, one button — surfaced only when this agent needs an unconnected
+    # one-tap integration.
+    connect_card = _build_connect_card(action, current_user.id)
     return render_template(
         'simulations/artifact_view.html',
         sim=sim,
@@ -116,7 +122,36 @@ def page_full_view(sim_id, artifact_id):
         artifact_name=_plain_name(action.action_type),
         linkedin_connected=bool(li_int and li_int.is_connected),
         prompt_form=prompt_form,
+        connect_card=connect_card,
     )
+
+
+def _build_connect_card(action, user_id: str):
+    """Return the contextual connect-card dict for this artifact, or None.
+
+    Computed live from the agent's declared one-tap integrations vs the user's
+    connections, so it disappears the moment the integration is connected.
+    """
+    from app.services import integration_registry as reg
+    pending_key = reg.pending_connection_for(action.action_type, user_id)
+    if not pending_key:
+        return None
+    meta = reg.get(pending_key) or {}
+    if pending_key == 'stripe':
+        try:
+            href = url_for('integrations.stripe_connect')
+        except Exception:
+            href = url_for('pages.settings_integrations') + f'?connect={pending_key}'
+    else:
+        href = url_for('pages.settings_integrations') + f'?connect={pending_key}'
+    return {
+        'key': pending_key,
+        'display_name': meta.get('display_name', pending_key),
+        'prompt': meta.get('contextual_prompt') or f"Connect {meta.get('display_name', pending_key)} to activate this.",
+        'benefit': meta.get('benefit_copy', ''),
+        'button': meta.get('connect_button', 'Connect'),
+        'href': href,
+    }
 
 
 # ---------------------------------------------------------------------------

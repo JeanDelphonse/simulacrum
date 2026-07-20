@@ -444,9 +444,12 @@ def create_video(sim_id: str):
         audio_path = os.path.join(save_dir, audio_name)
         duration = generate_tts_audio(user.elevenlabs_voice_id, script, audio_path)
 
-        # Step 2: Render MP4
+        # Step 2: Render MP4 — a branded scene slideshow of the narration text,
+        # timed to the voice-over (falls back to a static background if needed).
         sim_label = sim.expertise_zone or sim.name or 'Simulation Overview'
-        video_path, thumb_path, duration = render_video(audio_path, fmt, save_dir, sim_label)
+        video_path, thumb_path, duration = render_video(
+            audio_path, fmt, save_dir, sim_label, script=script,
+        )
 
         # Store relative paths
         rel_audio = os.path.relpath(audio_path, upload_root).replace('\\', '/')

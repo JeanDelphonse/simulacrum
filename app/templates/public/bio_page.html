@@ -769,6 +769,13 @@
     .slides-export-btn:disabled { opacity: .5; cursor: default; }
     /* ── Video tab ──────────────────────────────────────────── */
     .bio-video-panel { padding: 1.5rem 0; }
+    .bio-video-subnav { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+    .bio-video-navbtn { font-size: .8rem; font-weight: 600; color: var(--muted);
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 999px;
+      padding: .4rem .9rem; cursor: pointer; transition: color .15s, border-color .15s, background .15s;
+      white-space: nowrap; }
+    .bio-video-navbtn:hover { color: var(--accent); border-color: var(--accent); }
+    .bio-video-navbtn.active { color: #fff; background: var(--accent); border-color: var(--accent); }
     .bio-video-list { display: flex; flex-direction: column; gap: 1.5rem; }
     .bio-video-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
     .bio-video-label { padding: .75rem 1.25rem; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); border-bottom: 1px solid var(--border); }
@@ -1009,9 +1016,18 @@
   <!-- ── Video panel (FR-VOICE-11) ────────────────────────────────────── -->
   <div id="bio-video-panel" style="display:none" class="bio-video-panel">
     {% if ctx.sim_videos %}
+    {% if ctx.sim_videos | length > 1 %}
+    <div class="bio-video-subnav" role="tablist" aria-label="Videos">
+      {% for v in ctx.sim_videos %}
+      <button type="button" class="bio-video-navbtn{% if loop.first %} active{% endif %}"
+              role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}"
+              onclick="bioVideoNav({{ loop.index0 }}, this)">{{ v.sim_label }}</button>
+      {% endfor %}
+    </div>
+    {% endif %}
     <div class="bio-video-list">
       {% for v in ctx.sim_videos %}
-      <div class="bio-video-item">
+      <div class="bio-video-item" data-video-index="{{ loop.index0 }}"{% if not loop.first %} style="display:none"{% endif %}>
         <div class="bio-video-label">{{ v.sim_label }}</div>
         <div class="bio-video-wrap bio-video-wrap--{{ v.format }}">
           <video class="bio-video-player" controls preload="metadata"
@@ -1524,7 +1540,7 @@
   </div>
   {% if bio_page.show_badge %}
   <div class="plg-badge">
-    <a href="https://simulacrumai.io?src=bio_badge" target="_blank" rel="noopener">
+    <a href="https://simulacrumai.io?src=bio_badge" rel="noopener">
       <span class="plg-logo"></span>
       Built with Simulacrum
       <span class="plg-cta">· Get yours free →</span>
@@ -2239,6 +2255,23 @@ async function publishNow() {
     } else {
       if (pp) pp.style.display = '';
     }
+  };
+
+  // ── Video subnav: show one video at a time ────────────────
+  window.bioVideoNav = function(index, btn) {
+    document.querySelectorAll('.bio-video-navbtn').forEach(function(b){
+      var on = (b === btn);
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('.bio-video-item').forEach(function(item){
+      var match = String(item.getAttribute('data-video-index')) === String(index);
+      item.style.display = match ? '' : 'none';
+      if (!match) {
+        var vid = item.querySelector('video');
+        if (vid && !vid.paused) vid.pause();
+      }
+    });
   };
 
   window.mmToggleOri = function(btn) {

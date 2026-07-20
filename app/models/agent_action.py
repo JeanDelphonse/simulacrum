@@ -25,6 +25,14 @@ class AgentAction(db.Model):
     _archived_artifact = db.Column('archived_artifact', db.Text, nullable=True)  # Prior run content
     archived_at = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(20), nullable=False, default='pending')
+    # SIM-PRD-CONNECT-001: graceful degradation. The artifact is generated fully;
+    # if the agent needs an unconnected one-tap (oauth) integration it is marked
+    # 'pending_connection' (a "connect to activate" state) and flips back to
+    # 'active' automatically when the user connects — no re-run.
+    ACTIVATION_ACTIVE = 'active'
+    ACTIVATION_PENDING = 'pending_connection'
+    pending_connection = db.Column(db.String(40), nullable=True)   # registry key it waits on
+    activation_state = db.Column(db.String(20), nullable=False, default='active')
     error_message = db.Column(db.Text, nullable=True)
     celery_task_id = db.Column(db.String(255), nullable=True)
     created_by = db.Column(
@@ -59,6 +67,8 @@ class AgentAction(db.Model):
             'artifact': self.artifact,
             'has_archived_artifact': self._archived_artifact is not None,
             'status': self.status,
+            'activation_state': self.activation_state or 'active',
+            'pending_connection': self.pending_connection,
             'error_message': self.error_message,
             'created_at': self.created_at.isoformat(),
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,

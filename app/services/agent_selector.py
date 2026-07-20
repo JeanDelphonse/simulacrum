@@ -9,12 +9,28 @@ Provides:
   get_selector_data()               — aggregate all data the selector UI needs
 """
 from __future__ import annotations
+import hashlib
 import json
 import logging
 
 _log = logging.getLogger(__name__)
 
 RELEVANCE_THRESHOLD = 0.40   # agents scoring >= this are pre-selected / "Recommended"
+
+# Reserved key stored inside the cached descriptions dict holding a fingerprint
+# of the inputs (expertise zones + primary expertise) used to generate them.
+# It lets us regenerate only when those inputs change, instead of on every load.
+# Safe to co-locate: descriptions are only ever read per-agent via .get(action_type).
+_DESCRIPTIONS_SIG_KEY = '__input_sig__'
+
+
+def _descriptions_input_sig(zone_names: list[str], primary_expertise: str) -> str:
+    """Stable fingerprint of the inputs that drive personalized descriptions."""
+    payload = json.dumps(
+        {'zones': zone_names, 'primary': primary_expertise},
+        sort_keys=True, ensure_ascii=False,
+    )
+    return hashlib.sha1(payload.encode('utf-8')).hexdigest()
 
 TRIGGERED_AGENT_IDS = frozenset([
     'consulting_proposal',
@@ -280,14 +296,20 @@ def get_selector_data(sim, force_regen_descriptions: bool = False) -> dict:
         sim.agent_relevance_scores = scores
         needs_score_save = True
 
-    # ── 3. Personalized descriptions (Claude call on first visit, cached after) ─
+    # ── 3. Personalized descriptions (Claude call cached on the sim) ─────────
+    # Regenerate only when there is no cache, when explicitly forced, or when the
+    # inputs (expertise zones / primary expertise) changed since last generated.
+    # A blocking Haiku call on every page load was the cause of slow /setup loads.
     needs_desc_save = False
+    current_sig = _descriptions_input_sig(zone_names, primary_expertise)
     descriptions = sim.agent_personalized_descriptions
-    if not descriptions or force_regen_descriptions:
+    cached_sig = descriptions.get(_DESCRIPTIONS_SIG_KEY) if descriptions else None
+    if not descriptions or force_regen_descriptions or cached_sig != current_sig:
         descriptions = generate_personalized_descriptions(
             agents_flat, zone_names, primary_expertise,
             sim.user_id, sim.id,
         )
+        descriptions[_DESCRIPTIONS_SIG_KEY] = current_sig
         sim.agent_personalized_descriptions = descriptions
         needs_desc_save = True
 
@@ -332,10 +354,14 @@ def get_selector_data(sim, force_regen_descriptions: bool = False) -> dict:
     layer_unlocked = _get_layer_unlock_status(sim, completed_types)
 
     # ── 7. Assemble per-layer structure ─────────────────────────────────────
+    from app.models.agent_context import AgentContext
     layers_out = []
     for layer_num in range(1, 6):
         layer_agents = [a for a in agents_flat if a['layer'] == layer_num]
         unlocked = layer_unlocked.get(layer_num, True)
+        # Stored parameter values for this layer (user-supplied answers reused by
+        # the orchestrator via the prefill engine). Keyed by prompt-form field key.
+        stored_ctx = AgentContext.get_for_layer(sim.id, layer_num)
         recommended_count = sum(
             1 for a in layer_agents
             if scores.get(a['action_type'], {}).get('recommended')
@@ -359,6 +385,18 @@ def get_selector_data(sim, force_regen_descriptions: bool = False) -> dict:
             agent_locked = not prereqs_met and not prereqs_selected and not is_triggered
             layer_locked_flag = not unlocked
 
+            # Editable parameters (prompt-form fields + any stored value).
+            params = []
+            for field in agent.get('prompt_form', []):
+                params.append({
+                    'key': field['key'],
+                    'label': field.get('label', field['key']),
+                    'type': field.get('type', 'text'),
+                    'options': field.get('options', []),
+                    'required': bool(field.get('required')),
+                    'value': stored_ctx.get(field['key']) or '',
+                })
+
             tiles.append({
                 'action_type': at,
                 'label': agent['label'],
@@ -375,6 +413,7 @@ def get_selector_data(sim, force_regen_descriptions: bool = False) -> dict:
                 'prerequisites_met': prereqs_met,
                 'prerequisites_selected': prereqs_selected,
                 'integrations': agent.get('integrations', []),
+                'params': params,
             })
 
         layers_out.append({
