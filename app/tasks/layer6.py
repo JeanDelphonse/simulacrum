@@ -73,9 +73,17 @@ def dispatch_layer6_action(self, queue_entry_id: str):
     agent_action.celery_task_id = self.request.id
     db.session.commit()
 
-    from app.services.layer6 import _get_active_integrations, _build_integration_user_inputs, _find_reusable_artifact
+    from app.services.layer6 import _get_active_integrations, build_dispatch_user_inputs, _find_reusable_artifact
     _active_integrations = _get_active_integrations(sim.user_id)
-    _injected_inputs = _build_integration_user_inputs(entry.action_type, _active_integrations, sim)
+    # Merge the user's saved setup-page parameters (via PrefillEngine → AgentContext)
+    # with live integration extras so automatic cycles honour /setup edits.
+    _injected_inputs = build_dispatch_user_inputs(
+        entry.action_type, entry.source_layer, sim, resume, _active_integrations,
+    )
+    # Record the resolved inputs on the action so reuse-matching and the Journey
+    # tab reflect what the agent actually ran with.
+    agent_action.user_inputs = _injected_inputs
+    db.session.commit()
 
     # Extract scalars now while sim is attached; used after session.close() below.
     _expertise_zone  = sim.expertise_zone

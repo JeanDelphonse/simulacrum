@@ -482,6 +482,42 @@ def _build_integration_user_inputs(action_type: str, active_integrations: dict,
     return extras
 
 
+def build_dispatch_user_inputs(action_type: str, source_layer: int, sim, resume,
+                               active_integrations: dict) -> dict:
+    """Assemble the user_inputs an orchestrator-dispatched agent runs with.
+
+    Merges the user's saved/derived parameters with live integration extras so
+    that values saved on /simulations/<id>/setup actually shape automatic
+    orchestrator cycles — matching the manual detail-page run path, which already
+    prefills from these same sources.
+
+    The parameters come from PrefillEngine, whose priority chain includes the
+    setup-page answers stored in AgentContext (Source 3) as well as Bayesian
+    corrections, upstream artifact outputs, and zone/resume heuristics.
+
+    Integration extras take precedence for their own keys because they carry live
+    account data (e.g. booking URLs). A PrefillEngine failure degrades gracefully
+    to integration inputs only, so dispatch is never blocked.
+    """
+    from app.services.agent_registry import resolve_alias
+
+    prefill: dict = {}
+    try:
+        from app.services.prefill_engine import PrefillEngine
+        engine = PrefillEngine(
+            simulation=sim, resume=resume,
+            action_type=resolve_alias(action_type), layer_number=source_layer,
+        )
+        fields = engine.generate()  # {key: {value, confidence, source, tooltip}}
+        prefill = {k: v['value'] for k, v in fields.items() if v.get('value')}
+    except Exception as exc:
+        logger.warning('Dispatch prefill failed for %s (%s) — integration inputs only',
+                       action_type, exc)
+
+    injected = _build_integration_user_inputs(action_type, active_integrations, sim)
+    return {**prefill, **injected}
+
+
 # Agents that must run EVERY cycle rather than once. Unlike normal agents (which
 # drop out of eligibility after their first COMPLETE action), these stay eligible
 # and are guaranteed a dispatch slot each cycle once their prerequisites are met.
@@ -1148,9 +1184,15 @@ def _execute_action_sync(entry) -> None:
 
     from utils.model_router import get_tier
     _active_integrations = _get_active_integrations(_sim_user_id) if sim else {}
-    _injected_inputs = _build_integration_user_inputs(
-        entry.action_type, _active_integrations, sim
+    # Merge saved setup-page parameters (via PrefillEngine → AgentContext) with live
+    # integration extras so automatic cycles honour /setup edits.
+    _injected_inputs = build_dispatch_user_inputs(
+        entry.action_type, entry.source_layer, sim, resume, _active_integrations,
     )
+    # Record the resolved inputs on the action so reuse-matching and the Journey
+    # tab reflect what the agent actually ran with.
+    agent_action.user_inputs = _injected_inputs
+    db.session.commit()
     try:
         _reuse_artifact, _prior_action = _find_reusable_artifact(
             entry.simulation_id, entry.action_type, _injected_inputs
