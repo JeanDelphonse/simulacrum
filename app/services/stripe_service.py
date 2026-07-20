@@ -1,3 +1,4 @@
+from __future__ import annotations  # PEP 604 unions (str | None) on Python < 3.10
 from flask import current_app
 import logging
 

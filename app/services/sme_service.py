@@ -14,6 +14,7 @@ Manual-lock convention (no extra column needed):
   * admin manual edit  -> canonical_zones set, zones_computed_at = None  (locked)
   A re-run with force=False skips a locked profile; "reset to AI" passes force=True.
 """
+from __future__ import annotations  # PEP 604 unions (set | None) on Python < 3.10
 import logging
 from datetime import datetime
 
