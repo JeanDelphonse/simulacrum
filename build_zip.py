@@ -11,6 +11,7 @@ EXCLUDES = [
     "*.zip",             # never bundle old deploy zips into the new one
     "*.log",             # server/debug logs
     "docs",              # PRD/requirements docs — not needed on server
+    "*.mp4",             # large marketing videos — already on server, rarely change
 ]
 
 def should_exclude(path):
