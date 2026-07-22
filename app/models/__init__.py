@@ -30,6 +30,7 @@ from app.models.signing import SigningDocument
 from app.models.published_page import PublishedPage
 from app.models.notification import Notification, NotificationPreference
 from app.models.bio_page import BioPage, BioChatSession, BioChatMessage
+from app.models.bio_privacy import BioAccessRequest, BioAccessGrant, BioAccessRule
 from app.models.integration_signal import IntegrationSignal
 from app.models.layer6 import ActionItem, CyclePosteriorSnapshot
 from app.models.outreach_email import EmailLog, EmailSuppression
@@ -67,6 +68,7 @@ __all__ = [
     'PublishedPage',
     'Notification', 'NotificationPreference',
     'BioPage', 'BioChatSession', 'BioChatMessage',
+    'BioAccessRequest', 'BioAccessGrant', 'BioAccessRule',
     'IntegrationSignal', 'ActionItem', 'CyclePosteriorSnapshot',
     'EmailLog', 'EmailSuppression',
     'OutreachTemplate', 'OutreachEnrollment', 'OutreachSend',

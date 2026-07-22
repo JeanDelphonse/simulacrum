@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ teaser.display_name }}</title>
+  {# SIM-PRD-PRIVACY-001: the teaser IS indexable; gated content is never rendered here. #}
+  <meta name="description" content="{{ (teaser.headline or (teaser.display_name ~ ' — private profile'))[:160] }}">
+  <meta property="og:type" content="profile">
+  <meta property="og:title" content="{{ teaser.display_name }}">
+  <meta property="og:description" content="{{ (teaser.headline or 'Private profile')[:160] }}">
+  {% if teaser.avatar_path %}
+  <meta property="og:image" content="{{ url_for('public.serve_avatar', filename=teaser.avatar_path, _external=True) }}">
+  {% endif %}
+  <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/u/{{ slug }}">
+  <style>
+    :root{
+      --accent:#0f7b72; --navy:#0D1B3E; --muted:#6B7B8D;
+      --bg:#f4f6f8; --card:#ffffff; --border:rgba(13,27,62,.10);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'DM Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+      background:var(--bg);color:var(--navy);min-height:100vh;
+      display:flex;align-items:center;justify-content:center;padding:2rem 1rem;}
+    .card{background:var(--card);max-width:480px;width:100%;border-radius:16px;
+      padding:2.25rem 2rem;box-shadow:0 4px 24px rgba(13,27,62,.08);text-align:center;}
+    .avatar{width:88px;height:88px;border-radius:50%;object-fit:cover;margin:0 auto .9rem;
+      display:block;background:#e5eaf0;}
+    .avatar-ph{width:88px;height:88px;border-radius:50%;margin:0 auto .9rem;
+      display:flex;align-items:center;justify-content:center;background:var(--accent);
+      color:#fff;font-size:2rem;font-weight:700;}
+    h1{font-size:1.5rem;margin:0 0 .25rem;}
+    .headline{color:var(--accent);font-weight:600;font-size:.98rem;margin:0 0 1rem;}
+    .tags{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;margin:0 0 1.4rem;}
+    .tag{background:rgba(15,123,114,.10);color:var(--accent);font-size:.78rem;
+      font-weight:600;padding:.28rem .7rem;border-radius:999px;}
+    .notice{background:#f0f7f6;border:1px solid rgba(15,123,114,.18);border-radius:12px;
+      padding:1.1rem;margin-bottom:1.2rem;font-size:.9rem;color:#334155;line-height:1.5;}
+    .notice .lock{font-size:1.3rem;display:block;margin-bottom:.35rem;}
+    textarea{width:100%;border:1px solid var(--border);border-radius:9px;padding:.7rem;
+      font-family:inherit;font-size:.9rem;resize:vertical;min-height:64px;margin-bottom:.8rem;}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;
+      background:#0A66C2;color:#fff;border:none;border-radius:9px;padding:.8rem 1rem;
+      font-size:.95rem;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .15s;}
+    .btn:hover{opacity:.92}
+    .btn[disabled]{opacity:.6;cursor:default}
+    .btn svg{width:18px;height:18px;fill:currentColor}
+    .status-msg{border-radius:10px;padding:1rem;font-size:.92rem;line-height:1.5;}
+    .status-ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;}
+    .status-neutral{background:#f3f4f6;border:1px solid #e5e7eb;color:#4b5563;}
+    .err{color:#b91c1c;font-size:.82rem;margin-top:.5rem;min-height:1em;}
+    .foot{margin-top:1.4rem;font-size:.75rem;color:var(--muted);}
+    .foot a{color:var(--muted);}
+    /* Teaser Simi chat */
+    .ask{margin-top:1.4rem;border-top:1px solid var(--border);padding-top:1.2rem;text-align:left;}
+    .ask h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+      margin:0 0 .6rem;text-align:center;}
+    #chatLog{max-height:220px;overflow-y:auto;margin-bottom:.6rem;font-size:.88rem;line-height:1.5;}
+    .msg{margin-bottom:.55rem;padding:.5rem .7rem;border-radius:9px;}
+    .msg.v{background:rgba(15,123,114,.08);}
+    .msg.a{background:#f3f4f6;}
+    .chat-row{display:flex;gap:.4rem;}
+    .chat-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:.55rem .6rem;font-size:.88rem;}
+    .chat-row button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:0 .9rem;cursor:pointer;font-weight:600;}
+    .gate-fields{display:none;gap:.4rem;margin-bottom:.5rem;}
+    .gate-fields.show{display:flex;flex-wrap:wrap;}
+    .gate-fields input{flex:1;min-width:45%;border:1px solid var(--border);border-radius:8px;padding:.5rem;font-size:.85rem;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if teaser.avatar_path %}
+      <img class="avatar" src="{{ url_for('public.serve_avatar', filename=teaser.avatar_path) }}" alt="{{ teaser.display_name }}">
+    {% else %}
+      <div class="avatar-ph">{{ teaser.display_name[:1]|upper }}</div>
+    {% endif %}
+    <h1>{{ teaser.display_name }}</h1>
+    {% if teaser.headline %}<p class="headline">{{ teaser.headline }}</p>{% endif %}
+
+    {% if teaser.expertise_tags %}
+    <div class="tags">
+      {% for t in teaser.expertise_tags %}<span class="tag">{{ t }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    {# ── Access states ─────────────────────────────────────────────────── #}
+    {% if access_status == 'granted' %}
+      <div class="status-msg status-ok">
+        You're approved — reload the page to view the full profile.
+      </div>
+      <div style="margin-top:1rem"><a class="btn" style="background:var(--accent)" href="{{ url_for('public.profile_page', username=slug) }}">View full profile →</a></div>
+
+    {% elif has_pending or access_status == 'requested' %}
+      <div class="status-msg status-ok">
+        <strong>Your request was sent.</strong><br>You'll be notified by email if it's approved.
+      </div>
+
+    {% elif is_blocked or (not teaser.accepting_requests) or access_status == 'unavailable' %}
+      <div class="notice"><span class="lock">🔒</span>This profile is private and not accepting requests right now.</div>
+
+    {% else %}
+      <div class="notice">
+        <span class="lock">🔒</span>
+        This profile is private. Request access with LinkedIn to see the full details —
+        {{ teaser.display_name.split(' ')[0] }} will be notified and can approve you.
+      </div>
+      {% if access_status == 'cancelled' %}
+        <div class="err">Sign-in was cancelled. You can try again below.</div>
+      {% elif access_status == 'error' %}
+        <div class="err">Something went wrong verifying your LinkedIn identity. Please try again.</div>
+      {% endif %}
+      <textarea id="reqMessage" maxlength="2000" placeholder="Optional: add a note (e.g. how you know each other)"></textarea>
+      <button class="btn" id="reqBtn" type="button">
+        <svg viewBox="0 0 24 24"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>
+        Request access with LinkedIn
+      </button>
+      <div class="err" id="reqErr"></div>
+    {% endif %}
+
+    {# ── Teaser-level Simi chat (gated server-side to high-level answers) ── #}
+    <div class="ask">
+      <h2>Ask a quick question</h2>
+      <div id="chatLog"></div>
+      <div class="gate-fields" id="gateFields">
+        <input type="text" id="gName" placeholder="Your name">
+        <input type="email" id="gEmail" placeholder="Your email">
+      </div>
+      <div class="chat-row">
+        <input type="text" id="chatInput" placeholder="e.g. What areas does {{ teaser.display_name.split(' ')[0] }} focus on?">
+        <button id="chatSend" type="button">Send</button>
+      </div>
+    </div>
+
+    <div class="foot">Powered by <a href="/">Simulacrum</a></div>
+  </div>
+
+<script>
+(function(){
+  var slug = {{ slug|tojson }};
+
+  // ── Request access with LinkedIn ──────────────────────────────────────
+  var reqBtn = document.getElementById('reqBtn');
+  if (reqBtn) {
+    reqBtn.addEventListener('click', function(){
+      reqBtn.disabled = true;
+      var msg = (document.getElementById('reqMessage')||{}).value || '';
+      fetch('/bio/' + encodeURIComponent(slug) + '/request-access', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({message: msg})
+      }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+        .then(function(res){
+          if (res.ok && res.j.auth_url) { window.location.href = res.j.auth_url; }
+          else {
+            document.getElementById('reqErr').textContent = res.j.message || 'Could not start the request. Please try again.';
+            reqBtn.disabled = false;
+          }
+        }).catch(function(){
+          document.getElementById('reqErr').textContent = 'Network error. Please try again.';
+          reqBtn.disabled = false;
+        });
+    });
+  }
+
+  // ── Teaser-level Simi chat ────────────────────────────────────────────
+  var sessionId = null;
+  var log = document.getElementById('chatLog');
+  var input = document.getElementById('chatInput');
+  var sendBtn = document.getElementById('chatSend');
+  var gate = document.getElementById('gateFields');
+
+  function append(role, text){
+    var d = document.createElement('div');
+    d.className = 'msg ' + (role === 'visitor' ? 'v' : 'a');
+    d.textContent = text;
+    log.appendChild(d); log.scrollTop = log.scrollHeight;
+    return d;
+  }
+
+  function ensureSession(cb){
+    if (sessionId) return cb();
+    var name = (document.getElementById('gName').value||'').trim();
+    var email = (document.getElementById('gEmail').value||'').trim();
+    if (!name || !email) { gate.classList.add('show'); return; }
+    fetch('/api/bio-chat/' + encodeURIComponent(slug) + '/session', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name:name, email:email})
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (j.session_id) { sessionId = j.session_id; gate.classList.remove('show');
+        if (j.welcome_message) append('assistant', j.welcome_message); cb(); }
+      else { append('assistant', j.error || 'Chat is unavailable right now.'); }
+    }).catch(function(){ append('assistant', 'Chat is unavailable right now.'); });
+  }
+
+  function send(){
+    var text = (input.value||'').trim();
+    if (!text) return;
+    ensureSession(function(){
+      append('visitor', text); input.value='';
+      var bubble = append('assistant', '…'); var acc='';
+      fetch('/api/bio-chat/sessions/' + sessionId + '/message', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({message:text})
+      }).then(function(resp){
+        var reader = resp.body.getReader(); var dec = new TextDecoder();
+        function pump(){
+          return reader.read().then(function(res){
+            if (res.done) return;
+            dec.decode(res.value,{stream:true}).split('\n\n').forEach(function(line){
+              line = line.trim(); if (!line.indexOf('data: ')===0 && line.indexOf('data: ')!==0) return;
+              if (line.indexOf('data: ')!==0) return;
+              try{ var ev = JSON.parse(line.slice(6));
+                if (ev.text){ acc += ev.text; bubble.textContent = acc; log.scrollTop=log.scrollHeight; }
+              }catch(e){}
+            });
+            return pump();
+          });
+        }
+        return pump();
+      }).catch(function(){ bubble.textContent = 'Sorry, something went wrong.'; });
+    });
+  }
+
+  if (sendBtn) sendBtn.addEventListener('click', send);
+  if (input) input.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); send(); }});
+})();
+</script>
+</body>
+</html>

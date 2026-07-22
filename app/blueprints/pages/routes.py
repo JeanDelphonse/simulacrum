@@ -383,6 +383,15 @@ def bio_editor(slug: str):
     )
 
 
+@pages_bp.route('/settings/bio-privacy')
+@login_required
+def settings_bio_privacy():
+    """SIM-PRD-PRIVACY-001 — Private Mode toggle, controls, and access dashboard."""
+    from app.models.profile import UserProfile
+    profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    return render_template('settings/index.html', active_tab='bio_privacy', profile=profile)
+
+
 @pages_bp.route('/settings/visibility')
 @login_required
 def settings_visibility():

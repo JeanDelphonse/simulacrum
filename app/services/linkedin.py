@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import json
 import logging
@@ -12,12 +14,17 @@ LINKEDIN_SCOPE = 'openid profile email w_member_social'
 LINKEDIN_UGC_POSTS_URL = 'https://api.linkedin.com/v2/ugcPosts'
 
 
-def get_auth_url(state: str) -> str:
-    """Build the LinkedIn OAuth authorization URL."""
+def get_auth_url(state: str, redirect_uri: str | None = None) -> str:
+    """Build the LinkedIn OAuth authorization URL.
+
+    redirect_uri — override the default (resume-import) callback. Used by the
+    bio-page access-request flow, which has its own public callback. The URI must
+    be registered on the LinkedIn app.
+    """
     params = {
         'response_type': 'code',
         'client_id': current_app.config['LINKEDIN_CLIENT_ID'],
-        'redirect_uri': current_app.config['LINKEDIN_REDIRECT_URI'],
+        'redirect_uri': redirect_uri or current_app.config['LINKEDIN_REDIRECT_URI'],
         'state': state,
         'scope': LINKEDIN_SCOPE,
     }
@@ -25,13 +32,14 @@ def get_auth_url(state: str) -> str:
     return f"{LINKEDIN_AUTH_URL}?{urlencode(params)}"
 
 
-def exchange_code_for_token(code: str) -> dict:
-    """Exchange OAuth code for access token."""
+def exchange_code_for_token(code: str, redirect_uri: str | None = None) -> dict:
+    """Exchange OAuth code for access token. redirect_uri must match the one used
+    in get_auth_url()."""
     import requests  # lazy — avoid slow import at startup
     resp = requests.post(LINKEDIN_TOKEN_URL, data={
         'grant_type': 'authorization_code',
         'code': code,
-        'redirect_uri': current_app.config['LINKEDIN_REDIRECT_URI'],
+        'redirect_uri': redirect_uri or current_app.config['LINKEDIN_REDIRECT_URI'],
         'client_id': current_app.config['LINKEDIN_CLIENT_ID'],
         'client_secret': current_app.config['LINKEDIN_CLIENT_SECRET'],
     })

@@ -220,6 +220,69 @@ Visitor name: {visitor_name}
 """
 
 
+_TEASER_SYSTEM_PROMPT = """\
+You are {user_first_name}'s assistant on their PRIVATE bio page. The visitor has \
+NOT been granted access to the full profile.
+
+You may ONLY share high-level, non-sensitive information:
+- Who {user_first_name} is, and their broad areas of expertise: {expertise_tags}.
+
+You must NOT reveal or discuss ANYTHING else — not rates, pricing, fees, \
+availability, booking, contact details, work history, ventures, specific \
+services, testimonials, clients, or any detail beyond the high-level expertise \
+areas above. None of that has been provided to you, so you genuinely do not know it.
+
+For ANY question that asks for gated detail, reply in this spirit:
+"That's part of this private profile. Request access with LinkedIn to see the \
+full details," and point them to the "Request access with LinkedIn" button on the page.
+
+Keep answers to 1-2 sentences. Address the visitor by first name.
+
+Visitor name: {visitor_name}
+"""
+
+
+def _is_private_gated(bp: BioPage) -> bool:
+    """True when this page is private AND the current browser session has NOT been
+    granted access. Gated sessions get teaser-only answers and no tools (FR-PRV-08)."""
+    try:
+        from app.models.profile import UserProfile
+        profile = UserProfile.query.filter_by(user_id=bp.user_id).first()
+        if not profile or not profile.is_private:
+            return False
+        from app.services import bio_privacy_service as priv
+        return not priv.session_has_access(bp.user_id)
+    except Exception:
+        # Fail closed: if we cannot confirm access on a private page, gate it.
+        try:
+            from app.models.profile import UserProfile
+            p = UserProfile.query.filter_by(user_id=bp.user_id).first()
+            return bool(p and p.is_private)
+        except Exception:
+            return False
+
+
+def _assemble_teaser_system_prompt(bp: BioPage) -> str:
+    """Teaser-only prompt. Deliberately loads NO gated content into context."""
+    from app.models.user import User
+    from app.models.profile import UserProfile
+    user = User.query.get(bp.user_id)
+    first_name = (user.full_name or '').split()[0] if user else 'your host'
+    tags = []
+    try:
+        from app.services import bio_privacy_service as priv
+        profile = UserProfile.query.filter_by(user_id=bp.user_id).first()
+        if profile:
+            tags = priv.expertise_tags(profile)
+    except Exception:
+        pass
+    return _TEASER_SYSTEM_PROMPT.format(
+        user_first_name=first_name,
+        expertise_tags=', '.join(tags) if tags else 'general professional expertise',
+        visitor_name='{visitor_name}',
+    )
+
+
 def _get_bio_page(slug: str) -> BioPage | None:
     # Direct slug match (fast path)
     bp = BioPage.query.filter_by(slug=slug, status=BioPage.STATUS_PUBLISHED).first()
@@ -428,11 +491,19 @@ def start_session(slug: str):
         from app.models.user import User
         user = User.query.get(bp.user_id)
         first_name = (user.full_name or '').split()[0] if user else 'your host'
-        welcome = settings.get('custom_welcome') or (
-            f"Hi {visitor_name.split()[0]}! I'm {first_name}'s assistant. "
-            f"I can answer questions about their services, expertise, and availability. "
-            f"What would you like to know?"
-        )
+        if _is_private_gated(bp):
+            welcome = settings.get('custom_welcome') or (
+                f"Hi {visitor_name.split()[0]}! I'm {first_name}'s assistant. "
+                f"This is a private profile, so I can share high-level info about "
+                f"{first_name}'s focus areas. For the full details, request access "
+                f"with LinkedIn on this page."
+            )
+        else:
+            welcome = settings.get('custom_welcome') or (
+                f"Hi {visitor_name.split()[0]}! I'm {first_name}'s assistant. "
+                f"I can answer questions about their services, expertise, and availability. "
+                f"What would you like to know?"
+            )
         return jsonify({'session_id': session.id, 'welcome_message': welcome})
 
     except Exception as e:
@@ -477,10 +548,18 @@ def send_message(session_id: str):
     session.message_count += 1
     db.session.commit()
 
-    complexity = _classify_complexity(visitor_message)
-    model = _SONNET_MODEL if complexity == 'complex' else _HAIKU_MODEL
-
-    system_prompt = _assemble_system_prompt(bp)
+    # SIM-PRD-PRIVACY-001 (FR-PRV-08): on a private page, an un-approved session
+    # gets teaser-only answers and NO tools. Gated content is never assembled into
+    # the model's context, so it cannot be argued out of the model.
+    gated = _is_private_gated(bp)
+    if gated:
+        complexity = 'simple'
+        model = _HAIKU_MODEL
+        system_prompt = _assemble_teaser_system_prompt(bp)
+    else:
+        complexity = _classify_complexity(visitor_message)
+        model = _SONNET_MODEL if complexity == 'complex' else _HAIKU_MODEL
+        system_prompt = _assemble_system_prompt(bp)
     system_prompt = system_prompt.replace('{visitor_name}', session.visitor_name.split()[0])
 
     history = _build_history(session_id)
@@ -493,12 +572,13 @@ def send_message(session_id: str):
         in_tokens = out_tokens = 0
 
         try:
-            # First pass: streaming with tools enabled
+            # First pass: streaming with tools enabled (never for a gated session —
+            # tools like send_rate_card would leak gated commercial detail).
             with client.messages.stream(
                 model=model,
                 max_tokens=512,
                 system=system_prompt,
-                tools=CHAT_TOOLS,
+                tools=([] if gated else CHAT_TOOLS),
                 messages=history,
             ) as stream:
                 for text in stream.text_stream:

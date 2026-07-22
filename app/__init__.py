@@ -115,6 +115,7 @@ def create_app(config_name=None):
     from app.blueprints.bio import bio_bp
     app.logger.info('startup: bio_bp imported')
     from app.blueprints.bio_chat import bio_chat_bp
+    from app.blueprints.bio_privacy import bio_privacy_bp
     app.logger.info('startup: bio_chat_bp imported')
     from app.blueprints.corporate import corporate_bp
     app.logger.info('startup: corporate_bp imported')
@@ -148,6 +149,7 @@ def create_app(config_name=None):
     app.register_blueprint(artifact_view_bp)
     app.register_blueprint(bio_bp)
     app.register_blueprint(bio_chat_bp)
+    app.register_blueprint(bio_privacy_bp)
     app.register_blueprint(corporate_bp)
     app.register_blueprint(social_bp)
     app.register_blueprint(onboarding_bp)

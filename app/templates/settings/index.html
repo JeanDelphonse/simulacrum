@@ -287,6 +287,7 @@
     <a href="{{ url_for('pages.settings_visibility') }}" class="settings-nav-link {% if active_tab == 'visibility' %}active{% endif %}">Simulation Visibility</a>
     <a href="{{ url_for('pages.contacts_list') }}" class="settings-nav-link {% if active_tab == 'contacts' %}active{% endif %}">My Contacts</a>
     <a href="{{ url_for('pages.settings_my_chats') }}" class="settings-nav-link {% if active_tab == 'my_chats' %}active{% endif %}">My Chats</a>
+    <a href="{{ url_for('pages.settings_bio_privacy') }}" class="settings-nav-link {% if active_tab == 'bio_privacy' %}active{% endif %}">Bio Privacy</a>
     <a href="{{ url_for('pages.settings_testimonials') }}" class="settings-nav-link {% if active_tab == 'testimonials' %}active{% endif %}">Testimonials</a>
     <a href="{{ url_for('pages.settings_integrations') }}" class="settings-nav-link {% if active_tab == 'integrations' %}active{% endif %}">Integrations</a>
     <a href="{{ url_for('pages.settings_notifications') }}" class="settings-nav-link {% if active_tab == 'notifications' %}active{% endif %}">Notifications</a>
@@ -927,6 +928,63 @@
         <a class="chat-thread-continue" id="chatThreadContinue" href="#">
           Continue this conversation in your GCC →
         </a>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Bio Privacy tab (SIM-PRD-PRIVACY-001) ────────────────────── #}
+    {% if active_tab == 'bio_privacy' %}
+    <div id="bioPrivacyTab" data-slug="{{ profile.username if profile else '' }}">
+      <div class="settings-section-title">Bio Page Privacy</div>
+
+      <div class="settings-section" style="background:#f0f7f6;border:1px solid rgba(15,123,114,.15);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem;">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Private Mode</div>
+            <div class="toggle-desc">Strangers see only a minimal teaser; full content is gated behind a LinkedIn-verified access request you approve. <strong>Off by default.</strong></div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="pm-private"><span class="toggle-slider"></span></label>
+        </div>
+        <div id="pm-tradeoff" style="display:none;margin-top:.5rem;font-size:.82rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:.65rem .8rem;">
+          Requiring approval means fewer people will reach you — SEO, QR codes and open chat only work on a public page. Best for when you want to control exactly who sees your full profile.
+        </div>
+
+        <div id="pm-controls" style="display:none;margin-top:1rem;border-top:1px solid rgba(15,123,114,.15);padding-top:1rem;">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Accepting new requests</div>
+              <div class="toggle-desc">Pause to hide the request form (existing approvals stay live).</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" id="pm-accepting"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="bp-form-group" style="margin-top:.75rem;">
+            <label style="font-size:.82rem;font-weight:600;">Request notifications</label>
+            <select id="pm-notify" class="input-text" style="max-width:260px;">
+              <option value="realtime">Real-time — email me each request</option>
+              <option value="digest">Digest — in-app only, no per-request email</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="pm-privatebody" style="display:none;">
+        {# Analytics #}
+        <div id="pm-analytics" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;"></div>
+
+        {# Requests + grants dashboard #}
+        <div class="settings-section-title" style="font-size:.9rem;">Access requests &amp; grants</div>
+        <div id="pm-requests"><div style="color:#6B7B8D;font-size:.88rem;">Loading…</div></div>
+
+        {# Rules #}
+        <div class="settings-section-title" style="font-size:.9rem;margin-top:1.5rem;">Allowlist &amp; blocklist</div>
+        <div style="font-size:.82rem;color:#6B7B8D;margin-bottom:.6rem;">Auto-approve or auto-decline by verified LinkedIn email domain, company, or identity. Blocked requesters only ever see a neutral message.</div>
+        <div id="pm-rules"></div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;align-items:center;">
+          <select id="rule-type" class="input-text" style="max-width:120px;"><option value="allow">Allow</option><option value="block">Block</option></select>
+          <select id="rule-match" class="input-text" style="max-width:130px;"><option value="domain">Email domain</option><option value="company">Company</option><option value="linkedin">LinkedIn ID</option></select>
+          <input type="text" id="rule-value" class="input-text" style="max-width:200px;" placeholder="e.g. acme.com">
+          <button class="btn btn-primary btn-sm" id="rule-add">Add rule</button>
+        </div>
       </div>
     </div>
     {% endif %}
@@ -4373,6 +4431,148 @@ window.addEventListener('beforeunload', function(e) {
   }
 });
 {% endif %}
+{% endif %}
+
+{% if active_tab == 'bio_privacy' %}
+// ── Bio Page Privacy (SIM-PRD-PRIVACY-001) ────────────────────────────
+(function(){
+  var root = document.getElementById('bioPrivacyTab');
+  if (!root) return;
+  var _toast = (typeof toast === 'function') ? toast
+             : (typeof showToast === 'function') ? function(m){ showToast(m); } : function(m){ console.log(m); };
+
+  var elPrivate = document.getElementById('pm-private');
+  var elAccept  = document.getElementById('pm-accepting');
+  var elNotify  = document.getElementById('pm-notify');
+  var elTrade   = document.getElementById('pm-tradeoff');
+  var elControls= document.getElementById('pm-controls');
+  var elBody    = document.getElementById('pm-privatebody');
+
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function reflect(isPrivate){
+    elTrade.style.display   = isPrivate ? 'block' : 'none';
+    elControls.style.display= isPrivate ? 'block' : 'none';
+    elBody.style.display    = isPrivate ? 'block' : 'none';
+    if (isPrivate){ loadDashboard(); loadRules(); loadAnalytics(); }
+  }
+
+  function savePrivacy(){
+    fetch('/api/bio/privacy', {method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        privacy_mode: elPrivate.checked ? 'private' : 'public',
+        accepting_requests: elAccept.checked,
+        request_notify: elNotify.value
+      })
+    }).then(function(r){ return r.json(); }).then(function(){
+      reflect(elPrivate.checked); _toast('Privacy settings saved');
+    }).catch(function(){ _toast('Could not save'); });
+  }
+
+  // Load current state
+  fetch('/api/bio/privacy').then(function(r){ return r.json(); }).then(function(d){
+    elPrivate.checked = (d.privacy_mode === 'private');
+    elAccept.checked  = (d.accepting_requests !== false);
+    elNotify.value    = d.request_notify || 'realtime';
+    reflect(elPrivate.checked);
+  });
+
+  elPrivate.addEventListener('change', savePrivacy);
+  elAccept.addEventListener('change', savePrivacy);
+  elNotify.addEventListener('change', savePrivacy);
+
+  // ── Analytics ──
+  function stat(label, val){
+    return '<div style="background:#fff;border:1px solid rgba(13,27,62,.1);border-radius:10px;'
+      + 'padding:.7rem .95rem;min-width:120px;"><div style="font-size:1.3rem;font-weight:700;color:#0D1B3E;">'
+      + esc(val) + '</div><div style="font-size:.72rem;color:#6B7B8D;text-transform:uppercase;letter-spacing:.04em;">'
+      + esc(label) + '</div></div>';
+  }
+  function loadAnalytics(){
+    fetch('/api/bio/access/analytics').then(function(r){ return r.json(); }).then(function(d){
+      document.getElementById('pm-analytics').innerHTML =
+        stat('Pending', d.requests_pending) + stat('Approved', d.approved)
+        + stat('Approval rate', Math.round((d.approval_rate||0)*100)+'%')
+        + stat('Active viewers', d.active_grants) + stat('Repeat viewers', d.repeat_viewers);
+    });
+  }
+
+  // ── Requests + grants ──
+  function loadDashboard(){
+    fetch('/api/bio/access/requests').then(function(r){ return r.json(); }).then(function(d){
+      var reqs = d.requests || [];
+      if (!reqs.length){ document.getElementById('pm-requests').innerHTML =
+        '<div style="color:#6B7B8D;font-size:.88rem;">No requests yet. When someone requests access via LinkedIn, they\'ll appear here.</div>'; return; }
+      var html = reqs.map(function(r){
+        var badge = {pending:'#f59e0b',approved:'#10b981',auto_approved:'#10b981',revoked:'#6b7280',expired:'#9ca3af',blocked:'#ef4444'}[r.status]||'#6b7280';
+        var meta = [r.requester_company, r.requester_industry].filter(Boolean).join(' · ');
+        var actions = '';
+        if (r.status === 'pending'){
+          actions = '<button class="btn btn-primary btn-sm" data-approve="'+r.id+'">Approve</button>'
+                  + '<button class="btn btn-ghost btn-sm" data-ignore="'+r.id+'">Ignore</button>';
+        } else if (r.grant_id){
+          actions = '<span style="font-size:.75rem;color:#6B7B8D;">'+ (r.view_count||0) +' view(s)</span>'
+                  + '<button class="btn btn-ghost btn-sm" data-revoke="'+r.grant_id+'">Revoke</button>';
+        }
+        var li = r.requester_email ? '<a href="mailto:'+esc(r.requester_email)+'" style="font-size:.78rem;">'+esc(r.requester_email)+'</a>' : '';
+        return '<div style="display:flex;gap:.7rem;align-items:center;background:#fff;border:1px solid rgba(13,27,62,.1);'
+          + 'border-radius:10px;padding:.7rem .85rem;margin-bottom:.5rem;">'
+          + (r.requester_avatar ? '<img src="'+esc(r.requester_avatar)+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">' : '')
+          + '<div style="flex:1;min-width:0;"><div style="font-weight:600;color:#0D1B3E;">'+esc(r.requester_name)
+          + ' <span style="font-size:.68rem;font-weight:600;color:#fff;background:'+badge+';border-radius:6px;padding:.1rem .4rem;text-transform:capitalize;">'+esc(r.status.replace("_"," "))+'</span></div>'
+          + (meta ? '<div style="font-size:.78rem;color:#6B7B8D;">'+esc(meta)+'</div>' : '')
+          + (r.message ? '<div style="font-size:.8rem;color:#374151;margin-top:.2rem;font-style:italic;">“'+esc(r.message)+'”</div>' : '')
+          + li + '</div>'
+          + '<div style="display:flex;gap:.35rem;align-items:center;flex-shrink:0;">'+actions+'</div></div>';
+      }).join('');
+      document.getElementById('pm-requests').innerHTML = html;
+    });
+  }
+
+  root.addEventListener('click', function(e){
+    var t = e.target;
+    if (t.dataset.approve){ act('/api/bio/access/requests/'+t.dataset.approve+'/approve', 'Approved'); }
+    else if (t.dataset.ignore){ act('/api/bio/access/requests/'+t.dataset.ignore+'/ignore', 'Request dismissed'); }
+    else if (t.dataset.revoke){ act('/api/bio/access/grants/'+t.dataset.revoke+'/revoke', 'Access revoked'); }
+    else if (t.id === 'rule-add'){ addRule(); }
+    else if (t.dataset.delrule){ delRule(t.dataset.delrule); }
+  });
+
+  function act(url, msg){
+    fetch(url, {method:'POST'}).then(function(r){ return r.json(); }).then(function(){
+      _toast(msg); loadDashboard(); loadAnalytics();
+    }).catch(function(){ _toast('Action failed'); });
+  }
+
+  // ── Rules ──
+  function loadRules(){
+    fetch('/api/bio/access/rules').then(function(r){ return r.json(); }).then(function(d){
+      var rules = d.rules || [];
+      document.getElementById('pm-rules').innerHTML = rules.length ? rules.map(function(x){
+        var c = x.rule_type === 'allow' ? '#10b981' : '#ef4444';
+        return '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;padding:.35rem 0;">'
+          + '<span style="color:'+c+';font-weight:700;text-transform:capitalize;">'+esc(x.rule_type)+'</span>'
+          + '<span style="color:#6B7B8D;">'+esc(x.match_type)+'</span>'
+          + '<span style="color:#0D1B3E;font-weight:600;">'+esc(x.match_value)+'</span>'
+          + '<button class="btn btn-ghost btn-sm" data-delrule="'+x.id+'" style="margin-left:auto;">Remove</button></div>';
+      }).join('') : '<div style="color:#6B7B8D;font-size:.82rem;">No rules yet.</div>';
+    });
+  }
+  function addRule(){
+    var val = (document.getElementById('rule-value').value||'').trim();
+    if (!val){ _toast('Enter a value'); return; }
+    fetch('/api/bio/access/rules', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({rule_type:document.getElementById('rule-type').value,
+        match_type:document.getElementById('rule-match').value, match_value:val})
+    }).then(function(r){ return r.json(); }).then(function(){
+      document.getElementById('rule-value').value=''; loadRules(); _toast('Rule added');
+    }).catch(function(){ _toast('Could not add rule'); });
+  }
+  function delRule(id){
+    fetch('/api/bio/access/rules/'+id, {method:'DELETE'}).then(function(){ loadRules(); _toast('Rule removed'); });
+  }
+})();
 {% endif %}
 </script>
 {% endblock %}

@@ -30,6 +30,9 @@ class Config:
     LINKEDIN_CLIENT_ID = os.environ.get('LINKEDIN_CLIENT_ID')
     LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET')
     LINKEDIN_REDIRECT_URI = os.environ.get('LINKEDIN_REDIRECT_URI', 'https://simulacrumai.io/api/resumes/linkedin/callback')
+    # SIM-PRD-PRIVACY-001: public (no-login) callback for bio-page access requests.
+    # Must ALSO be registered as an authorized redirect URL on the LinkedIn app.
+    LINKEDIN_BIO_REDIRECT_URI = os.environ.get('LINKEDIN_BIO_REDIRECT_URI', 'https://simulacrumai.io/bio/access/linkedin/callback')
     GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'https://simulacrumai.io/api/auth/google/callback')

@@ -42,6 +42,10 @@ class UserProfile(db.Model):
     # SIM-PRD-ORG-001: sponsoring organization + co-brand opt-out
     org_id                = db.Column(db.String(9), nullable=True, index=True)
     hide_org_cobrand      = db.Column(db.Boolean, nullable=False, default=False)
+    # SIM-PRD-PRIVACY-001: opt-in Bio Page Private Mode (default OFF / public)
+    privacy_mode          = db.Column(db.String(10), nullable=False, default='public')    # public | private
+    accepting_requests    = db.Column(db.Boolean, nullable=False, default=True)           # pause switch (grants stay live)
+    request_notify        = db.Column(db.String(10), nullable=False, default='realtime')  # realtime | digest
     created_at            = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at            = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -134,6 +138,11 @@ class UserProfile(db.Model):
     @canonical_zones.setter
     def canonical_zones(self, value):
         self._canonical_zones = json.dumps(value) if value else None
+
+    # ── SIM-PRD-PRIVACY-001 ────────────────────────────────────────────────
+    @property
+    def is_private(self) -> bool:
+        return (self.privacy_mode or 'public') == 'private'
 
     @property
     def primary_zone(self):

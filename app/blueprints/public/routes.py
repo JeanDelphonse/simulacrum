@@ -52,6 +52,35 @@ def profile_page(username):
         except Exception:
             db.session.rollback()
     if bio_page and (bio_page.status == BioPage.STATUS_PUBLISHED or is_owner):
+        # ── SIM-PRD-PRIVACY-001: Private Mode gate ────────────────────────────
+        # For an un-approved stranger on a private page, serve ONLY the teaser.
+        # The gated payload (_assemble_context) is never built for this session,
+        # so there is nothing to leak client-side — the gate is a retrieval
+        # boundary, not a hidden DOM node.
+        if profile.is_private and not is_owner:
+            from app.services import bio_privacy_service as _priv
+            if _priv.session_has_access(profile.user_id):
+                try:
+                    _priv.record_view(profile.user_id,
+                                      _priv.viewer_linkedin_for(profile.user_id))
+                except Exception:
+                    db.session.rollback()
+            else:
+                from app.models.user import User as _User
+                _owner_user = _User.query.get(profile.user_id)
+                pending = _priv.pending_request_for_session(profile.user_id)
+                return render_template(
+                    'public/bio_teaser.html',
+                    profile=profile,
+                    user=_owner_user,
+                    slug=slug,
+                    teaser=_priv.teaser_context(profile, _owner_user, bio_page),
+                    access_status=request.args.get('access', ''),
+                    has_pending=bool(pending and pending.is_pending),
+                    is_blocked=bool(pending and pending.status ==
+                                    pending.STATUS_BLOCKED),
+                ), 200
+
         from app.blueprints.bio.routes import _assemble_context
         ctx = _assemble_context(profile.user_id, bio_page)
 
