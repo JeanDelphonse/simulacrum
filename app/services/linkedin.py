@@ -11,22 +11,29 @@ LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization'
 LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken'
 LINKEDIN_USERINFO_URL = 'https://api.linkedin.com/v2/userinfo'
 LINKEDIN_SCOPE = 'openid profile email w_member_social'
+# Identity-only scope for flows that never post (e.g. bio-page access requests).
+# Avoids 'unauthorized_scope_error' when the app lacks the "Share on LinkedIn"
+# (w_member_social) product.
+LINKEDIN_IDENTITY_SCOPE = 'openid profile email'
 LINKEDIN_UGC_POSTS_URL = 'https://api.linkedin.com/v2/ugcPosts'
 
 
-def get_auth_url(state: str, redirect_uri: str | None = None) -> str:
+def get_auth_url(state: str, redirect_uri: str | None = None,
+                 scope: str | None = None) -> str:
     """Build the LinkedIn OAuth authorization URL.
 
     redirect_uri — override the default (resume-import) callback. Used by the
     bio-page access-request flow, which has its own public callback. The URI must
     be registered on the LinkedIn app.
+    scope — override the default scope; pass LINKEDIN_IDENTITY_SCOPE for
+    identity-only (no posting) flows.
     """
     params = {
         'response_type': 'code',
         'client_id': current_app.config['LINKEDIN_CLIENT_ID'],
         'redirect_uri': redirect_uri or current_app.config['LINKEDIN_REDIRECT_URI'],
         'state': state,
-        'scope': LINKEDIN_SCOPE,
+        'scope': scope or LINKEDIN_SCOPE,
     }
     from urllib.parse import urlencode
     return f"{LINKEDIN_AUTH_URL}?{urlencode(params)}"

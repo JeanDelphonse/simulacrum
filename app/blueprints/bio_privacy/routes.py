@@ -65,9 +65,11 @@ def request_access(slug: str):
         'owner_user_id': profile.user_id,
         'message': message,
     }
-    from app.services.linkedin import get_auth_url
+    from app.services.linkedin import get_auth_url, LINKEDIN_IDENTITY_SCOPE
     redirect_uri = current_app.config['LINKEDIN_BIO_REDIRECT_URI']
-    return jsonify({'auth_url': get_auth_url(state, redirect_uri=redirect_uri)})
+    # Identity-only: a requester never posts on the owner's behalf.
+    return jsonify({'auth_url': get_auth_url(
+        state, redirect_uri=redirect_uri, scope=LINKEDIN_IDENTITY_SCOPE)})
 
 
 # ── Public: LinkedIn OAuth callback for access requests ──────────────────────
@@ -83,8 +85,15 @@ def linkedin_callback():
     fallback = f'/u/{slug}' if slug else '/'
 
     if error or not code:
-        return redirect(f'{fallback}?access=cancelled')
+        # Surface the real reason. LinkedIn sends user_cancelled_* on a genuine
+        # cancel, and things like unauthorized_scope_error / invalid_scope when
+        # the app lacks a requested product.
+        err_desc = request.args.get('error_description', '')
+        logger.warning('bio access OAuth error=%s desc=%s', error, err_desc)
+        user_cancelled = (error or '').startswith('user_cancelled')
+        return redirect(f'{fallback}?access={"cancelled" if user_cancelled else "error"}')
     if not flow or state != flow.get('state'):
+        logger.warning('bio access OAuth state mismatch (session lost?) slug=%s', slug)
         return redirect(f'{fallback}?access=error')
 
     owner_user_id = flow['owner_user_id']

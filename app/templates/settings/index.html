@@ -283,11 +283,11 @@
   <nav class="settings-nav">
     <div class="settings-nav-title">Settings</div>
     <a href="{{ url_for('pages.settings_profile') }}" class="settings-nav-link {% if active_tab == 'profile' %}active{% endif %}">Profile &amp; Bio</a>
+    <a href="{{ url_for('pages.settings_bio_privacy') }}" class="settings-nav-link {% if active_tab == 'bio_privacy' %}active{% endif %}">Bio Privacy</a>
     <a href="{{ url_for('pages.resumes_view') }}" class="settings-nav-link {% if active_tab == 'sources' %}active{% endif %}">Sources</a>
     <a href="{{ url_for('pages.settings_visibility') }}" class="settings-nav-link {% if active_tab == 'visibility' %}active{% endif %}">Simulation Visibility</a>
     <a href="{{ url_for('pages.contacts_list') }}" class="settings-nav-link {% if active_tab == 'contacts' %}active{% endif %}">My Contacts</a>
     <a href="{{ url_for('pages.settings_my_chats') }}" class="settings-nav-link {% if active_tab == 'my_chats' %}active{% endif %}">My Chats</a>
-    <a href="{{ url_for('pages.settings_bio_privacy') }}" class="settings-nav-link {% if active_tab == 'bio_privacy' %}active{% endif %}">Bio Privacy</a>
     <a href="{{ url_for('pages.settings_testimonials') }}" class="settings-nav-link {% if active_tab == 'testimonials' %}active{% endif %}">Testimonials</a>
     <a href="{{ url_for('pages.settings_integrations') }}" class="settings-nav-link {% if active_tab == 'integrations' %}active{% endif %}">Integrations</a>
     <a href="{{ url_for('pages.settings_notifications') }}" class="settings-nav-link {% if active_tab == 'notifications' %}active{% endif %}">Notifications</a>
