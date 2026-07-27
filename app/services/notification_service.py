@@ -71,6 +71,23 @@ def send_notification(
     return notif.id
 
 
+def _absolute(url: Optional[str]) -> Optional[str]:
+    """Resolve a notification CTA path against BASE_URL for use in an email.
+
+    Most call sites pass a site-relative path ('/simulations'), which has no base
+    to resolve against once it is in an email client — the link renders dead.
+    Already-absolute URLs and mailto: links pass through untouched, since a few
+    call sites (layer6 cycle summaries, bio access approval) build their own.
+    """
+    if not url:
+        return url
+    if url.startswith(('http://', 'https://', 'mailto:')):
+        return url
+    from flask import current_app
+    base = (current_app.config.get('BASE_URL') or 'https://simulacrumai.io').rstrip('/')
+    return base + (url if url.startswith('/') else '/' + url)
+
+
 def _send_email(notif) -> None:
     """Send a single transactional email via SendGrid for the given notification."""
     from app.models.platform_settings import PlatformSetting
@@ -98,7 +115,7 @@ def _send_email(notif) -> None:
     if notif.cta_url and notif.cta_label:
         cta_html = (
             f'<p style="margin-top:20px">'
-            f'<a href="{notif.cta_url}" style="background:#0f7b72;color:#fff;'
+            f'<a href="{_absolute(notif.cta_url)}" style="background:#0f7b72;color:#fff;'
             f'padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">'
             f'{notif.cta_label}</a></p>'
         )
@@ -110,7 +127,7 @@ def _send_email(notif) -> None:
         f'{cta_html}'
         f'<hr style="margin-top:32px;border:none;border-top:1px solid #e5e7eb">'
         f'<p style="font-size:12px;color:#9ca3af">Simulacrum · '
-        f'<a href="/settings/notifications" style="color:#9ca3af">Manage notification preferences</a></p>'
+        f'<a href="{_absolute("/settings/notifications")}" style="color:#9ca3af">Manage notification preferences</a></p>'
         f'</div>'
     )
 
@@ -251,7 +268,7 @@ def send_daily_digest(user_id: str) -> Optional[str]:
         title=f'Your Simulacrum digest — {yesterday_start.strftime("%b %-d")}',
         body=body,
         cta_url='/simulations',
-        cta_label='Open GCC →',
+        cta_label='Open Simulacrum →',
         priority='low',
     )
 
