@@ -567,7 +567,7 @@ def _dispatch_send(send) -> dict:
         return {'status': 'deferred', 'reason': 'frequency_cap'}
 
     api_key = current_app.config.get('SENDGRID_API_KEY')
-    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'team@simulacrumai.io')
+    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
     sender_name = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
 
     unsub_url = unsubscribe_url_for(to_email)
@@ -720,7 +720,7 @@ def send_test_email(to_email: str, subject: str, body: str,
                              preheader=render_tokens(preview_text or '', tokens))
 
     api_key = current_app.config.get('SENDGRID_API_KEY')
-    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'team@simulacrumai.io')
+    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
     sender_name = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
     if not api_key:
         return {'status': 'error', 'reason': 'SENDGRID_API_KEY not configured'}

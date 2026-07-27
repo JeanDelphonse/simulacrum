@@ -658,7 +658,7 @@ def send_data_retention_warning_email(user_email: str, user_name: str, deletion_
             f'is scheduled for permanent deletion on {deletion_date}.\n\n'
             f'To keep your account active, simply sign in before {deletion_date}:\n'
             f'{login_url}\n\n'
-            f'If you would prefer to delete your data now, email privacy@simulacrumai.io.\n\n'
+            f'If you would prefer to delete your data now, email simi@simulacrumai.io.\n\n'
             f'— SimulacrumAI.io'
         )
         html = _html_wrap(
@@ -668,7 +668,7 @@ def send_data_retention_warning_email(user_email: str, user_name: str, deletion_
             _p('To keep your account active, sign in before that date.') +
             _btn(login_url, 'Sign in to keep my account') +
             _divider() +
-            _p('If you would prefer to delete your data now, email privacy@simulacrumai.io.', muted=True),
+            _p('If you would prefer to delete your data now, email simi@simulacrumai.io.', muted=True),
             preheader=f'Action required: your data is scheduled for deletion on {deletion_date}.',
         )
         _send(subject='Your SimulacrumAI.io data is scheduled for deletion', recipients=[user_email], body=plain, html=html)

@@ -347,7 +347,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <div>
               {% if profile and profile.username %}
-              <div style="font-size:.875rem;color:#e8eaf0">simulacrum.io/u/<strong>{{ profile.username }}</strong></div>
+              <div style="font-size:.875rem;color:#e8eaf0">simulacrumai.io/u/<strong>{{ profile.username }}</strong></div>
               {% else %}
               <div style="font-size:.875rem;color:rgba(255,255,255,.5)">Set a username above to get your bio page URL</div>
               {% endif %}
@@ -390,7 +390,7 @@
                  value="{{ profile.username or '' }}" placeholder="your-username"
                  oninput="checkUsername(this.value)">
           <div class="username-check" id="usernameCheck"></div>
-          <div class="settings-hint">simulacrum.io/u/<strong id="usernamePreview">{{ profile.username or '' }}</strong>
+          <div class="settings-hint">simulacrumai.io/u/<strong id="usernamePreview">{{ profile.username or '' }}</strong>
             {% if profile and profile.username %}
             · <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" style="color:#0F7B72">View ↗</a>
             {% endif %}
