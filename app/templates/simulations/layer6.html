@@ -1421,30 +1421,32 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
         </div>
       </div>
 
-      {# Adaptive Learning Insight card (ENH-08) — shown when latest cycle has user_insight #}
-      {% if latest_cycle and latest_cycle.user_insight %}
+      {# Adaptive Learning Insight card (ENH-08) + self-serve to-do list. The insight and
+         the steps come from two independent Claude calls, so render the card when either
+         one landed rather than hiding the to-do list whenever the insight failed. #}
+      {% if latest_cycle and (latest_cycle.user_insight or cycle_steps_list) %}
       <div id="insightCard" style="background:rgba(15,123,114,.10);border:1px solid rgba(15,123,114,.28);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;">
         <div style="display:flex;align-items:flex-start;gap:.85rem;">
           <span style="font-size:1.1rem;flex-shrink:0;margin-top:.05rem">💡</span>
           <div style="flex:1;font-size:.875rem;line-height:1.55;color:#0D1B3E">
             <strong style="color:#0F7B72;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.3rem">Cycle {{ latest_cycle.cycle_number }} · AI insight</strong>
-            {{ latest_cycle.user_insight }}
+            {% if latest_cycle.user_insight %}{{ latest_cycle.user_insight }}{% else %}Here are the steps you can take yourself to support this cycle.{% endif %}
           </div>
           <button onclick="document.getElementById('insightCard').style.display='none';localStorage.setItem('insight_dismissed_{{ latest_cycle.id }}','1')"
                   style="background:none;border:none;color:rgba(0,0,0,.3);cursor:pointer;font-size:1rem;flex-shrink:0;padding:.15rem"
                   title="Dismiss">✕</button>
         </div>
-        {% if latest_cycle.cycle_steps %}
+        {% if cycle_steps_list %}
         <div id="insightStepsList" style="margin-top:.9rem;padding-top:.85rem;border-top:1px solid rgba(15,123,114,.25);">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#4dd9c4;margin-bottom:.6rem;">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0F7B72;margin-bottom:.6rem;">
             Your actions for today
-            <span id="stepsProgress" style="font-weight:400;color:rgba(255,255,255,.4);margin-left:.5rem;"></span>
+            <span id="stepsProgress" style="font-weight:400;text-transform:none;letter-spacing:0;color:#6B7B8D;margin-left:.5rem;"></span>
           </div>
           <div id="stepItems"></div>
         </div>
         <script>
         (function() {
-          var steps = {{ latest_cycle.cycle_steps | safe }};
+          var steps = {{ cycle_steps_list | tojson }};
           var cycleId = '{{ latest_cycle.id }}';
           var storageKey = 'steps_checked_' + cycleId;
           var checked = JSON.parse(localStorage.getItem(storageKey) || '[]');
@@ -1468,11 +1470,11 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
               row.style.cssText = 'display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.45rem;cursor:pointer;';
               row.innerHTML =
                 '<div style="flex-shrink:0;width:16px;height:16px;margin-top:.1rem;border-radius:4px;border:1.5px solid ' +
-                (isDone ? '#4dd9c4' : 'rgba(255,255,255,.25)') +
-                ';background:' + (isDone ? '#4dd9c4' : 'transparent') + ';display:flex;align-items:center;justify-content:center;">' +
-                (isDone ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#0a2e2b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '') +
+                (isDone ? '#0F7B72' : 'rgba(0,0,0,.25)') +
+                ';background:' + (isDone ? '#0F7B72' : 'transparent') + ';display:flex;align-items:center;justify-content:center;">' +
+                (isDone ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '') +
                 '</div>' +
-                '<span style="font-size:.84rem;line-height:1.45;color:' + (isDone ? 'rgba(255,255,255,.38)' : 'rgba(255,255,255,.8)') + ';' + (isDone ? 'text-decoration:line-through;' : '') + '">' +
+                '<span style="font-size:.84rem;line-height:1.45;color:' + (isDone ? '#9AA7B4' : '#0D1B3E') + ';' + (isDone ? 'text-decoration:line-through;' : '') + '">' +
                 step.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') +
                 '</span>';
               row.addEventListener('click', function() {
@@ -1503,14 +1505,14 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
       {# ROI bar (ENH-06) — only show when there's meaningful income captured #}
       {% if total_income and total_income > 0 and sim.amount_charged_cents %}
       {% set roi_ratio = (total_income / (sim.amount_charged_cents / 100)) | round(1) %}
-      <div id="roiBar" style="background:rgba(77,217,196,.08);border:1px solid rgba(77,217,196,.2);border-radius:10px;padding:.75rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+      <div id="roiBar" style="background:rgba(15,123,114,.10);border:1px solid rgba(15,123,114,.28);border-radius:10px;padding:.75rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
         <div style="display:flex;align-items:center;gap:.75rem">
-          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#4dd9c4">ROI</span>
-          <span style="font-size:1.3rem;font-weight:800;color:#4dd9c4">{{ roi_ratio }}x</span>
-          <span style="font-size:.8rem;color:rgba(255,255,255,.45)">${{ '{:,.0f}'.format(total_income) }} captured · ${{ '{:,.0f}'.format(sim.amount_charged_cents / 100) }} invested</span>
+          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0F7B72">ROI</span>
+          <span style="font-size:1.3rem;font-weight:800;color:#0F7B72">{{ roi_ratio }}x</span>
+          <span style="font-size:.8rem;color:#6B7B8D">${{ '{:,.0f}'.format(total_income) }} captured · ${{ '{:,.0f}'.format(sim.amount_charged_cents / 100) }} invested</span>
         </div>
         <a href="/simulations/{{ sim.id }}/share-roi" target="_blank"
-           style="font-size:.75rem;color:#4dd9c4;text-decoration:none;border:1px solid rgba(77,217,196,.3);border-radius:6px;padding:.3rem .75rem;white-space:nowrap;">Share ↗</a>
+           style="font-size:.75rem;color:#0F7B72;text-decoration:none;border:1px solid rgba(15,123,114,.3);border-radius:6px;padding:.3rem .75rem;white-space:nowrap;">Share ↗</a>
       </div>
       {% endif %}
 

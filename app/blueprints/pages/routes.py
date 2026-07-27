@@ -9,6 +9,19 @@ from utils.id_gen import generate_id
 
 logger = logging.getLogger(__name__)
 
+def _cycle_steps_for(cycle) -> list:
+    """Self-serve to-do steps for a cycle, as a list of strings.
+
+    Parsed here rather than injected raw into the template's inline JS, so the
+    GCC can hand it to |tojson. Both GCC render paths (owner and advisor) use
+    this so the to-do list does not silently differ between them.
+    """
+    if not cycle or not getattr(cycle, 'cycle_steps', None):
+        return []
+    from app.services.email_service import _parse_cycle_steps
+    return _parse_cycle_steps(cycle.cycle_steps)
+
+
 # ── Landing page cache (avoids DB queries on every unauthenticated hit) ──────
 _landing_cache = {'data': None, 'ts': 0.0}
 _LANDING_TTL   = 300  # 5 minutes
@@ -1269,6 +1282,7 @@ def advisor_gcc_view(client_uid, sim_id):
         advisor_layer6_config=layer6_cfg.to_dict() if layer6_cfg else None,
         advisor_dashboard=advisor_dashboard,
         advisor_journey=advisor_journey,
+        cycle_steps_list=_cycle_steps_for(latest_cycle),
         profile=client_profile,
         zone_count=client_zone_count,
         projected_annual=client_projected_annual,
@@ -1427,6 +1441,7 @@ def gcc_view(sim_id):
         active_items=[i.to_dict() for i in active_items],
         active_item_count=len(active_items),
         latest_cycle=latest_cycle,
+        cycle_steps_list=_cycle_steps_for(latest_cycle),
         momentum=momentum,
         income_by_layer=income_by_layer,
         total_income=total_income,
