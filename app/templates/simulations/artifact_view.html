@@ -648,6 +648,39 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
     updateSummary();
     const container = document.getElementById('coCards');
     container.innerHTML = '';
+
+    // Empty run — explain why instead of leaving a bare 0/0/0/0.
+    if (!coData.prospects || coData.prospects.length === 0) {
+      const rs = coData.research_summary || {};
+      const reason = rs.empty_reason || 'No prospects were generated for this run.';
+      let extra = '';
+      if (rs.total_researched) {
+        extra = '<div style="font-size:13px;color:#94a3b8;margin-top:10px;">'
+              + 'Researched ' + rs.total_researched
+              + ' · Apollo ' + (rs.total_from_apollo || 0)
+              + ' · web ' + (rs.total_from_web || 0)
+              + ' · CRM ' + (rs.total_from_crm || 0)
+              + (rs.already_contacted_dropped
+                  ? ' · already-contacted dropped ' + rs.already_contacted_dropped : '')
+              + '</div>';
+      }
+      let cta = '';
+      if (rs.apollo_connected === false) {
+        cta = '<div style="margin-top:16px;"><a href="' + ROOT
+            + '/settings/integrations?connect=apollo" '
+            + 'style="display:inline-block;background:#0d8395;color:#fff;padding:9px 18px;'
+            + 'border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">'
+            + 'Connect Apollo</a></div>';
+      }
+      container.innerHTML =
+          '<div style="text-align:center;padding:48px 24px;color:#475569;">'
+        + '<div style="font-size:15px;font-weight:600;color:#0f172a;margin-bottom:8px;">'
+        + 'No emails to review this run</div>'
+        + '<div style="font-size:14px;line-height:1.6;max-width:520px;margin:0 auto;">'
+        + esc(reason) + '</div>' + extra + cta + '</div>';
+      return;
+    }
+
     let firstDraft = true;
     coData.prospects.forEach((p, i) => {
       const card = buildCard(p, i);

@@ -492,6 +492,36 @@ def _try_apollo_send(prospect_dict, user_id, action):
         return False
 
 
+def _empty_reason(prospect_records, result, dropped, apollo_connected):
+    """Human-readable explanation of a light/empty run, for the artifact view.
+
+    Returns None when at least one emailable prospect was produced — the UI only
+    surfaces this when the prospect list is empty, so a run never renders as a
+    bare 0/0/0/0 with no explanation.
+    """
+    if prospect_records:
+        return None
+    if result.total_researched == 0:
+        if not apollo_connected:
+            return (
+                "No prospects found this run. Apollo isn't connected, so sourcing "
+                "relied on web search alone, which surfaced no contactable "
+                "decision-makers for this expertise zone. Connect Apollo for "
+                "reliable prospect sourcing, or broaden your target industries."
+            )
+        return (
+            "No prospects found this run. Apollo and web search returned no "
+            "contactable decision-makers matching your targeting. Try broadening "
+            "your target industries, company sizes, or seniority."
+        )
+    if dropped > 0:
+        return (
+            f"Researched {result.total_researched} prospect(s), but all had already "
+            f"been contacted in a previous cycle — no new outreach this run."
+        )
+    return "No prospects were available to contact this run."
+
+
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def execute_consulting_outreach(
@@ -640,6 +670,10 @@ def execute_consulting_outreach(
 
     pass2_duration = round(time.time() - t_pass2, 2)
 
+    # Sourcing diagnostics — let the artifact view explain a light/empty run
+    # instead of rendering a bare 0/0/0/0 that reads as a failure.
+    apollo_connected = ProspectResearchEngine._has_integration(user_id, 'apollo')
+
     artifact = {
         'version': '1.0',
         'agent': 'consulting_outreach',
@@ -647,6 +681,14 @@ def execute_consulting_outreach(
         'research_summary': {
             'total_researched': result.total_researched,
             'total_verified': len(prospects),
+            'total_from_apollo': result.total_from_apollo,
+            'total_from_web': result.total_from_web,
+            'total_from_crm': result.total_from_crm,
+            'already_contacted_dropped': _dropped,
+            'apollo_connected': apollo_connected,
+            'empty_reason': _empty_reason(
+                prospect_records, result, _dropped, apollo_connected,
+            ),
             'pass1_duration_seconds': pass1_duration,
             'pass2_duration_seconds': pass2_duration,
             'pass2_signals_found_per_prospect': round(

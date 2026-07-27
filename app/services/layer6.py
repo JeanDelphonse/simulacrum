@@ -526,6 +526,23 @@ def build_dispatch_user_inputs(action_type: str, source_layer: int, sim, resume,
 _RECURRING_ACTIONS = frozenset({'consulting_outreach', 'cold_email_campaign'})
 
 
+def _artifact_is_empty(artifact) -> bool:
+    """True if a prospect-list artifact carries no prospects.
+
+    Recurring outreach agents run every cycle and legitimately produce an empty
+    prospect list when no new, not-yet-contacted prospects surface; those runs are
+    archived so the UI isn't cluttered with bare 0/0/0/0 artifact pages.
+    """
+    if not artifact:
+        return True
+    try:
+        import json as _json
+        data = _json.loads(artifact) if isinstance(artifact, str) else artifact
+    except Exception:
+        return False
+    return isinstance(data, dict) and 'prospects' in data and not data.get('prospects')
+
+
 def build_eligible_actions(simulation_id: str, config, completed_types: set[str],
                             phase: str, force_rerun: bool = False) -> list[dict[str, Any]]:
     """
@@ -1236,6 +1253,13 @@ def _execute_action_sync(entry) -> None:
         agent_action.artifact = artifact
         agent_action.status = AgentAction.STATUS_COMPLETE
         agent_action.completed_at = _dt.utcnow()
+        # Archive empty recurring runs (e.g. consulting_outreach found no new,
+        # not-yet-contacted prospects this cycle) so they don't surface as bare
+        # 0/0/0/0 artifact pages. The execution log below still records the run.
+        if entry.action_type in _RECURRING_ACTIONS and _artifact_is_empty(artifact):
+            agent_action.archived_at = _dt.utcnow()
+            logger.info('Layer 6: archived empty recurring artifact for %s (sim=%s)',
+                        entry.action_type, entry.simulation_id)
         # SIM-PRD-CONNECT-001: mark 'connect to activate' if a needed one-tap
         # integration isn't connected (the artifact is still fully generated).
         from app.services.integration_activation import evaluate_activation_state
