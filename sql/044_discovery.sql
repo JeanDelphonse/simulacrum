@@ -36,8 +36,11 @@ CREATE TABLE IF NOT EXISTS discovery_candidates (
     location      VARCHAR(160) NULL,
     leader_name   VARCHAR(160) NULL      COMMENT 'from Apollo or the enrichment pass',
     leader_linkedin VARCHAR(300) NULL,
-    signal        TEXT NULL              COMMENT 'recent funding/growth/press, sharpens the first touch',
-    fit           VARCHAR(10) NULL       COMMENT 'high|medium|low',
+    -- 'signal' is a MySQL reserved word (SIGNAL/RESIGNAL), and 'fit' is renamed
+    -- alongside it for consistency. The SQLAlchemy model maps its .signal and
+    -- .fit attributes onto these column names, so application code is unchanged.
+    recent_signal TEXT NULL              COMMENT 'recent funding/growth/press, sharpens the first touch',
+    fit_score     VARCHAR(10) NULL       COMMENT 'high|medium|low',
     rationale     TEXT NULL              COMMENT 'one-line reason, retained and shown with the prospect',
     flags         JSON NULL              COMMENT 'possibly_acquired|too_large|off_category|too_small',
     route         VARCHAR(20) NULL       COMMENT 'auto_save|review_queue',

@@ -109,8 +109,12 @@ class DiscoveryCandidate(db.Model):
     location = db.Column(db.String(160), nullable=True)
     leader_name = db.Column(db.String(160), nullable=True)
     leader_linkedin = db.Column(db.String(300), nullable=True)
-    signal = db.Column(db.Text, nullable=True)
-    fit = db.Column(db.String(10), nullable=True)
+    # Column names differ from the attribute names on purpose: 'signal' is a MySQL
+    # reserved word (SIGNAL/RESIGNAL), and 'fit' is renamed alongside it for
+    # consistency. Mapping them here keeps .signal/.fit — and the to_dict keys the
+    # API and templates already use — unchanged.
+    signal = db.Column('recent_signal', db.Text, nullable=True)
+    fit = db.Column('fit_score', db.String(10), nullable=True)
     rationale = db.Column(db.Text, nullable=True)
     flags = db.Column(db.JSON, nullable=True)
     route = db.Column(db.String(20), nullable=True, index=True)
