@@ -59,6 +59,87 @@ def _apollo_client(user_id: str):
     return ApolloClient(rec.decrypt_access_token(), auth_type=auth_type)
 
 
+def apollo_probe(user_id: str) -> dict:
+    """Diagnose an Apollo 403 by isolating which part is refused.
+
+    A 403 on company search has three plausible causes that look identical from
+    the outside: the API key lacks that endpoint's permission (Apollo scopes keys
+    per endpoint), the plan does not include Organization Search, or the legacy
+    /v1 base path is no longer accepted for it. Probing a known-good endpoint and
+    both base paths separates them:
+
+      people 200 + companies 403  -> key permission or plan, not the base path
+      people 403 + companies 403  -> key or plan is refused generally
+      /api/v1 200 + /v1 403       -> base path; the client needs updating
+
+    Uses per_page=1 to keep the credit cost to the minimum Apollo will bill.
+    """
+    import requests
+
+    client = _apollo_client(user_id)
+    if client is None:
+        return {'error': 'Apollo is not connected.'}
+
+    headers = client._headers()
+    attempts = [
+        ('people search (endpoint already used elsewhere in the app)',
+         'https://api.apollo.io/v1/mixed_people/search'),
+        ('company search, /v1 base (what discovery calls)',
+         'https://api.apollo.io/v1/mixed_companies/search'),
+        ('company search, /api/v1 base (currently documented)',
+         'https://api.apollo.io/api/v1/mixed_companies/search'),
+    ]
+
+    results = []
+    for label, url in attempts:
+        entry = {'check': label, 'url': url, 'status': None, 'ok': False, 'detail': ''}
+        try:
+            r = requests.post(url, headers=headers,
+                              json={'per_page': 1, 'page': 1}, timeout=25)
+            entry['status'] = r.status_code
+            entry['ok'] = r.ok
+            payload = None
+            try:
+                payload = r.json()
+            except Exception:
+                entry['detail'] = (r.text or '')[:250]
+            if isinstance(payload, dict):
+                if r.ok:
+                    entry['response_keys'] = sorted(payload.keys())[:8]
+                    for k in ('organizations', 'accounts', 'people'):
+                        if isinstance(payload.get(k), list):
+                            entry.setdefault('counts', {})[k] = len(payload[k])
+                else:
+                    entry['detail'] = str(
+                        payload.get('error') or payload.get('message')
+                        or payload.get('error_message') or payload)[:250]
+        except Exception as exc:
+            entry['detail'] = '{}: {}'.format(type(exc).__name__, str(exc)[:200])
+        results.append(entry)
+
+    return {'auth_type': client._auth_type, 'results': results,
+            'verdict': _probe_verdict(results)}
+
+
+def _probe_verdict(results: list) -> str:
+    people, v1, api_v1 = (results + [{}, {}, {}])[:3]
+    if api_v1.get('ok') and not v1.get('ok'):
+        return ('The /api/v1 base path works and /v1 does not — discovery is calling '
+                'the wrong path. This is fixable in code; send me this result.')
+    if people.get('ok') and not v1.get('ok') and not api_v1.get('ok'):
+        return ('The key authenticates fine (people search works) but company search '
+                'is refused on both paths. That is an Apollo-side permission: either '
+                'the API key was not granted the Organization/Company Search endpoint, '
+                'or the plan does not include it. Check the key\'s endpoint '
+                'permissions in Apollo, then your plan.')
+    if not people.get('ok') and not v1.get('ok'):
+        return ('Every endpoint is refused, so the key itself is the problem — '
+                'expired, revoked, or lacking API access on this plan.')
+    if v1.get('ok'):
+        return 'Company search works. If discovery still fails, the cause is elsewhere.'
+    return 'Inconclusive — send me the raw results.'
+
+
 def _apollo_error(exc) -> str:
     """Turn an Apollo HTTP failure into something actionable.
 
@@ -79,12 +160,13 @@ def _apollo_error(exc) -> str:
 
     if status == 403:
         return (
-            'Apollo returned 403 Forbidden for company search. '
-            'Apollo gates its Organization/Company Search endpoint by plan, and the '
-            'OAuth scopes this app requests ({}) are all write scopes with no search '
-            'access — so an OAuth-connected account cannot run it. Connect Apollo '
-            'with a master API key on a plan that includes company search. '
-            'Apollo said: {}'.format(APOLLO_SCOPES_NOTE, detail or '(no detail)')
+            'Apollo returned 403 Forbidden for company search — authenticated, but '
+            'not permitted. Usually the API key was not granted the '
+            'Organization/Company Search endpoint (Apollo scopes keys per endpoint), '
+            'or the plan does not include it. Note that an OAuth-connected account '
+            'cannot run it at all, because the scopes this app requests are all '
+            'write scopes. Use "Test Apollo access" to see which applies. '
+            'Apollo said: {}'.format(detail or '(no detail)')
         )
     if status in (401, 419):
         return ('Apollo rejected the credentials ({}). Reconnect Apollo in '
@@ -93,10 +175,6 @@ def _apollo_error(exc) -> str:
         return ('Apollo rate limit or credit cap reached. Apollo said: {}'.format(detail))
     return 'Apollo search failed{}: {}'.format(
         ' ({})'.format(status) if status else '', detail or exc)
-
-
-APOLLO_SCOPES_NOTE = ('sequences:write, contacts:write, emailer_campaigns:write, '
-                      'webhooks:write')
 
 
 def _norm_domain(v: str) -> str:

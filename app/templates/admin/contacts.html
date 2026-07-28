@@ -200,11 +200,13 @@
           <button class="btn btn-primary" onclick="dsRun(this)">Discover now</button>
           <button class="btn btn-sec" onclick="dsSave(this)">Save profile</button>
           <button class="btn btn-sec" onclick="dsNew()">New profile</button>
+          <button class="btn btn-sec" onclick="dsCheck(this)">Test Apollo access</button>
           <span class="spacer"></span>
           <button class="btn btn-danger" onclick="dsDelete()">Delete</button>
         </div>
         <div id="dsEstimate" class="ap-hint"></div>
         <div id="dsRunResult" class="ap-hint"></div>
+        <div id="dsCheckResult" class="ap-hint"></div>
       </div>
     </div>
 
@@ -816,6 +818,32 @@ async function dsRun(btn) {
   } catch (e) { out.textContent = e.message; }
   btn.disabled = false; btn.textContent = old;
 }
+async function dsCheck(btn) {
+  const out = document.getElementById('dsCheckResult');
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Testing…';
+  out.textContent = 'Probing Apollo…';
+  try {
+    const r = await dsApi('/apollo-check', {method: 'POST'});
+    out.innerHTML =
+      '<div style="margin-top:.5rem;padding:.6rem .75rem;background:#f9fafb;' +
+      'border:1px solid #e5e7eb;border-radius:8px;">' +
+      '<div style="font-weight:600;color:#0f172a;margin-bottom:.4rem;">' +
+      'Apollo access (auth: ' + esc(r.auth_type) + ')</div>' +
+      r.results.map(x =>
+        '<div style="margin-bottom:.35rem;">' +
+        '<span style="font-weight:600;color:' + (x.ok ? '#15803d' : '#b91c1c') + '">' +
+        (x.ok ? 'OK ' : 'FAIL ') + (x.status === null ? 'no response' : x.status) +
+        '</span> — ' + esc(x.check) +
+        (x.counts ? ' <span class="ap-hint">(' +
+          Object.keys(x.counts).map(k => k + ': ' + x.counts[k]).join(', ') + ')</span>' : '') +
+        (x.detail ? '<div class="ap-hint" style="margin-left:1rem">' + esc(x.detail) + '</div>' : '') +
+        '</div>').join('') +
+      '<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #e5e7eb;' +
+      'color:#0f172a;">' + esc(r.verdict) + '</div></div>';
+  } catch (e) { out.textContent = e.message; }
+  btn.disabled = false; btn.textContent = old;
+}
+
 async function dsLoadQueue() {
   const host = document.getElementById('dsQueue');
   try {

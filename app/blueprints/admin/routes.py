@@ -2375,3 +2375,16 @@ def discovery_enrich(cid):
     c = DiscoveryCandidate.query.get_or_404(cid)
     found = disc.enrich_candidate(c)
     return jsonify({'ok': True, 'enriched': found, 'candidate': c.to_dict()}), 200
+
+
+@admin_bp.route('/discovery/apollo-check', methods=['POST'])
+@login_required
+@admin_required
+def discovery_apollo_check():
+    """Diagnose an Apollo 403 by probing a known-good endpoint and both base paths.
+
+    Costs at most a few Apollo credits (per_page=1 per probe).
+    """
+    from app.services import discovery_service as disc
+    result = disc.apollo_probe(current_user.id)
+    return jsonify(result), (400 if result.get('error') else 200)
