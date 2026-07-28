@@ -777,6 +777,26 @@ def admin_outreach_view():
     return render_template('admin/outreach.html')
 
 
+@pages_bp.route('/admin/contacts')
+@login_required
+def admin_contacts_view():
+    """Admin Contacts — the founder's own outreach pipeline (SIM-PRD-CRM-001).
+
+    The prospects here are firms Simulacrum is selling TO, which is the opposite
+    direction from every other 'contacts' view in the app. Admin-only (FR-CRM-01).
+    """
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    from app.models.admin_prospect import AdminProspect
+    return render_template(
+        'admin/contacts.html',
+        stages=[{'key': s, 'label': AdminProspect.STAGE_LABELS[s]}
+                for s in AdminProspect.STAGES],
+        fits=list(AdminProspect.FITS),
+    )
+
+
 @pages_bp.route('/outreach/unsubscribe/<token>', methods=['GET', 'POST'])
 def outreach_unsubscribe(token):
     """One-click unsubscribe from marketing outreach (CAN-SPAM, FR-OUT-10).

@@ -1,0 +1,602 @@
+{% extends 'base.html' %}
+{% block title %}Contacts — Admin{% endblock %}
+{% block head %}
+<style>
+/* SIM-PRD-CRM-001 — Admin Outreach Pipeline. Light palette matched to
+   admin/experts.html so the admin area reads as one surface. */
+.ap-page { max-width:1280px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+.ap-title { font-size:1.4rem; font-weight:700; color:#0f172a; margin:0 0 .35rem; }
+.ap-sub { font-size:.85rem; color:#6b7280; margin:0 0 1.25rem; max-width:70ch; }
+.ap-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+.ap-stat { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:.85rem 1rem; }
+.ap-stat-label { font-size:.68rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:.3rem; }
+.ap-stat-value { font-size:1.55rem; font-weight:800; color:#0f172a; line-height:1.1; }
+.ap-stat.alert .ap-stat-value { color:#b91c1c; }
+.ap-tabs { display:flex; gap:.4rem; border-bottom:1px solid #e5e7eb; margin-bottom:1.25rem; flex-wrap:wrap; }
+.ap-tab { padding:.5rem .9rem; font-size:.85rem; font-weight:600; color:#6b7280; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; }
+.ap-tab.active { color:#0d9488; border-bottom-color:#0d9488; }
+.ap-panel { display:none; }
+.ap-panel.active { display:block; }
+.ap-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.1rem 1.25rem; margin-bottom:1rem; }
+.ap-card.overdue { border-color:#fecaca; background:#fef2f2; }
+.ap-row { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+.ap-firm { font-size:1rem; font-weight:700; color:#0f172a; margin:0; }
+.ap-meta { font-size:.78rem; color:#6b7280; margin:.2rem 0 0; }
+.ap-badge { display:inline-block; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:.18rem .45rem; border-radius:4px; }
+.ap-badge-stage { background:rgba(13,148,136,.12); color:#0f766e; }
+.ap-badge-overdue { background:#fee2e2; color:#b91c1c; }
+.ap-badge-high { background:#dcfce7; color:#15803d; }
+.ap-badge-medium { background:#fef3c7; color:#a16207; }
+.ap-badge-low { background:#f3f4f6; color:#6b7280; }
+.ap-draft { margin-top:.8rem; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:.75rem .85rem; font-size:.85rem; line-height:1.6; color:#111827; white-space:pre-wrap; }
+.ap-draft-empty { margin-top:.8rem; font-size:.82rem; color:#6b7280; font-style:italic; }
+.ap-draft-count { font-size:.7rem; color:#6b7280; margin-top:.35rem; }
+.ap-actions { display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.75rem; }
+.ap-toolbar { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem; }
+.ap-toolbar input[type=text], .ap-toolbar select, .ap-form input, .ap-form select, .ap-form textarea {
+  border:1px solid #d1d5db; border-radius:6px; padding:.45rem .6rem; font-size:.83rem; color:#111827; font-family:inherit; background:#fff; }
+.ap-toolbar .spacer { flex:1; }
+.btn { display:inline-block; padding:.45rem .9rem; font-size:.8rem; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid transparent; text-decoration:none; font-family:inherit; }
+.btn-primary { background:#0d9488; color:#fff; }
+.btn-primary:hover { background:#0f766e; }
+.btn-sec { background:#fff; color:#374151; border-color:#d1d5db; }
+.btn-sec:hover { background:#f9fafb; }
+.btn-danger { background:#fff; color:#b91c1c; border-color:#fecaca; }
+.ap-board { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(230px,1fr); gap:.75rem; overflow-x:auto; padding-bottom:.75rem; }
+.ap-col { background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:.7rem; min-width:230px; }
+.ap-col-head { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#374151; margin-bottom:.6rem; display:flex; justify-content:space-between; }
+.ap-col-count { color:#6b7280; }
+.ap-chip { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:.55rem .65rem; margin-bottom:.5rem; cursor:pointer; }
+.ap-chip:hover { border-color:#0d9488; }
+.ap-chip.overdue { border-color:#fecaca; background:#fef2f2; }
+.ap-chip-firm { font-size:.83rem; font-weight:600; color:#0f172a; }
+.ap-chip-meta { font-size:.7rem; color:#6b7280; margin-top:.15rem; }
+.ap-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
+.ap-table th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; padding:.6rem .75rem; background:#f9fafb; border-bottom:1px solid #e5e7eb; }
+.ap-table td { padding:.6rem .75rem; font-size:.83rem; color:#111827; border-bottom:1px solid #f3f4f6; }
+.ap-table tr:hover td { background:#f9fafb; cursor:pointer; }
+.ap-empty { text-align:center; padding:2.5rem 1rem; color:#6b7280; font-size:.88rem; }
+.ap-modal-bg { display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:200; }
+.ap-modal-bg.open { display:flex; align-items:flex-start; justify-content:center; padding:3rem 1rem; overflow-y:auto; }
+.ap-modal { background:#fff; border-radius:12px; padding:1.35rem 1.5rem; width:100%; max-width:620px; }
+.ap-modal h3 { margin:0 0 1rem; font-size:1.05rem; color:#0f172a; }
+.ap-form { display:grid; gap:.7rem; }
+.ap-form label { font-size:.75rem; font-weight:600; color:#374151; display:block; margin-bottom:.2rem; }
+.ap-form-2 { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; }
+.ap-log { margin-top:1rem; border-top:1px solid #e5e7eb; padding-top:.85rem; }
+.ap-log-item { font-size:.8rem; color:#374151; padding:.45rem 0; border-bottom:1px solid #f3f4f6; }
+.ap-log-when { font-size:.7rem; color:#9ca3af; }
+.ap-hint { font-size:.78rem; color:#6b7280; }
+.ap-toast { position:fixed; bottom:1.25rem; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff; font-size:.83rem; padding:.6rem 1rem; border-radius:8px; z-index:300; display:none; }
+@media (max-width:640px){ .ap-form-2 { grid-template-columns:1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ap-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
+    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link">Experts</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Organizations</a>
+    <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link active">Contacts</a>
+  </nav>
+
+  <h1 class="ap-title">Contacts</h1>
+  <p class="ap-sub">
+    Your outreach pipeline — the firms <strong>you are selling to</strong>. This is the
+    opposite direction from every other contacts view in Simulacrum, and it is visible
+    to admins only. The system drafts and reminds; you send on LinkedIn and log it.
+  </p>
+
+  <div class="ap-summary" id="apCounters"></div>
+
+  <div class="ap-tabs">
+    <button class="ap-tab active" data-panel="due"   onclick="apTab('due')">Due today</button>
+    <button class="ap-tab"        data-panel="board" onclick="apTab('board')">Pipeline</button>
+    <button class="ap-tab"        data-panel="list"  onclick="apTab('list')">All prospects</button>
+  </div>
+
+  <!-- ── Due today (default working view) ─────────────────────────────────── -->
+  <div class="ap-panel active" id="panel-due">
+    <div class="ap-toolbar">
+      <span class="ap-hint">Drafts are written by the 6:30am briefing. Personalise, send on
+        LinkedIn, then click <strong>Logged</strong>.</span>
+      <span class="spacer"></span>
+      <button class="btn btn-sec" onclick="apRunBriefing(this)">Run briefing now</button>
+    </div>
+    <div id="apQueue"><div class="ap-empty">Loading…</div></div>
+  </div>
+
+  <!-- ── Kanban pipeline ──────────────────────────────────────────────────── -->
+  <div class="ap-panel" id="panel-board">
+    <div class="ap-board" id="apBoard"><div class="ap-empty">Loading…</div></div>
+  </div>
+
+  <!-- ── Filterable list ──────────────────────────────────────────────────── -->
+  <div class="ap-panel" id="panel-list">
+    <div class="ap-toolbar">
+      <input type="text" id="apSearch" placeholder="Search firm, lead, category…"
+             oninput="apDebouncedList()" style="min-width:220px">
+      <select id="apFilterStage" onchange="apLoadList()">
+        <option value="">All stages</option>
+        {% for s in stages %}<option value="{{ s.key }}">{{ s.label }}</option>{% endfor %}
+      </select>
+      <select id="apFilterFit" onchange="apLoadList()">
+        <option value="">Any fit</option>
+        {% for f in fits %}<option value="{{ f }}">{{ f | capitalize }} fit</option>{% endfor %}
+      </select>
+      <select id="apFilterCategory" onchange="apLoadList()">
+        <option value="">Any category</option>
+      </select>
+      <span class="spacer"></span>
+      <button class="btn btn-sec" onclick="apOpenImport()">Import CSV</button>
+      <button class="btn btn-primary" onclick="apOpenNew()">Add prospect</button>
+    </div>
+    <div id="apList"><div class="ap-empty">Loading…</div></div>
+  </div>
+</div>
+
+<!-- ── Prospect detail / edit ───────────────────────────────────────────────-->
+<div class="ap-modal-bg" id="apDetailBg" onclick="if(event.target===this)apClose('apDetailBg')">
+  <div class="ap-modal" id="apDetailBody"></div>
+</div>
+
+<!-- ── New prospect ─────────────────────────────────────────────────────────-->
+<div class="ap-modal-bg" id="apNewBg" onclick="if(event.target===this)apClose('apNewBg')">
+  <div class="ap-modal">
+    <h3>Add prospect</h3>
+    <div class="ap-form">
+      <div><label>Firm name *</label><input type="text" id="npFirm" placeholder="Acme Advisory"></div>
+      <div class="ap-form-2">
+        <div><label>Lead name</label><input type="text" id="npLead" placeholder="Dana Reyes"></div>
+        <div><label>Lead LinkedIn</label><input type="text" id="npLinkedin" placeholder="linkedin.com/in/…"></div>
+      </div>
+      <div class="ap-form-2">
+        <div><label>Website</label><input type="text" id="npSite" placeholder="acme.com"></div>
+        <div><label>Contact path</label>
+          <select id="npPath">
+            <option value="linkedin">LinkedIn</option>
+            <option value="form">Website form</option>
+            <option value="email">Email</option>
+          </select>
+        </div>
+      </div>
+      <div class="ap-form-2">
+        <div><label>Fit</label>
+          <select id="npFit">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div><label>Category</label><input type="text" id="npCategory" placeholder="Fractional Exec"></div>
+      </div>
+      <div><label>Notes</label><textarea id="npNotes" rows="3"
+           placeholder="Headcount, independence, why they fit…"></textarea></div>
+      <div class="ap-actions">
+        <button class="btn btn-primary" onclick="apCreate(this)">Add to pipeline</button>
+        <button class="btn btn-sec" onclick="apClose('apNewBg')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CSV import ───────────────────────────────────────────────────────────-->
+<div class="ap-modal-bg" id="apImportBg" onclick="if(event.target===this)apClose('apImportBg')">
+  <div class="ap-modal">
+    <h3>Import prospects from CSV</h3>
+    <p class="ap-hint" style="margin:0 0 .8rem">
+      Header row required. Recognised columns: <code>firm_name</code> (required),
+      <code>lead_name</code>, <code>lead_linkedin</code>, <code>website</code>,
+      <code>contact_path</code>, <code>fit</code>, <code>category</code>, <code>notes</code>.
+      Rows already in the pipeline are skipped — matched on firm name + website.
+    </p>
+    <div class="ap-form">
+      <div><label>CSV file</label><input type="file" id="apCsvFile" accept=".csv,text/csv"></div>
+      <div><label>…or paste CSV</label><textarea id="apCsvText" rows="6"
+           placeholder="firm_name,lead_name,website,category"></textarea></div>
+      <div id="apImportResult" class="ap-hint"></div>
+      <div class="ap-actions">
+        <button class="btn btn-primary" onclick="apImport(this)">Import</button>
+        <button class="btn btn-sec" onclick="apClose('apImportBg')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ap-toast" id="apToast"></div>
+
+<script>
+const AP_STAGES = {{ stages | tojson }};
+const AP_API = '/api/admin/prospects';
+let apCategories = [];
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+function toast(msg) {
+  const t = document.getElementById('apToast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => { t.style.display = 'none'; }, 2600);
+}
+async function api(path, opts) {
+  const r = await fetch(AP_API + path, Object.assign({
+    headers: {'Content-Type': 'application/json'},
+  }, opts || {}));
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || ('Request failed (' + r.status + ')'));
+  return body;
+}
+function apTab(name) {
+  document.querySelectorAll('.ap-tab').forEach(b =>
+    b.classList.toggle('active', b.dataset.panel === name));
+  document.querySelectorAll('.ap-panel').forEach(p =>
+    p.classList.toggle('active', p.id === 'panel-' + name));
+  if (name === 'board') apLoadBoard();
+  if (name === 'list')  apLoadList();
+}
+function apClose(id) { document.getElementById(id).classList.remove('open'); }
+function apOpen(id)  { document.getElementById(id).classList.add('open'); }
+
+// ── Counters ────────────────────────────────────────────────────────────────
+async function apLoadCounters() {
+  try {
+    const c = await api('/counters');
+    const cells = [
+      ['Total', c.total, false], ['Active', c.active, false],
+      ['Replied', c.replied, false], ['Due today', c.due_today, false],
+      ['Overdue', c.overdue, c.overdue > 0], ['Onboarded', c.onboarded, false],
+    ];
+    document.getElementById('apCounters').innerHTML = cells.map(([label, val, alert]) =>
+      '<div class="ap-stat' + (alert ? ' alert' : '') + '">' +
+      '<div class="ap-stat-label">' + label + '</div>' +
+      '<div class="ap-stat-value">' + (val || 0) + '</div></div>').join('');
+  } catch (e) { /* counters are non-critical */ }
+}
+
+// ── Due today ───────────────────────────────────────────────────────────────
+async function apLoadQueue() {
+  const host = document.getElementById('apQueue');
+  try {
+    const data = await api('/queue');
+    if (!data.queue.length) {
+      host.innerHTML = '<div class="ap-empty">Nothing due today. ' +
+        'Add prospects or import a list to get started.</div>';
+      return;
+    }
+    host.innerHTML = data.queue.map(apQueueCard).join('');
+  } catch (e) {
+    host.innerHTML = '<div class="ap-empty">Could not load the queue: ' + esc(e.message) + '</div>';
+  }
+}
+function apQueueCard(item) {
+  const p = item.prospect;
+  const kind = item.draft_kind;
+  const draftBlock = item.draft
+    ? '<div class="ap-draft" id="draft-' + p.id + '">' + esc(item.draft) + '</div>' +
+      (kind === 'touch1'
+        ? '<div class="ap-draft-count">' + item.draft.length +
+          ' / 300 characters — connection requests are capped, and carry no link.</div>'
+        : '')
+    : '<div class="ap-draft-empty">' + (kind
+        ? 'No draft cached yet — run the briefing, or generate one now.'
+        : 'Waiting stage: this one needs a nudge, not a new message.') + '</div>';
+
+  return '<div class="ap-card' + (item.overdue ? ' overdue' : '') + '">' +
+    '<div class="ap-row"><div>' +
+      '<p class="ap-firm">' + esc(p.firm_name) + '</p>' +
+      '<p class="ap-meta">' +
+        '<span class="ap-badge ap-badge-stage">' + esc(p.stage_label) + '</span> ' +
+        (item.overdue ? '<span class="ap-badge ap-badge-overdue">Overdue</span> ' : '') +
+        (p.lead_name ? esc(p.lead_name) + ' · ' : '') +
+        'due ' + esc(p.next_followup || '—') +
+      '</p>' +
+    '</div><div>' +
+      (p.lead_linkedin ? '<a class="btn btn-sec" target="_blank" rel="noopener" href="' +
+        esc(p.lead_linkedin) + '">Open LinkedIn ↗</a>' : '') +
+    '</div></div>' +
+    draftBlock +
+    '<div class="ap-actions">' +
+      (item.draft ? '<button class="btn btn-sec" onclick="apCopy(\'' + p.id +
+        '\')">Copy</button>' : '') +
+      (kind ? '<button class="btn btn-sec" onclick="apDraft(\'' + p.id +
+        '\', this)">' + (item.draft ? 'Redraft' : 'Draft now') + '</button>' : '') +
+      '<button class="btn btn-primary" onclick="apLog(\'' + p.id + '\', this)">Logged</button>' +
+      '<button class="btn btn-sec" onclick="apDetail(\'' + p.id + '\')">Open</button>' +
+    '</div></div>';
+}
+function apCopy(pid) {
+  const el = document.getElementById('draft-' + pid);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(
+    () => toast('Draft copied'), () => toast('Could not copy'));
+}
+async function apDraft(pid, btn) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Drafting…';
+  try {
+    const r = await api('/' + pid + '/draft', {method: 'POST'});
+    toast(r.draft ? 'Draft ready' : (r.reason || 'No draft for this stage'));
+    await apRefresh();
+  } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = old; }
+}
+async function apLog(pid, btn) {
+  btn.disabled = true; btn.textContent = 'Logging…';
+  try {
+    await api('/' + pid + '/log', {method: 'POST', body: JSON.stringify({channel: 'linkedin'})});
+    toast('Touch logged — stage advanced and follow-up scheduled');
+    await apRefresh();
+  } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = 'Logged'; }
+}
+async function apRunBriefing(btn) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Drafting…';
+  try {
+    const r = await api('/briefing/run', {method: 'POST'});
+    toast(r.due ? (r.due + ' due · drafts ready' + (r.emailed ? ' · emailed' : ''))
+                : 'Nothing due today');
+    await apRefresh();
+  } catch (e) { toast(e.message); }
+  btn.disabled = false; btn.textContent = old;
+}
+
+// ── Kanban ──────────────────────────────────────────────────────────────────
+async function apLoadBoard() {
+  const host = document.getElementById('apBoard');
+  try {
+    const data = await api('/board');
+    host.innerHTML = data.stages.map(s => {
+      const rows = data.board[s.key] || [];
+      return '<div class="ap-col"><div class="ap-col-head"><span>' + esc(s.label) +
+        '</span><span class="ap-col-count">' + rows.length + '</span></div>' +
+        (rows.length ? rows.map(p =>
+          '<div class="ap-chip' + (p.is_overdue ? ' overdue' : '') +
+          '" onclick="apDetail(\'' + p.id + '\')">' +
+          '<div class="ap-chip-firm">' + esc(p.firm_name) + '</div>' +
+          '<div class="ap-chip-meta">' + (p.lead_name ? esc(p.lead_name) + ' · ' : '') +
+          '<span class="ap-badge ap-badge-' + esc(p.fit) + '">' + esc(p.fit) + '</span>' +
+          (p.next_followup ? ' · ' + esc(p.next_followup) : '') + '</div></div>').join('')
+          : '<div class="ap-chip-meta" style="padding:.35rem">—</div>') +
+        '</div>';
+    }).join('');
+  } catch (e) {
+    host.innerHTML = '<div class="ap-empty">Could not load the pipeline: ' + esc(e.message) + '</div>';
+  }
+}
+
+// ── List ────────────────────────────────────────────────────────────────────
+let apListTimer;
+function apDebouncedList() { clearTimeout(apListTimer); apListTimer = setTimeout(apLoadList, 250); }
+async function apLoadList() {
+  const host = document.getElementById('apList');
+  const qs = new URLSearchParams({
+    q: document.getElementById('apSearch').value,
+    stage: document.getElementById('apFilterStage').value,
+    fit: document.getElementById('apFilterFit').value,
+    category: document.getElementById('apFilterCategory').value,
+  });
+  try {
+    const data = await api('?' + qs.toString());
+    if (data.categories && data.categories.join() !== apCategories.join()) {
+      apCategories = data.categories;
+      const sel = document.getElementById('apFilterCategory');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">Any category</option>' +
+        apCategories.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('');
+      sel.value = cur;
+    }
+    if (!data.prospects.length) {
+      host.innerHTML = '<div class="ap-empty">No prospects match.</div>';
+      return;
+    }
+    host.innerHTML = '<table class="ap-table"><thead><tr>' +
+      '<th>Firm</th><th>Lead</th><th>Stage</th><th>Fit</th><th>Category</th>' +
+      '<th>Next follow-up</th><th>Touches</th></tr></thead><tbody>' +
+      data.prospects.map(p =>
+        '<tr onclick="apDetail(\'' + p.id + '\')">' +
+        '<td><strong>' + esc(p.firm_name) + '</strong></td>' +
+        '<td>' + esc(p.lead_name || '—') + '</td>' +
+        '<td><span class="ap-badge ap-badge-stage">' + esc(p.stage_label) + '</span></td>' +
+        '<td><span class="ap-badge ap-badge-' + esc(p.fit) + '">' + esc(p.fit) + '</span></td>' +
+        '<td>' + esc(p.category || '—') + '</td>' +
+        '<td' + (p.is_overdue ? ' style="color:#b91c1c;font-weight:600"' : '') + '>' +
+          esc(p.next_followup || '—') + '</td>' +
+        '<td>' + (p.touch_count || 0) + '</td></tr>').join('') +
+      '</tbody></table>';
+  } catch (e) {
+    host.innerHTML = '<div class="ap-empty">Could not load prospects: ' + esc(e.message) + '</div>';
+  }
+}
+
+// ── Detail ──────────────────────────────────────────────────────────────────
+async function apDetail(pid) {
+  apOpen('apDetailBg');
+  const host = document.getElementById('apDetailBody');
+  host.innerHTML = '<div class="ap-empty">Loading…</div>';
+  try {
+    const p = await api('/' + pid);
+    const stageOpts = AP_STAGES.map(s =>
+      '<option value="' + s.key + '"' + (s.key === p.stage ? ' selected' : '') + '>' +
+      esc(s.label) + '</option>').join('');
+    host.innerHTML =
+      '<h3>' + esc(p.firm_name) + '</h3>' +
+      '<div class="ap-form">' +
+        '<div class="ap-form-2">' +
+          '<div><label>Lead</label><input type="text" id="edLead" value="' +
+            esc(p.lead_name || '') + '"></div>' +
+          '<div><label>Lead LinkedIn</label><input type="text" id="edLinkedin" value="' +
+            esc(p.lead_linkedin || '') + '"></div>' +
+        '</div>' +
+        '<div class="ap-form-2">' +
+          '<div><label>Website</label><input type="text" id="edSite" value="' +
+            esc(p.website || '') + '"></div>' +
+          '<div><label>Category</label><input type="text" id="edCategory" value="' +
+            esc(p.category || '') + '"></div>' +
+        '</div>' +
+        '<div class="ap-form-2">' +
+          '<div><label>Fit</label><select id="edFit">' +
+            ['high','medium','low'].map(f => '<option value="' + f + '"' +
+              (p.fit === f ? ' selected' : '') + '>' + f + '</option>').join('') +
+          '</select></div>' +
+          '<div><label>Next follow-up</label><input type="date" id="edFollowup" value="' +
+            esc(p.next_followup || '') + '"></div>' +
+        '</div>' +
+        '<div><label>Notes</label><textarea id="edNotes" rows="3">' +
+          esc(p.notes || '') + '</textarea></div>' +
+        '<div class="ap-actions">' +
+          '<button class="btn btn-primary" onclick="apSave(\'' + p.id + '\', this)">Save</button>' +
+          '<button class="btn btn-sec" onclick="apClose(\'apDetailBg\')">Close</button>' +
+          '<span class="spacer"></span>' +
+          '<button class="btn btn-danger" onclick="apDelete(\'' + p.id + '\')">Delete</button>' +
+        '</div>' +
+        '<div style="border-top:1px solid #e5e7eb;padding-top:.85rem">' +
+          '<label>Stage</label>' +
+          '<div class="ap-actions" style="margin-top:0">' +
+            '<select id="edStage">' + stageOpts + '</select>' +
+            '<button class="btn btn-sec" onclick="apSetStage(\'' + p.id + '\', this)">Move</button>' +
+          '</div>' +
+          '<p class="ap-hint" style="margin:.5rem 0 0">Acceptance, replies and bookings ' +
+            'happen on LinkedIn, so record them here when they do. Marking ' +
+            '<strong>Passed</strong> asks for a reason; <strong>Onboarded</strong> offers ' +
+            'to provision the organization.</p>' +
+        '</div>' +
+        (p.won_org_id
+          ? '<div class="ap-hint">Won — organization <code>' + esc(p.won_org_id) +
+            '</code> provisioned. <a href="/admin/corporate">Open in Corporate ↗</a></div>'
+          : '') +
+        '<div class="ap-log"><label>Touch log (' + (p.touch_log || []).length + ')</label>' +
+          ((p.touch_log || []).length
+            ? p.touch_log.map(t =>
+                '<div class="ap-log-item"><div class="ap-log-when">' +
+                esc((t.touched_at || '').replace('T', ' ').slice(0, 16)) + ' · ' +
+                esc(t.channel) + ' · ' + esc(t.stage_at_label) +
+                (t.drafted_by === 'founder_ops' ? ' · drafted by briefing' : '') +
+                '</div>' + esc(t.summary || '—') + '</div>').join('')
+            : '<div class="ap-hint">No touches logged yet.</div>') +
+        '</div>' +
+      '</div>';
+  } catch (e) {
+    host.innerHTML = '<div class="ap-empty">Could not load: ' + esc(e.message) + '</div>';
+  }
+}
+async function apSave(pid, btn) {
+  btn.disabled = true;
+  try {
+    await api('/' + pid, {method: 'PUT', body: JSON.stringify({
+      lead_name: document.getElementById('edLead').value,
+      lead_linkedin: document.getElementById('edLinkedin').value,
+      website: document.getElementById('edSite').value,
+      category: document.getElementById('edCategory').value,
+      fit: document.getElementById('edFit').value,
+      next_followup: document.getElementById('edFollowup').value,
+      notes: document.getElementById('edNotes').value,
+    })});
+    toast('Saved'); apClose('apDetailBg'); await apRefresh();
+  } catch (e) { toast(e.message); btn.disabled = false; }
+}
+async function apSetStage(pid, btn) {
+  const stage = document.getElementById('edStage').value;
+  let reason = '', retouch = null;
+  if (stage === 'passed') {
+    reason = prompt('Why did this one pass? (kept on the record)') || '';
+    retouch = prompt('Re-touch date months out? YYYY-MM-DD, or leave blank') || null;
+  }
+  if (stage === 'onboarded') {
+    const email = prompt('Contact email for the organization (required to provision):');
+    if (email) {
+      const credits = parseInt(prompt('How many simulation credits?', '25') || '25', 10);
+      btn.disabled = true;
+      try {
+        const r = await api('/' + pid + '/onboard', {method: 'POST',
+          body: JSON.stringify({contact_email: email, credits: credits})});
+        toast('Organization ' + r.org.id + ' provisioned');
+        apClose('apDetailBg'); await apRefresh();
+      } catch (e) { toast(e.message); btn.disabled = false; }
+      return;
+    }
+    // No email given — fall through and just move the stage, no provisioning.
+  }
+  btn.disabled = true;
+  try {
+    await api('/' + pid + '/stage', {method: 'POST',
+      body: JSON.stringify({stage: stage, reason: reason, retouch_on: retouch})});
+    toast('Moved to ' + stage.replace(/_/g, ' '));
+    apClose('apDetailBg'); await apRefresh();
+  } catch (e) { toast(e.message); btn.disabled = false; }
+}
+async function apDelete(pid) {
+  if (!confirm('Delete this prospect and its touch log? This cannot be undone.')) return;
+  try {
+    await api('/' + pid, {method: 'DELETE'});
+    toast('Deleted'); apClose('apDetailBg'); await apRefresh();
+  } catch (e) { toast(e.message); }
+}
+
+// ── Create / import ─────────────────────────────────────────────────────────
+function apOpenNew() { apOpen('apNewBg'); }
+function apOpenImport() {
+  document.getElementById('apImportResult').textContent = '';
+  apOpen('apImportBg');
+}
+async function apCreate(btn) {
+  const firm = document.getElementById('npFirm').value.trim();
+  if (!firm) { toast('Firm name is required'); return; }
+  btn.disabled = true;
+  try {
+    await api('', {method: 'POST', body: JSON.stringify({
+      firm_name: firm,
+      lead_name: document.getElementById('npLead').value,
+      lead_linkedin: document.getElementById('npLinkedin').value,
+      website: document.getElementById('npSite').value,
+      contact_path: document.getElementById('npPath').value,
+      fit: document.getElementById('npFit').value,
+      category: document.getElementById('npCategory').value,
+      notes: document.getElementById('npNotes').value,
+    })});
+    toast('Added to the pipeline');
+    ['npFirm','npLead','npLinkedin','npSite','npCategory','npNotes']
+      .forEach(id => { document.getElementById(id).value = ''; });
+    apClose('apNewBg'); await apRefresh();
+  } catch (e) { toast(e.message); }
+  btn.disabled = false;
+}
+async function apImport(btn) {
+  const file = document.getElementById('apCsvFile').files[0];
+  const text = document.getElementById('apCsvText').value;
+  const out = document.getElementById('apImportResult');
+  if (!file && !text.trim()) { toast('Choose a file or paste CSV'); return; }
+  btn.disabled = true; out.textContent = 'Importing…';
+  try {
+    let result;
+    if (file) {
+      const fd = new FormData(); fd.append('file', file);
+      const r = await fetch(AP_API + '/import', {method: 'POST', body: fd});
+      result = await r.json();
+      if (!r.ok) throw new Error(result.error || 'Import failed');
+    } else {
+      result = await api('/import', {method: 'POST', body: JSON.stringify({csv: text})});
+    }
+    out.innerHTML = 'Imported <strong>' + result.created + '</strong>, skipped ' +
+      result.skipped + ' (already in the pipeline or missing a firm name).' +
+      (result.errors && result.errors.length
+        ? '<br>Errors: ' + result.errors.map(esc).join('; ') : '');
+    toast(result.created + ' imported');
+    await apRefresh();
+  } catch (e) { out.textContent = e.message; }
+  btn.disabled = false;
+}
+
+// ── Boot ────────────────────────────────────────────────────────────────────
+async function apRefresh() {
+  await apLoadCounters();
+  await apLoadQueue();
+  const active = document.querySelector('.ap-tab.active');
+  if (active && active.dataset.panel === 'board') await apLoadBoard();
+  if (active && active.dataset.panel === 'list')  await apLoadList();
+}
+apRefresh();
+</script>
+{% endblock %}

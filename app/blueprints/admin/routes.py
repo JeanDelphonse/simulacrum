@@ -1997,3 +1997,200 @@ def sme_recompute_all_zones():
 def sme_coverage():
     from app.services import sme_service
     return jsonify(sme_service.coverage_map()), 200
+
+
+# ── SIM-PRD-CRM-001: Admin Outreach Pipeline ─────────────────────────────────
+#
+# The founder's own sales pipeline for firms Simulacrum is selling TO. Every
+# route here is admin-only: this data is never exposed to users, SMEs or org
+# admins (FR-CRM-01).
+
+def _prospect_or_404(pid):
+    from app.models.admin_prospect import AdminProspect
+    return AdminProspect.query.get_or_404(pid)
+
+
+@admin_bp.route('/prospects', methods=['GET'])
+@login_required
+@admin_required
+def prospects_list():
+    from app.services import admin_crm_service as crm
+    return jsonify({
+        'prospects': crm.search(
+            q=request.args.get('q', ''),
+            fit=request.args.get('fit', ''),
+            category=request.args.get('category', ''),
+            stage=request.args.get('stage', ''),
+        ),
+        'categories': crm.categories(),
+    }), 200
+
+
+@admin_bp.route('/prospects', methods=['POST'])
+@login_required
+@admin_required
+def prospects_create():
+    from app.services import admin_crm_service as crm
+    data = request.get_json(silent=True) or {}
+    try:
+        p = crm.create_prospect(data)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    AuditLog.log('admin_prospect_created', user_id=current_user.id, resource_id=p.id,
+                 metadata={'firm': p.firm_name})
+    db.session.commit()
+    return jsonify(p.to_dict()), 201
+
+
+@admin_bp.route('/prospects/counters', methods=['GET'])
+@login_required
+@admin_required
+def prospects_counters():
+    from app.services import admin_crm_service as crm
+    return jsonify(crm.counters()), 200
+
+
+@admin_bp.route('/prospects/queue', methods=['GET'])
+@login_required
+@admin_required
+def prospects_queue():
+    """Due-today working view. Returns cached drafts only — generating on a page
+    load would bill a Claude call per row; the briefing does the drafting."""
+    from app.services import admin_crm_service as crm
+    return jsonify({'queue': crm.due_queue()}), 200
+
+
+@admin_bp.route('/prospects/board', methods=['GET'])
+@login_required
+@admin_required
+def prospects_board():
+    from app.models.admin_prospect import AdminProspect
+    from app.services import admin_crm_service as crm
+    return jsonify({
+        'board': crm.pipeline_by_stage(),
+        'stages': [{'key': s, 'label': AdminProspect.STAGE_LABELS[s]}
+                   for s in AdminProspect.STAGES],
+    }), 200
+
+
+@admin_bp.route('/prospects/import', methods=['POST'])
+@login_required
+@admin_required
+def prospects_import():
+    """Seed the pipeline from CSV, de-duplicated by firm name + website."""
+    from app.services import admin_crm_service as crm
+    text = ''
+    upload = request.files.get('file')
+    if upload:
+        text = upload.read().decode('utf-8-sig', errors='replace')
+    else:
+        text = (request.get_json(silent=True) or {}).get('csv', '')
+    if not text.strip():
+        return jsonify({'error': 'No CSV content supplied'}), 400
+    result = crm.import_csv(text)
+    AuditLog.log('admin_prospects_imported', user_id=current_user.id,
+                 metadata={'created': result['created'], 'skipped': result['skipped']})
+    db.session.commit()
+    return jsonify(result), 200
+
+
+@admin_bp.route('/prospects/briefing/run', methods=['POST'])
+@login_required
+@admin_required
+def prospects_briefing_run():
+    """Run the morning briefing on demand — same path the scheduler uses."""
+    from app.services import admin_crm_service as crm
+    return jsonify(crm.run_morning_briefing()), 200
+
+
+@admin_bp.route('/prospects/<pid>', methods=['GET'])
+@login_required
+@admin_required
+def prospects_detail(pid):
+    return jsonify(_prospect_or_404(pid).to_dict(include_touches=True)), 200
+
+
+@admin_bp.route('/prospects/<pid>', methods=['PUT'])
+@login_required
+@admin_required
+def prospects_update(pid):
+    from app.services import admin_crm_service as crm
+    p = crm.update_prospect(_prospect_or_404(pid), request.get_json(silent=True) or {})
+    return jsonify(p.to_dict()), 200
+
+
+@admin_bp.route('/prospects/<pid>', methods=['DELETE'])
+@login_required
+@admin_required
+def prospects_delete(pid):
+    from app.services import admin_crm_service as crm
+    p = _prospect_or_404(pid)
+    firm = p.firm_name
+    crm.delete_prospect(p)
+    AuditLog.log('admin_prospect_deleted', user_id=current_user.id, resource_id=pid,
+                 metadata={'firm': firm})
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+@admin_bp.route('/prospects/<pid>/log', methods=['POST'])
+@login_required
+@admin_required
+def prospects_log_touch(pid):
+    """'Logged' — the founder sent the touch manually (FR-CRM-04)."""
+    from app.models.admin_prospect import AdminProspectTouch
+    from app.services import admin_crm_service as crm
+    data = request.get_json(silent=True) or {}
+    p = crm.log_touch(
+        _prospect_or_404(pid),
+        channel=data.get('channel') or AdminProspectTouch.CHANNEL_LINKEDIN,
+        summary=data.get('summary') or '',
+        drafted_by=data.get('drafted_by') or AdminProspectTouch.BY_MANUAL,
+    )
+    return jsonify(p.to_dict(include_touches=True)), 200
+
+
+@admin_bp.route('/prospects/<pid>/stage', methods=['POST'])
+@login_required
+@admin_required
+def prospects_set_stage(pid):
+    from app.services import admin_crm_service as crm
+    data = request.get_json(silent=True) or {}
+    try:
+        p = crm.set_stage(_prospect_or_404(pid), data.get('stage') or '',
+                          reason=data.get('reason') or '',
+                          retouch_on=data.get('retouch_on'))
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    return jsonify(p.to_dict(include_touches=True)), 200
+
+
+@admin_bp.route('/prospects/<pid>/draft', methods=['POST'])
+@login_required
+@admin_required
+def prospects_draft(pid):
+    """Generate (or regenerate) the stage-appropriate draft for one prospect."""
+    from app.services import admin_crm_service as crm
+    p = _prospect_or_404(pid)
+    text = crm.draft_touch(p, force=True)
+    if not text:
+        return jsonify({
+            'draft': '',
+            'reason': 'This stage is a waiting stage — it gets a reminder, not a draft.'
+                      if not crm.stage_rules().get(p.stage, {}).get('drafts_touch')
+                      else 'Draft generation failed — check the Claude API key and logs.',
+        }), 200
+    return jsonify({'draft': text, 'stage': p.stage}), 200
+
+
+@admin_bp.route('/prospects/<pid>/onboard', methods=['POST'])
+@login_required
+@admin_required
+def prospects_onboard(pid):
+    """Won deal → one-click ORG-001 provisioning (FR-CRM-07)."""
+    from app.services import admin_crm_service as crm
+    try:
+        org = crm.onboard_to_org(_prospect_or_404(pid), request.get_json(silent=True) or {})
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    return jsonify({'ok': True, 'org': org.to_dict()}), 201

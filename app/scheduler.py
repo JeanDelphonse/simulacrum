@@ -103,6 +103,20 @@ def _sme_rec_expiry_job(app):
     _run_with_retry(app, 'SME recommendation expiry job', _run)
 
 
+def _admin_crm_briefing_job(app):
+    """SIM-PRD-CRM-001 §3 — draft the day's outreach touches and email the founder.
+
+    Drafts and reminds only; no touch is ever sent to a prospect from here.
+    """
+    def _run():
+        from app.services.admin_crm_service import run_morning_briefing
+        result = run_morning_briefing()
+        if result.get('due'):
+            logger.info('APScheduler: outreach briefing — %d due, %d overdue, emailed=%s',
+                        result.get('due'), result.get('overdue', 0), result.get('emailed'))
+    _run_with_retry(app, 'admin outreach briefing job', _run)
+
+
 def start_scheduler(app):
     """Start the background scheduler.  Safe to call multiple times — no-ops if already running.
     If APScheduler is not installed the function logs a warning and returns — the app still starts."""
@@ -185,6 +199,20 @@ def start_scheduler(app):
         minute=30,
         args=[app],
         id='sme-rec-expiry-daily',
+        replace_existing=True,
+    )
+
+    # SIM-PRD-CRM-001: the founder-ops morning briefing. Pinned to Pacific rather
+    # than the scheduler's UTC default so it stays at 6:30 local across DST.
+    _scheduler.add_job(
+        _admin_crm_briefing_job,
+        'cron',
+        hour=6,
+        minute=30,
+        day_of_week='mon-fri',
+        timezone='America/Los_Angeles',
+        args=[app],
+        id='admin-crm-briefing',
         replace_existing=True,
     )
 

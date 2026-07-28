@@ -46,6 +46,9 @@ from app.models.sme import SimiSME, ExpertiseCategory, SmeRecommendation, SmeAcc
 from app.models.corporate import (
     CorporateAccount, CorporateEmployee, CreditRedemption, OrgInvoice, OrgSmePod,
 )
+from app.models.admin_prospect import (
+    AdminProspect, AdminProspectTouch, AdminStageRule,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -77,4 +80,5 @@ __all__ = [
     'PlatformChat', 'PlatformChatMessage',
     'SimiSME', 'ExpertiseCategory', 'SmeRecommendation', 'SmeAccessLog',
     'CorporateAccount', 'CorporateEmployee', 'CreditRedemption', 'OrgInvoice', 'OrgSmePod',
+    'AdminProspect', 'AdminProspectTouch', 'AdminStageRule',
 ]

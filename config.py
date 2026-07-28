@@ -20,6 +20,9 @@ class Config:
     # Placeholder address assigned to prospects with no verified email; sends to
     # these land in an inbox the operator controls, never a real third party.
     FALLBACK_CONTACT_EMAIL = os.environ.get('FALLBACK_CONTACT_EMAIL', 'valuemanager.management@gmail.com')
+    # Where internal founder-facing mail goes (SIM-PRD-CRM-001 outreach briefing).
+    # Deliberately separate from MAIL_DEFAULT_SENDER, which is a From address.
+    FOUNDER_EMAIL = os.environ.get('FOUNDER_EMAIL', 'simi@simulacrumai.io')
     CLAUDE_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
     CLAUDE_MODEL = 'claude-sonnet-4-6'
     ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
