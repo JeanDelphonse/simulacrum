@@ -49,6 +49,7 @@ from app.models.corporate import (
 from app.models.admin_prospect import (
     AdminProspect, AdminProspectTouch, AdminStageRule,
 )
+from app.models.discovery import DiscoveryProfile, DiscoveryCandidate
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -81,4 +82,5 @@ __all__ = [
     'SimiSME', 'ExpertiseCategory', 'SmeRecommendation', 'SmeAccessLog',
     'CorporateAccount', 'CorporateEmployee', 'CreditRedemption', 'OrgInvoice', 'OrgSmePod',
     'AdminProspect', 'AdminProspectTouch', 'AdminStageRule',
+    'DiscoveryProfile', 'DiscoveryCandidate',
 ]

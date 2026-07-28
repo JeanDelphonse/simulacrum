@@ -552,17 +552,30 @@ def run_morning_briefing(today=None) -> dict:
     prospect here — the email goes to the founder.
     """
     today = today or date.today()
+
+    # SIM-PRD-CRM-002: run any scheduled discovery profiles first, so firms found
+    # this morning are already in the queue the founder is about to read.
+    discovery = {}
+    try:
+        from app.services import discovery_service as disc
+        discovery = disc.run_scheduled()
+        discovery['awaiting_review'] = disc.counters().get('awaiting_review', 0)
+    except Exception as exc:
+        logger.warning('admin_crm briefing: discovery step failed: %s', exc)
+        discovery = {}
+
     queue = due_queue(today, draft=True)
-    if not queue:
+    if not queue and not discovery.get('auto_saved') and not discovery.get('queued'):
         logger.info('admin_crm briefing: nothing due on %s', today)
-        return {'due': 0, 'emailed': False}
+        return {'due': 0, 'emailed': False, 'discovery': discovery}
 
     overdue = [q for q in queue if q['overdue']]
-    sent = _email_briefing(queue, overdue, today)
-    return {'due': len(queue), 'overdue': len(overdue), 'emailed': sent}
+    sent = _email_briefing(queue, overdue, today, discovery)
+    return {'due': len(queue), 'overdue': len(overdue), 'emailed': sent,
+            'discovery': discovery}
 
 
-def _email_briefing(queue: list, overdue: list, today) -> bool:
+def _email_briefing(queue: list, overdue: list, today, discovery: dict = None) -> bool:
     from flask import current_app
     from app.services.email_service import _html_wrap, _h1, _p, _btn, _divider, _send
 
@@ -575,6 +588,25 @@ def _email_briefing(queue: list, overdue: list, today) -> bool:
     if overdue:
         plain.append('{} overdue.'.format(len(overdue)))
         plain.append('')
+
+    # SIM-PRD-CRM-002 FR-DSC-07: summarise what discovery turned up overnight.
+    disc_html = ''
+    d = discovery or {}
+    if d.get('profiles_run') or d.get('awaiting_review'):
+        line = '{} new prospect(s) auto-saved, {} awaiting review.'.format(
+            d.get('auto_saved', 0), d.get('awaiting_review', 0))
+        plain.insert(1, 'Discovery: ' + line)
+        plain.insert(2, '')
+        disc_html = (
+            '<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;'
+            'padding:12px 14px;margin-bottom:14px;font-size:13px;color:#0f172a;">'
+            '<strong>Discovery</strong> — {}'
+            '{}</div>'.format(
+                _esc(line),
+                ' <a href="{}/admin/contacts">Review the queue</a>'.format(base)
+                if d.get('awaiting_review') else '',
+            )
+        )
 
     rows_html = []
     for item in queue:
@@ -615,6 +647,7 @@ def _email_briefing(queue: list, overdue: list, today) -> bool:
         _p('{} prospect(s) due{}. Drafts are ready to personalise and send; '
            'click Logged in the pipeline once each one is away.'.format(
                len(queue), ', {} overdue'.format(len(overdue)) if overdue else '')) +
+        disc_html +
         ''.join(rows_html) +
         _divider() +
         _btn('{}/admin/contacts'.format(base), 'Open the pipeline'),

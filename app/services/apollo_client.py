@@ -152,6 +152,40 @@ class ApolloClient:
         data = self._post('/mixed_people/search', payload)
         return data.get('people', [])
 
+    # ── Company Search (SIM-PRD-CRM-002 FR-DSC-02) ───────────────────────────
+
+    def organization_search(
+        self,
+        keywords: list = None,
+        num_employees_ranges: list = None,
+        locations: list = None,
+        industry_tag_ids: list = None,
+        per_page: int = 25,
+        page: int = 1,
+    ) -> list:
+        """Query Apollo for COMPANIES matching firmographic filters.
+
+        Distinct from people_search: discovery needs firms, not contacts. Apollo
+        can filter by size/industry/geo but cannot judge fit — that is the Claude
+        scoring layer in discovery_service.
+
+        Returns a list of organization dicts. Apollo splits results between
+        'organizations' (its global database) and 'accounts' (records already in
+        the workspace); both are real matches, so both are returned.
+        """
+        payload = {'per_page': per_page, 'page': page}
+        if keywords:
+            payload['q_organization_keyword_tags'] = keywords
+        if num_employees_ranges:
+            payload['organization_num_employees_ranges'] = num_employees_ranges
+        if locations:
+            payload['organization_locations'] = locations
+        if industry_tag_ids:
+            payload['organization_industry_tag_ids'] = industry_tag_ids
+
+        data = self._post('/mixed_companies/search', payload)
+        return (data.get('organizations') or []) + (data.get('accounts') or [])
+
     # ── Sequence pause/cancel ─────────────────────────────────────────────────
 
     def pause_sequence(self, sequence_id: str):

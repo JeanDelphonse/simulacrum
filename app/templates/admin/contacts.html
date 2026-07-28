@@ -97,6 +97,9 @@
     <button class="ap-tab active" data-panel="due"   onclick="apTab('due')">Due today</button>
     <button class="ap-tab"        data-panel="board" onclick="apTab('board')">Pipeline</button>
     <button class="ap-tab"        data-panel="list"  onclick="apTab('list')">All prospects</button>
+    <button class="ap-tab"        data-panel="disc"  onclick="apTab('disc')">Discover
+      <span id="apDiscBadge" class="ap-badge ap-badge-overdue" style="display:none"></span>
+    </button>
   </div>
 
   <!-- ── Due today (default working view) ─────────────────────────────────── -->
@@ -136,6 +139,74 @@
       <button class="btn btn-primary" onclick="apOpenNew()">Add prospect</button>
     </div>
     <div id="apList"><div class="ap-empty">Loading…</div></div>
+  </div>
+
+  <!-- ── Discover (SIM-PRD-CRM-002) ───────────────────────────────────────── -->
+  <div class="ap-panel" id="panel-disc">
+    <div id="apApolloWarn"></div>
+
+    <div class="ap-card">
+      <div class="ap-row" style="margin-bottom:.75rem">
+        <div>
+          <p class="ap-firm" style="font-size:.95rem">Search profile</p>
+          <p class="ap-meta">Apollo filters by size and industry; Claude judges fit.
+            High-fit unflagged firms auto-save into the pipeline at Researched —
+            anything flagged as acquired, oversize or off-category always waits for you.</p>
+        </div>
+        <div><select id="dsProfile" onchange="dsSelect()"></select></div>
+      </div>
+      <div class="ap-form">
+        <div class="ap-form-2">
+          <div><label>Profile name</label><input type="text" id="dsName"></div>
+          <div><label>Geography <span class="ap-hint">(blank = US-wide)</span></label>
+            <input type="text" id="dsGeo" placeholder="e.g. San Francisco Bay Area"></div>
+        </div>
+        <div class="ap-form-2">
+          <div><label>Headcount min</label><input type="number" id="dsMin" min="1" max="10000"></div>
+          <div><label>Headcount max</label><input type="number" id="dsMax" min="1" max="10000"></div>
+        </div>
+        <div><label>Categories / industry <span class="ap-hint">(comma separated)</span></label>
+          <input type="text" id="dsCats" placeholder="management consulting, fractional executive"></div>
+        <div class="ap-form-2">
+          <div><label>Positive keywords</label><input type="text" id="dsPos"
+               placeholder="fractional, boutique, advisory"></div>
+          <div><label>Negative keywords</label><input type="text" id="dsNeg"
+               placeholder="staffing, recruiting, franchise"></div>
+        </div>
+        <div class="ap-form-2">
+          <div><label>Auto-save</label>
+            <select id="dsThreshold">
+              <option value="high">High fit only (default)</option>
+              <option value="none">Nothing — review everything</option>
+            </select>
+          </div>
+          <div><label>Schedule</label>
+            <select id="dsSchedule">
+              <option value="">On demand only</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+        </div>
+        <div><label>Batch cap <span class="ap-hint">(companies per run — bounds Apollo credits)</span></label>
+          <input type="number" id="dsCap" min="1" max="200"></div>
+        <div class="ap-actions">
+          <button class="btn btn-primary" onclick="dsRun(this)">Discover now</button>
+          <button class="btn btn-sec" onclick="dsSave(this)">Save profile</button>
+          <button class="btn btn-sec" onclick="dsNew()">New profile</button>
+          <span class="spacer"></span>
+          <button class="btn btn-danger" onclick="dsDelete()">Delete</button>
+        </div>
+        <div id="dsEstimate" class="ap-hint"></div>
+        <div id="dsRunResult" class="ap-hint"></div>
+      </div>
+    </div>
+
+    <div class="ap-row" style="margin:1.25rem 0 .6rem">
+      <p class="ap-firm" style="font-size:.95rem">Review queue <span id="dsQueueCount"
+         class="ap-hint" style="font-weight:400"></span></p>
+    </div>
+    <div id="dsQueue"><div class="ap-empty">Loading…</div></div>
   </div>
 </div>
 
@@ -239,6 +310,7 @@ function apTab(name) {
     p.classList.toggle('active', p.id === 'panel-' + name));
   if (name === 'board') apLoadBoard();
   if (name === 'list')  apLoadList();
+  if (name === 'disc')  dsLoad();
 }
 function apClose(id) { document.getElementById(id).classList.remove('open'); }
 function apOpen(id)  { document.getElementById(id).classList.add('open'); }
@@ -589,6 +661,212 @@ async function apImport(btn) {
   btn.disabled = false;
 }
 
+// ── Discover (SIM-PRD-CRM-002) ──────────────────────────────────────────────
+const DS_API = '/api/admin/discovery';
+let dsProfiles = [], dsCurrent = null;
+
+async function dsApi(path, opts) {
+  const r = await fetch(DS_API + path, Object.assign({
+    headers: {'Content-Type': 'application/json'},
+  }, opts || {}));
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || ('Request failed (' + r.status + ')'));
+  return body;
+}
+function dsFill(p) {
+  dsCurrent = p;
+  document.getElementById('dsName').value = p ? p.name : '';
+  document.getElementById('dsGeo').value  = p ? (p.geography || '') : '';
+  document.getElementById('dsMin').value  = p ? p.headcount_min : 5;
+  document.getElementById('dsMax').value  = p ? p.headcount_max : 25;
+  document.getElementById('dsCats').value = p ? (p.categories || []).join(', ') : '';
+  document.getElementById('dsPos').value  = p ? (p.keywords_pos || []).join(', ') : '';
+  document.getElementById('dsNeg').value  = p ? (p.keywords_neg || []).join(', ') : '';
+  document.getElementById('dsThreshold').value = p ? p.auto_save_threshold : 'high';
+  document.getElementById('dsSchedule').value  = p ? (p.schedule || '') : '';
+  document.getElementById('dsCap').value = p ? p.batch_cap : 50;
+  document.getElementById('dsEstimate').textContent = '';
+  document.getElementById('dsRunResult').textContent = '';
+  if (p) dsEstimate();
+}
+function dsSelect() {
+  const id = document.getElementById('dsProfile').value;
+  dsFill(dsProfiles.find(p => p.id === id) || null);
+}
+function dsNew() {
+  document.getElementById('dsProfile').value = '';
+  dsFill(null);
+  document.getElementById('dsName').focus();
+}
+function dsBody() {
+  return {
+    name: document.getElementById('dsName').value,
+    geography: document.getElementById('dsGeo').value,
+    headcount_min: document.getElementById('dsMin').value,
+    headcount_max: document.getElementById('dsMax').value,
+    categories: document.getElementById('dsCats').value,
+    keywords_pos: document.getElementById('dsPos').value,
+    keywords_neg: document.getElementById('dsNeg').value,
+    auto_save_threshold: document.getElementById('dsThreshold').value,
+    schedule: document.getElementById('dsSchedule').value,
+    batch_cap: document.getElementById('dsCap').value,
+  };
+}
+async function dsLoad() {
+  try {
+    const data = await dsApi('/profiles');
+    dsProfiles = data.profiles || [];
+    const sel = document.getElementById('dsProfile');
+    const keep = dsCurrent ? dsCurrent.id : (dsProfiles[0] || {}).id;
+    sel.innerHTML = '<option value="">— new profile —</option>' +
+      dsProfiles.map(p => '<option value="' + p.id + '">' + esc(p.name) + '</option>').join('');
+    if (keep) { sel.value = keep; }
+    dsFill(dsProfiles.find(p => p.id === sel.value) || null);
+
+    const warn = document.getElementById('apApolloWarn');
+    warn.innerHTML = data.apollo_connected ? '' :
+      '<div class="ap-card" style="border-color:#fed7aa;background:#fffbeb">' +
+      '<strong style="font-size:.9rem;color:#92400e">Apollo is not connected.</strong>' +
+      '<p class="ap-meta" style="margin-top:.3rem">Discovery needs Apollo for the ' +
+      'firmographic search — web scraping is neither clean nor permissible for this. ' +
+      '<a href="/settings/integrations?connect=apollo">Connect Apollo</a> to run it.</p></div>';
+  } catch (e) {
+    document.getElementById('apApolloWarn').innerHTML =
+      '<div class="ap-empty">Could not load profiles: ' + esc(e.message) + '</div>';
+  }
+  await dsLoadQueue();
+}
+async function dsEstimate() {
+  if (!dsCurrent) return;
+  try {
+    const est = await dsApi('/profiles/' + dsCurrent.id + '/estimate');
+    document.getElementById('dsEstimate').textContent =
+      'Estimated cost for a full run: up to ' + est.apollo_credits_estimate +
+      ' Apollo credits (' + est.batch_cap + ' companies), ' +
+      est.scoring_calls_estimate + ' scoring call(s) on ' + est.scorer_model + '.';
+  } catch (e) { /* estimate is advisory */ }
+}
+async function dsSave(btn) {
+  const name = document.getElementById('dsName').value.trim();
+  if (!name) { toast('Profile name is required'); return; }
+  btn.disabled = true;
+  try {
+    if (dsCurrent) await dsApi('/profiles/' + dsCurrent.id, {method: 'PUT', body: JSON.stringify(dsBody())});
+    else {
+      const p = await dsApi('/profiles', {method: 'POST', body: JSON.stringify(dsBody())});
+      dsCurrent = p;
+    }
+    toast('Profile saved');
+    await dsLoad();
+  } catch (e) { toast(e.message); }
+  btn.disabled = false;
+}
+async function dsDelete() {
+  if (!dsCurrent) { toast('Nothing to delete'); return; }
+  if (!confirm('Delete the profile "' + dsCurrent.name + '"? Discovered firms and the ' +
+               'dedup memory are kept.')) return;
+  try {
+    await dsApi('/profiles/' + dsCurrent.id, {method: 'DELETE'});
+    dsCurrent = null; toast('Profile deleted'); await dsLoad();
+  } catch (e) { toast(e.message); }
+}
+async function dsRun(btn) {
+  if (!dsCurrent) { toast('Save the profile first'); return; }
+  const cap = document.getElementById('dsCap').value;
+  if (!confirm('Run discovery for "' + dsCurrent.name + '"? This spends Apollo credits ' +
+               '(up to ' + cap + ' companies).')) return;
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Discovering…';
+  const out = document.getElementById('dsRunResult');
+  out.textContent = 'Querying Apollo, scoring for fit…';
+  try {
+    const r = await dsApi('/profiles/' + dsCurrent.id + '/run', {method: 'POST', body: JSON.stringify({})});
+    out.innerHTML = 'Found <strong>' + r.found + '</strong> · scored ' + r.scored +
+      ' · auto-saved <strong>' + r.auto_saved + '</strong> into the pipeline · ' +
+      r.queued + ' awaiting review · ' + r.skipped + ' already known.' +
+      (r.note ? '<br>' + esc(r.note) : '');
+    toast(r.auto_saved + ' auto-saved, ' + r.queued + ' to review');
+    await apRefresh();
+  } catch (e) { out.textContent = e.message; }
+  btn.disabled = false; btn.textContent = old;
+}
+async function dsLoadQueue() {
+  const host = document.getElementById('dsQueue');
+  try {
+    const data = await dsApi('/queue');
+    const c = data.counters || {};
+    document.getElementById('dsQueueCount').textContent =
+      (c.awaiting_review || 0) + ' awaiting · ' + (c.flagged || 0) + ' flagged · ' +
+      (c.saved || 0) + ' saved · ' + (c.dismissed || 0) + ' dismissed';
+    const badge = document.getElementById('apDiscBadge');
+    if (c.awaiting_review) { badge.style.display = ''; badge.textContent = c.awaiting_review; }
+    else badge.style.display = 'none';
+
+    if (!data.queue.length) {
+      host.innerHTML = '<div class="ap-empty">Review queue is empty. ' +
+        'Run a profile to discover firms.</div>';
+      return;
+    }
+    host.innerHTML = data.queue.map(dsCard).join('');
+  } catch (e) {
+    host.innerHTML = '<div class="ap-empty">Could not load the queue: ' + esc(e.message) + '</div>';
+  }
+}
+function dsCard(c) {
+  const flagged = (c.flags || []).length > 0;
+  return '<div class="ap-card' + (flagged ? ' overdue' : '') + '">' +
+    '<div class="ap-row"><div>' +
+      '<p class="ap-firm">' + esc(c.company) + '</p>' +
+      '<p class="ap-meta">' +
+        '<span class="ap-badge ap-badge-' + esc(c.fit || 'low') + '">' +
+          esc(c.fit || '?') + ' fit</span> ' +
+        (c.flag_labels || []).map(f =>
+          '<span class="ap-badge ap-badge-overdue">' + esc(f) + '</span>').join(' ') +
+        ' ' + esc(c.domain) +
+        (c.headcount ? ' · ' + c.headcount + ' staff' : '') +
+        (c.industry ? ' · ' + esc(c.industry) : '') +
+        (c.location ? ' · ' + esc(c.location) : '') +
+      '</p>' +
+      (c.leader_name ? '<p class="ap-meta">Leader: ' + esc(c.leader_name) + '</p>' : '') +
+      (c.signal ? '<p class="ap-meta">Signal: ' + esc(c.signal) + '</p>' : '') +
+    '</div><div>' +
+      '<a class="btn btn-sec" target="_blank" rel="noopener" href="https://' +
+        esc(c.domain) + '">Visit ↗</a>' +
+    '</div></div>' +
+    (c.rationale ? '<div class="ap-draft">' + esc(c.rationale) + '</div>'
+                 : '<div class="ap-draft-empty">Not scored — the scorer was ' +
+                   'unavailable, so this is held for review rather than auto-saved.</div>') +
+    '<div class="ap-actions">' +
+      '<button class="btn btn-primary" onclick="dsApprove(\'' + c.id +
+        '\', this)">Approve → Researched</button>' +
+      '<button class="btn btn-sec" onclick="dsEnrich(\'' + c.id + '\', this)">Enrich</button>' +
+      '<button class="btn btn-sec" onclick="dsDismiss(\'' + c.id + '\', this)">Dismiss</button>' +
+    '</div></div>';
+}
+async function dsApprove(cid, btn) {
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await dsApi('/candidates/' + cid + '/approve', {method: 'POST'});
+    toast('Added to the pipeline at Researched');
+    await apRefresh();
+  } catch (e) { toast(e.message); btn.disabled = false; }
+}
+async function dsDismiss(cid, btn) {
+  btn.disabled = true;
+  try {
+    await dsApi('/candidates/' + cid + '/dismiss', {method: 'POST'});
+    toast('Dismissed — it will not be surfaced again');
+    await dsLoadQueue();
+  } catch (e) { toast(e.message); btn.disabled = false; }
+}
+async function dsEnrich(cid, btn) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Searching…';
+  try {
+    const r = await dsApi('/candidates/' + cid + '/enrich', {method: 'POST'});
+    toast(r.enriched ? 'Enriched' : 'Nothing found — enrichment is best-effort');
+    await dsLoadQueue();
+  } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = old; }
+}
+
 // ── Boot ────────────────────────────────────────────────────────────────────
 async function apRefresh() {
   await apLoadCounters();
@@ -596,6 +874,8 @@ async function apRefresh() {
   const active = document.querySelector('.ap-tab.active');
   if (active && active.dataset.panel === 'board') await apLoadBoard();
   if (active && active.dataset.panel === 'list')  await apLoadList();
+  if (active && active.dataset.panel === 'disc')  await dsLoad();
+  else await dsLoadQueue();   // keeps the Discover tab badge current
 }
 apRefresh();
 </script>

@@ -2194,3 +2194,184 @@ def prospects_onboard(pid):
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
     return jsonify({'ok': True, 'org': org.to_dict()}), 201
+
+
+# ── SIM-PRD-CRM-002: Prospect Discovery Agent ────────────────────────────────
+#
+# Feeds the CRM-001 pipeline. Admin-only, like the pipeline itself.
+
+@admin_bp.route('/discovery/profiles', methods=['GET'])
+@login_required
+@admin_required
+def discovery_profiles_list():
+    from app.models.discovery import DiscoveryProfile
+    from app.services import discovery_service as disc
+    rows = DiscoveryProfile.query.order_by(DiscoveryProfile.created_at.asc()).all()
+    return jsonify({
+        'profiles': [p.to_dict() for p in rows],
+        'apollo_connected': disc.apollo_available(current_user.id),
+        'counters': disc.counters(),
+    }), 200
+
+
+@admin_bp.route('/discovery/profiles', methods=['POST'])
+@login_required
+@admin_required
+def discovery_profile_create():
+    from app.models.discovery import DiscoveryProfile
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    p = DiscoveryProfile(name=name[:120])
+    _apply_profile_fields(p, data)
+    db.session.add(p)
+    db.session.commit()
+    return jsonify(p.to_dict()), 201
+
+
+@admin_bp.route('/discovery/profiles/<pid>', methods=['PUT'])
+@login_required
+@admin_required
+def discovery_profile_update(pid):
+    from app.models.discovery import DiscoveryProfile
+    p = DiscoveryProfile.query.get_or_404(pid)
+    data = request.get_json(silent=True) or {}
+    if 'name' in data and (data.get('name') or '').strip():
+        p.name = data['name'].strip()[:120]
+    _apply_profile_fields(p, data)
+    db.session.commit()
+    return jsonify(p.to_dict()), 200
+
+
+@admin_bp.route('/discovery/profiles/<pid>', methods=['DELETE'])
+@login_required
+@admin_required
+def discovery_profile_delete(pid):
+    from app.models.discovery import DiscoveryProfile
+    p = DiscoveryProfile.query.get_or_404(pid)
+    db.session.delete(p)
+    db.session.commit()
+    return jsonify({'ok': True}), 200
+
+
+def _apply_profile_fields(p, data):
+    """Shared field coercion for profile create/update."""
+    from app.models.discovery import DiscoveryProfile
+
+    def as_list(v):
+        if isinstance(v, list):
+            return [str(x).strip() for x in v if str(x).strip()]
+        if isinstance(v, str):
+            return [s.strip() for s in v.replace(',', '\n').split('\n') if s.strip()]
+        return None
+
+    for field in ('categories', 'keywords_pos', 'keywords_neg'):
+        if field in data:
+            setattr(p, field, as_list(data.get(field)) or [])
+    if 'geography' in data:
+        p.geography = (data.get('geography') or '').strip() or None
+    for field, lo, hi in (('headcount_min', 1, 10000), ('headcount_max', 1, 10000)):
+        if field in data:
+            try:
+                setattr(p, field, max(lo, min(hi, int(data[field]))))
+            except (TypeError, ValueError):
+                pass
+    if p.headcount_max < p.headcount_min:
+        p.headcount_min, p.headcount_max = p.headcount_max, p.headcount_min
+    if data.get('auto_save_threshold') in DiscoveryProfile.THRESHOLDS:
+        p.auto_save_threshold = data['auto_save_threshold']
+    if 'batch_cap' in data:
+        try:
+            p.batch_cap = max(1, min(200, int(data['batch_cap'])))
+        except (TypeError, ValueError):
+            pass
+    if 'schedule' in data:
+        sched = data.get('schedule')
+        p.schedule = sched if sched in DiscoveryProfile.SCHEDULES else None
+
+
+@admin_bp.route('/discovery/profiles/<pid>/estimate', methods=['GET'])
+@login_required
+@admin_required
+def discovery_estimate(pid):
+    """Pre-run Apollo credit estimate, shown before a large run (FR-DSC-07)."""
+    from app.models.discovery import DiscoveryProfile
+    from app.services import discovery_service as disc
+    p = DiscoveryProfile.query.get_or_404(pid)
+    limit = request.args.get('limit', type=int)
+    return jsonify(disc.estimate_run(p, limit)), 200
+
+
+@admin_bp.route('/discovery/profiles/<pid>/run', methods=['POST'])
+@login_required
+@admin_required
+def discovery_run(pid):
+    from app.models.discovery import DiscoveryProfile
+    from app.services import discovery_service as disc
+    p = DiscoveryProfile.query.get_or_404(pid)
+    data = request.get_json(silent=True) or {}
+    result = disc.run_discovery(
+        p, current_user.id,
+        limit=data.get('limit'),
+        enrich=bool(data.get('enrich', True)),
+    )
+    if result.get('error'):
+        return jsonify(result), 400
+    AuditLog.log('discovery_run', user_id=current_user.id, resource_id=p.id,
+                 metadata={k: result.get(k) for k in
+                           ('found', 'auto_saved', 'queued', 'skipped')})
+    db.session.commit()
+    return jsonify(result), 200
+
+
+@admin_bp.route('/discovery/queue', methods=['GET'])
+@login_required
+@admin_required
+def discovery_queue():
+    from app.services import discovery_service as disc
+    return jsonify({'queue': disc.review_queue(), 'counters': disc.counters()}), 200
+
+
+@admin_bp.route('/discovery/candidates/<cid>/approve', methods=['POST'])
+@login_required
+@admin_required
+def discovery_approve(cid):
+    """One-tap approve — enters the pipeline at 'Researched' (FR-DSC-05)."""
+    from app.models.discovery import DiscoveryCandidate
+    from app.services import discovery_service as disc
+    c = DiscoveryCandidate.query.get_or_404(cid)
+    if c.status == DiscoveryCandidate.STATUS_SAVED and c.prospect_id:
+        return jsonify({'ok': True, 'prospect_id': c.prospect_id}), 200
+    p = disc.save_candidate(c)
+    AuditLog.log('discovery_candidate_approved', user_id=current_user.id,
+                 resource_id=c.id, metadata={'firm': c.company, 'prospect_id': p.id})
+    db.session.commit()
+    return jsonify({'ok': True, 'prospect_id': p.id, 'candidate': c.to_dict()}), 201
+
+
+@admin_bp.route('/discovery/candidates/<cid>/dismiss', methods=['POST'])
+@login_required
+@admin_required
+def discovery_dismiss(cid):
+    """Dismissed firms are remembered so discovery never re-surfaces them."""
+    from app.models.discovery import DiscoveryCandidate
+    from app.services import discovery_service as disc
+    c = DiscoveryCandidate.query.get_or_404(cid)
+    disc.dismiss_candidate(c)
+    AuditLog.log('discovery_candidate_dismissed', user_id=current_user.id,
+                 resource_id=c.id, metadata={'firm': c.company})
+    db.session.commit()
+    return jsonify({'ok': True, 'candidate': c.to_dict()}), 200
+
+
+@admin_bp.route('/discovery/candidates/<cid>/enrich', methods=['POST'])
+@login_required
+@admin_required
+def discovery_enrich(cid):
+    """Best-effort leader + recent-signal lookup (FR-DSC-06)."""
+    from app.models.discovery import DiscoveryCandidate
+    from app.services import discovery_service as disc
+    c = DiscoveryCandidate.query.get_or_404(cid)
+    found = disc.enrich_candidate(c)
+    return jsonify({'ok': True, 'enriched': found, 'candidate': c.to_dict()}), 200
