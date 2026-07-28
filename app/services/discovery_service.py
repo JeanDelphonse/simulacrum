@@ -47,13 +47,56 @@ def apollo_available(user_id: str) -> bool:
 
 def _apollo_client(user_id: str):
     from app.models.integration import UserIntegration
-    from app.services.token_crypto import decrypt_token
     from app.services.apollo_client import ApolloClient
 
     rec = UserIntegration.query.filter_by(user_id=user_id, provider='apollo').first()
     if not rec or not rec.access_token_enc:
         return None
-    return ApolloClient(decrypt_token(rec.access_token_enc))
+    # An OAuth token must go out as a Bearer header; sending it as X-Api-Key gets
+    # a 403, not a 401, which is easy to misread as a plan restriction. Presence of
+    # a refresh token is how the rest of the app distinguishes the two.
+    auth_type = 'oauth' if rec.refresh_token_enc else 'api_key'
+    return ApolloClient(rec.decrypt_access_token(), auth_type=auth_type)
+
+
+def _apollo_error(exc) -> str:
+    """Turn an Apollo HTTP failure into something actionable.
+
+    A bare "403 Forbidden" is ambiguous: it covers a plan that does not include
+    company search, an OAuth token missing a read scope, and a revoked key. Apollo
+    puts the reason in the response body, so surface it.
+    """
+    resp = getattr(exc, 'response', None)
+    status = getattr(resp, 'status_code', None)
+    detail = ''
+    if resp is not None:
+        try:
+            body = resp.json()
+            detail = str(body.get('error') or body.get('message')
+                         or body.get('error_message') or body)[:300]
+        except Exception:
+            detail = (getattr(resp, 'text', '') or '')[:300]
+
+    if status == 403:
+        return (
+            'Apollo returned 403 Forbidden for company search. '
+            'Apollo gates its Organization/Company Search endpoint by plan, and the '
+            'OAuth scopes this app requests ({}) are all write scopes with no search '
+            'access — so an OAuth-connected account cannot run it. Connect Apollo '
+            'with a master API key on a plan that includes company search. '
+            'Apollo said: {}'.format(APOLLO_SCOPES_NOTE, detail or '(no detail)')
+        )
+    if status in (401, 419):
+        return ('Apollo rejected the credentials ({}). Reconnect Apollo in '
+                'Settings / Integrations. Apollo said: {}'.format(status, detail))
+    if status == 429:
+        return ('Apollo rate limit or credit cap reached. Apollo said: {}'.format(detail))
+    return 'Apollo search failed{}: {}'.format(
+        ' ({})'.format(status) if status else '', detail or exc)
+
+
+APOLLO_SCOPES_NOTE = ('sequences:write, contacts:write, emailer_campaigns:write, '
+                      'webhooks:write')
 
 
 def _norm_domain(v: str) -> str:
@@ -309,7 +352,7 @@ def run_discovery(profile, user_id: str, limit: int = None, enrich: bool = True)
     except Exception as exc:
         logger.warning('discovery: Apollo search failed: %s', exc)
         if not raw:
-            return {'error': 'Apollo search failed: {}'.format(exc),
+            return {'error': _apollo_error(exc),
                     'found': 0, 'scored': 0, 'auto_saved': 0, 'queued': 0, 'skipped': 0}
 
     # ── Normalise + dedup ─────────────────────────────────────────────────────
