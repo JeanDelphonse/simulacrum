@@ -450,9 +450,9 @@ def save_candidate(cand, commit: bool = True, category: str = None):
         if existing:
             return existing
 
+    # The rationale is a first-class column, so notes carries only what has no
+    # field of its own — no duplication between the two.
     note_parts = []
-    if cand.rationale:
-        note_parts.append('Discovery fit ({}): {}'.format(cand.fit, cand.rationale))
     if cand.signal:
         note_parts.append('Signal: {}'.format(cand.signal))
     if cand.headcount:
@@ -470,6 +470,8 @@ def save_candidate(cand, commit: bool = True, category: str = None):
         category=(category or cand.industry or None),
         stage=AdminProspect.STAGE_RESEARCHED,
         notes='\n'.join(note_parts) or None,
+        discovery_rationale=cand.rationale,
+        discovery_fit=cand.fit,
     )
     # Researched stage is due immediately, so the next briefing drafts Touch 1.
     p.next_followup = crm._followup_from(AdminProspect.STAGE_RESEARCHED)

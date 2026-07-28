@@ -31,6 +31,12 @@
 .ap-draft { margin-top:.8rem; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:.75rem .85rem; font-size:.85rem; line-height:1.6; color:#111827; white-space:pre-wrap; }
 .ap-draft-empty { margin-top:.8rem; font-size:.82rem; color:#6b7280; font-style:italic; }
 .ap-draft-count { font-size:.7rem; color:#6b7280; margin-top:.35rem; }
+/* Discovery fit rationale (CRM-002 FR-DSC-03) */
+.ap-why { font-size:.8rem; line-height:1.5; color:#334155; margin:.45rem 0 0;
+  background:#f0fdfa; border-left:3px solid #0d9488; border-radius:0 6px 6px 0;
+  padding:.4rem .6rem; max-width:78ch; }
+.ap-why-label { font-size:.66rem; font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em; color:#0f766e; }
 .ap-actions { display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.75rem; }
 .ap-toolbar { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem; }
 .ap-toolbar input[type=text], .ap-toolbar select, .ap-form input, .ap-form select, .ap-form textarea {
@@ -359,6 +365,15 @@ function apQueueCard(item) {
         ? 'No draft cached yet — run the briefing, or generate one now.'
         : 'Waiting stage: this one needs a nudge, not a new message.') + '</div>';
 
+  // FR-DSC-03: why discovery surfaced this firm, shown wherever it appears — so
+  // the founder never has to open a record to find out why it is in the pipeline.
+  const why = p.discovery_rationale
+    ? '<p class="ap-why"><span class="ap-why-label">Why this firm</span>' +
+      (p.discovery_fit ? ' <span class="ap-badge ap-badge-' + esc(p.discovery_fit) +
+        '">' + esc(p.discovery_fit) + ' fit</span>' : '') +
+      ' ' + esc(p.discovery_rationale) + '</p>'
+    : '';
+
   return '<div class="ap-card' + (item.overdue ? ' overdue' : '') + '">' +
     '<div class="ap-row"><div>' +
       '<p class="ap-firm">' + esc(p.firm_name) + '</p>' +
@@ -368,6 +383,7 @@ function apQueueCard(item) {
         (p.lead_name ? esc(p.lead_name) + ' · ' : '') +
         'due ' + esc(p.next_followup || '—') +
       '</p>' +
+      why +
     '</div><div>' +
       (p.lead_linkedin ? '<a class="btn btn-sec" target="_blank" rel="noopener" href="' +
         esc(p.lead_linkedin) + '">Open LinkedIn ↗</a>' : '') +
@@ -466,7 +482,7 @@ async function apLoadList() {
     }
     host.innerHTML = '<table class="ap-table"><thead><tr>' +
       '<th>Firm</th><th>Lead</th><th>Stage</th><th>Fit</th><th>Category</th>' +
-      '<th>Next follow-up</th><th>Touches</th></tr></thead><tbody>' +
+      '<th>Next follow-up</th><th>Touches</th><th>Why this firm</th></tr></thead><tbody>' +
       data.prospects.map(p =>
         '<tr onclick="apDetail(\'' + p.id + '\')">' +
         '<td><strong>' + esc(p.firm_name) + '</strong></td>' +
@@ -476,7 +492,12 @@ async function apLoadList() {
         '<td>' + esc(p.category || '—') + '</td>' +
         '<td' + (p.is_overdue ? ' style="color:#b91c1c;font-weight:600"' : '') + '>' +
           esc(p.next_followup || '—') + '</td>' +
-        '<td>' + (p.touch_count || 0) + '</td></tr>').join('') +
+        '<td>' + (p.touch_count || 0) + '</td>' +
+        '<td class="ap-hint" title="' + esc(p.discovery_rationale || '') + '">' +
+          (p.discovery_rationale
+            ? esc(p.discovery_rationale).slice(0, 90) +
+              (p.discovery_rationale.length > 90 ? '…' : '')
+            : '—') + '</td></tr>').join('') +
       '</tbody></table>';
   } catch (e) {
     host.innerHTML = '<div class="ap-empty">Could not load prospects: ' + esc(e.message) + '</div>';
@@ -495,6 +516,12 @@ async function apDetail(pid) {
       esc(s.label) + '</option>').join('');
     host.innerHTML =
       '<h3>' + esc(p.firm_name) + '</h3>' +
+      (p.discovery_rationale
+        ? '<p class="ap-why"><span class="ap-why-label">Why this firm</span>' +
+          (p.discovery_fit ? ' <span class="ap-badge ap-badge-' + esc(p.discovery_fit) +
+            '">' + esc(p.discovery_fit) + ' fit at discovery</span>' : '') +
+          ' ' + esc(p.discovery_rationale) + '</p>'
+        : '') +
       '<div class="ap-form">' +
         '<div class="ap-form-2">' +
           '<div><label>Lead</label><input type="text" id="edLead" value="' +

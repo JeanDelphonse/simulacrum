@@ -75,6 +75,12 @@ class AdminProspect(db.Model):
     )
     passed_reason = db.Column(db.String(200), nullable=True)
     retouch_on = db.Column(db.Date, nullable=True)
+    # SIM-PRD-CRM-002 FR-DSC-03 — why discovery surfaced this firm. Kept separate
+    # from notes so it can be shown on the queue cards without being tangled up
+    # with the founder's own notes. discovery_fit records the fit at discovery
+    # time, so it survives the founder later editing `fit` by hand.
+    discovery_rationale = db.Column(db.Text, nullable=True)
+    discovery_fit = db.Column(db.String(10), nullable=True)
     # Cached draft from the last briefing, so opening the tab does not re-bill a
     # Claude call for every prospect on every page load.
     draft_text = db.Column(db.Text, nullable=True)
@@ -126,6 +132,8 @@ class AdminProspect(db.Model):
             'won_org_id': self.won_org_id,
             'passed_reason': self.passed_reason,
             'retouch_on': self.retouch_on.isoformat() if self.retouch_on else None,
+            'discovery_rationale': self.discovery_rationale,
+            'discovery_fit': self.discovery_fit,
             'draft_text': self.draft_text,
             'draft_for_stage': self.draft_for_stage,
             'is_active': self.is_active,
