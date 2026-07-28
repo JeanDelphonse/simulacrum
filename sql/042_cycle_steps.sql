@@ -6,8 +6,9 @@
 -- by hand, so on any database that has not run Alembic the column is missing and
 -- layer6._execute_orchestrator_cycle fails when it assigns cycle.cycle_steps.
 --
--- SQLite has no ADD COLUMN IF NOT EXISTS. If the column already exists this statement
--- errors with "duplicate column name: cycle_steps" — that error is safe to ignore and
--- means the database is already up to date.
+-- MySQL has no ADD COLUMN IF NOT EXISTS. If the column already exists this errors
+-- with #1060 "Duplicate column name: cycle_steps" — safe to ignore, it just means
+-- the database is already up to date.
 
-ALTER TABLE layer6_cycles ADD COLUMN cycle_steps TEXT;
+ALTER TABLE layer6_cycles
+    ADD COLUMN cycle_steps TEXT NULL COMMENT 'JSON array of self-serve to-do strings';
