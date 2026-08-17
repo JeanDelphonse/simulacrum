@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='simi_logo.jpg') }}">
+  <link rel="icon" type="image/jpeg" href="https://simulacrumai.io/static/simi_logo.jpg">
   <title>Simulacrum — See the five ways your career becomes wealth, before you live any of them.</title>
   <meta name="description" content="Simulacrum reads your resume, simulates your next 24 months across five layers of income, and deploys 49 AI agents to execute the path you choose. Calibrated projections with their sources. Free bio page forever.">
   <link rel="canonical" href="https://simulacrumai.io">
@@ -529,23 +529,10 @@
     </div>
     <div class="lp-nav-ctas">
       <button class="btn btn-ghost-dk" id="videoDemoBtn" type="button" style="font-size:14px;padding:9px 16px;">Watch Demo</button>
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('pages.dashboard') }}" class="btn btn-teal" style="font-size:14px;padding:9px 16px;">Go to Dashboard</a>
-      <div class="user-menu" id="userMenu">
-        <button class="user-menu-btn" type="button" onclick="toggleUserMenu(event)">
-          <span class="um-name">{{ current_user.full_name or current_user.email }}</span>
-          <span class="um-chevron">▾</span>
-        </button>
-        <div class="user-menu-dropdown">
-          <a href="/settings">Settings</a>
-          <div class="um-divider"></div>
-          <button class="um-item um-signout" type="button" onclick="signOut()">Sign out</button>
-        </div>
-      </div>
-      {% else %}
-      <a href="{{ url_for('pages.login_page') }}"    class="btn btn-outline" style="font-size:14px;padding:9px 16px;">Log in</a>
-      <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal"   style="font-size:14px;padding:9px 16px;">Get started free</a>
-      {% endif %}
+      
+      <a href="/login"    class="btn btn-outline" style="font-size:14px;padding:9px 16px;">Log in</a>
+      <a href="/register" class="btn btn-teal"   style="font-size:14px;padding:9px 16px;">Get started free</a>
+      
     </div>
     <button class="lp-hamburger" id="lpHamburger" aria-label="Open menu">
       <span></span><span></span><span></span>
@@ -557,14 +544,10 @@
     <a href="#proof"        class="lp-mob-link">Why trust it</a>
     <a href="#pricing"      class="lp-mob-link">Pricing</a>
     <div class="lp-mob-ctas">
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('pages.dashboard') }}" class="btn btn-teal">Go to Dashboard</a>
-      <a href="/settings" class="lp-mob-link" style="margin-top:4px;">Settings</a>
-      <button onclick="signOut()" class="lp-mob-link" type="button" style="background:none;border:none;cursor:pointer;color:#dc2626;text-align:left;padding:8px 0;width:100%;font-size:inherit;font-family:inherit;">Sign out</button>
-      {% else %}
-      <a href="{{ url_for('pages.login_page') }}"    class="btn btn-outline">Log in</a>
-      <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal">Get started free</a>
-      {% endif %}
+      
+      <a href="/login"    class="btn btn-outline">Log in</a>
+      <a href="/register" class="btn btn-teal">Get started free</a>
+      
     </div>
   </div>
 </nav>
@@ -585,8 +568,8 @@
       <h1 class="hero-h1">See the five ways your career becomes wealth — <em>before you live any of them.</em></h1>
       <p class="hero-sub">Simulacrum reads your resume, simulates your next twenty-four months across five layers of income, and deploys forty-nine AI agents to execute the path you choose. Run the decision forward before you commit a single real month to it.</p>
       <div class="hero-ctas">
-        <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold">Run your first simulation</a>
-        <a href="{{ url_for('pages.register_page') }}" class="btn btn-ghost">Get your free bio page →</a>
+        <a href="/register" class="btn btn-gold">Run your first simulation</a>
+        <a href="/register" class="btn btn-ghost">Get your free bio page →</a>
       </div>
       <div class="hero-trust">
         <span>Free bio page forever</span>
@@ -598,35 +581,7 @@
       <div class="hero-tagline">“See the consequences before you live them.”</div>
     </div>
     <!-- Live user bio cards -->
-    {% if hero_cards %}
-    <div class="hero-cards-grid">
-      {% for c in hero_cards %}
-      <a class="hc" href="/u/{{ c.slug }}">
-        <div class="card-top">
-          {% if c.avatar_path %}
-          <img class="card-avatar" src="{{ url_for('public.serve_avatar', filename=c.avatar_path) }}" alt="{{ c.display_name }}" loading="lazy">
-          {% else %}
-          <div class="card-avatar-placeholder">{{ c.display_name[0]|upper if c.display_name else '?' }}</div>
-          {% endif %}
-          <div class="card-meta">
-            <div class="card-name">{{ c.display_name }}</div>
-            <div class="card-zone">{{ c.category }}</div>
-          </div>
-        </div>
-        {% if c.tagline %}<p class="card-tagline">{{ c.tagline }}</p>{% endif %}
-        <div class="card-footer">
-          {% if c.like_count %}
-          <span class="card-like">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            {{ c.like_count }}
-          </span>
-          {% else %}<span></span>{% endif %}
-          <span class="card-link">View Bio →</span>
-        </div>
-      </a>
-      {% endfor %}
-    </div>
-    {% endif %}
+    
   </div>
 </section>
 
@@ -775,7 +730,7 @@
           <span>Booking</span>
         </div>
         <div style="margin-top:24px;" class="fade-up">
-          <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold">Get your free bio page</a>
+          <a href="/register" class="btn btn-gold">Get your free bio page</a>
         </div>
       </div>
       <div class="mock-bio fade-up d2" aria-hidden="true">
@@ -798,23 +753,9 @@
     <div class="bss-wrap">
       <div class="bss-inner">
         <span class="bss-label">On Simulacrum</span>
-        {% for p in recent_bio_pages %}
-        <a class="bss-card" href="{{ url_for('public.profile_page', username=p.slug) }}">
-          {% if p.avatar_path %}
-          <img class="bss-avatar"
-               src="{{ url_for('public.serve_avatar', filename=p.avatar_path) }}"
-               alt="{{ p.display_name }}" loading="lazy">
-          {% else %}
-          <div class="bss-placeholder">{{ p.display_name[0] if p.display_name else '?' }}</div>
-          {% endif %}
-          <div class="bss-info">
-            <div class="bss-name">{{ p.display_name }}</div>
-            {% if p.like_count %}<div class="bss-likes">♥ {{ p.like_count }}</div>{% endif %}
-          </div>
-        </a>
-        {% endfor %}
+        
       </div>
-      <a class="bss-cta" href="{{ url_for('public.explore') }}">Browse all →</a>
+      <a class="bss-cta" href="/explore">Browse all →</a>
     </div>
   </div>
 </section>
@@ -844,24 +785,15 @@
           <div class="price-feat"><span class="price-check">✓</span><span>Booking integration</span></div>
           <div class="price-feat"><span class="price-check">✓</span><span>Auto-updates from LinkedIn</span></div>
         </div>
-        <a href="{{ url_for('pages.register_page') }}" class="btn btn-outline" style="width:100%;justify-content:center;">Get started free</a>
+        <a href="/register" class="btn btn-outline" style="width:100%;justify-content:center;">Get started free</a>
       </div>
       <!-- Pro -->
       <div class="price-card featured fade-up d2">
         <div class="price-badge-row"><span class="price-badge">Most popular</span></div>
         <div class="price-tier">The Simulation</div>
-        {% if sim_pricing.is_discounted %}
-        <div class="price-discounted">
-          <span class="price-original">{{ sim_pricing.base_price_usd }}</span>
-          <span class="price-current">{{ sim_pricing.discounted_price_usd }}</span>
-          {% if sim_pricing.label %}<span class="price-label-badge">{{ sim_pricing.label }}</span>{% endif %}
-        </div>
-        {% if sim_pricing.expires_at %}
-        <div class="price-countdown" id="priceCountdown" data-expires="{{ sim_pricing.expires_at }}"></div>
-        {% endif %}
-        {% else %}
-        <div class="price-amount">{{ sim_price_usd }}</div>
-        {% endif %}
+        
+        <div class="price-amount">$695</div>
+        
         <div class="price-per">per simulation · one-time</div>
         <div class="price-features">
           <div class="price-feat"><span class="price-check">✓</span><span>Everything in Bio Page</span></div>
@@ -873,7 +805,7 @@
           <div class="price-feat"><span class="price-check">✓</span><span>Bayesian orchestrator</span></div>
           <div class="price-feat"><span class="price-check">✓</span><span>Prospect research engine</span></div>
         </div>
-        <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal" style="width:100%;justify-content:center;">Run your simulation</a>
+        <a href="/register" class="btn btn-teal" style="width:100%;justify-content:center;">Run your simulation</a>
       </div>
       <!-- Corporate -->
       <div class="price-card fade-up d3" style="border:2px solid var(--navy);background:var(--navy);color:#fff;">
@@ -901,63 +833,7 @@
 </section>
 
 <!-- ── SOCIAL PROOF ─────────────────────────────────────────────────── -->
-{% if testimonials %}
-<section id="social-proof">
-  <div class="sp-inner">
-    <h2 class="sp-heading fade-up">From people who ran their first simulation.</h2>
-    <p class="sp-sub fade-up">Every story below came from someone who uploaded a resume and ran their first Simulation.</p>
 
-    {% if trust_stats and trust_stats.approved_count > 0 %}
-    <div class="sp-trust-bar fade-up">
-      <span class="sp-trust-item">{{ trust_stats.avg_rating }} ★ average rating</span>
-      <span class="sp-trust-sep">·</span>
-      <span class="sp-trust-item">{{ trust_stats.total_simulations }} Simulations generated</span>
-    </div>
-    {% endif %}
-
-    {% set featured = namespace(items=[]) %}
-    {% for t in testimonials %}{% if t.is_featured %}{% set featured.items = featured.items + [t] %}{% endif %}{% endfor %}
-    {% if featured.items %}{% set f = featured.items[0] %}
-    <div class="sp-featured-card fade-up">
-      <div class="sp-featured-quote">{{ f.quote_text }}</div>
-      <div class="sp-featured-name">{{ f.display_name }}</div>
-      {% if f.expertise_zone %}<div class="sp-featured-zone">{{ f.expertise_zone }}</div>{% endif %}
-      <div class="sp-featured-stars">{{ '★' * f.star_rating }}</div>
-    </div>
-    {% endif %}
-
-    {% set non_feat = namespace(items=[]) %}
-    {% for t in testimonials %}{% if not t.is_featured %}{% set non_feat.items = non_feat.items + [t] %}{% endif %}{% endfor %}
-    {% if non_feat.items %}
-    <div class="sp-carousel-wrap">
-      <button class="sp-chevron sp-prev" onclick="spPrev()" aria-label="Previous">&#8249;</button>
-      <div class="sp-carousel" id="spCarousel">
-        {% for t in non_feat.items %}
-        <div class="sp-card">
-          <div class="sp-card-stars">{{ '★' * t.star_rating }}{{ '☆' * (5 - t.star_rating) }}</div>
-          <div class="sp-card-quote">"{{ t.quote_text }}"</div>
-          <div class="sp-card-name">{{ t.display_name }}</div>
-          {% if t.expertise_zone %}<div class="sp-card-zone">{{ t.expertise_zone }}</div>{% endif %}
-          <div class="sp-card-meta">
-            {% for layer in (t.layers or [])[:2] %}<span class="sp-layer-chip sp-lc-{{ layer.num }}">{{ layer.label }}</span>{% endfor %}
-            {% if (t.layers or [])|length > 2 %}<span class="sp-layer-chip">+{{ (t.layers|length) - 2 }} more</span>{% endif %}
-            {% if t.approved_at %}<span class="sp-date">{{ t.approved_at }}</span>{% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <button class="sp-chevron sp-next" onclick="spNext()" aria-label="Next">&#8250;</button>
-    </div>
-    <div class="sp-dots" id="spDots"></div>
-    {% endif %}
-
-    <div class="sp-cta-row">
-      <div class="sp-cta-col">Ready to write your story? <a href="{{ url_for('pages.register_page') }}" class="sp-cta-link">Create your first Simulation →</a></div>
-      <div class="sp-cta-col">Are you a coach or advisor? <a href="{{ url_for('pages.partner_apply_page') }}" class="sp-cta-link">Join our partner program →</a></div>
-    </div>
-  </div>
-</section>
-{% endif %}
 
 <!-- ── FAQ ──────────────────────────────────────────────────────────── -->
 <section id="faq" class="lp-s">
@@ -990,10 +866,10 @@
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">
-          How is the {{ sim_price_usd }} structured?
+          How is the $695 structured?
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-a"><div class="faq-a-inner">It is a one-time payment per simulation — not a subscription. You pay {{ sim_price_usd }} once, receive all 49 deliverables, and keep access to your results indefinitely. Want to run a second simulation on a different expertise zone or updated resume? That is another {{ sim_price_usd }}, separately.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">It is a one-time payment per simulation — not a subscription. You pay $695 once, receive all 49 deliverables, and keep access to your results indefinitely. Want to run a second simulation on a different expertise zone or updated resume? That is another $695, separately.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">
@@ -1019,7 +895,7 @@
     <h2 class="cta-h2 fade-up">Turn your resume into a running wealth engine.</h2>
     <p class="cta-sub fade-up d1">One upload gets you a bio page, an AI chat, and a full five-layer simulation — with the numbers to trust it.</p>
     <div class="fade-up d2">
-      <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold" style="font-size:16px;padding:14px 28px;">
+      <a href="/register" class="btn btn-gold" style="font-size:16px;padding:14px 28px;">
         Run your first simulation
       </a>
     </div>
@@ -1046,15 +922,15 @@
           <a href="#model">The Model</a>
           <a href="#how-it-works">How it works</a>
           <a href="#pricing">Pricing</a>
-          <a href="{{ url_for('pages.register_page') }}">Bio page</a>
+          <a href="/register">Bio page</a>
         </div>
       </div>
       <div class="footer-col">
         <h4>Company</h4>
         <div class="footer-links">
-          <a href="{{ url_for('public.explore') }}">Explore</a>
-          <a href="{{ url_for('pages.partner_apply_page') }}">Partners</a>
-          <a href="{{ url_for('pages.register_page') }}">Contact</a>
+          <a href="/explore">Explore</a>
+          <a href="/partners/apply">Partners</a>
+          <a href="/register">Contact</a>
         </div>
       </div>
       <div class="footer-col">
@@ -1088,8 +964,8 @@
 </div>
 
 <script>
-window.ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
-window.DEMO_VIDEO_URL = '{{ url_for("static", filename="media/Simulacrum_Revenue_Engine.mp4") }}';
+window.ROOT = '/'.replace(/\/+$/, '');
+window.DEMO_VIDEO_URL = '/static/media/Simulacrum_Revenue_Engine.mp4';
 
 (function () {
   'use strict';
@@ -1205,79 +1081,8 @@ function signOut() {
 }
 
 /* ── Social proof carousel ─────────────────────────────────────────── */
-{% if testimonials %}
-(function () {
-  var carousel = document.getElementById('spCarousel');
-  var dotsEl   = document.getElementById('spDots');
-  if (!carousel) return;
-  var cards = carousel.querySelectorAll('.sp-card');
-  if (!cards.length) return;
-  var current = 0, autoTimer = null;
 
-  function visibleCount() {
-    if (window.innerWidth >= 1200) return 3;
-    if (window.innerWidth >= 768)  return 2;
-    return 1;
-  }
-  function maxIdx() { return Math.max(0, cards.length - visibleCount()); }
+</script>
 
-  function goTo(idx) {
-    current = Math.max(0, Math.min(idx, maxIdx()));
-    var cardW = cards[0].offsetWidth + 16;
-    carousel.scrollTo({left: current * cardW, behavior: 'smooth'});
-    document.querySelectorAll('.sp-dot').forEach(function (d, i) { d.classList.toggle('active', i === current); });
-  }
-  function buildDots() {
-    if (!dotsEl) return;
-    dotsEl.innerHTML = '';
-    for (var i = 0; i <= maxIdx(); i++) {
-      (function(idx) {
-        var d = document.createElement('button');
-        d.className = 'sp-dot' + (idx === 0 ? ' active' : '');
-        d.addEventListener('click', function () { goTo(idx); resetAuto(); });
-        dotsEl.appendChild(d);
-      })(i);
-    }
-  }
-  function startAuto() {
-    if (window.innerWidth < 768) return;
-    clearInterval(autoTimer);
-    autoTimer = setInterval(function () { goTo(current >= maxIdx() ? 0 : current + 1); }, 6000);
-  }
-  function resetAuto() { clearInterval(autoTimer); setTimeout(startAuto, 3000); }
-  window.spNext = function () { goTo(current + 1); resetAuto(); };
-  window.spPrev = function () { goTo(current - 1); resetAuto(); };
-  carousel.addEventListener('mouseenter', function () { clearInterval(autoTimer); });
-  carousel.addEventListener('mouseleave', startAuto);
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowRight') window.spNext();
-    if (e.key === 'ArrowLeft')  window.spPrev();
-  });
-  buildDots(); startAuto();
-  window.addEventListener('resize', function () { buildDots(); goTo(Math.min(current, maxIdx())); });
-})();
-{% endif %}
-</script>
-{% if sim_pricing.is_discounted and sim_pricing.expires_at %}
-<script>
-(function() {
-  var el = document.getElementById('priceCountdown');
-  if (!el) return;
-  var expires = new Date(el.dataset.expires + (el.dataset.expires.endsWith('Z') ? '' : 'Z'));
-  function tick() {
-    var diff = Math.max(0, Math.floor((expires - Date.now()) / 1000));
-    if (diff <= 0) { el.textContent = 'Offer ended'; return; }
-    var HOUR = 72 * 3600;
-    if (diff > HOUR) { el.style.display = 'none'; return; }
-    var d = Math.floor(diff / 86400);
-    var h = Math.floor((diff % 86400) / 3600);
-    var m = Math.floor((diff % 3600) / 60);
-    el.textContent = 'Ends in ' + (d ? d + 'd ' : '') + h + 'h ' + m + 'm';
-  }
-  tick();
-  setInterval(tick, 60000);
-})();
-</script>
-{% endif %}
 </body>
 </html>
