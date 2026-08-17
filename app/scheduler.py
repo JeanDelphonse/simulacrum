@@ -117,6 +117,25 @@ def _admin_crm_briefing_job(app):
     _run_with_retry(app, 'admin outreach briefing job', _run)
 
 
+def _calibration_drift_job(app):
+    """SIM-PRD-CAL-001 §10 — nightly flywheel pass.
+
+    Always evaluates drift and writes the audit trail. Whether it may *change*
+    reference data is governed by the calibration_reweight_live setting, which
+    ships off, so the default steady state of this job is observe-and-flag.
+    """
+    def _run():
+        from app.services.calibration_drift import run_drift_job
+        summary = run_drift_job(triggered_by='scheduler')
+        if summary.get('cohorts_evaluated'):
+            logger.info(
+                'APScheduler: calibration drift — %d cohorts, %d flagged, %d gated, %d reweighted',
+                summary['cohorts_evaluated'], summary['flagged'],
+                summary['gated'], len(summary['reweighted']),
+            )
+    _run_with_retry(app, 'calibration drift job', _run)
+
+
 def start_scheduler(app):
     """Start the background scheduler.  Safe to call multiple times — no-ops if already running.
     If APScheduler is not installed the function logs a warning and returns — the app still starts."""
@@ -213,6 +232,18 @@ def start_scheduler(app):
         timezone='America/Los_Angeles',
         args=[app],
         id='admin-crm-briefing',
+        replace_existing=True,
+    )
+
+    # SIM-PRD-CAL-001: nightly recalibration pass. Runs after the SME expiry job
+    # so the two daily maintenance jobs don't contend for the connection pool.
+    _scheduler.add_job(
+        _calibration_drift_job,
+        'cron',
+        hour=4,
+        minute=15,
+        args=[app],
+        id='calibration-drift-nightly',
         replace_existing=True,
     )
 

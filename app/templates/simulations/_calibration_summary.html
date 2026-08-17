@@ -1,0 +1,112 @@
+{# SIM-PRD-CAL-001 §12 — compact calibrated summary for the simulation page.
+
+   Deliberately not a blended, simulation-level number: §17 settles V1 on
+   per-field tiers, so this is a list of individually-tiered ranges, each
+   linking to the artifact whose methodology drawer explains it.
+
+   Requires `simulation` in context. Removes itself when nothing is calibrated. #}
+
+<div id="calSum" class="calsum" style="display:none;"
+     data-endpoint="{{ url_for('calibration.api_simulation_calibration', sim_id=simulation.id) }}"
+     data-artifact-base="/simulations/{{ simulation.id }}/artifacts/">
+  <div class="calsum-head">
+    <span class="calsum-eyebrow">Calibrated against real data</span>
+    <span class="calsum-note">Ranges, not point estimates — each anchored to a cited source</span>
+  </div>
+  <div class="calsum-rows" id="calSumRows"></div>
+</div>
+
+<style>
+/* Same Midnight Gold tokens as _calibration_cards.html and the design mockup. */
+.calsum {
+  --gold: #C9952A; --gold-l: #E4B855;
+  --teal-br: #13A89E; --teal-txt: #7FE3D6;
+  --amber-l: #D9942B;
+  --offw: #F5F1E6; --subtl: #C3CDD6; --mute: #8A97AD;
+  --line: rgba(201,149,42,.22);
+
+  background: linear-gradient(180deg, #14264d, #0f1f42);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 18px; margin-bottom: 1.25rem;
+  color: var(--offw);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.calsum-head {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.calsum-eyebrow {
+  font-size: 10.5px; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--gold);
+}
+.calsum-note { font-size: 12px; color: var(--mute); font-style: italic; }
+.calsum-row {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 11px 0; border-top: 1px solid var(--line);
+  text-decoration: none; color: inherit;
+}
+.calsum-row:first-child { border-top: none; }
+.calsum-row:hover .calsum-range { color: var(--gold-l); }
+.calsum-label {
+  flex: 1 1 190px; font-size: 13px; color: var(--subtl); min-width: 0;
+}
+.calsum-range {
+  font-size: 17px; font-weight: bold; color: var(--offw);
+  transition: color .15s;
+}
+.calsum-mid { font-size: 12px; color: var(--mute); }
+/* Tier is never colour-only: the word travels with the dot. */
+.calsum-tier {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: bold; letter-spacing: .02em;
+  border-radius: 999px; padding: 3px 10px;
+}
+.calsum-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.calsum-tier.high {
+  color: var(--teal-txt); background: rgba(15,123,114,.18); border: 1px solid rgba(19,168,158,.5);
+}
+.calsum-tier.moderate {
+  color: var(--gold-l); background: rgba(201,149,42,.16); border: 1px solid rgba(201,149,42,.5);
+}
+.calsum-tier.directional {
+  color: var(--amber-l); background: rgba(180,121,31,.16); border: 1px solid rgba(217,148,43,.5);
+}
+@media (max-width: 640px) {
+  .calsum-label { flex: 1 1 100%; }
+}
+</style>
+
+<script>
+(function () {
+  const box = document.getElementById('calSum');
+  if (!box) return;
+  const rows = document.getElementById('calSumRows');
+  const base = box.dataset.artifactBase;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const TIER_WORD = { high: 'High', moderate: 'Moderate', directional: 'Directional' };
+
+  fetch(box.dataset.endpoint)
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((data) => {
+      if (!data.enabled || !data.fields || !data.fields.length) { box.remove(); return; }
+      rows.innerHTML = data.fields.map((f) => {
+        const href = f.action_id ? base + esc(f.action_id) : null;
+        const tag = href ? 'a' : 'div';
+        const attrs = href ? ' href="' + href + '"' : '';
+        return '<' + tag + ' class="calsum-row"' + attrs + '>' +
+          '<span class="calsum-label">' + esc(f.field_label) + '</span>' +
+          '<span class="calsum-range">' + esc(f.display.low) + ' – ' + esc(f.display.high) + '</span>' +
+          '<span class="calsum-mid">mid ' + esc(f.display.mid) + '</span>' +
+          '<span class="calsum-tier ' + esc(f.tier) + '">' +
+            '<span class="calsum-dot" aria-hidden="true"></span>' +
+            esc(TIER_WORD[f.tier] || f.tier) +
+          '</span>' +
+          '</' + tag + '>';
+      }).join('');
+      box.style.display = 'block';
+    })
+    .catch(() => box.remove());
+})();
+</script>

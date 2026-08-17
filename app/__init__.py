@@ -126,6 +126,8 @@ def create_app(config_name=None):
     app.logger.info('startup: onboarding_bp imported')
     from app.blueprints.sme import sme_bp, sme_user_bp
     app.logger.info('startup: sme_bp imported')
+    from app.blueprints.calibration import calibration_bp
+    app.logger.info('startup: calibration_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -154,6 +156,8 @@ def create_app(config_name=None):
     app.register_blueprint(social_bp)
     app.register_blueprint(onboarding_bp)
     app.register_blueprint(voice_bp)
+    # Declares its own full paths (/api/calibration/..., /api/admin/calibration/...)
+    app.register_blueprint(calibration_bp)
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 

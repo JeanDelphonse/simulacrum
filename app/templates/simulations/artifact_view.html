@@ -411,6 +411,12 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
       <a class="av-connect-btn" href="{{ connect_card.href }}">{{ connect_card.button }}</a>
     </div>
     {% endif %}
+
+    {# SIM-PRD-CAL-001 — calibrated result cards, above the artifact body so the
+       anchored numbers are the first thing read. Self-removing when this
+       artifact has no calibrated fields. #}
+    {% include 'simulations/_calibration_cards.html' %}
+
     <div id="avDraftBanner" class="av-banner" style="display:none;">
       <span>You have unsaved changes from a previous session.</span>
       <button type="button" class="av-btn" id="avRestoreDraft">Restore</button>

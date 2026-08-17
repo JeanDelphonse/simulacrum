@@ -40,6 +40,10 @@ class Simulation(db.Model):
     _agent_relevance_scores = db.Column('agent_relevance_scores', db.Text, nullable=True)  # JSON dict
     _agent_personalized_descriptions = db.Column('agent_personalized_descriptions', db.Text, nullable=True)  # JSON dict
     agent_selection_confirmed_at = db.Column(db.DateTime, nullable=True)
+    # Calibration Layer (SIM-PRD-CAL-001) — resolved cohort keys, cached here so
+    # one classification serves every calibrated field in the simulation.
+    cohort_json = db.Column(db.JSON, nullable=True)
+    cohort_resolved_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calibrated result card — shipped markup preview</title>
+<style>
+body{margin:0;background:#f7f8fb;padding:32px 18px 60px;
+  font-family:Inter,system-ui,sans-serif;}
+.shell{max-width:760px;margin:0 auto;}
+.note{font-size:13px;color:#64748b;line-height:1.7;margin-bottom:22px;}
+.note b{color:#0f172a;}
+.av-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:28px 32px;
+  color:#0f172a;font-size:15px;line-height:1.7;}
+</style>
+<style>
+/* Midnight Gold tokens, taken verbatim from docs/calibration_ui_mockup.html so
+   the shipped card and the design mockup stay one system. Scoped to .cal-wrap
+   rather than :root because the surrounding artifact page is light-themed — this
+   panel is a deliberate theme break, being the one region of the page showing
+   measured rather than generated numbers. */
+.cal-wrap {
+  --navy: #0D1B3E; --navy3: #1A3557; --panel: #14264d;
+  --gold: #C9952A; --gold-l: #E4B855;
+  --teal2: #0F7B72; --teal-br: #13A89E; --teal-txt: #7FE3D6;
+  --amber: #B4791F; --amber-l: #D9942B;
+  --offw: #F5F1E6; --subtl: #C3CDD6; --mute: #8A97AD;
+  --line: rgba(201,149,42,.22);
+
+  background: linear-gradient(180deg, var(--panel), #0f1f42);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px 24px 18px;
+  margin-bottom: 20px;
+  color: var(--offw);
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1.5;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+.cal-eyebrow {
+  font-size: 11.5px; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 18px;
+}
+.cal-field + .cal-field {
+  margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--line);
+}
+.cal-label {
+  font-size: 12px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--subtl); margin-bottom: 10px;
+}
+
+/* Headline range — never a lone number (§12.1) */
+.cal-range { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px; }
+.cal-range-val {
+  font-size: 34px; font-weight: bold; line-height: 1.05;
+  color: var(--offw); letter-spacing: .5px;
+}
+.cal-range-mid { font-size: 13px; color: var(--mute); }
+.cal-range-mid strong { color: var(--gold-l); font-weight: bold; }
+
+/* Confidence band (§12.3) */
+.cal-band { margin: 26px 0 12px; }
+.cal-band-track {
+  position: relative; height: 8px; border-radius: 999px;
+  background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.06);
+}
+.cal-band-fill {
+  position: absolute; top: -3px; bottom: -3px; border-radius: 999px;
+  background: rgba(15,123,114,.30); border: 1px solid rgba(19,168,158,.6);
+}
+.cal-tier-moderate .cal-band-fill {
+  background: rgba(201,149,42,.24); border-color: rgba(201,149,42,.6);
+}
+.cal-tier-directional .cal-band-fill {
+  background: rgba(180,121,31,.22); border-color: rgba(217,148,43,.55);
+}
+/* Solid gold tick = the calibrated midpoint. Dashed pale tick = the raw model
+   estimate, so the user can see how far calibration moved it. */
+.cal-tick {
+  position: absolute; top: -8px; bottom: -8px; width: 3px;
+  border-radius: 2px; transform: translateX(-1.5px);
+}
+.cal-tick-mid { background: var(--gold-l); }
+.cal-tick-raw {
+  width: 0; border-left: 2px dashed var(--mute); transform: translateX(-1px);
+}
+.cal-tick-raw.is-clamped { border-left-style: dotted; opacity: .75; }
+.cal-band-labels {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--subtl); margin-top: 12px;
+}
+.cal-band-callouts {
+  position: relative; height: 17px; margin-bottom: 5px;
+  font-size: 12px; color: var(--mute);
+}
+.cal-callout { position: absolute; white-space: nowrap; transform: translateX(-50%); }
+.cal-callout-mid { color: var(--offw); font-weight: bold; }
+
+/* Tier chip — never colour-only (§12.9): a dot plus the tier word */
+.cal-chip-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.cal-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; padding: 7px 14px;
+  font-size: 13.5px; font-weight: bold; cursor: pointer; font-family: inherit;
+  background: rgba(15,123,114,.18); border: 1px solid rgba(19,168,158,.5);
+  color: var(--teal-txt);
+}
+.cal-chip-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal-br); }
+.cal-tier-moderate .cal-chip {
+  background: rgba(201,149,42,.16); border-color: rgba(201,149,42,.5); color: var(--gold-l);
+}
+.cal-tier-moderate .cal-chip-dot { background: var(--gold); }
+.cal-tier-directional .cal-chip {
+  background: rgba(180,121,31,.16); border-color: rgba(217,148,43,.5); color: var(--amber-l);
+}
+.cal-tier-directional .cal-chip-dot { background: var(--amber-l); }
+.cal-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.cal-chip-blurb { font-size: 13px; color: var(--subtl); }
+.cal-hint {
+  font-size: 12.5px; line-height: 1.65; color: var(--subtl);
+  background: rgba(255,255,255,.04); border-left: 2px solid var(--gold);
+  padding: 10px 14px; border-radius: 0 6px 6px 0; margin-top: 12px;
+}
+
+/* Directional / low-data state must look different, not just read differently (§12.6) */
+.cal-thin-note {
+  font-size: 13px; line-height: 1.65; color: var(--offw);
+  background: rgba(180,121,31,.12); border: 1px solid rgba(217,148,43,.4);
+  border-radius: 8px; padding: 12px 14px; margin-top: 14px;
+}
+
+/* Source line — always visible (§12.1) */
+.cal-source { font-size: 13px; color: var(--subtl); margin-top: 16px; line-height: 1.6; }
+.cal-source a { color: var(--teal-br); text-decoration: underline; text-underline-offset: 2px; }
+.cal-source a:hover { color: var(--gold-l); }
+.cal-review-flag {
+  display: inline-block; margin-left: 6px; font-size: 11px; font-weight: bold;
+  color: var(--amber-l); border: 1px solid rgba(217,148,43,.45);
+  border-radius: 4px; padding: 1px 6px;
+}
+
+/* Methodology drawer (§12.5) */
+.cal-drawer-btn {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 16px;
+  background: transparent; border: 1px solid var(--line); color: var(--gold-l);
+  border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+  font-family: inherit;
+}
+.cal-drawer-btn:hover { background: rgba(201,149,42,.08); border-color: var(--gold); }
+.cal-drawer-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.cal-drawer {
+  display: none; margin-top: 16px;
+  border-top: 1px solid var(--line); padding-top: 16px;
+}
+.cal-drawer.open { display: block; }
+.cal-steps { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; }
+.cal-step {
+  flex: 1 1 140px; background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: 12px 14px;
+}
+.cal-step-label {
+  font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute); margin-bottom: 6px; line-height: 1.5;
+}
+.cal-step-val { font-size: 20px; font-weight: bold; color: var(--mute); }
+.cal-step.is-ref .cal-step-val { color: var(--teal-br); }
+.cal-step.is-post .cal-step-val { color: var(--gold-l); }
+.cal-step-arrow {
+  display: flex; align-items: center; color: var(--gold); font-size: 19px;
+}
+.cal-method {
+  font-size: 12.5px; line-height: 1.7; color: var(--mute); margin-top: 14px;
+}
+
+/* Outcome-reporting widget (§12.7) */
+.cal-outcome { margin-top: 18px; padding-top: 15px; border-top: 1px dashed var(--line); }
+.cal-outcome-prompt { font-size: 13.5px; color: var(--subtl); margin-bottom: 12px; line-height: 1.6; }
+.cal-outcome-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.cal-outcome-input {
+  background: #0c1a38; border: 1px solid var(--line); color: var(--offw);
+  border-radius: 8px; padding: 10px 14px; font-size: 14px; font-family: inherit;
+  width: 190px;
+}
+.cal-outcome-input::placeholder { color: var(--mute); }
+.cal-outcome-input:focus { outline: none; border-color: var(--gold); background: #0e1d3f; }
+.cal-outcome-btn {
+  background: var(--gold); border: none; color: #241a05; border-radius: 8px;
+  padding: 10px 20px; font-size: 13.5px; font-weight: bold; cursor: pointer;
+  font-family: inherit;
+}
+.cal-outcome-btn:hover { background: var(--gold-l); }
+.cal-outcome-btn:disabled { opacity: .55; cursor: default; }
+.cal-outcome-msg { font-size: 12.5px; line-height: 1.6; margin-top: 12px; color: var(--teal-br); }
+.cal-outcome-msg.is-error { color: var(--amber-l); }
+.cal-outcome-done {
+  font-size: 13px; color: var(--teal-txt); background: rgba(15,123,114,.14);
+  border: 1px solid rgba(19,168,158,.35); border-radius: 8px; padding: 12px 14px;
+  line-height: 1.6; font-style: italic;
+}
+.cal-not-advice { font-size: 12px; color: var(--mute); margin-top: 18px; line-height: 1.6; }
+
+/* Streaming state (§12.9) */
+.cal-skeleton { padding: 6px 0 2px; }
+.cal-shimmer {
+  height: 34px; width: 260px; border-radius: 8px; margin-bottom: 16px;
+  background: linear-gradient(90deg, var(--panel) 25%, var(--navy3) 50%, var(--panel) 75%);
+  background-size: 200% 100%; animation: calShimmer 1.4s ease-in-out infinite;
+}
+.cal-shimmer.bar { height: 8px; width: 100%; border-radius: 999px; margin-bottom: 10px; }
+.cal-shimmer-note { font-size: 12.5px; color: var(--subtl); }
+@keyframes calShimmer {
+  0% { background-position: 200% 0; } 100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) { .cal-shimmer { animation: none; } }
+
+/* Scoped rather than assuming a global utility — base.html defines no sr-only. */
+.cal-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Mobile: card stacks, band keeps a legible min-width (§12.9) */
+@media (max-width: 640px) {
+  .cal-wrap { padding: 18px 16px; border-radius: 12px; }
+  .cal-range-val { font-size: 27px; }
+  .cal-steps { flex-direction: column; }
+  .cal-step-arrow { transform: rotate(90deg); justify-content: center; }
+  .cal-outcome-input { width: 100%; }
+  .cal-outcome-btn { width: 100%; }
+}
+</style>
+</head><body>
+<div class="shell">
+  <p class="note"><b>Preview of the shipped card</b> — this is the real
+  <code>_calibration_cards.html</code> style block and render code, driven by a real
+  <code>/api/artifacts/&lt;id&gt;/calibration</code> payload. Three states are shown:
+  High confidence (verified Tier-A, dense), Moderate (unverified Tier-C, capped), and
+  Directional (thin-data guard). Click the tier chips and the drawers.</p>
+
+  <div id="calWrap" class="cal-wrap" style="display:none;">
+    <div class="cal-eyebrow">Calibrated against real data</div>
+    <div id="calFields"></div>
+  </div>
+
+  <div class="av-card"># Your rate card
+
+Tier 1 — Diagnostic sprint: $12,000 (2 weeks)
+Tier 2 — Operating partner retainer: $18,000/month
+
+<em>(the artifact body renders here, unchanged)</em></div>
+</div>
+<script>
+const PAYLOAD = {"action_id": "BClUkyt1s", "enabled": true, "fields": [{"agent_key": "rate_card", "as_of_label": "Q1 2026", "band": {"high_pct": 79.41, "low_pct": 20.59, "mid_pct": 50.0, "raw_clamped": false, "raw_pct": 71.65}, "cohort": {"metro": "national", "seniority": "any", "soc_group": "13-1111", "soc_title": "Management Analysts"}, "cohort_label": "Management Analysts \u00b7 national", "created_at": "2026-08-17T06:29:45.467297", "credibility_tier": "A", "dataset": "BLS OES + Freelance Rate Survey 2025", "dataset_id": "NXmX7m2xg", "derivation_note": null, "display": {"high": "$443k", "low": "$359k", "mid": "$401k", "raw": "$432k", "ref_p50": "$398k"}, "field_label": "Projected 24-month income", "high": 443072.3754, "low": 359174.1034, "match_level": "relaxed", "method": "bayes_precision", "mid": 401123.2394, "needs_review": false, "outcome": {"open": true, "reported": null}, "output_field": "projected_annual_income", "rationale": "Calibration pulled the model estimate down ~7% toward market data (n = 1,240). Matched on national rather than local data.", "raw": 432000.0, "ref_as_of": null, "ref_p50": 398000.0, "ref_sample_size": 1240, "run_id": "Ayzw6ePSB", "source": "U.S. Bureau of Labor Statistics", "source_url": "https://www.bls.gov/oes/", "thin_data_guard": false, "tier": "high", "tier_blurb": "dense matching data", "tier_hint": "This is our strongest tier \u2014 dense data matched to your situation.", "tier_label": "High confidence", "unit": "usd_year"}, {"agent_key": "rate_card", "as_of_label": "2025", "band": {"high_pct": 79.41, "low_pct": 20.59, "mid_pct": 50.0, "raw_clamped": false, "raw_pct": 58.36}, "cohort": {"metro": "national", "seniority": "any", "soc_group": "13-1111", "soc_title": "Management Analysts"}, "cohort_label": "Management Analysts \u00b7 national", "created_at": "2026-08-17T06:29:45.463634", "credibility_tier": "C", "dataset": "Course Launch Benchmarks 2025", "dataset_id": "SeeDeZ2Gw", "derivation_note": "Modelled from published launch case studies.", "display": {"high": "$44k", "low": "$22k", "mid": "$33k", "raw": "$36k", "ref_p50": "$27k"}, "field_label": "Course launch revenue", "high": 43973.7089, "low": 21690.4082, "match_level": "relaxed", "method": "bayes_precision", "mid": 32832.0586, "needs_review": true, "outcome": {"open": true, "reported": null}, "output_field": "course_launch_revenue", "rationale": "Calibration pulled the model estimate down ~9% toward market data (n = 180). Matched on national rather than local data.", "raw": 36000.0, "ref_as_of": null, "ref_p50": 27000.0, "ref_sample_size": 180, "run_id": "zWUXjRoFx", "source": "Industry benchmark compilation", "source_url": "https://example.com/benchmarks", "thin_data_guard": false, "tier": "moderate", "tier_blurb": "partial matching data", "tier_hint": "Why not higher: we used national rather than local data for your area; this dataset is pending verification; reporting what actually happened to you later sharpens this range for people in your situation.", "tier_label": "Moderate confidence", "unit": "usd"}, {"agent_key": "rate_card", "as_of_label": "2025", "band": {"high_pct": 79.41, "low_pct": 20.59, "mid_pct": 50.0, "raw_clamped": false, "raw_pct": 50.0}, "cohort": {"metro": "national", "seniority": "any", "soc_group": "13-1111", "soc_title": "Management Analysts"}, "cohort_label": "Management Analysts \u00b7 national", "created_at": "2026-08-17T06:29:45.470091", "credibility_tier": "B", "dataset": "Speaker Fee Guide (partial)", "dataset_id": "DjTTVgGWn", "derivation_note": null, "display": {"high": "$12k", "low": "$2.9k", "mid": "$7.5k", "raw": "$7.5k", "ref_p50": "$6.5k"}, "field_label": "Average speaking fee", "high": 12113.5856, "low": 2886.4144, "match_level": "relaxed", "method": "bayes_precision", "mid": 7500.0, "needs_review": false, "outcome": {"open": true, "reported": null}, "output_field": "speaking_fee", "rationale": "Reference data for this cohort was too thin to anchor against (9 matching observations), so the model estimate is shown with a widened band rather than falsely narrowed.", "raw": 7500.0, "ref_as_of": null, "ref_p50": 6500.0, "ref_sample_size": 9, "run_id": "XozjUaTtX", "source": "Industry fee guide", "source_url": "https://example.com/fees", "thin_data_guard": true, "tier": "directional", "tier_blurb": "treat as a signal, not a forecast", "tier_hint": "Why not higher: we do not yet have enough data for your exact situation, so this is the model estimate with an honest wide band; reporting what actually happened to you later sharpens this range for people in your situation.", "tier_label": "Directional only", "unit": "usd"}]};
+(function () {
+  const wrap = document.getElementById('calWrap');
+  if (!wrap) return;
+  const host = document.getElementById('calFields');
+  const outcomesUrl = wrap.dataset.outcomesEndpoint;
+
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // Skeleton range + "calibrating…" while the fields load (§12.9).
+  function showSkeleton() {
+    wrap.style.display = 'block';
+    host.innerHTML =
+      '<div class="cal-skeleton" role="status" aria-live="polite">' +
+      '<div class="cal-shimmer"></div><div class="cal-shimmer bar"></div>' +
+      '<div class="cal-shimmer-note">Calibrating against reference data…</div></div>';
+  }
+
+  function sourceLine(f) {
+    if (!f.dataset) return 'Not yet bound to a reference dataset.';
+    const name = f.source_url
+      ? '<a href="' + esc(f.source_url) + '" target="_blank" rel="noopener">' + esc(f.dataset) + '</a>'
+      : '<strong>' + esc(f.dataset) + '</strong>';
+    const bits = ['Calibrated against ' + name];
+    if (f.ref_sample_size) bits.push('n = ' + Number(f.ref_sample_size).toLocaleString());
+    if (f.as_of_label) bits.push('as of ' + esc(f.as_of_label));
+    else if (f.ref_as_of) bits.push('as of ' + esc(f.ref_as_of));
+    let line = bits.join(' · ');
+    if (f.needs_review) {
+      line += '<span class="cal-review-flag" title="This dataset has not been verified yet, ' +
+              'so it cannot render as High confidence.">pending verification</span>';
+    }
+    return line;
+  }
+
+  function bandHtml(f) {
+    const b = f.band, d = f.display;
+    const width = Math.max(0, b.high_pct - b.low_pct);
+    const rawLabel = b.raw_clamped ? 'model ' + esc(d.raw) + ' (off scale)' : 'model ' + esc(d.raw);
+    return '' +
+      '<div class="cal-band">' +
+        '<div class="cal-band-callouts" aria-hidden="true">' +
+          '<span class="cal-callout cal-callout-mid" style="left:' + b.mid_pct + '%">' + esc(d.mid) + '</span>' +
+          '<span class="cal-callout" style="left:' + b.raw_pct + '%">' + rawLabel + '</span>' +
+        '</div>' +
+        '<div class="cal-band-track" role="img" aria-label="' +
+            esc(f.field_label) + ' calibrated range from ' + esc(d.low) + ' to ' + esc(d.high) +
+            ', midpoint ' + esc(d.mid) + '; the uncalibrated model estimate was ' + esc(d.raw) + '">' +
+          '<div class="cal-band-fill" style="left:' + b.low_pct + '%;width:' + width + '%"></div>' +
+          '<div class="cal-tick cal-tick-raw' + (b.raw_clamped ? ' is-clamped' : '') +
+            '" style="left:' + b.raw_pct + '%"></div>' +
+          '<div class="cal-tick cal-tick-mid" style="left:' + b.mid_pct + '%"></div>' +
+        '</div>' +
+        '<div class="cal-band-labels"><span>' + esc(d.low) + '</span><span>' + esc(d.high) + '</span></div>' +
+      '</div>';
+  }
+
+  function drawerHtml(f) {
+    const d = f.display;
+    const refVal = d.ref_p50 || '—';
+    const method = [];
+    if (f.method) method.push('Method: ' + esc(f.method).replace(/_/g, ' '));
+    if (f.cohort_label) method.push('cohort: ' + esc(f.cohort_label));
+    if (f.ref_sample_size) method.push('sample ' + Number(f.ref_sample_size).toLocaleString());
+    if (f.credibility_tier) method.push('source credibility tier ' + esc(f.credibility_tier));
+
+    return '' +
+      '<div class="cal-drawer" id="calDrawer-' + esc(f.run_id) + '">' +
+        '<div class="cal-steps">' +
+          '<div class="cal-step"><div class="cal-step-label">Model estimate<br>(prior)</div>' +
+            '<div class="cal-step-val">' + esc(d.raw) + '</div></div>' +
+          '<div class="cal-step-arrow" aria-hidden="true">→</div>' +
+          '<div class="cal-step is-ref"><div class="cal-step-label">Reference data<br>(likelihood)</div>' +
+            '<div class="cal-step-val">' + esc(refVal) + '</div></div>' +
+          '<div class="cal-step-arrow" aria-hidden="true">→</div>' +
+          '<div class="cal-step is-post"><div class="cal-step-label">Calibrated<br>(posterior)</div>' +
+            '<div class="cal-step-val">' + esc(d.mid) + '</div></div>' +
+        '</div>' +
+        '<div class="cal-method">' + method.join(' · ') +
+          (f.rationale ? '<br>' + esc(f.rationale) : '') +
+          (f.derivation_note ? '<br>Derivation: ' + esc(f.derivation_note) : '') +
+        '</div>' +
+      '</div>';
+  }
+
+  function outcomeHtml(f) {
+    if (f.outcome && f.outcome.reported) {
+      const r = f.outcome.reported;
+      return '<div class="cal-outcome"><div class="cal-outcome-done">' +
+        'You reported <strong>' + esc(r.reported_value.toLocaleString()) + '</strong> for this. ' +
+        'Kept private — only the aggregate shifts the reference data.' +
+        '</div></div>';
+    }
+    if (!f.outcome || !f.outcome.open) return '';
+    return '' +
+      '<div class="cal-outcome" data-run-id="' + esc(f.run_id) + '">' +
+        '<div class="cal-outcome-prompt">Ran this for real? Report your outcome — it sharpens the ' +
+          'forecast for people in your situation.</div>' +
+        '<div class="cal-outcome-form">' +
+          '<label class="cal-sr-only" for="calOut-' + esc(f.run_id) + '">Actual ' +
+            esc(f.field_label) + '</label>' +
+          '<input class="cal-outcome-input" id="calOut-' + esc(f.run_id) + '" type="text" ' +
+            'inputmode="decimal" placeholder="Actual ' + esc(f.field_label.toLowerCase()) + '">' +
+          '<button type="button" class="cal-outcome-btn">Report outcome</button>' +
+        '</div>' +
+        '<div class="cal-outcome-msg" role="status" aria-live="polite" style="display:none"></div>' +
+      '</div>';
+  }
+
+  function fieldHtml(f) {
+    const d = f.display;
+    const thin = f.thin_data_guard
+      ? '<div class="cal-thin-note">We don’t yet have strong data for your exact situation, ' +
+        'so this is directional — reporting your real outcome later will sharpen it. ' +
+        'The dataset we fell back to is named in the methodology below.</div>'
+      : '';
+    return '' +
+      '<div class="cal-field cal-tier-' + esc(f.tier) + '" data-run-id="' + esc(f.run_id) + '">' +
+        '<div class="cal-label">' + esc(f.field_label) + '</div>' +
+        '<div class="cal-range">' +
+          '<span class="cal-range-val">' + esc(d.low) + ' – ' + esc(d.high) + '</span>' +
+          '<span class="cal-range-mid">midpoint <strong>' + esc(d.mid) + '</strong></span>' +
+        '</div>' +
+        bandHtml(f) +
+        '<div class="cal-chip-row">' +
+          '<button type="button" class="cal-chip" aria-expanded="false" ' +
+            'aria-controls="calHint-' + esc(f.run_id) + '">' +
+            '<span class="cal-chip-dot" aria-hidden="true"></span>' + esc(f.tier_label) +
+          '</button>' +
+          '<span class="cal-chip-blurb">' + esc(f.tier_blurb) + '</span>' +
+        '</div>' +
+        '<div class="cal-hint" id="calHint-' + esc(f.run_id) + '" style="display:none">' +
+          esc(f.tier_hint) + '</div>' +
+        thin +
+        '<div class="cal-source">' + sourceLine(f) + '</div>' +
+        '<button type="button" class="cal-drawer-btn" aria-expanded="false" ' +
+          'aria-controls="calDrawer-' + esc(f.run_id) + '">' +
+          '<span class="cal-caret" aria-hidden="true">▸</span> How this was calibrated</button>' +
+        drawerHtml(f) +
+        outcomeHtml(f) +
+      '</div>';
+  }
+
+  function bind() {
+    host.querySelectorAll('.cal-drawer-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const drawer = document.getElementById(btn.getAttribute('aria-controls'));
+        const open = drawer.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.querySelector('.cal-caret').textContent = open ? '▾' : '▸';
+      });
+    });
+
+    host.querySelectorAll('.cal-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const hint = document.getElementById(chip.getAttribute('aria-controls'));
+        const open = hint.style.display === 'none';
+        hint.style.display = open ? 'block' : 'none';
+        chip.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    });
+
+    host.querySelectorAll('.cal-outcome[data-run-id]').forEach((box) => {
+      const btn = box.querySelector('.cal-outcome-btn');
+      const input = box.querySelector('.cal-outcome-input');
+      const msg = box.querySelector('.cal-outcome-msg');
+      btn.addEventListener('click', async () => {
+        const raw = (input.value || '').trim();
+        if (!raw) { input.focus(); return; }
+        btn.disabled = true;
+        msg.style.display = 'none';
+        msg.classList.remove('is-error');
+        try {
+          const res = await fetch(outcomesUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ run_id: box.dataset.runId, reported_value: raw }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || data.error || 'Could not save that.');
+          box.innerHTML = '<div class="cal-outcome-done">' + esc(data.message) + '</div>';
+        } catch (err) {
+          msg.textContent = err.message;
+          msg.classList.add('is-error');
+          msg.style.display = 'block';
+          btn.disabled = false;
+        }
+      });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') btn.click(); });
+    });
+  }
+
+  async function load() {
+    showSkeleton();
+    try {
+      const data = PAYLOAD;
+      if (!data.enabled || !data.fields || !data.fields.length) {
+        // Nothing calibrated for this artifact — remove the panel entirely
+        // rather than leaving an empty frame.
+        wrap.remove();
+        return;
+      }
+      host.innerHTML = data.fields.map(fieldHtml).join('') +
+        '<div class="cal-not-advice">Calibrated ranges are descriptive benchmarks drawn from ' +
+        'reference data — not financial, legal or tax advice, and not a guarantee of ' +
+        'your outcome.</div>';
+      bind();
+    } catch (err) {
+      // Graceful degrade (§12.9): the artifact is what matters; if calibration
+      // can't load, say nothing rather than showing a broken instrument.
+      wrap.remove();
+    }
+  }
+
+  load();
+})();
+</script>
+</body></html>

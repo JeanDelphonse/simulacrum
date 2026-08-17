@@ -241,6 +241,9 @@
   </div>
   {% endif %}
 
+  {# ── Calibrated summary (SIM-PRD-CAL-001) ──────────────────────────────── #}
+  {% include 'simulations/_calibration_summary.html' %}
+
   {# ── Layer Accordion ───────────────────────────────────────────────────── #}
   {% set layer_colors = {1:'#0F7B72', 2:'#7c3aed', 3:'#1d4ed8', 4:'#b45309', 5:'#15803d'} %}
   {% set layer_icons  = {1:'💼', 2:'🎤', 3:'📖', 4:'📈', 5:'🛡️'} %}

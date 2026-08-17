@@ -1062,6 +1062,17 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             'If no specific contacts were produced, output <!--CONTACTS [] CONTACTS-->.'
         )
 
+    # SIM-PRD-CAL-001 — ask calibrated agents for a trailing METRICS block so the
+    # Calibration Layer has a numeric field to anchor. Driven by the live
+    # calibration_configs rows, so this is a no-op for every agent that has no
+    # bound config (and for all agents if calibration is switched off).
+    try:
+        from app.services import calibration_service as _cal
+        prompt += _cal.metrics_prompt_block(action_type)
+    except Exception as _cal_err:
+        _log_ = __import__('logging').getLogger(__name__)
+        _log_.warning('Could not append METRICS block for %s: %s', action_type, _cal_err)
+
     # Action types whose descriptions explicitly demand large output get a higher budget.
     # Everything else defaults to 8192 (was 3000 — the prior limit caused silent truncation).
     # Canonical names only — action_type is alias-resolved at function entry,
@@ -1148,6 +1159,30 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         )
 
     raw_artifact = response.content[0].text.strip()
+
+    # SIM-PRD-CAL-001 — strip the METRICS block and calibrate, before any of the
+    # per-agent return paths below. Wrapped whole: a calibration failure must
+    # never cost the user the artifact they paid for (PRD §12.9 graceful degrade).
+    try:
+        from app.services import calibration_service as _cal
+        raw_artifact, _metrics = _cal.extract_metrics_block(raw_artifact)
+        if _metrics:
+            # _log_interaction just called engine.dispose(), so the scoped session
+            # is bound to a discarded pool. Drop it so calibration's first query
+            # checks out a live connection instead of a dead one.
+            from app.extensions import db as _db
+            _db.session.remove()
+            _cal.calibrate_metrics(
+                metrics=_metrics,
+                agent_key=action_type,
+                simulation_id=simulation_id,
+                action_id=action_id,
+            )
+    except Exception as _cal_err:
+        _logger.warning(
+            'Calibration skipped for action_type=%s action=%s: %s',
+            action_type, action_id, _cal_err,
+        )
 
     # JSON outreach agents: parse, save contacts, return clean JSON
     if action_type in _json_outreach:

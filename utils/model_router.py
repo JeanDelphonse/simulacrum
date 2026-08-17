@@ -92,6 +92,11 @@ _ROUTING: dict[str, ModelTier] = {
     'contact_score':               ModelTier.HAIKU,
     'intent_classify':             ModelTier.HAIKU,
     'consulting_outreach_research': ModelTier.HAIKU,
+    # SIM-PRD-CAL-001 — cohort keys and numeric-field extraction are pure
+    # structured-output tasks; Haiku is the right tier and keeps the Calibration
+    # Layer's marginal cost per artifact effectively nil.
+    'cohort_classification':       ModelTier.HAIKU,
+    'calibration_metric_extract':  ModelTier.HAIKU,
     # ── SONNET — conversational, creative, long-form copy ────────────────
     'consulting_outreach_email':   ModelTier.SONNET,  # 10 deeply personalized emails
     'chat_copilot':                ModelTier.SONNET,

@@ -18,6 +18,7 @@
     <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
     <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
     <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
+    <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link">Calibration</a>
   </nav>
   <h1>Admin Panel</h1>
 
@@ -230,6 +231,7 @@
           </td>
           <td style="white-space:nowrap">
             <button onclick="openUserEdit('{{ u.id }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(0,0,0,.2);border-radius:5px;background:none;color:#374151;cursor:pointer;margin-right:.3rem">Edit</button>
+            <button onclick="openCycleAdmin('{{ u.id }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(14,116,144,.45);border-radius:5px;background:none;color:#0e7490;cursor:pointer;margin-right:.3rem">Cycles</button>
             {% if u.deleted_at %}
             <button onclick="toggleUserActive('{{ u.id }}', true)" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(22,163,74,.5);border-radius:5px;background:none;color:#16a34a;cursor:pointer">Reactivate</button>
             {% else %}
@@ -285,6 +287,38 @@
       <button onclick="saveUserEdit()" style="padding:.45rem 1rem;border:none;border-radius:7px;background:#0f7b72;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600" id="saveUserEditBtn">Save Changes</button>
     </div>
     <div id="editUserMsg" style="margin-top:.75rem;font-size:.8rem;text-align:center;display:none"></div>
+  </div>
+</div>
+
+<!-- ── Run Cycle Admin Modal ────────────────────────────────────────────────
+     Destructive and irreversible, so the flow is preview-first: every button
+     runs a dry run against /cycles/preview and shows exactly what will be
+     deleted and what will be preserved before anything is committed. -->
+<div id="cycleAdminModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2.5rem 1rem">
+  <div style="background:#1a2236;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.75rem;width:100%;max-width:840px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.35rem">
+      <h3 style="margin:0;font-size:1rem">Run Cycles</h3>
+      <button onclick="closeCycleAdmin()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+    </div>
+    <div id="cycleAdminWho" style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:1.25rem"></div>
+    <div id="cycleAdminBody" style="font-size:.85rem;color:rgba(255,255,255,.75)">Loading…</div>
+  </div>
+</div>
+
+<!-- ── Confirm Modal (shows the dry-run result) ─────────────────────────── -->
+<div id="cycleConfirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2.5rem 1rem">
+  <div style="background:#1a2236;border:1px solid rgba(220,38,38,.4);border-radius:14px;padding:1.75rem;width:100%;max-width:620px">
+    <h3 id="cycleConfirmTitle" style="margin:0 0 1rem;font-size:1rem;color:#fca5a5"></h3>
+    <div id="cycleConfirmBody" style="font-size:.85rem;color:rgba(255,255,255,.8);line-height:1.65"></div>
+    <label style="display:flex;gap:.55rem;align-items:flex-start;margin-top:1.25rem;font-size:.82rem;color:rgba(255,255,255,.7);cursor:pointer">
+      <input type="checkbox" id="cycleConfirmAck" style="margin-top:.2rem">
+      <span>I understand this cannot be undone.</span>
+    </label>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25rem">
+      <button onclick="closeCycleConfirm()" style="padding:.45rem 1rem;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:.85rem">Cancel</button>
+      <button id="cycleConfirmGo" style="padding:.45rem 1rem;border:none;border-radius:7px;background:#dc2626;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600">Confirm</button>
+    </div>
+    <div id="cycleConfirmMsg" style="margin-top:.85rem;font-size:.8rem;display:none;line-height:1.6"></div>
   </div>
 </div>
 {% endblock %}
@@ -555,5 +589,281 @@ function changeUsersPage(delta) {
   }
   renderUsersPage();
 })();
+
+// ── Run Cycle Admin ──────────────────────────────────────────────────────────
+// Reset or delete a user's orchestrator run cycles. Deleting a cycle removes the
+// cycle machinery and every artifact it generated; records of real-world events
+// (sent email, signed documents, published pages, reported income, contacts) are
+// preserved and unlinked by the backend, never destroyed.
+let cycleAdminUser = null;
+let cyclePendingAction = null;
+
+const cycEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+async function cycApi(path, body) {
+  const opts = body === undefined
+    ? {}
+    : { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) };
+  const r = await fetch(ROOT + '/api/admin' + path, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok && r.status !== 409) {
+    throw new Error(data.message || data.error || 'Request failed');
+  }
+  return { status: r.status, data };
+}
+
+function openCycleAdmin(userId) {
+  cycleAdminUser = userId;
+  document.getElementById('cycleAdminWho').textContent = '';
+  document.getElementById('cycleAdminBody').innerHTML = 'Loading…';
+  document.getElementById('cycleAdminModal').style.display = 'flex';
+  loadCycleAdmin();
+}
+
+function closeCycleAdmin() {
+  document.getElementById('cycleAdminModal').style.display = 'none';
+  cycleAdminUser = null;
+}
+
+async function loadCycleAdmin() {
+  const body = document.getElementById('cycleAdminBody');
+  try {
+    const { data } = await cycApi('/users/' + cycleAdminUser + '/simulations');
+    document.getElementById('cycleAdminWho').textContent =
+      data.user_name + ' · ' + data.user_email;
+
+    if (!data.simulations.length) {
+      body.innerHTML = '<div style="padding:1.5rem 0;color:rgba(255,255,255,.4)">' +
+        'This user has no simulations.</div>';
+      return;
+    }
+
+    body.innerHTML = data.simulations.map((s) =>
+      '<div style="border:1px solid rgba(255,255,255,.1);border-radius:10px;' +
+      'padding:.9rem 1rem;margin-bottom:.85rem">' +
+        '<div style="display:flex;align-items:flex-start;gap:.75rem;flex-wrap:wrap">' +
+          '<div style="flex:1 1 220px;min-width:0">' +
+            '<div style="font-weight:600;color:#fff">' + cycEsc(s.name) + '</div>' +
+            '<div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.15rem">' +
+              cycEsc(s.status) + ' · ' + cycEsc(s.lifecycle_phase) + ' · ' +
+              s.cycle_count + ' cycle' + (s.cycle_count === 1 ? '' : 's') + ' · ' +
+              s.action_count + ' artifact' + (s.action_count === 1 ? '' : 's') +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:.4rem;flex-wrap:wrap">' +
+            (s.cycle_count
+              ? '<button onclick="toggleCycleList(\'' + s.id + '\')" ' +
+                'style="font-size:.75rem;padding:.28rem .6rem;border:1px solid rgba(255,255,255,.2);' +
+                'border-radius:5px;background:none;color:rgba(255,255,255,.75);cursor:pointer">' +
+                'Cycles</button>'
+              : '') +
+            '<button onclick="confirmCycleReset(\'' + s.id + '\', \'' + cycEsc(s.name).replace(/'/g, "") + '\')" ' +
+              'style="font-size:.75rem;padding:.28rem .6rem;border:1px solid rgba(245,158,11,.5);' +
+              'border-radius:5px;background:none;color:#fbbf24;cursor:pointer">Reset</button>' +
+            (s.cycle_count
+              ? '<button onclick="confirmCycleDelete(\'' + s.id + '\', null, \'all cycles\')" ' +
+                'style="font-size:.75rem;padding:.28rem .6rem;border:1px solid rgba(220,38,38,.5);' +
+                'border-radius:5px;background:none;color:#f87171;cursor:pointer">Delete all</button>'
+              : '') +
+          '</div>' +
+        '</div>' +
+        '<div id="cycleList-' + s.id + '" style="display:none;margin-top:.85rem"></div>' +
+      '</div>').join('') +
+      '<div style="font-size:.75rem;color:rgba(255,255,255,.35);line-height:1.6;margin-top:.35rem">' +
+      '<strong style="color:rgba(255,255,255,.55)">Reset</strong> deletes every cycle and ' +
+      'clears the orchestrator\'s learned state so the next run starts at cycle 1, keeping ' +
+      'agent selection, Layer 6 config, the resume and the generated layers. ' +
+      '<strong style="color:rgba(255,255,255,.55)">Delete</strong> removes cycles and their ' +
+      'artifacts only. Neither destroys sent email, signed documents, published pages, ' +
+      'reported income or CRM contacts.</div>';
+  } catch (err) {
+    body.innerHTML = '<div style="color:#f87171">' + cycEsc(err.message) + '</div>';
+  }
+}
+
+async function toggleCycleList(simId) {
+  const el = document.getElementById('cycleList-' + simId);
+  if (el.style.display === 'block') { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<span style="color:rgba(255,255,255,.4)">Loading cycles…</span>';
+  try {
+    const { data } = await cycApi('/simulations/' + simId + '/cycles');
+    if (!data.cycles.length) {
+      el.innerHTML = '<span style="color:rgba(255,255,255,.4)">No cycles.</span>';
+      return;
+    }
+    el.innerHTML =
+      '<table style="width:100%;border-collapse:collapse;font-size:.78rem">' +
+      '<thead><tr style="color:rgba(255,255,255,.4);text-align:left">' +
+      '<th style="padding:.3rem .4rem;font-weight:600">#</th>' +
+      '<th style="padding:.3rem .4rem;font-weight:600">Phase</th>' +
+      '<th style="padding:.3rem .4rem;font-weight:600">Dispatched</th>' +
+      '<th style="padding:.3rem .4rem;font-weight:600">Artifacts</th>' +
+      '<th style="padding:.3rem .4rem;font-weight:600">Started</th>' +
+      '<th></th></tr></thead><tbody>' +
+      data.cycles.map((c) =>
+        '<tr style="border-top:1px solid rgba(255,255,255,.07)">' +
+        '<td style="padding:.35rem .4rem;color:#fff">' + c.cycle_number +
+          (c.is_running
+            ? ' <span style="color:#fbbf24;font-size:.68rem">running</span>'
+            : '') + '</td>' +
+        '<td style="padding:.35rem .4rem">' + cycEsc(c.phase) + '</td>' +
+        '<td style="padding:.35rem .4rem">' + c.actions_dispatched + '</td>' +
+        '<td style="padding:.35rem .4rem">' + c.artifacts + '</td>' +
+        '<td style="padding:.35rem .4rem;color:rgba(255,255,255,.45)">' +
+          cycEsc((c.started_at || '').slice(0, 16).replace('T', ' ')) + '</td>' +
+        '<td style="padding:.35rem .4rem;text-align:right">' +
+          '<button onclick="confirmCycleDelete(\'' + simId + '\', [\'' + c.id + '\'], ' +
+            '\'cycle ' + c.cycle_number + '\')" ' +
+            'style="font-size:.72rem;padding:.2rem .5rem;border:1px solid rgba(220,38,38,.45);' +
+            'border-radius:4px;background:none;color:#f87171;cursor:pointer">Delete</button>' +
+        '</td></tr>').join('') +
+      '</tbody></table>';
+  } catch (err) {
+    el.innerHTML = '<span style="color:#f87171">' + cycEsc(err.message) + '</span>';
+  }
+}
+
+function cycRows(map) {
+  const keys = Object.keys(map || {});
+  if (!keys.length) return '<div style="color:rgba(255,255,255,.35)">none</div>';
+  return '<ul style="margin:.3rem 0 0;padding-left:1.1rem">' +
+    keys.map((k) => '<li><code style="color:rgba(255,255,255,.6)">' + cycEsc(k) +
+      '</code> — ' + map[k].toLocaleString() + '</li>').join('') + '</ul>';
+}
+
+async function showCyclePreview(simId, cycleIds, label, includeOrphans, kind) {
+  const { data: p } = await cycApi('/simulations/' + simId + '/cycles/preview',
+    { cycle_ids: cycleIds, include_orphans: includeOrphans });
+
+  let html = '';
+  if (!p.total_rows_deleted) {
+    html = '<div style="color:rgba(255,255,255,.6)">Nothing to delete for ' +
+      cycEsc(label) + '.</div>';
+  } else {
+    if (p.running_cycles && p.running_cycles.length) {
+      html += '<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);' +
+        'border-radius:8px;padding:.6rem .8rem;margin-bottom:.9rem;color:#fbbf24">' +
+        'Cycle ' + p.running_cycles.join(', ') + ' has not finished. Deleting now ' +
+        'cancels work already in flight.</div>';
+    }
+    html += '<div style="margin-bottom:.9rem">This will permanently delete <strong>' +
+      p.total_rows_deleted.toLocaleString() + ' row' +
+      (p.total_rows_deleted === 1 ? '' : 's') + '</strong> across ' +
+      p.cycles_in_scope + ' cycle' + (p.cycles_in_scope === 1 ? '' : 's') +
+      (p.cycle_numbers.length ? ' (#' + p.cycle_numbers.join(', #') + ')' : '') + ':' +
+      cycRows(p.delete) + '</div>';
+    if (Object.keys(p.preserve || {}).length) {
+      html += '<div style="background:rgba(15,123,114,.14);border:1px solid rgba(19,168,158,.35);' +
+        'border-radius:8px;padding:.7rem .85rem"><strong style="color:#7ee0c8">' +
+        'Preserved and unlinked</strong> — these record things that already happened ' +
+        'and are never deleted:' + cycRows(p.preserve) +
+        (p.preserved_income_usd
+          ? '<div style="margin-top:.5rem;color:#7ee0c8">Includes $' +
+            p.preserved_income_usd.toLocaleString() + ' of reported income.</div>'
+          : '') +
+        '</div>';
+    }
+    if (includeOrphans) {
+      html += '<div style="margin-top:.8rem;color:rgba(255,255,255,.55)">' +
+        'Artifacts the user generated manually (outside any cycle) are included.</div>';
+    }
+  }
+  return { html, preview: p, empty: !p.total_rows_deleted };
+}
+
+function openCycleConfirm(title, html, onGo) {
+  document.getElementById('cycleConfirmTitle').textContent = title;
+  document.getElementById('cycleConfirmBody').innerHTML = html;
+  document.getElementById('cycleConfirmAck').checked = false;
+  document.getElementById('cycleConfirmMsg').style.display = 'none';
+  const go = document.getElementById('cycleConfirmGo');
+  go.disabled = false;
+  go.textContent = 'Confirm';
+  cyclePendingAction = onGo;
+  document.getElementById('cycleConfirmModal').style.display = 'flex';
+}
+
+function closeCycleConfirm() {
+  document.getElementById('cycleConfirmModal').style.display = 'none';
+  cyclePendingAction = null;
+}
+
+async function confirmCycleDelete(simId, cycleIds, label) {
+  try {
+    const { html, empty } = await showCyclePreview(simId, cycleIds, label, false, 'delete');
+    if (empty) { alert('Nothing to delete for ' + label + '.'); return; }
+    openCycleConfirm('Delete ' + label + '?', html, () =>
+      runCycleAction('/simulations/' + simId + '/cycles/delete',
+        { cycle_ids: cycleIds, include_orphans: false }));
+  } catch (err) { alert(err.message); }
+}
+
+async function confirmCycleReset(simId, simName) {
+  try {
+    const { html } = await showCyclePreview(simId, null, 'this simulation', true, 'reset');
+    const extra =
+      '<div style="margin-top:.9rem;padding-top:.8rem;border-top:1px dashed rgba(255,255,255,.15)">' +
+      'The orchestrator\'s learned state (Bayesian posteriors, momentum, reported ' +
+      'outcomes, agent context) will also be cleared, and the next cycle will start ' +
+      'at cycle 1.<br><span style="color:rgba(255,255,255,.55)">Kept: agent selection, ' +
+      'Layer 6 config, the resume, the calibration cohort and the five generated ' +
+      'layers.</span></div>';
+    openCycleConfirm('Reset "' + simName + '"?', html + extra, () =>
+      runCycleAction('/simulations/' + simId + '/cycles/reset', {}));
+  } catch (err) { alert(err.message); }
+}
+
+async function runCycleAction(path, body) {
+  const go = document.getElementById('cycleConfirmGo');
+  const msg = document.getElementById('cycleConfirmMsg');
+  go.disabled = true;
+  go.textContent = 'Working…';
+  msg.style.display = 'none';
+  try {
+    let { status, data } = await cycApi(path, body);
+
+    // 409 = a cycle is still mid-flight. Ask once, then retry with force.
+    if (status === 409 && data.error === 'cycle_running') {
+      if (!confirm(data.message + '\n\nDelete anyway?')) {
+        go.disabled = false; go.textContent = 'Confirm';
+        return;
+      }
+      ({ status, data } = await cycApi(path, Object.assign({}, body, { force: true })));
+    }
+    if (!data.ok) throw new Error(data.message || data.error || 'Failed');
+
+    msg.style.color = '#7ee0c8';
+    msg.textContent = data.message;
+    msg.style.display = 'block';
+    go.textContent = 'Done';
+    await loadCycleAdmin();
+    setTimeout(closeCycleConfirm, 2600);
+  } catch (err) {
+    msg.style.color = '#f87171';
+    msg.textContent = err.message;
+    msg.style.display = 'block';
+    go.disabled = false;
+    go.textContent = 'Confirm';
+  }
+}
+
+document.getElementById('cycleConfirmGo').addEventListener('click', function () {
+  if (!document.getElementById('cycleConfirmAck').checked) {
+    alert('Tick the acknowledgement first.');
+    return;
+  }
+  if (cyclePendingAction) cyclePendingAction();
+});
+
+// Click the backdrop to dismiss, matching the user edit modal.
+document.getElementById('cycleAdminModal').addEventListener('click', function (e) {
+  if (e.target === this) closeCycleAdmin();
+});
+document.getElementById('cycleConfirmModal').addEventListener('click', function (e) {
+  if (e.target === this) closeCycleConfirm();
+});
 </script>
 {% endblock %}

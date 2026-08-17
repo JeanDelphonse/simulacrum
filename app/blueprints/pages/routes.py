@@ -825,6 +825,16 @@ def outreach_unsubscribe(token):
     return render_template('public/unsubscribe.html', ok=True, email=email)
 
 
+@pages_bp.route('/admin/calibration')
+@login_required
+def admin_calibration_view():
+    """Admin Calibration Layer console (SIM-PRD-CAL-001 §12.8)."""
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    return render_template('admin/calibration.html')
+
+
 @pages_bp.route('/admin/experts')
 @login_required
 def admin_experts_view():

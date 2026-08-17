@@ -2388,3 +2388,114 @@ def discovery_apollo_check():
     from app.services import discovery_service as disc
     result = disc.apollo_probe(current_user.id)
     return jsonify(result), (400 if result.get('error') else 200)
+
+
+# ---------------------------------------------------------------------------
+# Run-cycle reset / delete (admin)
+#
+# Destructive and irreversible, so every route here is preview-first: the UI is
+# expected to call /cycles/preview and show the admin exactly what will be deleted
+# and what will survive before it calls /cycles/delete. See
+# app/services/cycle_admin_service.py for the three-tier blast radius.
+# ---------------------------------------------------------------------------
+
+@admin_bp.route('/users/<user_id>/simulations', methods=['GET'])
+@login_required
+@admin_required
+def admin_user_simulations(user_id):
+    """A user's simulations with cycle and artifact counts."""
+    from app.services import cycle_admin_service as cyc
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'not_found'}), 404
+    return jsonify({
+        'user_id': user_id,
+        'user_name': user.full_name,
+        'user_email': user.email,
+        'simulations': cyc.list_user_simulations(user_id),
+    }), 200
+
+
+@admin_bp.route('/simulations/<sim_id>/cycles', methods=['GET'])
+@login_required
+@admin_required
+def admin_list_cycles(sim_id):
+    """Cycles for one simulation, newest first."""
+    from app.services import cycle_admin_service as cyc
+    sim = Simulation.query.get(sim_id)
+    if not sim:
+        return jsonify({'error': 'not_found'}), 404
+    return jsonify({
+        'simulation_id': sim_id,
+        'name': sim.name,
+        'status': sim.status,
+        'lifecycle_phase': sim.lifecycle_phase,
+        'cycles': cyc.list_cycles(sim_id),
+    }), 200
+
+
+@admin_bp.route('/simulations/<sim_id>/cycles/preview', methods=['POST'])
+@login_required
+@admin_required
+def admin_preview_cycle_delete(sim_id):
+    """Dry run: count what a delete would remove and what it would preserve."""
+    from app.services import cycle_admin_service as cyc
+    if not Simulation.query.get(sim_id):
+        return jsonify({'error': 'not_found'}), 404
+    body = request.get_json(silent=True) or {}
+    return jsonify(cyc.preview(
+        sim_id,
+        cycle_ids=body.get('cycle_ids') or None,
+        include_orphans=bool(body.get('include_orphans')),
+    )), 200
+
+
+@admin_bp.route('/simulations/<sim_id>/cycles/delete', methods=['POST'])
+@login_required
+@admin_required
+def admin_delete_cycles(sim_id):
+    """Delete selected cycles (or all) and everything they generated.
+
+    Real-world records — sent email, executed documents, published pages, reported
+    income, contacts — are preserved and unlinked, never deleted.
+    """
+    from app.services import cycle_admin_service as cyc
+    if not Simulation.query.get(sim_id):
+        return jsonify({'error': 'not_found'}), 404
+
+    body = request.get_json(silent=True) or {}
+    result = cyc.delete_cycles(
+        sim_id,
+        cycle_ids=body.get('cycle_ids') or None,
+        include_orphans=bool(body.get('include_orphans')),
+        admin_user_id=current_user.id,
+        force_running=bool(body.get('force')),
+    )
+    if not result.get('ok'):
+        # 409 for the mid-flight-cycle guard: the caller can retry with force.
+        return jsonify(result), (409 if result.get('error') == 'cycle_running' else 500)
+    return jsonify(result), 200
+
+
+@admin_bp.route('/simulations/<sim_id>/cycles/reset', methods=['POST'])
+@login_required
+@admin_required
+def admin_reset_simulation_cycles(sim_id):
+    """Wipe every cycle and restart the orchestrator from cycle 1.
+
+    Keeps agent selection, Layer 6 config, the resume, the calibration cohort and
+    the generated layers; clears the beliefs the deleted cycles produced.
+    """
+    from app.services import cycle_admin_service as cyc
+    if not Simulation.query.get(sim_id):
+        return jsonify({'error': 'not_found'}), 404
+
+    body = request.get_json(silent=True) or {}
+    result = cyc.reset_simulation(
+        sim_id,
+        admin_user_id=current_user.id,
+        force_running=bool(body.get('force')),
+    )
+    if not result.get('ok'):
+        return jsonify(result), (409 if result.get('error') == 'cycle_running' else 500)
+    return jsonify(result), 200

@@ -1310,6 +1310,14 @@ def _execute_action_sync(entry) -> None:
         db.session.add(av)
         db.session.commit()
 
+        # SIM-PRD-CAL-001 — attribute the calibration runs written inside
+        # execute_agent_action to the version they produced.
+        try:
+            from app.services.calibration_service import stamp_version
+            stamp_version(agent_action.id, new_version_number)
+        except Exception:
+            pass
+
         # Update upstream_action_id on matching ArtifactDependency rows so staleness works
         try:
             from app.models.artifact import ArtifactDependency

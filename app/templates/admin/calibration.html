@@ -1,0 +1,719 @@
+{% extends 'base.html' %}
+{% block title %}Calibration — Admin{% endblock %}
+{% block head %}
+<style>
+.cl-page { max-width:1240px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+.cl-title { font-size:1.4rem; font-weight:700; color:#0f172a; margin:0 0 .35rem; }
+.cl-sub { font-size:.85rem; color:#6b7280; margin:0 0 1.25rem; }
+.cl-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+.cl-stat { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:.9rem 1rem; }
+.cl-stat-label { font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:.3rem; }
+.cl-stat-value { font-size:1.6rem; font-weight:800; color:#0f172a; line-height:1.1; }
+.cl-tabs { display:flex; gap:.4rem; border-bottom:1px solid #e5e7eb; margin-bottom:1.25rem; flex-wrap:wrap; }
+.cl-tab { padding:.5rem .9rem; font-size:.85rem; font-weight:600; color:#6b7280; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; font-family:inherit; }
+.cl-tab.active { color:#0d9488; border-bottom-color:#0d9488; }
+.cl-panel { display:none; } .cl-panel.active { display:block; }
+.cl-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem; }
+.cl-card h2 { font-size:1rem; font-weight:700; color:#0f172a; margin:0 0 .35rem; }
+.cl-card .hint { font-size:.78rem; color:#6b7280; margin:0 0 1rem; line-height:1.6; }
+.cl-toolbar { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem; }
+.cl-toolbar .spacer { flex:1; }
+.btn { display:inline-block; padding:.5rem .95rem; font-size:.82rem; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid transparent; text-decoration:none; font-family:inherit; }
+.btn-primary { background:#0d9488; color:#fff; } .btn-primary:hover { background:#0f766e; }
+.btn-sec { background:#fff; color:#374151; border-color:#d1d5db; } .btn-sec:hover { background:#f3f4f6; }
+.btn-danger { background:#fff; color:#b91c1c; border-color:#fca5a5; } .btn-danger:hover { background:#fef2f2; }
+.btn-xs { padding:.28rem .55rem; font-size:.72rem; }
+.cl-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.cl-table th { background:#f9fafb; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; font-weight:700; padding:.5rem .7rem; text-align:left; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+.cl-table td { padding:.55rem .7rem; border-bottom:1px solid #f1f5f9; color:#374151; vertical-align:middle; }
+.cl-table tr:hover td { background:#fafafa; }
+.badge { display:inline-block; padding:.12rem .5rem; border-radius:6px; font-size:.68rem; font-weight:700; }
+.badge-a { background:#dcfce7; color:#166534; }
+.badge-b { background:#e0f2fe; color:#075985; }
+.badge-c { background:#fef3c7; color:#92400e; }
+.badge-active { background:#dcfce7; color:#166534; }
+.badge-inactive { background:#f3f4f6; color:#6b7280; }
+.badge-review { background:#fee2e2; color:#991b1b; }
+.badge-stale { background:#fef3c7; color:#92400e; }
+.badge-high { background:#ccfbf1; color:#0f766e; }
+.badge-moderate { background:#fef3c7; color:#92400e; }
+.badge-directional { background:#ffedd5; color:#9a3412; }
+.muted { color:#9ca3af; }
+.mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.75rem; }
+.drift-pos { color:#b91c1c; font-weight:700; } .drift-neg { color:#0f766e; font-weight:700; }
+.cl-modal-bg { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none; align-items:flex-start; justify-content:center; z-index:1000; overflow-y:auto; padding:3rem 1rem; }
+.cl-modal-bg.open { display:flex; }
+.cl-modal { background:#fff; border-radius:12px; width:100%; max-width:620px; padding:1.5rem; }
+.cl-modal h2 { font-size:1.1rem; font-weight:700; color:#0f172a; margin:0 0 1rem; }
+.field { margin-bottom:.9rem; }
+.field label { display:block; font-size:.76rem; font-weight:600; color:#374151; margin-bottom:.3rem; }
+.field .sub { font-weight:400; color:#9ca3af; }
+.field input, .field select, .field textarea {
+  width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px;
+  padding:.5rem .65rem; font-size:.85rem; color:#111827; font-family:inherit; }
+.field-row { display:flex; gap:.8rem; flex-wrap:wrap; } .field-row > * { flex:1 1 140px; }
+.modal-actions { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.25rem; }
+.form-err { color:#b91c1c; font-size:.78rem; margin-top:.5rem; min-height:1rem; }
+.empty { text-align:center; color:#9ca3af; padding:2rem 1rem; font-size:.85rem; }
+.switch-row { display:flex; align-items:flex-start; gap:.7rem; padding:.8rem 0; border-bottom:1px solid #f1f5f9; }
+.switch-row:last-child { border-bottom:none; }
+.switch-row input { margin-top:.2rem; }
+.switch-row .txt strong { display:block; font-size:.85rem; color:#0f172a; }
+.switch-row .txt span { font-size:.78rem; color:#6b7280; line-height:1.6; }
+.warn-box { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:8px; padding:.8rem 1rem; font-size:.8rem; line-height:1.65; margin-bottom:1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cl-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
+    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link">Experts</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
+    <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
+    <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link active">Calibration</a>
+  </nav>
+  <h1 class="cl-title">Calibration Layer</h1>
+  <p class="cl-sub">
+    Reference datasets, per-agent field bindings and drift review.
+    Every threshold shown here is stored in <span class="mono">calibration_configs</span> —
+    nothing on this page is hardcoded.
+  </p>
+
+  <div class="cl-summary" id="clStats"></div>
+
+  <div class="cl-tabs">
+    <button class="cl-tab active" data-panel="datasets">Datasets</button>
+    <button class="cl-tab" data-panel="configs">Agent configs</button>
+    <button class="cl-tab" data-panel="drift">Drift monitor</button>
+    <button class="cl-tab" data-panel="settings">Settings</button>
+  </div>
+
+  {# ── Datasets ─────────────────────────────────────────────────────────── #}
+  <div class="cl-panel active" id="panel-datasets">
+    <div class="cl-card">
+      <h2>Reference datasets</h2>
+      <p class="hint">
+        A dataset's credibility tier caps the confidence any field calibrated
+        against it can render: <strong>Tier C never renders High</strong>. A dataset
+        marked <em>pending verification</em> is also capped at Moderate, however
+        dense its data — so a seeded or freshly uploaded extract is useful
+        immediately without overstating its own authority. Clear the flag only
+        once you have checked the numbers against the source.
+      </p>
+      <div class="cl-toolbar">
+        <span class="spacer"></span>
+        <button class="btn btn-primary" id="btnNewDataset">+ New dataset</button>
+      </div>
+      <div id="datasetsWrap"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  {# ── Agent configs ────────────────────────────────────────────────────── #}
+  <div class="cl-panel" id="panel-configs">
+    <div class="cl-card">
+      <h2>Per-agent field bindings</h2>
+      <p class="hint">
+        Each row binds one numeric field an agent emits to a dataset. The
+        <span class="mono">output_field</span> is the JSON key the agent is asked to
+        return in its <span class="mono">METRICS</span> block — adding a config here
+        changes what the agent is asked for on its next run, with no deploy.
+        A config with no dataset bound renders the field raw.
+      </p>
+      <div class="cl-toolbar">
+        <span class="spacer"></span>
+        <button class="btn btn-primary" id="btnNewConfig">+ New config</button>
+      </div>
+      <div id="configsWrap"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  {# ── Drift monitor ────────────────────────────────────────────────────── #}
+  <div class="cl-panel" id="panel-drift">
+    <div class="cl-card">
+      <h2>Drift monitor</h2>
+      <p class="hint">
+        Verified outcome reports grouped by cohort, against the current reference
+        distribution. A cohort is only reweighted once it clears its
+        <span class="mono">min_reports_to_reweight</span> gate — the optimal-stopping
+        rule that stops us chasing noise from the first few reports.
+        Reweighting blends reports at parity with reference observations and returns
+        the dataset to <em>pending verification</em>, because its numbers are then no
+        longer exactly what the cited source published.
+      </p>
+      <div class="cl-toolbar">
+        <span id="driftLiveState" class="muted"></span>
+        <span class="spacer"></span>
+        <button class="btn btn-sec" id="btnRunDrift">Run evaluation now</button>
+      </div>
+      <div id="driftWrap"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="cl-card">
+      <h2>Audit trail</h2>
+      <p class="hint">Every evaluation and reweight, most recent first.</p>
+      <div id="auditWrap"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  {# ── Settings ─────────────────────────────────────────────────────────── #}
+  <div class="cl-panel" id="panel-settings">
+    <div class="cl-card">
+      <h2>Layer switches</h2>
+      <p class="hint">Stored in <span class="mono">platform_settings</span>. Changes take effect immediately.</p>
+      <div id="settingsWrap"></div>
+      <div class="form-err" id="settingsErr"></div>
+    </div>
+  </div>
+</div>
+
+{# ── Dataset modal ──────────────────────────────────────────────────────── #}
+<div class="cl-modal-bg" id="dsModalBg">
+  <div class="cl-modal">
+    <h2 id="dsModalTitle">New dataset</h2>
+    <input type="hidden" id="dsId">
+    <div class="field-row">
+      <div class="field">
+        <label for="dsLayer">Layer</label>
+        <select id="dsLayer">
+          <option value="L1">L1 — Active Income</option>
+          <option value="L2">L2 — Leveraged</option>
+          <option value="L3">L3 — Productized</option>
+          <option value="L4">L4 — Automated Residual</option>
+          <option value="L5">L5 — Wealth Deployment</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="dsCred">Credibility tier <span class="sub">caps confidence</span></label>
+        <select id="dsCred">
+          <option value="A">A — government / primary source</option>
+          <option value="B">B — reputable survey or industry guide</option>
+          <option value="C">C — modelled proxy or thin source</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label for="dsName">Name</label><input type="text" id="dsName" placeholder="BLS OES National Wages"></div>
+    <div class="field"><label for="dsSource">Source (publisher)</label><input type="text" id="dsSource" placeholder="U.S. Bureau of Labor Statistics"></div>
+    <div class="field"><label for="dsUrl">Source URL</label><input type="url" id="dsUrl" placeholder="https://www.bls.gov/oes/"></div>
+    <div class="field-row">
+      <div class="field">
+        <label for="dsUnit">Unit</label>
+        <select id="dsUnit">
+          <option value="usd_year">usd_year — annual dollars</option>
+          <option value="usd_hour">usd_hour — hourly dollars</option>
+          <option value="usd">usd — dollars</option>
+          <option value="pct">pct — percent out of 100</option>
+          <option value="ratio">ratio — multiplier</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="dsGeo">Geography scope</label>
+        <select id="dsGeo">
+          <option value="national">national</option>
+          <option value="metro">metro</option>
+          <option value="global">global</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="dsAsOf">As-of label <span class="sub">shown on the card</span></label><input type="text" id="dsAsOf" placeholder="May 2024"></div>
+      <div class="field"><label for="dsCadence">Refresh cadence (days)</label><input type="number" id="dsCadence" value="365" min="1"></div>
+    </div>
+    <div class="field">
+      <label for="dsDeriv">Derivation note <span class="sub">required if this is a derived or proxy dataset</span></label>
+      <textarea id="dsDeriv" rows="3" placeholder="e.g. hourly rate = annual wage ÷ (2080 × 0.60 utilisation) × 1.35 overhead"></textarea>
+    </div>
+    <div class="field" id="dsFlagsField">
+      <label><input type="checkbox" id="dsNeedsReview" style="width:auto"> Pending verification (caps confidence at Moderate)</label>
+      <label style="margin-top:.4rem"><input type="checkbox" id="dsActive" style="width:auto" checked> Active</label>
+    </div>
+    <div class="form-err" id="dsErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sec" data-close="dsModalBg">Cancel</button>
+      <button class="btn btn-primary" id="dsSave">Save</button>
+    </div>
+  </div>
+</div>
+
+{# ── Upload modal ───────────────────────────────────────────────────────── #}
+<div class="cl-modal-bg" id="upModalBg">
+  <div class="cl-modal">
+    <h2>Upload reference rows</h2>
+    <p class="hint" style="font-size:.8rem;color:#6b7280;line-height:1.65">
+      CSV header: <span class="mono">soc_group,metro,seniority,p10,p50,p90,mean,sample_size,as_of_date</span>.
+      Only <span class="mono">soc_group</span> and <span class="mono">p50</span> are required;
+      <span class="mono">metro</span> defaults to <span class="mono">national</span> and
+      <span class="mono">seniority</span> to <span class="mono">any</span>, which is what the
+      cohort ladder relaxes down to. Rows upsert on cohort, so re-uploading a
+      corrected extract replaces rather than duplicates.
+    </p>
+    <input type="hidden" id="upDatasetId">
+    <div class="field"><label for="upFile">CSV file</label><input type="file" id="upFile" accept=".csv,text/csv"></div>
+    <div class="field"><label for="upPaste">…or paste CSV</label><textarea id="upPaste" rows="6" class="mono"></textarea></div>
+    <div class="form-err" id="upErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sec" data-close="upModalBg">Cancel</button>
+      <button class="btn btn-primary" id="upSave">Upload</button>
+    </div>
+  </div>
+</div>
+
+{# ── Config modal ───────────────────────────────────────────────────────── #}
+<div class="cl-modal-bg" id="cfModalBg">
+  <div class="cl-modal">
+    <h2 id="cfModalTitle">New agent config</h2>
+    <input type="hidden" id="cfId">
+    <div class="field-row">
+      <div class="field"><label for="cfAgent">Agent key <span class="sub">canonical action_type</span></label><input type="text" id="cfAgent" placeholder="rate_card"></div>
+      <div class="field">
+        <label for="cfLayer">Layer</label>
+        <select id="cfLayer"><option>L1</option><option>L2</option><option>L3</option><option>L4</option><option>L5</option></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="cfField">Output field <span class="sub">METRICS key</span></label><input type="text" id="cfField" placeholder="billable_hourly_rate"></div>
+      <div class="field">
+        <label for="cfUnit">Unit</label>
+        <select id="cfUnit">
+          <option value="usd_hour">usd_hour</option><option value="usd_year">usd_year</option>
+          <option value="usd">usd</option><option value="pct">pct</option><option value="ratio">ratio</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label for="cfLabel">Field label <span class="sub">headline on the card</span></label><input type="text" id="cfLabel" placeholder="Your billable hourly rate"></div>
+    <div class="field"><label for="cfDataset">Reference dataset</label><select id="cfDataset"></select></div>
+    <div class="field-row">
+      <div class="field"><label for="cfSigma">σ model (%) <span class="sub">lower = trust the agent more</span></label><input type="number" id="cfSigma" value="25" step="1" min="1"></div>
+      <div class="field"><label for="cfBandFloor">Band floor (%)</label><input type="number" id="cfBandFloor" value="8" step="1" min="0"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="cfMinHigh">min sample — High</label><input type="number" id="cfMinHigh" value="300" min="1"></div>
+      <div class="field"><label for="cfMinMod">min sample — Moderate <span class="sub">guard fires below</span></label><input type="number" id="cfMinMod" value="40" min="1"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="cfDrift">Drift threshold (%)</label><input type="number" id="cfDrift" value="15" step="1" min="1"></div>
+      <div class="field"><label for="cfGate">Reports to reweight</label><input type="number" id="cfGate" value="30" min="1"></div>
+    </div>
+    <div class="field"><label for="cfPct">Percentiles <span class="sub">low, mid, high</span></label><input type="text" id="cfPct" value="10, 50, 90"></div>
+    <div class="field"><label><input type="checkbox" id="cfEnabled" style="width:auto" checked> Enabled</label></div>
+    <div class="form-err" id="cfErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sec" data-close="cfModalBg">Cancel</button>
+      <button class="btn btn-primary" id="cfSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const API = '/api/admin/calibration';
+  let datasets = [], configs = [], drift = null;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = (v, d) => { const n = parseFloat(v); return isNaN(n) ? d : n; };
+
+  async function api(path, opts) {
+    const res = await fetch(API + path, Object.assign({
+      headers: { 'Content-Type': 'application/json' },
+    }, opts || {}));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
+    return data;
+  }
+
+  // ── tabs ────────────────────────────────────────────────────────────────
+  document.querySelectorAll('.cl-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.cl-tab').forEach((t) => t.classList.remove('active'));
+      document.querySelectorAll('.cl-panel').forEach((p) => p.classList.remove('active'));
+      tab.classList.add('active');
+      $('panel-' + tab.dataset.panel).classList.add('active');
+      if (tab.dataset.panel === 'drift' && !drift) loadDrift();
+    });
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => $(btn.dataset.close).classList.remove('open'));
+  });
+
+  // ── datasets ────────────────────────────────────────────────────────────
+  function renderDatasets() {
+    if (!datasets.length) {
+      $('datasetsWrap').innerHTML = '<div class="empty">No datasets yet. Create one, then upload its rows.</div>';
+      return;
+    }
+    $('datasetsWrap').innerHTML =
+      '<table class="cl-table"><thead><tr>' +
+      '<th>Layer</th><th>Name</th><th>Source</th><th>Unit</th><th>Cred.</th>' +
+      '<th>Caps at</th><th>Rows</th><th>Refreshed</th><th>State</th><th></th>' +
+      '</tr></thead><tbody>' +
+      datasets.map((d) =>
+        '<tr><td>' + esc(d.layer) + '</td>' +
+        '<td><strong>' + esc(d.name) + '</strong>' +
+          (d.derivation_note ? '<br><span class="muted" style="font-size:.7rem">derived</span>' : '') + '</td>' +
+        '<td>' + (d.source_url
+            ? '<a href="' + esc(d.source_url) + '" target="_blank" rel="noopener">' + esc(d.source) + '</a>'
+            : esc(d.source)) + '</td>' +
+        '<td class="mono">' + esc(d.unit) + '</td>' +
+        '<td><span class="badge badge-' + esc((d.credibility_tier || 'c').toLowerCase()) + '">' + esc(d.credibility_tier) + '</span></td>' +
+        '<td><span class="badge badge-' + esc(d.tier_cap) + '">' + esc(d.tier_cap) + '</span></td>' +
+        '<td>' + d.point_count + '</td>' +
+        '<td>' + (d.last_refreshed || '<span class="muted">never</span>') +
+          (d.is_stale ? ' <span class="badge badge-stale">stale</span>' : '') + '</td>' +
+        '<td>' + (d.is_active ? '<span class="badge badge-active">active</span>' : '<span class="badge badge-inactive">off</span>') +
+          (d.needs_review ? ' <span class="badge badge-review">pending verification</span>' : '') + '</td>' +
+        '<td style="white-space:nowrap">' +
+          '<button class="btn btn-sec btn-xs" data-ds-edit="' + d.id + '">Edit</button> ' +
+          '<button class="btn btn-sec btn-xs" data-ds-up="' + d.id + '">Upload</button> ' +
+          (d.needs_review ? '<button class="btn btn-sec btn-xs" data-ds-verify="' + d.id + '">Mark verified</button> ' : '') +
+          '<button class="btn btn-danger btn-xs" data-ds-del="' + d.id + '">Delete</button>' +
+        '</td></tr>').join('') +
+      '</tbody></table>';
+
+    $('datasetsWrap').querySelectorAll('[data-ds-edit]').forEach((b) =>
+      b.addEventListener('click', () => openDataset(b.dataset.dsEdit)));
+    $('datasetsWrap').querySelectorAll('[data-ds-up]').forEach((b) =>
+      b.addEventListener('click', () => { $('upDatasetId').value = b.dataset.dsUp; $('upErr').textContent = ''; $('upModalBg').classList.add('open'); }));
+    $('datasetsWrap').querySelectorAll('[data-ds-verify]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('Confirm you have checked these numbers against the published source. ' +
+                     'Verified Tier A/B datasets can render as High confidence to users.')) return;
+        await api('/datasets/' + b.dataset.dsVerify, { method: 'PUT', body: JSON.stringify({ needs_review: false }) });
+        await loadDatasets();
+      }));
+    $('datasetsWrap').querySelectorAll('[data-ds-del]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('Delete this dataset and all its reference rows?')) return;
+        try {
+          await api('/datasets/' + b.dataset.dsDel, { method: 'DELETE' });
+        } catch (err) {
+          if (!confirm(err.message + '\n\nDelete anyway and unbind those configs?')) return;
+          await api('/datasets/' + b.dataset.dsDel + '?force=1', { method: 'DELETE' });
+        }
+        await loadDatasets(); await loadConfigs();
+      }));
+  }
+
+  function openDataset(id) {
+    const d = datasets.find((x) => x.id === id) || {};
+    $('dsModalTitle').textContent = id ? 'Edit dataset' : 'New dataset';
+    $('dsId').value = id || '';
+    $('dsLayer').value = d.layer || 'L1';
+    $('dsCred').value = d.credibility_tier || 'B';
+    $('dsName').value = d.name || '';
+    $('dsSource').value = d.source || '';
+    $('dsUrl').value = d.source_url || '';
+    $('dsUnit').value = d.unit || 'usd_year';
+    $('dsGeo').value = d.geography_scope || 'national';
+    $('dsAsOf').value = d.as_of_label || '';
+    $('dsCadence').value = d.refresh_cadence_days || 365;
+    $('dsDeriv').value = d.derivation_note || '';
+    $('dsNeedsReview').checked = id ? !!d.needs_review : true;
+    $('dsActive').checked = id ? !!d.is_active : true;
+    $('dsFlagsField').style.display = id ? 'block' : 'none';
+    $('dsErr').textContent = '';
+    $('dsModalBg').classList.add('open');
+  }
+
+  $('btnNewDataset').addEventListener('click', () => openDataset(null));
+  $('dsSave').addEventListener('click', async () => {
+    const id = $('dsId').value;
+    const body = {
+      layer: $('dsLayer').value, name: $('dsName').value.trim(),
+      source: $('dsSource').value.trim(), source_url: $('dsUrl').value.trim(),
+      unit: $('dsUnit').value, geography_scope: $('dsGeo').value,
+      credibility_tier: $('dsCred').value, as_of_label: $('dsAsOf').value.trim(),
+      refresh_cadence_days: num($('dsCadence').value, 365),
+      derivation_note: $('dsDeriv').value.trim(),
+    };
+    if (id) { body.needs_review = $('dsNeedsReview').checked; body.is_active = $('dsActive').checked; }
+    try {
+      await api(id ? '/datasets/' + id : '/datasets',
+        { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+      $('dsModalBg').classList.remove('open');
+      await loadDatasets();
+    } catch (err) { $('dsErr').textContent = err.message; }
+  });
+
+  $('upSave').addEventListener('click', async () => {
+    const id = $('upDatasetId').value;
+    const file = $('upFile').files[0];
+    const pasted = $('upPaste').value.trim();
+    $('upErr').textContent = '';
+    try {
+      let data;
+      if (file) {
+        const fd = new FormData(); fd.append('file', file);
+        const res = await fetch(API + '/datasets/' + id + '/upload', { method: 'POST', body: fd });
+        data = await res.json();
+        if (!res.ok) throw new Error(data.message || data.error);
+      } else if (pasted) {
+        data = await api('/datasets/' + id + '/upload', { method: 'POST', body: JSON.stringify({ csv: pasted }) });
+      } else { throw new Error('Choose a file or paste CSV.'); }
+      alert('Created ' + data.created + ', updated ' + data.updated + ', skipped ' + data.skipped +
+        (data.errors && data.errors.length ? '\n\n' + data.errors.join('\n') : ''));
+      $('upModalBg').classList.remove('open');
+      $('upFile').value = ''; $('upPaste').value = '';
+      await loadDatasets();
+    } catch (err) { $('upErr').textContent = err.message; }
+  });
+
+  async function loadDatasets() {
+    datasets = await api('/datasets');
+    renderDatasets(); renderStats(); fillDatasetSelect();
+  }
+
+  // ── configs ─────────────────────────────────────────────────────────────
+  function fillDatasetSelect() {
+    $('cfDataset').innerHTML = '<option value="">— none (renders raw) —</option>' +
+      datasets.map((d) => '<option value="' + d.id + '">' + esc(d.layer + ' · ' + d.name) + '</option>').join('');
+  }
+
+  function renderConfigs() {
+    if (!configs.length) {
+      $('configsWrap').innerHTML = '<div class="empty">No agent configs yet.</div>';
+      return;
+    }
+    $('configsWrap').innerHTML =
+      '<table class="cl-table"><thead><tr>' +
+      '<th>Layer</th><th>Agent</th><th>Field</th><th>Label</th><th>Unit</th>' +
+      '<th>Dataset</th><th>σ model</th><th>High / Mod</th><th>Runs</th><th>State</th><th></th>' +
+      '</tr></thead><tbody>' +
+      configs.map((c) =>
+        '<tr><td>' + esc(c.layer) + '</td>' +
+        '<td class="mono">' + esc(c.agent_key) + '</td>' +
+        '<td class="mono">' + esc(c.output_field) + '</td>' +
+        '<td>' + esc(c.field_label) + '</td>' +
+        '<td class="mono">' + esc(c.unit) + '</td>' +
+        '<td>' + (c.dataset_name ? esc(c.dataset_name) : '<span class="muted">unbound</span>') +
+          (c.unit_mismatch
+            ? '<br><span class="badge badge-review" title="The engine refuses this ' +
+              'binding: a field in ' + esc(c.unit) + ' cannot be anchored to a dataset ' +
+              'in ' + esc(c.dataset_unit) + '. This field renders raw until fixed.">' +
+              'unit mismatch: dataset is ' + esc(c.dataset_unit) + '</span>'
+            : '') + '</td>' +
+        '<td>' + c.sigma_model_pct + '%</td>' +
+        '<td>' + c.min_sample_high + ' / ' + c.min_sample_moderate + '</td>' +
+        '<td>' + c.run_count + '</td>' +
+        '<td>' + (c.is_enabled ? '<span class="badge badge-active">on</span>' : '<span class="badge badge-inactive">off</span>') + '</td>' +
+        '<td style="white-space:nowrap">' +
+          '<button class="btn btn-sec btn-xs" data-cf-edit="' + c.id + '">Edit</button> ' +
+          '<button class="btn btn-danger btn-xs" data-cf-del="' + c.id + '">Delete</button>' +
+        '</td></tr>').join('') +
+      '</tbody></table>';
+
+    $('configsWrap').querySelectorAll('[data-cf-edit]').forEach((b) =>
+      b.addEventListener('click', () => openConfig(b.dataset.cfEdit)));
+    $('configsWrap').querySelectorAll('[data-cf-del]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('Delete this config? The field will stop being calibrated on the next run.')) return;
+        await api('/configs/' + b.dataset.cfDel, { method: 'DELETE' });
+        await loadConfigs();
+      }));
+  }
+
+  function openConfig(id) {
+    const c = configs.find((x) => x.id === id) || {};
+    $('cfModalTitle').textContent = id ? 'Edit agent config' : 'New agent config';
+    $('cfId').value = id || '';
+    $('cfAgent').value = c.agent_key || '';
+    $('cfLayer').value = c.layer || 'L1';
+    $('cfField').value = c.output_field || '';
+    $('cfUnit').value = c.unit || 'usd_hour';
+    $('cfLabel').value = c.field_label || '';
+    $('cfDataset').value = c.dataset_id || '';
+    $('cfSigma').value = c.sigma_model_pct != null ? c.sigma_model_pct : 25;
+    $('cfBandFloor').value = c.band_floor_pct != null ? c.band_floor_pct : 8;
+    $('cfMinHigh').value = c.min_sample_high != null ? c.min_sample_high : 300;
+    $('cfMinMod').value = c.min_sample_moderate != null ? c.min_sample_moderate : 40;
+    $('cfDrift').value = c.drift_threshold_pct != null ? c.drift_threshold_pct : 15;
+    $('cfGate').value = c.min_reports_to_reweight != null ? c.min_reports_to_reweight : 30;
+    $('cfPct').value = (c.percentiles || [10, 50, 90]).join(', ');
+    $('cfEnabled').checked = id ? !!c.is_enabled : true;
+    $('cfErr').textContent = '';
+    $('cfModalBg').classList.add('open');
+  }
+
+  $('btnNewConfig').addEventListener('click', () => openConfig(null));
+  $('cfSave').addEventListener('click', async () => {
+    const id = $('cfId').value;
+    const pcts = $('cfPct').value.split(',').map((s) => parseFloat(s.trim())).filter((n) => !isNaN(n));
+    const body = {
+      agent_key: $('cfAgent').value.trim(), layer: $('cfLayer').value,
+      output_field: $('cfField').value.trim(), field_label: $('cfLabel').value.trim(),
+      unit: $('cfUnit').value, dataset_id: $('cfDataset').value || null,
+      sigma_model_pct: num($('cfSigma').value, 25),
+      band_floor_pct: num($('cfBandFloor').value, 8),
+      min_sample_high: num($('cfMinHigh').value, 300),
+      min_sample_moderate: num($('cfMinMod').value, 40),
+      drift_threshold_pct: num($('cfDrift').value, 15),
+      min_reports_to_reweight: num($('cfGate').value, 30),
+      is_enabled: $('cfEnabled').checked,
+    };
+    if (pcts.length === 3) body.percentiles = pcts;
+    try {
+      await api(id ? '/configs/' + id : '/configs',
+        { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+      $('cfModalBg').classList.remove('open');
+      await loadConfigs();
+    } catch (err) { $('cfErr').textContent = err.message; }
+  });
+
+  async function loadConfigs() { configs = await api('/configs'); renderConfigs(); renderStats(); }
+
+  // ── drift ───────────────────────────────────────────────────────────────
+  function renderDrift() {
+    $('driftLiveState').innerHTML = drift.reweight_live
+      ? '<span class="badge badge-review">automatic reweighting is LIVE</span>'
+      : 'Automatic reweighting is off — this job observes and flags only.';
+
+    if (!drift.cohorts.length) {
+      $('driftWrap').innerHTML = '<div class="empty">No verified outcome reports yet, so there is nothing to compare. ' +
+        'Reports arrive as users report real outcomes; verify them under Outcomes before they count.</div>';
+    } else {
+      $('driftWrap').innerHTML =
+        '<table class="cl-table"><thead><tr><th>Agent · field</th><th>Cohort</th><th>Reference p50</th>' +
+        '<th>Reported p50</th><th>Drift</th><th>Reports</th><th>Gate</th><th>Status</th><th></th>' +
+        '</tr></thead><tbody>' +
+        drift.cohorts.map((c) => {
+          const dr = c.drift_pct;
+          const driftCell = dr == null ? '<span class="muted">n/a</span>'
+            : '<span class="' + (dr > 0 ? 'drift-pos' : 'drift-neg') + '">' + (dr > 0 ? '+' : '') + dr + '%</span>';
+          return '<tr><td class="mono">' + esc(c.agent_key) + '<br>' + esc(c.output_field) + '</td>' +
+            '<td class="mono">' + esc((c.cohort && c.cohort.soc_group) || '—') + ' · ' +
+              esc((c.cohort && c.cohort.metro) || '—') + '</td>' +
+            '<td>' + (c.ref_p50 == null ? '<span class="muted">no row</span>' : c.ref_p50.toLocaleString()) + '</td>' +
+            '<td>' + c.reported_p50.toLocaleString() + '</td>' +
+            '<td>' + driftCell + '</td>' +
+            '<td>' + c.n_reports + '</td>' +
+            '<td>' + (c.gate_cleared ? '<span class="badge badge-active">cleared</span>'
+                                     : '<span class="badge badge-inactive">' + c.n_reports + '/' + c.gate + '</span>') + '</td>' +
+            '<td>' + esc(c.notes || '') + '</td>' +
+            '<td>' + (c.point_id
+              ? '<button class="btn btn-sec btn-xs" data-rw="' + esc(c.cohort_hash) + '" ' +
+                'data-ag="' + esc(c.agent_key) + '" data-fl="' + esc(c.output_field) + '" ' +
+                'data-gate="' + (c.gate_cleared ? '1' : '0') + '">Reweight</button>'
+              : '') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+
+      $('driftWrap').querySelectorAll('[data-rw]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          const force = b.dataset.gate !== '1';
+          let msg = 'Blend the reported outcomes into this cohort\'s reference distribution?\n\n' +
+            'The dataset will return to "pending verification", so it renders at Moderate until you re-verify it.';
+          if (force) msg = 'This cohort has NOT cleared its reweight gate.\n\n' + msg;
+          if (!confirm(msg)) return;
+          try {
+            const res = await api('/drift/reweight', {
+              method: 'POST',
+              body: JSON.stringify({ cohort_hash: b.dataset.rw, agent_key: b.dataset.ag,
+                                     output_field: b.dataset.fl, force: force }),
+            });
+            alert(res.message);
+          } catch (err) { alert(err.message); }
+          drift = null; await loadDrift(); await loadDatasets();
+        }));
+    }
+
+    $('auditWrap').innerHTML = !drift.history.length
+      ? '<div class="empty">Nothing recorded yet. The nightly job writes here at 04:15 UTC.</div>'
+      : '<table class="cl-table"><thead><tr><th>When</th><th>Dataset</th><th>Agent · field</th>' +
+        '<th>Drift</th><th>Reports</th><th>Action</th><th>Notes</th></tr></thead><tbody>' +
+        drift.history.map((a) =>
+          '<tr><td class="mono">' + esc((a.created_at || '').slice(0, 16).replace('T', ' ')) + '</td>' +
+          '<td>' + esc(a.dataset_name || '—') + '</td>' +
+          '<td class="mono">' + esc(a.agent_key || '—') + ' · ' + esc(a.output_field || '—') + '</td>' +
+          '<td>' + (a.drift_pct == null ? '<span class="muted">n/a</span>' : a.drift_pct + '%') + '</td>' +
+          '<td>' + a.n_reports + '</td>' +
+          '<td><span class="badge badge-' + (a.action === 'reweighted' ? 'review' : 'inactive') + '">' + esc(a.action) + '</span></td>' +
+          '<td>' + esc(a.notes || '') + '</td></tr>').join('') + '</tbody></table>';
+  }
+
+  async function loadDrift() { drift = await api('/drift'); renderDrift(); renderStats(); }
+
+  $('btnRunDrift').addEventListener('click', async () => {
+    const res = await api('/drift/run', { method: 'POST' });
+    alert('Evaluated ' + res.cohorts_evaluated + ' cohort(s): ' + res.flagged + ' flagged, ' +
+      res.gated + ' held by the gate, ' + res.reweighted.length + ' reweighted.');
+    drift = null; await loadDrift();
+  });
+
+  // ── settings ────────────────────────────────────────────────────────────
+  const SWITCHES = [
+    { key: 'calibration_enabled', title: 'Calibration enabled',
+      desc: 'Master switch. Off means agents are not asked for METRICS blocks and no card renders — ' +
+            'artifacts are unaffected.' },
+    { key: 'calibration_outcomes_open', title: 'Outcome reporting open',
+      desc: 'Shows the "Ran this for real?" widget and accepts submissions. Turn off to pause the flywheel ' +
+            'without losing reports already collected.' },
+    { key: 'calibration_gated', title: 'Gate behind the paid simulation',
+      desc: 'Reserved. When enabled the gate reads the price from Admin → Pricing; no price is set here. ' +
+            'Calibration is the trust signal, so the default is free for everyone.' },
+    { key: 'calibration_reweight_live', title: 'Automatic reweighting (Phase 4)',
+      desc: 'Lets the nightly job change reference data once a cohort clears its gate. Leave off until ' +
+            'you have real report volume; per-cohort manual reweight in the Drift tab works regardless.' },
+  ];
+
+  function renderSettings(values) {
+    $('settingsWrap').innerHTML =
+      '<div class="warn-box">Turning on automatic reweighting lets user-reported outcomes modify your ' +
+      'reference datasets unattended. Any dataset it touches is returned to "pending verification".</div>' +
+      SWITCHES.map((s) =>
+        '<label class="switch-row"><input type="checkbox" data-setting="' + s.key + '"' +
+        (values[s.key] === 'true' ? ' checked' : '') + '>' +
+        '<span class="txt"><strong>' + esc(s.title) + '</strong><span>' + esc(s.desc) + '</span></span></label>'
+      ).join('');
+
+    $('settingsWrap').querySelectorAll('[data-setting]').forEach((cb) =>
+      cb.addEventListener('change', async () => {
+        $('settingsErr').textContent = '';
+        try {
+          const res = await fetch('/api/admin/settings/' + cb.dataset.setting, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: cb.checked ? 'true' : 'false' }),
+          });
+          if (!res.ok) throw new Error('Could not save that setting.');
+        } catch (err) {
+          cb.checked = !cb.checked;
+          $('settingsErr').textContent = err.message;
+        }
+      }));
+  }
+
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/admin/settings');
+      const rows = await res.json();
+      const values = {};
+      (rows || []).forEach((r) => { values[r.key] = r.value; });
+      renderSettings(values);
+    } catch (err) { $('settingsWrap').innerHTML = '<div class="empty">Could not load settings.</div>'; }
+  }
+
+  // ── stats ───────────────────────────────────────────────────────────────
+  function renderStats() {
+    const bound = configs.filter((c) => c.dataset_id && c.is_enabled).length;
+    const rows = datasets.reduce((a, d) => a + d.point_count, 0);
+    const pending = datasets.filter((d) => d.needs_review).length;
+    const flagged = drift ? drift.cohorts.filter((c) => c.exceeds_threshold).length : '–';
+    $('clStats').innerHTML = [
+      ['Datasets', datasets.length], ['Reference rows', rows.toLocaleString()],
+      ['Calibrated fields', bound], ['Pending verification', pending],
+      ['Cohorts over threshold', flagged],
+    ].map(([label, value]) =>
+      '<div class="cl-stat"><div class="cl-stat-label">' + label + '</div>' +
+      '<div class="cl-stat-value">' + value + '</div></div>').join('');
+  }
+
+  loadDatasets().then(loadConfigs).then(loadSettings).catch(() => {
+    $('datasetsWrap').innerHTML = '<div class="empty">Could not load calibration data. ' +
+      'Has sql/046_calibration.sql been run?</div>';
+  });
+})();
+</script>
+{% endblock %}

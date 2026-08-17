@@ -50,6 +50,10 @@ from app.models.admin_prospect import (
     AdminProspect, AdminProspectTouch, AdminStageRule,
 )
 from app.models.discovery import DiscoveryProfile, DiscoveryCandidate
+from app.models.calibration import (
+    ReferenceDataset, ReferenceDataPoint, CalibrationConfig,
+    CalibrationRun, OutcomeReport, CalibrationAudit,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -83,4 +87,6 @@ __all__ = [
     'CorporateAccount', 'CorporateEmployee', 'CreditRedemption', 'OrgInvoice', 'OrgSmePod',
     'AdminProspect', 'AdminProspectTouch', 'AdminStageRule',
     'DiscoveryProfile', 'DiscoveryCandidate',
+    'ReferenceDataset', 'ReferenceDataPoint', 'CalibrationConfig',
+    'CalibrationRun', 'OutcomeReport', 'CalibrationAudit',
 ]

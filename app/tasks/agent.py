@@ -123,6 +123,14 @@ def execute_agent_action_task(action_id: str):
         db.session.add(av)
         db.session.commit()
 
+        # SIM-PRD-CAL-001 — the calibration runs were written inside
+        # execute_agent_action, before this version existed. Attribute them now.
+        try:
+            from app.services.calibration_service import stamp_version
+            stamp_version(action_id, new_version_number)
+        except Exception as _cal_err:
+            logger.debug('Calibration version stamp failed for %s: %s', action_id, _cal_err)
+
         # Update upstream_action_id on matching ArtifactDependency rows so staleness works
         _link_upstream_dependencies(action)
 

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Simulacrum — Calibration Layer UI Mockup</title>
+<style>
+  :root{
+    --navy:#0D1B3E; --navy2:#122347; --navy3:#1A3557; --panel:#14264d;
+    --gold:#C9952A; --gold-l:#E4B855; --teal:#2E7D8C; --teal2:#0F7B72; --teal-br:#13A89E;
+    --amber:#B4791F; --amber-l:#D9942B;
+    --offw:#F5F1E6; --subtl:#C3CDD6; --mute:#8A97AD; --line:rgba(201,149,42,.22);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:linear-gradient(160deg,#0b1730,#0d1b3e 60%,#081026);
+    color:var(--offw);font-family:Georgia,"Times New Roman",serif;line-height:1.5;padding:32px 18px 80px;}
+  .wrap{max-width:1120px;margin:0 auto;}
+  .masthead{text-align:center;margin-bottom:8px;}
+  .eyebrow{color:var(--gold);letter-spacing:.28em;font-size:.72rem;text-transform:uppercase;}
+  h1{font-size:1.9rem;margin:.2em 0 .1em;}
+  .sub{color:var(--subtl);font-style:italic;font-size:1rem;margin-bottom:6px;}
+  .rule{height:2px;width:150px;background:var(--gold);opacity:.7;margin:14px auto 30px;border-radius:2px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  @media(max-width:820px){.grid{grid-template-columns:1fr;}}
+  .card{background:linear-gradient(180deg,var(--panel),#0f1f42);border:1px solid var(--line);
+    border-radius:16px;padding:22px 22px 18px;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.35);}
+  .card h3.field{font-size:.82rem;color:var(--subtl);letter-spacing:.12em;text-transform:uppercase;
+    margin:0 0 10px;font-weight:normal;font-family:Georgia,serif;}
+  .persona{font-size:.72rem;color:var(--teal-br);letter-spacing:.08em;text-transform:uppercase;margin:-4px 0 14px;}
+  /* headline range */
+  .range{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
+  .range .big{font-size:2.15rem;font-weight:bold;color:var(--offw);letter-spacing:.5px;}
+  .range .midlabel{font-size:.8rem;color:var(--mute);}
+  .range .mid{color:var(--gold-l);font-weight:bold;}
+  /* confidence band */
+  .band{margin:16px 0 6px;}
+  .track{position:relative;height:46px;}
+  .axis{position:absolute;left:0;right:0;top:26px;height:2px;background:rgba(255,255,255,.10);border-radius:2px;}
+  .fill{position:absolute;top:19px;height:16px;border-radius:8px;}
+  .fill.high{background:rgba(15,123,114,.30);border:1px solid rgba(19,168,158,.6);}
+  .fill.mod{background:rgba(201,149,42,.24);border:1px solid rgba(201,149,42,.6);}
+  .fill.dir{background:rgba(180,121,31,.22);border:1px solid rgba(217,148,43,.55);}
+  .tick{position:absolute;top:14px;width:2px;height:26px;background:var(--offw);}
+  .tick.mid{top:10px;height:34px;width:3px;background:var(--gold-l);}
+  .tick.raw{background:transparent;border-left:2px dashed var(--mute);}
+  .tlab{position:absolute;top:-2px;font-size:.72rem;color:var(--subtl);transform:translateX(-50%);white-space:nowrap;}
+  .elab{position:absolute;top:34px;font-size:.74rem;color:var(--mute);}
+  /* chip */
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .chip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;
+    font-size:.78rem;font-weight:bold;letter-spacing:.02em;cursor:pointer;border:1px solid transparent;}
+  .chip .dot{width:9px;height:9px;border-radius:50%;}
+  .chip.high{background:rgba(15,123,114,.18);color:#7fe3d6;border-color:rgba(19,168,158,.5);}
+  .chip.high .dot{background:var(--teal-br);}
+  .chip.mod{background:rgba(201,149,42,.16);color:var(--gold-l);border-color:rgba(201,149,42,.5);}
+  .chip.mod .dot{background:var(--gold);}
+  .chip.dir{background:rgba(180,121,31,.16);color:var(--amber-l);border-color:rgba(217,148,43,.5);}
+  .chip.dir .dot{background:var(--amber-l);}
+  .src{font-size:.82rem;color:var(--subtl);margin-top:12px;}
+  .src b{color:var(--offw);font-weight:normal;border-bottom:1px dotted var(--mute);cursor:help;}
+  .src .n{color:var(--mute);}
+  /* drawer */
+  .drawer-toggle{margin-top:14px;background:transparent;border:1px solid var(--line);color:var(--gold-l);
+    font-family:Georgia,serif;font-size:.82rem;padding:7px 12px;border-radius:8px;cursor:pointer;display:inline-flex;gap:7px;align-items:center;}
+  .drawer-toggle:hover{background:rgba(201,149,42,.08);}
+  .drawer{display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px;}
+  .drawer.open{display:block;}
+  .steps{display:flex;align-items:stretch;gap:8px;}
+  @media(max-width:520px){.steps{flex-direction:column;}}
+  .step{flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;}
+  .step .k{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);}
+  .step .v{font-size:1.05rem;font-weight:bold;margin-top:3px;}
+  .step.prior .v{color:var(--mute);} .step.like .v{color:var(--teal-br);} .step.post .v{color:var(--gold-l);}
+  .arrow{align-self:center;color:var(--gold);font-size:1.2rem;}
+  @media(max-width:520px){.arrow{transform:rotate(90deg);}}
+  .meta{font-size:.78rem;color:var(--mute);margin-top:10px;}
+  .meta a{color:var(--teal-br);}
+  .dirnote{background:rgba(180,121,31,.12);border:1px solid rgba(217,148,43,.4);border-radius:8px;
+    padding:10px 12px;font-size:.84rem;color:var(--offw);margin-top:12px;}
+  /* outcome widget */
+  .outcome{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px;}
+  .outcome .q{font-size:.85rem;color:var(--subtl);}
+  .outcome .cta{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;}
+  .outcome input{background:#0c1a38;border:1px solid var(--line);color:var(--offw);
+    border-radius:8px;padding:8px 10px;font-family:Georgia,serif;font-size:.85rem;width:150px;}
+  .btn{background:var(--gold);color:#241a05;border:none;border-radius:8px;padding:8px 14px;
+    font-family:Georgia,serif;font-weight:bold;font-size:.85rem;cursor:pointer;}
+  .btn.ghost{background:transparent;border:1px solid var(--teal2);color:var(--teal-br);}
+  .thanks{display:none;margin-top:10px;font-size:.84rem;color:var(--teal-br);font-style:italic;}
+  /* legend */
+  .legend{margin-top:34px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:20px 22px;}
+  .legend h2{margin:0 0 4px;font-size:1.15rem;color:var(--gold-l);}
+  .legend p.intro{color:var(--subtl);font-size:.9rem;margin:0 0 14px;}
+  .legend ul{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:12px 26px;}
+  @media(max-width:820px){.legend ul{grid-template-columns:1fr;}}
+  .legend li{font-size:.88rem;color:var(--offw);}
+  .legend li b{color:var(--gold-l);}
+  .tag{display:inline-block;font-size:.66rem;padding:2px 8px;border-radius:6px;margin-right:6px;vertical-align:middle;}
+  .tag.h{background:rgba(15,123,114,.2);color:#7fe3d6;} .tag.m{background:rgba(201,149,42,.18);color:var(--gold-l);}
+  .tag.d{background:rgba(180,121,31,.18);color:var(--amber-l);}
+  .foot{text-align:center;color:var(--mute);font-size:.78rem;margin-top:30px;}
+  .sectlabel{color:var(--teal-br);letter-spacing:.14em;text-transform:uppercase;font-size:.72rem;margin:36px 0 12px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <div class="eyebrow">Simulacrum · The Calibration Layer</div>
+    <h1>Calibrated Simulation Results</h1>
+    <div class="sub">Every projected number, anchored to real data — shown as a range, with its source and confidence.</div>
+    <div class="rule"></div>
+  </div>
+
+  <div class="sectlabel">Three confidence tiers · same component, honest about certainty</div>
+  <div class="grid">
+
+    <!-- HIGH CONFIDENCE CARD -->
+    <div class="card">
+      <h3 class="field">Projected 24-month income · The Rate Card</h3>
+      <div class="persona">Featuring Elena Vasquez — operations consultant</div>
+      <div class="range"><span class="big">$372k&nbsp;–&nbsp;$451k</span>
+        <span class="midlabel">midpoint <span class="mid">$409k</span></span></div>
+
+      <div class="band"><div class="track">
+        <div class="axis"></div>
+        <div class="fill high" style="left:8%;right:10%;"></div>
+        <div class="tick mid" style="left:52%;"></div><div class="tlab" style="left:52%;">$409k</div>
+        <div class="tick raw" style="left:63%;"></div><div class="tlab" style="left:63%;color:var(--mute);">model $432k</div>
+        <div class="elab" style="left:8%;">$372k</div><div class="elab" style="right:10%;">$451k</div>
+      </div></div>
+
+      <div class="row">
+        <span class="chip high"><span class="dot"></span>High confidence</span>
+        <span style="font-size:.78rem;color:var(--mute);">dense matching data</span>
+      </div>
+      <div class="src">Calibrated against <b>BLS OES + Freelance Rate Survey 2025</b> <span class="n">· n&nbsp;=&nbsp;1,240 · as of Q1&nbsp;2026</span></div>
+
+      <button class="drawer-toggle" onclick="tog(this)">▸ How this was calibrated</button>
+      <div class="drawer">
+        <div class="steps">
+          <div class="step prior"><div class="k">Model (prior)</div><div class="v">$432k</div></div>
+          <div class="arrow">→</div>
+          <div class="step like"><div class="k">Reference (data)</div><div class="v">$398k</div></div>
+          <div class="arrow">→</div>
+          <div class="step post"><div class="k">Calibrated (posterior)</div><div class="v">$409k</div></div>
+        </div>
+        <div class="meta">Method: precision-weighted Bayesian blend · reference p10–p90 = $372k–$451k · sample 1,240 ·
+          source: <a href="#">BLS OES</a>, <a href="#">Rate Survey 2025</a>. Calibration pulled the model estimate down ~5% toward market data.</div>
+      </div>
+
+      <div class="outcome">
+        <div class="q">Ran this for real? Report your outcome — it sharpens the forecast for people in your situation.</div>
+        <div class="cta">
+          <input type="text" placeholder="Actual 24-mo income"/>
+          <button class="btn" onclick="thx(this)">Report outcome</button>
+        </div>
+        <div class="thanks">Thanks — this sharpens the forecast for people in your situation.</div>
+      </div>
+    </div>
+
+    <!-- MODERATE CONFIDENCE CARD -->
+    <div class="card">
+      <h3 class="field">Course launch revenue · The Sales Page</h3>
+      <div class="persona">Featuring Priya Nair — data engineer</div>
+      <div class="range"><span class="big">$18k&nbsp;–&nbsp;$41k</span>
+        <span class="midlabel">midpoint <span class="mid">$27k</span></span></div>
+
+      <div class="band"><div class="track">
+        <div class="axis"></div>
+        <div class="fill mod" style="left:12%;right:8%;"></div>
+        <div class="tick mid" style="left:44%;"></div><div class="tlab" style="left:44%;">$27k</div>
+        <div class="tick raw" style="left:70%;"></div><div class="tlab" style="left:70%;color:var(--mute);">model $36k</div>
+        <div class="elab" style="left:12%;">$18k</div><div class="elab" style="right:8%;">$41k</div>
+      </div></div>
+
+      <div class="row">
+        <span class="chip mod"><span class="dot"></span>Moderate confidence</span>
+        <span style="font-size:.78rem;color:var(--mute);">partial matching data</span>
+      </div>
+      <div class="src">Calibrated against <b>Course Launch Benchmarks 2025</b> <span class="n">· n&nbsp;=&nbsp;180 · conversion-based</span></div>
+
+      <button class="drawer-toggle" onclick="tog(this)">▸ How this was calibrated</button>
+      <div class="drawer">
+        <div class="steps">
+          <div class="step prior"><div class="k">Model (prior)</div><div class="v">$36k</div></div>
+          <div class="arrow">→</div>
+          <div class="step like"><div class="k">Reference (data)</div><div class="v">$24k</div></div>
+          <div class="arrow">→</div>
+          <div class="step post"><div class="k">Calibrated (posterior)</div><div class="v">$27k</div></div>
+        </div>
+        <div class="meta">Reference from published opt-in × sales-page conversion benchmarks (Tier&nbsp;B, n&nbsp;=&nbsp;180). Band is wider because list-size and niche vary widely — the model's $36k assumed above-median conversion.</div>
+      </div>
+
+      <div class="outcome">
+        <div class="q">Ran a launch? Report your revenue to tighten this range.</div>
+        <div class="cta">
+          <input type="text" placeholder="Actual launch revenue"/>
+          <button class="btn" onclick="thx(this)">Report outcome</button>
+        </div>
+        <div class="thanks">Thanks — this sharpens the forecast for people in your situation.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sectlabel">Low-data state · the card looks different, not just worded differently</div>
+  <div class="grid">
+    <!-- DIRECTIONAL CARD -->
+    <div class="card">
+      <h3 class="field">Speaking fee · The Speaker Fee Rider</h3>
+      <div class="persona">Featuring Marcus Bell — leadership coach</div>
+      <div class="range"><span class="big">$1.5k&nbsp;–&nbsp;$9k</span>
+        <span class="midlabel">midpoint <span class="mid">$4k</span></span></div>
+
+      <div class="band"><div class="track">
+        <div class="axis"></div>
+        <div class="fill dir" style="left:5%;right:5%;"></div>
+        <div class="tick mid" style="left:38%;"></div><div class="tlab" style="left:38%;">$4k</div>
+        <div class="tick raw" style="left:60%;"></div><div class="tlab" style="left:60%;color:var(--mute);">model $6k</div>
+        <div class="elab" style="left:5%;">$1.5k</div><div class="elab" style="right:5%;">$9k</div>
+      </div></div>
+
+      <div class="row">
+        <span class="chip dir"><span class="dot"></span>Directional only</span>
+        <span style="font-size:.78rem;color:var(--mute);">thin / proxy data</span>
+      </div>
+      <div class="dirnote">We don't yet have strong data for your exact niche and audience size, so treat this as a
+        <b>signal, not a forecast</b>. Reporting your real fee later will sharpen it — for you and for others like you.</div>
+      <div class="src">Proxy reference: <b>Industry speaking-fee guide (aggregated)</b> <span class="n">· n&nbsp;=&nbsp;31 · Tier&nbsp;C</span></div>
+
+      <button class="drawer-toggle" onclick="tog(this)">▸ Why this is directional</button>
+      <div class="drawer">
+        <div class="meta">Only 31 loosely-matched data points exist for this cohort, below the moderate-confidence threshold
+          (admin-configurable). Per the Overfitting guard, the engine keeps the band wide rather than pretend to a
+          precision the data can't support. Tier-C sources are capped at Directional.</div>
+      </div>
+
+      <div class="outcome">
+        <div class="q">Booked a paid talk? Report the fee — thin cohorts improve fastest from real reports.</div>
+        <div class="cta">
+          <input type="text" placeholder="Actual fee"/>
+          <button class="btn" onclick="thx(this)">Report outcome</button>
+        </div>
+        <div class="thanks">Thanks — this sharpens the forecast for people in your situation.</div>
+      </div>
+    </div>
+
+    <!-- LEGEND / HOW TO READ -->
+    <div class="legend" style="align-self:start;">
+      <h2>How to read a calibrated result</h2>
+      <p class="intro">Every calibrated number answers three questions at a glance: <em>what range, how confident, anchored to what.</em></p>
+      <ul>
+        <li><b>Range, not a point.</b> The big number is always a <b>low–high</b>, with the midpoint marked. A single number would be false precision.</li>
+        <li><b>The band</b> shows the spread visually. The <span style="color:var(--gold-l);">gold tick</span> is the calibrated midpoint; the <span style="color:var(--mute);">dashed tick</span> is the model's raw estimate, so you can see how far the data moved it.</li>
+        <li><b>Wider band = less certain.</b> A wide amber band is <em>more</em> trustworthy, not less — it isn't pretending.</li>
+        <li><b>Tier chip.</b> <span class="tag h">High</span> dense data ·
+          <span class="tag m">Moderate</span> partial data ·
+          <span class="tag d">Directional</span> thin/proxy data. Tap it to see what would raise it.</li>
+        <li><b>Source line.</b> "Calibrated against …" is always visible. Transparency is the point — open the drawer to see prior → data → posterior.</li>
+        <li><b>Report your outcome.</b> What actually happened feeds back and sharpens the range for the next person in your situation — the loop a population-level tool can't run.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot">Mockup for PRD-SIM-CAL-001 · Midnight Gold theme · all thresholds admin-configurable · numbers illustrative.</div>
+</div>
+
+<script>
+  function tog(b){var d=b.nextElementSibling;var open=d.classList.toggle('open');
+    b.textContent=(open?'▾':'▸')+b.textContent.slice(1);}
+  function thx(b){var w=b.closest('.outcome');w.querySelector('.cta').style.display='none';
+    w.querySelector('.thanks').style.display='block';}
+</script>
+</body>
+</html>
