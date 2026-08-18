@@ -5,11 +5,15 @@ EXCLUDES = [
     "*.pyc", "__pycache__", ".venv", "venv", "env",
     ".git", ".gitignore", "instance", "*.db", "*.sqlite3",
     ".env", "build_zip.py", "uploads",
+    ".vscode", ".idea",  # editor config — local only
     ".htaccess",        # cPanel owns this — never overwrite it
     "passenger_wsgi.py", # cPanel generates this wrapper — our app lives in wsgi.py
     "*.egg-info", "dist", "build",
     "*.zip",             # never bundle old deploy zips into the new one
     "*.log",             # server/debug logs
+    "*.log.*",           # rotated logs — "*.log" misses error.log.1, and a 2 MB
+                         # rotated error log full of stack traces has no business
+                         # in a deploy artifact
     "docs",              # PRD/requirements docs — not needed on server
     "*.mp4",             # large marketing videos — already on server, rarely change
 ]
