@@ -464,9 +464,13 @@
   }
   .pcard p { color: var(--subtl); font-size: 14.5px; line-height: 1.7; }
   .pcard .ptag {
-    display: inline-block; margin-top: 12px; color: var(--teal-br);
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-top: 12px; color: var(--teal-br);
     font-size: 13px; font-weight: 700;
   }
+  /* Inline SVG rather than an image file: no asset to ship, crisp at any density,
+     and it inherits the gold on hover through currentColor. */
+  .ptag-book { flex-shrink: 0; width: 16px; height: 16px; }
   a.pcard:hover { border-color: rgba(201,149,42,.5); transform: translateY(-3px); }
   a.pcard:hover .ptag { color: var(--gold-l); }
   .pcard p em { color: var(--offw); font-style: italic; }
@@ -711,8 +715,17 @@
       </div>
       <a class="pcard fade-up d3" href="https://www.amazon.com/dp/B0HDYH1PNM" target="_blank" rel="noopener">
         <div class="k">Documented</div>
-        <p><em>The Wealth Simulation Playbook</em> — the full five-layer framework and all forty-nine agents, written up as case studies. Read the book behind the engine.</p>
-        <span class="ptag">Get it on Amazon →</span>
+        <p><em>"The Wealth Simulation Playbook"</em> — the full five-layer framework and all forty-nine agents, written up as case studies. Read the book behind the engine.</p>
+        <span class="ptag">
+          <svg class="ptag-book" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            <line x1="9" y1="6" x2="16" y2="6"/>
+            <line x1="9" y1="10" x2="16" y2="10"/>
+          </svg>
+          Get it on Amazon →
+        </span>
       </a>
     </div>
   </div>
