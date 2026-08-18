@@ -450,9 +450,13 @@
 
   /* ── Why you can trust it: proof cards ───────────────────────────── */
   .proof3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-top: 32px; }
+  /* display/color are explicit because the Playbook card is an <a>, not a div —
+     without them it renders inline and picks up the default link colour. */
   .pcard {
+    display: block; color: inherit;
     background: rgba(255,255,255,.04); border: 1px solid var(--line);
     border-radius: 14px; padding: 24px;
+    transition: border-color 150ms, transform 150ms;
   }
   .pcard .k {
     font-family: 'Playfair Display', Georgia, serif; font-size: 19px;
@@ -463,8 +467,9 @@
     display: inline-block; margin-top: 12px; color: var(--teal-br);
     font-size: 13px; font-weight: 700;
   }
-  a.pcard:hover { border-color: rgba(201,149,42,.5); }
+  a.pcard:hover { border-color: rgba(201,149,42,.5); transform: translateY(-3px); }
   a.pcard:hover .ptag { color: var(--gold-l); }
+  .pcard p em { color: var(--offw); font-style: italic; }
 
   /* ── Bio on-ramp ─────────────────────────────────────────────────── */
   .onramp { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
@@ -696,7 +701,7 @@
     <div class="proof3">
       <div class="pcard fade-up d1">
         <div class="k">Calibrated</div>
-        <p>Every projected outcome is anchored to real market data and shown as a range with its source and a confidence tier — not a lone, unfalsifiable number.</p>
+        <p>Every projected outcome is anchored to real market data and shown as a range with its source and a confidence tier — not a lone, unfalsifiable number. When the data for your exact situation is thin, the range widens and the tier drops rather than pretending.</p>
         <span class="ptag">Calibration layer</span>
       </div>
       <div class="pcard fade-up d2">
@@ -704,11 +709,11 @@
         <p>The engine is built on a documented, tested methodology — pure-function agents composed into a wealth engine, with the math open to inspection.</p>
         <span class="ptag">Documented method</span>
       </div>
-      <div class="pcard fade-up d3">
-        <div class="k">Honest about uncertainty</div>
-        <p>When the data for your exact situation is thin, the range widens and the confidence tier drops instead of pretending. An honest wide range beats a falsely precise one.</p>
-        <span class="ptag">Confidence tiers</span>
-      </div>
+      <a class="pcard fade-up d3" href="https://www.amazon.com/dp/B0HDYH1PNM" target="_blank" rel="noopener">
+        <div class="k">Documented</div>
+        <p><em>The Wealth Simulation Playbook</em> — the full five-layer framework and all forty-nine agents, written up as case studies. Read the book behind the engine.</p>
+        <span class="ptag">Get it on Amazon →</span>
+      </a>
     </div>
   </div>
 </section>
@@ -929,6 +934,7 @@
         <h4>Company</h4>
         <div class="footer-links">
           <a href="/explore">Explore</a>
+          <a href="https://www.amazon.com/dp/B0HDYH1PNM" target="_blank" rel="noopener">The Playbook</a>
           <a href="/partners/apply">Partners</a>
           <a href="/register">Contact</a>
         </div>

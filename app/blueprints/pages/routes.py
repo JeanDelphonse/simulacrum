@@ -171,7 +171,8 @@ def index():
                            sim_price_usd=_sim_price_usd(),
                            sim_pricing=_sim_pricing(),
                            recent_bio_pages=_get_recent_bio_pages(),
-                           hero_cards=_get_hero_cards())
+                           hero_cards=_get_hero_cards(),
+                           playbook_url=current_app.config['PLAYBOOK_URL'])
 
 
 @pages_bp.route('/dashboard')

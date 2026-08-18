@@ -23,6 +23,13 @@ class Config:
     # Where internal founder-facing mail goes (SIM-PRD-CRM-001 outreach briefing).
     # Deliberately separate from MAIL_DEFAULT_SENDER, which is a From address.
     FOUNDER_EMAIL = os.environ.get('FOUNDER_EMAIL', 'simi@simulacrumai.io')
+    # Amazon listing for The Wealth Simulation Playbook, linked from the homepage.
+    # Canonical /dp/<ASIN> form on purpose: the search-session parameters on a
+    # copied Amazon URL (crid, dib, qid, sprefix, sr) are one visitor's session and
+    # go stale. Env-overridable so a new edition, a different marketplace or an
+    # affiliate tag needs no code change.
+    PLAYBOOK_URL = os.environ.get(
+        'PLAYBOOK_URL', 'https://www.amazon.com/dp/B0HDYH1PNM')
     CLAUDE_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
     CLAUDE_MODEL = 'claude-sonnet-4-6'
     ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
