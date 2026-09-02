@@ -65,4 +65,36 @@
     <priority>0.7</priority>
   </url>
 
+  <!-- Careers -->
+  <url>
+    <loc>https://www.simulacrumai.io/careers</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.simulacrumai.io/careers/growth-marketing-lead</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.simulacrumai.io/careers/partnerships-corporate-sales-lead</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.simulacrumai.io/careers/onboarding-workshop-lead</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.simulacrumai.io/careers/coaching-agent-enablement-lead</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
 </urlset>

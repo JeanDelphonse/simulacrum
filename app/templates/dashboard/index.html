@@ -63,6 +63,30 @@
   {% set complete_sims = simulations | selectattr('status', 'equalto', 'complete') | list %}
   {% set pending_sims = simulations | rejectattr('status', 'equalto', 'complete') | list %}
 
+    <section class="dashboard-section">
+    <h2 class="section-title">My Sources</h2>
+    {% if resumes %}
+    <div class="source-list">
+      {% for r in resumes %}
+      <div class="source-item">
+        <div class="source-icon">{{ '💼' if r.source == 'linkedin' else '📄' }}</div>
+        <div class="source-info">
+          <span class="source-label">{{ r.label }}</span>
+          <span class="source-meta">{{ r.source.title() }} · {{ r.created_at.strftime('%b %d, %Y') }}</span>
+        </div>
+        <div class="source-actions">
+          <a href="{{ url_for('pages.resume_detail', resume_id=r.id) }}" class="btn btn-ghost btn-sm">Open</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>No sources uploaded. <a href="{{ url_for('pages.resumes_view') }}">Upload your resume</a> or import from LinkedIn.</p>
+    </div>
+    {% endif %}
+  </section>
+  
   <section class="dashboard-section">
     <h2 class="section-title">Complete</h2>
     {% if complete_sims %}
@@ -118,30 +142,6 @@
     {% else %}
     <div class="empty-state">
       <p>No pending simulations.</p>
-    </div>
-    {% endif %}
-  </section>
-
-  <section class="dashboard-section">
-    <h2 class="section-title">My Sources</h2>
-    {% if resumes %}
-    <div class="source-list">
-      {% for r in resumes %}
-      <div class="source-item">
-        <div class="source-icon">{{ '💼' if r.source == 'linkedin' else '📄' }}</div>
-        <div class="source-info">
-          <span class="source-label">{{ r.label }}</span>
-          <span class="source-meta">{{ r.source.title() }} · {{ r.created_at.strftime('%b %d, %Y') }}</span>
-        </div>
-        <div class="source-actions">
-          <a href="{{ url_for('pages.resume_detail', resume_id=r.id) }}" class="btn btn-ghost btn-sm">Open</a>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state">
-      <p>No sources uploaded. <a href="{{ url_for('pages.resumes_view') }}">Upload your resume</a> or import from LinkedIn.</p>
     </div>
     {% endif %}
   </section>

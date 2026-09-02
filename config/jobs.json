@@ -1,0 +1,114 @@
+{
+  "meta": {
+    "source": "docs/Simulacrum_Team_Job_Specs.docx",
+    "about": "Simulacrum (simulacrumai.io) turns a résumé into a running wealth engine — a career-to-wealth simulation platform with 49 AI agents across five income layers. We help professionals see the consequences of their career and money decisions before they live them.",
+    "shared_note": "Every teammate is fully platform-fluent — able to demo Simulacrum, onboard a user end to end, run a workshop, and coach Layer 1 and Layer 2 agent setup — so anyone can cover a session or a coaching block.",
+    "team_goal": "1,000 users, with 35% paying for one to two simulations.",
+    "team_size": "Team of 4",
+    "reports_to": "the Founder",
+    "location": "Bay Area preferred, hybrid",
+    "employment": "Full-time or contract-to-hire"
+  },
+  "jobs": [
+    {
+      "slug": "growth-marketing-lead",
+      "track": "Acquire · Individuals",
+      "title": "Growth & Marketing Lead",
+      "tagline": "Fill the top of the funnel — get the right professionals to sign up, repeatably and measurably.",
+      "owns": "New free signups per week by channel · content, SEO & LinkedIn distribution · landing pages & signup flow · the free bio-page as lead magnet · paid-acquisition experiments after organic proof.",
+      "responsibilities": [
+        "Build and run the content, SEO and LinkedIn engine that drives free signups from professionals and career-changers.",
+        "Own the landing pages and signup flow; A/B test messaging and conversion.",
+        "Position the free bio page as the lead magnet and on-ramp into the platform.",
+        "Launch paid-acquisition experiments once a channel proves out organically, and hold CAC discipline.",
+        "Track signups by source and report weekly on what is actually working.",
+        "Hand activation-ready users cleanly to the Onboarding lead."
+      ],
+      "north_star": "New free signups per week — the engine behind reaching 1,000 users.",
+      "supporting_metrics": "Cost per signup · channel mix · signup-to-activation handoff rate.",
+      "looking_for": [
+        "3+ years in growth, demand generation or content marketing — ideally B2C / prosumer SaaS.",
+        "Demonstrated organic growth (content, SEO, LinkedIn) with real numbers behind it.",
+        "Fluent in funnel analytics and rapid experimentation.",
+        "Strong writer who can produce problem-aware content for a professional audience.",
+        "Working knowledge of paid acquisition (LinkedIn / Meta / Google) and CAC math."
+      ],
+      "nice_to_have": "An audience in career, HR or edtech; landing-page design skills."
+    },
+    {
+      "slug": "partnerships-corporate-sales-lead",
+      "track": "Scale · Organizations",
+      "title": "Partnerships & Corporate Sales Lead",
+      "tagline": "Land corporate clients and cohort partners who bring users in batches — the fastest route to 1,000 users and bulk paying seats.",
+      "owns": "The corporate / enterprise pipeline · education-cohort deals · workshop sponsors · all B2B proposals, pricing and closes.",
+      "responsibilities": [
+        "Build and close a pipeline of corporate clients (outplacement, L&D, career-mobility) and education partners running cohorts and workshops.",
+        "Recruit and activate referral / advisor partners who each bring a cohort of users with them.",
+        "Secure workshop sponsors to cover materials, token costs, refreshments and volunteers.",
+        "Own B2B proposals, pricing conversations and contracts; land bulk and enterprise seat deals.",
+        "Represent Simulacrum to boards, directors and institutional buyers.",
+        "Feed signed corporate cohorts to the Onboarding lead for delivery."
+      ],
+      "north_star": "Users acquired via partners and cohorts, plus signed corporate deals.",
+      "supporting_metrics": "Active partners · pipeline value · seats sold.",
+      "looking_for": [
+        "4+ years in B2B sales, partnerships or business development — ideally SaaS, HR-tech, edtech or workforce.",
+        "Track record closing institutional / enterprise deals and running a pipeline.",
+        "Relationship-led seller who is comfortable with executives and boards.",
+        "Able to structure cohort, sponsor and enterprise offers and negotiate contracts.",
+        "A Bay Area network across tech, education or workforce development."
+      ],
+      "nice_to_have": "Existing relationships with universities, workforce boards or corporate L&D."
+    },
+    {
+      "slug": "onboarding-workshop-lead",
+      "track": "Activate",
+      "title": "Onboarding & Workshop Lead",
+      "tagline": "Turn a signup into an activated user who completes their first setup — and run the live workshops that make it happen at scale.",
+      "owns": "Customer ingestion (account, résumé upload, expertise-zone recognition, bio-page publish) · live workshop sessions · the onboarding sequence.",
+      "responsibilities": [
+        "Run group onboarding and live workshop sessions for both individual users and corporate cohorts.",
+        "Guide customer ingestion: account setup, résumé upload, expertise-zone review and bio-page publish.",
+        "Build and maintain the onboarding sequence and quick-start materials.",
+        "Drive activation — get each user to their first completed simulation fast.",
+        "Design cohort-based delivery so a team of four can serve 1,000 users (group over 1:1).",
+        "Hand activated users to the Coaching lead for agent setup and conversion."
+      ],
+      "north_star": "Activation rate — the share of signups who reach their first simulation.",
+      "supporting_metrics": "Workshop completion rate · time-to-activation · session NPS.",
+      "looking_for": [
+        "3+ years in onboarding, customer education, training, facilitation or teaching.",
+        "An excellent live facilitator who can run a room and keep a cohort moving.",
+        "Builds repeatable onboarding processes and materials, not one-offs.",
+        "Patient, clear communicator, at ease with non-technical users.",
+        "Organized enough to run recurring cohorts on a schedule."
+      ],
+      "nice_to_have": "Instructional design; experience in career services or adult education."
+    },
+    {
+      "slug": "coaching-agent-enablement-lead",
+      "track": "Convert & Get Results",
+      "title": "Coaching & Agent Enablement Lead",
+      "tagline": "Get users to a visible result so they pay — and come back for a second simulation. Coach Layer 1 and Layer 2 agent setup until it produces outcomes.",
+      "owns": "Coaching Layer 1 (Active Income) & Layer 2 (Leveraged Income) agent setup · contact / CRM setup · the first simulation · free-to-paid conversion · the second-simulation nudge.",
+      "responsibilities": [
+        "Coach users to configure Layer 1 agents (rate card, outreach, booking) and Layer 2 agents (group coaching, workshops, waitlist) with realistic parameters.",
+        "Set up each customer's contacts / CRM and run their first simulation to a visible result.",
+        "Own the free-to-paid conversation and convert engaged free users to a $167 simulation.",
+        "Drive expansion — the second simulation on a second expertise zone.",
+        "Turn the Playbook's parameter sheets into hands-on coaching.",
+        "Feed conversion and coaching insight back to Growth and Product."
+      ],
+      "north_star": "Free-to-paid conversion (the 35% / 350 payers) and simulations per payer (the 1 → 2).",
+      "supporting_metrics": "Time-to-first-result · coaching throughput · repeat-run rate.",
+      "looking_for": [
+        "3+ years in customer success, coaching, consulting or high-touch sales.",
+        "A consultative closer who converts by delivering value, not pressure.",
+        "Fast to master a technical product and coach others to configure it.",
+        "Comfortable with numbers and parameters (rates, funnels) — can help users pick realistic inputs.",
+        "Empathy for career-changers paired with drive for a conversion target."
+      ],
+      "nice_to_have": "Familiarity with freelancing / consulting economics and CRM tools."
+    }
+  ]
+}

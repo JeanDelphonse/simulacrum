@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Careers{% endblock %}
+{% block head %}
+<style>
+/* Careers — public job board. Light palette matched to the landing page tokens. */
+.cr-page { max-width: 1000px; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+.cr-hero { max-width: 68ch; margin-bottom: 2.5rem; }
+.cr-eyebrow { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--teal); margin-bottom: .6rem; }
+.cr-hero h1 { font-size: 2.1rem; margin: 0 0 .75rem; }
+.cr-hero p { font-size: 1rem; color: var(--muted); line-height: 1.7; margin: 0 0 .6rem; }
+.cr-facts { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1.1rem; }
+.cr-fact { font-size: .75rem; font-weight: 600; color: var(--navy); background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: .28rem .7rem; }
+.cr-count { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .9rem; }
+.cr-list { display: grid; gap: 1rem; }
+.cr-card { display: block; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 1.35rem 1.5rem; box-shadow: 0 1px 3px rgba(13,27,62,.04); transition: box-shadow .2s, transform .2s, border-color .2s; }
+.cr-card:hover { box-shadow: 0 10px 28px rgba(13,27,62,.09); transform: translateY(-2px); border-color: rgba(15,123,114,.3); }
+.cr-track { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #0f766e; background: rgba(15,123,114,.1); border-radius: 4px; padding: .2rem .5rem; margin-bottom: .6rem; }
+.cr-card h2 { font-size: 1.3rem; margin: 0 0 .4rem; }
+.cr-tagline { font-size: .93rem; color: var(--dark); line-height: 1.65; margin: 0 0 .8rem; max-width: 72ch; }
+.cr-owns { font-size: .82rem; color: var(--muted); line-height: 1.6; margin: 0 0 1rem; padding-left: .7rem; border-left: 2px solid rgba(201,149,42,.45); max-width: 76ch; }
+.cr-owns strong { color: var(--navy); font-weight: 700; }
+.cr-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.cr-meta { font-size: .78rem; color: var(--muted); }
+.cr-apply-link { font-size: .85rem; font-weight: 700; color: var(--teal); }
+.cr-note { margin-top: 2.5rem; background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 0 12px 12px 0; padding: 1.15rem 1.4rem; }
+.cr-note h3 { font-size: .95rem; margin: 0 0 .5rem; }
+.cr-note p { font-size: .86rem; color: var(--muted); line-height: 1.7; margin: 0 0 .5rem; }
+.cr-note p:last-child { margin-bottom: 0; }
+.cr-note strong { color: var(--navy); }
+@media (max-width: 640px) {
+  .cr-hero h1 { font-size: 1.65rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cr-page">
+  <div class="cr-hero">
+    <div class="cr-eyebrow">Careers at Simulacrum</div>
+    <h1>Build the team that gets 1,000 professionals to a running wealth engine</h1>
+    <p>{{ meta.about }}</p>
+    <p>We are hiring four leads — one for each stage of the journey: acquire, scale, activate, convert.</p>
+    <div class="cr-facts">
+      <span class="cr-fact">{{ meta.team_size }}</span>
+      <span class="cr-fact">Reports to {{ meta.reports_to }}</span>
+      <span class="cr-fact">{{ meta.location }}</span>
+      <span class="cr-fact">{{ meta.employment }}</span>
+    </div>
+  </div>
+
+  <div class="cr-count">{{ jobs|length }} open role{{ 's' if jobs|length != 1 }}</div>
+
+  <div class="cr-list">
+    {% for job in jobs %}
+    <a class="cr-card" href="{{ url_for('pages.careers_detail', slug=job.slug) }}">
+      <span class="cr-track">{{ job.track }}</span>
+      <h2>{{ job.title }}</h2>
+      <p class="cr-tagline">{{ job.tagline }}</p>
+      <p class="cr-owns"><strong>What you own.</strong> {{ job.owns }}</p>
+      <div class="cr-card-foot">
+        <span class="cr-meta">{{ meta.location }} &nbsp;·&nbsp; {{ meta.employment }}</span>
+        <span class="cr-apply-link">View role &amp; apply →</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="cr-note">
+    <h3>How this team works</h3>
+    <p>{{ meta.shared_note }}</p>
+    <p>Shared team goal: <strong>{{ meta.team_goal }}</strong></p>
+  </div>
+</div>
+{% endblock %}

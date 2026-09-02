@@ -128,6 +128,8 @@ def create_app(config_name=None):
     app.logger.info('startup: sme_bp imported')
     from app.blueprints.calibration import calibration_bp
     app.logger.info('startup: calibration_bp imported')
+    from app.blueprints.careers import careers_bp
+    app.logger.info('startup: careers_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -158,6 +160,8 @@ def create_app(config_name=None):
     app.register_blueprint(voice_bp)
     # Declares its own full paths (/api/calibration/..., /api/admin/calibration/...)
     app.register_blueprint(calibration_bp)
+    # Declares its own full paths (/api/careers/..., /api/admin/careers/...)
+    app.register_blueprint(careers_bp)
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 
@@ -215,7 +219,8 @@ def create_app(config_name=None):
             return
         # Skip public/auth pages
         _public_prefixes = ('/legal/', '/u/', '/share/', '/samples/', '/ref/',
-                            '/auth/', '/ping', '/sitemap.xml', '/outreach/')
+                            '/auth/', '/ping', '/sitemap.xml', '/outreach/',
+                            '/careers')
         if _req.path.startswith(_public_prefixes):
             return
         if _req.path in ('/login', '/register', '/verify-sent', '/forgot-password',

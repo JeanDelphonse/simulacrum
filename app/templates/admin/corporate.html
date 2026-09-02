@@ -12,6 +12,7 @@
     <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link active">Organizations</a>
     <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
     <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link">Calibration</a>
+    <a href="{{ url_for('pages.admin_careers_view') }}" class="subnav-link">Careers</a>
   </nav>
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
@@ -52,6 +53,7 @@
         <td><span class="corp-badge corp-badge--{{ org.status }}">{{ org.status|capitalize }}</span></td>
         <td style="font-size:0.85rem;opacity:0.7">{{ org.contract_end.strftime('%b %d, %Y') if org.contract_end else '—' }}</td>
         <td style="white-space:nowrap">
+          <button class="btn btn-sm" onclick="openEditModal('{{ org.id }}')">Edit</button>
           {% if org.status == 'pending' %}
           <button class="btn btn-sm btn-primary" onclick="activateOrg('{{ org.id }}')">Activate</button>
           {% elif org.status == 'active' %}
@@ -59,7 +61,7 @@
           <button class="btn btn-sm" onclick="topup('{{ org.id }}')">Top-up</button>
           <button class="btn btn-sm" onclick="invoice('{{ org.id }}', {{ org.credit_value_cents }})">Invoice</button>
           <button class="btn btn-sm" onclick="openPod('{{ org.id }}')">SME pod</button>
-          <button class="btn btn-sm" style="background:rgba(220,38,38,.15);color:#f87171;border:none;cursor:pointer;" onclick="suspendOrg('{{ org.id }}')">Suspend</button>
+          <button class="btn btn-sm btn-danger-soft" onclick="suspendOrg('{{ org.id }}')">Suspend</button>
           {% elif org.status in ('suspended', 'expired') %}
           <button class="btn btn-sm btn-primary" onclick="activateOrg('{{ org.id }}')">Reactivate</button>
           {% endif %}
@@ -76,10 +78,10 @@
   {% endif %}
 </div>
 
-<!-- Create org modal -->
+<!-- Create / edit org modal -->
 <div id="createModal" class="corp-modal" style="display:none">
   <div class="corp-modal-card">
-    <h2 style="margin-bottom:20px">New Organization</h2>
+    <h2 id="modalTitle" style="margin-bottom:20px">New Organization</h2>
 
     <label class="form-label">Organization Name *</label>
     <input id="f_org_name" class="form-input" type="text" placeholder="Acme Corp">
@@ -99,20 +101,20 @@
           <option value="partner">Partner / Association</option>
         </select>
       </div>
-      <div><label class="form-label">Credits</label><input id="f_credits" class="form-input" type="number" value="25" min="0"></div>
+      <div><label class="form-label" id="creditsLabel">Credits</label><input id="f_credits" class="form-input" type="number" value="25" min="0"></div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-      <div><label class="form-label">Credit value ($) <span style="opacity:.5">— blank = sim price</span></label><input id="f_credit_value" class="form-input" type="number" step="0.01" placeholder="695.00"></div>
+      <div><label class="form-label">Credit value ($) <span class="form-hint">— blank = sim price</span></label><input id="f_credit_value" class="form-input" type="number" step="0.01" placeholder="695.00"></div>
       <div><label class="form-label">Discount %</label><input id="f_discount" class="form-input" type="number" step="0.1" value="0"></div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
       <div><label class="form-label">Contract start</label><input id="f_start" class="form-input" type="date"></div>
-      <div><label class="form-label">Contract end <span style="opacity:.5">— blank = auto</span></label><input id="f_end" class="form-input" type="date"></div>
+      <div><label class="form-label">Contract end <span class="form-hint">— blank = auto</span></label><input id="f_end" class="form-input" type="date"></div>
     </div>
 
-    <label class="form-label" style="margin-top:12px">Auto-join domains <span style="opacity:0.5">(comma/space separated)</span></label>
+    <label class="form-label" style="margin-top:12px">Auto-join domains <span class="form-hint">(comma/space separated)</span></label>
     <input id="f_domains" class="form-input" type="text" placeholder="acme.com, acme.co.uk">
 
     <label class="form-label" style="margin-top:12px">Provision credits on</label>
@@ -122,14 +124,17 @@
     </select>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-      <div><label class="form-label">Co-brand name <span style="opacity:.5">(optional)</span></label><input id="f_wl_name" class="form-input" type="text"></div>
-      <div><label class="form-label">Logo URL <span style="opacity:.5">(optional)</span></label><input id="f_wl_logo" class="form-input" type="url" placeholder="https://…"></div>
+      <div><label class="form-label">Co-brand name <span class="form-hint">(optional)</span></label><input id="f_wl_name" class="form-input" type="text"></div>
+      <div><label class="form-label">Logo URL <span class="form-hint">(optional)</span></label><input id="f_wl_logo" class="form-input" type="url" placeholder="https://…"></div>
     </div>
 
-    <div id="createMsg" style="margin-top:12px;font-size:0.85rem;color:#f87171;display:none"></div>
+    <label class="form-label" style="margin-top:12px">Internal notes <span class="form-hint">(not shown to the org)</span></label>
+    <textarea id="f_notes" class="form-input" rows="2"></textarea>
+
+    <div id="createMsg" class="form-error" style="margin-top:12px;font-size:0.85rem;display:none"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
       <button class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
-      <button class="btn btn-primary" id="createBtn" onclick="submitCreate()">Create & Activate</button>
+      <button class="btn btn-primary" id="createBtn" onclick="submitOrg()">Create & Activate</button>
     </div>
   </div>
 </div>
@@ -138,9 +143,9 @@
 <div id="podModal" class="corp-modal" style="display:none">
   <div class="corp-modal-card">
     <h2 style="margin-bottom:6px">Assign SME pod</h2>
-    <p style="font-size:.82rem;opacity:.7;margin-bottom:14px">Members auto-match within the pod by expertise zone, falling back to the global pool. Coverage is checked on save.</p>
+    <p class="form-hint" style="font-size:.82rem;margin-bottom:14px">Members auto-match within the pod by expertise zone, falling back to the global pool. Coverage is checked on save.</p>
     <div id="podList" style="max-height:320px;overflow:auto"></div>
-    <div id="podMsg" style="margin-top:12px;font-size:0.85rem;opacity:.8"></div>
+    <div id="podMsg" style="margin-top:12px;font-size:0.85rem;color:var(--dark,#1A1A2E)"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
       <button class="btn btn-secondary" onclick="closePod()">Cancel</button>
       <button class="btn btn-primary" onclick="savePod()">Save pod</button>
@@ -154,25 +159,82 @@
 .corp-badge--active { background: #dcfce7; color: #166534; }
 .corp-badge--suspended { background: #fee2e2; color: #991b1b; }
 .corp-badge--expired { background: #e5e7eb; color: #374151; }
-.form-label { display: block; font-size: 0.82rem; opacity: 0.7; margin-bottom: 4px; }
-.form-input { width: 100%; padding: 8px 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 6px; color: inherit; font-size: 0.9rem; }
-.corp-modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 1000; align-items: center; justify-content: center; display: none; }
-.corp-modal-card { background: var(--surface,#1a1a2e); border-radius: 12px; padding: 32px; width: 100%; max-width: 560px; max-height: 92vh; overflow:auto; border: 1px solid rgba(255,255,255,.1); }
-.renewal-banner { background: rgba(234,179,8,.1); border: 1px solid rgba(234,179,8,.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 1.25rem; font-size: .85rem; }
-.renewal-chip { display: inline-block; background: rgba(255,255,255,.06); border-radius: 6px; padding: 2px 8px; margin: 3px 4px 0 0; font-size: .78rem; }
-.pod-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,.07); font-size: .88rem; }
+/* Destructive action, light theme — reuses the suspended-badge palette. */
+.btn-danger-soft { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; cursor: pointer; }
+.btn-danger-soft:hover { background: #fecaca; color: #7f1d1d; }
+/* Light-theme modals, matching admin/experts.html — the card is white, so
+   labels and inputs carry explicit dark text rather than inheriting. */
+.form-label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--navy,#0D1B3E); margin-bottom: 4px; }
+.form-input { width: 100%; padding: 8px 10px; background: #fff; border: 1px solid #d5dbe3; border-radius: 6px; color: var(--dark,#1A1A2E); font-size: 0.9rem; }
+.form-input:focus { outline: none; border-color: var(--teal,#0F7B72); box-shadow: 0 0 0 3px rgba(15,123,114,.12); }
+.corp-modal { position: fixed; inset: 0; background: rgba(13,27,62,.55); z-index: 1000; align-items: center; justify-content: center; display: none; }
+.corp-modal-card { background: #fff; color: var(--dark,#1A1A2E); border-radius: 12px; padding: 32px; width: 100%; max-width: 560px; max-height: 92vh; overflow:auto; border: 1px solid var(--border,rgba(0,0,0,.07)); box-shadow: 0 20px 50px rgba(13,27,62,.25); }
+.corp-modal-card h2 { color: var(--navy,#0D1B3E); }
+/* --muted darkened a shade: hint text is 0.74–0.82rem, so it needs 4.5:1 on white. */
+.form-hint { color: #5A6B7D; font-weight: 400; }
+.form-error { color: #b91c1c; }
+.renewal-banner { background: rgba(201,149,42,.1); border: 1px solid rgba(201,149,42,.35); border-radius: 10px; padding: 12px 16px; margin-bottom: 1.25rem; font-size: .85rem; }
+.renewal-chip { display: inline-block; background: rgba(13,27,62,.05); border-radius: 6px; padding: 2px 8px; margin: 3px 4px 0 0; font-size: .78rem; }
+.pod-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border,rgba(0,0,0,.07)); font-size: .88rem; color: var(--dark,#1A1A2E); }
 </style>
 
 <script>
 const TIER_CREDITS = { pilot: 25, cohort: 200, enterprise: 500, partner: 100 };
-function tierDefaults() { document.getElementById('f_credits').value = TIER_CREDITS[document.getElementById('f_org_type').value] || 25; }
-function openCreateModal()  { document.getElementById('createModal').style.display = 'flex'; }
+// Tier defaults are a create-time convenience — never overwrite a live pool size.
+function tierDefaults() {
+  if (EDIT_ID) return;
+  document.getElementById('f_credits').value = TIER_CREDITS[document.getElementById('f_org_type').value] || 25;
+}
+
+let EDIT_ID = null;
+
+function openCreateModal() {
+  EDIT_ID = null;
+  setForm({ org_type: 'pilot', credits_purchased: 25, discount_pct: 0, provisioning_trigger: 'issue' });
+  document.getElementById('modalTitle').textContent = 'New Organization';
+  document.getElementById('creditsLabel').textContent = 'Credits';
+  document.getElementById('createBtn').textContent = 'Create & Activate';
+  document.getElementById('createModal').style.display = 'flex';
+}
 function closeCreateModal() { document.getElementById('createModal').style.display = 'none'; }
 
-async function submitCreate() {
+async function openEditModal(id) {
+  let org;
+  try {
+    const r = await fetch(`/api/corporate/orgs/${id}`);
+    org = await r.json();
+    if (!r.ok) { alert(org.error || 'Could not load organization'); return; }
+  } catch (e) { alert('Network error'); return; }
+  EDIT_ID = id;
+  setForm(org);
+  document.getElementById('modalTitle').textContent = `Edit — ${org.org_name}`;
+  document.getElementById('creditsLabel').textContent =
+    `Credits purchased (${org.credits_used} used)`;
+  document.getElementById('createBtn').textContent = 'Save changes';
+  document.getElementById('createModal').style.display = 'flex';
+}
+
+function setForm(o) {
+  set('f_org_name', o.org_name); set('f_contact_name', o.contact_name); set('f_contact_email', o.contact_email);
+  set('f_org_type', o.org_type || 'pilot'); set('f_credits', o.credits_purchased || 0);
+  set('f_credit_value', o.credit_value_cents ? (o.credit_value_cents / 100).toFixed(2) : '');
+  set('f_discount', o.discount_pct || 0);
+  set('f_start', o.contract_start || ''); set('f_end', o.contract_end || '');
+  set('f_domains', (o.auto_join_domains || []).join(', '));
+  set('f_provision', o.provisioning_trigger || 'issue');
+  set('f_wl_name', o.white_label_name); set('f_wl_logo', o.white_label_logo_url);
+  set('f_notes', o.notes);
+  const msg = document.getElementById('createMsg');
+  msg.style.display = 'none'; msg.textContent = '';
+  document.getElementById('createBtn').disabled = false;
+}
+function set(id, v) { document.getElementById(id).value = (v === null || v === undefined) ? '' : v; }
+function val(id){ return document.getElementById(id).value.trim(); }
+
+async function submitOrg() {
   const btn = document.getElementById('createBtn'), msg = document.getElementById('createMsg');
   msg.style.display = 'none'; btn.disabled = true;
-  const cv = document.getElementById('f_credit_value').value;
+  const cv = val('f_credit_value');
   const body = {
     org_name: val('f_org_name'), contact_name: val('f_contact_name'), contact_email: val('f_contact_email'),
     org_type: val('f_org_type'), credits_purchased: parseInt(val('f_credits') || '0', 10),
@@ -181,19 +243,26 @@ async function submitCreate() {
     contract_start: val('f_start') || null, contract_end: val('f_end') || null,
     auto_join_domains: val('f_domains') || null, provisioning_trigger: val('f_provision'),
     white_label_name: val('f_wl_name') || null, white_label_logo_url: val('f_wl_logo') || null,
+    notes: val('f_notes') || null,
   };
   if (!body.org_name || !body.contact_name || !body.contact_email) {
     msg.textContent = 'Name, contact name, and email are required.'; msg.style.display = 'block'; btn.disabled = false; return;
   }
   try {
-    let resp = await fetch('/api/corporate/orgs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    let data = await resp.json();
-    if (!resp.ok) { msg.textContent = data.error || 'Error'; msg.style.display = 'block'; btn.disabled = false; return; }
-    await fetch(`/api/corporate/orgs/${data.id}/activate`, { method: 'PUT' });
+    if (EDIT_ID) {
+      const resp = await fetch(`/api/corporate/orgs/${EDIT_ID}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await resp.json();
+      if (!resp.ok) { msg.textContent = data.error || 'Error'; msg.style.display = 'block'; btn.disabled = false; return; }
+    } else {
+      const resp = await fetch('/api/corporate/orgs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await resp.json();
+      if (!resp.ok) { msg.textContent = data.error || 'Error'; msg.style.display = 'block'; btn.disabled = false; return; }
+      await fetch(`/api/corporate/orgs/${data.id}/activate`, { method: 'PUT' });
+    }
     closeCreateModal(); location.reload();
   } catch (e) { msg.textContent = 'Network error'; msg.style.display = 'block'; btn.disabled = false; }
 }
-function val(id){ return document.getElementById(id).value.trim(); }
 
 async function activateOrg(id) { await fetch(`/api/corporate/orgs/${id}/activate`, { method: 'PUT' }); location.reload(); }
 async function suspendOrg(id) { if (!confirm('Suspend this organization? Members lose credit access.')) return; await fetch(`/api/corporate/orgs/${id}/suspend`, { method: 'PUT' }); location.reload(); }
@@ -227,8 +296,8 @@ async function openPod(id) {
   document.getElementById('podList').innerHTML = smes.map(s =>
     `<label class="pod-row"><input type="checkbox" value="${s.id}" ${curIds.has(s.id)?'checked':''}>
      <span style="flex:1">${s.full_name || (s.first_name+' '+s.last_name)}</span>
-     <span style="opacity:.6;font-size:.78rem">${(s.zones||[]).join(', ')}</span>
-     <span style="opacity:.5;font-size:.74rem">${s.headroom} open</span></label>`).join('') || '<p style="opacity:.6">No SMEs yet — add them in Experts.</p>';
+     <span class="form-hint" style="font-size:.78rem">${(s.zones||[]).join(', ')}</span>
+     <span class="form-hint" style="font-size:.74rem">${s.headroom} open</span></label>`).join('') || '<p class="form-hint">No SMEs yet — add them in Experts.</p>';
   document.getElementById('podModal').style.display = 'flex';
 }
 function closePod(){ document.getElementById('podModal').style.display = 'none'; }
@@ -239,7 +308,7 @@ async function savePod() {
   if (!r.ok) { document.getElementById('podMsg').textContent = d.error || 'Error'; return; }
   const gaps = (d.coverage && d.coverage.uncovered_zones) || [];
   document.getElementById('podMsg').innerHTML = `Saved. Re-matched ${d.rematched} member(s).` +
-    (gaps.length ? ` <span style="color:#f87171">Uncovered zones: ${gaps.join(', ')} — add SMEs with these zones.</span>` : ' Full zone coverage.');
+    (gaps.length ? ` <span class="form-error">Uncovered zones: ${gaps.join(', ')} — add SMEs with these zones.</span>` : ' Full zone coverage.');
 }
 </script>
 {% endblock %}

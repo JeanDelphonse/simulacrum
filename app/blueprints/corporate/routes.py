@@ -173,30 +173,126 @@ def get_org(org, **kwargs):
     employees = org.employees.order_by(CorporateEmployee.provisioned_at.desc()).all()
     data = org.to_dict()
     data['employees'] = [e.to_dict() for e in employees]
+    if _is_platform_admin():
+        # Internal notes are deal context — platform admins only.
+        data['notes'] = org.notes
     return jsonify(data), 200
 
 
 @corporate_bp.route('/api/corporate/orgs/<org_id>', methods=['PUT'])
 @corp_access_required
 def update_org(org, **kwargs):
+    """Edit an organization.
+
+    Org Admins may edit co-branding and their own contact details. Platform
+    admins may additionally correct the whole contract — name, offer tier,
+    pool size, locked credit value, discount, dates, domains, invite cap.
+    """
     data = request.get_json() or {}
-    # Org Admins may edit co-branding; the rest is admin-only (contract/pool).
-    editable = ['white_label_name', 'white_label_logo_url', 'notes', 'contact_name']
-    if _is_platform_admin():
-        editable += ['contact_email', 'discount_pct', 'provisioning_trigger']
-    for field in editable:
+    changed = []
+
+    def _set(field, value):
+        if getattr(org, field) != value:
+            setattr(org, field, value)
+            changed.append(field)
+
+    def _bad(message):
+        """Reject the whole edit — discard any field already applied."""
+        db.session.rollback()
+        return jsonify({'error': message}), 400
+
+    # Optional free-text: blank clears the field.
+    for field in ('white_label_name', 'white_label_logo_url', 'notes'):
         if field in data:
-            setattr(org, field, data[field])
+            _set(field, (str(data[field]).strip() or None) if data[field] else None)
+
+    if 'contact_name' in data:
+        name = str(data['contact_name'] or '').strip()
+        if not name:
+            return _bad('contact_name cannot be blank')
+        _set('contact_name', name)
+
     if _is_platform_admin():
+        if 'org_name' in data:
+            org_name = str(data['org_name'] or '').strip()
+            if not org_name:
+                return _bad('org_name cannot be blank')
+            _set('org_name', org_name)
+
+        if 'contact_email' in data:
+            email = str(data['contact_email'] or '').strip().lower()
+            if '@' not in email:
+                return _bad('A valid contact_email is required')
+            _set('contact_email', email)
+
+        if 'org_type' in data:
+            org_type = str(data['org_type'] or '').strip()
+            if org_type not in CorporateAccount.ORG_TYPES:
+                return _bad(f'Invalid org_type. Use: {list(CorporateAccount.ORG_TYPES)}')
+            _set('org_type', org_type)
+
+        if 'license_tier' in data and data['license_tier']:
+            tier = str(data['license_tier']).strip()
+            if tier not in CorporateAccount.TIER_SEAT_LIMITS:
+                return _bad(f'Invalid license_tier. Use: {list(CorporateAccount.TIER_SEAT_LIMITS)}')
+            _set('license_tier', tier)
+
+        if 'provisioning_trigger' in data:
+            trigger = str(data['provisioning_trigger'] or '').strip()
+            if trigger not in (CorporateAccount.PROVISION_ON_ISSUE,
+                               CorporateAccount.PROVISION_ON_PAYMENT):
+                return _bad('provisioning_trigger must be issue or payment')
+            _set('provisioning_trigger', trigger)
+
+        for field in ('discount_pct', 'credit_value_cents', 'seat_count', 'invite_cap'):
+            if field not in data:
+                continue
+            raw = data[field]
+            if raw in (None, ''):
+                if field == 'invite_cap':      # NULL = unlimited
+                    _set('invite_cap', None)
+                continue
+            try:
+                value = float(raw) if field == 'discount_pct' else int(raw)
+            except (TypeError, ValueError):
+                return _bad(f'{field} must be a number')
+            if value < 0:
+                return _bad(f'{field} cannot be negative')
+            if field == 'discount_pct' and value > 100:
+                return _bad('discount_pct cannot exceed 100')
+            _set(field, value)
+
+        # Resize the pool by the delta so credits already redeemed stay used.
+        if data.get('credits_purchased') not in (None, ''):
+            try:
+                new_total = int(data['credits_purchased'])
+            except (TypeError, ValueError):
+                return _bad('credits_purchased must be a number')
+            if new_total < 0:
+                return _bad('credits_purchased cannot be negative')
+            delta = new_total - (org.credits_purchased or 0)
+            if delta:
+                org.credits_purchased = new_total
+                org.credits_remaining = max(0, (org.credits_remaining or 0) + delta)
+                changed.append('credits_purchased')
+
         if 'auto_join_domains' in data:
             d = data['auto_join_domains']
             if isinstance(d, str):
                 d = [x.strip().lower() for x in d.replace(',', ' ').split() if x.strip()]
-            org.auto_join_domains = d or None
-        if 'contract_start' in data:
-            org.contract_start = _parse_date(data['contract_start'])
-        if 'contract_end' in data:
-            org.contract_end = _parse_date(data['contract_end'])
+            elif isinstance(d, list):
+                d = [str(x).strip().lower() for x in d if str(x).strip()]
+            _set('auto_join_domains', d or None)
+
+        for field in ('contract_start', 'contract_end'):
+            if field in data:
+                _set(field, _parse_date(data[field]))
+        if org.contract_start and org.contract_end and org.contract_end < org.contract_start:
+            return _bad('contract_end cannot precede contract_start')
+
+    if changed:
+        AuditLog.log('corporate_org_updated', user_id=current_user.id, resource_id=org.id,
+                     metadata={'fields': changed})
     db.session.commit()
     return jsonify(org.to_dict()), 200
 

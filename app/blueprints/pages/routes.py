@@ -1642,6 +1642,52 @@ def legal_privacy():
     return render_template('legal/privacy.html', pp_version=pp_version)
 
 
+# ---------------------------------------------------------------------------
+# Careers — public job board (roles live in config/jobs.json)
+# ---------------------------------------------------------------------------
+
+@pages_bp.route('/careers')
+def careers_index():
+    from app.services import careers_service
+    return render_template(
+        'careers/index.html',
+        jobs=careers_service.list_jobs(),
+        meta=careers_service.careers_meta(),
+    )
+
+
+@pages_bp.route('/careers/<slug>')
+def careers_detail(slug):
+    from flask import abort
+    from app.services import careers_service
+    job = careers_service.get_job(slug)
+    if not job:
+        abort(404)
+    return render_template(
+        'careers/detail.html',
+        job=job,
+        meta=careers_service.careers_meta(),
+        other_jobs=[j for j in careers_service.list_jobs() if j['slug'] != slug],
+    )
+
+
+@pages_bp.route('/admin/careers')
+@login_required
+def admin_careers_view():
+    """Admin review of submitted job applications, with resume preview."""
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    from app.models.job_application import JobApplication
+    from app.services import careers_service
+    return render_template(
+        'admin/careers.html',
+        jobs=[{'slug': j['slug'], 'title': j['title']} for j in careers_service.list_jobs()],
+        statuses=[{'key': s, 'label': JobApplication.STATUS_LABELS[s]}
+                  for s in JobApplication.STATUSES],
+    )
+
+
 @pages_bp.route('/contacts')
 @login_required
 def contacts_list():

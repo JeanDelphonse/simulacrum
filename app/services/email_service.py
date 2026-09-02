@@ -947,3 +947,55 @@ def send_bcc_simulation_notification(user_email: str, user_name: str, sim_name: 
         )
     except Exception as e:
         logger.error('BCC simulation notification failed: %s', e)
+
+
+def send_job_application_received_email(applicant_email: str, applicant_name: str, job_title: str):
+    """Careers — confirmation to the applicant."""
+    first = (applicant_name or '').strip().split()[0] or 'there'
+    try:
+        plain = (
+            f'Hi {first},\n\n'
+            f'Thank you for applying for the {job_title} role at Simulacrum.\n\n'
+            f'We have your application and your resume. We read every one — if there is a fit, '
+            f'you will hear from us by email.\n\n'
+            f'— SimulacrumAI.io'
+        )
+        html = _html_wrap(
+            _h1('Application received') +
+            _p(f'Hi {first},') +
+            _p(f'Thank you for applying for the <strong>{job_title}</strong> role at Simulacrum.') +
+            _p('We have your application and your resume. We read every one — if there is a fit, you will hear from us by email.'),
+            preheader=f'Your application for {job_title} has been received.',
+        )
+        _send(subject=f'Simulacrum — application received ({job_title})',
+              recipients=[applicant_email], body=plain, html=html)
+    except Exception as e:
+        logger.error('Failed to send job application email to %s: %s', applicant_email, e, exc_info=True)
+
+
+def send_admin_new_job_application_email(admin_email: str, applicant_name: str, applicant_email: str,
+                                         phone: str, job_title: str, resume_filename: str):
+    """Careers — notify the admin that an application is waiting in /admin/careers."""
+    try:
+        plain = (
+            f'New application for {job_title}.\n\n'
+            f'Name: {applicant_name}\n'
+            f'Email: {applicant_email}\n'
+            f'Phone: {phone}\n'
+            f'Resume: {resume_filename}\n\n'
+            f'Review it in the admin panel under Careers.\n\n— SimulacrumAI.io'
+        )
+        html = _html_wrap(
+            _h1('New job application') +
+            _p(f'<strong>{applicant_name}</strong> applied for <strong>{job_title}</strong>.') +
+            f'<p style="font-size:13px;color:#6b7280;margin:0 0 4px;">Email</p>'
+            f'<p style="font-size:14px;color:#111827;margin:0 0 12px;">{applicant_email}</p>'
+            f'<p style="font-size:13px;color:#6b7280;margin:0 0 4px;">Phone</p>'
+            f'<p style="font-size:14px;color:#111827;margin:0 0 12px;">{phone}</p>'
+            f'<p style="font-size:13px;color:#6b7280;margin:0 0 4px;">Resume</p>'
+            f'<p style="font-size:14px;color:#111827;margin:0 0 0;">{resume_filename}</p>',
+            preheader=f'{applicant_name} applied for {job_title}.',
+        )
+        _send(subject=f'New application — {job_title}', recipients=[admin_email], body=plain, html=html)
+    except Exception as e:
+        logger.error('Failed to send admin job application notification to %s: %s', admin_email, e, exc_info=True)

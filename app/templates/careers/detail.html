@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% block title %}{{ job.title }} — Careers{% endblock %}
+{% block head %}
+<style>
+/* Careers — role detail + application form. */
+.cd-page { max-width: 1080px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+.cd-back { display: inline-block; font-size: .82rem; font-weight: 600; color: var(--muted); margin-bottom: 1.25rem; }
+.cd-back:hover { color: var(--teal); }
+.cd-head { margin-bottom: 2rem; }
+.cd-track { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #0f766e; background: rgba(15,123,114,.1); border-radius: 4px; padding: .2rem .5rem; margin-bottom: .7rem; }
+.cd-head h1 { font-size: 2rem; margin: 0 0 .6rem; }
+.cd-tagline { font-size: 1.02rem; color: var(--dark); line-height: 1.7; max-width: 72ch; margin: 0 0 1rem; }
+.cd-facts { display: flex; flex-wrap: wrap; gap: .4rem; }
+.cd-fact { font-size: .75rem; font-weight: 600; color: var(--navy); background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: .28rem .7rem; }
+.cd-grid { display: grid; grid-template-columns: minmax(0,1.55fr) minmax(0,1fr); gap: 2rem; align-items: start; }
+.cd-body section { margin-bottom: 1.9rem; }
+.cd-body h2 { font-size: 1.05rem; margin: 0 0 .7rem; }
+.cd-body p { font-size: .9rem; color: var(--dark); line-height: 1.75; margin: 0 0 .6rem; max-width: 74ch; }
+.cd-body ul { margin: 0; padding-left: 1.1rem; }
+.cd-body li { font-size: .9rem; color: var(--dark); line-height: 1.7; margin-bottom: .45rem; max-width: 74ch; }
+.cd-owns { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 0 10px 10px 0; padding: .9rem 1.1rem; font-size: .88rem; color: var(--dark); line-height: 1.7; }
+.cd-metric { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: .9rem 1.1rem; margin-bottom: .6rem; }
+.cd-metric-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin-bottom: .25rem; }
+.cd-metric-value { font-size: .9rem; color: var(--dark); line-height: 1.65; }
+.cd-nice { font-size: .86rem; color: var(--muted); line-height: 1.7; margin-top: .7rem; }
+.cd-nice strong { color: var(--navy); }
+.cd-shared { background: rgba(15,123,114,.05); border: 1px solid rgba(15,123,114,.18); border-radius: 10px; padding: .9rem 1.1rem; font-size: .86rem; color: var(--dark); line-height: 1.7; }
+
+/* ── Apply card ─────────────────────────────────────────────── */
+.cd-apply { position: sticky; top: 84px; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 1.4rem 1.4rem 1.5rem; box-shadow: 0 6px 24px rgba(13,27,62,.07); }
+.cd-apply h2 { font-size: 1.1rem; margin: 0 0 .3rem; }
+.cd-apply-sub { font-size: .8rem; color: var(--muted); line-height: 1.6; margin: 0 0 1.1rem; }
+.cd-field { margin-bottom: .9rem; }
+.cd-field label { display: block; font-size: .78rem; font-weight: 700; color: var(--navy); margin-bottom: .3rem; }
+.cd-field input[type=text], .cd-field input[type=email], .cd-field input[type=tel] {
+  width: 100%; border: 1px solid #d1d5db; border-radius: 7px; padding: .55rem .7rem;
+  font-size: .88rem; font-family: inherit; color: #111827; background: #fff; }
+.cd-field input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(15,123,114,.12); }
+.cd-drop { border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 1.1rem .9rem; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; background: #fafbfc; }
+.cd-drop:hover, .cd-drop.dragover { border-color: var(--teal); background: rgba(15,123,114,.04); }
+.cd-drop-main { font-size: .84rem; font-weight: 600; color: var(--navy); }
+.cd-drop-hint { font-size: .74rem; color: var(--muted); margin-top: .2rem; }
+.cd-drop.chosen { border-style: solid; border-color: var(--teal); background: rgba(15,123,114,.05); }
+.cd-file-name { font-size: .82rem; font-weight: 600; color: #0f766e; word-break: break-all; }
+.cd-file-size { font-size: .73rem; color: var(--muted); margin-top: .15rem; }
+.cd-msg { font-size: .82rem; border-radius: 8px; padding: .6rem .75rem; margin-bottom: .8rem; line-height: 1.55; }
+.cd-msg-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+.cd-msg-ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+.cd-submit { width: 100%; padding: .7rem 1rem; font-size: .9rem; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; background: var(--teal); color: #fff; font-family: inherit; }
+.cd-submit:hover:not(:disabled) { background: var(--teal-light); }
+.cd-submit:disabled { opacity: .55; cursor: not-allowed; }
+.cd-privacy { font-size: .72rem; color: var(--muted); line-height: 1.6; margin-top: .8rem; text-align: center; }
+.cd-other { margin-top: 2.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+.cd-other h2 { font-size: 1rem; margin: 0 0 .8rem; }
+.cd-other-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: .7rem; }
+.cd-other-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: .85rem 1rem; }
+.cd-other-card:hover { border-color: rgba(15,123,114,.35); }
+.cd-other-title { font-size: .9rem; font-weight: 700; color: var(--navy); }
+.cd-other-track { font-size: .72rem; color: var(--muted); margin-top: .15rem; }
+@media (max-width: 900px) {
+  .cd-grid { grid-template-columns: 1fr; }
+  .cd-apply { position: static; }
+  .cd-head h1 { font-size: 1.6rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cd-page">
+  <a class="cd-back" href="{{ url_for('pages.careers_index') }}">← All open roles</a>
+
+  <div class="cd-head">
+    <span class="cd-track">{{ job.track }}</span>
+    <h1>{{ job.title }}</h1>
+    <p class="cd-tagline">{{ job.tagline }}</p>
+    <div class="cd-facts">
+      <span class="cd-fact">{{ meta.team_size }}</span>
+      <span class="cd-fact">Reports to {{ meta.reports_to }}</span>
+      <span class="cd-fact">{{ meta.location }}</span>
+      <span class="cd-fact">{{ meta.employment }}</span>
+    </div>
+  </div>
+
+  <div class="cd-grid">
+    <div class="cd-body">
+      <section>
+        <h2>About Simulacrum</h2>
+        <p>{{ meta.about }}</p>
+      </section>
+
+      <section>
+        <h2>What you own</h2>
+        <div class="cd-owns">{{ job.owns }}</div>
+      </section>
+
+      <section>
+        <h2>Key responsibilities</h2>
+        <ul>
+          {% for item in job.responsibilities %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+      </section>
+
+      <section>
+        <h2>How success is measured</h2>
+        <div class="cd-metric">
+          <div class="cd-metric-label">North star</div>
+          <div class="cd-metric-value">{{ job.north_star }}</div>
+        </div>
+        <div class="cd-metric">
+          <div class="cd-metric-label">Supporting</div>
+          <div class="cd-metric-value">{{ job.supporting_metrics }}</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>What we're looking for</h2>
+        <ul>
+          {% for item in job.looking_for %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+        <p class="cd-nice"><strong>Nice to have.</strong> {{ job.nice_to_have }}</p>
+      </section>
+
+      <section>
+        <h2>How this team works</h2>
+        <div class="cd-shared">
+          {{ meta.shared_note }}<br><br>
+          Shared team goal: <strong>{{ meta.team_goal }}</strong>
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <div class="cd-apply">
+        <h2>Apply for this role</h2>
+        <p class="cd-apply-sub">Four fields and your resume. We read every application.</p>
+
+        <div id="applyError" class="cd-msg cd-msg-error hidden"></div>
+        <div id="applyOk" class="cd-msg cd-msg-ok hidden"></div>
+
+        <form id="applyForm" novalidate>
+          <div class="cd-field">
+            <label for="fullName">Full name *</label>
+            <input type="text" id="fullName" name="full_name" required autocomplete="name" placeholder="Jane Smith">
+          </div>
+          <div class="cd-field">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+          </div>
+          <div class="cd-field">
+            <label for="phone">Phone number *</label>
+            <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="(555) 123-4567">
+          </div>
+          <div class="cd-field">
+            <label for="resume">Resume * <span style="font-weight:500;color:var(--muted)">(PDF or Word, max 5 MB)</span></label>
+            <div class="cd-drop" id="dropZone" role="button" tabindex="0">
+              <div id="dropIdle">
+                <div class="cd-drop-main">Choose a file or drag it here</div>
+                <div class="cd-drop-hint">.pdf, .docx or .doc</div>
+              </div>
+              <div id="dropChosen" class="hidden">
+                <div class="cd-file-name" id="fileName"></div>
+                <div class="cd-file-size" id="fileSize"></div>
+              </div>
+            </div>
+            <input type="file" id="resume" name="resume" accept=".pdf,.docx,.doc,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" required>
+          </div>
+          <button type="submit" class="cd-submit" id="submitBtn">Submit application</button>
+          <p class="cd-privacy">
+            Your resume is used only to evaluate this application. See our
+            <a href="{{ url_for('pages.legal_privacy') }}">Privacy Policy</a>.
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if other_jobs %}
+  <div class="cd-other">
+    <h2>Other open roles</h2>
+    <div class="cd-other-list">
+      {% for other in other_jobs %}
+      <a class="cd-other-card" href="{{ url_for('pages.careers_detail', slug=other.slug) }}">
+        <div class="cd-other-title">{{ other.title }}</div>
+        <div class="cd-other-track">{{ other.track }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const JOB_SLUG   = {{ job.slug | tojson }};
+  const MAX_BYTES  = 5 * 1024 * 1024;
+  const ALLOWED    = ['pdf', 'docx', 'doc'];
+
+  const form      = document.getElementById('applyForm');
+  const fileInput = document.getElementById('resume');
+  const dropZone  = document.getElementById('dropZone');
+  const dropIdle  = document.getElementById('dropIdle');
+  const dropChosen= document.getElementById('dropChosen');
+  const errEl     = document.getElementById('applyError');
+  const okEl      = document.getElementById('applyOk');
+  const btn       = document.getElementById('submitBtn');
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.classList.remove('hidden');
+    okEl.classList.add('hidden');
+  }
+  function clearMessages() {
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+  }
+  function prettySize(bytes) {
+    return bytes < 1024 * 1024
+      ? (bytes / 1024).toFixed(0) + ' KB'
+      : (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+  function ext(name) {
+    const i = name.lastIndexOf('.');
+    return i === -1 ? '' : name.slice(i + 1).toLowerCase();
+  }
+
+  function setFile(file) {
+    if (!file) return;
+    if (ALLOWED.indexOf(ext(file.name)) === -1) {
+      showError('Resume must be a PDF or Word document (.pdf, .docx, .doc).');
+      fileInput.value = '';
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      showError('That file is ' + prettySize(file.size) + '. Please upload a resume under 5 MB.');
+      fileInput.value = '';
+      return;
+    }
+    clearMessages();
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = prettySize(file.size) + ' — click to replace';
+    dropIdle.classList.add('hidden');
+    dropChosen.classList.remove('hidden');
+    dropZone.classList.add('chosen');
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+  fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+
+  ['dragenter', 'dragover'].forEach(evt =>
+    dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(evt =>
+    dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+  dropZone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) { fileInput.files = e.dataTransfer.files; setFile(file); }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearMessages();
+
+    const fullName = document.getElementById('fullName').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const phone    = document.getElementById('phone').value.trim();
+    const file     = fileInput.files[0];
+
+    if (fullName.length < 2)                  return showError('Please enter your full name.');
+    if (!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(email))
+                                              return showError('Please enter a valid email address.');
+    if (!/^[\d\s()+.\-]{7,25}$/.test(phone))   return showError('Please enter a valid phone number.');
+    if (!file)                                return showError('Please attach your resume.');
+
+    const body = new FormData();
+    body.append('job_slug', JOB_SLUG);
+    body.append('full_name', fullName);
+    body.append('email', email);
+    body.append('phone', phone);
+    body.append('resume', file);
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+    try {
+      const res  = await fetch(ROOT + '/api/careers/apply', { method: 'POST', body: body });
+      let data = {};
+      try { data = await res.json(); } catch (_) {}
+      if (res.ok) {
+        okEl.textContent = data.message || 'Application received.';
+        okEl.classList.remove('hidden');
+        form.reset();
+        dropChosen.classList.add('hidden');
+        dropIdle.classList.remove('hidden');
+        dropZone.classList.remove('chosen');
+        btn.textContent = 'Application sent';
+        return;  // leave the button disabled — one submission per role
+      }
+      if (res.status === 413) {
+        showError('That resume is too large. Please upload a file under 5 MB.');
+      } else {
+        showError(data.error || 'Submission failed. Please try again.');
+      }
+    } catch (err) {
+      showError('Network error — please check your connection and try again.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Submit application';
+  });
+})();
+</script>
+{% endblock %}

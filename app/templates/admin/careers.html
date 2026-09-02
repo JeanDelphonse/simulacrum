@@ -1,0 +1,393 @@
+{% extends 'base.html' %}
+{% block title %}Careers — Admin{% endblock %}
+{% block head %}
+<style>
+/* Careers — admin review of submitted job applications.
+   Light palette matched to admin/contacts.html so the admin area reads as one surface. */
+.jc-page { max-width: 1280px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.jc-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0 0 .35rem; }
+.jc-sub { font-size: .85rem; color: #6b7280; margin: 0 0 1.25rem; max-width: 72ch; }
+.jc-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px,1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+.jc-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: .8rem 1rem; }
+.jc-stat-label { font-size: .66rem; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; margin-bottom: .3rem; }
+.jc-stat-value { font-size: 1.5rem; font-weight: 800; color: #0f172a; line-height: 1.1; }
+.jc-toolbar { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+.jc-toolbar select, .jc-toolbar input[type=text] {
+  border: 1px solid #d1d5db; border-radius: 6px; padding: .45rem .6rem;
+  font-size: .83rem; color: #111827; font-family: inherit; background: #fff; }
+.jc-toolbar input[type=text] { min-width: 220px; }
+.jc-toolbar .spacer { flex: 1; }
+
+.jc-table-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow-x: auto; }
+table.jc-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.jc-table th { text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+  color: #6b7280; font-weight: 700; padding: .7rem .9rem; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.jc-table td { padding: .75rem .9rem; border-bottom: 1px solid #f3f4f6; color: #111827; vertical-align: top; }
+.jc-table tr:last-child td { border-bottom: none; }
+.jc-table tr:hover td { background: #fafbfc; }
+.jc-name { font-weight: 700; color: #0f172a; }
+.jc-contact { font-size: .78rem; color: #6b7280; margin-top: .15rem; }
+.jc-contact a { color: #0f766e; }
+.jc-role { font-size: .82rem; color: #334155; }
+.jc-when { font-size: .78rem; color: #6b7280; white-space: nowrap; }
+.jc-file { font-size: .78rem; color: #6b7280; word-break: break-all; max-width: 200px; }
+.jc-badge { display: inline-block; font-size: .66rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; padding: .18rem .45rem; border-radius: 4px; white-space: nowrap; }
+.jc-badge-new         { background: rgba(13,148,136,.12); color: #0f766e; }
+.jc-badge-reviewing   { background: #fef3c7; color: #a16207; }
+.jc-badge-shortlisted { background: #dcfce7; color: #15803d; }
+.jc-badge-rejected    { background: #f3f4f6; color: #6b7280; }
+.jc-badge-hired       { background: #dbeafe; color: #1d4ed8; }
+.jc-ext { display: inline-block; font-size: .64rem; font-weight: 800; letter-spacing: .05em;
+  padding: .12rem .35rem; border-radius: 3px; background: #eef2f7; color: #475569; margin-right: .35rem; }
+.jc-actions { display: flex; gap: .35rem; flex-wrap: wrap; }
+.jc-btn { display: inline-block; padding: .35rem .7rem; font-size: .76rem; font-weight: 600;
+  border-radius: 6px; cursor: pointer; border: 1px solid transparent; text-decoration: none; font-family: inherit; }
+.jc-btn-primary { background: #0d9488; color: #fff; }
+.jc-btn-primary:hover { background: #0f766e; color: #fff; }
+.jc-btn-ghost { background: #fff; border-color: #d1d5db; color: #374151; }
+.jc-btn-ghost:hover { background: #f9fafb; color: #111827; }
+.jc-btn-danger { background: #fff; border-color: #fecaca; color: #b91c1c; }
+.jc-btn-danger:hover { background: #fef2f2; }
+.jc-empty { text-align: center; color: #6b7280; font-size: .88rem; padding: 2.5rem 1rem; }
+
+/* ── Preview drawer ─────────────────────────────────────────── */
+#jcModal { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 9000;
+  align-items: center; justify-content: center; padding: 1.25rem; }
+#jcModal.open { display: flex; }
+.jc-modal-card { background: #fff; border-radius: 14px; width: 100%; max-width: 1120px; height: 88vh;
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 72px rgba(15,23,42,.35); }
+.jc-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  padding: .9rem 1.1rem; border-bottom: 1px solid #e5e7eb; }
+.jc-modal-head h3 { font-size: 1rem; margin: 0; color: #0f172a; }
+.jc-modal-meta { font-size: .78rem; color: #6b7280; margin-top: .2rem; }
+.jc-modal-close { background: none; border: none; cursor: pointer; font-size: 1.5rem; line-height: 1;
+  color: #94a3b8; padding: 0 .25rem; }
+.jc-modal-body { flex: 1; display: grid; grid-template-columns: 300px minmax(0,1fr); min-height: 0; }
+.jc-modal-side { border-right: 1px solid #e5e7eb; padding: 1rem 1.1rem; overflow-y: auto; background: #fafbfc; }
+.jc-side-label { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: #6b7280; margin: 0 0 .2rem; }
+.jc-side-value { font-size: .86rem; color: #111827; margin: 0 0 .9rem; word-break: break-word; }
+.jc-side-value a { color: #0f766e; }
+.jc-modal-side select, .jc-modal-side textarea {
+  width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: .45rem .6rem;
+  font-size: .83rem; color: #111827; font-family: inherit; background: #fff; }
+.jc-modal-side textarea { resize: vertical; min-height: 76px; }
+.jc-save-hint { font-size: .74rem; color: #15803d; margin-top: .4rem; min-height: 1em; }
+.jc-preview { min-height: 0; display: flex; flex-direction: column; background: #f1f5f9; }
+.jc-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  padding: .5rem .9rem; border-bottom: 1px solid #e5e7eb; background: #fff; font-size: .78rem; color: #6b7280; }
+.jc-preview-body { flex: 1; min-height: 0; overflow: auto; }
+.jc-preview-body iframe { width: 100%; height: 100%; border: none; display: block; background: #fff; }
+.jc-text-preview { margin: 0; padding: 1.5rem 1.75rem; background: #fff; font-family: 'DM Sans', sans-serif;
+  font-size: .86rem; line-height: 1.75; color: #1f2937; white-space: pre-wrap; word-wrap: break-word; }
+.jc-fallback { padding: 2.5rem 1.5rem; text-align: center; color: #6b7280; font-size: .88rem; line-height: 1.7; }
+@media (max-width: 860px) {
+  .jc-modal-body { grid-template-columns: 1fr; }
+  .jc-modal-side { border-right: none; border-bottom: 1px solid #e5e7eb; max-height: 40%; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="jc-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
+    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link">Experts</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
+    <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
+    <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link">Calibration</a>
+    <a href="{{ url_for('pages.admin_careers_view') }}" class="subnav-link active">Careers</a>
+  </nav>
+
+  <h1 class="jc-title">Job Applications</h1>
+  <p class="jc-sub">
+    Every application submitted from <a href="{{ url_for('pages.careers_index') }}">/careers</a>.
+    Open one to read the resume in place — PDFs render inline, Word files render as extracted text —
+    then set a status so the pipeline stays readable.
+  </p>
+
+  <div class="jc-summary" id="summary"></div>
+
+  <div class="jc-toolbar">
+    <select id="filterJob">
+      <option value="">All roles</option>
+      {% for job in jobs %}
+      <option value="{{ job.slug }}">{{ job.title }}</option>
+      {% endfor %}
+    </select>
+    <select id="filterStatus">
+      <option value="">All statuses</option>
+      {% for status in statuses %}
+      <option value="{{ status.key }}">{{ status.label }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" id="filterSearch" placeholder="Search name, email or phone…">
+    <span class="spacer"></span>
+    <button class="jc-btn jc-btn-ghost" type="button" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="jc-table-wrap">
+    <table class="jc-table">
+      <thead>
+        <tr>
+          <th>Applicant</th>
+          <th>Role</th>
+          <th>Resume</th>
+          <th>Submitted</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="6" class="jc-empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Resume preview drawer ──────────────────────────────────── -->
+<div id="jcModal">
+  <div class="jc-modal-card">
+    <div class="jc-modal-head">
+      <div>
+        <h3 id="mName">—</h3>
+        <div class="jc-modal-meta" id="mMeta">—</div>
+      </div>
+      <button class="jc-modal-close" type="button" id="mClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="jc-modal-body">
+      <div class="jc-modal-side">
+        <p class="jc-side-label">Email</p>
+        <p class="jc-side-value" id="mEmail">—</p>
+        <p class="jc-side-label">Phone</p>
+        <p class="jc-side-value" id="mPhone">—</p>
+        <p class="jc-side-label">Role applied for</p>
+        <p class="jc-side-value" id="mRole">—</p>
+        <p class="jc-side-label">Submitted</p>
+        <p class="jc-side-value" id="mSubmitted">—</p>
+
+        <p class="jc-side-label">Status</p>
+        <select id="mStatus">
+          {% for status in statuses %}
+          <option value="{{ status.key }}">{{ status.label }}</option>
+          {% endfor %}
+        </select>
+        <div style="height:.9rem"></div>
+        <p class="jc-side-label">Internal note</p>
+        <textarea id="mNote" maxlength="1000" placeholder="Notes for the hiring pipeline…"></textarea>
+        <div style="display:flex;gap:.4rem;margin-top:.55rem;flex-wrap:wrap">
+          <button class="jc-btn jc-btn-primary" type="button" id="mSave">Save</button>
+          <a class="jc-btn jc-btn-ghost" id="mDownload" href="#">Download resume</a>
+        </div>
+        <div class="jc-save-hint" id="mSaveHint"></div>
+      </div>
+      <div class="jc-preview">
+        <div class="jc-preview-bar">
+          <span id="mFileInfo">—</span>
+          <span id="mPreviewMode"></span>
+        </div>
+        <div class="jc-preview-body" id="mPreviewBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const API = ROOT + '/api/admin/careers/applications';
+  const STATUSES = {{ statuses | tojson }};
+
+  const rowsEl    = document.getElementById('rows');
+  const summaryEl = document.getElementById('summary');
+  const modal     = document.getElementById('jcModal');
+  let   openId    = null;
+  let   searchTimer = null;
+
+  function esc(text) {
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso + (iso.endsWith('Z') ? '' : 'Z'));
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
+           ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+  function fmtSize(bytes) {
+    if (!bytes) return '';
+    return bytes < 1024 * 1024
+      ? (bytes / 1024).toFixed(0) + ' KB'
+      : (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  async function load() {
+    const params = new URLSearchParams();
+    const job = document.getElementById('filterJob').value;
+    const status = document.getElementById('filterStatus').value;
+    const q = document.getElementById('filterSearch').value.trim();
+    if (job) params.set('job', job);
+    if (status) params.set('status', status);
+    if (q) params.set('q', q);
+
+    const res = await fetch(API + (params.toString() ? '?' + params.toString() : ''));
+    if (!res.ok) {
+      rowsEl.innerHTML = '<tr><td colspan="6" class="jc-empty">Could not load applications.</td></tr>';
+      return;
+    }
+    const data = await res.json();
+    renderSummary(data);
+    renderRows(data.applications);
+  }
+
+  function renderSummary(data) {
+    const cards = [['Total', data.total]];
+    STATUSES.forEach(function (s) {
+      cards.push([s.label, data.counts[s.key] || 0]);
+    });
+    summaryEl.innerHTML = cards.map(function (c) {
+      return '<div class="jc-stat"><div class="jc-stat-label">' + esc(c[0]) + '</div>' +
+             '<div class="jc-stat-value">' + c[1] + '</div></div>';
+    }).join('');
+  }
+
+  function renderRows(apps) {
+    if (!apps.length) {
+      rowsEl.innerHTML = '<tr><td colspan="6" class="jc-empty">No applications match these filters yet.</td></tr>';
+      return;
+    }
+    rowsEl.innerHTML = apps.map(function (a) {
+      return '' +
+        '<tr>' +
+          '<td>' +
+            '<div class="jc-name">' + esc(a.full_name) + '</div>' +
+            '<div class="jc-contact"><a href="mailto:' + esc(a.email) + '">' + esc(a.email) + '</a> · ' +
+              esc(a.phone) + '</div>' +
+          '</td>' +
+          '<td><span class="jc-role">' + esc(a.job_title) + '</span></td>' +
+          '<td><span class="jc-ext">' + esc((a.resume_type || '').toUpperCase()) + '</span>' +
+            '<span class="jc-file">' + esc(a.resume_filename) + '</span></td>' +
+          '<td class="jc-when">' + fmtDate(a.submitted_at) + '</td>' +
+          '<td><span class="jc-badge jc-badge-' + esc(a.status) + '">' + esc(a.status_label) + '</span></td>' +
+          '<td><div class="jc-actions">' +
+            '<button class="jc-btn jc-btn-primary" type="button" data-preview="' + esc(a.id) + '">Preview</button>' +
+            '<a class="jc-btn jc-btn-ghost" href="' + API + '/' + esc(a.id) + '/resume?download=1">Download</a>' +
+            '<button class="jc-btn jc-btn-danger" type="button" data-delete="' + esc(a.id) + '">Delete</button>' +
+          '</div></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  rowsEl.addEventListener('click', function (e) {
+    const previewBtn = e.target.closest('[data-preview]');
+    if (previewBtn) return openPreview(previewBtn.getAttribute('data-preview'));
+    const deleteBtn = e.target.closest('[data-delete]');
+    if (deleteBtn) return remove(deleteBtn.getAttribute('data-delete'));
+  });
+
+  async function remove(id) {
+    if (!confirm('Delete this application and its resume file? This cannot be undone.')) return;
+    const res = await fetch(API + '/' + id, { method: 'DELETE' });
+    if (res.ok) load();
+    else alert('Could not delete that application.');
+  }
+
+  async function openPreview(id) {
+    const res = await fetch(API + '/' + id);
+    if (!res.ok) { alert('Could not load that application.'); return; }
+    const a = await res.json();
+    openId = id;
+
+    document.getElementById('mName').textContent = a.full_name;
+    document.getElementById('mMeta').textContent = a.job_title + ' · ' + a.status_label;
+    document.getElementById('mEmail').innerHTML  = '<a href="mailto:' + esc(a.email) + '">' + esc(a.email) + '</a>';
+    document.getElementById('mPhone').innerHTML  = '<a href="tel:' + esc(a.phone) + '">' + esc(a.phone) + '</a>';
+    document.getElementById('mRole').textContent = a.job_title;
+    document.getElementById('mSubmitted').textContent = fmtDate(a.submitted_at);
+    document.getElementById('mStatus').value = a.status;
+    document.getElementById('mNote').value = a.admin_note || '';
+    document.getElementById('mSaveHint').textContent = '';
+    document.getElementById('mDownload').href = API + '/' + id + '/resume?download=1';
+
+    const size = fmtSize(a.resume_size);
+    document.getElementById('mFileInfo').textContent =
+      a.resume_filename + (size ? ' · ' + size : '');
+
+    const body = document.getElementById('mPreviewBody');
+    const mode = document.getElementById('mPreviewMode');
+    const fileUrl = API + '/' + id + '/resume';
+
+    if (!a.file_exists) {
+      mode.textContent = '';
+      body.innerHTML = '<div class="jc-fallback">The uploaded file is no longer on disk.</div>';
+    } else if (a.resume_type === 'pdf') {
+      mode.textContent = 'PDF — rendered inline';
+      body.innerHTML = '<iframe src="' + fileUrl + '#view=FitH" title="Resume preview"></iframe>';
+    } else if (a.resume_text) {
+      mode.textContent = 'Word — extracted text';
+      body.innerHTML = '<pre class="jc-text-preview">' + esc(a.resume_text) + '</pre>';
+    } else {
+      mode.textContent = '';
+      body.innerHTML = '<div class="jc-fallback">' +
+        'This ' + esc((a.resume_type || 'file').toUpperCase()) + ' cannot be previewed in the browser.<br>' +
+        'Use <strong>Download resume</strong> to open it in Word.</div>';
+    }
+
+    modal.classList.add('open');
+  }
+
+  function closeModal() {
+    modal.classList.remove('open');
+    document.getElementById('mPreviewBody').innerHTML = '';  // stop the iframe loading
+    openId = null;
+  }
+
+  document.getElementById('mClose').addEventListener('click', closeModal);
+  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+
+  document.getElementById('mSave').addEventListener('click', async function () {
+    if (!openId) return;
+    const btn = this;
+    btn.disabled = true;
+    const res = await fetch(API + '/' + openId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: document.getElementById('mStatus').value,
+        admin_note: document.getElementById('mNote').value,
+      }),
+    });
+    btn.disabled = false;
+    const hint = document.getElementById('mSaveHint');
+    if (res.ok) {
+      const updated = await res.json();
+      hint.textContent = 'Saved.';
+      document.getElementById('mMeta').textContent = updated.job_title + ' · ' + updated.status_label;
+      load();
+    } else {
+      hint.textContent = 'Could not save.';
+    }
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', load);
+  document.getElementById('filterJob').addEventListener('change', load);
+  document.getElementById('filterStatus').addEventListener('change', load);
+  document.getElementById('filterSearch').addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(load, 300);
+  });
+
+  load();
+})();
+</script>
+{% endblock %}
