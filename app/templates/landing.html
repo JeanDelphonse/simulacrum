@@ -567,7 +567,7 @@
   .walker.idle .arm-l{ animation:rSway 3.4s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; }
   .walker.idle .arm-r{ animation:rWave 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; }
 
-  /* ===== DANCE (5s, between the walk-in and idle) ===== */
+  /* ===== DANCE (3s, between the walk-in and idle) ===== */
   .walker.dancing{ animation:danceStep .84s ease-in-out infinite; }
   .walker.dancing .robot{ animation:danceBody .84s ease-in-out infinite; transform-origin:center; }
   .walker.dancing .arm-l{ animation:danceArmL .42s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; }
@@ -635,10 +635,10 @@
         w.removeEventListener('animationend', handler);
         w.classList.remove('walking');
         w.classList.add('dancing');
-        setTimeout(function(){                           // 5s dance → settle into idle
+        setTimeout(function(){                           // 3s dance → settle into idle
           w.classList.remove('dancing');
           w.classList.add('idle');
-        }, 5000);
+        }, 3000);
       }
     });
   });
