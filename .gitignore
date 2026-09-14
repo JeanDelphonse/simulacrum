@@ -14,7 +14,8 @@ dist/
 build/
 .DS_Store
 .htaccess
-simulacrum_deploy.zip
 error.log
 *.log
 *.log.*
+simulacrum_deploy*.zip
+.vscode/
