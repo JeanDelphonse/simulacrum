@@ -28,6 +28,9 @@
     {% if current_user.is_authenticated %}
     <div class="nav-links">
       <a href="{{ url_for('pages.dashboard') }}" class="nav-link">Dashboard</a>
+      {% if blog_nav_visible %}
+      <a href="{{ url_for('pages.blog_index') }}" class="nav-link">Journal</a>
+      {% endif %}
       <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
       {% if current_user.is_partner %}
       <a href="{{ url_for('pages.partner_dashboard') }}" class="nav-link">Partner Dashboard</a>
@@ -44,6 +47,9 @@
     </div>
     {% else %}
     <div class="nav-links">
+      {% if blog_nav_visible %}
+      <a href="{{ url_for('pages.blog_index') }}" class="nav-link">Journal</a>
+      {% endif %}
       <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
       <a href="{{ url_for('pages.login_page') }}" class="nav-link">Sign in</a>
     </div>
@@ -72,6 +78,7 @@
     <a href="{{ url_for('pages.careers_index') }}" class="footer-tagline" style="text-decoration:none;color:inherit">Careers</a>
     <a href="{{ url_for('pages.sample_maya') }}" class="footer-tagline" style="text-decoration:none;color:inherit">Use Case: Maya Chen</a>
     <a href="{{ url_for('pages.sample_marcus') }}" class="footer-tagline" style="text-decoration:none;color:inherit">Use Case: Marcus Webb</a>
+    <a href="{{ url_for('pages.blog_index') }}" class="footer-tagline" style="text-decoration:none;color:inherit">The Journal</a>
     <a href="{{ url_for('public.simi_help') }}" class="footer-tagline" style="text-decoration:none;color:inherit">About Simi</a>
     <span class="footer-tagline">Turn your resume into autonomous income</span>
   </div>

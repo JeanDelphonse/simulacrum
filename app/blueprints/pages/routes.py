@@ -1754,3 +1754,126 @@ def referral_redirect(code):
         # Log the click immediately (referred_user_id unknown until registration)
         # We store only the click time; ReferralSignup row created on register
     return redirect(url_for('pages.register_page') + f'?ref={code}')
+
+
+# ---------------------------------------------------------------------------
+# The Community Blog — PRD-SIM-BLOG-001
+#
+# Reading is public (guests included), so these pages render server-side: the
+# feed and the calendar arrive with the HTML rather than after a round trip.
+# Everything interactive — liking, commenting, month navigation, Load more —
+# talks to /api/blog/... from the templates.
+# ---------------------------------------------------------------------------
+
+@pages_bp.route('/blog')
+def blog_index():
+    from app.services import blog_service as svc
+
+    year, month = svc.parse_month(request.args.get('month'))
+    on_date = svc.parse_date(request.args.get('date'))
+
+    if on_date:
+        posts, meta = svc.feed(page=1, on_date=on_date)
+    else:
+        posts, meta = svc.cached_first_page()
+
+    allowed, publish_gate = svc.can_publish(current_user)
+    return render_template(
+        'blog/index.html',
+        calendar=svc.calendar_month(year, month),
+        posts=posts,
+        authors=svc.author_map(posts),
+        liked_ids=svc.liked_post_ids(current_user, posts),
+        feed_meta=meta,
+        selected_date=on_date.isoformat() if on_date else None,
+        can_publish=allowed,
+        publish_gate=publish_gate,
+        total_published=svc.published_count(),
+    )
+
+
+@pages_bp.route('/blog/new')
+@login_required
+def blog_new():
+    from app.services import blog_service as svc
+    allowed, gate = svc.can_publish(current_user)
+    return render_template(
+        'blog/editor.html',
+        post=None,
+        can_publish=allowed,
+        publish_gate=gate,
+        max_chars=svc.setting('blog_max_post_chars'),
+    )
+
+
+@pages_bp.route('/blog/<slug>')
+def blog_post(slug):
+    from flask import abort
+    from app.models.blog import BlogPost, BlogReport
+    from app.services import blog_service as svc
+
+    post = BlogPost.query.filter_by(slug=slug).first()
+    if not post:
+        abort(404)
+    # A draft or a removed post is readable only by its author and by admins.
+    if not post.is_published and not svc.can_edit(post, current_user):
+        abort(404)
+
+    thread = svc.comment_thread(post)
+    comments = svc.flat_comments(thread)
+    can_comment, comment_gate = svc.can_comment(current_user)
+    return render_template(
+        'blog/post.html',
+        post=post,
+        thread=thread,
+        authors=svc.authors_by_id({post.author_user_id} | {c.user_id for c in comments}),
+        liked=post.id in svc.liked_post_ids(current_user, [post]),
+        liked_comment_ids=svc.liked_comment_ids(current_user, comments),
+        can_edit=svc.can_edit(post, current_user),
+        can_comment=can_comment,
+        comment_gate=comment_gate,
+        reply_depth=svc.setting('blog_reply_depth'),
+        max_comment_chars=svc.setting('blog_max_comment_chars'),
+        report_reasons=[{'key': r, 'label': BlogReport.REASON_LABELS[r]}
+                        for r in BlogReport.REASONS],
+    )
+
+
+@pages_bp.route('/blog/<slug>/edit')
+@login_required
+def blog_edit(slug):
+    from flask import abort
+    from app.models.blog import BlogPost
+    from app.services import blog_service as svc
+
+    post = BlogPost.query.filter_by(slug=slug).first()
+    if not post:
+        abort(404)
+    if not svc.can_edit(post, current_user):
+        abort(403)
+    allowed, gate = svc.can_publish(current_user)
+    return render_template(
+        'blog/editor.html',
+        post=post,
+        can_publish=allowed,
+        publish_gate=gate,
+        max_chars=svc.setting('blog_max_post_chars'),
+    )
+
+
+@pages_bp.route('/admin/blog')
+@login_required
+def admin_blog_view():
+    """Moderation queue plus the blog thresholds. PRD sections 11 and 12."""
+    from flask import abort
+    if not current_user.is_admin:
+        abort(403)
+    from app.models.blog import BlogPost, BlogReport
+    from app.services import blog_service as svc
+    return render_template(
+        'admin/blog.html',
+        stats=svc.moderation_stats(),
+        settings=svc.all_settings(),
+        report_statuses=[{'key': s, 'label': s.title()} for s in BlogReport.STATUSES],
+        post_statuses=[{'key': s, 'label': s.title()} for s in BlogPost.STATUSES],
+    )

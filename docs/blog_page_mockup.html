@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Simulacrum — Community Journal (sample)</title>
+<style>
+:root{
+  --navy:#0D1B3E; --navy2:#081027; --navy3:#132449; --paper:#FBFAF5; --card:#FFFFFF;
+  --gold:#C9952A; --gold-l:#E4B855; --teal:#2E7D8C; --teal2:#0F7B72; --teal-br:#13A89E;
+  --offw:#F5F1E6; --ink:#1b2431; --subtl:#C3CDD6; --mute:#8794a8; --line:#e7dcc4; --line2:rgba(201,149,42,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--paper);line-height:1.55;}
+.serif{font-family:Georgia,"Times New Roman",serif;}
+a{color:inherit;text-decoration:none;}
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px;}
+.note{background:#07101f;color:var(--gold-l);text-align:center;font-size:.74rem;letter-spacing:.05em;padding:6px;border-bottom:1px solid var(--line2);}
+/* nav */
+nav.bar{background:var(--navy);border-bottom:1px solid var(--line2);}
+nav .row{display:flex;align-items:center;justify-content:space-between;height:60px;}
+.logo{font-family:Georgia,serif;font-weight:700;font-size:1.25rem;color:var(--offw);}
+.logo b{color:var(--gold);}
+.nlinks{display:flex;gap:22px;}
+.nlinks a{color:var(--subtl);font-size:.9rem;}
+.nlinks a.active,.nlinks a:hover{color:var(--gold-l);}
+.btn{display:inline-block;padding:10px 18px;border-radius:9px;font-weight:700;font-size:.9rem;cursor:pointer;border:1.5px solid transparent;}
+.btn.gold{background:var(--gold);color:#241a05;} .btn.gold:hover{background:var(--gold-l);}
+.btn.ghost{background:transparent;border-color:rgba(255,255,255,.25);color:var(--offw);}
+.btn.sm{padding:6px 12px;font-size:.82rem;}
+/* header band */
+.head{background:linear-gradient(160deg,#0f1f42,#0b1730);color:var(--offw);padding:34px 0;}
+.head .row{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;}
+.head .eyebrow{color:var(--gold);letter-spacing:.2em;text-transform:uppercase;font-size:.72rem;font-weight:700;}
+.head h1{font-family:Georgia,serif;font-size:2.1rem;margin:.2em 0 .1em;}
+.head p{color:var(--subtl);font-size:1rem;max-width:560px;}
+/* layout */
+.grid{display:grid;grid-template-columns:320px 1fr;gap:26px;padding:28px 0 60px;}
+@media(max-width:820px){.grid{grid-template-columns:1fr;}}
+/* calendar card */
+.cal{background:linear-gradient(180deg,#122347,#0d1b3e);border:1px solid var(--line2);border-radius:16px;padding:18px;color:var(--offw);position:sticky;top:16px;}
+.cal .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.cal .top .m{font-family:Georgia,serif;font-weight:700;font-size:1.05rem;}
+.cal .top .nav{color:var(--mute);font-size:1rem;cursor:default;}
+.cal .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.cal .dow span{text-align:center;font-size:.66rem;color:var(--mute);letter-spacing:.04em;}
+.cal .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal .day{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:.82rem;color:var(--subtl);position:relative;border:1px solid transparent;}
+.cal .day.empty{color:#3a4867;}
+.cal .day.has{cursor:pointer;background:rgba(201,149,42,.08);color:var(--offw);}
+.cal .day.has:hover{background:rgba(201,149,42,.18);}
+.cal .day.sel{border-color:var(--gold);background:rgba(201,149,42,.22);}
+.cal .day .badge{position:absolute;top:3px;right:5px;background:var(--gold);color:#241a05;font-size:.58rem;font-weight:700;
+  min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
+.cal .legend{margin-top:12px;font-size:.72rem;color:var(--mute);display:flex;align-items:center;gap:6px;}
+.cal .legend .dot{width:10px;height:10px;border-radius:50%;background:var(--gold);}
+.cal .reset{margin-top:12px;width:100%;text-align:center;}
+/* feed */
+.feedhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.feedhead h2{font-family:Georgia,serif;font-size:1.3rem;color:var(--navy);}
+.feedhead .sub{color:var(--mute);font-size:.85rem;}
+.post{background:var(--card);border:1px solid #ece3d0;border-radius:14px;padding:22px;margin-bottom:16px;}
+.post h3{font-family:Georgia,serif;font-size:1.32rem;color:var(--navy);margin-bottom:6px;line-height:1.25;}
+.post .meta{color:var(--teal2);font-size:.82rem;margin-bottom:10px;}
+.post .meta .av{display:inline-block;width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#13A89E,#C9952A);vertical-align:middle;margin-right:7px;}
+.post .excerpt{color:#4a5768;font-size:.96rem;}
+.post .foot{display:flex;align-items:center;gap:18px;margin-top:14px;padding-top:12px;border-top:1px solid #f0e9da;}
+.act{display:inline-flex;align-items:center;gap:6px;font-size:.86rem;color:var(--mute);cursor:pointer;user-select:none;}
+.act .ic{font-size:1rem;}
+.act.liked{color:#c0392b;font-weight:700;}
+.act:hover{color:var(--navy);}
+.act.readmore{margin-left:auto;color:var(--teal2);font-weight:700;}
+/* comments */
+.comments{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;display:none;}
+.comments.open{display:block;}
+.cmt{display:flex;gap:10px;margin-bottom:12px;}
+.cmt .av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#2E7D8C,#C9952A);flex:none;}
+.cmt .b{background:#f7f3ea;border:1px solid #efe6d4;border-radius:10px;padding:8px 12px;flex:1;}
+.cmt .b .who{font-size:.8rem;font-weight:700;color:var(--navy);}
+.cmt .b .who span{font-weight:400;color:var(--mute);font-size:.74rem;margin-left:6px;}
+.cmt .b p{font-size:.88rem;color:#41505f;margin-top:2px;}
+.cmt .b .clike{font-size:.74rem;color:var(--mute);margin-top:4px;cursor:pointer;}
+.cbox{display:flex;gap:10px;margin-top:6px;}
+.cbox .av{width:28px;height:28px;border-radius:50%;background:#d7dee8;flex:none;}
+.cbox input{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:.88rem;font-family:inherit;}
+.cbox .btn{align-self:center;}
+.gate{font-size:.8rem;color:var(--mute);font-style:italic;margin-top:6px;}
+.foot-note{text-align:center;color:var(--mute);font-size:.78rem;padding:24px 0;}
+</style>
+</head>
+<body>
+<div class="note">Concept sample · Community Blog · Midnight Gold theme · numbers &amp; posts are illustrative</div>
+<nav class="bar"><div class="wrap row">
+  <div class="logo">Simula<b>crum</b></div>
+  <div class="nlinks"><a href="#">The Model</a><a href="#">Pricing</a><a class="active" href="#">Journal</a><a href="#">Log in</a></div>
+</div></nav>
+
+<header class="head"><div class="wrap row">
+  <div>
+    <div class="eyebrow">Community</div>
+    <h1 class="serif">The Simulacrum Journal</h1>
+    <p>Field notes from people running their own simulations — wins, forks, and lessons across the five layers.</p>
+  </div>
+  <a class="btn gold" href="#" onclick="return newPost()">+ New post</a>
+</div></header>
+
+<div class="wrap grid">
+  <!-- CALENDAR -->
+  <aside>
+    <div class="cal">
+      <div class="top"><span class="nav">&#8249;</span><span class="m" id="calMonth">Month</span><span class="nav">&#8250;</span></div>
+      <div class="dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+      <div class="days" id="calDays"></div>
+      <div class="legend"><span class="dot"></span> number = posts published that day</div>
+      <div class="reset"><a class="btn ghost sm" href="#" onclick="return selectDay(null)" style="border-color:var(--line2);color:var(--gold-l);">Show all posts</a></div>
+    </div>
+  </aside>
+
+  <!-- FEED -->
+  <main>
+    <div class="feedhead">
+      <h2 id="feedTitle">Latest posts</h2>
+      <div class="sub" id="feedSub"></div>
+    </div>
+    <div id="feed"></div>
+  </main>
+</div>
+<div class="foot-note">Simulacrum · The Simulacrum Journal · registered users can post · everyone can read</div>
+
+<script>
+const now=new Date();
+const Y=now.getFullYear(), M=now.getMonth(); // current month
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+// sample posts anchored to days of THIS month
+const day=(d)=>Math.min(d, new Date(Y,M+1,0).getDate());
+const POSTS=[
+ {id:1,day:day(now.getDate()),title:"How I set my rate card and finally doubled my consulting income",author:"Elena V.",excerpt:"For years I priced from what my old employer paid me. The Rate Card agent made me enter three numbers — and the max of them was 40% higher than my gut. Here's what happened when I quoted it.",likes:34,liked:false,comments:[
+   {who:"Marcus B.",when:"2h",text:"The 'defensible = the max, not the average' line reframed my whole pricing. Thank you.",cl:5},
+   {who:"Priya N.",when:"1h",text:"Did the tire-kickers actually leave? That's my fear.",cl:2}
+ ]},
+ {id:2,day:day(now.getDate()),title:"My cold-email numbers after 30 days (real data)",author:"James W.",excerpt:"Forty researched emails beat two hundred blasts. Reply rate, booked calls, and the one line that moved everything.",likes:9,liked:false,comments:[]},
+ {id:3,day:day(now.getDate()-2),title:"From Layer 1 to Layer 3: my first productized offer",author:"Marcus B.",excerpt:"I turned a workshop I'd run twice into a course. The simulation said wait for the waitlist to hit 40 before building. It was right.",likes:21,liked:false,comments:[{who:"Sarah C.",when:"1d",text:"Caching your teaching once and selling it a thousand times — this clicked for me.",cl:3}]},
+ {id:4,day:day(now.getDate()-3),title:"What my 24-month simulation got wrong (and right)",author:"David O.",excerpt:"The revenue range was optimistic; the sequencing was dead on. A candid look at where the model and reality diverged.",likes:27,liked:false,comments:[]},
+ {id:5,day:day(now.getDate()-6),title:"Running all five layers at once without burning out",author:"Sarah C.",excerpt:"Orchestration isn't doing everything — it's letting the scheduler decide the one thing that matters this week.",likes:15,liked:false,comments:[]},
+];
+let selected=null;
+
+function postsByDay(){const m={};POSTS.forEach(p=>m[p.day]=(m[p.day]||0)+1);return m;}
+function renderCalendar(){
+  document.getElementById('calMonth').textContent=MONTHS[M]+" "+Y;
+  const counts=postsByDay();
+  const first=new Date(Y,M,1).getDay();
+  const dim=new Date(Y,M+1,0).getDate();
+  let html="";
+  for(let i=0;i<first;i++) html+='<div class="day empty"></div>';
+  for(let d=1;d<=dim;d++){
+    const c=counts[d]||0;
+    const cls="day"+(c?" has":"")+(selected===d?" sel":"");
+    const badge=c?`<span class="badge">${c}</span>`:"";
+    const click=c?`onclick="selectDay(${d})"`:"";
+    html+=`<div class="${cls}" ${click}>${d}${badge}</div>`;
+  }
+  document.getElementById('calDays').innerHTML=html;
+}
+function selectDay(d){
+  selected=d; renderCalendar(); renderFeed(); return false;
+}
+function fmtDate(d){return MONTHS[M]+" "+d+", "+Y;}
+function renderFeed(){
+  const list=selected? POSTS.filter(p=>p.day===selected):POSTS.slice().sort((a,b)=>b.day-a.day);
+  document.getElementById('feedTitle').textContent=selected?("Posts on "+fmtDate(selected)):"Latest posts";
+  document.getElementById('feedSub').textContent=list.length+(list.length===1?" post":" posts");
+  const feed=document.getElementById('feed');
+  if(!list.length){feed.innerHTML='<div class="post"><p class="excerpt">No posts on this day yet. Be the first — <a href="#" style="color:var(--teal2);font-weight:700;">write one</a>.</p></div>';return;}
+  feed.innerHTML=list.map(p=>{
+    const comments=p.comments.map(c=>`
+      <div class="cmt"><div class="av"></div><div class="b">
+        <div class="who">${c.who}<span>${c.when} ago</span></div><p>${c.text}</p>
+        <div class="clike" onclick="return false">&#9825; ${c.cl}</div></div></div>`).join("");
+    return `<article class="post">
+      <h3>${p.title}</h3>
+      <div class="meta"><span class="av"></span>${p.author} · ${fmtDate(p.day)}</div>
+      <p class="excerpt">${p.excerpt}</p>
+      <div class="foot">
+        <span class="act ${p.liked?'liked':''}" id="like${p.id}" onclick="return toggleLike(${p.id})"><span class="ic">${p.liked?'&#9829;':'&#9825;'}</span> <b>${p.likes}</b></span>
+        <span class="act" onclick="return toggleComments(${p.id})"><span class="ic">&#128172;</span> ${p.comments.length}</span>
+        <a class="act readmore" href="#" onclick="return toggleComments(${p.id})">Read &amp; discuss &#8250;</a>
+      </div>
+      <div class="comments" id="cm${p.id}">
+        ${comments||'<p style="font-size:.85rem;color:var(--mute);">No comments yet.</p>'}
+        <div class="cbox"><div class="av"></div><input placeholder="Add a comment…"/><a class="btn gold sm" href="#" onclick="return false">Post</a></div>
+        <div class="gate">You're viewing as a guest — log in to like or comment.</div>
+      </div>
+    </article>`;
+  }).join("");
+}
+function toggleLike(id){const p=POSTS.find(x=>x.id===id);p.liked=!p.liked;p.likes+=p.liked?1:-1;renderFeed();return false;}
+function toggleComments(id){renderFeed();const el=document.getElementById('cm'+id);if(el)el.classList.add('open');return false;}
+function newPost(){alert("New-post editor (registered users) — title + body, publish or save draft.");return false;}
+renderCalendar();renderFeed();
+</script>
+</body>
+</html>

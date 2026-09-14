@@ -645,6 +645,9 @@
 </script>
 <!-- ── NAV ──────────────────────────────────────────────────────────── -->
 <nav class="lp-nav" id="lpNav">
+      {% if blog_nav_visible %}
+      <a href="{{ url_for('pages.blog_index') }}" class="lp-nav-link">Journal</a>
+      {% endif %}
   <div class="lp-nav-inner">
     <a href="/" class="lp-logo">
       <div class="lp-logo-mark">

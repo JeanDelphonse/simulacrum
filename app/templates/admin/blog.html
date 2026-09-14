@@ -1,0 +1,423 @@
+{% extends 'base.html' %}
+{% block title %}Blog moderation{% endblock %}
+
+{% block head %}
+<style>
+/* PRD-SIM-BLOG-001 §§11-12 — the moderation queue and the thresholds. */
+.ab-page { max-width: 1120px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.ab-page h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.7rem; color: var(--navy); margin: 0 0 .3rem; }
+.ab-lead { color: var(--muted); font-size: .9rem; margin: 0 0 1.5rem; }
+
+.ab-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .8rem; margin-bottom: 2rem; }
+.ab-stat { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: .9rem 1.1rem; }
+.ab-stat .n { font-size: 1.5rem; font-weight: 700; color: var(--navy); line-height: 1.1; }
+.ab-stat .l { font-size: .74rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-top: .25rem; }
+.ab-stat.alert { border-color: rgba(179,38,30,.35); background: #fdf3f2; }
+.ab-stat.alert .n { color: #b3261e; }
+
+.ab-tabs { display: flex; gap: .3rem; border-bottom: 1px solid var(--border); margin-bottom: 1.4rem; flex-wrap: wrap; }
+.ab-tab { font-size: .88rem; font-weight: 700; padding: .6rem 1rem; background: none; border: none;
+  border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; font-family: inherit; }
+.ab-tab.on { color: var(--navy); border-bottom-color: var(--gold); }
+
+.ab-panel { display: none; }
+.ab-panel.on { display: block; }
+
+.ab-filters { display: flex; gap: .5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+.ab-filters select, .ab-filters input { border: 1px solid var(--border); border-radius: 8px;
+  padding: .45rem .7rem; font-size: .85rem; font-family: inherit; background: #fff; }
+
+.ab-card { background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  padding: 1.1rem 1.25rem; margin-bottom: .9rem; }
+.ab-card.flagged { border-left: 3px solid #b3261e; }
+.ab-card-top { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.ab-card-top h3 { font-size: 1rem; color: var(--navy); margin: 0; }
+.ab-pill { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  border-radius: 4px; padding: .18rem .45rem; }
+.ab-pill.open { color: #b3261e; background: rgba(179,38,30,.1); }
+.ab-pill.actioned { color: #0f766e; background: rgba(15,123,114,.1); }
+.ab-pill.dismissed { color: var(--muted); background: rgba(0,0,0,.05); }
+.ab-pill.removed { color: #6b5311; background: rgba(201,149,42,.16); }
+.ab-pill.published { color: #0f766e; background: rgba(15,123,114,.1); }
+.ab-pill.draft { color: var(--muted); background: rgba(0,0,0,.05); }
+.ab-snippet { font-size: .86rem; color: #4a5768; line-height: 1.6; margin: .3rem 0 .7rem;
+  padding-left: .7rem; border-left: 2px solid var(--border); }
+.ab-sub { font-size: .78rem; color: var(--muted); }
+.ab-actions { display: flex; gap: .5rem; margin-top: .8rem; flex-wrap: wrap; align-items: center; }
+.ab-btn { font-size: .8rem; font-weight: 700; padding: .4rem .85rem; border-radius: 8px;
+  border: 1px solid var(--border); background: #fff; color: var(--navy); cursor: pointer; font-family: inherit; }
+.ab-btn:hover { border-color: var(--gold); }
+.ab-btn.danger { color: #b3261e; border-color: rgba(179,38,30,.3); }
+.ab-btn.primary { background: var(--gold); border-color: var(--gold); color: #241a05; }
+.ab-btn[disabled] { opacity: .45; cursor: default; }
+.ab-link { font-size: .8rem; color: var(--teal); font-weight: 700; margin-left: auto; }
+
+.ab-set { background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  padding: 1rem 1.2rem; margin-bottom: .8rem; display: grid;
+  grid-template-columns: 1fr 200px; gap: 1rem; align-items: start; }
+.ab-set .k { font-size: .92rem; font-weight: 700; color: var(--navy); }
+.ab-set .h { font-size: .8rem; color: var(--muted); line-height: 1.6; margin-top: .25rem; }
+.ab-set .key { font-family: ui-monospace, Menlo, monospace; font-size: .7rem; color: var(--muted);
+  background: rgba(13,27,62,.05); border-radius: 3px; padding: .1em .35em; margin-left: .4rem; }
+.ab-set input[type=text], .ab-set input[type=number], .ab-set select {
+  width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: .5rem .7rem;
+  font-size: .88rem; font-family: inherit; background: #fff; }
+.ab-toggle { display: flex; align-items: center; gap: .5rem; font-size: .85rem; color: var(--navy); }
+.ab-save { position: sticky; bottom: 0; background: rgba(251,250,245,.96); border-top: 1px solid var(--border);
+  padding: 1rem 0; margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; }
+.ab-msg { font-size: .85rem; }
+.ab-msg.err { color: #b3261e; }
+.ab-msg.ok { color: #0f766e; }
+.ab-none { color: var(--muted); font-size: .9rem; padding: 1.5rem 0; }
+
+@media (max-width: 700px) { .ab-set { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ab-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
+    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link">Experts</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
+    <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
+    <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link">Calibration</a>
+    <a href="{{ url_for('pages.admin_careers_view') }}" class="subnav-link">Careers</a>
+    <a href="{{ url_for('pages.admin_blog_view') }}" class="subnav-link active">Blog</a>
+  </nav>
+
+  <h1>The Simulacrum Journal</h1>
+  <p class="ab-lead">Reports land here. Removals are soft, so threads and counts stay consistent
+    and removed items show as a neutral tombstone.</p>
+
+  <div class="ab-stats" id="abStats">
+    <div class="ab-stat{{ ' alert' if stats.open_reports }}">
+      <div class="n" data-stat="open_reports">{{ stats.open_reports }}</div><div class="l">Open reports</div></div>
+    <div class="ab-stat"><div class="n" data-stat="published">{{ stats.published }}</div><div class="l">Published</div></div>
+    <div class="ab-stat"><div class="n" data-stat="drafts">{{ stats.drafts }}</div><div class="l">Drafts</div></div>
+    <div class="ab-stat"><div class="n" data-stat="removed">{{ stats.removed }}</div><div class="l">Removed</div></div>
+    <div class="ab-stat"><div class="n" data-stat="comments">{{ stats.comments }}</div><div class="l">Comments</div></div>
+  </div>
+
+  <div class="ab-tabs">
+    <button class="ab-tab on" type="button" data-panel="reports">Moderation queue</button>
+    <button class="ab-tab" type="button" data-panel="posts">All posts</button>
+    <button class="ab-tab" type="button" data-panel="settings">Settings</button>
+  </div>
+
+  <!-- Reports -->
+  <div class="ab-panel on" id="panel-reports">
+    <div class="ab-filters">
+      <label for="abReportStatus" class="ab-sub">Status</label>
+      <select id="abReportStatus">
+        <option value="open" selected>Open</option>
+        {% for s in report_statuses %}{% if s.key != 'open' %}
+        <option value="{{ s.key }}">{{ s.label }}</option>
+        {% endif %}{% endfor %}
+        <option value="">All</option>
+      </select>
+    </div>
+    <div id="abReports"><div class="ab-none">Loading…</div></div>
+  </div>
+
+  <!-- All posts -->
+  <div class="ab-panel" id="panel-posts">
+    <div class="ab-filters">
+      <label for="abPostStatus" class="ab-sub">Status</label>
+      <select id="abPostStatus">
+        <option value="">All</option>
+        {% for s in post_statuses %}<option value="{{ s.key }}">{{ s.label }}</option>{% endfor %}
+      </select>
+      <input type="search" id="abPostSearch" placeholder="Search titles…">
+    </div>
+    <div id="abPosts"><div class="ab-none">Loading…</div></div>
+  </div>
+
+  <!-- Settings (§12) -->
+  <div class="ab-panel" id="panel-settings">
+    <form id="abSettings">
+      {% for s in settings %}
+      <div class="ab-set">
+        <div>
+          <div class="k">{{ s.label }}<span class="key">{{ s.key }}</span></div>
+          <div class="h">{{ s.help }}</div>
+        </div>
+        <div>
+          {% if s.type == 'bool' %}
+          <label class="ab-toggle">
+            <input type="checkbox" name="{{ s.key }}" {{ 'checked' if s.value }}>
+            <span>{{ 'On' if s.value else 'Off' }}</span>
+          </label>
+          {% elif s.key == 'blog_default_month' %}
+          <select name="{{ s.key }}">
+            <option value="current" {{ 'selected' if s.value == 'current' }}>This month</option>
+            <option value="latest_activity" {{ 'selected' if s.value == 'latest_activity' }}>Latest month with posts</option>
+          </select>
+          {% elif s.key == 'blog_reply_depth' %}
+          <select name="{{ s.key }}">
+            <option value="0" {{ 'selected' if s.value == 0 }}>0 — flat comments</option>
+            <option value="1" {{ 'selected' if s.value == 1 }}>1 — one reply level</option>
+          </select>
+          {% elif s.type == 'int' %}
+          <input type="number" name="{{ s.key }}" min="0" value="{{ s.value }}">
+          {% else %}
+          <input type="text" name="{{ s.key }}" value="{{ s.value }}">
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="ab-save">
+        <button class="ab-btn primary" type="submit" id="abSaveBtn">Save settings</button>
+        <span class="ab-msg" id="abSetMsg"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function refreshStats(stats) {
+    if (!stats) { return; }
+    Object.keys(stats).forEach(function (k) {
+      var el = document.querySelector('[data-stat="' + k + '"]');
+      if (el) { el.textContent = stats[k]; }
+    });
+    var card = document.querySelector('[data-stat="open_reports"]').closest('.ab-stat');
+    card.classList.toggle('alert', stats.open_reports > 0);
+  }
+
+  function api(url, options) {
+    return fetch(url, options).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) { throw new Error(d.error || 'Request failed.'); }
+        return d;
+      });
+    });
+  }
+
+  // --- tabs ----------------------------------------------------------------
+  document.querySelectorAll('.ab-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.ab-tab').forEach(function (t) { t.classList.toggle('on', t === tab); });
+      document.querySelectorAll('.ab-panel').forEach(function (p) {
+        p.classList.toggle('on', p.id === 'panel-' + tab.dataset.panel);
+      });
+      if (tab.dataset.panel === 'posts') { loadPosts(); }
+    });
+  });
+
+  // --- reports -------------------------------------------------------------
+  var reportsEl = document.getElementById('abReports');
+  var statusSel = document.getElementById('abReportStatus');
+
+  function loadReports() {
+    reportsEl.innerHTML = '<div class="ab-none">Loading…</div>';
+    api('/api/admin/blog/reports?status=' + encodeURIComponent(statusSel.value))
+      .then(function (d) {
+        refreshStats(d.stats);
+        if (!d.reports.length) {
+          reportsEl.innerHTML = '<div class="ab-none">Nothing in the queue.</div>';
+          return;
+        }
+        reportsEl.innerHTML = d.reports.map(reportCard).join('');
+      })
+      .catch(function (e) {
+        reportsEl.innerHTML = '<div class="ab-none">' + esc(e.message) + '</div>';
+      });
+  }
+
+  function reportCard(r) {
+    var t = r.target || {};
+    var link = t.slug
+      ? '<a class="ab-link" href="/blog/' + encodeURIComponent(t.slug) + '" target="_blank">View &#8599;</a>'
+      : '';
+    var actions = r.status === 'open'
+      ? '<button class="ab-btn danger" data-remove="' + esc(r.target_type) + '" data-id="' +
+          esc(r.target_id) + '" data-report="' + esc(r.id) + '"' +
+          (t.removed ? ' disabled' : '') + '>' +
+          (t.removed ? 'Already removed' : 'Remove content') + '</button>' +
+        '<button class="ab-btn" data-resolve="dismissed" data-report="' + esc(r.id) + '">Dismiss</button>' +
+        '<button class="ab-btn" data-resolve="actioned" data-report="' + esc(r.id) + '">Mark actioned</button>'
+      : '';
+    return '<div class="ab-card' + (r.status === 'open' ? ' flagged' : '') + '" data-report-card="' + esc(r.id) + '">' +
+      '<div class="ab-card-top">' +
+        '<h3>' + esc(t.title || 'Content') + '</h3>' +
+        '<span class="ab-pill ' + esc(r.status) + '">' + esc(r.status) + '</span>' +
+        (t.removed ? '<span class="ab-pill removed">removed</span>' : '') +
+        link +
+      '</div>' +
+      '<div class="ab-snippet">' + esc(t.snippet || '(no preview)') + '</div>' +
+      '<div class="ab-sub">' + esc(r.reason_label) + ' &middot; reported by ' + esc(r.reporter) +
+        ' &middot; ' + esc((r.created_at || '').slice(0, 10)) +
+        (t.author ? ' &middot; author ' + esc(t.author) : '') + '</div>' +
+      (r.detail ? '<div class="ab-sub" style="margin-top:.35rem">&ldquo;' + esc(r.detail) + '&rdquo;</div>' : '') +
+      (r.admin_note ? '<div class="ab-sub" style="margin-top:.35rem">Note: ' + esc(r.admin_note) + '</div>' : '') +
+      (actions ? '<div class="ab-actions">' + actions + '</div>' : '') +
+      '</div>';
+  }
+
+  statusSel.addEventListener('change', loadReports);
+
+  reportsEl.addEventListener('click', function (e) {
+    var remove = e.target.closest('[data-remove]');
+    if (remove) {
+      var kind = remove.dataset.remove;
+      if (!window.confirm('Remove this ' + kind + '? It will show as removed and the counts adjust.')) { return; }
+      remove.disabled = true;
+      var url = kind === 'post'
+        ? '/api/admin/blog/posts/' + remove.dataset.id + '/remove'
+        : '/api/admin/blog/comments/' + remove.dataset.id + '/remove';
+      api(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+        .then(function (d) {
+          refreshStats(d.stats);
+          // Removing the content is the action; record that on the report too.
+          return api('/api/admin/blog/reports/' + remove.dataset.report, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'actioned', admin_note: 'Content removed.' }),
+          });
+        })
+        .then(function (d) { refreshStats(d.stats); loadReports(); })
+        .catch(function (err) { alert(err.message); remove.disabled = false; });
+      return;
+    }
+
+    var resolve = e.target.closest('[data-resolve]');
+    if (resolve) {
+      resolve.disabled = true;
+      api('/api/admin/blog/reports/' + resolve.dataset.report, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: resolve.dataset.resolve }),
+      })
+        .then(function (d) { refreshStats(d.stats); loadReports(); })
+        .catch(function (err) { alert(err.message); resolve.disabled = false; });
+    }
+  });
+
+  // --- all posts -----------------------------------------------------------
+  var postsEl = document.getElementById('abPosts');
+  var postStatus = document.getElementById('abPostStatus');
+  var postSearch = document.getElementById('abPostSearch');
+  var searchTimer = null;
+
+  function loadPosts() {
+    postsEl.innerHTML = '<div class="ab-none">Loading…</div>';
+    var qs = '?status=' + encodeURIComponent(postStatus.value) +
+             '&q=' + encodeURIComponent(postSearch.value.trim());
+    api('/api/admin/blog/posts' + qs)
+      .then(function (d) {
+        if (!d.posts.length) {
+          postsEl.innerHTML = '<div class="ab-none">No posts match.</div>';
+          return;
+        }
+        postsEl.innerHTML = d.posts.map(postCard).join('');
+      })
+      .catch(function (e) {
+        postsEl.innerHTML = '<div class="ab-none">' + esc(e.message) + '</div>';
+      });
+  }
+
+  function postCard(p) {
+    var isRemoved = p.status === 'removed';
+    return '<div class="ab-card' + (p.is_flagged ? ' flagged' : '') + '">' +
+      '<div class="ab-card-top">' +
+        '<h3>' + esc(p.title) + '</h3>' +
+        '<span class="ab-pill ' + esc(p.status) + '">' + esc(p.status) + '</span>' +
+        (p.is_flagged ? '<span class="ab-pill open">flagged</span>' : '') +
+        '<a class="ab-link" href="/blog/' + encodeURIComponent(p.slug) + '" target="_blank">View &#8599;</a>' +
+      '</div>' +
+      '<div class="ab-snippet">' + esc(p.excerpt || '(no excerpt)') + '</div>' +
+      '<div class="ab-sub">' + esc(p.author) + ' &middot; ' +
+        esc((p.published_at || p.updated_at || '').slice(0, 10)) + ' &middot; ' +
+        p.like_count + ' like' + (p.like_count === 1 ? '' : 's') + ' &middot; ' +
+        p.comment_count + ' comment' + (p.comment_count === 1 ? '' : 's') + '</div>' +
+      '<div class="ab-actions">' +
+        '<button class="ab-btn' + (isRemoved ? '' : ' danger') + '" data-post="' + esc(p.id) +
+          '" data-restore="' + (isRemoved ? 'true' : 'false') + '">' +
+          (isRemoved ? 'Restore' : 'Remove') + '</button>' +
+      '</div></div>';
+  }
+
+  postStatus.addEventListener('change', loadPosts);
+  postSearch.addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadPosts, 250);
+  });
+
+  postsEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-post]');
+    if (!btn) { return; }
+    var restore = btn.dataset.restore === 'true';
+    if (!restore && !window.confirm('Remove this post from the Journal?')) { return; }
+    btn.disabled = true;
+    api('/api/admin/blog/posts/' + btn.dataset.post + '/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restore: restore }),
+    })
+      .then(function (d) { refreshStats(d.stats); loadPosts(); })
+      .catch(function (err) { alert(err.message); btn.disabled = false; });
+  });
+
+  // --- settings ------------------------------------------------------------
+  var form = document.getElementById('abSettings');
+  var setMsg = document.getElementById('abSetMsg');
+
+  form.addEventListener('change', function (e) {
+    // Keep the On/Off label honest as the box is clicked.
+    if (e.target.type === 'checkbox') {
+      var label = e.target.parentElement.querySelector('span');
+      if (label) { label.textContent = e.target.checked ? 'On' : 'Off'; }
+    }
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var settings = {};
+    form.querySelectorAll('[name]').forEach(function (field) {
+      settings[field.name] = field.type === 'checkbox' ? field.checked : field.value;
+    });
+
+    var btn = document.getElementById('abSaveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    setMsg.textContent = '';
+    setMsg.className = 'ab-msg';
+
+    api('/api/admin/blog/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings: settings }),
+    })
+      .then(function () {
+        setMsg.textContent = 'Saved. Cached feed and calendar reads were cleared.';
+        setMsg.className = 'ab-msg ok';
+      })
+      .catch(function (err) {
+        setMsg.textContent = err.message;
+        setMsg.className = 'ab-msg err';
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = 'Save settings';
+      });
+  });
+
+  loadReports();
+})();
+</script>
+{% endblock %}

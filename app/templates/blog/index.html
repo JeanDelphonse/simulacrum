@@ -1,0 +1,385 @@
+{% extends 'base.html' %}
+{% block title %}The Simulacrum Journal{% endblock %}
+
+{% block head %}
+<meta name="description" content="Field notes from people running their own simulations — wins, forks, and lessons across the five layers.">
+<style>
+/* PRD-SIM-BLOG-001 §10 — Midnight Gold. Calendar left, feed right; stacks on mobile. */
+.bl-head { background: linear-gradient(160deg, #0f1f42, #0b1730); color: #F5F1E6; padding: 34px 0; }
+.bl-head-in { max-width: 1120px; margin: 0 auto; padding: 0 22px; display: flex;
+  justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px; }
+.bl-eyebrow { color: var(--gold); letter-spacing: .2em; text-transform: uppercase; font-size: .72rem; font-weight: 700; }
+.bl-head h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 2.1rem; margin: .2em 0 .1em; color: #F5F1E6; }
+.bl-head p { color: #C3CDD6; font-size: 1rem; max-width: 560px; margin: 0; }
+.bl-head-count { color: rgba(245,241,230,.5); font-size: .8rem; margin-top: .5rem; }
+
+.bl-grid { max-width: 1120px; margin: 0 auto; padding: 28px 22px 60px;
+  display: grid; grid-template-columns: 320px 1fr; gap: 26px; align-items: start; }
+
+/* --- calendar card (§6) --- */
+.bl-cal { background: linear-gradient(180deg, #122347, #0d1b3e); border: 1px solid rgba(201,149,42,.22);
+  border-radius: 16px; padding: 18px; color: #F5F1E6; position: sticky; top: 16px; }
+.bl-cal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.bl-cal-top .m { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 1.05rem; }
+.bl-cal-nav { background: none; border: 1px solid rgba(255,255,255,.14); color: #C3CDD6;
+  width: 26px; height: 26px; border-radius: 7px; cursor: pointer; font-size: 1rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center; padding: 0; }
+.bl-cal-nav:hover { color: var(--gold-l, #E4B855); border-color: rgba(201,149,42,.5); }
+.bl-cal-nav[disabled] { opacity: .25; cursor: default; }
+.bl-dow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+.bl-dow span { text-align: center; font-size: .66rem; color: #8794a8; letter-spacing: .04em; }
+.bl-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.bl-day { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-size: .82rem; color: #C3CDD6; position: relative; border: 1px solid transparent;
+  background: none; font-family: inherit; padding: 0; }
+.bl-day.empty { color: #3a4867; }
+.bl-day.blank { visibility: hidden; }
+.bl-day.has { cursor: pointer; background: rgba(201,149,42,.08); color: #F5F1E6; }
+.bl-day.has:hover { background: rgba(201,149,42,.18); }
+.bl-day.sel { border-color: var(--gold); background: rgba(201,149,42,.22); }
+.bl-day.today { box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+.bl-day:focus-visible { outline: 2px solid #E4B855; outline-offset: 2px; }
+.bl-badge { position: absolute; top: 3px; right: 4px; background: var(--gold); color: #241a05;
+  font-size: .58rem; font-weight: 700; min-width: 14px; height: 14px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+.bl-legend { margin-top: 12px; font-size: .72rem; color: #8794a8; display: flex; align-items: center; gap: 6px; }
+.bl-legend .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); flex: none; }
+.bl-reset { display: block; margin-top: 12px; width: 100%; text-align: center; padding: 7px 12px;
+  border-radius: 9px; border: 1.5px solid rgba(201,149,42,.35); color: #E4B855;
+  font-size: .82rem; font-weight: 700; background: none; cursor: pointer; font-family: inherit; }
+.bl-reset:hover { background: rgba(201,149,42,.12); }
+
+/* --- feed (§10.1) --- */
+.bl-feedhead { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+  flex-wrap: wrap; margin-bottom: 14px; }
+.bl-feedhead h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.3rem; color: var(--navy); margin: 0; }
+.bl-feedhead .sub { color: var(--muted); font-size: .85rem; }
+.bl-post { background: #fff; border: 1px solid #ece3d0; border-radius: 14px; padding: 22px; margin-bottom: 16px; }
+.bl-post h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.32rem; color: var(--navy);
+  margin: 0 0 6px; line-height: 1.25; }
+.bl-post h3 a { color: inherit; }
+.bl-post h3 a:hover { color: var(--teal); }
+.bl-meta { color: #0F7B72; font-size: .82rem; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+.bl-av { width: 22px; height: 22px; border-radius: 50%; flex: none; object-fit: cover;
+  background: linear-gradient(135deg, #13A89E, #C9952A); color: #fff; font-size: .62rem;
+  font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.bl-edited { color: var(--muted); font-style: italic; }
+.bl-excerpt { color: #4a5768; font-size: .96rem; margin: 0; }
+.bl-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .8rem; }
+.bl-tag { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: #0f766e; background: rgba(15,123,114,.1); border-radius: 4px; padding: .2rem .45rem; }
+.bl-foot { display: flex; align-items: center; gap: 18px; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid #f0e9da; flex-wrap: wrap; }
+.bl-act { display: inline-flex; align-items: center; gap: 6px; font-size: .86rem; color: var(--muted);
+  background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; }
+.bl-act:hover { color: var(--navy); }
+/* Liked state carries an icon change and a weight change, never colour alone (§10.2). */
+.bl-act.liked { color: #c0392b; font-weight: 700; }
+.bl-act .ic { font-size: 1rem; line-height: 1; }
+.bl-readmore { margin-left: auto; color: #0F7B72; font-weight: 700; font-size: .86rem; }
+.bl-empty { background: #fff; border: 1px dashed var(--border); border-radius: 14px;
+  padding: 2rem 1.5rem; text-align: center; color: var(--muted); }
+.bl-empty strong { display: block; color: var(--navy); font-size: 1.05rem; margin-bottom: .4rem; }
+.bl-more { display: block; width: 100%; margin-top: .5rem; padding: .8rem; border-radius: 10px;
+  border: 1.5px solid var(--border); background: #fff; color: var(--navy); font-weight: 700;
+  font-size: .9rem; cursor: pointer; font-family: inherit; }
+.bl-more:hover { border-color: var(--gold); }
+.bl-newpost { display: inline-block; padding: 10px 18px; border-radius: 9px; font-weight: 700;
+  font-size: .9rem; background: var(--gold); color: #241a05; border: 1.5px solid transparent; }
+.bl-newpost:hover { background: #E4B855; }
+.bl-gate-note { font-size: .78rem; color: rgba(245,241,230,.55); max-width: 260px; text-align: right; }
+
+@media (max-width: 860px) {
+  /* §10.2 — calendar collapses above the feed, cards go full width. */
+  .bl-grid { grid-template-columns: 1fr; }
+  .bl-cal { position: static; }
+  .bl-head h1 { font-size: 1.6rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="bl-head">
+  <div class="bl-head-in">
+    <div>
+      <div class="bl-eyebrow">Community</div>
+      <h1>The Simulacrum Journal</h1>
+      <p>Field notes from people running their own simulations — wins, forks, and lessons across the five layers.</p>
+      {% if total_published %}
+      <div class="bl-head-count">{{ total_published }} post{{ 's' if total_published != 1 }} published</div>
+      {% endif %}
+    </div>
+    {% if current_user.is_authenticated %}
+      {% if can_publish %}
+      <a class="bl-newpost" href="{{ url_for('pages.blog_new') }}">+ New post</a>
+      {% else %}
+      <div class="bl-gate-note">{{ publish_gate }}</div>
+      {% endif %}
+    {% else %}
+    <a class="bl-newpost" href="{{ url_for('pages.login_page') }}?next=/blog/new">Log in to post</a>
+    {% endif %}
+  </div>
+</header>
+
+<div class="bl-grid">
+  <!-- CALENDAR (§6) -->
+  <aside>
+    <div class="bl-cal" id="blCal"
+         data-month="{{ calendar.month_key }}"
+         data-selected="{{ selected_date or '' }}">
+      <div class="bl-cal-top">
+        <button class="bl-cal-nav" type="button" data-goto="{{ calendar.prev_month }}"
+                aria-label="Previous month">&#8249;</button>
+        <span class="m" id="blCalMonth">{{ calendar.label }}</span>
+        <button class="bl-cal-nav" type="button" data-goto="{{ calendar.next_month or '' }}"
+                {% if not calendar.next_month %}disabled{% endif %}
+                aria-label="Next month">&#8250;</button>
+      </div>
+      <div class="bl-dow" aria-hidden="true">
+        <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+      </div>
+      <div class="bl-days" id="blCalDays" role="group" aria-label="Posts by day, {{ calendar.label }}">
+        {% for _ in range(calendar.lead_blanks) %}<span class="bl-day blank" aria-hidden="true"></span>{% endfor %}
+        {% for day in calendar.days %}
+          {% if day.count %}
+          <button type="button"
+                  class="bl-day has{{ ' sel' if day.date == selected_date }}{{ ' today' if day.is_today }}"
+                  data-date="{{ day.date }}"
+                  aria-pressed="{{ 'true' if day.date == selected_date else 'false' }}"
+                  aria-label="{{ day.label }}">{{ day.day }}<span class="bl-badge">{{ day.count }}</span></button>
+          {% else %}
+          <span class="bl-day empty{{ ' today' if day.is_today }}" aria-label="{{ day.label }}">{{ day.day }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="bl-legend"><span class="dot"></span> number = posts published that day</div>
+      <button class="bl-reset" type="button" id="blShowAll">Show all posts</button>
+    </div>
+  </aside>
+
+  <!-- FEED -->
+  <main>
+    <div class="bl-feedhead">
+      <h2 id="blFeedTitle">
+        {%- if selected_date %}Posts on {{ selected_date }}{% else %}Latest posts{% endif -%}
+      </h2>
+      <div class="sub" id="blFeedSub">{{ posts|length }} post{{ 's' if posts|length != 1 }}</div>
+    </div>
+
+    <div id="blFeed">
+      {% for post in posts %}
+      {% set author = authors.get(post.author_user_id, {}) %}
+      <article class="bl-post" data-post-id="{{ post.id }}">
+        <h3><a href="{{ url_for('pages.blog_post', slug=post.slug) }}">{{ post.title }}</a></h3>
+        <div class="bl-meta">
+          {% if author.avatar_path %}
+          <img class="bl-av" src="{{ url_for('public.serve_avatar', filename=author.avatar_path) }}"
+               alt="" loading="lazy">
+          {% else %}
+          <span class="bl-av" aria-hidden="true">{{ author.initials or 'M' }}</span>
+          {% endif %}
+          <span>
+            {% if author.username %}<a href="/u/{{ author.username }}">{{ author.name }}</a>
+            {% else %}{{ author.name or 'Member' }}{% endif %}
+            &middot; {{ post.published_at | journal_date }}
+            {% if post.was_edited %}<span class="bl-edited">&middot; edited</span>{% endif %}
+          </span>
+        </div>
+        <p class="bl-excerpt">{{ post.excerpt }}</p>
+        {% if post.tag_list %}
+        <div class="bl-tags">{% for tag in post.tag_list %}<span class="bl-tag">{{ tag }}</span>{% endfor %}</div>
+        {% endif %}
+        <div class="bl-foot">
+          <button class="bl-act bl-like{{ ' liked' if post.id in liked_ids }}" type="button"
+                  data-post-id="{{ post.id }}"
+                  aria-label="{{ post.like_count }} like{{ 's' if post.like_count != 1 }}">
+            <span class="ic">{% if post.id in liked_ids %}&#9829;{% else %}&#9825;{% endif %}</span>
+            <b>{{ post.like_count }}</b>
+          </button>
+          <span class="bl-act" aria-label="{{ post.comment_count }} comment{{ 's' if post.comment_count != 1 }}">
+            <span class="ic">&#128172;</span> {{ post.comment_count }}
+          </span>
+          <a class="bl-readmore" href="{{ url_for('pages.blog_post', slug=post.slug) }}">Read &amp; discuss &#8250;</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+
+    {% if not posts %}
+    <div class="bl-empty" id="blEmpty">
+      {% if selected_date %}
+      <strong>No posts on this day yet</strong>
+      Be the first —
+      {% if current_user.is_authenticated %}<a href="{{ url_for('pages.blog_new') }}">write one</a>.
+      {% else %}<a href="{{ url_for('pages.login_page') }}?next=/blog/new">log in and write one</a>.{% endif %}
+      {% else %}
+      <strong>The Journal is just getting started</strong>
+      No posts yet.
+      {% if current_user.is_authenticated %}<a href="{{ url_for('pages.blog_new') }}">Write the first one</a>.
+      {% else %}<a href="{{ url_for('pages.login_page') }}?next=/blog/new">Log in to write the first one</a>.{% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if feed_meta.has_more %}
+    <button class="bl-more" type="button" id="blMore" data-page="2">Load more</button>
+    {% endif %}
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var AUTHED = {{ 'true' if current_user.is_authenticated else 'false' }};
+  var LOGIN  = {{ url_for('pages.login_page')|tojson }};
+  var cal    = document.getElementById('blCal');
+  var feed   = document.getElementById('blFeed');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // Month navigation and day selection are plain navigations rather than
+  // fetches: the URL then describes what you are looking at, so a filtered day
+  // is linkable and the back button does the obvious thing.
+  function go(params) {
+    var url = new URL(window.location.href);
+    Object.keys(params).forEach(function (k) {
+      if (params[k] === null) { url.searchParams.delete(k); }
+      else { url.searchParams.set(k, params[k]); }
+    });
+    window.location.href = url.pathname + (url.search || '');
+  }
+
+  cal.querySelectorAll('.bl-cal-nav').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var month = btn.dataset.goto;
+      if (month) { go({ month: month, date: null }); }
+    });
+  });
+
+  cal.querySelectorAll('.bl-day.has').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var date = btn.dataset.date;
+      // Clicking the selected day again clears the filter.
+      go({ date: date === cal.dataset.selected ? null : date });
+    });
+  });
+
+  document.getElementById('blShowAll').addEventListener('click', function () {
+    go({ date: null, month: null });
+  });
+
+  // Keyboard navigation across the grid (§10.2).
+  var days = Array.prototype.slice.call(cal.querySelectorAll('.bl-day.has'));
+  cal.addEventListener('keydown', function (e) {
+    var i = days.indexOf(document.activeElement);
+    if (i < 0) { return; }
+    var step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 7, ArrowUp: -7 }[e.key];
+    if (!step) { return; }
+    e.preventDefault();
+    var next = days[Math.max(0, Math.min(days.length - 1, i + step))];
+    if (next) { next.focus(); }
+  });
+
+  // Likes. The count and the icon both change, so the state never rests on colour.
+  feed.addEventListener('click', function (e) {
+    var btn = e.target.closest('.bl-like');
+    if (!btn) { return; }
+    if (!AUTHED) {
+      window.location.href = LOGIN + '?next=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+    btn.disabled = true;
+    fetch('/api/blog/posts/' + btn.dataset.postId + '/like', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) { throw new Error(res.d.error || 'Could not save that like.'); }
+        btn.classList.toggle('liked', res.d.liked);
+        btn.querySelector('.ic').innerHTML = res.d.liked ? '&#9829;' : '&#9825;';
+        btn.querySelector('b').textContent = res.d.like_count;
+        btn.setAttribute('aria-label', res.d.like_count +
+          (res.d.like_count === 1 ? ' like' : ' likes'));
+      })
+      .catch(function (err) { alert(err.message); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  // Load more (§9, optimal stopping): a committed page size, not infinite scroll.
+  var more = document.getElementById('blMore');
+  if (more) {
+    more.addEventListener('click', function () {
+      var page = parseInt(more.dataset.page, 10);
+      more.textContent = 'Loading…';
+      more.disabled = true;
+
+      var qs = '?page=' + page;
+      if (cal.dataset.selected) { qs += '&date=' + encodeURIComponent(cal.dataset.selected); }
+
+      fetch('/api/blog/posts' + qs)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          (data.posts || []).forEach(function (post) {
+            feed.insertAdjacentHTML('beforeend', card(post));
+          });
+          if (data.has_more) {
+            more.dataset.page = page + 1;
+            more.textContent = 'Load more';
+            more.disabled = false;
+          } else {
+            more.remove();
+          }
+          var sub = document.getElementById('blFeedSub');
+          var n = feed.querySelectorAll('.bl-post').length;
+          sub.textContent = n + (n === 1 ? ' post' : ' posts');
+        })
+        .catch(function () {
+          more.textContent = 'Could not load more — try again';
+          more.disabled = false;
+        });
+    });
+  }
+
+  function card(post) {
+    var a = post.author || {};
+    var avatar = a.avatar_path
+      ? '<img class="bl-av" src="/avatars/' + esc(encodeURI(a.avatar_path)) + '" alt="" loading="lazy">'
+      : '<span class="bl-av" aria-hidden="true">' + esc(a.initials || 'M') + '</span>';
+    var name = a.username
+      ? '<a href="/u/' + encodeURIComponent(a.username) + '">' + esc(a.name) + '</a>'
+      : esc(a.name || 'Member');
+    var when = post.published_at
+      ? new Date(post.published_at + 'Z').toLocaleDateString(undefined,
+          { year: 'numeric', month: 'long', day: 'numeric' })
+      : '';
+    var tags = (post.tags || []).length
+      ? '<div class="bl-tags">' + post.tags.map(function (t) {
+          return '<span class="bl-tag">' + esc(t) + '</span>';
+        }).join('') + '</div>'
+      : '';
+    var heart = post.viewer_liked ? '&#9829;' : '&#9825;';
+
+    return '<article class="bl-post" data-post-id="' + esc(post.id) + '">' +
+      '<h3><a href="/blog/' + encodeURIComponent(post.slug) + '">' + esc(post.title) + '</a></h3>' +
+      '<div class="bl-meta">' + avatar + '<span>' + name + ' &middot; ' + esc(when) +
+        (post.was_edited ? ' <span class="bl-edited">&middot; edited</span>' : '') + '</span></div>' +
+      '<p class="bl-excerpt">' + esc(post.excerpt) + '</p>' + tags +
+      '<div class="bl-foot">' +
+        '<button class="bl-act bl-like' + (post.viewer_liked ? ' liked' : '') + '" type="button" ' +
+          'data-post-id="' + esc(post.id) + '" aria-label="' + post.like_count +
+          (post.like_count === 1 ? ' like' : ' likes') + '">' +
+          '<span class="ic">' + heart + '</span> <b>' + post.like_count + '</b></button>' +
+        '<span class="bl-act" aria-label="' + post.comment_count +
+          (post.comment_count === 1 ? ' comment' : ' comments') + '">' +
+          '<span class="ic">&#128172;</span> ' + post.comment_count + '</span>' +
+        '<a class="bl-readmore" href="/blog/' + encodeURIComponent(post.slug) +
+          '">Read &amp; discuss &#8250;</a>' +
+      '</div></article>';
+  }
+})();
+</script>
+{% endblock %}

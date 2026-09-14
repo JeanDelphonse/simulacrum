@@ -1,0 +1,148 @@
+SIMULACRUM · PRODUCT REQUIREMENTS DOCUMENT
+The Community Blog
+PRD-SIM-BLOG-001
+A member journal where registered users publish posts and others like and comment — fronted by a current-month calendar that shows how many posts landed on each day and filters the feed when a day is clicked.
+Contents
+1.  Summary	2
+2.  Goals & Non-Goals	2
+3.  Users & Permissions	2
+4.  User Stories	2
+5.  Functional Requirements	3
+6.  The Calendar	3
+7.  Data Model	3
+8.  API / Endpoints	4
+9.  Algorithms to Live By	4
+10.  UI / UX	5
+11.  Moderation & Safety	6
+12.  Admin Settings	6
+13.  Rollout / Phasing	6
+14.  Success Metrics	6
+15.  Open Questions	6
+[Heading 1] 1.  Summary
+The Community Blog (“The Simulacrum Journal”) is a member-facing journal inside the platform. Registered users publish blog posts; any registered user can like and comment on them; anyone may read. The page is fronted by a current-month calendar: each day shows a count of the posts published that day, and clicking a day filters the feed to that day's posts. The feature deepens engagement and gives the community a place to share simulation wins, decision forks, and lessons — reinforcing the platform's core loop.
+[Heading 1] 2.  Goals & Non-Goals
+Goals
+[List Paragraph] G1. Let registered users create, edit, publish, and delete their own blog posts.
+[List Paragraph] G2. Let registered users like (one per user per post) and comment on any published post.
+[List Paragraph] G3. Show the current month as a calendar with a per-day count of published posts.
+[List Paragraph] G4. Clicking a calendar day loads that day's posts into the feed.
+[List Paragraph] G5. Match the existing Midnight Gold theme and the current site's navigation.
+Non-Goals (v1)
+[List Paragraph] N1. No multi-author collaboration, scheduled/future-dated publishing, or a rich WYSIWYG beyond basic formatting.
+[List Paragraph] N2. No deeply nested comment threads — one level of replies at most (see §5).
+[List Paragraph] N3. No following/subscriptions or email digests in v1.
+[List Paragraph] N4. No monetization; this is an engagement surface, not a paid product.
+[Heading 1] 3.  Users & Permissions
+[Heading 1] 4.  User Stories
+[List Paragraph] As a registered user, I can write and publish a post so I can share a simulation win or lesson.
+[List Paragraph] As a reader, I can like a post so the author knows it resonated.
+[List Paragraph] As a registered user, I can comment (and reply once) so I can discuss a post.
+[List Paragraph] As any visitor, I can see this month's calendar and tell at a glance which days were active.
+[List Paragraph] As any visitor, I can click a day and read only that day's posts.
+[List Paragraph] As an author, I can edit or delete my own post.
+[List Paragraph] As a user, I can report a post or comment that violates the guidelines.
+[List Paragraph] As an admin, I can remove content and tune posting limits.
+[Heading 1] 5.  Functional Requirements
+[Heading 2] 5.1  Posts
+[List Paragraph] Fields: title, body (Markdown or basic rich text), optional cover image, optional tags, status (draft / published / removed).
+[List Paragraph] A published post records published_at; the calendar and feed key off this timestamp.
+[List Paragraph] Authors can edit or delete their own posts; edits set updated_at and show an “edited” marker.
+[List Paragraph] Feed shows published posts, newest first, paginated (“load more”). Denormalized like_count and comment_count for fast rendering.
+[Heading 2] 5.2  Likes
+[List Paragraph] One like per user per post, enforced by a unique (post_id, user_id) constraint; toggling removes it.
+[List Paragraph] Like actions require authentication; guests see a prompt to log in.
+[List Paragraph] like_count on the post is updated transactionally with the like row.
+[Heading 2] 5.3  Comments
+[List Paragraph] Registered users may comment on any published post; one level of replies (parent_comment_id) in v1.
+[List Paragraph] Comments can be liked and can be reported; authors and admins can remove.
+[List Paragraph] comment_count on the post is maintained; removed comments render as a tombstone (“comment removed”).
+[Heading 1] 6.  The Calendar
+The calendar is the feature's signature element. It renders the current month as a 7-column grid. Each day that has one or more published posts shows a small gold badge with the count; days with no posts are muted and inert.
+[List Paragraph] Data comes from one aggregate query: count of published posts grouped by the date of published_at for the current month, scoped to the viewer's timezone.
+[List Paragraph] Clicking a badged day loads that day's posts into the feed and highlights the day; a “Show all posts” control resets to the newest-first feed.
+[List Paragraph] Month navigation (previous / next) is supported; the default view is the current month.
+[List Paragraph] The aggregate is cached per (month, timezone) and invalidated when a post is published, unpublished, or its date changes (see §9, Caching).
+[Heading 1] 7.  Data Model
+All primary keys are CHAR(9) via generate_pk(). Counts are denormalized for read performance and reconciled on write.
+blog_posts
+post_id (PK) · author_user_id (FK) · title · slug · body · excerpt · cover_image · tags · status (draft/published/removed) · published_at · created_at · updated_at · like_count · comment_count · is_flagged
+blog_likes
+like_id (PK) · post_id (FK) · user_id (FK) · created_at   — unique (post_id, user_id)
+blog_comments
+comment_id (PK) · post_id (FK) · user_id (FK) · parent_comment_id (nullable) · body · like_count · is_removed · created_at · updated_at
+blog_comment_likes
+clike_id (PK) · comment_id (FK) · user_id (FK) · created_at   — unique (comment_id, user_id)
+blog_reports
+report_id (PK) · target_type (post/comment) · target_id · reporter_user_id (FK) · reason · status (open/actioned/dismissed) · created_at
+blog_settings
+setting_id (PK) · key · value   — admin-configurable: posting_enabled, min_account_age_days, posts_per_day_limit, comment_rate_limit, profanity_filter, reply_depth
+[Heading 1] 8.  API / Endpoints (Flask)
+[List Paragraph] GET /blog — feed (newest first) + current-month calendar aggregate; optional ?date=YYYY-MM-DD to filter.
+[List Paragraph] GET /blog/calendar?month=YYYY-MM — per-day post counts for the month.
+[List Paragraph] GET /blog/:slug — a single post with its comments.
+[List Paragraph] POST /blog · PUT/DELETE /blog/:id — create / edit / delete (author or admin).
+[List Paragraph] POST /blog/:id/like — toggle a like (auth required).
+[List Paragraph] POST /blog/:id/comments · POST /comments/:id/like · POST /reports — comment, like a comment, report.
+[List Paragraph] Admin: /admin/blog/moderation · /admin/blog/settings — review reports and tune settings.
+[Heading 1] 9.  Algorithms to Live By — Explicit Mapping
+[List Paragraph] Caching. A blog is read-heavy and write-light — the exact case for caching. The calendar aggregate and the feed's first page are memoized per (month, page) and invalidated on publish, so most reads never touch a live aggregate query.
+[List Paragraph] Explore vs. Exploit. Feed ordering balances proven posts (high likes — exploit) against fresh ones (recent — explore). v1 stays newest-first (pure explore) to avoid rich-get-richer; a light like-weighting is a fast-follow.
+[List Paragraph] Optimal Stopping. Pagination decides how much to load before stopping — a “load more” page size (admin-configurable) rather than an infinite scroll that never commits.
+[List Paragraph] Overfitting. Resist over-tuning a ranking algorithm to early engagement; a simple chronological feed with denormalized counts is the good-enough model that won't shatter as volume grows.
+[List Paragraph] Relaxation. Ship flat comments with one reply level first; full threading is a later relaxation of the constraint, not a launch blocker.
+[Heading 1] 10.  UI / UX
+The sample ships alongside this PRD as blog_page_mockup.html (Midnight Gold, interactive). The figure below shows the calendar, the feed, and a post's like/comment interactions.
+Figure 1 — Community Blog: current-month calendar with per-day post counts, the feed, and a post's like/comment thread.
+[Heading 2] 10.1  Layout & behavior
+[List Paragraph] Header band with the journal title and a “+ New post” button (registered users).
+[List Paragraph] A sticky calendar card (left) with gold per-day count badges; a selected day is ringed in gold; a “Show all posts” reset.
+[List Paragraph] The feed (right): post cards with title, author + date, excerpt, and a footer of like count, comment count, and “Read & discuss.”
+[List Paragraph] Expanding a post reveals comments and a comment box; guests see a “log in to like or comment” gate.
+[List Paragraph] Empty state for a selected day with no posts invites the user to write the first one.
+[Heading 2] 10.2  Accessibility & responsive
+[List Paragraph] Calendar days are keyboard-navigable; each badged day has an ARIA label (“September 5, 2 posts”).
+[List Paragraph] On mobile the calendar collapses above the feed; cards stack full-width.
+[List Paragraph] Like state is conveyed by icon + count, never color alone.
+[Heading 1] 11.  Moderation & Safety
+[List Paragraph] Any registered user can report a post or comment; reports land in an admin moderation queue.
+[List Paragraph] Admins can remove posts/comments; removed items render as a neutral tombstone, preserving thread structure.
+[List Paragraph] Optional profanity filter and rate limits (posts/day, comments/minute) guard against spam — all admin-configurable.
+[List Paragraph] Authors control their own content; deletion is soft (status = removed) to keep counts and threads consistent.
+[Heading 1] 12.  Admin Settings (all configurable, none hardcoded)
+[List Paragraph] posting_enabled — master switch for the blog.
+[List Paragraph] min_account_age_days — how established an account must be to post.
+[List Paragraph] posts_per_day_limit and comment_rate_limit — anti-spam thresholds.
+[List Paragraph] profanity_filter — on/off. reply_depth — 0 (flat) or 1 (one reply level).
+[List Paragraph] feed_page_size and calendar default month behavior.
+[Heading 1] 13.  Rollout / Phasing
+[List Paragraph] Phase 1 — Read & post: posts, feed, post detail, and the current-month calendar with counts + date filtering.
+[List Paragraph] Phase 2 — Engage: likes and flat comments (one reply level), with denormalized counts.
+[List Paragraph] Phase 3 — Safety & polish: reporting, the moderation queue, rate limits, caching, and month navigation.
+[Heading 1] 14.  Success Metrics
+[List Paragraph] Posts published per week; share of registered users who post.
+[List Paragraph] Likes and comments per post; comment reply rate.
+[List Paragraph] Calendar engagement: % of sessions that click a day.
+[List Paragraph] Return visits to /blog and downstream effect on platform retention.
+[Heading 1] 15.  Open Questions
+[List Paragraph] Is reading public, or gated to registered users only? (This PRD assumes public read.)
+[List Paragraph] Editor: Markdown vs. a light rich-text editor for v1?
+[List Paragraph] Do we surface the blog in the main nav for everyone, or only once a minimum volume of posts exists?
+[List Paragraph] Timezone for the calendar — viewer-local or a single platform timezone?
+Applies the standing Simulacrum conventions: Algorithms to Live By lenses (§9), admin-configurable thresholds, 9-char alphanumeric PKs, and the Midnight Gold theme.
+--- TABLE ---
+Product | Simulacrum (simulacrumai.io)
+Owner | Jean M. Delphonse
+Version | 1.0 (Draft) · For review
+Stack | Flask · SQLAlchemy · MySQL · existing auth · GoDaddy cPanel / Passenger WSGI
+Conventions | 9-character alphanumeric PKs via generate_pk(); all thresholds admin-configurable (never hardcoded); Midnight Gold theme.
+--- TABLE ---
+Action | Guest (not logged in) | Registered user | Author (own post) | Admin
+Read posts & comments | Yes | Yes | Yes | Yes
+Create a post | No | Yes | — | Yes
+Edit / delete a post | No | No | Yes (own) | Yes (any)
+Like a post / comment | No | Yes | Yes | Yes
+Comment | No | Yes | Yes | Yes
+Report content | No | Yes | Yes | —
+Moderate / remove | No | No | No | Yes
+--- TABLE ---
+

@@ -114,6 +114,11 @@
             reached {{ lc }} likes on their bio page!
           {% elif ev.event_type == 'connection_made' %}
             joined the Simulacrum network.
+          {% elif ev.event_type == 'blog_post_published' %}
+            published a Journal post{% if ev.metadata.get('title') %}, &ldquo;{{ ev.metadata.title }}&rdquo;{% endif %}.
+            {% if ev.metadata.get('slug') %}
+            <a class="event-link" href="/blog/{{ ev.metadata.slug }}">Read it &rarr;</a>
+            {% endif %}
           {% else %}
             had some activity.
           {% endif %}
@@ -167,6 +172,7 @@
             simulation_started: ' started a new income simulation.',
             likes_milestone: ' reached a new likes milestone!',
             connection_made: ' joined the Simulacrum network.',
+            blog_post_published: ' published a Journal post.',
           }[ev.event_type] || ' had some activity.';
           card.innerHTML = avatar +
             '<div class="event-body"><div class="event-text">' + actorHtml + typeText + '</div>' +

@@ -55,6 +55,9 @@ from app.models.calibration import (
     ReferenceDataset, ReferenceDataPoint, CalibrationConfig,
     CalibrationRun, OutcomeReport, CalibrationAudit,
 )
+from app.models.blog import (
+    BlogPost, BlogLike, BlogComment, BlogCommentLike, BlogReport,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -91,4 +94,5 @@ __all__ = [
     'JobApplication',
     'ReferenceDataset', 'ReferenceDataPoint', 'CalibrationConfig',
     'CalibrationRun', 'OutcomeReport', 'CalibrationAudit',
+    'BlogPost', 'BlogLike', 'BlogComment', 'BlogCommentLike', 'BlogReport',
 ]

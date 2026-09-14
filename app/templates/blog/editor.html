@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% block title %}{% if post %}Edit post{% else %}New post{% endif %}{% endblock %}
+
+{% block head %}
+<style>
+/* PRD-SIM-BLOG-001 §5.1 — Markdown source with a live preview, not a WYSIWYG (§2 N1). */
+.be-wrap { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.be-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  flex-wrap: wrap; margin-bottom: 1.4rem; }
+.be-top h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.7rem; color: var(--navy); margin: 0; }
+.be-back { font-size: .82rem; color: var(--teal); font-weight: 700; }
+.be-gate { background: #fdf6e3; border: 1px solid rgba(201,149,42,.4); color: #6b5311;
+  border-radius: 10px; padding: .8rem 1rem; font-size: .86rem; margin-bottom: 1.4rem; }
+.be-field { margin-bottom: 1.2rem; }
+.be-field label { display: block; font-size: .78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); margin-bottom: .4rem; }
+.be-field input, .be-field textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px;
+  padding: .7rem .9rem; font-size: .95rem; font-family: inherit; background: #fff; }
+.be-field input:focus, .be-field textarea:focus { outline: none; border-color: var(--teal); }
+.be-field .hint { font-size: .76rem; color: var(--muted); margin-top: .35rem; }
+#beTitle { font-family: 'Playfair Display', Georgia, serif; font-size: 1.35rem; }
+#beBody { min-height: 380px; resize: vertical; line-height: 1.7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9rem; }
+
+.be-tabs { display: flex; gap: .3rem; margin-bottom: .5rem; }
+.be-tab { font-size: .8rem; font-weight: 700; padding: .35rem .8rem; border-radius: 7px;
+  border: 1px solid transparent; background: none; color: var(--muted); cursor: pointer; font-family: inherit; }
+.be-tab.on { background: #fff; border-color: var(--border); color: var(--navy); }
+.be-count { margin-left: auto; font-size: .76rem; color: var(--muted); align-self: center; }
+.be-count.over { color: #b3261e; font-weight: 700; }
+
+.be-preview { display: none; background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  padding: 1.4rem 1.5rem; min-height: 380px; font-size: 1.02rem; line-height: 1.75; color: #2c3a4b; }
+.be-preview.on { display: block; }
+.be-preview > :first-child { margin-top: 0; }
+.be-preview p { margin: 0 0 1.1rem; }
+.be-preview h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.4rem; color: var(--navy); margin: 1.8rem 0 .6rem; }
+.be-preview h3 { font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0 .5rem; }
+.be-preview h4 { font-size: 1rem; color: var(--navy); margin: 1.3rem 0 .45rem; }
+.be-preview ul, .be-preview ol { margin: 0 0 1.1rem 1.4rem; }
+.be-preview blockquote { margin: 1.2rem 0; padding-left: 1.1rem; border-left: 3px solid var(--gold);
+  color: #4a5768; font-style: italic; }
+.be-preview pre { background: #0d1b3e; color: #e8eef6; border-radius: 10px; padding: 1rem;
+  overflow-x: auto; font-size: .86rem; }
+.be-preview code { font-family: ui-monospace, Menlo, monospace; font-size: .9em;
+  background: rgba(13,27,62,.06); border-radius: 4px; padding: .1em .35em; }
+.be-preview pre code { background: none; padding: 0; }
+.be-preview a { color: var(--teal); text-decoration: underline; }
+.be-preview hr { border: none; border-top: 1px solid var(--border); margin: 1.8rem 0; }
+.be-preview .placeholder { color: var(--muted); font-style: italic; }
+
+.be-cheat { font-size: .76rem; color: var(--muted); background: #f7f3ea; border: 1px solid #efe6d4;
+  border-radius: 10px; padding: .7rem .9rem; margin-top: .5rem; line-height: 1.8; }
+.be-cheat code { background: rgba(13,27,62,.07); border-radius: 3px; padding: .05em .3em;
+  font-family: ui-monospace, Menlo, monospace; }
+
+.be-actions { display: flex; align-items: center; gap: .7rem; margin-top: 1.8rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.be-btn { padding: .65rem 1.3rem; border-radius: 9px; font-weight: 700; font-size: .9rem;
+  cursor: pointer; font-family: inherit; border: 1.5px solid transparent; }
+.be-btn.gold { background: var(--gold); color: #241a05; }
+.be-btn.gold:hover { background: #E4B855; }
+.be-btn.ghost { background: #fff; border-color: var(--border); color: var(--navy); }
+.be-btn.ghost:hover { border-color: var(--gold); }
+.be-btn.danger { background: none; border: none; color: #b3261e; margin-left: auto; font-size: .82rem; }
+.be-btn[disabled] { opacity: .5; cursor: default; }
+.be-msg { font-size: .85rem; margin-top: .9rem; }
+.be-msg.err { color: #b3261e; }
+.be-msg.ok { color: #0f766e; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="be-wrap"
+     data-post-id="{{ post.id if post else '' }}"
+     data-published="{{ 'true' if post and post.is_published else 'false' }}"
+     data-max-chars="{{ max_chars }}">
+
+  <div class="be-top">
+    <div>
+      <a class="be-back" href="{{ url_for('pages.blog_index') }}">&#8249; The Simulacrum Journal</a>
+      <h1>{% if post %}Edit post{% else %}Write a post{% endif %}</h1>
+    </div>
+    {% if post and post.is_published %}
+    <a class="be-back" href="{{ url_for('pages.blog_post', slug=post.slug) }}">View published post &#8250;</a>
+    {% endif %}
+  </div>
+
+  {% if not can_publish and not (post and post.is_published) %}
+  <div class="be-gate">{{ publish_gate }} You can still save a draft.</div>
+  {% endif %}
+
+  <div class="be-field">
+    <label for="beTitle">Title</label>
+    <input id="beTitle" type="text" maxlength="200" value="{{ post.title if post else '' }}"
+           placeholder="What did you learn?">
+  </div>
+
+  <div class="be-field">
+    <div class="be-tabs">
+      <button class="be-tab on" type="button" data-tab="write">Write</button>
+      <button class="be-tab" type="button" data-tab="preview">Preview</button>
+      <span class="be-count" id="beCount">0 / {{ '{:,}'.format(max_chars) }}</span>
+    </div>
+    <textarea id="beBody" maxlength="{{ max_chars }}"
+              placeholder="Write in Markdown…">{{ post.body if post else '' }}</textarea>
+    <div class="be-preview" id="bePreview" aria-live="polite"></div>
+    <div class="be-cheat">
+      <code>**bold**</code> &nbsp; <code>*italic*</code> &nbsp; <code># Heading</code> &nbsp;
+      <code>- list item</code> &nbsp; <code>1. numbered</code> &nbsp; <code>&gt; quote</code> &nbsp;
+      <code>[text](https://link)</code> &nbsp; <code>`code`</code> &nbsp; <code>---</code> for a divider.
+      HTML is not supported — it renders as plain text.
+    </div>
+  </div>
+
+  <div class="be-field">
+    <label for="beTags">Tags <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+    <input id="beTags" type="text" maxlength="255" value="{{ post.tags if post else '' }}"
+           placeholder="pricing, cold-email, layer-3">
+    <div class="hint">Comma-separated, up to 5. Lowercased and hyphenated automatically.</div>
+  </div>
+
+  <div class="be-field">
+    <label for="beCover">Cover image URL <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+    <input id="beCover" type="url" maxlength="500" value="{{ post.cover_image or '' if post else '' }}"
+           placeholder="https://…">
+    <div class="hint">Shown above the title on the post page. Must be an https link; anything else is ignored.</div>
+  </div>
+
+  <div class="be-actions">
+    <button class="be-btn gold" type="button" id="bePublish"
+            {% if not can_publish and not (post and post.is_published) %}disabled{% endif %}>
+      {% if post and post.is_published %}Save changes{% else %}Publish{% endif %}
+    </button>
+    {% if post and post.is_published %}
+    <button class="be-btn ghost" type="button" id="beUnpublish">Unpublish</button>
+    {% else %}
+    <button class="be-btn ghost" type="button" id="beDraft">Save draft</button>
+    {% endif %}
+    {% if post %}
+    <button class="be-btn danger" type="button" id="beDelete">Delete post</button>
+    {% endif %}
+  </div>
+
+  <div class="be-msg" id="beMsg"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var wrap  = document.querySelector('.be-wrap');
+  var POST  = wrap.dataset.postId;
+  var MAX   = parseInt(wrap.dataset.maxChars, 10);
+  var WAS_PUBLISHED = wrap.dataset.published === 'true';
+
+  var title = document.getElementById('beTitle');
+  var body  = document.getElementById('beBody');
+  var tags  = document.getElementById('beTags');
+  var cover = document.getElementById('beCover');
+  var msg   = document.getElementById('beMsg');
+  var count = document.getElementById('beCount');
+  var preview = document.getElementById('bePreview');
+
+  function fmt(n) { return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+  function updateCount() {
+    var n = body.value.length;
+    count.textContent = fmt(n) + ' / ' + fmt(MAX);
+    count.classList.toggle('over', n > MAX);
+  }
+  body.addEventListener('input', updateCount);
+  updateCount();
+
+  // --- tabs ----------------------------------------------------------------
+  // The preview asks the server to render, so what you see here is byte-for-byte
+  // what readers get: one renderer, no second implementation to drift.
+  var previewTimer = null;
+  document.querySelectorAll('.be-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var wantPreview = tab.dataset.tab === 'preview';
+      document.querySelectorAll('.be-tab').forEach(function (t) {
+        t.classList.toggle('on', t === tab);
+      });
+      body.style.display = wantPreview ? 'none' : '';
+      preview.classList.toggle('on', wantPreview);
+      if (wantPreview) { render(); }
+    });
+  });
+
+  function render() {
+    var text = body.value.trim();
+    if (!text) {
+      preview.innerHTML = '<p class="placeholder">Nothing to preview yet.</p>';
+      return;
+    }
+    clearTimeout(previewTimer);
+    preview.innerHTML = '<p class="placeholder">Rendering…</p>';
+    previewTimer = setTimeout(function () {
+      fetch('/api/blog/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: text }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          preview.innerHTML = d.html || '<p class="placeholder">Nothing to preview.</p>';
+        })
+        .catch(function () {
+          preview.innerHTML = '<p class="placeholder">Preview is unavailable right now.</p>';
+        });
+    }, 120);
+  }
+
+  // --- save ----------------------------------------------------------------
+  function say(text, kind) {
+    msg.textContent = text;
+    msg.className = 'be-msg ' + (kind || '');
+  }
+
+  function save(publish, button) {
+    var payload = {
+      title: title.value.trim(),
+      body: body.value.trim(),
+      tags: tags.value,
+      cover_image: cover.value.trim(),
+    };
+    if (publish !== null) { payload.publish = publish; }
+
+    var buttons = document.querySelectorAll('.be-btn');
+    buttons.forEach(function (b) { b.disabled = true; });
+    var original = button.textContent;
+    button.textContent = 'Saving…';
+    say('');
+
+    fetch(POST ? '/api/blog/posts/' + POST : '/api/blog/posts', {
+      method: POST ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) {
+          if (!r.ok) { throw new Error(d.error || 'Could not save that.'); }
+          return d;
+        });
+      })
+      .then(function (d) {
+        if (publish === true) {
+          window.location.href = d.url;
+          return;
+        }
+        // A draft save keeps you in the editor; adopt the id so the next save
+        // is an edit and not a second post.
+        if (!POST && d.post) {
+          POST = d.post.id;
+          wrap.dataset.postId = POST;
+          window.history.replaceState({}, '', '/blog/' + d.post.slug + '/edit');
+        }
+        say(publish === false ? 'Unpublished. Only you can see it now.' : 'Draft saved.', 'ok');
+        buttons.forEach(function (b) { b.disabled = false; });
+        button.textContent = original;
+      })
+      .catch(function (err) {
+        say(err.message, 'err');
+        buttons.forEach(function (b) { b.disabled = false; });
+        button.textContent = original;
+      });
+  }
+
+  document.getElementById('bePublish').addEventListener('click', function () {
+    // Saving an already-published post is an edit, not a re-publish.
+    save(WAS_PUBLISHED ? null : true, this);
+  });
+  var draft = document.getElementById('beDraft');
+  if (draft) {
+    draft.addEventListener('click', function () { save(null, this); });
+  }
+
+  var unpublish = document.getElementById('beUnpublish');
+  if (unpublish) {
+    unpublish.addEventListener('click', function () {
+      if (!window.confirm('Unpublish this post? It disappears from the feed and the calendar, ' +
+                          'and its comments go with it until you publish again.')) { return; }
+      save(false, this);
+    });
+  }
+
+  var del = document.getElementById('beDelete');
+  if (del) {
+    del.addEventListener('click', function () {
+      if (!window.confirm('Delete this post? It is removed from the Journal for good.')) { return; }
+      del.disabled = true;
+      fetch('/api/blog/posts/' + POST, { method: 'DELETE' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.error) { throw new Error(d.error); }
+          window.location.href = '/blog';
+        })
+        .catch(function (err) { say(err.message, 'err'); del.disabled = false; });
+    });
+  }
+})();
+</script>
+{% endblock %}

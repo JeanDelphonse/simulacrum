@@ -1,0 +1,495 @@
+{% extends 'base.html' %}
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block head %}
+<meta name="description" content="{{ post.excerpt }}">
+{% if post.status != 'published' %}<meta name="robots" content="noindex">{% endif %}
+<meta property="og:title" content="{{ post.title }}">
+<meta property="og:description" content="{{ post.excerpt }}">
+<meta property="og:type" content="article">
+<style>
+/* PRD-SIM-BLOG-001 §10 — a single post and its thread. */
+.bp-wrap { max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.bp-back { font-size: .82rem; color: var(--teal); font-weight: 700; }
+.bp-banner { margin: 1rem 0; padding: .7rem 1rem; border-radius: 10px; font-size: .85rem;
+  background: #fdf6e3; border: 1px solid rgba(201,149,42,.4); color: #6b5311; }
+.bp-cover { width: 100%; border-radius: 14px; margin: 1.4rem 0 0; display: block; }
+.bp-title { font-family: 'Playfair Display', Georgia, serif; font-size: 2.1rem; color: var(--navy);
+  line-height: 1.2; margin: 1.2rem 0 .7rem; }
+.bp-meta { display: flex; align-items: center; gap: 10px; font-size: .85rem; color: #0F7B72;
+  padding-bottom: 1.2rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.bp-av { width: 34px; height: 34px; border-radius: 50%; flex: none; object-fit: cover;
+  background: linear-gradient(135deg, #13A89E, #C9952A); color: #fff; font-size: .78rem;
+  font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.bp-meta .edited { color: var(--muted); font-style: italic; }
+.bp-meta .spacer { margin-left: auto; }
+.bp-edit { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.bp-edit:hover { color: var(--navy); }
+
+/* Rendered Markdown. Only the tags blog_markdown can emit are styled. */
+.bp-body { font-size: 1.05rem; line-height: 1.75; color: #2c3a4b; padding: 1.6rem 0; }
+.bp-body > :first-child { margin-top: 0; }
+.bp-body p { margin: 0 0 1.15rem; }
+.bp-body h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.45rem; color: var(--navy);
+  margin: 2rem 0 .7rem; }
+.bp-body h3 { font-size: 1.18rem; color: var(--navy); margin: 1.7rem 0 .6rem; }
+.bp-body h4 { font-size: 1.02rem; color: var(--navy); margin: 1.5rem 0 .5rem; }
+.bp-body ul, .bp-body ol { margin: 0 0 1.15rem 1.4rem; }
+.bp-body li { margin-bottom: .4rem; }
+.bp-body blockquote { margin: 1.4rem 0; padding: .2rem 0 .2rem 1.1rem;
+  border-left: 3px solid var(--gold); color: #4a5768; font-style: italic; }
+.bp-body blockquote p:last-child { margin-bottom: 0; }
+.bp-body pre { background: #0d1b3e; color: #e8eef6; border-radius: 10px; padding: 1rem 1.1rem;
+  overflow-x: auto; font-size: .86rem; margin: 0 0 1.15rem; }
+.bp-body code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em;
+  background: rgba(13,27,62,.06); border-radius: 4px; padding: .1em .35em; }
+.bp-body pre code { background: none; padding: 0; }
+.bp-body hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+.bp-body a { color: var(--teal); text-decoration: underline; }
+.bp-body img { max-width: 100%; }
+
+.bp-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1.4rem; }
+.bp-tag { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: #0f766e; background: rgba(15,123,114,.1); border-radius: 4px; padding: .22rem .5rem; }
+
+.bp-bar { display: flex; align-items: center; gap: 20px; padding: 1rem 0; flex-wrap: wrap;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.bp-act { display: inline-flex; align-items: center; gap: 7px; font-size: .9rem; color: var(--muted);
+  background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; }
+.bp-act:hover { color: var(--navy); }
+.bp-act.liked { color: #c0392b; font-weight: 700; }
+.bp-act .ic { font-size: 1.1rem; line-height: 1; }
+.bp-report { margin-left: auto; font-size: .78rem; color: var(--muted); background: none;
+  border: none; cursor: pointer; text-decoration: underline; font-family: inherit; }
+
+/* --- comments (§5.3) --- */
+.bp-comments { padding-top: 1.8rem; }
+.bp-comments h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.25rem;
+  color: var(--navy); margin: 0 0 1.1rem; }
+.bp-cmt { display: flex; gap: 11px; margin-bottom: 1rem; }
+.bp-cmt-av { width: 30px; height: 30px; border-radius: 50%; flex: none; object-fit: cover;
+  background: linear-gradient(135deg, #2E7D8C, #C9952A); color: #fff; font-size: .7rem;
+  font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.bp-cmt-b { background: #f7f3ea; border: 1px solid #efe6d4; border-radius: 10px;
+  padding: .6rem .85rem; flex: 1; min-width: 0; }
+.bp-cmt-who { font-size: .82rem; font-weight: 700; color: var(--navy); }
+.bp-cmt-who span { font-weight: 400; color: var(--muted); font-size: .74rem; margin-left: 6px; }
+.bp-cmt-b p { font-size: .9rem; color: #41505f; margin: .2rem 0 0; line-height: 1.6; }
+.bp-cmt-tools { display: flex; gap: 14px; margin-top: .45rem; align-items: center; flex-wrap: wrap; }
+.bp-cmt-tools button { font-size: .74rem; color: var(--muted); background: none; border: none;
+  padding: 0; cursor: pointer; font-family: inherit; }
+.bp-cmt-tools button:hover { color: var(--navy); }
+.bp-cmt-tools button.liked { color: #c0392b; font-weight: 700; }
+.bp-replies { margin-left: 41px; }
+/* A removed comment holds its slot so the thread structure survives (§11). */
+.bp-tombstone { background: #f4f5f7; border: 1px dashed var(--border); border-radius: 10px;
+  padding: .55rem .85rem; font-size: .82rem; color: var(--muted); font-style: italic; flex: 1; }
+
+.bp-box { display: flex; gap: 11px; margin-top: 1.2rem; }
+.bp-box textarea { flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: .65rem .8rem;
+  font-size: .9rem; font-family: inherit; resize: vertical; min-height: 78px; line-height: 1.6; }
+.bp-box textarea:focus { outline: none; border-color: var(--teal); }
+.bp-box-side { display: flex; flex-direction: column; gap: .4rem; align-items: stretch; }
+.bp-send { padding: .5rem 1rem; border-radius: 9px; border: none; background: var(--gold);
+  color: #241a05; font-weight: 700; font-size: .84rem; cursor: pointer; font-family: inherit; }
+.bp-send:hover { background: #E4B855; }
+.bp-send[disabled] { opacity: .5; cursor: default; }
+.bp-cancel { font-size: .74rem; color: var(--muted); background: none; border: none; cursor: pointer;
+  font-family: inherit; }
+.bp-gate { font-size: .85rem; color: var(--muted); font-style: italic; margin-top: 1.2rem;
+  background: #f7f3ea; border: 1px solid #efe6d4; border-radius: 10px; padding: .8rem 1rem; }
+.bp-gate a { color: var(--teal); font-weight: 700; font-style: normal; }
+.bp-hint { font-size: .74rem; color: var(--muted); margin-top: .35rem; }
+.bp-err { font-size: .82rem; color: #b3261e; margin-top: .5rem; }
+.bp-none { font-size: .88rem; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .bp-title { font-size: 1.55rem; }
+  .bp-replies { margin-left: 18px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bp-wrap"
+     data-post-id="{{ post.id }}"
+     data-authed="{{ 'true' if current_user.is_authenticated else 'false' }}"
+     data-reply-depth="{{ reply_depth }}"
+     data-max-chars="{{ max_comment_chars }}">
+
+  <a class="bp-back" href="{{ url_for('pages.blog_index') }}">&#8249; The Simulacrum Journal</a>
+
+  {% if post.status == 'draft' %}
+  <div class="bp-banner">This is a draft. Only you and the moderators can see it.</div>
+  {% elif post.status == 'removed' %}
+  <div class="bp-banner">This post has been removed. Only you and the moderators can see it.</div>
+  {% endif %}
+
+  {% if post.cover_image %}
+  <img class="bp-cover" src="{{ post.cover_image }}" alt="">
+  {% endif %}
+
+  <h1 class="bp-title">{{ post.title }}</h1>
+
+  {% set author = authors.get(post.author_user_id, {}) %}
+  <div class="bp-meta">
+    {% if author.avatar_path %}
+    <img class="bp-av" src="{{ url_for('public.serve_avatar', filename=author.avatar_path) }}" alt="">
+    {% else %}
+    <span class="bp-av" aria-hidden="true">{{ author.initials or 'M' }}</span>
+    {% endif %}
+    <span>
+      {% if author.username %}<a href="/u/{{ author.username }}">{{ author.name }}</a>
+      {% else %}{{ author.name or 'Member' }}{% endif %}
+      &middot; {{ (post.published_at or post.created_at) | journal_date }}
+      {% if post.was_edited %}<span class="edited">&middot; edited</span>{% endif %}
+    </span>
+    {% if can_edit %}
+    <a class="bp-edit spacer" href="{{ url_for('pages.blog_edit', slug=post.slug) }}">Edit post</a>
+    {% endif %}
+  </div>
+
+  {# body_html is produced by blog_markdown, which escapes all input before
+     emitting its own fixed tag set, so it is safe to mark |safe here. #}
+  <div class="bp-body">{{ post.body_html | safe }}</div>
+
+  {% if post.tag_list %}
+  <div class="bp-tags">{% for tag in post.tag_list %}<span class="bp-tag">{{ tag }}</span>{% endfor %}</div>
+  {% endif %}
+
+  <div class="bp-bar">
+    <button class="bp-act{{ ' liked' if liked }}" type="button" id="bpLike"
+            aria-label="{{ post.like_count }} like{{ 's' if post.like_count != 1 }}">
+      <span class="ic">{% if liked %}&#9829;{% else %}&#9825;{% endif %}</span>
+      <b id="bpLikeCount">{{ post.like_count }}</b>
+      <span>like{{ 's' if post.like_count != 1 }}</span>
+    </button>
+    <span class="bp-act" aria-label="{{ post.comment_count }} comment{{ 's' if post.comment_count != 1 }}">
+      <span class="ic">&#128172;</span>
+      <b id="bpCommentCount">{{ post.comment_count }}</b>
+      <span>comment{{ 's' if post.comment_count != 1 }}</span>
+    </span>
+    {% if current_user.is_authenticated and post.author_user_id != current_user.id %}
+    <button class="bp-report" type="button" data-report-type="post" data-report-id="{{ post.id }}">Report</button>
+    {% endif %}
+  </div>
+
+  <section class="bp-comments">
+    <h2>Discussion</h2>
+
+    <div id="bpThread">
+      {% for node in thread %}
+      {% set c = node.comment %}
+      <div class="bp-cmt-group" data-comment-id="{{ c.id }}">
+        {% if c.is_removed %}
+        <div class="bp-cmt"><span class="bp-cmt-av" aria-hidden="true">&mdash;</span>
+          <div class="bp-tombstone">comment removed</div></div>
+        {% else %}
+        {% set ca = authors.get(c.user_id, {}) %}
+        <div class="bp-cmt">
+          {% if ca.avatar_path %}
+          <img class="bp-cmt-av" src="{{ url_for('public.serve_avatar', filename=ca.avatar_path) }}" alt="">
+          {% else %}
+          <span class="bp-cmt-av" aria-hidden="true">{{ ca.initials or 'M' }}</span>
+          {% endif %}
+          <div class="bp-cmt-b">
+            <div class="bp-cmt-who">{{ ca.name or 'Member' }}<span>{{ c.created_at | journal_date }}</span></div>
+            {{ c.body_html | safe }}
+            <div class="bp-cmt-tools">
+              <button class="bp-clike{{ ' liked' if c.id in liked_comment_ids }}" type="button"
+                      data-comment-id="{{ c.id }}"
+                      aria-label="{{ c.like_count }} like{{ 's' if c.like_count != 1 }}">
+                {% if c.id in liked_comment_ids %}&#9829;{% else %}&#9825;{% endif %}
+                <b>{{ c.like_count }}</b>
+              </button>
+              {% if can_comment and reply_depth >= 1 %}
+              <button class="bp-reply" type="button" data-comment-id="{{ c.id }}">Reply</button>
+              {% endif %}
+              {% if current_user.is_authenticated and (c.user_id == current_user.id
+                     or current_user.is_admin or post.author_user_id == current_user.id) %}
+              <button class="bp-cdelete" type="button" data-comment-id="{{ c.id }}">Remove</button>
+              {% elif current_user.is_authenticated %}
+              <button class="bp-report" type="button" data-report-type="comment"
+                      data-report-id="{{ c.id }}">Report</button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="bp-replies" data-replies-for="{{ c.id }}">
+          {% for r in node.replies %}
+          {% if r.is_removed %}
+          <div class="bp-cmt"><span class="bp-cmt-av" aria-hidden="true">&mdash;</span>
+            <div class="bp-tombstone">comment removed</div></div>
+          {% else %}
+          {% set ra = authors.get(r.user_id, {}) %}
+          <div class="bp-cmt" data-comment-id="{{ r.id }}">
+            {% if ra.avatar_path %}
+            <img class="bp-cmt-av" src="{{ url_for('public.serve_avatar', filename=ra.avatar_path) }}" alt="">
+            {% else %}
+            <span class="bp-cmt-av" aria-hidden="true">{{ ra.initials or 'M' }}</span>
+            {% endif %}
+            <div class="bp-cmt-b">
+              <div class="bp-cmt-who">{{ ra.name or 'Member' }}<span>{{ r.created_at | journal_date }}</span></div>
+              {{ r.body_html | safe }}
+              <div class="bp-cmt-tools">
+                <button class="bp-clike{{ ' liked' if r.id in liked_comment_ids }}" type="button"
+                        data-comment-id="{{ r.id }}"
+                        aria-label="{{ r.like_count }} like{{ 's' if r.like_count != 1 }}">
+                  {% if r.id in liked_comment_ids %}&#9829;{% else %}&#9825;{% endif %}
+                  <b>{{ r.like_count }}</b>
+                </button>
+                {% if current_user.is_authenticated and (r.user_id == current_user.id
+                       or current_user.is_admin or post.author_user_id == current_user.id) %}
+                <button class="bp-cdelete" type="button" data-comment-id="{{ r.id }}">Remove</button>
+                {% elif current_user.is_authenticated %}
+                <button class="bp-report" type="button" data-report-type="comment"
+                        data-report-id="{{ r.id }}">Report</button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if not thread %}
+    <p class="bp-none" id="bpNoComments">No comments yet.</p>
+    {% endif %}
+
+    {% if can_comment %}
+    <div class="bp-box" id="bpBox">
+      <span class="bp-cmt-av" aria-hidden="true">{{ current_user.full_name[0]|upper }}</span>
+      <div style="flex:1">
+        <textarea id="bpBody" maxlength="{{ max_comment_chars }}"
+                  placeholder="Add a comment…" aria-label="Add a comment"></textarea>
+        <div class="bp-hint" id="bpHint">Up to {{ '{:,}'.format(max_comment_chars) }} characters.</div>
+        <div class="bp-err" id="bpErr" hidden></div>
+      </div>
+      <div class="bp-box-side">
+        <button class="bp-send" type="button" id="bpSend">Post</button>
+        <button class="bp-cancel" type="button" id="bpCancelReply" hidden>Cancel reply</button>
+      </div>
+    </div>
+    {% elif current_user.is_authenticated %}
+    <div class="bp-gate">{{ comment_gate }}</div>
+    {% else %}
+    <div class="bp-gate">
+      You are reading as a guest —
+      <a href="{{ url_for('pages.login_page') }}?next=/blog/{{ post.slug }}">log in</a>
+      to like or comment.
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var wrap   = document.querySelector('.bp-wrap');
+  var POST   = wrap.dataset.postId;
+  var AUTHED = wrap.dataset.authed === 'true';
+  var LOGIN  = {{ url_for('pages.login_page')|tojson }};
+  var NEXT   = LOGIN + '?next=' + encodeURIComponent(window.location.pathname);
+  var REASONS = {{ report_reasons|tojson }};
+  var replyTo = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function post(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) { throw new Error(d.error || 'Something went wrong. Try again.'); }
+        return d;
+      });
+    });
+  }
+
+  function showErr(msg) {
+    var el = document.getElementById('bpErr');
+    if (!el) { alert(msg); return; }
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  // --- post like -----------------------------------------------------------
+  var likeBtn = document.getElementById('bpLike');
+  likeBtn.addEventListener('click', function () {
+    if (!AUTHED) { window.location.href = NEXT; return; }
+    likeBtn.disabled = true;
+    post('/api/blog/posts/' + POST + '/like')
+      .then(function (d) {
+        likeBtn.classList.toggle('liked', d.liked);
+        likeBtn.querySelector('.ic').innerHTML = d.liked ? '&#9829;' : '&#9825;';
+        document.getElementById('bpLikeCount').textContent = d.like_count;
+        likeBtn.setAttribute('aria-label', d.like_count + (d.like_count === 1 ? ' like' : ' likes'));
+      })
+      .catch(function (e) { alert(e.message); })
+      .then(function () { likeBtn.disabled = false; });
+  });
+
+  // --- thread actions ------------------------------------------------------
+  var thread = document.getElementById('bpThread');
+
+  thread.addEventListener('click', function (e) {
+    var like = e.target.closest('.bp-clike');
+    if (like) {
+      if (!AUTHED) { window.location.href = NEXT; return; }
+      like.disabled = true;
+      post('/api/blog/comments/' + like.dataset.commentId + '/like')
+        .then(function (d) {
+          like.classList.toggle('liked', d.liked);
+          like.innerHTML = (d.liked ? '&#9829;' : '&#9825;') + ' <b>' + d.like_count + '</b>';
+          like.setAttribute('aria-label', d.like_count + (d.like_count === 1 ? ' like' : ' likes'));
+        })
+        .catch(function (err) { alert(err.message); })
+        .then(function () { like.disabled = false; });
+      return;
+    }
+
+    var reply = e.target.closest('.bp-reply');
+    if (reply) {
+      replyTo = reply.dataset.commentId;
+      var box = document.getElementById('bpBox');
+      var body = document.getElementById('bpBody');
+      document.getElementById('bpCancelReply').hidden = false;
+      body.placeholder = 'Write a reply…';
+      // Move the single composer under the comment being replied to, so there
+      // is only ever one box on the page to reason about.
+      var group = reply.closest('.bp-cmt-group');
+      group.querySelector('[data-replies-for]').appendChild(box);
+      body.focus();
+      return;
+    }
+
+    var del = e.target.closest('.bp-cdelete');
+    if (del) {
+      if (!window.confirm('Remove this comment? It will show as "comment removed".')) { return; }
+      del.disabled = true;
+      fetch('/api/blog/comments/' + del.dataset.commentId, { method: 'DELETE' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.error) { throw new Error(d.error); }
+          var host = del.closest('.bp-cmt');
+          host.innerHTML = '<span class="bp-cmt-av" aria-hidden="true">&mdash;</span>' +
+            '<div class="bp-tombstone">comment removed</div>';
+          if (typeof d.comment_count === 'number') {
+            document.getElementById('bpCommentCount').textContent = d.comment_count;
+          }
+        })
+        .catch(function (err) { alert(err.message); del.disabled = false; });
+      return;
+    }
+  });
+
+  var cancel = document.getElementById('bpCancelReply');
+  if (cancel) {
+    cancel.addEventListener('click', function () {
+      replyTo = null;
+      cancel.hidden = true;
+      var body = document.getElementById('bpBody');
+      body.placeholder = 'Add a comment…';
+      document.querySelector('.bp-comments').insertBefore(
+        document.getElementById('bpBox'), null);
+    });
+  }
+
+  // --- new comment ---------------------------------------------------------
+  var send = document.getElementById('bpSend');
+  if (send) {
+    send.addEventListener('click', function () {
+      var body = document.getElementById('bpBody');
+      var text = body.value.trim();
+      document.getElementById('bpErr').hidden = true;
+      if (text.length < 2) { showErr('Write something before posting.'); return; }
+
+      send.disabled = true;
+      send.textContent = 'Posting…';
+      post('/api/blog/posts/' + POST + '/comments',
+           { body: text, parent_comment_id: replyTo })
+        .then(function (d) {
+          insert(d.comment, replyTo);
+          document.getElementById('bpCommentCount').textContent = d.comment_count;
+          body.value = '';
+          var none = document.getElementById('bpNoComments');
+          if (none) { none.remove(); }
+          if (cancel) { cancel.click(); }
+        })
+        .catch(function (err) { showErr(err.message); })
+        .then(function () {
+          send.disabled = false;
+          send.textContent = 'Post';
+        });
+    });
+  }
+
+  function insert(comment, parentId) {
+    var a = comment.author || {};
+    var avatar = a.avatar_path
+      ? '<img class="bp-cmt-av" src="/avatars/' + esc(encodeURI(a.avatar_path)) + '" alt="">'
+      : '<span class="bp-cmt-av" aria-hidden="true">' + esc(a.initials || 'M') + '</span>';
+    // body_html comes from the server-side renderer, which escaped the author's
+    // input before emitting its own tags.
+    var html =
+      '<div class="bp-cmt" data-comment-id="' + esc(comment.id) + '">' + avatar +
+      '<div class="bp-cmt-b"><div class="bp-cmt-who">' + esc(a.name || 'Member') +
+        '<span>just now</span></div>' + comment.body_html +
+        '<div class="bp-cmt-tools">' +
+          '<button class="bp-clike" type="button" data-comment-id="' + esc(comment.id) +
+            '" aria-label="0 likes">&#9825; <b>0</b></button>' +
+          '<button class="bp-cdelete" type="button" data-comment-id="' + esc(comment.id) +
+            '">Remove</button>' +
+        '</div></div></div>';
+
+    if (parentId) {
+      var host = thread.querySelector('[data-replies-for="' + parentId + '"]');
+      if (host) { host.insertAdjacentHTML('beforeend', html); return; }
+    }
+    thread.insertAdjacentHTML('beforeend',
+      '<div class="bp-cmt-group" data-comment-id="' + esc(comment.id) + '">' + html +
+      '<div class="bp-replies" data-replies-for="' + esc(comment.id) + '"></div></div>');
+  }
+
+  // --- reporting (§11) -----------------------------------------------------
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.bp-report');
+    if (!btn) { return; }
+    if (!AUTHED) { window.location.href = NEXT; return; }
+
+    var menu = REASONS.map(function (r, i) { return (i + 1) + ') ' + r.label; }).join('\n');
+    var pick = window.prompt('Why are you reporting this?\n\n' + menu + '\n\nEnter a number:');
+    if (!pick) { return; }
+    var reason = REASONS[parseInt(pick, 10) - 1];
+    if (!reason) { alert('That was not one of the options.'); return; }
+
+    var detail = reason.key === 'other'
+      ? window.prompt('Tell the moderators what is wrong (optional):') : null;
+
+    btn.disabled = true;
+    post('/api/blog/reports', {
+      target_type: btn.dataset.reportType,
+      target_id: btn.dataset.reportId,
+      reason: reason.key,
+      detail: detail || null,
+    })
+      .then(function () {
+        btn.textContent = 'Reported';
+        btn.style.textDecoration = 'none';
+      })
+      .catch(function (err) { alert(err.message); btn.disabled = false; });
+  });
+})();
+</script>
+{% endblock %}

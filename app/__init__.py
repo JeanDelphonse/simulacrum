@@ -130,6 +130,8 @@ def create_app(config_name=None):
     app.logger.info('startup: calibration_bp imported')
     from app.blueprints.careers import careers_bp
     app.logger.info('startup: careers_bp imported')
+    from app.blueprints.blog import blog_bp
+    app.logger.info('startup: blog_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -162,6 +164,8 @@ def create_app(config_name=None):
     app.register_blueprint(calibration_bp)
     # Declares its own full paths (/api/careers/..., /api/admin/careers/...)
     app.register_blueprint(careers_bp)
+    # Declares its own full paths (/api/blog/..., /api/admin/blog/...)
+    app.register_blueprint(blog_bp)
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 
@@ -220,7 +224,7 @@ def create_app(config_name=None):
         # Skip public/auth pages
         _public_prefixes = ('/legal/', '/u/', '/share/', '/samples/', '/ref/',
                             '/auth/', '/ping', '/sitemap.xml', '/outreach/',
-                            '/careers')
+                            '/careers', '/blog')
         if _req.path.startswith(_public_prefixes):
             return
         if _req.path in ('/login', '/register', '/verify-sent', '/forgot-password',
@@ -266,6 +270,32 @@ def create_app(config_name=None):
         except Exception:
             is_sme = False
         return {'current_user_is_sme': is_sme}
+
+    # PRD-SIM-BLOG-001 — "September 5, 2026" without a leading zero on the day.
+    # strftime('%-d') is a glibc extension and raises on Windows, so the day is
+    # interpolated rather than formatted.
+    @app.template_filter('journal_date')
+    def _journal_date(value):
+        if not value:
+            return ''
+        return '%s %d, %d' % (value.strftime('%B'), value.day, value.year)
+
+    # PRD-SIM-BLOG-001 — whether the top-nav Journal link should render.
+    # Gated on blog_nav_min_posts so an empty journal need not be advertised.
+    @app.context_processor
+    def _inject_blog_nav():
+        try:
+            from app.services import blog_service
+            return {'blog_nav_visible': blog_service.nav_visible()}
+        except Exception:
+            return {'blog_nav_visible': False}
+
+    # The shared public footer (partials/_footer_public.html) links to the
+    # Playbook from every external page, not just the landing route that used to
+    # pass this in, so it has to be available everywhere the footer renders.
+    @app.context_processor
+    def _inject_playbook_url():
+        return {'playbook_url': app.config.get('PLAYBOOK_URL')}
 
     # Shell context
     @app.shell_context_processor
