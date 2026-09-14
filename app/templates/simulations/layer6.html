@@ -738,6 +738,22 @@
 }
 .gcc-anv-panel .anv-modal-close { display: none !important; }
 
+/* ── World / List toggle (PRD-SIM-WORLD-001 §4) ──────────────────────────── */
+.wew-viewbar {
+  display: flex; gap: 0.25rem; padding: 0.6rem 0.9rem 0;
+}
+.wew-viewbtn {
+  font-size: 0.78rem; font-weight: 700;
+  padding: 0.3rem 0.9rem; border-radius: 999px;
+  border: 1px solid var(--gcc-border); background: var(--gcc-card);
+  color: var(--gcc-muted); cursor: pointer; transition: all 0.15s;
+}
+.wew-viewbtn:hover { color: var(--gcc-text); }
+.wew-viewbtn.active {
+  background: #C9952A; border-color: #C9952A; color: #241a05;
+}
+.wew-viewpane { padding: 0.6rem 0.9rem 0.9rem; }
+
 /* ── Layer Actions tab ───────────────────────────────────────────────────── */
 .la-toolbar {
   display: flex; align-items: center; gap: 0.5rem;
@@ -1732,7 +1748,24 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
        Tab 7 — Agent Network
     ──────────────────────────────────────────────────────────────────────── #}
     <div class="gcc-tab-panel gcc-anv-panel" data-panel="network" role="tabpanel">
-      {% include 'simulations/_agent_network.html' %}
+      {% if world_enabled %}
+        {# PRD-SIM-WORLD-001 §4 — the world is the default render; List is the
+           legacy grid, kept first-class for screen readers and power editing. #}
+        <div class="wew-viewbar" role="group" aria-label="Network view">
+          <button type="button" class="wew-viewbtn active" id="wewViewWorld"
+                  aria-pressed="true"  onclick="setNetworkView('world')">World</button>
+          <button type="button" class="wew-viewbtn" id="wewViewList"
+                  aria-pressed="false" onclick="setNetworkView('list')">List</button>
+        </div>
+        <div id="wewWorldView" class="wew-viewpane">
+          {% include 'simulations/_wealth_world.html' %}
+        </div>
+        <div id="wewListView" style="display:none">
+          {% include 'simulations/_agent_network.html' %}
+        </div>
+      {% else %}
+        {% include 'simulations/_agent_network.html' %}
+      {% endif %}
     </div>
 
     {# Layer Actions tab removed (GCC-003 — merged into Journey) #}
@@ -3208,18 +3241,75 @@ function rejectEscalation(id) {
   });
 }
 
-// ── Tab switching — lazy-init Agent Network on first activation ──────────────
-let _anvReady = false;
+// ── Network tab: World / List (PRD-SIM-WORLD-001 §4) ────────────────────────
+// Two renders of one model. The world is the default; the list is the legacy
+// grid, kept as a first-class equivalent. Each is initialised on first sight so
+// a user who never opens the other pays nothing for it.
+const WORLD_ENABLED = {{ 'true' if world_enabled else 'false' }};
+const WORLD_VIEW_KEY = 'wew_view_' + SIM_ID;
+let _anvReady   = false;
+let _worldReady = false;
+let _networkView = null;
+
+function _initWorldIfNeeded() {
+  if (_worldReady || !WORLD_ENABLED || !window.initWealthWorld) return;
+  _worldReady = true;
+  window.initWealthWorld(SIM_ID, ROOT, {});
+}
+
+function _initListIfNeeded() {
+  if (_anvReady || !window.initAgentNetwork) return;
+  _anvReady = true;
+  window.initAgentNetwork(SIM_ID, API, {});
+}
+
+function setNetworkView(view, remember) {
+  if (!WORLD_ENABLED) { _initListIfNeeded(); return; }
+  _networkView = view;
+  const world = document.getElementById('wewWorldView');
+  const list  = document.getElementById('wewListView');
+  const wBtn  = document.getElementById('wewViewWorld');
+  const lBtn  = document.getElementById('wewViewList');
+  const isList = view === 'list';
+
+  if (world) world.style.display = isList ? 'none' : '';
+  if (list)  list.style.display  = isList ? '' : 'none';
+  if (wBtn) { wBtn.classList.toggle('active', !isList); wBtn.setAttribute('aria-pressed', String(!isList)); }
+  if (lBtn) { lBtn.classList.toggle('active',  isList); lBtn.setAttribute('aria-pressed', String(isList)); }
+
+  if (isList) _initListIfNeeded(); else _initWorldIfNeeded();
+
+  if (remember !== false) {
+    try { localStorage.setItem(WORLD_VIEW_KEY, view); } catch (e) { /* private mode */ }
+  }
+  const url = new URL(window.location);
+  if (isList) url.searchParams.set('view', 'list'); else url.searchParams.delete('view');
+  history.replaceState(null, '', url);
+}
+
+// ?view=list wins, then the user's remembered choice, then the admin default.
+function _preferredNetworkView() {
+  if (!WORLD_ENABLED) return 'list';
+  const q = new URLSearchParams(window.location.search).get('view');
+  if (q === 'list' || q === 'world') return q;
+  try {
+    const saved = localStorage.getItem(WORLD_VIEW_KEY);
+    if (saved === 'list' || saved === 'world') return saved;
+  } catch (e) { /* private mode */ }
+  return '{{ world_default_view }}';
+}
+
+function _activateNetworkTab() {
+  if (_networkView) return;                       // already resolved once
+  setNetworkView(_preferredNetworkView(), false);
+}
+
+// ── Tab switching — lazy-init the network tab on first activation ────────────
 (function patchSwitchTab() {
   const _orig = switchTab;
   window.switchTab = function(name) {
     _orig(name);
-    if (name === 'network' && !_anvReady) {
-      _anvReady = true;
-      if (window.initAgentNetwork) {
-        window.initAgentNetwork(SIM_ID, API, {});
-      }
-    }
+    if (name === 'network') _activateNetworkTab();
     if (name === 'escalations') loadEscalations();
   };
 })();
@@ -3752,16 +3842,14 @@ function _cycBookings(bookings) {
 <script src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/agent_network.js') }}"></script>
 <script src="{{ url_for('static', filename='js/swimlane.js') }}"></script>
+{% if world_enabled %}<script src="{{ url_for('static', filename='js/wealth_world.js') }}"></script>{% endif %}
 <script>
-// Agent Network: if page loaded directly with ?tab=network, the initial
-// switchTab() ran before the patch AND before agent_network.js existed.
-// Re-check here once all scripts are loaded.
+// Network tab: if the page loaded directly with ?tab=network, the initial
+// switchTab() ran before the patch AND before these scripts existed.
+// Re-check here once everything is loaded.
 (function () {
   var t = new URLSearchParams(window.location.search).get('tab') || 'journey';
-  if (t === 'network' && !_anvReady && window.initAgentNetwork) {
-    _anvReady = true;
-    window.initAgentNetwork(SIM_ID, API, {});
-  }
+  if (t === 'network') _activateNetworkTab();
 })();
 </script>
 

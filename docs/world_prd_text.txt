@@ -1,0 +1,161 @@
+SIMULACRUM · PRODUCT REQUIREMENTS DOCUMENT
+The Wealth Engine World
+PRD-SIM-WORLD-001
+Merge the interactive five-layer “world” into the existing network tab so a simulation's agent graph becomes a living, configurable engine — where clicking an object is how you set up its Layer Actions, and running the engine shows value flow along the dependency web.
+Product
+Simulacrum (simulacrumai.io)
+Owner
+Jean M. Delphonse
+Version
+1.0 (Draft) · For review
+Merges into
+/simulations/<id>/gcc?tab=network  (the network tab) + the existing Layer Actions configuration
+Stack
+Flask · SQLAlchemy · MySQL · SVG/CSS/JS front-end · GoDaddy cPanel / Passenger WSGI
+Conventions
+9-character alphanumeric PKs via generate_pk(); all thresholds admin-configurable (never hardcoded); Midnight Gold theme; no hardcoded price.
+
+Contents
+	1.  Summary	2
+	2.  Context & the Merge	2
+	3.  Goals & Non-Goals	2
+	4.  Entry Points & Routing	3
+	5.  Functional Requirements	3
+	6.  Data Binding — Single Source of Truth	4
+	7.  Data Model	4
+	8.  API / Endpoints	4
+	9.  Algorithms to Live By	5
+	10.  UI / UX	5
+	11.  Accessibility, Performance & Fallback	6
+	12.  Rollout / Phasing	7
+	13.  Success Metrics	7
+	14.  Open Questions	7
+
+1.  Summary
+Today the simulation detail view exposes two related but separate surfaces: a network tab that draws the agent graph, and a Layer Actions configuration where the user enters parameters for each agent, layer by layer. This PRD merges them. The network tab becomes an interactive Wealth Engine World: each agent is an object placed on its layer, dependencies are edges, and pressing “run” streams value along the live edges. Clicking an object opens that agent's Layer Actions configuration inline — so exploring the graph and configuring it become the same act. A validated interactive prototype (SVG/CSS/JS, Midnight Gold) already exists and is the reference for §10.
+2.  Context & the Merge
+Route in scope: /simulations/<id>/gcc?tab=network. The world reads the specific simulation's agents, their layer, configuration/active state, and projected per-agent value, and renders them as a live engine. The Layer Actions functionality is not removed — it is absorbed into the world as an inline configuration drawer, with a classic list view retained as a fallback.
+Aspect
+Today
+After the merge
+network tab
+Static graph of the agents
+Interactive world; value flows along live edges on run
+Layer Actions
+Separate surface; per-layer parameter forms
+Inline config drawer opened by clicking an agent object
+Configure an agent
+Navigate to Layer Actions, find the agent
+Click its object in the world
+Dependencies
+Implicit / static lines
+Visible edges with animated value flow
+Next best action
+Not surfaced
+Orchestrator suggests it on-canvas (Layer 6)
+State of truth
+Two surfaces to keep in sync
+One shared agent-config source drives both views
+
+3.  Goals & Non-Goals
+Goals
+G1. Render the simulation's agents as an interactive five-layer world inside the existing network tab.
+G2. Let a user activate and configure any agent by clicking its object — writing to the same records Layer Actions uses.
+G3. Animate value flowing along live dependency edges on “run,” driven by the simulation's real per-agent values.
+G4. Surface the orchestrator's next-best-agent suggestion on the canvas (Layer 6).
+G5. Theme the world to the simulation's expertise zone, and keep a list (table) fallback for accessibility and power use.
+Non-Goals (v1)
+N1. Not a 3D / game-engine build — SVG/CSS/JS only, matching the existing front-end.
+N2. Not a change to the simulation engine or how values are computed; the world visualizes existing outputs.
+N3. No user-draggable custom layouts in v1 (deterministic auto-layout); saved layouts are a later phase.
+N4. No new pricing or gating logic; the world is part of the existing simulation view.
+4.  Entry Points & Routing
+The world becomes the default render of the network tab. Routing is additive and backward-compatible:
+/simulations/<id>/gcc?tab=network  — renders the world (default view).
+?tab=network&view=list  — the legacy Layer Actions grid (fallback / accessibility).
+?tab=network&agent=<agent_key>  — deep-links straight to an agent's config drawer, open on the world.
+?tab=network&layer=L2  — focuses a single layer (used for the “one layer at a time” mode at scale).
+If a standalone “Layer Actions” tab exists today, it redirects to ?tab=network&view=list so no bookmarks break. A persistent World / List toggle lets users switch and remembers their choice.
+5.  Functional Requirements
+5.1  The world canvas
+Agents are objects placed on their layer (L1 foundation → L5 apex), using the platform's layer color ramp.
+Dependency edges connect agents; an edge is “live” only when both endpoints are active.
+Active agents are lit; inactive agents are dim; a selected agent is ringed.
+Layout is deterministic (by layer + order) so it is stable across loads; no manual placement in v1.
+5.2  Configure by clicking (the merge)
+Clicking an agent opens an inline configuration drawer containing that agent's Layer Actions form (the same fields and validation as the list view).
+The drawer includes an Activate / Deactivate toggle and the agent's parameters; saving writes to the shared agent-config records.
+Activating an agent immediately lights it and any newly-live edges; deactivating dims them.
+5.3  Run the engine
+A “Run cycle” control animates value tokens along every live edge; targets pulse and income/wealth counters update.
+Token volume/among reflects the simulation's real projected per-agent value — a higher rate card produces a visibly larger flow.
+An “Auto” mode advances cycles on an interval; a “Reset” returns to the simulation's saved state.
+5.4  Orchestrator (Layer 6)
+After each change or cycle, the orchestrator highlights the highest-leverage inactive agent and explains why, on-canvas.
+The suggestion respects layer prerequisites (don't suggest L3 before its L1 foundation exists).
+5.5  Zone theming
+The world reads the simulation's expertise zone and applies the matching accent and agent labels from a themeable kit.
+6.  Data Binding — Single Source of Truth
+The world and the list must never disagree. Both read and write the same agent-configuration records for the simulation. The world is a view; configuration is the model.
+Read model. One endpoint returns the world for a simulation: nodes (agent, layer, active, configured, projected value, params summary), edges, orchestrator suggestion, and running totals.
+Write model. Activate/deactivate and parameter saves call the existing Layer Actions write path — no parallel store. The world re-reads (or optimistically updates) after a write.
+Values. Per-agent projected values come from the simulation's own outputs (the same numbers Layer Actions and results already use), so the flows are real, not illustrative.
+Consistency. Switching World ↔ List mid-session reflects identical state because there is one source.
+7.  Data Model
+The merge reuses existing tables; additions are minimal. All new PKs are CHAR(9) via generate_pk().
+Reused (existing)
+simulations
+simulation_id (PK) · user_id (FK) · expertise_zone · status · created_at   — provides zone theming
+sim_agents  (existing per-simulation agent instances)
+sim_agent_id (PK) · simulation_id (FK) · agent_key · layer · params_json · is_active · is_configured · projected_value   — the single source of truth the world reads and writes
+New (minimal)
+world_view_prefs  (optional; may be client-side)
+pref_id (PK) · user_id (FK) · simulation_id (FK) · view_mode (world/list) · motion (on/reduced) · updated_at
+world_layout  (optional, future)
+layout_id (PK) · agent_key · layer · order_index   — default layout is computed; this table only exists if/when saved custom layouts ship (see Non-Goals)
+If is_active / is_configured / projected_value do not already exist on the agent-instance table, they are added there — not in a new table — to preserve the single source of truth.
+8.  API / Endpoints (Flask)
+GET /api/simulations/<id>/world  — read model: nodes, edges, orchestrator suggestion, totals, zone.
+POST /api/simulations/<id>/agents/<agent_key>/activate  — toggle active (shared write path).
+PUT /api/simulations/<id>/agents/<agent_key>  — save Layer Actions parameters (existing endpoint, reused by the drawer).
+GET /api/simulations/<id>/world/cycle  — optional server-computed cycle result (income/wealth deltas) for the animation; may be computed client-side from the read model in v1.
+The world is a front-end view over these; no new server rendering path is introduced.
+9.  Algorithms to Live By — Explicit Mapping
+Caching. The world read model and the orchestrator suggestion are memoized per simulation and invalidated on any agent-config write — the view is read-heavy, config changes are infrequent.
+Scheduling. The orchestrator is a scheduler — the same Layer 6 lens — choosing which agent to surface next by value under the user's attention budget.
+Explore vs. Exploit. Suggestions balance deepening an active layer (exploit) against opening the next layer (explore); v1 weights prerequisites first.
+Overfitting. A deterministic layout driven by real values beats a fancy physics/particle sim that looks impressive but misrepresents the engine.
+Relaxation. Ship the merge as the network-tab enhancement with a list fallback first; custom layouts, per-layer paging, and a walking orchestrator are later relaxations, not launch blockers.
+10.  UI / UX
+Reference prototype: wealth_engine_world.html (interactive, Midnight Gold). It demonstrates the layers, live value flow, the click-to-configure drawer, the on-canvas orchestrator, and zone theming.
+
+Figure 1 — The Wealth Engine World: agents as objects across five layers, value flowing on live edges, the orchestrator suggesting the next agent, live income/wealth counters.
+10.1  Layout & controls
+Top bar: title, expertise-zone label, live income / wealth / cycle counters, zone selector, and Run / Auto / Reset.
+Hint bar: the orchestrator's current suggestion and why.
+Canvas: five layer bands with agent objects; live edges carry gold value tokens on run.
+Config drawer: opens on agent click with the Layer Actions form + Activate toggle.
+A persistent World / List toggle; the List view is the legacy grid.
+11.  Accessibility, Performance & Fallback
+List fallback. The List (table) view is a first-class equivalent — every action in the world is available there, for screen-reader users and power editing.
+Reduced motion. Honors prefers-reduced-motion: flows render as a static highlight rather than animation.
+Scale to 49. v1 shows a curated hub subset or one layer at a time (§4 layer focus) so the canvas stays legible; full-graph zoom/pan is a later phase.
+Keyboard & labels. Agent objects are focusable with ARIA labels (“Rate Card, Layer 1, active, $300/cycle”); state is conveyed by icon + label, not color alone.
+Performance. SVG + requestAnimationFrame; the read model is cached; no images.
+12.  Rollout / Phasing
+Phase 1 — Read-only world: render the network tab as the world from live simulation data, with the List toggle; no config yet.
+Phase 2 — Merge config: click-to-configure drawer writing through the shared Layer Actions path; activate/deactivate.
+Phase 3 — Motion & orchestrator: run-cycle value flows from real values, counters, and the on-canvas orchestrator suggestion.
+Phase 4 — Scale & polish: per-layer paging / zoom for all 49, zone theme packs, and the walking orchestrator character.
+13.  Success Metrics
+Agents configured per simulation before vs. after the merge (the core hypothesis: the world lifts configuration completion).
+Time-to-first-configured-agent from the network tab.
+Share of sessions that run a cycle and that accept an orchestrator suggestion.
+Layer 2+ activation rate (does the world pull users up the layers?).
+No regression in List-view usage for accessibility users.
+14.  Open Questions
+What exactly does gcc denote, and does a separate Layer Actions tab exist today or is it a panel within the network tab? (Affects the redirect in §4.)
+Is the cycle computation client-side from the read model, or a server endpoint (needed if values are heavy or must be authoritative)?
+Curated hub subset vs. all 49 with layer paging for v1 — which ships first?
+How many zone theme packs at launch, and who authors the label/asset kits?
+Applies the standing Simulacrum conventions: Algorithms to Live By lenses (§9), admin-configurable thresholds, 9-char alphanumeric PKs, the Midnight Gold theme, and a single agent-configuration source of truth shared by the world and the list.

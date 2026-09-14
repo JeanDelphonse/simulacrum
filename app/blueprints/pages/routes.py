@@ -1132,6 +1132,23 @@ def advisor_client_integrations(client_uid):
     )
 
 
+def _world_view_context():
+    """Template flags for the Wealth Engine World (PRD-SIM-WORLD-001 §4).
+
+    Off falls back to the legacy network tab untouched, so the feature can be
+    disabled in production without a deploy.
+    """
+    try:
+        from app.services import world_service
+        return {
+            'world_enabled': bool(world_service.setting('world_enabled')),
+            'world_default_view': world_service.setting('world_default_view'),
+        }
+    except Exception:
+        logger.warning('world view context unavailable', exc_info=True)
+        return {'world_enabled': False, 'world_default_view': 'list'}
+
+
 @pages_bp.route('/partners/clients/<client_uid>/simulations/<sim_id>/gcc')
 @login_required
 def advisor_gcc_view(client_uid, sim_id):
@@ -1321,6 +1338,8 @@ def advisor_gcc_view(client_uid, sim_id):
         lifecycle_phase=sim.lifecycle_phase,
         cycle_count=_adv_cycle_count,
         active_cycle_limit=_adv_cycle_limit,
+        world_enabled=False,
+        world_default_view='list',
     )
 
 
@@ -1502,6 +1521,7 @@ def gcc_view(sim_id):
         sim_videos=sim_videos,
         sme_expert=sme_expert,
         sme_pending=sme_pending,
+        **_world_view_context(),
     )
 
 

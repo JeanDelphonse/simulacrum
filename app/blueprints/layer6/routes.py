@@ -1222,7 +1222,14 @@ def cycle_detail(sim_id, cycle_id):
 @layer6_bp.route('/<sim_id>/layer6/dag', methods=['GET'])
 @login_required
 def get_dag(sim_id):
-    """All 49 action types with their statuses for the DAG/swimlane visualization."""
+    """The simulation's active action types and their statuses, for the swimlane.
+
+    Scoped to the agents Manage Agents lists as active, plus any agent that has
+    actually produced a record — work that ran should not vanish from the board
+    because the agent was deselected afterwards. It used to return all 49
+    regardless of the selection, which made the swimlane a catalogue rather than
+    a picture of this simulation.
+    """
     sim, err, code = _get_sim_or_404(sim_id)
     if err:
         return err, code
@@ -1231,6 +1238,7 @@ def get_dag(sim_id):
     from app.models.agent_action import AgentAction
     from app.services.layer6 import ACTION_PREREQUISITES
     from app.services.agent_registry import resolve_alias
+    from app.services.agent_selector import effective_selection
 
     # Nodes are built from AGENT_ACTION_TYPES (canonical action_type only), so
     # canonicalize every DB-derived name below — otherwise an action stored
@@ -1258,9 +1266,26 @@ def get_dag(sim_id):
         if _canon not in action_records:
             action_records[_canon] = a
 
+    # One function decides "active" for the world, the swimlane and Manage
+    # Agents, so the three cannot disagree.
+    active = effective_selection(sim)
+    visible = active | set(action_records.keys())
+
+    # The swimlane's own node catalogue still uses legacy action_type strings for
+    # about half its entries (outreach_email for consulting_outreach, and so on).
+    # Sending each node's aliases lets the client key its cache under every name
+    # an agent has ever had, instead of silently failing to match and dropping
+    # the node.
+    from app.services.agent_registry import get_alias_map
+    aliases_by_canonical: dict = {}
+    for legacy, canonical in get_alias_map().items():
+        aliases_by_canonical.setdefault(canonical, []).append(legacy)
+
     nodes = []
     for layer_num, actions in AGENT_ACTION_TYPES.items():
         for action_type, action_def in actions.items():
+            if resolve_alias(action_type) not in visible:
+                continue
             prereqs = ACTION_PREREQUISITES.get(action_type, [])
             if action_type in completed:
                 status = 'complete'
@@ -1275,11 +1300,14 @@ def get_dag(sim_id):
                 {'key': f['key'], 'label': f['label'], 'required': f.get('required', False)}
                 for f in action_def.get('prompt_form', [])
             ]
+            _canonical = resolve_alias(action_type)
             nodes.append({
                 'id': action_type,
                 'label': action_def.get('label', action_type),
                 'layer': layer_num,
                 'status': status,
+                'active': _canonical in active,
+                'aliases': aliases_by_canonical.get(_canonical, []),
                 'prerequisites': prereqs,
                 'action_id': rec.id if rec else None,
                 'user_inputs': rec.user_inputs if rec else {},
@@ -1665,21 +1693,23 @@ _EDGE_CATALOG = [
 def _relevant_agent_types(sim, actions):
     """Canonical action_types relevant to this simulation's run cycle.
 
-    Returns the confirmed agent selection (+ root + triggered agents, matching
-    the orchestrator's own eligibility in build_eligible_actions), unioned with
-    any agent that has actually been queued/run this cycle. Returns None to mean
-    "no filter — show every agent", used pre-launch before a selection exists.
+    Returns the agents Manage Agents lists as active (via effective_selection,
+    the one place that decides it), unioned with any agent that has actually been
+    queued/run this cycle — work that ran stays on the diagram even if the agent
+    was deselected afterwards, or the cycle's action queue would reference nodes
+    that are not there.
+
+    This used to fall through to None ("no filter — show every agent") whenever a
+    selection had not been confirmed, which made the network a catalogue of all 49
+    instead of this simulation's engine. The recommended default that Manage
+    Agents itself shows is the right answer in that case.
     """
     from app.services.agent_registry import resolve_alias
+    from app.services.agent_selector import effective_selection
     ran = {resolve_alias(a.action_type) for a in (actions or [])}
-    if sim and getattr(sim, 'selected_agents', None) and sim.agent_selection_confirmed_at:
-        from app.services.agent_selector import ROOT_AGENT_ID, TRIGGERED_AGENT_IDS
-        selected = {resolve_alias(at) for at in sim.selected_agents}
-        selected.add(resolve_alias(ROOT_AGENT_ID))
-        selected |= {resolve_alias(at) for at in TRIGGERED_AGENT_IDS}
-        return selected | ran
-    # No confirmed selection: show agents that have run if any, else everything.
-    return ran or None
+    if sim is None:
+        return ran or None
+    return effective_selection(sim) | ran
 
 
 def _visible_network(relevant_types):

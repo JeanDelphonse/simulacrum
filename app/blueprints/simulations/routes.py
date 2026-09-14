@@ -720,6 +720,15 @@ def get_agent_action_types():
 # Agent action CRUD + execution
 # ---------------------------------------------------------------------------
 
+def _invalidate_world(sim_id):
+    """Drop the memoized Wealth Engine World after an agent-config write (§6, §9)."""
+    try:
+        from app.services import world_service
+        world_service.invalidate(sim_id)
+    except Exception:
+        current_app.logger.warning('world cache invalidation failed for %s', sim_id)
+
+
 def _check_sim_access(sim_id):
     """Return (sim, is_editor) or raise 403/404."""
     sim = Simulation.query.get(sim_id)
@@ -1788,6 +1797,7 @@ def confirm_agent_selection(sim_id):
     sim.selected_agents = selected
     sim.agent_selection_confirmed_at = datetime.utcnow()
     db.session.commit()
+    _invalidate_world(sim_id)
 
     return jsonify({'selected_agents': selected, 'confirmed': True}), 200
 
@@ -1819,6 +1829,7 @@ def update_agent_selection(sim_id):
 
     sim.selected_agents = selected
     db.session.commit()
+    _invalidate_world(sim_id)
 
     return jsonify({'selected_agents': selected, 'updated': True}), 200
 
@@ -1852,6 +1863,7 @@ def update_agent_params(sim_id, action_type):
     for key, value in clean.items():
         AgentContext.upsert(sim_id, layer_number, key, value)
     db.session.commit()
+    _invalidate_world(sim_id)
 
     stored = AgentContext.get_for_layer(sim_id, layer_number)
     saved = {k: stored.get(k) for k in allowed_keys}
@@ -1898,3 +1910,96 @@ def get_agent_selector_data(sim_id):
     sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
     from app.services.agent_selector import get_selector_data
     return jsonify(get_selector_data(sim)), 200
+
+
+# ── The Wealth Engine World (PRD-SIM-WORLD-001) ───────────────────────────────
+
+@simulations_bp.route('/<sim_id>/world', methods=['GET'])
+@login_required
+def get_world(sim_id):
+    """Read model for the world: nodes, edges, suggestion, totals, zone (§8).
+
+    A view over the existing agent-configuration records — this endpoint writes
+    nothing and owns nothing.
+    """
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    from app.services import world_service
+
+    if not world_service.setting('world_enabled'):
+        return jsonify({'error': 'The world view is disabled', 'enabled': False}), 403
+
+    refresh = request.args.get('refresh') in ('1', 'true', 'yes')
+    return jsonify(world_service.build_world(sim, use_cache=not refresh)), 200
+
+
+@simulations_bp.route('/<sim_id>/agents/<action_type>/activate', methods=['POST'])
+@login_required
+def toggle_agent_active(sim_id, action_type):
+    """Activate or deactivate one agent from the world's config drawer (§5.2).
+
+    Writes to `selected_agents` — the same record the agent selector and the
+    orchestrator's dispatch scope read — so the world and the list can never
+    disagree. Body: {"active": true|false}; omitted means toggle.
+    """
+    sim = Simulation.query.filter_by(id=sim_id, user_id=current_user.id).first_or_404()
+    data = request.get_json(silent=True) or {}
+
+    from app.services.agent_registry import get_all_agents, resolve_alias
+    from app.services.agent_selector import ROOT_AGENT_ID, TRIGGERED_AGENT_IDS
+    from app.services import world_service
+
+    canonical = resolve_alias(action_type)
+    valid_ids = {a['action_type'] for a in get_all_agents()}
+    if canonical not in valid_ids:
+        return jsonify({'error': 'Unknown action_type'}), 404
+
+    # Before the first confirmation every agent is implicitly in scope. Toggling
+    # one off has to materialise that implicit set first, or the single write
+    # would read as "only this agent is on".
+    if sim.agent_selection_confirmed_at is not None and sim.selected_agents:
+        selected = [resolve_alias(a) for a in sim.selected_agents]
+    else:
+        selected = sorted(valid_ids)
+
+    currently_active = canonical in selected
+    want_active = data.get('active')
+    if want_active is None:
+        want_active = not currently_active
+    want_active = bool(want_active)
+
+    # The root agent feeds every other layer and triggered agents are dispatched
+    # by events rather than chosen, so neither can be switched off here.
+    if not want_active and canonical == ROOT_AGENT_ID:
+        return jsonify({'error': 'The rate card is the root agent and stays active'}), 400
+    if not want_active and canonical in TRIGGERED_AGENT_IDS:
+        return jsonify({'error': 'This agent is triggered by events and cannot be deactivated'}), 400
+
+    if want_active and not currently_active:
+        selected.append(canonical)
+    elif not want_active and currently_active:
+        selected = [a for a in selected if a != canonical]
+
+    if ROOT_AGENT_ID not in selected:
+        selected.insert(0, ROOT_AGENT_ID)
+    for at in TRIGGERED_AGENT_IDS:
+        if at not in selected:
+            selected.append(at)
+
+    sim.selected_agents = selected
+    # Toggling from the world is a deliberate selection, so a simulation that
+    # never visited /setup counts as confirmed from here on.
+    if sim.agent_selection_confirmed_at is None:
+        sim.agent_selection_confirmed_at = datetime.utcnow()
+    db.session.commit()
+    world_service.invalidate(sim_id)
+
+    world = world_service.build_world(sim, use_cache=False)
+    return jsonify({
+        'action_type': canonical,
+        'active': want_active,
+        'selected_agents': selected,
+        'nodes': world['nodes'],
+        'edges': world['edges'],
+        'suggestion': world['suggestion'],
+        'totals': world['totals'],
+    }), 200

@@ -159,6 +159,68 @@
   let _visible    = [];         // filtered AGENTS subset
   let _tip        = null;
 
+  // ── What goes on the board ────────────────────────────────────────────────
+  //
+  // The board is built from the server's own node list, not from the AGENTS
+  // catalogue below. That catalogue had drifted: two of its entries resolved to
+  // the same agent and sow_template had no entry at all, so that agent could
+  // never appear however it was configured. Driving the render from /dag means
+  // adding an agent to agents.json is enough to make it show up here.
+  //
+  // AGENTS survives as the source of the small caption under each label, and
+  // for the ids it happens to share with the registry.
+  const _SUBS = {};
+  AGENTS.forEach(a => { _SUBS[a.id] = a.sub; });
+
+  function _subFor(node) {
+    if (_SUBS[node.id]) return _SUBS[node.id];
+    for (const alias of (node.aliases || [])) {
+      if (_SUBS[alias]) return _SUBS[alias];
+    }
+    return '';
+  }
+
+  // An agent belongs on the board when it is active for this simulation — the
+  // selection Manage Agents holds. Nothing more.
+  //
+  // It used to also require an agent_actions record, i.e. "has already run",
+  // which is a different question and made the board a run log rather than the
+  // engine: a simulation with 13 active agents and 3 completed showed 3, and
+  // whole layers rendered empty. An agent that has not run yet has a real
+  // status of its own (queued, blocked) and belongs on the board carrying it.
+  function _boardAgents() {
+    // ?layer=L2 focuses one layer for the whole network tab (PRD-SIM-WORLD-001
+    // §4). The world already honoured it and wrote it into the URL; the board
+    // ignoring it made the address bar disagree with the page.
+    const focus = _layerFocus();
+    const seen = {};
+    const out = [];
+    Object.keys(_dagCache).forEach(key => {
+      const node = _dagCache[key];
+      if (!node || node.active === false) return;
+      if (seen[node.id]) return;
+      if (focus !== null && node.layer !== focus) return;
+      seen[node.id] = true;
+      out.push({
+        id: node.id,
+        label: node.label,
+        layer: node.layer,
+        sub: _subFor(node),
+      });
+    });
+    // Stable order: by layer, then by label, so the lanes do not reshuffle
+    // between loads.
+    out.sort((a, b) => (a.layer - b.layer) || a.label.localeCompare(b.label));
+    return out;
+  }
+
+  function _layerFocus() {
+    const raw = new URLSearchParams(window.location.search).get('layer');
+    if (!raw) return null;
+    const n = parseInt(String(raw).replace(/^L/i, ''), 10);
+    return (n >= 1 && n <= 5) ? n : null;
+  }
+
   // ── Public API ─────────────────────────────────────────────────────────────
   async function render(containerId, apiBase, opts) {
     opts = opts || {};
@@ -181,20 +243,23 @@
     // Fetch dag to know which agents are active for this simulation
     await _fetchDag();
 
-    // Only show agents that have an actual agent_actions record for this simulation
-    _visible = AGENTS.filter(a => {
-      const dag = _dagCache[a.id];
-      return dag && dag.action_id !== null;
-    });
+    _visible = _boardAgents();
 
     el.innerHTML = '';
 
     if (_visible.length === 0) {
+      const focus = _layerFocus();
       el.innerHTML = [
         '<div style="color:#475569;padding:3rem 2rem;text-align:center">',
-        '<div style="font-size:1.4rem;margin-bottom:.5rem">🤖</div>',
-        '<div style="font-size:.82rem;font-weight:600;color:#64748b">No agents eligible yet</div>',
-        '<div style="font-size:.75rem;margin-top:.35rem">Run a cycle to unlock agents for this simulation.</div>',
+        '<div style="font-size:1.4rem;margin-bottom:.5rem">\uD83E\uDD16</div>',
+        '<div style="font-size:.82rem;font-weight:600;color:#64748b">',
+        focus ? ('No active agents on layer ' + focus) : 'No active agents yet',
+        '</div>',
+        '<div style="font-size:.75rem;margin-top:.35rem">',
+        focus
+          ? 'Drop the layer filter from the address bar to see the whole board.'
+          : 'Turn agents on in Manage Agents and they appear here.',
+        '</div>',
         '</div>',
       ].join('');
       return;
@@ -214,10 +279,7 @@
 
   async function refreshStatus() {
     await _fetchDag();
-    const newVisible = AGENTS.filter(a => {
-      const dag = _dagCache[a.id];
-      return dag && dag.action_id !== null;
-    });
+    const newVisible = _boardAgents();
 
     // Re-render if the visible set changed
     const oldIds = new Set(_visible.map(a => a.id));
@@ -232,7 +294,11 @@
     }
   }
 
-  function getAgentById(id)  { return AGENTS.find(a => a.id === id) || null; }
+  function getAgentById(id)  {
+    return _visible.find(a => a.id === id)
+        || AGENTS.find(a => a.id === id)
+        || null;
+  }
   function getDagNode(id)    { return _dagCache[id] || null; }
 
   function destroy() {
@@ -434,7 +500,13 @@
       const res = await fetch(_apiBase + '/dag');
       if (!res.ok) return;
       const data = await res.json();
-      data.nodes.forEach(n => { _dagCache[n.id] = n; });
+      // Half of AGENTS below is keyed by legacy action_type strings, so cache
+      // each dag node under its canonical id AND every alias it carries —
+      // otherwise those entries never match and drop out of the board.
+      data.nodes.forEach(n => {
+        _dagCache[n.id] = n;
+        (n.aliases || []).forEach(alias => { _dagCache[alias] = n; });
+      });
     } catch (_) {}
   }
 

@@ -265,6 +265,62 @@ PERSONA_NAMES = list(_PERSONA_DEFAULTS.keys())
 # Aggregate selector data
 # ---------------------------------------------------------------------------
 
+def expertise_zone_names(sim) -> list:
+    """The zone names this simulation scores against — resume first, then its own."""
+    from app.models.resume import Resume
+    resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
+    raw_zones = (resume.expertise_zones or []) if resume else []
+    names = [z.get('zone_name', '') for z in raw_zones if z.get('zone_name')]
+    if not names and sim.expertise_zone:
+        names = [sim.expertise_zone]
+    return names
+
+
+def relevance_scores(sim, agents_flat=None, persist: bool = False) -> dict:
+    """Per-agent relevance for this simulation, from the cache when it exists.
+
+    Pure scoring — no LLM — so a read-heavy caller can ask for this without the
+    cost of the description generation in get_selector_data().
+    """
+    scores = sim.agent_relevance_scores
+    if scores:
+        return scores
+    from app.services.agent_registry import get_all_agents
+    scores = calculate_agent_relevance(expertise_zone_names(sim),
+                                       agents_flat or get_all_agents())
+    if persist:
+        sim.agent_relevance_scores = scores
+    return scores
+
+
+def effective_selection(sim, scores: dict = None, agents_flat=None) -> set:
+    """The agents Manage Agents treats as active for this simulation.
+
+    Confirmed, with a saved selection: exactly what the user chose, plus the root
+    agent and the event-triggered ones, which are never the user's to switch off.
+
+    Not yet confirmed: the recommended default the selector itself would show —
+    NOT every agent. Anything rendering "the active agents" has to agree with the
+    Manage Agents screen, so this is the one place that decides.
+    """
+    from app.services.agent_registry import get_all_agents, resolve_alias
+    agents_flat = agents_flat or get_all_agents()
+
+    saved = sim.selected_agents
+    if saved and sim.agent_selection_confirmed_at is not None:
+        selection = {resolve_alias(at) for at in saved}
+    else:
+        scores = scores if scores is not None else relevance_scores(sim, agents_flat)
+        selection = {
+            agent['action_type'] for agent in agents_flat
+            if scores.get(agent['action_type'], {}).get('recommended')
+        }
+
+    selection.add(ROOT_AGENT_ID)
+    selection |= {resolve_alias(at) for at in TRIGGERED_AGENT_IDS}
+    return selection
+
+
 def get_selector_data(sim, force_regen_descriptions: bool = False) -> dict:
     """
     Return everything the agent selector UI needs for a given simulation.
@@ -326,20 +382,9 @@ def get_selector_data(sim, force_regen_descriptions: bool = False) -> dict:
                 pass
 
     # ── 4. Build selected set (default = all recommended + triggered + root) ─
-    confirmed_selection: list[str] = sim.selected_agents  # [] if not yet confirmed
-    if not confirmed_selection:
-        confirmed_selection = [ROOT_AGENT_ID]
-        for agent in agents_flat:
-            at = agent['action_type']
-            info = scores.get(at, {})
-            if info.get('recommended') or at == ROOT_AGENT_ID:
-                if at not in confirmed_selection:
-                    confirmed_selection.append(at)
-        for at in TRIGGERED_AGENT_IDS:
-            if at not in confirmed_selection:
-                confirmed_selection.append(at)
-
-    selected_set = set(confirmed_selection)
+    # Shared with the Wealth Engine World, so the two surfaces cannot disagree
+    # about which agents are active.
+    selected_set = effective_selection(sim, scores=scores, agents_flat=agents_flat)
 
     # ── 5. Completed agents (for prerequisite + lock evaluation) ────────────
     from app.models.agent_action import AgentAction

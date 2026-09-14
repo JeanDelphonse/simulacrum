@@ -1,0 +1,104 @@
+{
+  "_comment": "PRD-SIM-WORLD-001 §5.5 — zone theme packs for the Wealth Engine World. Each pack supplies an accent colour and per-agent label overrides so the same 49-agent graph reads in the user's own vocabulary. `match` is a list of lowercase substrings tested against the simulation's expertise_zone; the first pack that matches wins, otherwise `default_zone` is used. Adding a pack here is the only edit needed — no code change.",
+  "default_zone": "consulting",
+  "zones": [
+    {
+      "key": "coaching",
+      "name": "Coaching",
+      "accent": "#13A89E",
+      "match": ["coach", "mentor", "training", "facilitat"],
+      "labels": {
+        "course_curriculum": "Program Curriculum",
+        "sales_page": "Enrollment Page",
+        "group_coaching": "Group Program",
+        "membership": "Coaching Community"
+      }
+    },
+    {
+      "key": "saas",
+      "name": "SaaS / Product",
+      "accent": "#4FA3E3",
+      "match": ["saas", "software", "product manage", "engineer", "developer", "technical", "platform"],
+      "labels": {
+        "course_curriculum": "Academy / Docs",
+        "consulting_proposal": "Sales Deal",
+        "saas_product_spec": "Core Product",
+        "sales_page": "Pricing Page",
+        "membership": "Subscription Tier"
+      }
+    },
+    {
+      "key": "author",
+      "name": "Author / Creator",
+      "accent": "#B06AB3",
+      "match": ["author", "writer", "creator", "speaker", "publish", "journalis"],
+      "labels": {
+        "course_curriculum": "Signature Course",
+        "membership": "Reader Club",
+        "consulting_proposal": "Speaking Deal",
+        "cold_email_campaign": "Pitch Email",
+        "newsletter": "Paid Newsletter"
+      }
+    },
+    {
+      "key": "consulting",
+      "name": "Consulting",
+      "accent": "#C9952A",
+      "match": ["consult", "advis", "fractional", "strateg", "operations", "finance", "marketing"],
+      "labels": {}
+    }
+  ],
+  "_icons_comment": "Per-agent glyph on the node. Agents with no entry fall back to layer_icons.",
+  "layer_icons": {"1": "\u25c6", "2": "\u25c6", "3": "\u25c6", "4": "\u25c6", "5": "\u25c6"},
+  "icons": {
+    "rate_card": "\ud83d\udcb2",
+    "linkedin_optimization": "\ud83d\udc64",
+    "booking_page": "\ud83d\udcc5",
+    "cold_email_campaign": "\u2709\ufe0f",
+    "consulting_outreach": "\ud83d\udce3",
+    "role_search": "\ud83d\udd0e",
+    "consulting_proposal": "\ud83d\udcc4",
+    "sow_template": "\ud83d\udccb",
+    "agreement_template": "\u270d\ufe0f",
+    "referral_network": "\ud83e\udd1d",
+    "negotiation_script": "\ud83d\udcac",
+    "speaking_proposals": "\ud83c\udfa4",
+    "speaker_fee_rider": "\ud83d\udcb5",
+    "group_coaching": "\ud83d\udc65",
+    "workshop_curriculum": "\ud83c\udf93",
+    "corporate_training": "\ud83c\udfe2",
+    "waitlist_landing_page": "\u23f3",
+    "alumni_reactivation": "\ud83d\udd01",
+    "roi_calculator": "\ud83e\uddee",
+    "course_curriculum": "\ud83d\udcda",
+    "pricing_research": "\ud83c\udff7\ufe0f",
+    "sales_page": "\ud83d\uded2",
+    "ebook_outline": "\ud83d\udcd6",
+    "ab_test_plan": "\ud83e\uddea",
+    "membership": "\ud83d\udd11",
+    "launch_sequence": "\ud83d\ude80",
+    "affiliate_program": "\ud83d\udd17",
+    "testimonials": "\u2b50",
+    "lapsed_buyer": "\ud83d\udce9",
+    "seo_content_calendar": "\ud83d\udd0d",
+    "lead_magnet_funnel": "\ud83e\uddf2",
+    "newsletter": "\ud83d\udcf0",
+    "saas_product_spec": "\ud83d\udda5\ufe0f",
+    "ip_licensing": "\u00a9\ufe0f",
+    "affiliate_partnerships": "\ud83e\udd1d",
+    "video_podcast": "\ud83c\udfa7",
+    "community": "\ud83c\udf10",
+    "programmatic_ads": "\ud83d\udcca",
+    "client_winback": "\ud83d\udd02",
+    "income_allocation": "\ud83e\ude99",
+    "projections": "\ud83d\udd2e",
+    "fund_recommendations": "\ud83d\udcc8",
+    "investment_policy": "\ud83d\udcdc",
+    "real_estate_strategy": "\ud83c\udfe0",
+    "entity_structure": "\ud83c\udfdb\ufe0f",
+    "tax_optimization": "\ud83e\uddfe",
+    "dca_schedule": "\ud83d\uddd3\ufe0f",
+    "insurance_review": "\ud83d\udee1\ufe0f",
+    "estate_planning": "\ud83c\udf33"
+  }
+}
