@@ -1,0 +1,112 @@
+{# The public site footer — one copy, shared by the landing page and every
+   external page.
+
+   Self-contained on purpose: landing.html is a standalone document with its own
+   CSS, while the external pages come through base.html and main.css. A partial
+   that carried no styles of its own would render differently on either side, so
+   the colours are literal here rather than var() references, and every class is
+   `pf-` prefixed. Without the prefix `.footer-tagline` would collide with the
+   italic rule main.css already defines under that name.
+
+   Product links point at the landing page's anchors, so they work from any page
+   rather than only from the one that happens to contain those sections. #}
+
+<style>
+.pf {
+  background: #0D1B3E;
+  padding: 60px 0 0;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  margin-top: auto;
+}
+.pf-c { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.pf-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 48px;
+}
+.pf-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.pf-mark {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: linear-gradient(135deg, #0F7B72, #13A89E);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.pf-brand span {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 18px; font-weight: 700; color: #fff;
+}
+.pf-tagline {
+  font-size: 14px; color: rgba(255,255,255,.32);
+  line-height: 1.65; max-width: 230px; font-style: normal;
+}
+.pf-col h4 {
+  font-size: 12px; font-weight: 700; color: rgba(255,255,255,.42);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+}
+.pf-links { display: flex; flex-direction: column; gap: 10px; }
+.pf-links a {
+  font-size: 14px; color: rgba(255,255,255,.32);
+  text-decoration: none; transition: color 200ms;
+}
+.pf-links a:hover { color: #fff; }
+.pf-bottom {
+  border-top: 1px solid rgba(255,255,255,.06);
+  padding: 20px 0;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+}
+.pf-copy { font-size: 13px; color: rgba(255,255,255,.22); }
+.pf-copy .pf-accent { color: #E4B855; }
+
+@media (max-width: 1024px) { .pf-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 768px)  { .pf-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px)  { .pf-grid { grid-template-columns: 1fr; } }
+</style>
+
+<footer class="pf">
+  <div class="pf-c">
+    <div class="pf-grid">
+      <div>
+        <div class="pf-brand">
+          <div class="pf-mark">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/></svg>
+          </div>
+          <span>SimulacrumAI.io</span>
+        </div>
+        <p class="pf-tagline">Simulate your career-to-wealth path — and deploy the agents that build it.</p>
+      </div>
+      <div class="pf-col">
+        <h4>Product</h4>
+        <div class="pf-links">
+          <a href="{{ url_for('pages.index') }}#model">The Model</a>
+          <a href="{{ url_for('pages.index') }}#how-it-works">How it works</a>
+          <a href="{{ url_for('pages.index') }}#pricing">Pricing</a>
+          <a href="{{ url_for('pages.register_page') }}">Bio page</a>
+        </div>
+      </div>
+      <div class="pf-col">
+        <h4>Company</h4>
+        <div class="pf-links">
+          <a href="{{ url_for('public.explore') }}">Explore</a>
+          <a href="{{ url_for('pages.blog_index') }}">The Journal</a>
+          {% if playbook_url %}<a href="{{ playbook_url }}" target="_blank" rel="noopener">The Playbook</a>{% endif %}
+          <a href="{{ url_for('pages.partner_apply_page') }}">Partners</a>
+          <a href="{{ url_for('pages.careers_index') }}">Careers</a>
+          <a href="{{ url_for('pages.register_page') }}">Contact</a>
+        </div>
+      </div>
+      <div class="pf-col">
+        <h4>Legal</h4>
+        <div class="pf-links">
+          <a href="{{ url_for('pages.legal_privacy') }}">Privacy</a>
+          <a href="{{ url_for('pages.legal_terms') }}">Terms</a>
+        </div>
+      </div>
+    </div>
+    <div class="pf-bottom">
+      <span class="pf-copy">© 2026 SimulacrumAI.io · Bay Area Experiences Ventures ·
+        <span class="pf-accent">See the consequences before you live them.</span>
+      </span>
+    </div>
+  </div>
+</footer>

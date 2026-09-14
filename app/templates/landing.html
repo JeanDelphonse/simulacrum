@@ -308,17 +308,6 @@
   .cta-trust { font-size: 13px; color: rgba(255,255,255,.38); margin-top: 16px; letter-spacing: .3px; }
 
   /* ── Footer ──────────────────────────────────────────────────────── */
-  footer { background: var(--navy); padding: 60px 0 0; }
-  .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
-  .footer-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .footer-brand span { font-family: 'Playfair Display',serif; font-size: 18px; font-weight: 700; color: #fff; }
-  .footer-tagline { font-size: 14px; color: rgba(255,255,255,.32); line-height: 1.65; max-width: 230px; }
-  .footer-col h4 { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.42); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
-  .footer-links { display: flex; flex-direction: column; gap: 10px; }
-  .footer-links a { font-size: 14px; color: rgba(255,255,255,.32); transition: color 200ms; }
-  .footer-links a:hover { color: #fff; }
-  .footer-bottom { border-top: 1px solid rgba(255,255,255,.06); padding: 20px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  .footer-copy { font-size: 13px; color: rgba(255,255,255,.22); }
 
   /* ── Fade-in ─────────────────────────────────────────────────────── */
   .fade-up { opacity: 0; transform: translateY(28px); transition: opacity 700ms ease, transform 700ms ease; }
@@ -328,7 +317,6 @@
   /* ── Responsive ──────────────────────────────────────────────────── */
   @media (max-width: 1024px) {
     .hero-cards-grid { display: none; }
-    .footer-grid { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 768px) {
     .lp-s { padding: 60px 0; }
@@ -338,10 +326,8 @@
     .sp-card { flex: 0 0 85%; }
     .sp-chevron { display: none; }
     #hero { padding-top: calc(var(--nav-h) + 44px); padding-bottom: 56px; }
-    .footer-grid { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 480px) {
-    .footer-grid { grid-template-columns: 1fr; }
     .hero-ctas { flex-direction: column; align-items: flex-start; }
     .hero-ctas .btn { width: 100%; justify-content: center; }
     .about-stat-row { flex-wrap: wrap; gap: 20px; }
@@ -645,9 +631,6 @@
 </script>
 <!-- ── NAV ──────────────────────────────────────────────────────────── -->
 <nav class="lp-nav" id="lpNav">
-      {% if blog_nav_visible %}
-      <a href="{{ url_for('pages.blog_index') }}" class="lp-nav-link">Journal</a>
-      {% endif %}
   <div class="lp-nav-inner">
     <a href="/" class="lp-logo">
       <div class="lp-logo-mark">
@@ -662,6 +645,9 @@
       <a href="#how-it-works" class="lp-nav-link" data-spy="how-it-works">How it works</a>
       <a href="#proof"        class="lp-nav-link" data-spy="proof">Why trust it</a>
       <a href="#pricing"      class="lp-nav-link" data-spy="pricing">Pricing</a>
+      {% if blog_nav_visible %}
+      <a href="{{ url_for('pages.blog_index') }}" class="lp-nav-link">Journal</a>
+      {% endif %}
     </div>
     <div class="lp-nav-ctas">
       <button class="btn btn-ghost-dk" id="videoDemoBtn" type="button" style="font-size:14px;padding:9px 16px;">Watch Demo</button>
@@ -1193,53 +1179,9 @@
 </section>
 
 <!-- ── FOOTER ────────────────────────────────────────────────────────── -->
-<footer>
-  <div class="lp-c">
-    <div class="footer-grid">
-      <div>
-        <div class="footer-brand">
-          <div class="lp-logo-mark" style="width:28px;height:28px;border-radius:7px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/></svg>
-          </div>
-          <span>SimulacrumAI.io</span>
-        </div>
-        <p class="footer-tagline">Simulate your career-to-wealth path — and deploy the agents that build it.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Product</h4>
-        <div class="footer-links">
-          <a href="#model">The Model</a>
-          <a href="#how-it-works">How it works</a>
-          <a href="#pricing">Pricing</a>
-          <a href="{{ url_for('pages.register_page') }}">Bio page</a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>Company</h4>
-        <div class="footer-links">
-          <a href="{{ url_for('public.explore') }}">Explore</a>
-          <a href="{{ playbook_url }}" target="_blank" rel="noopener">The Playbook</a>
-          <a href="{{ url_for('pages.partner_apply_page') }}">Partners</a>
-          <a href="{{ url_for('pages.careers_index') }}">Careers</a>
-          <a href="{{ url_for('pages.register_page') }}">Contact</a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>Legal</h4>
-        <div class="footer-links">
-          <a href="{{ url_for('pages.legal_privacy') }}">Privacy</a>
-          <a href="{{ url_for('pages.legal_terms') }}">Terms</a>
-          <a href="#">Security</a>
-        </div>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span class="footer-copy">© 2026 SimulacrumAI.io · Bay Area Experiences Ventures ·
-        <span style="color:var(--gold-l);">See the consequences before you live them.</span>
-      </span>
-    </div>
-  </div>
-</footer>
+{# The public footer lives in one place so the landing page and every
+   external page cannot drift apart. #}
+{% include 'partials/_footer_public.html' %}
 
 <!-- ── Video Demo Modal ──────────────────────────────────────────────── -->
 <div id="videoModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:2000;align-items:center;justify-content:center;padding:1rem;">
