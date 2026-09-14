@@ -1,0 +1,244 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Bio Page Private Mode
+Opt-In Privacy · Public Teaser · LinkedIn-Verified Access Requests · Approval Loop · Warm-Lead CRM · Gate-Aware Chat
+
+Document ID
+SIM-PRD-PRIVACY-001
+Version
+1.0
+Scope
+Adds an optional Private Mode to the bio page. When a user turns it on, their page shows only a minimal public teaser to strangers; full content is gated behind an access request. Requesters authenticate with LinkedIn, so identity (name, company, industry) is verified rather than self-attested. The user approves or ignores; approved viewers keep access until revoked. Every approved viewer becomes a verified warm lead in the user's CRM.
+Default
+OFF. Bio pages remain public and fully discoverable by default — SEO, QR, PLG, and open AI chat all continue to work. Private Mode is a per-user opt-in for a specific persona (confidential job seekers, selective consultants), NOT a global default. The UI is explicit about the discovery trade-off when enabling it.
+Design principle
+Privacy as lead qualification, not just a wall. The gate requires verified identity and stated intent, so an approved viewer is a higher-value lead than an anonymous page view. The control doubles as a qualification engine.
+Key decisions
+(1) Minimal teaser always shown — never a blank page. (2) LinkedIn OAuth required to request access — identity is verified, not typed. (3) The AI chat (Simi) respects the gate — it will not answer for un-approved visitors on a private page.
+Connects to
+SIM-PRD-BIO-001/003 (bio page + sections), SIM-PRD-CHAT-001 (Simi must honor the gate), SIM-PRD-CONNECT-001 (LinkedIn OAuth already a supported connection), SIM-PRD-OUTREACH-001 (notification email infra), CRM/contacts model.
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+July 2026
+
+1. Public vs Private Mode
+Private Mode is a per-user toggle, OFF by default. Turning it on does not hide the user from existence — it replaces the open page with a teaser plus an access request. The default-public behavior is deliberate: the whole platform is optimized for discovery, and gating everyone would break the funnel. This serves a specific persona who opts in.
+
+Aspect
+Public (default)
+Private (opt-in)
+Stranger sees
+Full bio page
+Minimal teaser + request form
+Discoverability
+SEO, QR, shareable
+Teaser is indexable; full content is not
+AI chat (Simi)
+Answers freely
+Teaser-level only until approved
+Access
+Open to anyone
+Verified request → user approval
+Lead capture
+Anonymous page views + chat leads
+Verified identity + stated intent
+Best for
+Most users — maximum reach
+Confidential job seekers, selective consultants
+
+When enabling Private Mode, the settings UI states the trade-off plainly: 'Requiring approval means fewer people will reach you. Best for when you want to control exactly who sees your full profile.' No dark pattern — the user chooses with the cost visible.
+
+2. The Public Teaser
+A private page never shows a blank wall — nobody requests access to nothing. The teaser confirms the visitor found the right person and gives them a reason to request, while exposing nothing sensitive.
+
+Element
+In teaser?
+Rationale
+Name
+Yes
+Confirms identity — they found the right person.
+Photo / avatar
+Yes
+Visual confirmation; humanizes the request.
+Headline / tagline
+Yes
+One line of positioning — the hook to request.
+Expertise tags
+Yes
+High-level zones (e.g. Operations, Finance) — no detail.
+Private notice + CTA
+Yes
+'This profile is private — request access with LinkedIn.'
+About / bio prose
+No
+Gated. Part of the substance being protected.
+Career timeline, ventures
+No
+Gated — often the sensitive part for a confidential search.
+Services, rates
+No
+Gated — commercial detail.
+Contact, booking
+No
+Gated — the point of controlling access.
+Testimonials, references
+No
+Gated — third-party content and detail.
+
+The teaser is the only part of a private page that search engines may index. Everything gated is excluded from crawling (noindex on gated content, and the gated payload is never served to an un-approved session — it is not merely hidden client-side).
+
+3. The Access Request — LinkedIn-Verified
+A requester authenticates with LinkedIn OAuth. Identity is pulled from their verified LinkedIn profile — name, current company, industry, headline — not typed into a form. This is what makes 'verified' meaningful: a competitor or bad actor cannot fabricate a real professional identity, and the user approves based on fact, not fiction.
+
+Element
+Specification
+Continue with LinkedIn
+The request CTA is a single 'Request access with LinkedIn' button. OAuth returns the requester's verified name, profile URL, current company, industry, and headline. These populate the request — the visitor types nothing identity-related.
+Optional message
+The one free-text field: an optional note ('We met at the SaaS conference — would love to reconnect'). Gives the user context to decide. Everything else is verified, not typed.
+What the user receives
+A notification showing the requester's verified name, photo, company, industry, LinkedIn link, and their optional message. The user can open the LinkedIn profile to verify before deciding.
+No LinkedIn, no request
+LinkedIn is required — there is no 'type your details instead' fallback, because that would defeat verification. A visitor without LinkedIn cannot request access to a private page. (Accepted trade-off: the persona using private mode wants exactly this bar.)
+Email captured
+LinkedIn OAuth provides a verified email where the member permits it; otherwise the verified profile URL is the identity anchor. Email, when present, is used for the approval notification to the requester.
+
+4. The Approval Loop
+Step
+Actor
+What happens
+1
+Visitor
+Lands on a private page, sees the teaser, clicks 'Request access with LinkedIn', authorizes, optionally adds a note.
+2
+System
+Creates a pending access request with verified identity. Notifies the user in-GCC and by email. Requester sees: 'Your request was sent. You'll be notified if approved.'
+3
+User
+Reviews the verified requester. Approves (one tap, including straight from the email) or ignores.
+4a
+System (approved)
+Grants access, emails the requester 'You've been approved — view the profile', and creates a verified warm lead in the user's CRM. Access persists until revoked.
+4b
+System (ignored)
+No rejection email is ever sent. The request expires silently after a configurable window (default 30 days). Declining is frictionless and non-confrontational.
+5
+User (anytime)
+Revokes access from the dashboard. The viewer reverts to teaser-only on next visit.
+
+Deliberate choices
+One-tap approve from the email — interest decays with delay, so approval turnaround is minutes, not days.
+Silent decline — no rejection email. Ignoring a request costs the user nothing and does not burn the relationship.
+Approval is a person-to-page grant: this verified identity may see this page's gated content until revoked. It does not transfer to other pages or persist if the person's LinkedIn identity changes materially.
+
+5. Controls — Keeping It Usable
+A private page that gets traffic could flood the user with requests. Without controls, the feature becomes a notification nightmare and gets turned off. These ship in v1, not later.
+
+Control
+Specification
+Allowlist
+Auto-approve anyone whose verified LinkedIn company/email domain matches a trusted rule (e.g. auto-approve everyone from a target employer or a specific firm). Approved without a manual step; still logged and added to CRM.
+Blocklist
+Auto-decline specific people or domains (e.g. a current employer during a confidential search). Blocked requesters see the teaser and a generic 'not accepting requests right now' — never 'you are blocked.'
+Digest option
+Instead of one email per request, a batched digest ('4 people requested access today'). User choice: real-time or digest.
+Rate limiting
+A single requester identity cannot spam repeated requests. One pending request per requester per page; re-requests are throttled.
+Pause requests
+A temporary 'not accepting new requests' state that keeps existing approvals live but hides the request form (shows teaser only). For when the user is overwhelmed or the search concludes.
+
+6. The AI Chat Must Respect the Gate
+This is not optional. Simi answers prospect questions from the bio content. If a blocked visitor can still ask Simi 'what are their consulting rates?' and get an answer, the gate is theater. On a private page, Simi honors the same access state as the page.
+
+Visitor state
+Simi behavior
+Un-approved (teaser)
+Simi answers only teaser-level questions (who this is, high-level expertise). For anything gated — rates, history, contact, specifics — it declines gracefully: 'That's part of this private profile. Request access with LinkedIn to see the full details,' and surfaces the request CTA.
+Approved viewer
+Simi answers fully, exactly as on a public page — the viewer has been granted access.
+Page owner
+Full access, as today.
+
+Enforcement is server-side: gated bio content is never loaded into Simi's context for an un-approved session, so the model cannot reveal what it was never given. The gate is a retrieval boundary, not a prompt instruction the model might be argued past.
+
+7. The Payoff — Verified Warm Leads
+The privacy control doubles as lead qualification. An approved viewer arrived with verified identity and stated intent — categorically more valuable than an anonymous page view.
+
+Element
+Specification
+CRM record
+On approval, a contact is created/updated with verified name, company, industry, LinkedIn URL, email (if provided), their optional message, and the request timestamp. Pipeline stage: warm lead. Source: private-page request.
+Access dashboard
+The user sees all requests and grants: pending, approved, revoked, expired — each with the verified identity and one-click approve/revoke. This is the control surface and the lead list in one.
+Re-entry signals
+Because approval persists, an approved viewer can return. The user can opt to be notified when an approved person views again ('This recruiter viewed your profile 3 times this week') — turning the audit log into a buying-intent signal.
+Analytics
+Private pages report request volume, approval rate, and repeat-view counts — distinct from public-page view metrics — so the user sees whether the gate is helping or throttling.
+
+8. Data Model
+ALTER TABLE user_profiles
+    ADD COLUMN privacy_mode ENUM('public','private') DEFAULT 'public',
+    ADD COLUMN accepting_requests BOOLEAN DEFAULT TRUE,
+    ADD COLUMN request_notify ENUM('realtime','digest') DEFAULT 'realtime';
+ 
+CREATE TABLE bio_access_requests (
+    id                CHAR(9) PRIMARY KEY,
+    owner_user_id     CHAR(9) NOT NULL REFERENCES users(id),
+    requester_name    VARCHAR(160) NOT NULL,   -- from LinkedIn (verified)
+    requester_linkedin VARCHAR(300) NOT NULL,  -- profile URL, identity anchor
+    requester_company VARCHAR(200) NULL,       -- from LinkedIn
+    requester_industry VARCHAR(120) NULL,      -- from LinkedIn
+    requester_email   VARCHAR(160) NULL,       -- if LinkedIn permits
+    message           TEXT NULL,               -- optional note
+    status            VARCHAR(20) DEFAULT 'pending',
+                      -- pending | approved | revoked | expired | auto_approved
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at       TIMESTAMP NULL,
+    UNIQUE KEY uq_owner_requester (owner_user_id, requester_linkedin)
+);
+ 
+CREATE TABLE bio_access_grants (
+    id             CHAR(9) PRIMARY KEY,
+    owner_user_id  CHAR(9) NOT NULL,
+    requester_linkedin VARCHAR(300) NOT NULL,
+    granted_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked_at     TIMESTAMP NULL,
+    last_viewed_at TIMESTAMP NULL,
+    view_count     INT DEFAULT 0,
+    UNIQUE KEY uq_grant (owner_user_id, requester_linkedin)
+);
+ 
+CREATE TABLE bio_access_rules (
+    id            CHAR(9) PRIMARY KEY,
+    owner_user_id CHAR(9) NOT NULL,
+    rule_type     VARCHAR(10) NOT NULL,   -- allow | block
+    match_type    VARCHAR(20) NOT NULL,   -- domain | company | linkedin
+    match_value   VARCHAR(200) NOT NULL
+);
+ 
+-- Approved grant creates/updates a contacts row
+-- (pipeline_stage='warm_lead', source='private_page_request').
+
+9. Functional Requirements
+Mode
+FR-PRV-01  Private Mode is a per-user toggle on the bio page, default OFF (public). Public pages retain all current discovery behavior. Enabling Private Mode shows the settings trade-off warning explicitly — no dark pattern.
+FR-PRV-02  On a private page, un-approved visitors see only the teaser: name, photo, headline, high-level expertise tags, and a 'request access with LinkedIn' CTA. All other sections are gated and never served to an un-approved session (server-side, not client-hidden). Only the teaser is search-indexable.
+
+Verified Request
+FR-PRV-03  Access requests require LinkedIn OAuth. Verified name, profile URL, company, and industry are pulled from LinkedIn — not typed. The only free-text field is an optional message. No non-LinkedIn fallback (verification would be meaningless).
+FR-PRV-04  The owner's notification shows the requester's verified identity and LinkedIn link. One request per requester per page (uq_owner_requester); re-requests are throttled.
+
+Approval
+FR-PRV-05  The owner approves (one tap, including from the notification email) or ignores. Approval grants the verified requester access to gated content until revoked, emails the requester, and creates a verified warm-lead contact in the CRM. Ignored requests expire silently after a configurable window (default 30 days) — no rejection email is ever sent.
+FR-PRV-06  The owner can revoke any grant at any time from the access dashboard; the viewer reverts to teaser-only on next visit.
+
+Controls & Chat
+FR-PRV-07  Controls in v1: allowlist (auto-approve by verified company/domain), blocklist (auto-decline; blocked users see a neutral message, never 'blocked'), digest vs real-time notifications, rate limiting, and a pause-requests state that keeps existing grants live.
+FR-PRV-08  On a private page, Simi honors the access state: teaser-level answers for un-approved visitors (declining gated questions and surfacing the request CTA), full answers for approved viewers. Enforced by never loading gated content into Simi's context for an un-approved session.
+
+Payoff
+FR-PRV-09  Approved viewers become verified warm-lead CRM contacts (identity, company, industry, LinkedIn, message, timestamp). The access dashboard shows pending/approved/revoked/expired with approve/revoke controls. Optional re-entry notifications turn repeat views into buying-intent signals. Private-page analytics (requests, approval rate, repeat views) are reported distinctly from public-page views.
+
+
+Document SIM-PRD-PRIVACY-001  ·  Bio Page Private Mode
+Simulacrum · Bay Area Experiences Ventures · Confidential

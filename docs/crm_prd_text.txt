@@ -1,0 +1,155 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Admin Outreach Pipeline
+The Founder's Sales Cockpit · Stage-Based Pipeline · 3-Touch Sequences · Semi-Automated via Founder-Ops · Contacts Tab
+Document ID
+SIM-PRD-CRM-001
+Version
+1.0
+Route
+/admin/contacts — a new tab in the existing Admin Contacts area. This is the ADMIN's own outreach pipeline for the accounts Simulacrum is selling TO (consultancies, pilot leads, partners) — distinct from the per-user and per-org CRMs.
+Scope
+A stage-based sales pipeline the founder uses to run the corporate-pilot outreach motion: track prospect firms through stages from Not Started to Onboarded, log every touch, schedule and surface follow-ups, and receive daily draft touches from the founder-ops briefing. Semi-automated: the system drafts and reminds; the founder sends and logs.
+Not in scope
+This is not the user-facing lead CRM (SIM-PRD-BIO/agents) nor the employer-org shared CRM (SIM-PRD-ORG-002). It is the internal sales tool for the person running Simulacrum. Automation stops at drafting and reminding — the founder sends touches manually (semi-auto), because LinkedIn is the primary channel and manual sending protects deliverability and authenticity.
+Automation model
+SEMI-AUTOMATED. The founder-ops morning briefing (existing) drafts the next touch for every prospect that is due, logs sends the founder confirms, and advances stages. No agent sends on its own. This keeps LinkedIn outreach human and compliant while removing the drafting and remembering burden.
+Connects to
+founder_ops.py (existing morning/evening briefing — becomes the drafting + reminder engine), SIM-PRD-OUTREACH-001 (3-touch sequence definitions), the Corporate Partner sell sheet and Pilot offer (Touch 3 assets), SIM-PRD-ORG-001/002 (a won deal provisions an org).
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+July 2026
+1. Where It Lives & What It Is
+This is the founder's sales cockpit. Everywhere else in Simulacrum, 'contacts' are leads flowing TO a user or org. Here, the contacts are firms the founder is selling the platform TO. It is an internal tool, admin-only, and it is the operational home of the corporate-pilot motion described in the 90-Day Bulk Deals Sequence.
+Element
+Specification
+Placement
+A new 'Outreach' tab within /admin/contacts, alongside existing admin contact views. Admin-only; never visible to users, SMEs, or org admins.
+The unit
+A prospect: a firm the founder is pursuing. Fields: firm name, primary lead (named person if known), website, contact path (LinkedIn / form / email), fit rating, category, and free-text notes.
+The workflow
+Each prospect moves through a defined pipeline (Section 2). Every interaction is a logged touch. Follow-ups are scheduled and surfaced when due. The founder-ops briefing drafts the next action daily.
+Why admin, not a spreadsheet
+Because it connects to the founder-ops automation and, on a won deal, hands straight to org provisioning (ORG-001) — the prospect becomes an organization without re-entry.
+2. Pipeline Stages
+The stages mirror the 3-touch LinkedIn sequence the founder actually runs, so the tool matches the motion rather than imposing a generic CRM funnel.
+Stage
+Meaning
+Next action the system drafts
+Not started
+Identified, not yet researched
+Research prompt: confirm size, independence, lead name
+Researched
+Verified fit, lead identified
+Draft Touch 1 (LinkedIn connection request, ≤300 char)
+Touch 1 sent
+Connection request sent
+Wait; remind to check for accept in 3-5 days
+Connected
+Request accepted
+Draft Touch 2 (question DM, no pitch)
+Touch 2 sent
+Question DM sent
+Wait; remind to check for reply
+Replied
+Prospect responded
+Draft Touch 3 (the pitch + sell sheet + pilot offer)
+Meeting booked
+Discovery call scheduled
+Prep: pull sell sheet, prep the live-resume demo
+Onboarded
+Signed — becomes a customer
+Hand to ORG-001 provisioning; create the org
+Passed
+Not a fit / declined
+Archive with reason; optional re-touch date months out
+Touch 1 is a connection request with no pitch and no link — its only job is acceptance. The pitch is earned at Touch 3, and only after a reply. The stages encode that discipline so the founder is never prompted to pitch too early.
+3. The Semi-Automated Loop
+The system drafts and reminds; the founder sends and confirms. No agent sends a LinkedIn touch on its own — LinkedIn is relationship-first and automated sending risks the account and the relationship. The automation removes the two real burdens: remembering who is due, and writing each touch from scratch.
+Step
+What happens
+Morning briefing
+The existing founder-ops 6:30am job scans the pipeline: which prospects are due a touch, which follow-ups are overdue, which just advanced. For each, it drafts the appropriate next touch using the stage template and the prospect's researched details.
+The founder's queue
+The admin opens the Outreach tab to a 'Due today' list: each prospect with its drafted touch ready to copy. The founder personalizes, sends on LinkedIn, and clicks 'Logged' — which timestamps the touch and advances the stage.
+Follow-up scheduling
+On each logged send, the system sets the next follow-up date by stage rule (e.g. check for accept in 4 days; check for reply in 3). Overdue follow-ups surface in red and in the next briefing.
+Reply handling
+When a prospect replies, the founder marks 'Replied'; the system drafts Touch 3 with the sell sheet and pilot offer attached. This is the only stage where sales assets are surfaced — keeping earlier touches pitch-free.
+Won → provisioned
+Marking 'Onboarded' offers a one-click hand-off to ORG-001: create the organization, set org_class, and start the credit/invoice flow. The prospect record links to the created org.
+# Extends the existing founder_ops.py morning briefing
+def build_outreach_queue(today):
+    due = []
+    for p in prospects.where(status not in ('onboarded','passed')):
+        if p.next_followup and p.next_followup <= today:
+            draft = draft_touch(p)          # Claude, stage-aware
+            due.append({'prospect': p, 'draft': draft,
+                        'overdue': p.next_followup < today})
+    return sorted(due, key=lambda d: d['prospect'].next_followup)
+def draft_touch(p):
+    if p.stage == 'researched':   return touch1_connection(p)  # <=300
+    if p.stage == 'connected':    return touch2_question(p)
+    if p.stage == 'replied':      return touch3_pitch(p)       # + assets
+    return None                    # waiting stages need no draft
+4. Prospect Record & Views
+Element
+Specification
+Core fields
+Firm name, primary lead (name + LinkedIn URL), website, contact path, fit rating (high/medium/low), category (e.g. Fractional Exec, Boutique Mgmt), and notes.
+Touch log
+An append-only history per prospect: each touch with date, channel, stage at the time, and what was sent. The relationship's full record.
+Scheduling fields
+Last contact date, next follow-up date. The follow-up date drives the due queue and the overdue (red) state.
+Views
+Due today (default working view), full pipeline by stage (kanban), and a filterable list by fit and category. Search across firm, lead, and category.
+Dashboard counters
+Total prospects, active (in-flight), replied, due today, onboarded — the same top-line metrics as the prototype, so the founder sees campaign health at a glance.
+Bulk import
+CSV import to seed the pipeline (the verified consultancy list is the first import). Validates and de-duplicates by firm name + website.
+5. Data Model
+CREATE TABLE admin_prospects (
+    id            CHAR(9) PRIMARY KEY,
+    firm_name     VARCHAR(200) NOT NULL,
+    lead_name     VARCHAR(160) NULL,
+    lead_linkedin VARCHAR(300) NULL,
+    website       VARCHAR(300) NULL,
+    contact_path  VARCHAR(200) NULL,   -- linkedin | form | email
+    fit           VARCHAR(10) DEFAULT 'medium',  -- high|medium|low
+    category      VARCHAR(80) NULL,
+    stage         VARCHAR(30) DEFAULT 'not_started',
+    last_contact  DATE NULL,
+    next_followup DATE NULL,
+    notes         TEXT NULL,
+    won_org_id    CHAR(9) NULL,        -- set on onboard (ORG-001 link)
+    passed_reason VARCHAR(200) NULL,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE admin_prospect_touches (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,  -- high volume
+    prospect_id  CHAR(9) NOT NULL REFERENCES admin_prospects(id),
+    touched_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    channel      VARCHAR(30) NOT NULL,   -- linkedin | email | call
+    stage_at     VARCHAR(30) NOT NULL,
+    summary      TEXT NULL,              -- what was sent
+    drafted_by   VARCHAR(20) DEFAULT 'manual'  -- manual | founder_ops
+);
+-- Stage -> follow-up interval (days), configurable
+CREATE TABLE admin_stage_rules (
+    stage            VARCHAR(30) PRIMARY KEY,
+    followup_days    INT NOT NULL,
+    drafts_touch     VARCHAR(30) NULL   -- touch1|touch2|touch3|null
+);
+6. Functional Requirements
+Pipeline
+FR-CRM-01  A new admin-only 'Outreach' tab in /admin/contacts holds a stage-based pipeline of prospect firms. Stages: Not started, Researched, Touch 1 sent, Connected, Touch 2 sent, Replied, Meeting booked, Onboarded, Passed. Never visible to users, SMEs, or org admins.
+FR-CRM-02  Each prospect carries firm name, lead (name + LinkedIn), website, contact path, fit, category, notes, last-contact and next-follow-up dates, and an append-only touch log. CSV import seeds the pipeline, de-duplicated by firm name + website.
+Semi-automation
+FR-CRM-03  The founder-ops morning briefing drafts the next touch for every prospect due a follow-up: Touch 1 (connection request, ≤300 characters, no link) for Researched, Touch 2 (question DM) for Connected, Touch 3 (pitch + sell sheet + pilot offer) for Replied. Waiting stages get a reminder, not a draft.
+FR-CRM-04  No touch is sent automatically. The founder reviews the draft, sends on LinkedIn manually, and clicks 'Logged' — which records the touch, sets last-contact, advances the stage, and sets the next follow-up date from the stage rule.
+FR-CRM-05  Overdue follow-ups (next_followup in the past, prospect not Onboarded or Passed) are surfaced in a red 'due' state in the tab and in the morning briefing.
+Views & hand-off
+FR-CRM-06  The tab provides a 'Due today' working view (default), a kanban pipeline by stage, and a filterable list by fit and category, with search and top-line counters (total, active, replied, due today, onboarded).
+FR-CRM-07  Marking a prospect Onboarded offers a one-click hand-off to ORG-001 provisioning — create the organization, set org_class, begin the credit/invoice flow — and links the prospect to the created org (won_org_id). Marking Passed captures a reason and an optional future re-touch date.
+Document SIM-PRD-CRM-001  ·  Admin Outreach Pipeline
+Simulacrum · Bay Area Experiences Ventures · Confidential

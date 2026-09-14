@@ -1,0 +1,264 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Organizations & Bulk Provisioning
+Org Entity · Credit Pool · Bulk Invite · Partner Dashboard · Cohort SME · Co-Branding · Annual Invoicing
+
+Document ID
+SIM-PRD-ORG-001
+Version
+1.0
+Route
+/org — a new authenticated Org Admin console. Plus /admin/orgs for internal Simulacrum administration of org accounts, credits, and invoicing.
+Problem
+Bulk deals (pilots, cohorts, enterprise) cannot be delivered today. There is no org entity, no way to invite hundreds of users at once, no buyer-facing dashboard, and no invoicing path outside self-serve Stripe checkout. Bulk deals fail on provisioning, not selling.
+Scope
+Introduces the Organization as a first-class entity: a parent account holding a pool of simulation credits, with bulk member invitation, a partner-facing dashboard, cohort-level SME assignment, co-branded bio pages, and annual/PO invoicing. Enables the Pilot (25 seats), Cohort (100-500), and Enterprise (500+) offers.
+Core model
+Credit pool, not named seats. An org buys N simulation credits; any member of the org population redeems one. This removes the 'who exactly gets a license' negotiation that kills mid-size deals, and unused credits create renewal pressure. Free bio pages are unlimited at every tier and are never metered.
+New actor
+Org Admin — a fourth authenticated role (alongside user, admin, SME). Scoped to their own organization only. Cannot see member simulation contents; sees aggregate metrics and member activation status.
+Connects to
+SIM-PRD-SME-001 (zone matching, extended to cohort assignment), SIM-PRD-SME-002 (SME role/RBAC pattern), SIM-PRD-ANALYTICS-001 (metrics + audit pattern), SIM-PRD-BIO-001/003 (co-branding on bio pages), SIM-PRD-CONNECT-001 (zero-setup onboarding for members), SIM-PRD-ONBOARD-001 v1.1 (member onboarding flow).
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+June 2026
+
+1. The Organization Entity
+An Organization is a parent account with many member users, one credit pool, one invoice, and one Org Admin. Members are ordinary Simulacrum users — their simulations, bio pages, and data belong to them. The org sponsors access; it does not own the member's work.
+
+Element
+Specification
+Org record
+Fields: Org name, type (Pilot / Cohort / Enterprise / Partner), primary contact, billing contact, logo (for co-branding), email domain(s) for auto-join, status (Active / Suspended / Expired), contract start and end dates.
+Org Admin
+A fourth authenticated role scoped to one organization. Created when the org is provisioned. Can invite members, view the dashboard, and manage co-branding. CANNOT view any member's simulation contents, artifacts, or income figures — only aggregate metrics and per-member activation status.
+Members
+Ordinary users with a membership link to the org. A member's bio page, simulations, and data are theirs. If the org relationship ends, the member keeps their account and everything in it — only the credit sponsorship stops.
+Data boundary
+The org sees WHETHER a member activated and WHETHER they started a simulation. The org never sees the member's resume, artifacts, income, contacts, or agent configuration. This boundary is enforced server-side, not by UI.
+Member consent
+On joining an org, the member is told plainly what the org can and cannot see: 'Your employer sponsors your access. They can see that you activated, not what you build.' Transparency mirrors the SME pattern in SIM-PRD-SME-002.
+
+2. The Credit Pool
+The org purchases a pool of simulation credits rather than named seats. Any member may redeem one credit to run a simulation. Bio pages are free and unlimited — they are never metered against the pool.
+
+Element
+Specification
+What a credit buys
+One simulation for one member. Credit value equals the configured simulation price (Admin → Pricing) at the time of contract, recorded on the org so later price changes do not alter an active contract.
+Redemption
+When a member starts a simulation, the system checks the org pool. If credits remain, one is decremented and the simulation runs at no cost to the member. If the pool is empty, the member sees the standard self-serve purchase path — never a hard block.
+Bio pages free
+Unlimited free bio pages at every tier, never metered. This is the buyer's easiest yes and every page is a PLG asset. The paid unit is the SIMULATION, not the account.
+Expiry
+Credits expire at contract end (default 60 days for Pilot, 12 months for Cohort/Enterprise). Expiring credits are the renewal conversation. Admin can extend.
+Visibility
+The Org Admin dashboard shows credits purchased, redeemed, and remaining, with a burn-rate projection ('at this pace, your pool is exhausted in 3 weeks') — which is both a service to the buyer and an expansion trigger.
+Top-up
+Admin can add credits to an active pool mid-contract (upsell) without a new contract. Logged against the org.
+
+def start_simulation(user):
+    org = user.organization
+ 
+    if org and org.status == 'active' and org.credits_remaining > 0:
+        org.credits_remaining -= 1
+        CreditRedemption.create(org_id=org.id, user_id=user.id,
+                                credit_value_cents=org.credit_value_cents)
+        return create_simulation(user, paid_by='org')
+ 
+    # No org, expired, or pool empty -> normal self-serve path
+    return redirect_to_checkout(user)
+
+3. Bulk Member Invitation
+Nobody onboards 300 people one at a time. Three paths in, all leading to the standard member onboarding wizard.
+
+Method
+Specification
+CSV upload
+Org Admin uploads a CSV (email, first name, last name — email required, names optional). System validates, de-duplicates against existing members, shows a preview with row-level errors, then sends branded invitations on confirm. Partial success is supported: valid rows import, invalid rows are reported for correction.
+Email domain auto-join
+The org registers one or more email domains (e.g. @acme.com). Anyone signing up with a matching address automatically joins the org and can draw from its credit pool. Best for large populations where the buyer cannot produce a roster. Admin-toggleable per org.
+Invite link
+A single shareable link with an org join token. Optional cap and expiry. Best for associations posting to a member portal or newsletter.
+Invitation email
+Co-branded with the org logo: '[Org] has sponsored your Simulacrum access.' One clear CTA into the standard onboarding wizard. Reuses the outreach send infrastructure (SIM-PRD-OUTREACH-001) and respects suppression and CAN-SPAM.
+Reminders
+Automated nudges to invited-but-not-activated members at Day 3 and Day 10, then stop. Activation is the org's core metric, so this directly serves the renewal argument. Org Admin can trigger a manual reminder to non-activated members.
+
+4. The Partner Dashboard
+The buyer is not buying agents. They are buying a number they report upward — placement rate, member engagement, severance-spend justification. The dashboard IS the renewal argument. It must produce that number without exposing any member's private work.
+
+Card
+Metrics
+Activation funnel
+Invited → Signed up → Bio page published → Simulation started. Counts and rates at each step. The single most important view: it tells the buyer whether their population is engaging.
+Credit pool
+Purchased / redeemed / remaining, with burn-rate projection and expiry date. Doubles as the expansion trigger.
+Engagement
+Bio page views across the cohort, AI chat conversations, leads captured, calls booked. Aggregate only — no member attribution beyond activation status.
+Outcomes
+Simulations running by lifecycle phase, aggregate income generated across the cohort, and distribution by layer (the 86% L1+L2 story). This is the number for the board.
+Member roster
+Per-member: name, email, activation status, bio page published (yes/no), simulation started (yes/no), last active. NOT shown: resume, artifacts, income, contacts, agent configuration.
+Export
+CSV export of the roster and a PDF cohort report for the 60-day Pilot deliverable. The report is the artifact the buyer forwards internally — it should be presentation-ready without editing.
+
+5. Cohort SME Assignment
+SIM-PRD-SME-001 already matches individual users to SMEs by expertise zone. This extends that to cohorts, so a bulk deal can promise named human coverage.
+
+Element
+Specification
+Dedicated SME
+An org can be assigned one SME (small cohorts) or a pod of SMEs (larger cohorts). Org members auto-match to an SME within the assigned pod, still respecting expertise-zone matching from SIM-PRD-SME-001.
+Pod matching
+Within the pod, standard matching applies: primary zone match, then secondary-zone overlap, then capacity, then round-robin. If no pod SME covers a member's zone, fall back to the global SME pool, or the unassigned queue.
+Capacity planning
+The admin sees required coverage when provisioning: 'This 200-member cohort skews Technology and Finance — you need at least 4 SMEs with those zones at current capacity.' Prevents selling coverage that does not exist.
+Org visibility
+The Org Admin sees WHICH SMEs cover their cohort (names, zones) as a value signal — 'your people have named human experts' — but never sees the recommendations an SME makes to any member. That stays between SME and member per SIM-PRD-SME-002.
+Member control
+Member opt-out from SIM-PRD-SME-002 still applies fully. An org sponsoring access cannot force a member to accept an SME.
+
+6. Co-Branding
+Cheap to build, disproportionately closes deals. The buyer sees their brand on every member's page.
+
+Surface
+Specification
+Bio page badge
+A small co-brand badge in the bio page footer: '[Org logo] Sponsored by [Org name]'. Subtle, tasteful, never competing with the member's own identity — the page belongs to the member, not the org.
+Invitation email
+Org logo in the header of the invitation and reminder emails.
+Member dashboard
+A light org banner in the member's GCC: '[Org] sponsors your Simulacrum access.' Also where the member sees what the org can and cannot see.
+Opt-out
+The member can hide the bio page co-brand badge. The org sponsors the access; it does not own the member's public identity. This protects the member and, in practice, is rarely used — but its existence matters.
+Asset spec
+Logo upload: PNG/SVG, transparent background, minimum 200px wide. Rendered at a fixed height with preserved aspect ratio. Admin can override or remove any uploaded asset.
+
+7. Billing & Invoicing
+Stripe self-serve checkout does not close a 500-seat deal. Bulk requires an invoice, a PO number, and net terms.
+
+Element
+Specification
+Invoice generation
+Admin → Orgs → Create invoice: org, credit quantity, unit price, total, PO number, net terms (default Net 30). Generated via Stripe Invoicing and emailed to the billing contact. Supports the flat-fee Pilot ($3,500 / 25 credits) as a single line item.
+Payment methods
+ACH, wire, and card via Stripe Invoicing. Purchase orders supported by recording the PO number on the invoice.
+Provisioning trigger
+Credits can be provisioned on invoice ISSUE (trust-based, faster time-to-value, appropriate for Pilots) or on PAYMENT (for larger contracts). Admin-selectable per org. Default: issue for Pilot, payment for Cohort/Enterprise.
+Renewal
+At 30 days before contract end, the admin sees a renewal task with pool utilization ('182 of 200 credits used — strong renewal case'). Expiring pools are the renewal conversation.
+Discount discipline
+Discount percentage is recorded on every org contract and surfaced in Admin → Orgs. Rationale: heavy discounting on an early large deal sets the price anchor for every deal after, and buyers in this market talk to each other. Visibility creates discipline.
+
+8. Offer Tiers
+Tier
+Size
+Commercials
+Includes
+Pilot
+25 credits
+$3,500 flat · 60 days
+Unlimited free bio pages, partner dashboard, cohort SME, co-branding, 60-day outcome report. Signable without procurement.
+Cohort
+100-500 credits
+Per-credit with volume breaks · annual
+Everything in Pilot, plus dedicated SME pod, capacity planning, CSV/domain auto-join, quarterly reporting.
+Enterprise
+500+ credits
+Seat pool + credits · annual
+Everything in Cohort, plus dedicated SME coverage guarantee, QBR, custom co-branding, PO/net terms, top-up flexibility.
+
+Free bio pages are unlimited at every tier and never metered. The paid unit is always the simulation. This keeps the buyer's entry decision cheap and every sponsored page working as a PLG asset.
+
+9. Data Model
+CREATE TABLE organizations (
+    id                 CHAR(9) PRIMARY KEY,
+    name               VARCHAR(200) NOT NULL,
+    org_type           VARCHAR(20) NOT NULL,  -- pilot|cohort|enterprise|partner
+    logo_url           VARCHAR(500) NULL,
+    auto_join_domains  JSON NULL,             -- ['acme.com']
+    credits_purchased  INT NOT NULL DEFAULT 0,
+    credits_remaining  INT NOT NULL DEFAULT 0,
+    credit_value_cents INT NOT NULL,          -- locked at contract time
+    discount_pct       DECIMAL(5,2) DEFAULT 0,
+    contract_start     DATE NULL,
+    contract_end       DATE NULL,
+    status             VARCHAR(20) DEFAULT 'active',
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ 
+CREATE TABLE org_members (
+    id           CHAR(9) PRIMARY KEY,
+    org_id       CHAR(9) NOT NULL REFERENCES organizations(id),
+    user_id      CHAR(9) NULL REFERENCES users(id),  -- null until signup
+    email        VARCHAR(160) NOT NULL,
+    role         VARCHAR(20) DEFAULT 'member',       -- member|org_admin
+    status       VARCHAR(20) DEFAULT 'invited',
+                 -- invited|active|declined|removed
+    invited_at   TIMESTAMP NULL,
+    activated_at TIMESTAMP NULL,
+    UNIQUE KEY uq_org_email (org_id, email)
+);
+ 
+CREATE TABLE credit_redemptions (
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,  -- high volume
+    org_id             CHAR(9) NOT NULL,
+    user_id            CHAR(9) NOT NULL,
+    simulation_id      CHAR(9) NULL,
+    credit_value_cents INT NOT NULL,
+    redeemed_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cr_org (org_id, redeemed_at)
+);
+ 
+CREATE TABLE org_invoices (
+    id            CHAR(9) PRIMARY KEY,
+    org_id        CHAR(9) NOT NULL REFERENCES organizations(id),
+    stripe_ref    VARCHAR(120) NULL,
+    po_number     VARCHAR(80) NULL,
+    credits       INT NOT NULL,
+    amount_cents  INT NOT NULL,
+    net_terms     INT DEFAULT 30,
+    status        VARCHAR(20) DEFAULT 'issued',  -- issued|paid|void
+    issued_at     TIMESTAMP NULL,
+    paid_at       TIMESTAMP NULL
+);
+ 
+-- Org SME pod (extends SIM-PRD-SME-001 matching)
+CREATE TABLE org_sme_pod (
+    org_id CHAR(9) NOT NULL,
+    sme_id CHAR(9) NOT NULL,
+    PRIMARY KEY (org_id, sme_id)
+);
+ 
+ALTER TABLE user_profiles
+    ADD COLUMN org_id CHAR(9) NULL REFERENCES organizations(id),
+    ADD COLUMN hide_org_cobrand BOOLEAN DEFAULT FALSE;
+
+10. Functional Requirements
+Org Entity & Roles
+FR-ORG-01  Organization is a first-class entity with name, type (pilot/cohort/enterprise/partner), logo, auto-join domains, credit pool, contract dates, and status. Managed internally at /admin/orgs.
+FR-ORG-02  Org Admin is a fourth authenticated role scoped to one organization. RBAC enforced server-side on every request. An Org Admin can never access any member's simulation contents, artifacts, income, contacts, or agent configuration — only aggregate metrics and per-member activation status.
+FR-ORG-03  Members retain full ownership of their account, bio page, and simulations. If the org relationship ends, the member keeps everything; only credit sponsorship stops. On joining, the member is shown plainly what the org can and cannot see.
+
+Credits
+FR-ORG-04  Orgs purchase a pool of simulation credits, not named seats. Any member may redeem one. Credit value is locked at contract time on the org record so later price changes do not alter active contracts. Every redemption is logged.
+FR-ORG-05  When a member starts a simulation, the system decrements the org pool if credits remain and the org is active. If the pool is empty or expired, the member falls through to the standard self-serve purchase path — never a hard block.
+FR-ORG-06  Free bio pages are unlimited at every tier and are never metered against the credit pool. The paid unit is the simulation.
+FR-ORG-07  Credits expire at contract end (default 60 days Pilot, 12 months Cohort/Enterprise). Admin can extend or top up an active pool mid-contract without a new contract.
+
+Bulk Invite
+FR-ORG-08  Three invite paths: CSV upload (validate, de-duplicate, preview with row-level errors, partial success supported), email-domain auto-join (admin-toggleable), and a capped/expiring invite link. All lead into the standard onboarding wizard.
+FR-ORG-09  Invitation and reminder emails are co-branded with the org logo, sent via the existing outreach infrastructure, respecting suppression and CAN-SPAM. Automated nudges to non-activated members at Day 3 and Day 10, then stop. Org Admin can trigger a manual reminder.
+
+Dashboard & SME
+FR-ORG-10  Partner dashboard shows: activation funnel (invited → signed up → bio published → simulation started), credit pool with burn-rate projection and expiry, aggregate engagement, aggregate outcomes by layer, and a member roster limited to activation status. CSV roster export and a presentation-ready PDF cohort report.
+FR-ORG-11  An org can be assigned one SME or a pod. Members auto-match within the pod using SIM-PRD-SME-001 rules, falling back to the global pool then the unassigned queue. Admin sees coverage requirements at provisioning time. Org Admin sees which SMEs cover the cohort but never their recommendations. Member SME opt-out (SIM-PRD-SME-002) always applies.
+
+Co-Branding & Billing
+FR-ORG-12  Co-branding surfaces: bio page footer badge, invitation email header, member GCC banner. Members may hide the bio page co-brand badge. Logo spec: PNG/SVG, transparent, min 200px wide, fixed-height render with preserved aspect ratio.
+FR-ORG-13  Admin can generate invoices (org, credits, unit price, PO number, net terms, default Net 30) via Stripe Invoicing supporting ACH, wire, and card. Provisioning triggers on invoice issue or payment, admin-selectable per org. Discount percentage is recorded on every contract and surfaced in Admin → Orgs.
+
+
+Document SIM-PRD-ORG-001  ·  Organizations & Bulk Provisioning
+Simulacrum · Bay Area Experiences Ventures · Confidential

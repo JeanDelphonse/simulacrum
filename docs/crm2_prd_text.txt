@@ -1,0 +1,152 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Prospect Discovery Agent
+Apollo Firmographic Search · Claude Fit-Scoring · Split Auto-Save · Acquisition/Size Guardrails · Review Queue
+Document ID
+SIM-PRD-CRM-002
+Version
+1.0
+Extends
+SIM-PRD-CRM-001 (Admin Outreach Pipeline). This adds automated discovery of new prospect firms into that pipeline. It does not change the pipeline, stages, or the semi-auto touch loop — it feeds them.
+Route
+/admin/contacts → Outreach → Discover. A discovery panel plus a review queue, admin-only.
+What it does
+Given a search profile (firmographic filters), the agent queries Apollo for matching companies, scores each with Claude for fit against Simulacrum's employer-pilot thesis, flags likely-acquired or too-large firms, and routes results: high-fit firms auto-save into the pipeline at 'Researched', everything else waits in a review queue for one-tap approval.
+Why Apollo, not web scraping
+There is no clean, permissible way to scrape web search results into a database, and search results are unstructured. Apollo returns structured firmographic data (name, domain, headcount, industry, location, leadership) and is already a platform-brokered integration (SIM-PRD-CONNECT-001). Web search is used only to ENRICH individual high-fit candidates, never as the discovery mechanism.
+The core insight
+Apollo can filter by size and industry but cannot judge FIT — whether a firm is one 'whose consultants' personal brand is the business and whose growth constraint is BD capacity.' That judgment is the Claude scoring layer, and it is what turns a raw company list into a qualified prospect list.
+Connects to
+SIM-PRD-CRM-001 (pipeline, stages, prospect record), SIM-PRD-CONNECT-001 (Apollo brokered), founder_ops.py (can run discovery on a schedule), the Corporate Partner sell sheet (defines the target thesis the scorer applies).
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+July 2026
+1. How Discovery Works
+Apollo finds companies that match firmographic filters. Claude judges which of them fit the thesis. High-fit firms flow straight into the pipeline; the rest wait in a review queue. The founder approves the queue in seconds instead of researching firms for hours.
+Step
+Engine
+What happens
+1 Filter
+Founder
+Define or pick a search profile: category, headcount range, geography, keywords. Saved and reusable.
+2 Search
+Apollo
+Query Apollo for companies matching the filters. Returns name, domain, headcount, industry, location, and leadership where available. Paginated; de-duplicated against existing prospects.
+3 Score
+Claude
+Each company is scored high / medium / low for FIT against the employer-pilot thesis, with a one-line rationale. Firms that look acquired, too large, or off-category are flagged, not scored high.
+4 Enrich
+Web search
+For high-fit candidates only, an optional enrichment pass finds a named founder/leader and a recent signal (funding, growth, press) to sharpen the first touch.
+5 Route
+System
+High-fit → auto-saved into the pipeline at 'Researched' (so Touch 1 drafts immediately). Medium/low and flagged → the review queue for one-tap approve or dismiss.
+2. The Search Profile
+A saved set of firmographic filters passed to Apollo. The founder can keep several — one for fractional-exec firms, one for boutique management consultancies, one per geography.
+Filter
+Specification
+Category / industry
+Apollo industry tags plus keyword match: management consulting, HR consulting, fractional executive, advisory, boutique strategy. Multiple allowed.
+Headcount range
+The defining filter for this motion: default 5-25 employees. Below 5 is often a solo shop with no team to onboard; above 25 drifts out of the boutique band the pitch targets.
+Geography
+Optional. US-wide by default (the product is not location-bound); can narrow to a metro for a focused campaign.
+Keywords
+Positive keywords ('fractional', 'boutique', 'advisory', 'consultancy') and negative keywords ('staffing', 'recruiting', 'franchise') to steer Apollo and pre-filter noise.
+Exclusions
+Domains already in the pipeline, already onboarded, or previously passed are excluded automatically so discovery never re-surfaces a firm already handled.
+3. The Claude Fit Scorer
+This is the intelligence layer. Apollo returns companies of the right size and industry; only Claude can judge whether a firm fits the thesis that its consultants' business development would become the firm's pipeline. Without this step, discovery is just a company list. With it, discovery is a QUALIFIED prospect list.
+What the scorer evaluates
+Is this a firm where the consultants ARE the product — senior people selling their own expertise — rather than a staffing shop or a productized-service business?
+Is business-development capacity plausibly the growth constraint (the pitch's core promise)?
+Is it independent, or does the signal suggest it was acquired or is a subsidiary? Acquired firms are flagged, never scored high.
+Is the headcount genuinely in the boutique band, or does Apollo's number look stale/mis-tagged?
+Output per company
+{
+  company: 'The Boutique COO',
+  domain: 'theboutiquecoo.com',
+  headcount: 12,
+  fit: 'high',                 # high | medium | low
+  rationale: 'Fractional CEO/COO collective; senior operators
+              selling their own expertise; BD capacity is the
+              constraint. Strong thesis match.',
+  flags: [],                   # e.g. ['possibly_acquired','too_large']
+  suggested_category: 'Fractional Exec',
+  route: 'auto_save'           # auto_save | review_queue
+}
+The scorer runs on Haiku for cost (this is a classification task, not generation), consistent with the model-routing approach in agents.json. A batch of 50 companies scores cheaply. The rationale is retained and shown in the pipeline so the founder always knows WHY a firm was surfaced.
+4. Split Auto-Save & the Review Queue
+Score / flag
+Route
+Behavior
+High fit, no flags
+Auto-save
+Enters the pipeline at 'Researched' with fit=high, category, and rationale. Touch 1 drafts immediately in the founder-ops briefing. The founder sees them as new researched prospects, ready to send.
+Medium / low fit
+Review queue
+Waits for the founder. One-tap Approve (enters at 'Researched') or Dismiss (recorded so it is never re-surfaced).
+Flagged (acquired / too large / off-category)
+Review queue, marked
+Held with the flag visible ('possibly acquired — verify'), so a stale or wrong firm is caught BEFORE it costs a touch. Never auto-saved regardless of fit.
+The acquisition/size guardrail is the feature that would have caught Blue Beyond (acquired by BDO, 2025) and Waterstone (acquired by West Monroe, 2019) before they reached the pipeline — the exact failures hit during manual research. A flagged firm never auto-saves, even at high apparent fit.
+The founder controls the auto-save threshold: default is 'high fit only auto-saves.' It can be tightened (nothing auto-saves; review everything) or the batch size capped, so a large Apollo result set never floods the pipeline unreviewed.
+5. Running Discovery
+Mode
+Specification
+On demand
+The founder picks a saved profile and clicks 'Discover'. Apollo query, scoring, and routing run; results land in the pipeline (auto-saved) and the review queue within the run. A progress state shows companies found / scored / routed.
+Scheduled
+A profile can run on a cadence (e.g. weekly) via the founder-ops job, so new firms matching the profile surface without the founder initiating. New results appear in the review queue and the morning briefing summarizes them ('6 new prospects auto-saved, 9 awaiting review').
+Rate + cost control
+Apollo calls respect the account's plan limits; batch size is capped per run (default 50). Scoring cost is bounded because it runs on Haiku. The founder sees an estimated Apollo credit cost before a large run.
+Dedup + memory
+Every discovered domain is remembered whether saved, queued, or dismissed, so re-running a profile never re-surfaces the same firm. Dismissed firms stay dismissed unless the founder clears them.
+6. Data Model
+CREATE TABLE discovery_profiles (
+    id           CHAR(9) PRIMARY KEY,
+    name         VARCHAR(120) NOT NULL,
+    categories   JSON NULL,        -- industry tags + keywords
+    headcount_min INT DEFAULT 5,
+    headcount_max INT DEFAULT 25,
+    geography    VARCHAR(160) NULL,
+    keywords_pos JSON NULL,
+    keywords_neg JSON NULL,
+    auto_save_threshold VARCHAR(10) DEFAULT 'high',  -- high|none
+    schedule     VARCHAR(20) NULL, -- null | weekly | monthly
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE discovery_candidates (
+    id            CHAR(9) PRIMARY KEY,
+    profile_id    CHAR(9) NULL REFERENCES discovery_profiles(id),
+    company       VARCHAR(200) NOT NULL,
+    domain        VARCHAR(200) NOT NULL,
+    headcount     INT NULL,
+    industry      VARCHAR(120) NULL,
+    location      VARCHAR(160) NULL,
+    leader_name   VARCHAR(160) NULL,   -- from Apollo/enrichment
+    fit           VARCHAR(10) NULL,    -- high|medium|low
+    rationale     TEXT NULL,
+    flags         JSON NULL,           -- possibly_acquired, too_large...
+    route         VARCHAR(20) NULL,    -- auto_save|review_queue
+    status        VARCHAR(20) DEFAULT 'queued',
+                  -- queued | saved | dismissed
+    prospect_id   CHAR(9) NULL,        -- set when saved (CRM-001 link)
+    discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_domain (domain)      -- global dedup memory
+);
+-- Saving a candidate creates an admin_prospects row (CRM-001)
+-- at stage 'researched', carrying fit, category, rationale.
+7. Functional Requirements
+Discovery
+FR-DSC-01  A Discover panel in the Outreach tab lets the founder define and save reusable search profiles (categories/keywords, headcount range default 5-25, geography, positive/negative keywords). Profiles run on demand or on a schedule via founder-ops.
+FR-DSC-02  Discovery queries Apollo (platform-brokered) for matching companies, returning name, domain, headcount, industry, location, and leadership where available. Results are de-duplicated against existing prospects and previously discovered domains (uq_domain), so a firm is never surfaced twice.
+Scoring & guardrails
+FR-DSC-03  Each company is scored high/medium/low for fit against the employer-pilot thesis by Claude (Haiku), with a retained one-line rationale. The rationale is shown wherever the prospect appears.
+FR-DSC-04  Firms exhibiting acquisition, subsidiary, oversize, or off-category signals are flagged and NEVER auto-saved regardless of apparent fit. Flags are shown in the review queue ('possibly acquired — verify').
+Routing
+FR-DSC-05  Routing: high-fit unflagged firms auto-save into the CRM-001 pipeline at stage 'Researched' (Touch 1 drafts immediately); medium/low and all flagged firms go to a review queue for one-tap Approve (enter at 'Researched') or Dismiss (remembered, never re-surfaced). The auto-save threshold is founder-configurable, defaulting to high-only; it can be set so nothing auto-saves.
+FR-DSC-06  High-fit candidates may be enriched via a web-search pass for a named leader and recent signal before entering the pipeline. Enrichment is best-effort and never blocks saving.
+FR-DSC-07  Batch size is capped per run (default 50) and Apollo usage respects plan limits; the founder sees an estimated credit cost before a large run. Scheduled runs summarize results in the morning briefing (auto-saved count and awaiting-review count).
+Document SIM-PRD-CRM-002  ·  Prospect Discovery Agent
+Simulacrum · Bay Area Experiences Ventures · Confidential

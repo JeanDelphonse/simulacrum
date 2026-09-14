@@ -1,0 +1,236 @@
+PRODUCT REQUIREMENTS DOCUMENT
+Integration Connection Experience
+Platform-Brokered by Default · One-Tap OAuth · Contextual Just-in-Time · Layer-Gated · Advanced Opt-In
+
+Document ID
+SIM-PRD-CONNECT-001
+Version
+1.0
+Problem
+The current Settings → Integrations page asks users to configure up to nine technical integrations (API keys, third-party accounts) before they understand why any of them matter. This is too technical for the majority of users and creates a setup wall at the worst possible moment — right after onboarding, before the product has demonstrated value.
+Solution
+Shrink the user-facing integration surface from nine technical connections to three consumer-grade OAuth buttons, surfaced one at a time, in context, when an agent needs them. Most integrations become invisible platform infrastructure the user never configures. Advanced users retain the option to bring their own accounts.
+Three tiers
+PLATFORM-BROKERED (invisible; runs on Simulacrum's infrastructure): internal_email, apollo, pandadoc. ONE-TAP OAUTH (consumer sign-in, surfaced contextually): stripe, cal_com, linkedin. ADVANCED-ONLY (hidden unless the user seeks it): convertkit, kajabi, alpaca.
+Core shift
+From 'configure your integrations up front' to 'connect this to unlock that, at the moment it matters.' The Settings → Integrations page becomes a status dashboard, not a configuration checklist.
+Connects to
+SIM-PRD-ONBOARD-001 v1.1 (no integration setup in onboarding), SIM-PRD-AGENTSEL-001 (agents declare their integration needs), SIM-REQ-LIFECYCLE-001 (layer activation timing), agents.json (integration-to-agent mapping).
+Author
+Jean Moussa Delphonse · Bay Area Experiences Ventures
+Date
+June 2026
+
+1. The Nine Integrations, Mapped
+Every integration is classified into one of three tiers based on a single question: does this have to be the user's own account, and if so, how consumer-friendly is the connection?
+
+Integration
+Agents
+Tier
+Rationale
+internal_email
+10
+Platform-brokered
+Already Simulacrum's infrastructure. Outreach sends on the platform domain. User never sees it.
+apollo
+8
+Platform-brokered
+Prospect research runs on the platform's Apollo seats. No user account needed.
+pandadoc
+5
+Platform-brokered
+Document generation on the platform account. User reviews and signs the output only.
+stripe
+6
+One-tap OAuth
+Stripe Connect — user OAuths to receive money. Must be their account (funds flow to them), but the flow is consumer-grade.
+cal_com
+3
+One-tap OAuth
+Their calendar and availability. Standard OAuth users recognize from everywhere.
+linkedin
+2
+One-tap OAuth
+Their profile and posting. Inherently personal; standard OAuth.
+convertkit
+5
+Advanced-only
+Email list ownership. Most users rely on platform-brokered email; power users with an existing list connect their own.
+kajabi
+5
+Advanced-only
+Course hosting. Matters only at L3, only for users who already have Kajabi. Platform hosts otherwise.
+alpaca
+1
+Advanced-only
+Brokerage for DCA. Sensitive, L5-only, opt-in by nature. Never surfaced unless the user seeks it.
+
+The result for a typical user: three platform-brokered integrations they never see, three one-tap OAuths surfaced contextually as agents run, and three advanced integrations that don't exist in their world unless they go looking. Nine technical connections become three consumer buttons, shown one at a time.
+
+2. Tier 1 — Platform-Brokered (Invisible)
+These integrations run entirely on Simulacrum's own infrastructure. The user never sees a key, an account, or a connection prompt. The agents that use them simply work.
+
+Element
+Specification
+internal_email
+Outreach and sequence sends run through the platform's own email infrastructure (SendGrid on Simulacrum-managed domains with SPF/DKIM/DMARC). The user's name appears as sender; the sending rails are the platform's. Deliverability, suppression, and rate limiting are managed centrally.
+apollo
+Prospect research and contact discovery run on platform-held Apollo seats. Agents query on the user's behalf; results populate the user's CRM. The user never provisions Apollo.
+pandadoc
+Proposals, SOWs, agreements, and riders are generated and sent through the platform's PandaDoc account. The user reviews drafts and the recipient signs; no user PandaDoc account exists.
+Cost model
+Platform bears the per-use cost of these integrations (folded into simulation pricing). This is the trade for zero user friction. Usage is metered per user for cost tracking (feeds Analytics).
+User visibility
+In the status dashboard (Section 6), these appear as 'Powered by Simulacrum' — the user sees that outreach, research, and documents are handled, without any action required.
+
+3. Tier 2 — One-Tap OAuth (Contextual)
+These must be the user's own account, but the connection is a consumer-grade OAuth — the same 'Sign in with...' flow users know from everywhere. Critically, they are NOT requested up front. Each is surfaced just-in-time, when the agent that needs it runs, with the reason attached.
+
+Integration
+Triggered by
+Contextual prompt the user sees
+cal_com
+booking_page agent (L1)
+'To let prospects book calls with you, connect your calendar.' — one Connect button.
+stripe
+rate_card / any payment link (L1)
+'To get paid, connect your account to receive payments.' — Stripe Connect OAuth.
+linkedin
+linkedin_optimization (L1)
+'To update your LinkedIn profile, connect your account.' — LinkedIn OAuth.
+
+The Contextual Connection Card
+When an agent needs a Tier-2 integration the user hasn't connected, the agent's output surfaces a single connection card instead of failing or going to settings:
+One integration, one reason, one button — never a list. The card states the concrete benefit ('let prospects book calls'), not the mechanism ('configure Cal.com API').
+The agent's work is not blocked waiting. It completes everything it can and the artifact shows a 'Connect to activate' state for the part that needs the integration (e.g. the booking page is designed and ready; connecting the calendar makes it live).
+Once connected, the pending action activates automatically — no re-run required. The user connects once and the integration is available to every future agent that needs it.
+Dismissable. If the user isn't ready, the card collapses to a subtle 'Connect calendar' chip that stays available but doesn't nag.
+
+4. Tier 3 — Advanced-Only (Hidden by Default)
+These integrations are invisible to the typical user. They surface only if the user has an existing account and seeks the connection, or if a platform-hosted default is insufficient. Most users never encounter them.
+
+Integration
+Handling
+convertkit
+Default: newsletter and lead-magnet delivery use platform-brokered email. Advanced: a user who already runs a ConvertKit list can connect it in advanced settings so those agents publish to their existing audience instead.
+kajabi
+Default: courses, memberships, and landing pages are hosted on a platform-provided surface. Advanced: a user with an existing Kajabi account can connect it so L3 agents publish there. Only relevant once L3 activates.
+alpaca
+Never surfaced proactively. Available only in advanced settings for the DCA agent, and only after L5 activates. The user must explicitly opt into connecting a brokerage — appropriate for its sensitivity.
+
+Advanced integrations live behind a 'Connect your own tools (advanced)' disclosure in settings — collapsed by default, discoverable by the power users who want it, invisible to everyone else.
+
+5. Progressive Disclosure by Layer
+Integration needs map onto the five layers. An integration is never surfaced before the layer that needs it activates. This alone removes most of the perceived setup burden — a user starting L1 is never confronted with L3 or L5 connections.
+
+Layer
+Integrations that may surface
+User experience
+L1
+cal_com, stripe, linkedin (one-tap, contextual)
+Up to three consumer OAuths, each surfaced only when its agent runs. Platform-brokered email/apollo/pandadoc are already working invisibly.
+L2
+(none new — reuses L1)
+No new connections. Workshops and speaking use already-connected calendar and payments.
+L3
+kajabi (advanced, optional)
+Default platform hosting means zero required connections. Kajabi only if the user opts in.
+L4
+convertkit (advanced, optional)
+Default platform email means zero required connections. ConvertKit only if the user opts in.
+L5
+alpaca (advanced, opt-in only)
+Nothing surfaced proactively. Brokerage connection only if the user explicitly seeks DCA automation.
+
+A user can run a complete L1 + L2 simulation — the fastest path to first income — with at most three one-tap OAuth connections, and zero if they only want the agents that don't need them. No API keys, no third-party account setup, ever.
+
+6. Settings → Integrations Becomes a Status Dashboard
+The page is no longer a configuration checklist. It becomes a read-mostly status view that answers 'what's working?' rather than demanding 'what will you set up?'
+
+Section
+Contents
+Powered by Simulacrum
+The three platform-brokered integrations shown as always-on status: 'Outreach email · Active', 'Prospect research · Active', 'Documents · Active'. No action, just reassurance that it's handled.
+Your connections
+The Tier-2 OAuth integrations with status: connected (with account name + disconnect option) or 'Connect' button. This is where a user can proactively connect before an agent asks, if they want to.
+Advanced
+Collapsed 'Connect your own tools' disclosure containing the Tier-3 integrations (ConvertKit, Kajabi, Alpaca). Hidden until expanded.
+Health
+If a connected OAuth integration breaks (token expired, revoked), a single clear banner: 'Reconnect your calendar to keep taking bookings.' One reason, one button — the same contextual pattern.
+
+7. Graceful Degradation
+An agent that needs an unconnected Tier-2 integration must never hard-fail. It does everything it can and marks the rest as 'connect to activate.'
+
+def run_agent(agent, user):
+    needs = agent.required_integrations   # from agents.json
+    for integ in needs:
+        tier = classify(integ)  # brokered | oauth | advanced
+ 
+        if tier == 'brokered':
+            continue                       # always available
+ 
+        if tier == 'oauth' and not user.has_connected(integ):
+            # Do all work that doesn't need the integration
+            artifact = agent.produce_partial(user)
+            artifact.pending_connection = integ
+            artifact.cta = contextual_prompt(integ)  # 'connect calendar'
+            return artifact   # not a failure — a 'ready to activate' state
+ 
+    # Fully connected: produce complete artifact
+    return agent.produce(user)
+ 
+# When the user connects, activate anything that was pending:
+def on_integration_connected(user, integ):
+    for artifact in user.artifacts_pending(integ):
+        artifact.activate()   # booking page goes live, etc.
+        notify(user, f'{integ} connected — your {artifact.name} is now live.')
+
+8. Data Model
+-- Integration tier is metadata, not per-user config
+CREATE TABLE integration_registry (
+    key           VARCHAR(40) PRIMARY KEY,  -- 'cal_com', 'apollo', ...
+    tier          VARCHAR(20) NOT NULL,     -- brokered|oauth|advanced
+    display_name  VARCHAR(80) NOT NULL,
+    benefit_copy  VARCHAR(200) NULL,   -- 'let prospects book calls'
+    min_layer     VARCHAR(4) NULL      -- earliest layer it can surface
+);
+ 
+-- Only user-owned connections are stored per user.
+-- Brokered integrations are NOT rows here — they're always-on.
+CREATE TABLE user_connections (
+    id            CHAR(9) PRIMARY KEY,
+    user_id       CHAR(9) NOT NULL REFERENCES users(id),
+    integration   VARCHAR(40) NOT NULL,   -- oauth/advanced keys only
+    status        VARCHAR(20) DEFAULT 'connected',  -- connected|expired|revoked
+    account_label VARCHAR(160) NULL,      -- shown in dashboard
+    oauth_ref     VARCHAR(200) NULL,      -- token vault reference, not raw
+    connected_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ 
+-- Artifacts can be pending a connection
+ALTER TABLE artifacts
+    ADD COLUMN pending_connection VARCHAR(40) NULL,
+    ADD COLUMN activation_state VARCHAR(20) DEFAULT 'active';
+        -- active | pending_connection
+
+9. Functional Requirements
+Tiering
+FR-CON-01  Every integration carries a tier in integration_registry: brokered (internal_email, apollo, pandadoc), oauth (stripe, cal_com, linkedin), or advanced (convertkit, kajabi, alpaca). Tier drives whether and how it surfaces to the user.
+FR-CON-02  Platform-brokered integrations require zero user action and are never presented as configuration. They run on platform infrastructure and appear only as always-on status ('Powered by Simulacrum').
+
+Contextual OAuth
+FR-CON-03  Tier-2 (oauth) integrations are never requested during onboarding or up front. Each surfaces just-in-time when the agent needing it runs, as a single contextual card stating one benefit and one Connect button — consumer-grade OAuth, no keys.
+FR-CON-04  An agent needing an unconnected oauth integration must not hard-fail. It produces a partial artifact in a 'connect to activate' state. When the user connects, pending artifacts activate automatically with no re-run, and the user is notified.
+FR-CON-05  A connection made once is available to all future agents. Connecting is per-integration, not per-agent.
+
+Advanced & Layer-Gating
+FR-CON-06  Tier-3 (advanced) integrations are hidden behind a collapsed 'Connect your own tools (advanced)' disclosure and never surfaced proactively. ConvertKit and Kajabi have platform-hosted defaults; Alpaca is opt-in only and only after L5 activates.
+FR-CON-07  No integration surfaces before its min_layer activates. A user in L1 never sees L3/L4/L5 integrations. This gates the entire integration surface by progression.
+
+Status Dashboard
+FR-CON-08  Settings → Integrations is a status dashboard, not a checklist: 'Powered by Simulacrum' (brokered, always-on), 'Your connections' (oauth, connect/disconnect), and collapsed 'Advanced'. Broken connections show a single contextual reconnect banner.
+FR-CON-09  Only user-owned (oauth/advanced) connections are stored in user_connections with a vaulted token reference (never a raw key in application tables). Brokered integrations are not per-user rows.
+
+
+Document SIM-PRD-CONNECT-001  ·  Integration Connection Experience
+Simulacrum · Bay Area Experiences Ventures · Confidential
