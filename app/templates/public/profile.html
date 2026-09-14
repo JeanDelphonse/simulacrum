@@ -4,9 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='simi_logo.jpg') }}">
-  <title>{{ profile.display_name or 'Profile' }} — Simulacrum</title>
-  {% if profile.noindex %}<meta name="robots" content="noindex">{% endif %}
-  <meta property="og:title" content="{{ profile.display_name or 'Simulacrum Profile' }}">
+  <title>{{ seo.title }}</title>
+  <meta name="description" content="{{ seo.description }}">
+  {# No published BioPage yet, so this is a stub rather than a document: follow
+     the links out of it, but do not index the page itself. #}
+  <meta name="robots" content="{{ 'index, follow' if seo.indexable else 'noindex, follow' }}">
+  <link rel="canonical" href="{{ seo.canonical }}">
+  <meta property="og:site_name" content="{{ seo.site_name }}">
+  <meta property="og:title" content="{{ seo.title }}">
+  <meta property="og:url" content="{{ seo.canonical }}">
   {% if profile.tagline %}<meta property="og:description" content="{{ profile.tagline }}">{% endif %}
   {% if profile.avatar_path %}<meta property="og:image" content="{{ url_for('public.serve_avatar', filename=profile.avatar_path, _external=True) }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">

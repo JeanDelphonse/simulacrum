@@ -69,11 +69,17 @@ def profile_page(username):
                 from app.models.user import User as _User
                 _owner_user = _User.query.get(profile.user_id)
                 pending = _priv.pending_request_for_session(profile.user_id)
+                from app.services import bio_seo as _seo
                 return render_template(
                     'public/bio_teaser.html',
                     profile=profile,
                     user=_owner_user,
                     slug=slug,
+                    seo=_seo.seo_context(profile, bio_page,
+                                         {'full_name': _priv.teaser_context(
+                                             profile, _owner_user, bio_page
+                                         ).get('display_name', '')},
+                                         request.url_root, slug),
                     teaser=_priv.teaser_context(profile, _owner_user, bio_page),
                     access_status=request.args.get('access', ''),
                     has_pending=bool(pending and pending.is_pending),
@@ -146,6 +152,7 @@ def profile_page(username):
             except Exception:
                 pass
 
+        from app.services import bio_seo
         return render_template(
             'public/bio_page.html',
             bio_page=bio_page,
@@ -157,6 +164,8 @@ def profile_page(username):
             hide_owner_bar=request.args.get('embed') == '1',
             connections_panel=connections_panel,
             org_cobrand=org_cobrand,
+            seo=bio_seo.seo_context(profile, bio_page, ctx,
+                                    request.url_root, slug),
         )
 
     # ── Fallback: legacy profile page ────────────────────────────────────
@@ -225,6 +234,11 @@ def profile_page(username):
     is_owner = current_user.is_authenticated and current_user.id == profile.user_id
     bio_sections = _parse_bio(profile.bio) if profile.bio else None
 
+    # The legacy profile page answers the same /u/ URL, so it gets the same
+    # title pattern and the same indexability gate. It has no BioPage, which
+    # is_indexable() treats as not-a-document — correct: this page is a stub
+    # awaiting a real bio.
+    from app.services import bio_seo
     return render_template(
         'public/profile.html',
         profile=profile,
@@ -235,6 +249,12 @@ def profile_page(username):
         is_owner=is_owner,
         bio_sections=bio_sections,
         subjects=_SUBJECTS,
+        seo=bio_seo.seo_context(
+            profile, None,
+            {'full_name': profile.display_name or (user.full_name if user else ''),
+             'positioning': profile.tagline or '',
+             'about_text': profile.bio or ''},
+            request.url_root, slug),
     )
 
 

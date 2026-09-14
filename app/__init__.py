@@ -290,6 +290,18 @@ def create_app(config_name=None):
         except Exception:
             return {'blog_nav_visible': False}
 
+    # One canonical origin for every absolute URL a template emits. Built from
+    # the request host it would vary with however the visitor arrived (www or
+    # bare), which is the duplicate-URL problem canonicals exist to solve.
+    @app.context_processor
+    def _inject_canonical_origin():
+        from app.services import bio_seo
+        from flask import request as _rq
+        try:
+            return {'canonical_origin': bio_seo.canonical_origin(_rq.url_root)}
+        except Exception:
+            return {'canonical_origin': ''}
+
     # The shared public footer (partials/_footer_public.html) links to the
     # Playbook from every external page, not just the landing route that used to
     # pass this in, so it has to be available everywhere the footer renders.

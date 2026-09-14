@@ -9,6 +9,12 @@
   <meta property="og:title" content="Explore professionals on Simulacrum">
   <meta property="og:description" content="Discover professionals powered by Simulacrum. Chat with AI assistants, explore services, and connect with talent.">
   <meta property="og:type" content="website">
+  {# The directory the bio pages cross-link back to. ?category= filters are the
+     same listing sliced, so every one of them points its canonical here rather
+     than competing with this page for the same query. #}
+  <link rel="canonical" href="{{ canonical_origin }}{{ url_for('public.explore') }}">
+  <meta property="og:url" content="{{ canonical_origin }}{{ url_for('public.explore') }}">
+  <meta name="robots" content="{{ 'index, follow' if not request.args.get('category') or request.args.get('category') == 'all' else 'noindex, follow' }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">

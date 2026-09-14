@@ -58,10 +58,93 @@ def _get_landing_data():
 
 @pages_bp.route('/sitemap.xml')
 def sitemap():
-    return send_from_directory(
-        current_app.static_folder, 'sitemap.xml',
-        mimetype='application/xml'
-    )
+    """The curated static sitemap with every public bio page appended.
+
+    static/sitemap.xml stays the hand-maintained part -- the marketing and legal
+    URLs, with their own priorities. The bio pages cannot live there because they
+    come and go with the members, so they are injected before the closing tag on
+    each request.
+
+    Inclusion is decided by bio_seo.is_indexable, the same gate the page itself
+    uses for its robots tag, so the sitemap never advertises a URL that then
+    tells the crawler to go away. If the query fails the static file is served
+    unchanged rather than nothing at all.
+    """
+    import os as _os
+    from flask import Response
+    from xml.sax.saxutils import escape as _xesc
+
+    path = _os.path.join(current_app.static_folder, 'sitemap.xml')
+    try:
+        with open(path, 'r', encoding='utf-8') as fh:
+            base = fh.read()
+    except OSError:
+        logger.warning('sitemap: static base unreadable at %s', path)
+        return Response('', mimetype='application/xml', status=404)
+
+    try:
+        from app.services import bio_seo
+        root = bio_seo.canonical_origin(request.url_root)
+        rows = []
+        for bio in bio_seo.indexable_bios():
+            loc = _xesc(bio_seo.bio_url(root, bio['slug']))
+            parts = ['  <url>', '    <loc>' + loc + '</loc>']
+            if bio['updated_at']:
+                parts.append('    <lastmod>'
+                             + bio['updated_at'].strftime('%Y-%m-%d')
+                             + '</lastmod>')
+            parts.append('    <changefreq>weekly</changefreq>')
+            parts.append('    <priority>0.7</priority>')
+            parts.append('  </url>')
+            rows.append('\n'.join(parts))
+        if rows:
+            block = ('\n' + '  <!-- Public bio pages -->' + '\n'
+                     + '\n'.join(rows) + '\n')
+            base = base.replace('</urlset>', block + '</urlset>')
+    except Exception:
+        logger.warning('sitemap: could not append bio pages', exc_info=True)
+
+    return Response(base, mimetype='application/xml')
+
+
+@pages_bp.route('/robots.txt')
+def robots():
+    """Point crawlers at the sitemap and keep them out of the signed-in app.
+
+    There was no robots.txt at all, which left the sitemap undiscoverable short
+    of manual submission and the authenticated surface open to crawl attempts.
+    """
+    from flask import Response
+    from app.services import bio_seo
+    root = bio_seo.canonical_origin(request.url_root)
+    lines = [
+        'User-agent: *',
+        'Allow: /',
+        '',
+        '# The signed-in application: nothing here is a public document.',
+        'Disallow: /dashboard',
+        'Disallow: /settings',
+        'Disallow: /simulations/',
+        'Disallow: /admin',
+        'Disallow: /api/',
+        'Disallow: /onboarding',
+        'Disallow: /sme',
+        'Disallow: /partners/clients/',
+        '',
+        '# Owner-only and single-use URLs.',
+        'Disallow: /u/*/edit',
+        'Disallow: /share/',
+        'Disallow: /outreach/',
+        'Disallow: /verify/',
+        'Disallow: /forgot-password',
+        '',
+        '# Filtered views of the directory duplicate the canonical listing.',
+        'Disallow: /explore?*',
+        '',
+        'Sitemap: ' + root + '/sitemap.xml',
+        '',
+    ]
+    return Response('\n'.join(lines), mimetype='text/plain')
 
 
 @pages_bp.route('/ping')
