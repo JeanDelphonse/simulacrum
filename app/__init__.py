@@ -230,6 +230,14 @@ def create_app(config_name=None):
         if _req.path in ('/login', '/register', '/verify-sent', '/forgot-password',
                          '/partners/apply', '/'):
             return
+        # Machine-requested files served from the web root rather than /static/.
+        # A browser asks for these on its own, so redirecting them to onboarding
+        # means a half-onboarded user sees no favicon at all and the redirect is
+        # cached in its place.
+        if _req.path in ('/favicon.ico', '/apple-touch-icon.png',
+                         '/apple-touch-icon-precomposed.png',
+                         '/site.webmanifest', '/robots.txt'):
+            return
 
         if not _cu.is_authenticated or not _cu.email_verified:
             return

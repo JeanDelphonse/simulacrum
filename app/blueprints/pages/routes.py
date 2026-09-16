@@ -107,6 +107,68 @@ def sitemap():
     return Response(base, mimetype='application/xml')
 
 
+# ── Site icons ──────────────────────────────────────────────────────────────
+# Browsers request /favicon.ico from the web root on their own, and iOS asks for
+# /apple-touch-icon.png (and the -precomposed variant) at the root when it wants
+# a home-screen icon, both regardless of any <link> tag. Serving only from
+# /static/icons/ would leave those root hits 404-ing in the logs and let an old
+# cached icon survive, so the root paths are answered here too.
+_ICON_MAX_AGE = 60 * 60 * 24 * 30      # 30 days; the ?v= query busts it
+
+
+def _send_icon(filename, mimetype):
+    from flask import send_from_directory
+    import os as _os
+    resp = send_from_directory(
+        _os.path.join(current_app.static_folder, 'icons'), filename,
+        mimetype=mimetype,
+    )
+    resp.headers['Cache-Control'] = 'public, max-age=%d' % _ICON_MAX_AGE
+    return resp
+
+
+@pages_bp.route('/favicon.ico')
+def favicon():
+    return _send_icon('favicon.ico', 'image/x-icon')
+
+
+@pages_bp.route('/apple-touch-icon.png')
+@pages_bp.route('/apple-touch-icon-precomposed.png')
+def apple_touch_icon():
+    return _send_icon('apple-touch-icon.png', 'image/png')
+
+
+@pages_bp.route('/site.webmanifest')
+def site_webmanifest():
+    """Minimal manifest, so the 512px icon has somewhere to be used.
+
+    Android and Chrome only reach that size through a manifest; a bare <link
+    rel="icon" sizes="512x512"> is ignored there. Deliberately minimal: name,
+    icons and colours only. Without a service worker this adds no install
+    prompt or offline behaviour — it just tells the OS which artwork to use if
+    someone saves the site to their home screen.
+    """
+    from flask import jsonify
+    static = request.url_root.rstrip('/') + '/static/icons/'
+    resp = jsonify({
+        'name': 'Simulacrum',
+        'short_name': 'Simulacrum',
+        'icons': [
+            {'src': static + 'favicon-32.png', 'sizes': '32x32', 'type': 'image/png'},
+            {'src': static + 'apple-touch-icon.png', 'sizes': '180x180',
+             'type': 'image/png'},
+            {'src': static + 'simulacrum-icon-512.png', 'sizes': '512x512',
+             'type': 'image/png'},
+        ],
+        'theme_color': '#0D1B3E',
+        'background_color': '#0D1B3E',
+        'display': 'standalone',
+        'start_url': '/',
+    })
+    resp.headers['Content-Type'] = 'application/manifest+json'
+    return resp
+
+
 @pages_bp.route('/robots.txt')
 def robots():
     """Point crawlers at the sitemap and keep them out of the signed-in app.

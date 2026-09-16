@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='simi_logo.jpg') }}">
+  {% include 'partials/_favicon.html' %}
   {# Title, description and indexability all come from app/services/bio_seo.py,
      which the sitemap reads too — so a URL is never advertised in one place and
      withheld in the other. #}

@@ -7,6 +7,7 @@
      right person, but Private Mode means this is never indexed — the gate is a
      retrieval boundary, so there is nothing here worth crawling. #}
   <title>{{ seo.title }}</title>
+  {% include 'partials/_favicon.html' %}
   <meta name="robots" content="noindex, follow">
   {# SIM-PRD-PRIVACY-001: the teaser IS indexable; gated content is never rendered here. #}
   <meta name="description" content="{{ (teaser.headline or (teaser.display_name ~ ' — private profile'))[:160] }}">
