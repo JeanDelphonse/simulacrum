@@ -184,10 +184,24 @@
 
   /* Hero user cards grid — same style as explore page */
   .hero-cards-grid {
-    flex-shrink: 0; width: 460px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; align-self: center;
+    width: 100%;
+    display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
   }
   .hero-cards-grid .hc {
+  /* The hero's right-hand column: trust proof stacked over the live bio cards.
+     The width and centring that used to live on .hero-cards-grid belong here
+     now, so the two stay the same width as each other. */
+  .hero-side {
+    flex-shrink: 0; width: 460px; align-self: center;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  /* Tighter than the same card in the trust section: the hero is dense, and at
+     full padding this pushed the bio cards off the fold. */
+  .hero-pcard { padding: 18px; background: rgba(255,255,255,.07); }
+  .hero-pcard .k { font-size: 17px; margin-bottom: 6px; }
+  .hero-pcard p { font-size: 13.5px; line-height: 1.6; }
+  .hero-pcard .ptag { margin-top: 10px; }
+
     background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
     padding: 1.125rem; box-shadow: 0 4px 20px rgba(0,0,0,.18);
     transition: box-shadow .15s, border-color .15s;
@@ -322,7 +336,12 @@
     .lp-s { padding: 60px 0; }
     .lp-nav-links, .lp-nav-ctas { display: none; }
     .lp-hamburger { display: flex; }
+    /* The bio cards go, the trust card stays — so the hero stacks instead of
+       keeping a 460px column beside the copy. */
     .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+    .hero-inner { flex-direction: column; align-items: flex-start; gap: 32px; }
+    .hero-side { width: 100%; align-self: stretch; }
+    .hero-pcard { max-width: 560px; }
     .sp-card { flex: 0 0 85%; }
     .sp-chevron { display: none; }
     #hero { padding-top: calc(var(--nav-h) + 44px); padding-bottom: 56px; }
@@ -435,7 +454,14 @@
   }
 
   /* ── Why you can trust it: proof cards ───────────────────────────── */
-  .proof3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-top: 32px; }
+  /* auto-fit rather than a hardcoded count: two cards remain here now that the
+     Playbook card leads the hero, and the track count follows the card count
+     instead of leaving a dead third column. The 900px rule below still forces
+     a single column on small screens. */
+  .proof3 {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px; margin-top: 32px;
+  }
   /* display/color are explicit because the Playbook card is an <a>, not a div —
      without them it renders inline and picks up the default link colour. */
   .pcard {
@@ -742,36 +768,58 @@
       </div>
       <div class="hero-tagline">“See the consequences before you live them.”</div>
     </div>
-    <!-- Live user bio cards -->
-    {% if hero_cards %}
-    <div class="hero-cards-grid">
-      {% for c in hero_cards %}
-      <a class="hc" href="/u/{{ c.slug }}">
-        <div class="card-top">
-          {% if c.avatar_path %}
-          <img class="card-avatar" src="{{ url_for('public.serve_avatar', filename=c.avatar_path) }}" alt="{{ c.display_name }}" loading="lazy">
-          {% else %}
-          <div class="card-avatar-placeholder">{{ c.display_name[0]|upper if c.display_name else '?' }}</div>
-          {% endif %}
-          <div class="card-meta">
-            <div class="card-name">{{ c.display_name }}</div>
-            <div class="card-zone">{{ c.category }}</div>
-          </div>
-        </div>
-        {% if c.tagline %}<p class="card-tagline">{{ c.tagline }}</p>{% endif %}
-        <div class="card-footer">
-          {% if c.like_count %}
-          <span class="card-like">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            {{ c.like_count }}
-          </span>
-          {% else %}<span></span>{% endif %}
-          <span class="card-link">View Bio →</span>
-        </div>
+    {# The trust proof sits above the live bio cards: a published book is the one
+       claim on this page a visitor can verify somewhere other than this page, so
+       it earns the spot above the fold. Wrapped with the cards in a column
+       because .hero-inner is a horizontal flex — "above" means inside the
+       right-hand column, not before it. #}
+    <div class="hero-side">
+      <a class="pcard hero-pcard fade-up d3" href="{{ playbook_url }}"
+         target="_blank" rel="noopener">
+        <div class="k">Documented</div>
+        <p><em>"The Wealth Simulation Playbook"</em> — the full five-layer
+          framework and all forty-nine agents, written up as case studies. Read
+          the book behind the engine.</p>
+        <span class="ptag ptag-cta">
+          <img class="ptag-cover"
+               src="{{ url_for('static', filename='img/playbook-cover.jpg') }}"
+               alt="The Wealth Simulation Playbook, by Jean M. Delphonse — book cover"
+               width="40" height="52" loading="lazy" decoding="async">
+          Get it on Amazon →
+        </span>
       </a>
-      {% endfor %}
+
+      <!-- Live user bio cards -->
+      {% if hero_cards %}
+      <div class="hero-cards-grid">
+        {% for c in hero_cards %}
+        <a class="hc" href="/u/{{ c.slug }}">
+          <div class="card-top">
+            {% if c.avatar_path %}
+            <img class="card-avatar" src="{{ url_for('public.serve_avatar', filename=c.avatar_path) }}" alt="{{ c.display_name }}" loading="lazy">
+            {% else %}
+            <div class="card-avatar-placeholder">{{ c.display_name[0]|upper if c.display_name else '?' }}</div>
+            {% endif %}
+            <div class="card-meta">
+              <div class="card-name">{{ c.display_name }}</div>
+              <div class="card-zone">{{ c.category }}</div>
+            </div>
+          </div>
+          {% if c.tagline %}<p class="card-tagline">{{ c.tagline }}</p>{% endif %}
+          <div class="card-footer">
+            {% if c.like_count %}
+            <span class="card-like">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              {{ c.like_count }}
+            </span>
+            {% else %}<span></span>{% endif %}
+            <span class="card-link">View Bio →</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
   </div>
 </section>
 
@@ -894,17 +942,6 @@
         <p>The engine is built on a documented, tested methodology — pure-function agents composed into a wealth engine, with the math open to inspection.</p>
         <span class="ptag">Documented method</span>
       </div>
-      <a class="pcard fade-up d3" href="{{ playbook_url }}" target="_blank" rel="noopener">
-        <div class="k">Documented</div>
-        <p><em>"The Wealth Simulation Playbook"</em> — the full five-layer framework and all forty-nine agents, written up as case studies. Read the book behind the engine.</p>
-        <span class="ptag ptag-cta">
-          <img class="ptag-cover"
-               src="{{ url_for('static', filename='img/playbook-cover.jpg') }}"
-               alt="The Wealth Simulation Playbook, by Jean M. Delphonse — book cover"
-               width="40" height="52" loading="lazy" decoding="async">
-          Get it on Amazon →
-        </span>
-      </a>
     </div>
   </div>
 </section>
