@@ -51,8 +51,22 @@ h2.big{font-size:2.35rem;margin:.25em 0 .4em;}
 .light .lead,.tint .lead{color:#4a5768;}
 /* HERO */
 .hero{padding:70px 0 84px;text-align:center;}
-.hero .emblem{display:flex;gap:6px;justify-content:center;align-items:flex-end;height:44px;margin:0 auto 26px;}
-.hero .emblem i{width:11px;border-radius:3px;display:block;}
+.hero .emblem{display:flex;justify-content:center;margin:0 auto 18px;height:150px;}
+.hero .emblem svg{width:118px;height:auto;overflow:visible;filter:drop-shadow(0 12px 20px rgba(0,0,0,.45));}
+.m-body{animation:mFloat 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%;}
+.m-swoosh{animation:mSway 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:14% 96%;}
+.m-eyes{animation:mBlink 4.8s infinite;transform-box:fill-box;transform-origin:center;}
+.m-armR{animation:mWave 4.6s ease-in-out infinite;transform-box:fill-box;transform-origin:15% 10%;}
+.m-armL{animation:mSway2 3.6s ease-in-out infinite;transform-box:fill-box;transform-origin:85% 10%;}
+.m-bar{transform-box:fill-box;transform-origin:bottom;animation:mRise 1.5s ease-in-out infinite;}
+.m-b2{animation-delay:.15s;}.m-b3{animation-delay:.3s;}.m-b4{animation-delay:.45s;}.m-b5{animation-delay:.6s;}
+@keyframes mFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes mSway{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+@keyframes mSway2{0%,100%{transform:rotate(3deg)}50%{transform:rotate(-3deg)}}
+@keyframes mBlink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+@keyframes mWave{0%,58%,100%{transform:rotate(0)}70%{transform:rotate(17deg)}80%{transform:rotate(4deg)}90%{transform:rotate(15deg)}}
+@keyframes mRise{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
+@media(prefers-reduced-motion:reduce){.m-body,.m-swoosh,.m-eyes,.m-armR,.m-armL,.m-bar{animation:none;}}
 .hero h1{font-size:3.05rem;color:var(--offw);max-width:880px;margin:0 auto .5em;}
 .hero h1 em{color:var(--gold-l);font-style:italic;}
 .hero .lead{margin:0 auto 30px;font-size:1.18rem;}
@@ -156,10 +170,42 @@ footer .fine{margin-top:26px;border-top:1px solid rgba(255,255,255,.08);padding-
 
 <!-- HERO -->
 <header class="dark"><div class="wrap hero">
-  <div class="emblem">
-    <i style="height:16px;background:#0B4A46;"></i><i style="height:23px;background:#0F7B72;"></i>
-    <i style="height:30px;background:#139488;"></i><i style="height:37px;background:#13A89E;"></i>
-    <i style="height:44px;background:#C9952A;"></i>
+  <div class="emblem" title="Simulacrum mascot">
+    <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulacrum mascot">
+      <defs>
+        <linearGradient id="mbody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F4F7FB"/><stop offset="1" stop-color="#D6DEEA"/></linearGradient>
+        <linearGradient id="msw" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#C9952A"/><stop offset="1" stop-color="#EBC46A"/></linearGradient>
+        <linearGradient id="mvisor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17294f"/><stop offset="1" stop-color="#0b1730"/></linearGradient>
+        <radialGradient id="meye" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#5fe6da"/><stop offset="55%" stop-color="#13A89E"/><stop offset="100%" stop-color="#0d8379"/></radialGradient>
+      </defs>
+      <g class="m-body">
+        <g class="m-armL"><line x1="102" y1="196" x2="70" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="70" cy="252" r="13" fill="#C9952A"/></g>
+        <g class="m-armR"><line x1="198" y1="196" x2="230" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="230" cy="252" r="13" fill="#C9952A"/></g>
+        <rect x="116" y="300" width="34" height="18" rx="9" fill="url(#mbody)" stroke="#C9952A" stroke-width="1.4"/>
+        <rect x="150" y="300" width="34" height="18" rx="9" fill="url(#mbody)" stroke="#C9952A" stroke-width="1.4"/>
+        <rect x="92" y="170" width="116" height="140" rx="46" fill="url(#mbody)" stroke="#C9952A" stroke-width="1.6"/>
+        <rect x="118" y="206" width="64" height="52" rx="12" fill="url(#mvisor)" stroke="#C9952A" stroke-width="1.2"/>
+        <rect class="m-bar m-b1" x="126" y="240" width="6.5" height="10" rx="2" fill="#0B4A46"/>
+        <rect class="m-bar m-b2" x="137" y="236" width="6.5" height="15" rx="2" fill="#0F7B72"/>
+        <rect class="m-bar m-b3" x="148" y="231" width="6.5" height="20" rx="2" fill="#139488"/>
+        <rect class="m-bar m-b4" x="159" y="226" width="6.5" height="26" rx="2" fill="#13A89E"/>
+        <rect class="m-bar m-b5" x="170" y="220" width="6.5" height="32" rx="2" fill="#C9952A"/>
+        <!-- hands now travel inside the arm groups above -->
+        <rect x="78" y="44" width="144" height="118" rx="48" fill="url(#mbody)" stroke="#C9952A" stroke-width="1.6"/>
+        <ellipse cx="112" cy="72" rx="24" ry="11" fill="#FFFFFF" opacity="0.35" transform="rotate(-18 112 72)"/>
+        <path class="m-swoosh" d="M146,46 C150,16 174,8 194,4 C178,24 172,34 166,46 Z" fill="url(#msw)"/>
+        <rect x="98" y="70" width="104" height="74" rx="30" fill="url(#mvisor)"/>
+        <path d="M112,88 Q124,81 136,86" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M164,86 Q176,81 188,88" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <g class="m-eyes">
+          <ellipse cx="128" cy="106" rx="15" ry="17" fill="url(#meye)"/><ellipse cx="172" cy="106" rx="15" ry="17" fill="url(#meye)"/>
+          <circle cx="123" cy="100" r="5" fill="#EAFFFB"/><circle cx="167" cy="100" r="5" fill="#EAFFFB"/>
+          <circle cx="132" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/><circle cx="176" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/>
+        </g>
+        <ellipse cx="110" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/><ellipse cx="190" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/>
+        <path d="M134,130 Q150,141 166,130" stroke="#2FB6A9" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </g>
+    </svg>
   </div>
   <div class="eyebrow" style="color:var(--gold)">Career-to-Wealth Simulation</div>
   <h1 class="serif">See the five ways your career becomes wealth — <em>before you live any of them.</em></h1>

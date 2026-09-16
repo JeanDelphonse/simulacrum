@@ -540,83 +540,111 @@
   .lp-dark .cta-trust { color: var(--mute-d); }
 
   /*start*/
-  /* The runway the walker animates across. Kept IN THE FLOW as the first block of
-     .hero-text, so it lands in the hero's top-left corner: above .hero-chip by
-     markup order, flush with the text column, and below the fixed nav because
-     #hero's padding-top already clears it. position:relative is all it needs —
-     just enough to be the containing block the absolute .walker resolves against.
-     overflow:hidden clips the walk-in from left:-96px so it enters the runway
-     rather than trailing off across the section. */
+  /* ── The mascot ───────────────────────────────────────────────────────
+     Ported from docs/mascot_sequence.html (walk · dance · idle), whose
+     artwork matches docs/mascot_2d.html and the hero emblem in
+     docs/simulacrum_homepage_mockup.html.
+
+     Two deliberate departures from those files:
+
+     1. Classes are m-* and the gradient ids are mascot* prefixed. The
+        standalone docs are single-mascot pages, so they can afford
+        id="body" and .bar; this is a 1300-line document where a gradient
+        id resolves page-wide, so an unprefixed id="eye" added elsewhere
+        later would silently repaint the face. The mockup prefixes for the
+        same reason.
+     2. The walker rests at left:0, not centred. It sits in the hero's
+        text column, so walkX and danceStep keep this page's left-aligned
+        geometry while the limb choreography comes from the doc.
+
+     The runway is kept IN THE FLOW as the first block of .hero-text, so it
+     lands in the hero's top-left corner: above .hero-chip by markup order,
+     flush with the text column, and below the fixed nav because #hero's
+     padding-top already clears it. position:relative is all it needs —
+     just enough to be the containing block the absolute .walker resolves
+     against. overflow:hidden clips the walk-in so the mascot enters the
+     runway rather than trailing off across the section — which is also
+     why the height has to clear the dance's 12px hop, or it decapitates
+     the mascot at the top of every bounce. */
   .track{ position:relative; width:min(88vw,460px); height:120px; overflow:hidden; pointer-events:none; }
   .track::after{ content:""; position:absolute; left:6%; right:6%; bottom:26px; height:2px; border-radius:2px;
     background:linear-gradient(90deg,transparent,rgba(201,149,42,.32),transparent); }
 
-  /* resting position = left */
-  .walker{ position:absolute; bottom:22px; left:0; width:65px; transition:left .28s ease; }
+  /* resting position = left. bottom:20px puts the mascot's own floor shadow
+     (cy=336 of a 360 viewBox) on the ground line above, the way the doc seats
+     it.
+
+     76px, not the 118px the mockup's static emblem uses: the runway is kept at
+     its original 120px so the hero does not get taller, and a 118px mascot
+     needs a 180px runway to clear its own dance hop without the track's
+     overflow:hidden cropping its head. Holding the hero height is what sets
+     this width. */
+  .walker{ position:absolute; bottom:20px; left:0; width:76px; transition:left .28s ease; }
   /* These transitions are load-bearing, not decoration: the dance loops, so when
      .dancing is dropped mid-keyframe the transforms and left offset ease back to
      rest instead of snapping. */
-  .robot,.arm-l,.arm-r,.leg-l,.leg-r{ transition:transform .22s ease; }
-  .walker svg{ width:100%; height:auto; overflow:visible; filter:drop-shadow(0 8px 14px rgba(0,0,0,.4)); }
- 
-  /* always-on micro-motions */
-  .r-antenna{ animation:rPulse 1.7s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
-  .r-eyes  { animation:rBlink 4.6s infinite; transform-box:fill-box; transform-origin:center; }
-  .r-bar   { transform-box:fill-box; transform-origin:bottom; animation:rRise 1.15s ease-in-out infinite; }
-  .r-b2{animation-delay:.12s;} .r-b3{animation-delay:.24s;} .r-b4{animation-delay:.36s;} .r-b5{animation-delay:.48s;}
- 
+  .m-body,.m-armL,.m-armR,.m-footL,.m-footR,.m-swoosh{ transition:transform .2s ease; }
+  .walker svg{ width:100%; height:auto; overflow:visible; filter:drop-shadow(0 12px 20px rgba(0,0,0,.45)); }
+
+  /* always-on micro-motions — scoped to .walker so .m-bar and friends
+     cannot reach anything else on the page */
+  .walker .m-eyes  { animation:mBlink 4.8s infinite; transform-box:fill-box; transform-origin:center; }
+  .walker .m-bar   { transform-box:fill-box; transform-origin:bottom; animation:mRise 1.5s ease-in-out infinite; }
+  .walker .m-b2{animation-delay:.15s;} .walker .m-b3{animation-delay:.3s;}
+  .walker .m-b4{animation-delay:.45s;} .walker .m-b5{animation-delay:.6s;}
+  .walker .m-swoosh{ transform-box:fill-box; transform-origin:14% 96%; animation:mSway 2.6s ease-in-out infinite; }
+
   /* ===== WALK IN (plays once) ===== */
   .walker.walking{ animation:walkX 4.8s ease-in-out forwards; }
-  .walker.walking > svg{ transform-origin:50% 100%; animation:lean 4.8s ease-in-out forwards; }
-  .walker.walking .robot{ animation:bob .31s ease-in-out infinite; transform-origin:center; }
-  .walker.walking .leg-l{ animation:stride .62s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 0%; }
-  .walker.walking .leg-r{ animation:stride .62s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 0%; animation-delay:-.31s; }
-  .walker.walking .arm-l{ animation:swing .62s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; }
-  .walker.walking .arm-r{ animation:swing .62s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; animation-delay:-.31s; }
- 
-  /* ===== IDLE (loops after the dance) ===== */
-  .walker.idle .robot{ animation:rFloat 3.2s ease-in-out infinite; transform-origin:center; }
-  .walker.idle .arm-l{ animation:rSway 3.4s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; }
-  .walker.idle .arm-r{ animation:rWave 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; }
+  .walker.walking > svg{ transform-origin:50% 100%; animation:mLean 4.8s ease-in-out forwards; }
+  .walker.walking .m-body{ animation:mWaddle .5s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 100%; }
+  .walker.walking .m-footL{ animation:mStep .5s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
+  .walker.walking .m-footR{ animation:mStep .5s ease-in-out infinite; transform-box:fill-box; transform-origin:center; animation-delay:-.25s; }
+  .walker.walking .m-armL{ animation:mASwing .5s ease-in-out infinite; transform-box:fill-box; transform-origin:85% 10%; }
+  .walker.walking .m-armR{ animation:mASwing .5s ease-in-out infinite; transform-box:fill-box; transform-origin:15% 10%; animation-delay:-.25s; }
 
   /* ===== DANCE (3s, between the walk-in and idle) ===== */
-  .walker.dancing{ animation:danceStep .84s ease-in-out infinite; }
-  .walker.dancing .robot{ animation:danceBody .84s ease-in-out infinite; transform-origin:center; }
-  .walker.dancing .arm-l{ animation:danceArmL .42s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; }
-  .walker.dancing .arm-r{ animation:danceArmR .42s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 7%; }
-  .walker.dancing .leg-l{ animation:danceLegL .42s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 0%; }
-  .walker.dancing .leg-r{ animation:danceLegR .42s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 0%; }
+  .walker.dancing{ animation:mDanceStep .7s ease-in-out infinite; }
+  .walker.dancing .m-body{ animation:mDanceBody .7s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 100%; }
+  .walker.dancing .m-armL{ animation:mDanceArmL .35s ease-in-out infinite; transform-box:fill-box; transform-origin:85% 10%; }
+  .walker.dancing .m-armR{ animation:mDanceArmR .35s ease-in-out infinite; transform-box:fill-box; transform-origin:15% 10%; }
+  .walker.dancing .m-swoosh{ animation:mWhip .35s ease-in-out infinite; }
+
+  /* ===== IDLE (loops after the dance) ===== */
+  .walker.idle .m-body{ animation:mFloat 3.2s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 100%; }
+  .walker.idle .m-armR{ animation:mWave 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:15% 10%; }
+  .walker.idle .m-armL{ animation:mSway2 3.6s ease-in-out infinite; transform-box:fill-box; transform-origin:85% 10%; }
 
   @keyframes walkX{ 0%{left:-96px} 55%{left:calc(75% - 96px)} 100%{left:0} }
-  @keyframes lean { 0%,44%{transform:rotate(2.5deg)} 56%,94%{transform:rotate(-2.5deg)} 100%{transform:rotate(0deg)} }
-  @keyframes bob  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
-  @keyframes stride{ 0%,100%{transform:rotate(-14deg)} 50%{transform:rotate(14deg)} }
-  @keyframes swing { 0%,100%{transform:rotate(15deg)}  50%{transform:rotate(-15deg)} }
-  @keyframes rFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-  @keyframes rSway { 0%,100%{transform:rotate(3deg)} 50%{transform:rotate(-3deg)} }
-  @keyframes rWave { 0%,55%,100%{transform:rotate(0)} 68%{transform:rotate(20deg)} 78%{transform:rotate(7deg)} 88%{transform:rotate(18deg)} }
-  @keyframes rPulse{ 0%,100%{opacity:.55;transform:scale(.82)} 50%{opacity:1;transform:scale(1.18)} }
-  @keyframes rBlink{ 0%,90%,100%{transform:scaleY(1)} 95%{transform:scaleY(.1)} }
-  @keyframes rRise { 0%,100%{transform:scaleY(.45)} 50%{transform:scaleY(1)} }
+  @keyframes mLean { 0%,44%{transform:rotate(3deg)} 56%,94%{transform:rotate(-3deg)} 100%{transform:rotate(0)} }
+  @keyframes mWaddle{ 0%,100%{transform:rotate(-3.5deg) translateY(0)} 50%{transform:rotate(3.5deg) translateY(-4px)} }
+  @keyframes mStep { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  @keyframes mASwing{ 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)} }
+  @keyframes mFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+  @keyframes mWave { 0%,58%,100%{transform:rotate(0)} 70%{transform:rotate(17deg)} 80%{transform:rotate(4deg)} 90%{transform:rotate(15deg)} }
+  @keyframes mSway { 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} }
+  @keyframes mSway2{ 0%,100%{transform:rotate(3deg)} 50%{transform:rotate(-3deg)} }
+  @keyframes mBlink{ 0%,92%,100%{transform:scaleY(1)} 96%{transform:scaleY(.08)} }
+  @keyframes mRise { 0%,100%{transform:scaleY(.5)} 50%{transform:scaleY(1)} }
 
   /* dance moves */
-  @keyframes danceStep{ 0%,100%{left:0} 50%{left:16px} }
-  @keyframes danceBody{ 0%,100%{transform:translateY(0) rotate(0deg)} 25%{transform:translateY(-9px) rotate(-6deg)} 50%{transform:translateY(0) rotate(0deg)} 75%{transform:translateY(-9px) rotate(6deg)} }
-  @keyframes danceArmL{ 0%,100%{transform:rotate(-62deg)} 50%{transform:rotate(10deg)} }
-  @keyframes danceArmR{ 0%,100%{transform:rotate(10deg)}  50%{transform:rotate(62deg)} }
-  @keyframes danceLegL{ 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(-11deg)} }
-  @keyframes danceLegR{ 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(11deg)} }
+  @keyframes mDanceStep{ 0%,100%{left:0} 50%{left:18px} }
+  @keyframes mDanceBody{ 0%,100%{transform:translateY(0) rotate(0)} 25%{transform:translateY(-12px) rotate(-6deg)} 50%{transform:translateY(0)} 75%{transform:translateY(-12px) rotate(6deg)} }
+  @keyframes mDanceArmL{ 0%,100%{transform:rotate(-58deg)} 50%{transform:rotate(12deg)} }
+  @keyframes mDanceArmR{ 0%,100%{transform:rotate(12deg)} 50%{transform:rotate(58deg)} }
+  @keyframes mWhip{ 0%,100%{transform:rotate(-16deg)} 50%{transform:rotate(16deg)} }
 
   @media(prefers-reduced-motion:reduce){
     .walker,.walker *{ animation:none !important; }
   }
-  /* In the flow the robot can't overlap anything — it only takes vertical space —
-     so on a phone it just needs to take less of it above the headline. Width already
-     flexes via min(88vw,460px); this trims the height and the robot to match.
-     A 72px robot stands ~91px tall, clearing the 26px ground line inside 132px. */
+  /* In the flow the mascot can't overlap anything — it only takes vertical
+     space — so on a phone it can afford slightly more of it above the
+     headline, which is why the runway here is taller than the desktop one and
+     the mascot larger. Width already flexes via min(88vw,460px); this keeps the
+     same shadow-on-ground-line seating. */
   @media (max-width: 768px){
     .track{ height:132px; }
-    .track .walker{ width:72px; }
+    .track .walker{ width:84px; bottom:19px; }
   }
   /*end*/
 
@@ -721,32 +749,53 @@
   <div class="hero-inner">
     <div class="hero-text">
       <div class="track">
-    <div class="walker" title="Simulacrum — walks in, then idles">
-      <svg viewBox="0 0 100 126" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulacrum robot">
-        <g class="robot">
-          <g class="arm-l"><rect x="17.5" y="55" width="7.6" height="26" rx="3.8" fill="#122347" stroke="#2E7D8C" stroke-width="1.3"/><circle cx="21.3" cy="83" r="4.2" fill="#C9952A"/></g>
-          <g class="arm-r"><rect x="74.9" y="55" width="7.6" height="26" rx="3.8" fill="#122347" stroke="#2E7D8C" stroke-width="1.3"/><circle cx="78.7" cy="83" r="4.2" fill="#C9952A"/></g>
-          <g class="leg-l"><rect x="36" y="92" width="10" height="24" rx="3.5" fill="#122347" stroke="#2E7D8C" stroke-width="1.3"/><rect x="32.5" y="114" width="16" height="6.6" rx="3" fill="#C9952A"/></g>
-          <g class="leg-r"><rect x="54" y="92" width="10" height="24" rx="3.5" fill="#122347" stroke="#2E7D8C" stroke-width="1.3"/><rect x="51.5" y="114" width="16" height="6.6" rx="3" fill="#C9952A"/></g>
-          <rect x="27" y="52" width="46" height="41" rx="9" fill="#0f1f42" stroke="#C9952A" stroke-width="1.6"/>
-          <rect x="35" y="87" width="30" height="1.5" rx="0.7" fill="#C9952A" opacity="0.5"/>
-          <rect class="r-bar r-b1" x="36.3" y="78" width="3.4" height="8"  rx="1.4" fill="#0B4A46"/>
-          <rect class="r-bar r-b2" x="42.3" y="75" width="3.4" height="11" rx="1.4" fill="#0F7B72"/>
-          <rect class="r-bar r-b3" x="48.3" y="72" width="3.4" height="14" rx="1.4" fill="#139488"/>
-          <rect class="r-bar r-b4" x="54.3" y="69" width="3.4" height="17" rx="1.4" fill="#13A89E"/>
-          <rect class="r-bar r-b5" x="60.3" y="65" width="3.4" height="21" rx="1.4" fill="#C9952A"/>
-          <rect x="45" y="46.5" width="10" height="6" fill="#1a2a4d"/>
-          <rect x="30" y="17" width="40" height="30" rx="9" fill="#122347" stroke="#C9952A" stroke-width="1.6"/>
-          <line x1="50" y1="17" x2="50" y2="9" stroke="#C9952A" stroke-width="2.4" stroke-linecap="round"/>
-          <circle class="r-antenna" cx="50" cy="6.4" r="3.4" fill="#E4B855"/>
-          <g class="r-eyes">
-            <circle cx="41" cy="32" r="4.1" fill="#13A89E"/><circle cx="59" cy="32" r="4.1" fill="#13A89E"/>
-            <circle cx="40.1" cy="30.7" r="1.3" fill="#eafffb"/><circle cx="58.1" cy="30.7" r="1.3" fill="#eafffb"/>
-          </g>
-          <g fill="#2E7D8C"><rect x="44" y="40" width="2.4" height="2.6" rx="1"/><rect x="48.8" y="40" width="2.4" height="2.6" rx="1"/><rect x="53.6" y="40" width="2.4" height="2.6" rx="1"/></g>
-        </g>
-      </svg>
-    </div>
+        {# Artwork from docs/mascot_sequence.html. The two stray hand circles
+           that file leaves outside the arm groups are dropped: they duplicate
+           the hands that already ride inside .m-armL / .m-armR, so during the
+           wave a second gold hand stayed behind at the rest position.
+           docs/mascot_2d.html and the mockup drop them too. #}
+        <div class="walker" title="Simulacrum — walks in, dances, then idles">
+          <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg"
+               role="img" aria-label="Simulacrum mascot">
+            <defs>
+              <linearGradient id="mascotBody" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#F4F7FB"/><stop offset="1" stop-color="#D6DEEA"/></linearGradient>
+              <linearGradient id="mascotSw" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" stop-color="#C9952A"/><stop offset="1" stop-color="#EBC46A"/></linearGradient>
+              <linearGradient id="mascotVisor" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#17294f"/><stop offset="1" stop-color="#0b1730"/></linearGradient>
+              <radialGradient id="mascotEye" cx="40%" cy="35%" r="70%">
+                <stop offset="0" stop-color="#5fe6da"/><stop offset="55%" stop-color="#13A89E"/><stop offset="100%" stop-color="#0d8379"/></radialGradient>
+            </defs>
+            <ellipse cx="150" cy="336" rx="66" ry="11" fill="#000" opacity="0.26"/>
+            <g class="m-body">
+              <g class="m-footL"><rect x="116" y="300" width="34" height="18" rx="9" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.4"/></g>
+              <g class="m-footR"><rect x="150" y="300" width="34" height="18" rx="9" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.4"/></g>
+              <g class="m-armL"><line x1="102" y1="196" x2="70" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="70" cy="252" r="13" fill="#C9952A"/></g>
+              <g class="m-armR"><line x1="198" y1="196" x2="230" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="230" cy="252" r="13" fill="#C9952A"/></g>
+              <rect x="92" y="170" width="116" height="140" rx="46" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.6"/>
+              <rect x="118" y="206" width="64" height="52" rx="12" fill="url(#mascotVisor)" stroke="#C9952A" stroke-width="1.2"/>
+              <rect class="m-bar m-b1" x="126" y="240" width="6.5" height="10" rx="2" fill="#0B4A46"/>
+              <rect class="m-bar m-b2" x="137" y="236" width="6.5" height="15" rx="2" fill="#0F7B72"/>
+              <rect class="m-bar m-b3" x="148" y="231" width="6.5" height="20" rx="2" fill="#139488"/>
+              <rect class="m-bar m-b4" x="159" y="226" width="6.5" height="26" rx="2" fill="#13A89E"/>
+              <rect class="m-bar m-b5" x="170" y="220" width="6.5" height="32" rx="2" fill="#C9952A"/>
+              <rect x="78" y="44" width="144" height="118" rx="48" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.6"/>
+              <ellipse cx="112" cy="72" rx="24" ry="11" fill="#FFFFFF" opacity="0.35" transform="rotate(-18 112 72)"/>
+              <path class="m-swoosh" d="M146,46 C150,16 174,8 194,4 C178,24 172,34 166,46 Z" fill="url(#mascotSw)"/>
+              <rect x="98" y="70" width="104" height="74" rx="30" fill="url(#mascotVisor)"/>
+              <path d="M112,88 Q124,81 136,86" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <path d="M164,86 Q176,81 188,88" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+              <g class="m-eyes">
+                <ellipse cx="128" cy="106" rx="15" ry="17" fill="url(#mascotEye)"/><ellipse cx="172" cy="106" rx="15" ry="17" fill="url(#mascotEye)"/>
+                <circle cx="123" cy="100" r="5" fill="#EAFFFB"/><circle cx="167" cy="100" r="5" fill="#EAFFFB"/>
+                <circle cx="132" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/><circle cx="176" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/>
+              </g>
+              <ellipse cx="110" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/><ellipse cx="190" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/>
+              <path d="M134,130 Q150,141 166,130" stroke="#2FB6A9" stroke-width="3" fill="none" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </div>
       </div>
 
       <div class="hero-chip">

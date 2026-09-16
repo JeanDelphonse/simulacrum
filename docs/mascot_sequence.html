@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Simulacrum — Mascot (walk · dance · idle)</title>
+<style>
+  html,body{margin:0;height:100%;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 42%,#12244a,#0d1b3e 55%,#070f22);}
+  .track{position:relative;width:min(90vw,520px);height:360px;overflow:hidden;}
+  .track::after{content:"";position:absolute;left:8%;right:8%;bottom:40px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,rgba(201,149,42,.28),transparent);}
+  .walker{position:absolute;bottom:28px;left:calc(50% - 70px);width:140px;
+    filter:drop-shadow(0 16px 22px rgba(0,0,0,.45));transition:left .28s ease;}
+  .walker svg{width:100%;height:auto;overflow:visible;transform-origin:50% 100%;}
+  .body,.armL,.armR,.footL,.footR,.swoosh{transition:transform .2s ease;}
+  /* always-on */
+  .eyes{animation:blink 4.8s infinite;transform-box:fill-box;transform-origin:center;}
+  .bar{transform-box:fill-box;transform-origin:bottom;animation:rise 1.5s ease-in-out infinite;}
+  .b2{animation-delay:.15s;}.b3{animation-delay:.3s;}.b4{animation-delay:.45s;}.b5{animation-delay:.6s;}
+  .swoosh{transform-box:fill-box;transform-origin:14% 96%;animation:sway 2.6s ease-in-out infinite;}
+  /* WALK-IN */
+  .walker.walking{animation:walkX 4s ease-in-out forwards;}
+  .walker.walking svg{animation:lean 4s ease-in-out forwards;}
+  .walker.walking .body{animation:waddle .5s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%;}
+  .walker.walking .footL{animation:step .5s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+  .walker.walking .footR{animation:step .5s ease-in-out infinite;transform-box:fill-box;transform-origin:center;animation-delay:-.25s;}
+  .walker.walking .armL{animation:aswing .5s ease-in-out infinite;transform-box:fill-box;transform-origin:85% 10%;}
+  .walker.walking .armR{animation:aswing .5s ease-in-out infinite;transform-box:fill-box;transform-origin:15% 10%;animation-delay:-.25s;}
+  /* DANCE (5s) */
+  .walker.dancing{animation:danceStep .7s ease-in-out infinite;}
+  .walker.dancing .body{animation:danceBody .7s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%;}
+  .walker.dancing .armL{animation:danceArmL .35s ease-in-out infinite;transform-box:fill-box;transform-origin:85% 10%;}
+  .walker.dancing .armR{animation:danceArmR .35s ease-in-out infinite;transform-box:fill-box;transform-origin:15% 10%;}
+  .walker.dancing .swoosh{animation:whip .35s ease-in-out infinite;}
+  /* IDLE */
+  .walker.idle .body{animation:float 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%;}
+  .walker.idle .armR{animation:wave 4.6s ease-in-out infinite;transform-box:fill-box;transform-origin:15% 10%;}
+  .walker.idle .armL{animation:sway2 3.6s ease-in-out infinite;transform-box:fill-box;transform-origin:85% 10%;}
+
+  @keyframes walkX{0%{left:-150px}100%{left:calc(50% - 70px)}}
+  @keyframes lean{0%,44%{transform:rotate(3deg)}56%,94%{transform:rotate(-3deg)}100%{transform:rotate(0)}}
+  @keyframes waddle{0%,100%{transform:rotate(-3.5deg) translateY(0)}50%{transform:rotate(3.5deg) translateY(-4px)}}
+  @keyframes step{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  @keyframes aswing{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
+  @keyframes danceStep{0%,100%{left:calc(50% - 84px)}50%{left:calc(50% - 56px)}}
+  @keyframes danceBody{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-12px) rotate(-6deg)}50%{transform:translateY(0)}75%{transform:translateY(-12px) rotate(6deg)}}
+  @keyframes danceArmL{0%,100%{transform:rotate(-58deg)}50%{transform:rotate(12deg)}}
+  @keyframes danceArmR{0%,100%{transform:rotate(12deg)}50%{transform:rotate(58deg)}}
+  @keyframes whip{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(16deg)}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  @keyframes wave{0%,58%,100%{transform:rotate(0)}70%{transform:rotate(17deg)}80%{transform:rotate(4deg)}90%{transform:rotate(15deg)}}
+  @keyframes sway{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+  @keyframes sway2{0%,100%{transform:rotate(3deg)}50%{transform:rotate(-3deg)}}
+  @keyframes blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+  @keyframes rise{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
+  @media(prefers-reduced-motion:reduce){.walker,.walker *{animation:none!important;}}
+</style>
+</head>
+<body>
+<div class="track"><div class="walker">
+  <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulacrum mascot">
+    <defs>
+      <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F4F7FB"/><stop offset="1" stop-color="#D6DEEA"/></linearGradient>
+      <linearGradient id="sw" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#C9952A"/><stop offset="1" stop-color="#EBC46A"/></linearGradient>
+      <linearGradient id="visor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17294f"/><stop offset="1" stop-color="#0b1730"/></linearGradient>
+      <radialGradient id="eye" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#5fe6da"/><stop offset="55%" stop-color="#13A89E"/><stop offset="100%" stop-color="#0d8379"/></radialGradient>
+    </defs>
+    <ellipse cx="150" cy="336" rx="66" ry="11" fill="#000" opacity="0.26"/>
+    <g class="body">
+      <g class="footL"><rect x="116" y="300" width="34" height="18" rx="9" fill="url(#body)" stroke="#C9952A" stroke-width="1.4"/></g>
+      <g class="footR"><rect x="150" y="300" width="34" height="18" rx="9" fill="url(#body)" stroke="#C9952A" stroke-width="1.4"/></g>
+      <g class="armL"><line x1="102" y1="196" x2="70" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="70" cy="252" r="13" fill="#C9952A"/></g>
+      <g class="armR"><line x1="198" y1="196" x2="230" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="230" cy="252" r="13" fill="#C9952A"/></g>
+      <rect x="92" y="170" width="116" height="140" rx="46" fill="url(#body)" stroke="#C9952A" stroke-width="1.6"/>
+      <rect x="118" y="206" width="64" height="52" rx="12" fill="url(#visor)" stroke="#C9952A" stroke-width="1.2"/>
+      <rect class="bar b1" x="126" y="240" width="6.5" height="10" rx="2" fill="#0B4A46"/>
+      <rect class="bar b2" x="137" y="236" width="6.5" height="15" rx="2" fill="#0F7B72"/>
+      <rect class="bar b3" x="148" y="231" width="6.5" height="20" rx="2" fill="#139488"/>
+      <rect class="bar b4" x="159" y="226" width="6.5" height="26" rx="2" fill="#13A89E"/>
+      <rect class="bar b5" x="170" y="220" width="6.5" height="32" rx="2" fill="#C9952A"/>
+      <circle cx="70" cy="252" r="13" fill="#C9952A"/><circle cx="230" cy="252" r="13" fill="#C9952A"/>
+      <rect x="78" y="44" width="144" height="118" rx="48" fill="url(#body)" stroke="#C9952A" stroke-width="1.6"/>
+      <ellipse cx="112" cy="72" rx="24" ry="11" fill="#FFFFFF" opacity="0.35" transform="rotate(-18 112 72)"/>
+      <path class="swoosh" d="M146,46 C150,16 174,8 194,4 C178,24 172,34 166,46 Z" fill="url(#sw)"/>
+      <rect x="98" y="70" width="104" height="74" rx="30" fill="url(#visor)"/>
+      <path d="M112,88 Q124,81 136,86" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M164,86 Q176,81 188,88" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <g class="eyes">
+        <ellipse cx="128" cy="106" rx="15" ry="17" fill="url(#eye)"/><ellipse cx="172" cy="106" rx="15" ry="17" fill="url(#eye)"/>
+        <circle cx="123" cy="100" r="5" fill="#EAFFFB"/><circle cx="167" cy="100" r="5" fill="#EAFFFB"/>
+        <circle cx="132" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/><circle cx="176" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/>
+      </g>
+      <ellipse cx="110" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/><ellipse cx="190" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/>
+      <path d="M134,130 Q150,141 166,130" stroke="#2FB6A9" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+  </svg>
+</div></div>
+<script>
+  window.addEventListener('load',function(){
+    var w=document.querySelector('.walker');
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){w.classList.add('idle');return;}
+    w.classList.add('walking');
+    w.addEventListener('animationend',function h(e){
+      if(e.animationName==='walkX'){ w.removeEventListener('animationend',h);
+        w.classList.remove('walking'); w.classList.add('dancing');
+        setTimeout(function(){ w.classList.remove('dancing'); w.classList.add('idle'); },5000);}
+    });
+  });
+</script>
+</body>
+</html>
