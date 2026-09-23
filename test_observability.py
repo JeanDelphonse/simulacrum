@@ -165,7 +165,9 @@ def main():
         print('\n5. By-layer rollups')
         obs.invalidate()
         cards = {c['layer']: c for c in obs.layer_rollups(24)}
-        check('all six layers always render', len(cards) == 6, sorted(cards))
+        # Seven: the free tier plus the five wealth layers plus orchestration.
+        check('every layer always renders, even with no runs',
+              len(cards) == len(obs.LAYER_CODES), sorted(cards))
         check('L5 counts its runs', cards['L5']['runs'] >= 3, cards['L5']['runs'])
         check('L1 counts its runs', cards['L1']['runs'] >= 1, cards['L1']['runs'])
         check('top tools are surfaced per layer',
@@ -489,8 +491,9 @@ def main():
 
     res = client_for(admin_id).get('/api/admin/observability/layers?hours=24')
     check('an admin can read the layer rollups', res.status_code == 200, res.status_code)
-    check('the rollup response carries all six layers',
-          res.status_code == 200 and len(res.get_json()['layers']) == 6)
+    check('the rollup response carries every layer',
+          res.status_code == 200 and len(res.get_json()['layers']) == 7,
+          len((res.get_json() or {}).get('layers', [])))
 
     res = client_for(admin_id).get('/api/admin/observability/runs?layer=L5')
     check('runs filter by layer', res.status_code == 200
@@ -742,6 +745,161 @@ def main():
           'No telemetry this time' in returned)
     with app.app_context():
         obs.save_setting('obs_capture_enabled', True)
+
+    # -- 19a. The free tier (L0) --------------------------------------------
+    # Most people meet the product before they pay, so the console has to see
+    # the resume parse and the zone extraction, not just what follows a sale.
+    print('\n19a. Free tier (L0)')
+
+    from app.models.observability import LAYER_CODES, LAYER_FREE   # noqa: E402
+
+    check('L0 is a first-class code on the layer axis',
+          LAYER_FREE == 'L0' and 'L0' in LAYER_CODES, LAYER_CODES)
+    check('L0 fits the existing column, so no migration is needed',
+          len(LAYER_FREE) <= 2)
+
+    # extract_expertise_zones with the stubbed client, as a free user would hit it.
+    zones_json = ('[{"zone_name": "Data Platform Architecture", "summary": "s",'
+                  ' "deliverables": [], "monetization_potential": "High",'
+                  ' "estimated_hourly_rate": "$200-350/hr"},'
+                  ' {"zone_name": "Analytics Leadership", "summary": "s",'
+                  ' "deliverables": [], "monetization_potential": "Medium",'
+                  ' "estimated_hourly_rate": "$150/hr"}]')
+    claude_svc._client = lambda: _Client(zones_json)
+    claude_svc._log_interaction = lambda *a, **k: None
+    with app.app_context():
+        zones = claude_svc.extract_expertise_zones('Fifteen years of data work.',
+                                                   owner_id, resume_id='rsm123456')
+    check('zone extraction still returns its zones', len(zones) == 2, len(zones))
+
+    r = latest_run('expertise_zone_extraction')
+    check('zone extraction is recorded', r is not None and r.status == 'success',
+          r.status if r else None)
+    check('it is tagged as free tier', r.layer == 'L0', r.layer)
+    check('it has no simulation, because there is none yet', r.simulation_id is None)
+    check('its tokens are captured, so the card can price it',
+          r.prompt_tokens == 1234 and r.completion_tokens == 5678)
+
+    with app.app_context():
+        arts = AgentArtifact.query.filter_by(run_id=r.id).all()
+        tools = [t.tool_name for t in AgentRunTool.query.filter_by(run_id=r.id).all()]
+    check('the Claude call is on the free-tier trace', 'claude_generate' in tools, tools)
+    check('the zones are registered as an artifact',
+          len(arts) == 1 and arts[0].artifact_type == 'Expertise Zones',
+          [a.artifact_type for a in arts])
+    check('the artifact summary carries the zone names',
+          (arts[0].summary_json or {}).get('count') == 2,
+          arts[0].summary_json)
+    check('the artifact references the resume, not an agent action',
+          arts[0].content_ref == 'resume:rsm123456', arts[0].content_ref)
+
+    # A failure on the free tier has to be visible too.
+    class _Boom(object):
+        class messages(object):
+            @staticmethod
+            def create(**kwargs):
+                raise RuntimeError('upstream refused')
+
+    claude_svc._client = lambda: _Boom()
+    with app.app_context():
+        try:
+            claude_svc.extract_expertise_zones('x', owner_id)
+            raised = False
+        except Exception:
+            raised = True
+    check('a free-tier failure still propagates to the caller', raised)
+    r = latest_run('expertise_zone_extraction')
+    check('a free-tier failure is recorded as an error',
+          r.status == 'error' and r.error_code == 'RuntimeError',
+          (r.status, r.error_code))
+
+    # The card itself.
+    with app.app_context():
+        obs.invalidate()
+        cards = {c['layer']: c for c in obs.layer_rollups(24)}
+    check('the overview now carries seven cards', len(cards) == 7, sorted(cards))
+    free = cards.get('L0') or {}
+    check('the free tier card is present and named', free.get('layer_name') == 'Free Tier')
+    check('the card is labelled as pre-simulation',
+          free.get('subtitle') == 'Before a simulation exists', free.get('subtitle'))
+    check('the card counts free-tier runs', free.get('runs', 0) >= 2, free.get('runs'))
+    check('the card shows the error rate', free.get('error_rate', 0) > 0,
+          free.get('error_rate'))
+    check('the card reports a flag rate', 'flag_rate' in free)
+    check('the card prices the free tier', free.get('spend', 0) > 0, free.get('spend'))
+    check('the card lists its artifact types',
+          'Expertise Zones' in (free.get('top_artifacts') or []),
+          free.get('top_artifacts'))
+
+    res = client_for(admin_id).get('/api/admin/observability/layers')
+    body = res.get_json()
+    check('the API returns the free tier card',
+          any(c['layer'] == 'L0' for c in body['layers']))
+    res = client_for(admin_id).get('/api/admin/observability/runs?layer=L0')
+    check('the free tier drills down to its runs',
+          res.status_code == 200 and len(res.get_json()['runs']) >= 2,
+          len(res.get_json()['runs']))
+    res = client_for(admin_id).get('/api/admin/observability/agents?layer=L0')
+    keys = [a['agent_key'] for a in res.get_json()['agents']]
+    check('the free tier rolls up per agent',
+          'expertise_zone_extraction' in keys, keys)
+    res = client_for(admin_id).get('/api/admin/observability/meta')
+    check('L0 is offered as a filter and a guardrail scope',
+          any(l['code'] == 'L0' for l in res.get_json()['layers']))
+
+    # An artifact whose content lives on the resume must still be fetchable.
+    with app.app_context():
+        from app.models.resume import Resume
+        from app.models.resume_consent import ResumeConsent
+        consent = ResumeConsent(id=generate_id(), user_id=owner_id,
+                                tos_version='1', privacy_version='1',
+                                checkbox_1=True, checkbox_2=True,
+                                consent_method='test')
+        db.session.add(consent)
+        db.session.flush()
+        resume = Resume(id='rsm123456', user_id=owner_id, consent_id=consent.id,
+                        label='r', file_path='/tmp/r.pdf', file_type='pdf',
+                        source='upload', parsed_text='x')
+        resume.expertise_zones = [{'zone_name': 'Data Platform Architecture'}]
+        db.session.add(resume)
+        db.session.commit()
+        art_id = AgentArtifact.query.filter_by(
+            content_ref='resume:rsm123456').first().id
+
+    res = client_for(admin_id).get('/api/admin/observability/artifacts/' + art_id)
+    payload = res.get_json()
+    check('a free-tier artifact resolves to the resume it lives on',
+          res.status_code == 200 and payload['content_source'] == 'product_store',
+          payload.get('content_source'))
+    check('its content comes back',
+          'Data Platform Architecture' in (payload.get('content') or ''))
+
+    # Guardrails scope to L0 like any other layer.
+    with app.app_context():
+        from app.models.observability import GuardrailRule as GR
+        db.session.add(GR(id=generate_id(), name='free-tier-watch', scope='layer',
+                          scope_ref='L0', rule_type='content_policy', action='warn',
+                          severity='low', definition_json={'forbid': ['guaranteed']}))
+        db.session.commit()
+        names = {x.name for x in gr.rules_for('L0', 'expertise_zone_extraction')}
+        paid = {x.name for x in gr.rules_for('L1', 'rate_card')}
+    check('a rule scoped to the free tier reaches it', 'free-tier-watch' in names)
+    check('a free-tier rule does not reach the paid layers',
+          'free-tier-watch' not in paid)
+
+    # Nesting guard: a free-tier helper reached from inside an agent run must
+    # attach to that run rather than orphan it.
+    with app.app_context():
+        parent = obs.start_run('rate_card', 1, user_id=owner_id)
+        with obs.free_tier_run('zone_classification', owner_id):
+            pass
+        check('a nested free-tier call does not steal the thread',
+              obs.current() is not None and obs.current().id == parent.id)
+        obs.finish_run(status='success')
+        nested_tools = [t.tool_name for t in
+                        AgentRunTool.query.filter_by(run_id=parent.id).all()]
+    check('it is recorded as a tool call on the parent run',
+          'zone_classification' in nested_tools, nested_tools)
 
     # -- 19. Deployed without the migration ---------------------------------
     # The code can reach production before sql/050 is run. That has to read as

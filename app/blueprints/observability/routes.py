@@ -322,14 +322,24 @@ def get_artifact(artifact_id):
     obs.audit(current_user.id, AdminAccessAudit.VIEW_ARTIFACT, artifact_id, artifact.user_id)
 
     payload = artifact.to_dict()
+    ref = artifact.content_ref or ''
     content, source = None, None
     if artifact.is_quarantined and artifact.withheld_content:
         content, source = artifact.withheld_content, 'quarantine'
-    elif (artifact.content_ref or '').startswith('agent_action:'):
+    elif ref.startswith('agent_action:'):
         from app.models.agent_action import AgentAction
-        action = AgentAction.query.get(artifact.content_ref.split(':', 1)[1])
+        action = AgentAction.query.get(ref.split(':', 1)[1])
         if action:
             content, source = action.artifact, 'product_store'
+    elif ref.startswith('resume:'):
+        # Free-tier artifacts (expertise zones) live on the resume, which is
+        # the product store for them — same rule, different table.
+        import json as _json
+        from app.models.resume import Resume
+        resume = Resume.query.get(ref.split(':', 1)[1])
+        if resume and resume.expertise_zones:
+            content = _json.dumps(resume.expertise_zones, indent=2)
+            source = 'product_store'
     payload['content'] = content
     payload['content_source'] = source
     return jsonify(payload), 200

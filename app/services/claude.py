@@ -50,8 +50,22 @@ def _log_interaction(interaction_type, user_id, simulation_id, usage, model=None
         _logger.warning('_log_interaction failed, skipping: %s', exc)
 
 
-def extract_expertise_zones(parsed_text: str, user_id: str) -> list:
-    """Extract expertise zones from resume/LinkedIn text. Returns list of zone dicts."""
+def extract_expertise_zones(parsed_text: str, user_id: str, resume_id: str = None) -> list:
+    """Extract expertise zones from resume/LinkedIn text. Returns list of zone dicts.
+
+    The free tier's headline moment, so it is instrumented as an L0 run
+    (PRD-SIM-OBS-001): without this the console could only see what happens
+    after someone pays, which is the smaller half of the funnel.
+    """
+    from app.services import observability_service as _obs
+    with _obs.free_tier_run('expertise_zone_extraction', user_id,
+                            {'source_chars': len(parsed_text or ''),
+                             'resume_id': resume_id}):
+        return _extract_expertise_zones(parsed_text, user_id, resume_id)
+
+
+def _extract_expertise_zones(parsed_text: str, user_id: str, resume_id: str = None) -> list:
+    from app.services import observability_service as _obs
     prompt = f"""Analyze this professional resume/profile and extract 3-6 distinct Expertise Zones.
 
 Resume/Profile Text:
@@ -76,18 +90,33 @@ Example format:
 ]"""
 
     model = get_model('expertise_zone_extraction')
-    response = _client().messages.create(
-        model=model,
-        max_tokens=2000,
-        messages=[{'role': 'user', 'content': prompt}],
-    )
+    with _obs.tool_span('claude_generate', {'model': model, 'max_tokens': 2000}) as _span:
+        response = _client().messages.create(
+            model=model,
+            max_tokens=2000,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        _span['output'] = 'stop_reason=%s' % response.stop_reason
+    _obs.record_usage(model=model,
+                      prompt_tokens=getattr(response.usage, 'input_tokens', None),
+                      completion_tokens=getattr(response.usage, 'output_tokens', None))
     _log_interaction(AIInteraction.TYPE_ZONE_EXTRACT, user_id, None, response.usage, model=model)
 
     raw = response.content[0].text.strip()
     # Strip any accidental markdown fences
     if raw.startswith('```'):
         raw = raw.split('\n', 1)[1].rsplit('```', 1)[0]
-    return json.loads(raw)
+    zones = json.loads(raw)
+
+    _obs.record_decision('Extracted %d expertise zone(s)' % len(zones),
+                         zones=[z.get('zone_name') for z in zones][:6])
+    _obs.record_artifact(
+        'Expertise Zones', content=raw,
+        summary={'count': len(zones),
+                 'zones': [z.get('zone_name') for z in zones][:6]},
+        content_ref=('resume:%s' % resume_id) if resume_id else None,
+    )
+    return zones
 
 
 def classify_canonical_zones(
@@ -112,33 +141,49 @@ Return JSON only (no markdown fences): [{{"category": str, "confidence": 0.0-1.0
 ordered by confidence descending, for every category scoring above 0.3.
 Only use category slugs from the list above."""
 
+    from app.services import observability_service as _obs
     try:
-        model = get_model('expertise_zone_extraction')  # HAIKU tier
+        with _obs.free_tier_run('zone_classification', user_id,
+                                {'title': professional_title,
+                                 'categories': len(categories)}):
+            return _classify_canonical_zones(prompt, categories, user_id)
+    except Exception as exc:
+        logger.warning('classify_canonical_zones failed for user %s: %s', user_id, exc)
+        return []
+
+
+def _classify_canonical_zones(prompt: str, categories: list, user_id: str) -> list:
+    from app.services import observability_service as _obs
+
+    model = get_model('expertise_zone_extraction')  # HAIKU tier
+    with _obs.tool_span('claude_generate', {'model': model, 'max_tokens': 500}):
         response = _client().messages.create(
             model=model,
             max_tokens=500,
             messages=[{'role': 'user', 'content': prompt}],
         )
-        _log_interaction(AIInteraction.TYPE_ZONE_EXTRACT, user_id, None, response.usage, model=model)
-        raw = response.content[0].text.strip()
-        if raw.startswith('```'):
-            raw = raw.split('\n', 1)[1].rsplit('```', 1)[0]
-        parsed = json.loads(raw)
-        valid = set(categories)
-        out = []
-        for z in parsed:
-            cat = (z.get('category') or '').strip().lower()
-            if cat in valid:
-                try:
-                    conf = float(z.get('confidence', 0))
-                except (TypeError, ValueError):
-                    conf = 0.0
-                out.append({'category': cat, 'confidence': round(conf, 3)})
-        out.sort(key=lambda z: z['confidence'], reverse=True)
-        return out
-    except Exception as exc:
-        logger.warning('classify_canonical_zones failed for user %s: %s', user_id, exc)
-        return []
+    _obs.record_usage(model=model,
+                      prompt_tokens=getattr(response.usage, 'input_tokens', None),
+                      completion_tokens=getattr(response.usage, 'output_tokens', None))
+    _log_interaction(AIInteraction.TYPE_ZONE_EXTRACT, user_id, None, response.usage, model=model)
+    raw = response.content[0].text.strip()
+    if raw.startswith('```'):
+        raw = raw.split('\n', 1)[1].rsplit('```', 1)[0]
+    parsed = json.loads(raw)
+    valid = set(categories)
+    out = []
+    for z in parsed:
+        cat = (z.get('category') or '').strip().lower()
+        if cat in valid:
+            try:
+                conf = float(z.get('confidence', 0))
+            except (TypeError, ValueError):
+                conf = 0.0
+            out.append({'category': cat, 'confidence': round(conf, 3)})
+    out.sort(key=lambda z: z['confidence'], reverse=True)
+    _obs.record_decision('Matched %d canonical category(ies)' % len(out),
+                         top=[z['category'] for z in out][:3])
+    return out
 
 
 def normalize_linkedin_text(raw_html_or_text: str, user_id: str) -> str:
@@ -150,13 +195,24 @@ Raw LinkedIn Data:
 
 Return ONLY the normalized resume text. No JSON, no markdown headers with #, just clean structured text."""
 
-    response = _client().messages.create(
-        model=_model(),
-        max_tokens=3000,
-        messages=[{'role': 'user', 'content': prompt}],
-    )
-    _log_interaction(AIInteraction.TYPE_LINKEDIN_NORMALIZE, user_id, None, response.usage)
-    return response.content[0].text.strip()
+    from app.services import observability_service as _obs
+    with _obs.free_tier_run('linkedin_normalize', user_id,
+                            {'source_chars': len(raw_html_or_text or '')}):
+        model = _model()
+        with _obs.tool_span('claude_generate', {'model': model, 'max_tokens': 3000}):
+            response = _client().messages.create(
+                model=model,
+                max_tokens=3000,
+                messages=[{'role': 'user', 'content': prompt}],
+            )
+        _obs.record_usage(model=model,
+                          prompt_tokens=getattr(response.usage, 'input_tokens', None),
+                          completion_tokens=getattr(response.usage, 'output_tokens', None))
+        _log_interaction(AIInteraction.TYPE_LINKEDIN_NORMALIZE, user_id, None, response.usage)
+        text = response.content[0].text.strip()
+        _obs.record_artifact('Normalised LinkedIn Profile', content=text,
+                             summary={'chars': len(text)})
+        return text
 
 
 LAYER_DEFINITIONS = {

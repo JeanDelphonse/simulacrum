@@ -39,7 +39,7 @@ from sqlalchemy import delete, func, insert, update
 from app.extensions import db
 from app.models.observability import (
     AdminAccessAudit, AgentArtifact, AgentEvent, AgentRun, AgentRunTool,
-    LAYER_CODES, LAYER_NAMES, ObservabilityFlag,
+    LAYER_CODES, LAYER_FREE, LAYER_NAMES, LAYER_SUBTITLES, ObservabilityFlag,
     STATUS_BLOCKED, STATUS_ERROR, STATUS_RUNNING, STATUS_SUCCESS,
 )
 from app.models.platform_settings import PlatformSetting
@@ -559,6 +559,27 @@ def run_context(agent_key, layer, **kwargs):
         finish_run(status=STATUS_SUCCESS)
 
 
+@contextmanager
+def free_tier_run(agent_key, user_id=None, params=None):
+    """Record one pre-simulation action on the free tier (layer L0).
+
+    The free tier is where most people meet the product — upload a resume, get
+    expertise zones — and until now none of it was visible. These are not agent
+    actions, so they do not go through execute_agent_action and need their own
+    entry point.
+
+    Refuses to nest. Only one run can be in flight per thread, so if this is
+    reached from inside an instrumented agent run it is recorded as a tool call
+    on that run instead of hijacking the thread and orphaning the parent.
+    """
+    if current() is not None:
+        with tool_span(agent_key):
+            yield None
+        return
+    with run_context(agent_key, LAYER_FREE, user_id=user_id, params=params) as run:
+        yield run
+
+
 def quarantine_artifacts(content, reason=''):
     """Withhold this run's outputs. Called by the guardrail engine.
 
@@ -740,6 +761,7 @@ def layer_rollups(hours=None) -> list:
             cards.append({
                 'layer': code,
                 'layer_name': LAYER_NAMES[code],
+                'subtitle': LAYER_SUBTITLES.get(code, 'Layer %s' % code[1]),
                 'runs': runs,
                 'errors': errors,
                 'blocked': blocked,

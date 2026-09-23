@@ -59,9 +59,18 @@ RULE_TYPE_LABELS = {
     RULE_MODEL_CONSTRAINT: 'Model constraint',
 }
 
-# L6 is the orchestrator; it has no layer in LAYER_DEFINITIONS but every
-# console rollup treats it as a sixth peer.
+# The console's axis. L1-L5 are the wealth layers; L6 is the orchestrator,
+# which has no layer in LAYER_DEFINITIONS but is a peer here; L0 is everything
+# a user does before a simulation exists — resume parse, expertise-zone
+# extraction, LinkedIn normalisation. The free tier is where most people meet
+# the product, so it gets the same card, filters and guardrail scoping as the
+# paid layers rather than a bolted-on panel.
+#
+# L0 is ordered first and needs no migration: agent_runs.layer is VARCHAR(2).
+LAYER_FREE = 'L0'
+
 LAYER_NAMES = {
+    'L0': 'Free Tier',
     'L1': 'Active Income',
     'L2': 'Leveraged Income',
     'L3': 'Productized Income',
@@ -70,6 +79,12 @@ LAYER_NAMES = {
     'L6': 'Orchestration',
 }
 LAYER_CODES = tuple(LAYER_NAMES)
+
+# Shown under the layer name on the overview card.
+LAYER_SUBTITLES = {
+    'L0': 'Before a simulation exists',
+    'L6': 'Orchestration',
+}
 
 
 class AgentRun(db.Model):

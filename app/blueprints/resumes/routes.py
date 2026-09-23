@@ -152,8 +152,18 @@ def upload_resume():
     file_path = os.path.join(upload_folder, unique_filename)
     file.save(file_path)
 
+    # PRD-SIM-OBS-001 — the free tier's first step, and the one where people
+    # silently drop out. Recorded as an L0 run so the console shows the parse
+    # failure rate, not just what happens after someone pays.
+    from app.services import observability_service as _obs
+    _first = not Resume.query.filter_by(user_id=current_user.id).first()
     try:
-        parsed_text = parse_resume(file_path, ext)
+        with _obs.free_tier_run('resume_parse', current_user.id,
+                                {'file_type': ext, 'first_resume': _first}):
+            parsed_text = parse_resume(file_path, ext)
+            _obs.record_decision('Parsed %s resume — %d characters'
+                                 % (ext, len(parsed_text or '')),
+                                 first_resume=_first)
     except Exception as e:
         os.remove(file_path)
         db.session.rollback()
@@ -348,7 +358,8 @@ def extract_zones(resume_id):
         return jsonify({'error': 'No parsed text available'}), 400
 
     try:
-        zones = extract_expertise_zones(resume.parsed_text, current_user.id)
+        zones = extract_expertise_zones(resume.parsed_text, current_user.id,
+                                        resume_id=resume.id)
         resume.expertise_zones = zones
         db.session.commit()
         # SIM-PRD-SME-001 FR-SME-04: normalize free-form zones into canonical

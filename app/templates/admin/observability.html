@@ -175,9 +175,10 @@
   <h1 class="ob-title">Agent Observability &amp; Governance</h1>
   <p class="ob-sub">
     What every agent actually did, across every user, organised by layer — and the
-    guardrails they run under. Opening a run or an artifact from here is a
-    cross-user read, so each one is written to the access-audit log: the admins
-    are observed too.
+    guardrails they run under. <strong>Free Tier (L0)</strong> covers what happens
+    before anyone pays: resume parsing, expertise-zone extraction, LinkedIn
+    normalisation. Opening a run or an artifact from here is a cross-user read, so
+    each one is written to the access-audit log: the admins are observed too.
   </p>
 
   <div id="obBanner"></div>
@@ -387,6 +388,9 @@
   var API = ROOT + '/api/admin';
 
   var LAYER_COLOR = {
+    // L0 is the free tier — visually distinct from the paid wealth layers,
+    // which run the teal ramp L1 to L4 and land on gold at L5.
+    L0: '#475569',
     L1: '#134e4a', L2: '#0f766e', L3: '#0d9488',
     L4: '#14b8a6', L5: '#C9952A', L6: '#6d5b9c'
   };
@@ -493,7 +497,7 @@
           '<div class="ob-lhead"><div class="ob-badge" style="background:' +
             (LAYER_COLOR[l.layer] || '#0d9488') + '">' + l.layer + '</div>' +
             '<div><div class="ob-lname">' + esc(l.layer_name) + '</div>' +
-            '<div class="ob-lmeta">' + (l.layer === 'L6' ? 'Orchestration' : 'Layer ' + l.layer[1]) + '</div></div></div>' +
+            '<div class="ob-lmeta">' + esc(l.subtitle || ('Layer ' + l.layer[1])) + '</div></div></div>' +
           '<div class="ob-lstats">' +
             '<div><div class="v">' + num(l.runs) + '</div><div class="k">runs</div></div>' +
             '<div><div class="v err">' + l.error_rate + '%</div><div class="k">errors</div></div>' +

@@ -37,7 +37,7 @@ CREATE TABLE agent_runs (
     simulation_id CHAR(9)     NULL,
     action_id     CHAR(9)     NULL                            COMMENT 'AgentAction this run produced, when there is one',
     agent_key     VARCHAR(50) NOT NULL                        COMMENT 'canonical action_type, alias-resolved',
-    layer         VARCHAR(2)  NOT NULL                        COMMENT 'L1..L5, L6 for orchestration',
+    layer         VARCHAR(2)  NOT NULL                        COMMENT 'L0 free tier (pre-simulation), L1..L5 wealth layers, L6 orchestration',
 
     status        VARCHAR(20) NOT NULL DEFAULT 'running'      COMMENT 'running | success | error | blocked',
     model         VARCHAR(80) NULL,
