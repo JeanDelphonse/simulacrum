@@ -58,6 +58,10 @@ from app.models.calibration import (
 from app.models.blog import (
     BlogPost, BlogLike, BlogComment, BlogCommentLike, BlogReport,
 )
+from app.models.observability import (
+    AgentRun, AgentRunTool, AgentEvent, AgentArtifact,
+    GuardrailRule, GuardrailPolicy, ObservabilityFlag, AdminAccessAudit,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -95,4 +99,6 @@ __all__ = [
     'ReferenceDataset', 'ReferenceDataPoint', 'CalibrationConfig',
     'CalibrationRun', 'OutcomeReport', 'CalibrationAudit',
     'BlogPost', 'BlogLike', 'BlogComment', 'BlogCommentLike', 'BlogReport',
+    'AgentRun', 'AgentRunTool', 'AgentEvent', 'AgentArtifact',
+    'GuardrailRule', 'GuardrailPolicy', 'ObservabilityFlag', 'AdminAccessAudit',
 ]

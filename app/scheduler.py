@@ -136,6 +136,21 @@ def _calibration_drift_job(app):
     _run_with_retry(app, 'calibration drift job', _run)
 
 
+def _observability_retention_job(app):
+    """PRD-SIM-OBS-001 §12 — off-peak purge of expired telemetry.
+
+    Run detail, flags and the access audit are on three different clocks; the
+    shared run header is never touched here because it is on the product
+    lifecycle and calibration and the World read it.
+    """
+    def _run():
+        from app.services.observability_service import purge_expired
+        removed = purge_expired()
+        if any(removed.values()):
+            logger.info('APScheduler: observability purge — %s', removed)
+    _run_with_retry(app, 'observability retention job', _run)
+
+
 def start_scheduler(app):
     """Start the background scheduler.  Safe to call multiple times — no-ops if already running.
     If APScheduler is not installed the function logs a warning and returns — the app still starts."""
@@ -244,6 +259,18 @@ def start_scheduler(app):
         minute=15,
         args=[app],
         id='calibration-drift-nightly',
+        replace_existing=True,
+    )
+
+    # PRD-SIM-OBS-001: telemetry retention. Off-peak and after the other nightly
+    # jobs, because it is the only one that deletes rows in bulk.
+    _scheduler.add_job(
+        _observability_retention_job,
+        'cron',
+        hour=4,
+        minute=45,
+        args=[app],
+        id='observability-retention-nightly',
         replace_existing=True,
     )
 

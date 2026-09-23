@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Simulacrum — Agent Observability & Governance</title>
+<style>
+:root{--navy:#0D1B3E;--navy2:#12244a;--panel:#14264d;--panel2:#0f1f42;--gold:#C9952A;--gold-l:#E4B855;
+  --teal:#13A89E;--teal2:#0F7B72;--red:#E2564A;--amber:#D9942B;--purple:#8B6BB1;
+  --offw:#F5F1E6;--subtl:#C3CDD6;--mute:#8794a8;--line:rgba(201,149,42,.18);--line2:rgba(255,255,255,.07);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--navy);color:var(--offw);font-size:14px;}
+.note{background:#07101f;color:var(--gold-l);text-align:center;font-size:.72rem;letter-spacing:.05em;padding:5px;border-bottom:1px solid var(--line);}
+.top{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0f1f42,#0d1b3e);}
+.top .brand{font-family:Georgia,serif;font-weight:700;font-size:1.05rem;}.top .brand b{color:var(--gold);}
+.top .title{font-family:Georgia,serif;font-size:1.15rem;font-weight:700;}
+.top .spacer{flex:1;}
+.chip{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:.8rem;color:var(--subtl);cursor:pointer;}
+.chip b{color:var(--offw);}
+.admin{background:rgba(201,149,42,.14);border:1px solid rgba(201,149,42,.5);color:var(--gold-l);border-radius:999px;padding:5px 12px;font-size:.75rem;font-weight:700;}
+.wrap{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 92px);}
+.side{border-right:1px solid var(--line);padding:16px 12px;background:#0b1730;}
+.side .lbl{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:14px 8px 6px;}
+.side a{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--subtl);font-size:.86rem;cursor:pointer;text-decoration:none;}
+.side a:hover{background:rgba(255,255,255,.04);color:var(--offw);}
+.side a.active{background:rgba(201,149,42,.12);color:var(--gold-l);font-weight:600;}
+.side a .dot{width:9px;height:9px;border-radius:2px;}
+.main{padding:22px 26px;overflow:auto;}
+.crumb{color:var(--mute);font-size:.82rem;margin-bottom:14px;}
+.crumb a{color:var(--gold-l);cursor:pointer;}
+h2.h{font-family:Georgia,serif;font-size:1.35rem;margin-bottom:4px;}
+.sub{color:var(--mute);font-size:.86rem;margin-bottom:18px;}
+/* overview grid */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:1000px){.grid{grid-template-columns:1fr 1fr;}}
+.lcard{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px;padding:18px;cursor:pointer;transition:.15s;}
+.lcard:hover{border-color:rgba(201,149,42,.5);transform:translateY(-2px);}
+.lcard .top2{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.lcard .badge{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-weight:700;font-size:1rem;}
+.lcard .nm{font-family:Georgia,serif;font-weight:700;font-size:1.05rem;}
+.lcard .layer{font-size:.72rem;color:var(--mute);}
+.stats{display:flex;gap:16px;margin:10px 0;}
+.stats .s .v{font-family:Georgia,serif;font-size:1.3rem;font-weight:700;}
+.stats .s .k{font-size:.68rem;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;}
+.stats .s .v.err{color:var(--red);}.stats .s .v.flag{color:var(--amber);}.stats .s .v.spend{color:var(--gold-l);}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.tags span{background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:6px;padding:3px 8px;font-size:.7rem;color:var(--subtl);}
+.tags .lb{color:var(--mute);font-size:.66rem;width:100%;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+/* runs table */
+table{width:100%;border-collapse:collapse;background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+th{background:var(--navy2);text-align:left;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:11px 14px;font-weight:600;}
+td{padding:11px 14px;border-top:1px solid var(--line2);font-size:.84rem;}
+tr.run{cursor:pointer;}tr.run:hover td{background:rgba(255,255,255,.03);}
+.mono{font-family:Consolas,monospace;color:var(--gold-l);font-size:.8rem;}
+.st{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:.78rem;}
+.st .d{width:8px;height:8px;border-radius:50%;}
+.st.success{color:var(--teal);}.st.success .d{background:var(--teal);}
+.st.error{color:var(--red);}.st.error .d{background:var(--red);}
+.st.blocked{color:var(--amber);}.st.blocked .d{background:var(--amber);}
+.st.flagged{color:var(--gold-l);}.st.flagged .d{background:var(--gold-l);}
+/* run detail */
+.dhead{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.dhead .nm{font-family:Georgia,serif;font-size:1.2rem;font-weight:700;}
+.dhead .kv{font-size:.78rem;color:var(--mute);}.dhead .kv b{color:var(--offw);font-weight:600;}
+.dhead .gbtn{margin-left:auto;background:var(--gold);color:#241a05;border:none;border-radius:9px;padding:9px 15px;font-weight:700;font-size:.82rem;cursor:pointer;}
+.panes{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:16px;}
+@media(max-width:1050px){.panes{grid-template-columns:1fr;}}
+.pane{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;}
+.pane h3{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:12px;}
+.trace{position:relative;padding-left:16px;}
+.trace .step{position:relative;padding:0 0 14px 12px;border-left:2px solid var(--line2);}
+.trace .step:last-child{border-left-color:transparent;}
+.trace .step::before{content:"";position:absolute;left:-5px;top:3px;width:8px;height:8px;border-radius:50%;background:var(--teal2);}
+.trace .step.flag::before{background:var(--amber);box-shadow:0 0 0 3px rgba(217,148,43,.2);}
+.trace .step .t{font-family:Consolas,monospace;font-size:.68rem;color:var(--mute);}
+.trace .step .x{font-size:.82rem;color:var(--subtl);margin-top:1px;}
+.trace .step.flag .x{color:var(--gold-l);font-weight:600;}
+.tool{border:1px solid var(--line2);border-radius:9px;padding:10px 12px;margin-bottom:9px;}
+.tool .tn{font-family:Consolas,monospace;color:var(--gold-l);font-size:.82rem;display:flex;justify-content:space-between;}
+.tool .tn .ms{color:var(--mute);font-size:.72rem;}
+.tool .io{font-size:.74rem;color:var(--mute);margin-top:4px;}
+.tool .io b{color:var(--subtl);font-weight:400;}
+.tool.flag{border-color:rgba(217,148,43,.5);background:rgba(217,148,43,.06);}
+.art{border:1px solid var(--line2);border-radius:10px;padding:12px;margin-bottom:10px;}
+.art .ah{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.art .at{font-weight:700;color:var(--offw);font-size:.88rem;}
+.art .rows{font-size:.8rem;color:var(--subtl);}
+.art .rows div{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--line2);}
+.art .rows b{color:var(--gold-l);}
+.pill{font-size:.64rem;padding:2px 7px;border-radius:5px;font-weight:700;}
+.pill.flag{background:rgba(217,148,43,.16);color:var(--amber);}
+.pill.ok{background:rgba(19,168,158,.16);color:var(--teal);}
+/* drawer */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:40;}
+.overlay.open{display:block;}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:92vw;background:linear-gradient(180deg,#12244a,#0c1a38);
+  border-left:1px solid var(--line);transform:translateX(100%);transition:.25s;z-index:50;padding:22px;overflow:auto;}
+.drawer.open{transform:translateX(0);}
+.drawer h3{font-family:Georgia,serif;font-size:1.2rem;margin-bottom:4px;}
+.drawer .d-sub{color:var(--mute);font-size:.82rem;margin-bottom:18px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);margin-bottom:6px;}
+.field select,.field input,.field textarea{width:100%;background:#0c1a38;border:1px solid var(--line);border-radius:8px;color:var(--offw);padding:9px 11px;font-size:.85rem;font-family:inherit;}
+.field textarea{font-family:Consolas,monospace;min-height:64px;}
+.radios{display:flex;gap:8px;}
+.radios label{flex:1;text-align:center;background:#0c1a38;border:1px solid var(--line);border-radius:8px;padding:8px;cursor:pointer;color:var(--subtl);font-size:.8rem;text-transform:none;letter-spacing:0;}
+.radios label.sel{border-color:var(--gold);color:var(--gold-l);background:rgba(201,149,42,.1);font-weight:700;}
+.radios label.sel.block{border-color:var(--red);color:var(--red);background:rgba(226,86,74,.1);}
+.dactions{display:flex;gap:10px;margin-top:20px;}
+.btn{border:none;border-radius:9px;padding:11px;font-weight:700;font-size:.85rem;cursor:pointer;flex:1;}
+.btn.gold{background:var(--gold);color:#241a05;}.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--subtl);}
+.hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="note">Concept mockup · admin-only console · cross-user, by-layer · sample data</div>
+<div class="top">
+  <div class="brand">Simula<b>crum</b></div>
+  <div class="title">Agent Observability &amp; Governance</div>
+  <div class="spacer"></div>
+  <div class="chip">Layer: <b>All</b> ▾</div>
+  <div class="chip">Status: <b>All</b> ▾</div>
+  <div class="chip">Last <b>24h</b> ▾</div>
+  <div class="chip">Model: <b>All</b> ▾</div>
+  <div class="admin">ADMIN</div>
+</div>
+<div class="wrap">
+  <nav class="side">
+    <div class="lbl">Observe</div>
+    <a class="active" onclick="showOverview(this)">▦ Layer overview</a>
+    <a onclick="showRuns('L1',this)"><span class="dot" style="background:#0B4A46"></span> L1 · Active Income</a>
+    <a onclick="showRuns('L2',this)"><span class="dot" style="background:#0F7B72"></span> L2 · Leveraged</a>
+    <a onclick="showRuns('L3',this)"><span class="dot" style="background:#139488"></span> L3 · Productized</a>
+    <a onclick="showRuns('L4',this)"><span class="dot" style="background:#13A89E"></span> L4 · Automated</a>
+    <a onclick="showRuns('L5',this)"><span class="dot" style="background:#C9952A"></span> L5 · Deployment</a>
+    <a onclick="showRuns('L6',this)"><span class="dot" style="background:#8B6BB1"></span> L6 · Orchestration</a>
+    <div class="lbl">Govern</div>
+    <a onclick="showFlags(this)">⚑ Flags <span style="margin-left:auto;background:rgba(217,148,43,.18);color:#D9942B;border-radius:999px;padding:1px 8px;font-size:.7rem;">23</span></a>
+    <a onclick="showGuardrails(this)">🛡 Guardrails</a>
+  </nav>
+  <main class="main">
+    <!-- OVERVIEW -->
+    <section id="v-overview">
+      <h2 class="h">Layer overview</h2>
+      <div class="sub">All agent activity across every user, rolled up by layer. Click a layer to drill into its runs.</div>
+      <div class="grid" id="lgrid"></div>
+    </section>
+    <!-- RUNS -->
+    <section id="v-runs" class="hidden">
+      <div class="crumb"><a onclick="showOverview()">Layer overview</a> › <span id="runsCrumb"></span></div>
+      <h2 class="h" id="runsTitle"></h2>
+      <div class="sub" id="runsSub"></div>
+      <table><thead><tr><th>Run</th><th>Agent</th><th>User</th><th>Status</th><th>Tools</th><th>Artifacts</th><th>Tokens</th><th>Latency</th><th>When</th></tr></thead>
+        <tbody id="runsBody"></tbody></table>
+    </section>
+    <!-- DETAIL -->
+    <section id="v-detail" class="hidden">
+      <div class="crumb"><a onclick="showOverview()">Layer overview</a> › <a onclick="backToRuns()" id="detCrumb"></a> › <span id="detRun"></span></div>
+      <div class="dhead">
+        <div><div class="nm" id="detAgent"></div><div class="kv">Layer <b id="detLayer"></b> · run <span class="mono" id="detId"></span></div></div>
+        <div class="kv">Status<br><span id="detStatus"></span></div>
+        <div class="kv">Model<br><b>claude-sonnet-5</b></div>
+        <div class="kv">Tokens<br><b id="detTokens"></b></div>
+        <div class="kv">Latency<br><b id="detLatency"></b></div>
+        <button class="gbtn" onclick="openGuardrail()">＋ Create guardrail from this</button>
+      </div>
+      <div class="panes">
+        <div class="pane"><h3>Behavior trace</h3><div class="trace" id="paneTrace"></div></div>
+        <div class="pane"><h3>Tools used</h3><div id="paneTools"></div></div>
+        <div class="pane"><h3>Artifacts generated</h3><div id="paneArts"></div></div>
+      </div>
+    </section>
+    <!-- FLAGS -->
+    <section id="v-flags" class="hidden">
+      <h2 class="h">Flags</h2>
+      <div class="sub">Everything a guardrail flagged or blocked, newest first — across all layers and users.</div>
+      <table><thead><tr><th>When</th><th>Severity</th><th>Layer / Agent</th><th>User</th><th>Rule</th><th>Reason</th><th></th></tr></thead><tbody id="flagsBody"></tbody></table>
+    </section>
+    <!-- GUARDRAILS -->
+    <section id="v-guardrails" class="hidden">
+      <h2 class="h">Guardrails</h2>
+      <div class="sub">Active rules and policies. Each shows its scope, action, and how often it has fired.</div>
+      <table><thead><tr><th>Rule</th><th>Scope</th><th>Type</th><th>Action</th><th>Fired (7d)</th><th>Status</th></tr></thead><tbody id="grBody"></tbody></table>
+    </section>
+  </main>
+</div>
+
+<!-- guardrail drawer -->
+<div class="overlay" id="ovl" onclick="closeGuardrail()"></div>
+<div class="drawer" id="drawer">
+  <h3>Create guardrail</h3>
+  <div class="d-sub">Pre-filled from run <span class="mono">run_7fa3</span> — <b>Income Allocation</b>.</div>
+  <div class="field"><label>Scope</label><select><option>Agent · Income Allocation</option><option>Layer · L5 Wealth Deployment</option><option>Global</option></select></div>
+  <div class="field"><label>Rule type</label><select><option>Parameter bound</option><option>Tool allow / deny-list</option><option>Output / content policy</option><option>Rate limit</option><option>Model constraint</option></select></div>
+  <div class="field"><label>Definition</label><textarea>invest_pct &lt;= 0.55   # cap invest allocation at 55%</textarea></div>
+  <div class="field"><label>Action</label><div class="radios">
+    <label class="sel-l" onclick="pickAction(this,'log')">Log</label>
+    <label class="sel" onclick="pickAction(this,'warn')">Warn</label>
+    <label onclick="pickAction(this,'block')">Block</label>
+  </div></div>
+  <div class="dactions"><button class="btn gold" onclick="closeGuardrail()">Create rule</button><button class="btn ghost" onclick="closeGuardrail()">Cancel</button></div>
+</div>
+
+<script>
+const LAYERS=[
+ {code:'L1',name:'Active Income',color:'#0B4A46',runs:1284,err:2.1,flag:3.4,spend:142,tools:['rate_lookup','template_fill','email_draft'],arts:['Rate Card','Proposal','Cold Email']},
+ {code:'L2',name:'Leveraged Income',color:'#0F7B72',runs:612,err:1.4,flag:2.0,spend:88,tools:['curriculum_gen','landing_build','roi_calc'],arts:['Workshop','Waitlist','ROI Calc']},
+ {code:'L3',name:'Productized Income',color:'#139488',runs:938,err:2.8,flag:5.1,spend:176,tools:['course_gen','sales_copy','ab_split'],arts:['Course','Sales Page','Membership']},
+ {code:'L4',name:'Automated Residual',color:'#13A89E',runs:1105,err:3.2,flag:4.4,spend:210,tools:['seo_plan','newsletter_gen','ads_config'],arts:['Content Cal.','Newsletter','SaaS Spec']},
+ {code:'L5',name:'Wealth Deployment',color:'#C9952A',runs:503,err:0.9,flag:6.8,spend:64,tools:['alloc_fold','projection','policy_check'],arts:['Allocation','Projection','Policy']},
+ {code:'L6',name:'Orchestration',color:'#8B6BB1',runs:2210,err:1.1,flag:1.2,spend:95,tools:['scheduler','ranker'],arts:['Cycle Plan']},
+];
+const RUNS={
+ L5:[
+  {id:'run_7fa3',agent:'Income Allocation',user:'elena.v',status:'flagged',tools:3,arts:1,tok:'8.2K',ms:'1,840ms',when:'2m ago'},
+  {id:'run_9b21',agent:'Investment Policy',user:'david.o',status:'blocked',tools:2,arts:0,tok:'5.1K',ms:'920ms',when:'6m ago'},
+  {id:'run_3c88',agent:'Projections',user:'sarah.c',status:'success',tools:2,arts:1,tok:'6.7K',ms:'1,310ms',when:'11m ago'},
+  {id:'run_1d40',agent:'Fund Recommendations',user:'james.w',status:'success',tools:2,arts:1,tok:'4.9K',ms:'1,020ms',when:'18m ago'},
+  {id:'run_a55e',agent:'Tax Optimization',user:'priya.n',status:'error',tools:1,arts:0,tok:'2.1K',ms:'400ms',when:'22m ago'},
+ ]};
+function genRuns(code){ if(RUNS[code]) return RUNS[code];
+  const ags={L1:['Rate Card','Cold Email','Proposal','Booking Page'],L2:['Group Coaching','Workshop','Waitlist','ROI Calculator'],
+   L3:['Course','Sales Page','Membership','A/B Test'],L4:['SEO Content','Newsletter','SaaS Spec','Programmatic Ads'],L6:['Orchestrator','Ranker']}[code]||['Agent'];
+  const us=['elena.v','marcus.b','priya.n','david.o','sarah.c','james.w'];const sts=['success','success','success','flagged','error'];
+  return Array.from({length:6},(_,i)=>({id:'run_'+Math.random().toString(16).slice(2,6),agent:ags[i%ags.length],user:us[i%us.length],
+    status:sts[i%sts.length],tools:1+i%3,arts:i%2,tok:(3+i)+'.'+i+'K',ms:(600+i*180)+'ms',when:(i*4+2)+'m ago'}));
+}
+const DETAIL={
+ trace:[['00.00','Parsed inputs — 4 income streams, monthly total $37,880',0],
+   ['00.12','Loaded allocation policy defaults for this user',0],
+   ['00.34','Computed split — reserve 10% · tax 25% · invest 65% · lifestyle 0%',0],
+   ['00.51','invest_% (65%) exceeds policy cap (55%) — FLAGGED',1],
+   ['00.68','Generated Allocation Plan artifact',0]],
+ tools:[['alloc_fold','240ms',0,'in: income stream, weights','out: 4 buckets computed'],
+   ['policy_check','60ms',1,'in: {invest:0.65}','out: VIOLATION invest_% > cap 0.55'],
+   ['doc_render','180ms',0,'in: allocation plan','out: allocation_plan.pdf (1 page)']],
+};
+function badge(color,dark){return `<div class="badge" style="background:${color};color:${dark?'#241a05':'#fff'}">`;}
+function renderOverview(){document.getElementById('lgrid').innerHTML=LAYERS.map(l=>`
+  <div class="lcard" onclick="showRuns('${l.code}')">
+    <div class="top2">${badge(l.color,l.code==='L5')}${l.code}</div><div><div class="nm">${l.name}</div><div class="layer">Layer ${l.code[1]}</div></div></div>
+    <div class="stats">
+      <div class="s"><div class="v">${l.runs.toLocaleString()}</div><div class="k">runs</div></div>
+      <div class="s"><div class="v err">${l.err}%</div><div class="k">errors</div></div>
+      <div class="s"><div class="v flag">${l.flag}%</div><div class="k">flagged</div></div>
+      <div class="s"><div class="v spend">$${l.spend}</div><div class="k">spend</div></div>
+    </div>
+    <div class="tags"><span class="lb">Top tools</span>${l.tools.map(t=>'<span>'+t+'</span>').join('')}</div>
+    <div class="tags"><span class="lb">Top artifacts</span>${l.arts.map(t=>'<span>'+t+'</span>').join('')}</div>
+  </div>`).join('');}
+function show(id){['v-overview','v-runs','v-detail','v-flags','v-guardrails'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id));window.scrollTo(0,0);}
+function setActive(el){if(el){document.querySelectorAll('.side a').forEach(a=>a.classList.remove('active'));el.classList.add('active');}}
+function showOverview(el){setActive(el||document.querySelector('.side a'));show('v-overview');}
+let curLayer='L5';
+function showRuns(code,el){curLayer=code;setActive(el);const l=LAYERS.find(x=>x.code===code);
+  document.getElementById('runsCrumb').textContent=code+' · '+l.name;
+  document.getElementById('runsTitle').textContent=code+' · '+l.name+' — runs';
+  document.getElementById('runsSub').textContent='All runs of this layer\u2019s agents, across every user.';
+  document.getElementById('runsBody').innerHTML=genRuns(code).map(r=>`
+   <tr class="run" onclick="showDetail('${r.id}','${r.agent}','${r.status}','${r.tok}','${r.ms}')">
+     <td class="mono">${r.id}</td><td>${r.agent}</td><td>${r.user}</td>
+     <td><span class="st ${r.status}"><span class="d"></span>${r.status}</span></td>
+     <td>${r.tools}</td><td>${r.arts}</td><td>${r.tok}</td><td>${r.ms}</td><td style="color:var(--mute)">${r.when}</td></tr>`).join('');
+  show('v-runs');}
+function backToRuns(){showRuns(curLayer);}
+function showDetail(id,agent,status,tok,ms){
+  document.getElementById('detCrumb').textContent=curLayer+' runs';
+  document.getElementById('detRun').textContent=id;
+  document.getElementById('detAgent').textContent=agent;
+  document.getElementById('detLayer').textContent=curLayer;
+  document.getElementById('detId').textContent=id;
+  document.getElementById('detStatus').innerHTML=`<span class="st ${status}"><span class="d"></span>${status}</span>`;
+  document.getElementById('detTokens').textContent=tok;document.getElementById('detLatency').textContent=ms;
+  document.getElementById('paneTrace').innerHTML=DETAIL.trace.map(s=>`<div class="step ${s[2]?'flag':''}"><div class="t">${s[0]}</div><div class="x">${s[1]}</div></div>`).join('');
+  document.getElementById('paneTools').innerHTML=DETAIL.tools.map(t=>`<div class="tool ${t[2]?'flag':''}"><div class="tn">${t[0]}<span class="ms">${t[1]} · ${t[2]?'⚑ flag':'ok'}</span></div><div class="io"><b>${t[3]}</b><br><b>${t[4]}</b></div></div>`).join('');
+  document.getElementById('paneArts').innerHTML=`<div class="art"><div class="ah"><span class="at">Allocation Plan</span><span class="pill flag">flagged</span></div>
+    <div class="rows"><div><span>Reserve (10%)</span><b>$3,788</b></div><div><span>Tax (25%)</span><b>$9,470</b></div>
+    <div><span>Invest (65%)</span><b style="color:#D9942B">$24,622</b></div><div><span>Lifestyle (0%)</span><b>$0</b></div></div></div>
+    <div style="font-size:.76rem;color:var(--mute);margin-top:6px;">Content stored by reference · PII-redacted · retained 90 days.</div>`;
+  show('v-detail');}
+function showFlags(el){setActive(el);
+  const rows=[['2m ago','high','L5 · Income Allocation','elena.v','invest-cap-55','invest_% 65% > cap 55%','flagged'],
+   ['6m ago','critical','L5 · Investment Policy','david.o','no-named-securities','named a specific security','blocked'],
+   ['9m ago','med','L3 · Sales Page','marcus.b','earnings-claims','unverifiable income claim','flagged'],
+   ['14m ago','med','L1 · Cold Email','priya.n','outbound-consent','send-tool without opt-in','blocked'],
+   ['21m ago','low','L4 · Programmatic Ads','james.w','spend-guard','scaled before organic proof','flagged']];
+  document.getElementById('flagsBody').innerHTML=rows.map(r=>`<tr><td style="color:var(--mute)">${r[0]}</td>
+    <td><span class="st ${r[6]}"><span class="d"></span>${r[1]}</span></td><td>${r[2]}</td><td>${r[3]}</td><td class="mono">${r[4]}</td><td style="color:var(--subtl)">${r[5]}</td>
+    <td><button class="chip" onclick="openGuardrail()" style="padding:4px 9px">Tune ▸</button></td></tr>`).join('');show('v-flags');}
+function showGuardrails(el){setActive(el);
+  const rows=[['invest-cap-55','Agent · Income Allocation','Parameter bound','warn','12','on'],
+   ['no-named-securities','Layer · L5','Content policy','block','4','on'],
+   ['earnings-claims','Global','Content policy','warn','31','on'],
+   ['outbound-consent','Layer · L1','Tool deny-list','block','7','on'],
+   ['spend-guard','Agent · Programmatic Ads','Parameter bound','log','19','on']];
+  document.getElementById('grBody').innerHTML=rows.map(r=>`<tr><td class="mono">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>
+    <td><span class="st ${r[3]==='block'?'blocked':(r[3]==='warn'?'flagged':'success')}"><span class="d"></span>${r[3]}</span></td>
+    <td>${r[4]}</td><td><span style="color:var(--teal)">● ${r[5]}</span></td></tr>`).join('');show('v-guardrails');}
+function openGuardrail(){document.getElementById('ovl').classList.add('open');document.getElementById('drawer').classList.add('open');}
+function closeGuardrail(){document.getElementById('ovl').classList.remove('open');document.getElementById('drawer').classList.remove('open');}
+function pickAction(el,a){el.parentNode.querySelectorAll('label').forEach(l=>{l.classList.remove('sel');l.classList.remove('block');});el.classList.add('sel');if(a==='block')el.classList.add('block');}
+renderOverview();
+</script>
+</body>
+</html>

@@ -981,6 +981,20 @@ def admin_calibration_view():
     return render_template('admin/calibration.html')
 
 
+@pages_bp.route('/admin/observability')
+@login_required
+def admin_observability_view():
+    """Agent Observability & Governance console (PRD-SIM-OBS-001 §11).
+
+    Admin-only and cross-user: it shows every user's agent activity, so every
+    run or artifact opened from here writes an admin_access_audit row.
+    """
+    if not current_user.is_admin:
+        from flask import abort
+        abort(403)
+    return render_template('admin/observability.html')
+
+
 @pages_bp.route('/admin/experts')
 @login_required
 def admin_experts_view():

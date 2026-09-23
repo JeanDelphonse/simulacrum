@@ -464,6 +464,13 @@ def _try_apollo_send(prospect_dict, user_id, action):
         )
         return False
 
+    # PRD-SIM-OBS-001 §9, carve-out two: a real outbound send is irreversible,
+    # so its guardrail is evaluated at the tool-call boundary rather than on the
+    # completed run. A ToolBlocked here reads as a failed send, which the
+    # callers already handle by leaving the draft unsent for a later retry.
+    from app.services import observability_service as _obs
+    from app.services.guardrail_service import ToolBlocked as _ToolBlocked
+
     try:
         from app.services.outreach_email_service import send_outreach_email as _soe
         from app.models.user import User as _User
@@ -475,18 +482,25 @@ def _try_apollo_send(prospect_dict, user_id, action):
         _from_name = (_user.full_name or '') if _user else 'Simulacrum'
         body_text = email_draft.get('body', '')
         html_body = '<br>'.join(body_text.split('\n')) if body_text else ''
-        result = _soe(
-            simulation_id=simulation_id,
-            contact_id=crm_id,
-            subject=email_draft['subject'],
-            html_body=html_body,
-            from_email=_from_email,
-            from_name=_from_name,
-            action_id=str(action.id) if action else None,
-        )
-        status = result.get('status')
+        with _obs.tool_span('outbound_email_send',
+                            {'contact_id': crm_id, 'subject': email_draft['subject']},
+                            side_effecting=True) as _span:
+            result = _soe(
+                simulation_id=simulation_id,
+                contact_id=crm_id,
+                subject=email_draft['subject'],
+                html_body=html_body,
+                from_email=_from_email,
+                from_name=_from_name,
+                action_id=str(action.id) if action else None,
+            )
+            status = result.get('status')
+            _span['output'] = 'status=%s' % status
         logger.info('Outreach email to contact %s: %s', crm_id, status)
         return status == 'sent'
+    except _ToolBlocked as blocked:
+        logger.warning('Outreach send withheld by a guardrail: %s', blocked)
+        return False
     except Exception as exc:
         logger.warning('SendGrid outreach send failed (non-fatal): %s', exc)
         return False

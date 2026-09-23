@@ -908,7 +908,19 @@ def execute_agent_action(
     action_id: str = None,
     prospect_count: int = None,
 ) -> str:
-    """Execute an agent action for a simulation layer. Returns the generated artifact text."""
+    """Execute an agent action for a simulation layer. Returns the artifact text.
+
+    The governed entry point (PRD-SIM-OBS-001). Every agent run — user-triggered
+    or orchestrator-dispatched — funnels through here, so this is where the
+    single emit hook opens the run and where the guardrail engine gets its two
+    bites: the dispatch gate before any tokens are spent, and the post-agent
+    evaluation of what came back.
+
+    Both are non-fatal by construction. Capture failures are swallowed inside
+    the observability service; a blocked result comes back as the held-for-review
+    notice rather than an exception, because the caller's job is to store an
+    artifact, not to handle a governance outcome.
+    """
     # Resolve legacy aliases up front so model routing, token budgets, custom
     # execution paths, and contact-agent sets all key off the canonical name —
     # otherwise the same logical agent gets a different model/budget depending
@@ -916,13 +928,92 @@ def execute_agent_action(
     from app.services.agent_registry import resolve_alias
     action_type = resolve_alias(action_type)
 
+    from app.services import guardrail_service as _guardrails
+    from app.services import observability_service as _obs
+
+    _model = get_model(action_type)
+    run = _obs.start_run(
+        agent_key=action_type, layer=layer_number, user_id=user_id,
+        simulation_id=simulation_id, action_id=action_id,
+        params=user_inputs, model=_model, dispatch_source=dispatch_source,
+    )
+
+    # Carve-out one: rate limits gate here, not post-hoc, because a runaway
+    # agent's tokens cannot be refunded after the fact.
+    gate = _guardrails.check_dispatch(action_type, layer_number, user_id, _model, run)
+    if gate.blocked:
+        _obs.finish_run(status='blocked', error_code='dispatch_blocked')
+        logger.warning('Agent %s blocked at dispatch: %s', action_type, gate.reason)
+        return _guardrails.HELD_NOTICE
+    if gate.model_override:
+        _obs.record_decision('Model pinned to %s by guardrail' % gate.model_override,
+                             requested=_model)
+        _model = gate.model_override
+
+    try:
+        artifact = _execute_agent_action_body(
+            action_type=action_type, layer_number=layer_number,
+            expertise_zone=expertise_zone, parsed_text=parsed_text,
+            user_inputs=user_inputs, user_id=user_id, simulation_id=simulation_id,
+            action_id=action_id, prospect_count=prospect_count, model=_model,
+        )
+    except Exception as exc:
+        _obs.finish_run(status='error', error_code=exc.__class__.__name__)
+        raise
+
+    _action_meta = AGENT_ACTION_TYPES.get(layer_number, {}).get(action_type) or {}
+    _obs.record_artifact(
+        _action_meta.get('label', action_type),
+        content=artifact,
+        summary={'agent': action_type, 'layer': layer_number},
+        content_ref=('agent_action:%s' % action_id) if action_id else None,
+    )
+
+    verdict = _guardrails.evaluate_run(
+        run, artifact=artifact, params=user_inputs, model=_model,
+    )
+    if verdict.blocked:
+        # Withhold delivery and quarantine, rather than fail the run. The
+        # content never reaches the product store, so the quarantine row holds
+        # the only copy until an admin releases it (PRD §9).
+        _obs.quarantine_artifacts(artifact, verdict.reason)
+        _obs.finish_run(status='blocked', model=_model, error_code='output_withheld')
+        logger.warning('Agent %s output withheld: %s', action_type, verdict.reason)
+        return _guardrails.HELD_NOTICE
+
+    _obs.finish_run(status='success', model=_model)
+    return artifact
+
+
+def _execute_agent_action_body(
+    action_type: str,
+    layer_number: int,
+    expertise_zone: str,
+    parsed_text: str,
+    user_inputs: dict,
+    user_id: str,
+    simulation_id: str,
+    action_id: str = None,
+    prospect_count: int = None,
+    model: str = None,
+) -> str:
+    """The agent itself. Always called through execute_agent_action, which owns
+    the run record and the guardrail passes; action_type arrives alias-resolved."""
+    from app.services import observability_service as _obs
+
     layer_name, _, layer_desc = LAYER_DEFINITIONS[layer_number]
     action_meta = AGENT_ACTION_TYPES.get(layer_number, {}).get(action_type)
     if not action_meta:
         raise ValueError(f'Unknown action_type "{action_type}" for layer {layer_number}')
 
+    _obs.record_decision(
+        'Parsed inputs for %s' % action_meta['label'],
+        layer=layer_number, fields=sorted(k for k, v in (user_inputs or {}).items() if v),
+    )
+
     # Two-pass agents with custom execution paths
     if action_type == 'consulting_outreach':
+        _obs.record_decision('Two-pass path — research then draft', path='consulting_outreach')
         from app.services.consulting_outreach_service import execute_consulting_outreach
         return execute_consulting_outreach(
             user_id=user_id,
@@ -935,6 +1026,7 @@ def execute_agent_action(
         )
 
     if action_type == 'sponsorship_outreach':
+        _obs.record_decision('Two-pass path — research then draft', path='sponsorship_outreach')
         from app.services.sponsorship_outreach_service import execute_sponsorship_outreach
         return execute_sponsorship_outreach(
             user_id=user_id,
@@ -964,18 +1056,24 @@ def execute_agent_action(
     # outreach_email / cold_email_campaign: pull verified prospects from CRM
     # contacts (have real emails). Fall back to research engine if CRM is empty.
     if action_type in ('outreach_email', 'cold_email_campaign'):
-        prospect_section = _get_crm_prospect_section(user_id, simulation_id, user_inputs, prospect_count)
+        with _obs.tool_span('crm_prospect_lookup', {'want': prospect_count}) as _span:
+            prospect_section = _get_crm_prospect_section(user_id, simulation_id, user_inputs, prospect_count)
+            _span['output'] = 'found verified contacts' if prospect_section else 'CRM empty'
         if not prospect_section:
+            with _obs.tool_span('prospect_research', {'want': prospect_count}) as _span:
+                prospect_section = _get_prospect_context(
+                    action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
+                    prospect_count=prospect_count,
+                )
+                _span['output'] = '%d chars of prospect context' % len(prospect_section or '')
+    else:
+        # Prospect research injection (FR-RESEARCH-01)
+        with _obs.tool_span('prospect_research', {'want': prospect_count}) as _span:
             prospect_section = _get_prospect_context(
                 action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
                 prospect_count=prospect_count,
             )
-    else:
-        # Prospect research injection (FR-RESEARCH-01)
-        prospect_section = _get_prospect_context(
-            action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
-            prospect_count=prospect_count,
-        )
+            _span['output'] = '%d chars of prospect context' % len(prospect_section or '')
 
     prompt = f"""You are a specialized career wealth agent executing a specific action for a professional.
 
@@ -1142,16 +1240,30 @@ Generate the complete artifact for this action. Be specific and draw directly fr
     import logging as _log
     _logger = _log.getLogger(__name__)
 
-    model = get_model(action_type)
+    # The caller resolved the model (and may have re-pinned it via a guardrail),
+    # so only fall back to the routing table when called without one.
+    model = model or get_model(action_type)
     _json_outreach = {'outreach_email', 'cold_email_campaign'}
-    response = _client().messages.create(
+    with _obs.tool_span('claude_generate',
+                        {'model': model, 'max_tokens': max_tokens,
+                         'prompt_chars': len(prompt)}) as _span:
+        response = _client().messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        _span['output'] = 'stop_reason=%s out_tokens=%s' % (
+            response.stop_reason, getattr(response.usage, 'output_tokens', '?'))
+    _obs.record_usage(
         model=model,
-        max_tokens=max_tokens,
-        messages=[{'role': 'user', 'content': prompt}],
+        prompt_tokens=getattr(response.usage, 'input_tokens', None),
+        completion_tokens=getattr(response.usage, 'output_tokens', None),
     )
     _log_interaction(AIInteraction.TYPE_AGENT_ACTION, user_id, simulation_id, response.usage, model=model)
 
     if response.stop_reason == 'max_tokens':
+        _obs.record_warning('Artifact truncated at the token budget',
+                            max_tokens=max_tokens)
         _logger.warning(
             'execute_agent_action: artifact truncated at max_tokens=%d '
             'action_type=%s sim=%s action=%s — consider raising the limit',
@@ -1172,12 +1284,20 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             # checks out a live connection instead of a dead one.
             from app.extensions import db as _db
             _db.session.remove()
-            _cal.calibrate_metrics(
-                metrics=_metrics,
-                agent_key=action_type,
-                simulation_id=simulation_id,
-                action_id=action_id,
-            )
+            with _obs.tool_span('calibration', {'fields': sorted(_metrics)}) as _span:
+                _cal.calibrate_metrics(
+                    metrics=_metrics,
+                    agent_key=action_type,
+                    simulation_id=simulation_id,
+                    action_id=action_id,
+                )
+                _span['output'] = '%d field(s) calibrated' % len(_metrics)
+            # The headline number goes on the shared run header, so calibration
+            # and the World can read a value without the detail tables.
+            for _value in _metrics.values():
+                if isinstance(_value, (int, float)):
+                    _obs.set_projected_value(_value)
+                    break
     except Exception as _cal_err:
         _logger.warning(
             'Calibration skipped for action_type=%s action=%s: %s',
@@ -1186,9 +1306,11 @@ Generate the complete artifact for this action. Be specific and draw directly fr
 
     # JSON outreach agents: parse, save contacts, return clean JSON
     if action_type in _json_outreach:
-        raw_artifact = _finalize_outreach_email_artifact(
-            raw_artifact, user_id, simulation_id, action_id,
-        )
+        with _obs.tool_span('outreach_finalize') as _span:
+            raw_artifact = _finalize_outreach_email_artifact(
+                raw_artifact, user_id, simulation_id, action_id,
+            )
+            _span['output'] = '%d chars of structured outreach' % len(raw_artifact or '')
         # Enforce prospect count cap — keep highest qualifying_score entries (FR-TIER-07)
         if prospect_count:
             raw_artifact = _truncate_prospects_to_limit(raw_artifact, prospect_count)
@@ -1196,10 +1318,12 @@ Generate the complete artifact for this action. Be specific and draw directly fr
 
     # Extract and save contacts[] if present (FR-CRM-03)
     if action_type in _contact_agents:
-        raw_artifact = _extract_and_save_contacts(
-            raw_artifact, user_id, simulation_id, action_type,
-            update_only=(action_type in _update_only_agents),
-        )
+        with _obs.tool_span('contact_extract') as _span:
+            raw_artifact = _extract_and_save_contacts(
+                raw_artifact, user_id, simulation_id, action_type,
+                update_only=(action_type in _update_only_agents),
+            )
+            _span['output'] = 'contacts block processed'
 
     return raw_artifact
 

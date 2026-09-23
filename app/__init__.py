@@ -132,6 +132,8 @@ def create_app(config_name=None):
     app.logger.info('startup: careers_bp imported')
     from app.blueprints.blog import blog_bp
     app.logger.info('startup: blog_bp imported')
+    from app.blueprints.observability import observability_bp
+    app.logger.info('startup: observability_bp imported')
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(resumes_bp, url_prefix='/api/resumes')
@@ -166,6 +168,8 @@ def create_app(config_name=None):
     app.register_blueprint(careers_bp)
     # Declares its own full paths (/api/blog/..., /api/admin/blog/...)
     app.register_blueprint(blog_bp)
+    # Declares its own full paths (/api/admin/observability/..., /api/admin/guardrails/...)
+    app.register_blueprint(observability_bp)
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 

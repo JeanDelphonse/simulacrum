@@ -1,0 +1,1121 @@
+{% extends 'base.html' %}
+{% block title %}Agent Observability — Admin{% endblock %}
+{% block head %}
+<style>
+/* PRD-SIM-OBS-001 §11. The mockup's Midnight Gold treatment is dropped in
+   favour of the theme the rest of the admin area already uses — this console
+   sits next to Calibration and Analytics, and reading three dark panes of
+   dense telemetry all day is not the same job as reading a marketing page.
+   The information architecture is the mockup's: layer overview, drill to runs,
+   three-pane run detail, flags, guardrails. */
+.ob-page { max-width:1400px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+.ob-title { font-size:1.4rem; font-weight:700; color:#0f172a; margin:0 0 .35rem; }
+.ob-sub { font-size:.85rem; color:#6b7280; margin:0 0 1.25rem; max-width:80ch; line-height:1.6; }
+.ob-sub .mono { color:#374151; }
+
+/* filter bar */
+.ob-filters { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;
+  background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:.6rem .75rem; margin-bottom:1rem; }
+.ob-filters label { font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; font-weight:700; margin-right:.25rem; }
+.ob-filters select { border:1px solid #d1d5db; border-radius:6px; padding:.3rem .5rem; font-size:.8rem; font-family:inherit; color:#111827; background:#fff; }
+.ob-filters .spacer { flex:1; }
+.ob-live { display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem; color:#374151; }
+.ob-live .dot { width:8px; height:8px; border-radius:50%; background:#d1d5db; }
+.ob-live.on .dot { background:#0d9488; box-shadow:0 0 0 3px rgba(13,148,136,.18); }
+
+/* summary */
+.ob-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.75rem; margin-bottom:1.25rem; }
+.ob-stat { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:.9rem 1rem; }
+.ob-stat-label { font-size:.68rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:700; margin-bottom:.3rem; }
+.ob-stat-value { font-size:1.55rem; font-weight:800; color:#0f172a; line-height:1.1; }
+.ob-stat-value.err { color:#b91c1c; } .ob-stat-value.flag { color:#a16207; } .ob-stat-value.spend { color:#0f766e; }
+
+/* tabs */
+.ob-tabs { display:flex; gap:.4rem; border-bottom:1px solid #e5e7eb; margin-bottom:1.25rem; flex-wrap:wrap; }
+.ob-tab { padding:.5rem .9rem; font-size:.85rem; font-weight:600; color:#6b7280; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; font-family:inherit; }
+.ob-tab.active { color:#0d9488; border-bottom-color:#0d9488; }
+.ob-tab .count { display:inline-block; margin-left:.35rem; background:#fef3c7; color:#92400e; border-radius:999px; padding:0 .45rem; font-size:.68rem; font-weight:700; }
+.ob-panel { display:none; } .ob-panel.active { display:block; }
+
+.ob-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.25rem; margin-bottom:1.25rem; }
+.ob-card h2 { font-size:1rem; font-weight:700; color:#0f172a; margin:0 0 .35rem; }
+.ob-card .hint { font-size:.78rem; color:#6b7280; margin:0 0 1rem; line-height:1.65; max-width:85ch; }
+
+/* layer grid */
+.ob-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1rem; }
+.ob-lcard { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.1rem; cursor:pointer; transition:border-color .15s, box-shadow .15s; text-align:left; font-family:inherit; width:100%; }
+.ob-lcard:hover, .ob-lcard:focus-visible { border-color:#0d9488; box-shadow:0 2px 10px rgba(15,118,110,.08); outline:none; }
+.ob-lhead { display:flex; align-items:center; gap:.6rem; margin-bottom:.8rem; }
+.ob-badge { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:.8rem; }
+.ob-lname { font-size:.95rem; font-weight:700; color:#0f172a; }
+.ob-lmeta { font-size:.7rem; color:#9ca3af; }
+.ob-lstats { display:flex; gap:1.1rem; margin:.4rem 0 .6rem; }
+.ob-lstats .k { font-size:.64rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
+.ob-lstats .v { font-size:1.1rem; font-weight:800; color:#0f172a; }
+.ob-lstats .v.err { color:#b91c1c; } .ob-lstats .v.flag { color:#a16207; } .ob-lstats .v.spend { color:#0f766e; }
+.ob-tags { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.5rem; }
+.ob-tags .lb { width:100%; font-size:.62rem; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
+.ob-tags span.t { background:#f3f4f6; border:1px solid #e5e7eb; border-radius:5px; padding:.1rem .4rem; font-size:.7rem; color:#4b5563; }
+
+/* tables */
+.ob-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.ob-table th { background:#f9fafb; font-size:.66rem; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; font-weight:700; padding:.5rem .7rem; text-align:left; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+.ob-table td { padding:.5rem .7rem; border-bottom:1px solid #f1f5f9; color:#374151; vertical-align:middle; }
+.ob-table tr.click { cursor:pointer; }
+.ob-table tr.click:hover td { background:#f8fafc; }
+.mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.74rem; }
+.muted { color:#9ca3af; }
+.right { text-align:right; }
+
+/* status — icon + label, never colour alone */
+.st { display:inline-flex; align-items:center; gap:.3rem; font-weight:700; font-size:.74rem; white-space:nowrap; }
+.st .ic { font-size:.8rem; line-height:1; }
+.st.success { color:#0f766e; } .st.error { color:#b91c1c; }
+.st.blocked { color:#b45309; } .st.flagged { color:#a16207; }
+.st.running { color:#6b7280; } .st.warn { color:#a16207; } .st.log { color:#6b7280; }
+.sev { display:inline-block; padding:.08rem .45rem; border-radius:5px; font-size:.66rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; }
+.sev.low { background:#f3f4f6; color:#4b5563; }
+.sev.medium { background:#e0f2fe; color:#075985; }
+.sev.high { background:#fef3c7; color:#92400e; }
+.sev.critical { background:#fee2e2; color:#991b1b; }
+
+/* run detail */
+.ob-crumb { font-size:.8rem; color:#9ca3af; margin-bottom:.75rem; }
+.ob-crumb button { background:none; border:none; padding:0; font:inherit; color:#0d9488; cursor:pointer; }
+.ob-dhead { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem 1.1rem; margin-bottom:1rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
+.ob-dhead .kv { font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
+.ob-dhead .kv b { display:block; font-size:.9rem; color:#0f172a; text-transform:none; letter-spacing:0; font-weight:700; margin-top:.15rem; }
+.ob-dhead .grow { flex:1; }
+.ob-panes { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:1rem; }
+@media (max-width:1100px) { .ob-panes { grid-template-columns:1fr; } }
+.ob-pane { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem; }
+.ob-pane h3 { font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:#0f766e; margin:0 0 .8rem; font-weight:800; }
+.trace .step { position:relative; padding:0 0 .9rem 1rem; border-left:2px solid #e5e7eb; margin-left:.3rem; }
+.trace .step:last-child { border-left-color:transparent; }
+.trace .step::before { content:''; position:absolute; left:-5px; top:.25rem; width:8px; height:8px; border-radius:50%; background:#94a3b8; }
+.trace .step.decision::before { background:#0d9488; }
+.trace .step.warning::before { background:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.18); }
+.trace .t { font-size:.66rem; color:#9ca3af; font-family:ui-monospace,monospace; }
+.trace .x { font-size:.8rem; color:#374151; margin-top:.1rem; }
+.trace .step.warning .x { color:#92400e; font-weight:600; }
+.trace .d { font-size:.7rem; color:#9ca3af; margin-top:.15rem; }
+.tool { border:1px solid #e5e7eb; border-radius:8px; padding:.55rem .65rem; margin-bottom:.5rem; }
+.tool.bad { border-color:#fca5a5; background:#fef2f2; }
+.tool.held { border-color:#fcd34d; background:#fffbeb; }
+.tool .tn { display:flex; justify-content:space-between; gap:.5rem; align-items:baseline; }
+.tool .tn code { font-size:.76rem; color:#0f172a; font-weight:700; font-family:ui-monospace,monospace; }
+.tool .tn span { font-size:.68rem; color:#9ca3af; }
+.tool .io { font-size:.7rem; color:#6b7280; margin-top:.25rem; word-break:break-word; }
+.art { border:1px solid #e5e7eb; border-radius:8px; padding:.65rem; margin-bottom:.55rem; }
+.art.held { border-color:#fcd34d; background:#fffbeb; }
+.art .ah { display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-bottom:.35rem; }
+.art .at { font-size:.85rem; font-weight:700; color:#0f172a; }
+.art .meta { font-size:.7rem; color:#9ca3af; }
+.art pre { background:#f8fafc; border:1px solid #e5e7eb; border-radius:6px; padding:.5rem; font-size:.7rem; max-height:320px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin-top:.4rem; }
+
+/* buttons */
+.btn { display:inline-block; padding:.45rem .85rem; font-size:.8rem; font-weight:600; border-radius:6px; cursor:pointer; border:1px solid transparent; text-decoration:none; font-family:inherit; }
+.btn-primary { background:#0d9488; color:#fff; } .btn-primary:hover { background:#0f766e; }
+.btn-sec { background:#fff; color:#374151; border-color:#d1d5db; } .btn-sec:hover { background:#f3f4f6; }
+.btn-danger { background:#fff; color:#b91c1c; border-color:#fca5a5; } .btn-danger:hover { background:#fef2f2; }
+.btn-xs { padding:.22rem .5rem; font-size:.7rem; }
+.empty { text-align:center; color:#9ca3af; padding:2rem 1rem; font-size:.85rem; }
+.warn-box { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:8px; padding:.7rem .9rem; font-size:.78rem; line-height:1.6; margin-bottom:1rem; }
+.err-box { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:8px; padding:.7rem .9rem; font-size:.78rem; margin-bottom:1rem; }
+.form-err { color:#b91c1c; font-size:.78rem; min-height:1rem; margin-top:.4rem; }
+
+/* drawer */
+.ob-ovl { position:fixed; inset:0; background:rgba(15,23,42,.4); display:none; z-index:900; }
+.ob-ovl.open { display:block; }
+.ob-drawer { position:fixed; top:0; right:0; bottom:0; width:460px; max-width:94vw; background:#fff;
+  border-left:1px solid #e5e7eb; box-shadow:-8px 0 24px rgba(15,23,42,.08);
+  transform:translateX(100%); transition:transform .2s ease; z-index:901; overflow-y:auto; padding:1.4rem; }
+.ob-drawer.open { transform:translateX(0); }
+.ob-drawer h2 { font-size:1.1rem; font-weight:700; color:#0f172a; margin:0 0 .25rem; }
+.ob-drawer .d-sub { font-size:.8rem; color:#6b7280; margin-bottom:1.2rem; line-height:1.6; }
+.field { margin-bottom:.9rem; }
+.field label { display:block; font-size:.72rem; font-weight:700; color:#374151; margin-bottom:.3rem; }
+.field .sub { font-weight:400; color:#9ca3af; }
+.field input, .field select, .field textarea { width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px; padding:.45rem .6rem; font-size:.84rem; color:#111827; font-family:inherit; }
+.field textarea { font-family:ui-monospace,monospace; font-size:.78rem; min-height:60px; }
+.field-row { display:flex; gap:.7rem; } .field-row > * { flex:1; }
+.radios { display:flex; gap:.4rem; }
+.radios button { flex:1; border:1px solid #d1d5db; background:#fff; border-radius:6px; padding:.4rem; font-size:.78rem; font-family:inherit; font-weight:600; color:#6b7280; cursor:pointer; }
+.radios button.sel { border-color:#0d9488; color:#0f766e; background:#f0fdfa; }
+.radios button.sel[data-a="block"] { border-color:#b91c1c; color:#b91c1c; background:#fef2f2; }
+.radios button.sel[data-a="warn"] { border-color:#b45309; color:#b45309; background:#fffbeb; }
+.drawer-actions { display:flex; gap:.6rem; margin-top:1.2rem; }
+.drawer-actions .btn { flex:1; text-align:center; }
+.switch-row { display:flex; align-items:flex-start; gap:.7rem; padding:.7rem 0; border-bottom:1px solid #f1f5f9; }
+.switch-row:last-child { border-bottom:none; }
+.switch-row input { margin-top:.25rem; }
+.switch-row .txt strong { display:block; font-size:.84rem; color:#0f172a; }
+.switch-row .txt span { font-size:.76rem; color:#6b7280; line-height:1.6; }
+.switch-row .val { width:130px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ob-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
+    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link">Experts</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
+    <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
+    <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link">Calibration</a>
+    <a href="{{ url_for('pages.admin_observability_view') }}" class="subnav-link active">Observability</a>
+    <a href="{{ url_for('pages.admin_careers_view') }}" class="subnav-link">Careers</a>
+    <a href="{{ url_for('pages.admin_blog_view') }}" class="subnav-link">Blog</a>
+  </nav>
+
+  <h1 class="ob-title">Agent Observability &amp; Governance</h1>
+  <p class="ob-sub">
+    What every agent actually did, across every user, organised by layer — and the
+    guardrails they run under. Opening a run or an artifact from here is a
+    cross-user read, so each one is written to the access-audit log: the admins
+    are observed too.
+  </p>
+
+  <div id="obBanner"></div>
+
+  <div class="ob-filters">
+    <label for="fLayer">Layer</label>
+    <select id="fLayer"><option value="">All</option></select>
+    <label for="fAgent">Agent</label>
+    <select id="fAgent"><option value="">All</option></select>
+    <label for="fStatus">Status</label>
+    <select id="fStatus">
+      <option value="">All</option>
+      <option value="success">Success</option>
+      <option value="error">Error</option>
+      <option value="blocked">Blocked</option>
+      <option value="flagged">Flagged</option>
+      <option value="running">Running</option>
+    </select>
+    <label for="fModel">Model</label>
+    <select id="fModel"><option value="">All</option></select>
+    <label for="fHours">Window</label>
+    <select id="fHours">
+      <option value="1">Last hour</option>
+      <option value="24" selected>Last 24h</option>
+      <option value="168">Last 7 days</option>
+      <option value="720">Last 30 days</option>
+    </select>
+    <span class="spacer"></span>
+    <button class="ob-live" id="btnLive" type="button" title="Stream runs as they start">
+      <span class="dot"></span> Live
+    </button>
+    <button class="btn btn-sec btn-xs" id="btnExport" type="button">Export CSV</button>
+  </div>
+
+  <div class="ob-summary" id="obStats"></div>
+
+  <div class="ob-tabs" role="tablist">
+    <button class="ob-tab active" data-panel="overview">Layer overview</button>
+    <button class="ob-tab" data-panel="runs">Runs</button>
+    <button class="ob-tab" data-panel="flags">Flags <span class="count" id="flagCount" hidden></span></button>
+    <button class="ob-tab" data-panel="guardrails">Guardrails</button>
+    <button class="ob-tab" data-panel="audit">Access audit</button>
+    <button class="ob-tab" data-panel="settings">Settings</button>
+  </div>
+
+  {# ── Layer overview ──────────────────────────────────────────────────── #}
+  <div class="ob-panel active" id="panel-overview">
+    <div class="ob-grid" id="layerGrid"><div class="empty">Loading…</div></div>
+  </div>
+
+  {# ── Runs (list + drill-down) ────────────────────────────────────────── #}
+  <div class="ob-panel" id="panel-runs">
+    <div id="runsList">
+      <div class="ob-card">
+        <h2>Agents in this view</h2>
+        <p class="hint">Per-agent rollups for the current filter. Pick one to narrow the run list below.</p>
+        <div id="agentsWrap"><div class="empty">Loading…</div></div>
+      </div>
+      <div class="ob-card">
+        <h2>Runs</h2>
+        <p class="hint">Newest first, across every user. Open one for its behaviour trace, tool trace and artifacts.</p>
+        <div id="runsWrap"><div class="empty">Loading…</div></div>
+        <div style="margin-top:.8rem; text-align:center;">
+          <button class="btn btn-sec btn-xs" id="btnMoreRuns" hidden>Load more</button>
+        </div>
+      </div>
+    </div>
+    <div id="runDetail" hidden></div>
+  </div>
+
+  {# ── Flags ───────────────────────────────────────────────────────────── #}
+  <div class="ob-panel" id="panel-flags">
+    <div class="ob-card">
+      <h2>Flags</h2>
+      <p class="hint">
+        Everything a guardrail flagged or blocked in this window, newest first.
+        Tune goes straight to the rule that fired — a rule that over-fires is as
+        much a problem as one that never does.
+      </p>
+      <div id="flagsWrap"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  {# ── Guardrails ──────────────────────────────────────────────────────── #}
+  <div class="ob-panel" id="panel-guardrails">
+    <div class="ob-card">
+      <h2>Rules</h2>
+      <p class="hint">
+        Each rule is scoped globally, to a layer or to one agent, and acts at one
+        of three strengths: <strong>log</strong> records it, <strong>warn</strong>
+        flags it visibly, <strong>block</strong> withholds the output and
+        quarantines the artifact. Start at log and promote only once a rule has
+        seen enough runs to be worth trusting.
+      </p>
+      <div style="display:flex; gap:.6rem; margin-bottom:1rem; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btnNewRule" type="button">+ New rule</button>
+      </div>
+      <div id="rulesWrap"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="ob-card">
+      <h2>Policies</h2>
+      <p class="hint">A named bundle of rules. Activating a policy switches its rules on together; deactivating switches them off.</p>
+      <div style="display:flex; gap:.6rem; margin-bottom:1rem;">
+        <button class="btn btn-sec" id="btnNewPolicy" type="button">+ New policy</button>
+      </div>
+      <div id="policiesWrap"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  {# ── Access audit ────────────────────────────────────────────────────── #}
+  <div class="ob-panel" id="panel-audit">
+    <div class="ob-card">
+      <h2>Admin access audit</h2>
+      <p class="hint">
+        Every view, export and release of a user's run or artifact. This page
+        exposes cross-user activity, so the record of who looked at what is kept
+        for two years — longer than the telemetry it describes.
+      </p>
+      <div id="auditWrap"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  {# ── Settings ────────────────────────────────────────────────────────── #}
+  <div class="ob-panel" id="panel-settings">
+    <div class="ob-card">
+      <h2>Capture, retention and enforcement</h2>
+      <p class="hint">
+        Stored in <span class="mono">platform_settings</span>; changes take effect
+        immediately. Capture fails open — a telemetry failure never breaks an agent
+        run. Enforcement fails closed — a blocking rule that errors while being
+        evaluated withholds the output.
+      </p>
+      <div id="settingsWrap"><div class="empty">Loading…</div></div>
+      <div class="form-err" id="settingsErr"></div>
+      <div style="margin-top:1rem; display:flex; gap:.6rem;">
+        <button class="btn btn-primary" id="btnSaveSettings" type="button">Save settings</button>
+        <button class="btn btn-sec" id="btnPurge" type="button">Run retention purge now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Guardrail drawer ──────────────────────────────────────────────────── #}
+<div class="ob-ovl" id="obOvl"></div>
+<aside class="ob-drawer" id="obDrawer" aria-hidden="true" aria-label="Guardrail rule">
+  <h2 id="drawerTitle">New guardrail</h2>
+  <p class="d-sub" id="drawerSub">Scope it as narrowly as the behaviour you saw.</p>
+  <div id="drawerWarn"></div>
+  <input type="hidden" id="rId">
+  <div class="field">
+    <label for="rName">Name <span class="sub">lowercase slug</span></label>
+    <input id="rName" placeholder="invest-cap-55" autocomplete="off">
+  </div>
+  <div class="field-row">
+    <div class="field">
+      <label for="rScope">Scope</label>
+      <select id="rScope">
+        <option value="global">Global</option>
+        <option value="layer">Layer</option>
+        <option value="agent">Agent</option>
+      </select>
+    </div>
+    <div class="field" id="scopeRefField" hidden>
+      <label for="rScopeRef">Applies to</label>
+      <select id="rScopeRef"></select>
+    </div>
+  </div>
+  <div class="field">
+    <label for="rType">Rule type</label>
+    <select id="rType"></select>
+  </div>
+  <div id="defFields"></div>
+  <div class="field">
+    <label>Action</label>
+    <div class="radios" id="rAction">
+      <button type="button" data-a="log" class="sel">Log</button>
+      <button type="button" data-a="warn">Warn</button>
+      <button type="button" data-a="block">Block</button>
+    </div>
+  </div>
+  <div class="field-row">
+    <div class="field">
+      <label for="rSeverity">Severity</label>
+      <select id="rSeverity">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+        <option value="critical">Critical</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label for="rNotes">Why <span class="sub">what you saw that prompted this</span></label>
+    <textarea id="rNotes" style="font-family:inherit;"></textarea>
+  </div>
+  <div class="form-err" id="drawerErr"></div>
+  <div class="drawer-actions">
+    <button class="btn btn-primary" id="btnSaveRule" type="button">Save rule</button>
+    <button class="btn btn-sec" id="btnCancelRule" type="button">Cancel</button>
+  </div>
+</aside>
+
+<script>
+(function () {
+  'use strict';
+  var ROOT = window.ROOT || '';
+  var API = ROOT + '/api/admin';
+
+  var LAYER_COLOR = {
+    L1: '#134e4a', L2: '#0f766e', L3: '#0d9488',
+    L4: '#14b8a6', L5: '#C9952A', L6: '#6d5b9c'
+  };
+  var STATUS_ICON = {
+    success: '✔', error: '✕', blocked: '⛔', flagged: '⚑',
+    running: '◌', warn: '⚑', log: '·'
+  };
+
+  var meta = { agents: [], layers: [], models: [], tools: [], rule_types: [] };
+  var state = { tab: 'overview', page: 1, runs: [], live: null, rules: [] };
+
+  // ── helpers ────────────────────────────────────────────────────────────
+  function esc(v) {
+    return String(v === null || v === undefined ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function el(id) { return document.getElementById(id); }
+  function num(n) { return (n || 0).toLocaleString(); }
+  function ago(iso) {
+    if (!iso) return '—';
+    var secs = (Date.now() - new Date(iso + (/[Zz+]/.test(iso) ? '' : 'Z')).getTime()) / 1000;
+    if (secs < 60) return Math.max(0, Math.round(secs)) + 's ago';
+    if (secs < 3600) return Math.round(secs / 60) + 'm ago';
+    if (secs < 86400) return Math.round(secs / 3600) + 'h ago';
+    return Math.round(secs / 86400) + 'd ago';
+  }
+  function statusChip(status, flagged) {
+    var key = flagged && status === 'success' ? 'flagged' : status;
+    return '<span class="st ' + esc(key) + '"><span class="ic" aria-hidden="true">' +
+      (STATUS_ICON[key] || '·') + '</span>' + esc(key) + '</span>';
+  }
+  function banner(html, kind) {
+    el('obBanner').innerHTML = html
+      ? '<div class="' + (kind === 'error' ? 'err-box' : 'warn-box') + '">' + html + '</div>' : '';
+  }
+
+  function api(path, options) {
+    return fetch(API + path, Object.assign({
+      headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin'
+    }, options || {})).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        if (!res.ok) throw new Error(body.error || ('Request failed (' + res.status + ')'));
+        return body;
+      });
+    });
+  }
+
+  function filters() {
+    var q = [];
+    ['fLayer:layer', 'fAgent:agent', 'fStatus:status', 'fModel:model', 'fHours:hours']
+      .forEach(function (pair) {
+        var parts = pair.split(':'), value = el(parts[0]).value;
+        if (value) q.push(parts[1] + '=' + encodeURIComponent(value));
+      });
+    return q.join('&');
+  }
+
+  // ── overview ───────────────────────────────────────────────────────────
+  function loadOverview() {
+    api('/observability/layers?' + filters()).then(function (data) {
+      var t = data.totals;
+      el('obStats').innerHTML = [
+        ['Runs', num(t.runs), ''],
+        ['Errors', num(t.errors), 'err'],
+        ['Flagged', num(t.flagged), 'flag'],
+        ['Blocked', num(t.blocked), 'flag'],
+        ['Token spend', '$' + t.spend.toFixed(2), 'spend']
+      ].map(function (s) {
+        return '<div class="ob-stat"><div class="ob-stat-label">' + s[0] +
+          '</div><div class="ob-stat-value ' + s[2] + '">' + s[1] + '</div></div>';
+      }).join('');
+
+      if (t.flags) { el('flagCount').hidden = false; el('flagCount').textContent = t.flags; }
+      else { el('flagCount').hidden = true; }
+
+      el('layerGrid').innerHTML = data.layers.map(function (l) {
+        var tags = function (label, values) {
+          if (!values.length) return '';
+          return '<div class="ob-tags"><span class="lb">' + label + '</span>' +
+            values.map(function (v) { return '<span class="t">' + esc(v) + '</span>'; }).join('') + '</div>';
+        };
+        return '<button class="ob-lcard" type="button" data-layer="' + l.layer + '">' +
+          '<div class="ob-lhead"><div class="ob-badge" style="background:' +
+            (LAYER_COLOR[l.layer] || '#0d9488') + '">' + l.layer + '</div>' +
+            '<div><div class="ob-lname">' + esc(l.layer_name) + '</div>' +
+            '<div class="ob-lmeta">' + (l.layer === 'L6' ? 'Orchestration' : 'Layer ' + l.layer[1]) + '</div></div></div>' +
+          '<div class="ob-lstats">' +
+            '<div><div class="v">' + num(l.runs) + '</div><div class="k">runs</div></div>' +
+            '<div><div class="v err">' + l.error_rate + '%</div><div class="k">errors</div></div>' +
+            '<div><div class="v flag">' + l.flag_rate + '%</div><div class="k">flagged</div></div>' +
+            '<div><div class="v spend">$' + l.spend.toFixed(2) + '</div><div class="k">spend</div></div>' +
+          '</div>' + tags('Top tools', l.top_tools) + tags('Top artifacts', l.top_artifacts) +
+        '</button>';
+      }).join('');
+
+      Array.prototype.forEach.call(document.querySelectorAll('.ob-lcard'), function (card) {
+        card.addEventListener('click', function () {
+          el('fLayer').value = card.getAttribute('data-layer');
+          showTab('runs');
+          reload();
+        });
+      });
+    }).catch(function (err) { banner(esc(err.message), 'error'); });
+  }
+
+  // ── runs ───────────────────────────────────────────────────────────────
+  function loadAgents() {
+    api('/observability/agents?' + filters()).then(function (data) {
+      if (!data.agents.length) {
+        el('agentsWrap').innerHTML = '<div class="empty">No agent has run in this window.</div>';
+        return;
+      }
+      el('agentsWrap').innerHTML = '<table class="ob-table"><thead><tr>' +
+        '<th>Agent</th><th>Layer</th><th class="right">Runs</th><th class="right">Errors</th>' +
+        '<th class="right">Flagged</th><th class="right">Tokens</th><th class="right">Spend</th>' +
+        '</tr></thead><tbody>' + data.agents.map(function (a) {
+          return '<tr class="click" data-agent="' + esc(a.agent_key) + '">' +
+            '<td><strong>' + esc(a.agent_label) + '</strong><div class="mono muted">' + esc(a.agent_key) + '</div></td>' +
+            '<td>' + esc(a.layer || el('fLayer').value || '—') + '</td>' +
+            '<td class="right">' + num(a.runs) + '</td>' +
+            '<td class="right">' + a.error_rate + '%</td>' +
+            '<td class="right">' + a.flag_rate + '%</td>' +
+            '<td class="right">' + num(a.tokens) + '</td>' +
+            '<td class="right">$' + a.spend.toFixed(2) + '</td></tr>';
+        }).join('') + '</tbody></table>';
+
+      Array.prototype.forEach.call(el('agentsWrap').querySelectorAll('tr.click'), function (row) {
+        row.addEventListener('click', function () {
+          el('fAgent').value = row.getAttribute('data-agent');
+          reload();
+        });
+      });
+    }).catch(function () {
+      el('agentsWrap').innerHTML = '<div class="empty">Could not load agent rollups.</div>';
+    });
+  }
+
+  function renderRuns(append) {
+    var rows = state.runs.map(function (r) {
+      return '<tr class="click" data-run="' + esc(r.run_id) + '">' +
+        '<td class="mono">' + esc(r.run_id) + '</td>' +
+        '<td>' + esc(r.agent_label) + '</td>' +
+        '<td>' + esc(r.layer) + '</td>' +
+        '<td>' + esc(r.user_label || r.user_id || '—') + '</td>' +
+        '<td>' + statusChip(r.status, r.flagged) + '</td>' +
+        '<td class="right">' + num(r.total_tokens) + '</td>' +
+        '<td class="right">' + (r.latency_ms === null ? '—' : num(r.latency_ms) + 'ms') + '</td>' +
+        '<td class="muted">' + ago(r.started_at) + '</td></tr>';
+    }).join('');
+
+    el('runsWrap').innerHTML = state.runs.length
+      ? '<table class="ob-table"><thead><tr><th>Run</th><th>Agent</th><th>Layer</th><th>User</th>' +
+        '<th>Status</th><th class="right">Tokens</th><th class="right">Latency</th><th>When</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table>'
+      : '<div class="empty">No runs match this filter.</div>';
+
+    Array.prototype.forEach.call(el('runsWrap').querySelectorAll('tr.click'), function (row) {
+      row.addEventListener('click', function () { openRun(row.getAttribute('data-run')); });
+    });
+  }
+
+  function loadRuns(more) {
+    state.page = more ? state.page + 1 : 1;
+    api('/observability/runs?' + filters() + '&page=' + state.page).then(function (data) {
+      state.runs = more ? state.runs.concat(data.runs) : data.runs;
+      el('btnMoreRuns').hidden = !data.has_more;
+      renderRuns();
+    }).catch(function (err) {
+      el('runsWrap').innerHTML = '<div class="empty">' + esc(err.message) + '</div>';
+    });
+  }
+
+  // ── run detail ─────────────────────────────────────────────────────────
+  function openRun(runId) {
+    api('/observability/runs/' + runId).then(function (run) {
+      el('runsList').hidden = true;
+      el('runDetail').hidden = false;
+      el('runDetail').innerHTML = detailHtml(run);
+      wireDetail(run);
+      window.scrollTo(0, 0);
+    }).catch(function (err) { banner(esc(err.message), 'error'); });
+  }
+
+  function closeRun() {
+    el('runDetail').hidden = true;
+    el('runsList').hidden = false;
+  }
+
+  function detailHtml(run) {
+    var head = '<div class="ob-crumb"><button type="button" id="crumbBack">Runs</button> › ' +
+      '<span class="mono">' + esc(run.run_id) + '</span></div>' +
+      '<div class="ob-dhead">' +
+      '<div class="kv">Agent<b>' + esc(run.agent_label) + '</b></div>' +
+      '<div class="kv">Layer<b>' + esc(run.layer) + ' · ' + esc(run.layer_name) + '</b></div>' +
+      '<div class="kv">User<b>' + esc(run.user_label || run.user_id || '—') + '</b></div>' +
+      '<div class="kv">Status<b>' + statusChip(run.status, run.flagged) + '</b></div>' +
+      '<div class="kv">Model<b>' + esc(run.model || '—') + '</b></div>' +
+      '<div class="kv">Tokens<b>' + num(run.total_tokens) + '</b></div>' +
+      '<div class="kv">Latency<b>' + (run.latency_ms === null ? '—' : num(run.latency_ms) + 'ms') + '</b></div>' +
+      '<div class="grow"></div>' +
+      '<button class="btn btn-primary" id="btnRuleFromRun" type="button">+ Create guardrail from this</button>' +
+      '</div>';
+
+    if (run.flags && run.flags.length) {
+      head += '<div class="warn-box"><strong>Flagged.</strong> ' + run.flags.map(function (f) {
+        return esc(f.rule_name) + ' — ' + esc(f.reason);
+      }).join(' · ') + '</div>';
+    }
+    if (!run.detail_captured) {
+      head += '<div class="warn-box">This run was sampled out, so only its header was captured. ' +
+        'Raise <span class="mono">obs_detail_sampling_pct</span> in Settings to capture more traces.</div>';
+    }
+
+    var trace = (run.trace || []).map(function (e) {
+      var detail = Object.keys(e.detail || {}).length
+        ? '<div class="d">' + esc(JSON.stringify(e.detail)) + '</div>' : '';
+      return '<div class="step ' + esc(e.type) + '"><div class="t">' +
+        (e.offset_s === null || e.offset_s === undefined ? '' : (+e.offset_s).toFixed(2) + 's') +
+        '</div><div class="x">' + esc(e.message) + '</div>' + detail + '</div>';
+    }).join('') || '<div class="empty">No trace captured.</div>';
+
+    var tools = (run.tools || []).map(function (t) {
+      var cls = t.status === 'error' ? ' bad' : (t.status === 'blocked' ? ' held' : '');
+      return '<div class="tool' + cls + '"><div class="tn"><code>' + esc(t.tool_name) + '</code>' +
+        '<span>' + (t.duration_ms === null ? '' : num(t.duration_ms) + 'ms · ') + esc(t.status) + '</span></div>' +
+        (t.input_summary ? '<div class="io">in: ' + esc(t.input_summary) + '</div>' : '') +
+        (t.output_summary ? '<div class="io">out: ' + esc(t.output_summary) + '</div>' : '') +
+        '</div>';
+    }).join('') || '<div class="empty">No tool calls captured.</div>';
+
+    var artifacts = (run.artifacts || []).map(function (a) {
+      return '<div class="art' + (a.is_quarantined ? ' held' : '') + '" data-artifact="' + esc(a.id) + '">' +
+        '<div class="ah"><span class="at">' + esc(a.artifact_type) + '</span>' +
+        (a.is_quarantined ? '<span class="sev high">withheld</span>' : '') + '</div>' +
+        '<div class="meta">' + (a.size ? num(a.size) + ' chars · ' : '') +
+        esc(a.content_ref || 'no reference') + '</div>' +
+        (a.summary && a.summary.withheld_reason
+          ? '<div class="meta">Reason: ' + esc(a.summary.withheld_reason) + '</div>' : '') +
+        '<div style="margin-top:.45rem; display:flex; gap:.4rem; flex-wrap:wrap;">' +
+        '<button class="btn btn-sec btn-xs js-view" type="button">View content</button>' +
+        (a.is_quarantined ? '<button class="btn btn-primary btn-xs js-release" type="button">Release</button>' : '') +
+        '</div><div class="js-content"></div></div>';
+    }).join('') || '<div class="empty">No artifact produced.</div>';
+
+    var params = '<div class="ob-pane" style="margin-top:1rem;"><h3>Parameters the agent ran on</h3>' +
+      '<pre style="margin:0; background:#f8fafc; border:1px solid #e5e7eb; border-radius:6px; ' +
+      'padding:.6rem; font-size:.72rem; overflow:auto; max-height:260px;">' +
+      esc(JSON.stringify(run.params || {}, null, 2)) + '</pre>' +
+      '<p style="margin-top:.5rem; font-size:.7rem; color:#9ca3af;">' +
+      'Masked at capture — the shared header never holds raw PII.</p></div>';
+
+    return head + '<div class="ob-panes">' +
+      '<div class="ob-pane"><h3>Behaviour trace</h3><div class="trace">' + trace + '</div></div>' +
+      '<div class="ob-pane"><h3>Tools used</h3>' + tools + '</div>' +
+      '<div class="ob-pane"><h3>Artifacts generated</h3>' + artifacts + '</div>' +
+      '</div>' + params;
+  }
+
+  function wireDetail(run) {
+    el('crumbBack').addEventListener('click', closeRun);
+    el('btnRuleFromRun').addEventListener('click', function () {
+      openDrawer(null, { scope: 'agent', scope_ref: run.agent_key, layer: run.layer,
+                         from: run.run_id, label: run.agent_label });
+    });
+    Array.prototype.forEach.call(el('runDetail').querySelectorAll('.art'), function (card) {
+      var id = card.getAttribute('data-artifact');
+      var view = card.querySelector('.js-view');
+      var release = card.querySelector('.js-release');
+      view.addEventListener('click', function () {
+        view.disabled = true;
+        api('/observability/artifacts/' + id).then(function (a) {
+          card.querySelector('.js-content').innerHTML = a.content
+            ? '<pre>' + esc(a.content) + '</pre>' +
+              '<div class="meta">Source: ' + esc(a.content_source) + ' · this fetch was audited.</div>'
+            : '<div class="meta">No content available — the deliverable it referenced is gone.</div>';
+        }).catch(function (err) {
+          card.querySelector('.js-content').innerHTML = '<div class="meta">' + esc(err.message) + '</div>';
+        }).then(function () { view.disabled = false; });
+      });
+      if (release) {
+        release.addEventListener('click', function () {
+          if (!window.confirm('Release this output to the user who ran the agent?')) return;
+          api('/observability/artifacts/' + id + '/release', { method: 'POST' })
+            .then(function () { openRun(run.run_id); })
+            .catch(function (err) { banner(esc(err.message), 'error'); });
+        });
+      }
+    });
+  }
+
+  // ── flags ──────────────────────────────────────────────────────────────
+  function loadFlags() {
+    api('/observability/flags?' + filters()).then(function (data) {
+      if (!data.flags.length) {
+        el('flagsWrap').innerHTML = '<div class="empty">Nothing flagged in this window.</div>';
+        return;
+      }
+      el('flagsWrap').innerHTML = '<table class="ob-table"><thead><tr><th>When</th><th>Severity</th>' +
+        '<th>Layer / Agent</th><th>User</th><th>Rule</th><th>Acted</th><th>Reason</th><th></th>' +
+        '</tr></thead><tbody>' + data.flags.map(function (f) {
+          return '<tr><td class="muted">' + ago(f.created_at) + '</td>' +
+            '<td><span class="sev ' + esc(f.severity) + '">' + esc(f.severity) + '</span></td>' +
+            '<td>' + esc(f.layer || '—') + ' · ' + esc(f.agent_label || '—') + '</td>' +
+            '<td>' + esc(f.user_label || f.user_id || '—') + '</td>' +
+            '<td class="mono">' + esc(f.rule_name || '—') + '</td>' +
+            '<td>' + statusChip(f.action === 'block' ? 'blocked' : f.action) + '</td>' +
+            '<td>' + esc(f.reason) + '</td>' +
+            '<td><button class="btn btn-sec btn-xs js-tune" data-rule="' + esc(f.rule_id || '') +
+            '" data-run="' + esc(f.run_id || '') + '">Tune</button></td></tr>';
+        }).join('') + '</tbody></table>';
+
+      Array.prototype.forEach.call(el('flagsWrap').querySelectorAll('.js-tune'), function (btn) {
+        btn.addEventListener('click', function () {
+          var ruleId = btn.getAttribute('data-rule');
+          var rule = state.rules.filter(function (r) { return r.id === ruleId; })[0];
+          if (rule) { showTab('guardrails'); openDrawer(rule); }
+          else { banner('That rule has since been deleted; its flags are kept.'); }
+        });
+      });
+    }).catch(function (err) {
+      el('flagsWrap').innerHTML = '<div class="empty">' + esc(err.message) + '</div>';
+    });
+  }
+
+  // ── guardrails ─────────────────────────────────────────────────────────
+  function loadRules() {
+    return api('/guardrails/rules').then(function (data) {
+      state.rules = data.rules;
+      if (!data.enforcement_enabled) {
+        banner('Enforcement is off — every <strong>block</strong> rule is acting as ' +
+               '<strong>warn</strong>. Nothing is being withheld from users.');
+      }
+      if (!data.rules.length) {
+        el('rulesWrap').innerHTML = '<div class="empty">No rules yet. Watch a few runs, ' +
+          'then author one from a run that looks wrong.</div>';
+        return;
+      }
+      el('rulesWrap').innerHTML = '<table class="ob-table"><thead><tr><th>Rule</th><th>Scope</th>' +
+        '<th>Type</th><th>Acts</th><th class="right">Fired (7d)</th><th class="right">Fire rate</th>' +
+        '<th>Enabled</th><th></th></tr></thead><tbody>' + data.rules.map(function (r) {
+          return '<tr><td class="mono">' + esc(r.name) +
+            (r.notes ? '<div class="muted" style="font-family:inherit;">' + esc(r.notes) + '</div>' : '') + '</td>' +
+            '<td>' + esc(r.scope_label) + '</td><td>' + esc(r.rule_type_label) + '</td>' +
+            '<td>' + statusChip(r.action === 'block' ? 'blocked' : r.action) + '</td>' +
+            '<td class="right">' + num(r.fired_7d) + '</td>' +
+            '<td class="right">' + r.fire_rate + '% <span class="muted">of ' + num(r.eval_count) + '</span></td>' +
+            '<td><input type="checkbox" class="js-toggle" data-id="' + esc(r.id) + '"' +
+              (r.is_enabled ? ' checked' : '') + ' aria-label="Enabled"></td>' +
+            '<td><button class="btn btn-sec btn-xs js-edit" data-id="' + esc(r.id) + '">Edit</button> ' +
+            '<button class="btn btn-danger btn-xs js-del" data-id="' + esc(r.id) + '">Delete</button></td></tr>';
+        }).join('') + '</tbody></table>';
+
+      Array.prototype.forEach.call(el('rulesWrap').querySelectorAll('.js-edit'), function (btn) {
+        btn.addEventListener('click', function () {
+          openDrawer(state.rules.filter(function (r) { return r.id === btn.getAttribute('data-id'); })[0]);
+        });
+      });
+      Array.prototype.forEach.call(el('rulesWrap').querySelectorAll('.js-toggle'), function (box) {
+        box.addEventListener('change', function () {
+          api('/guardrails/rules/' + box.getAttribute('data-id'), {
+            method: 'PUT', body: JSON.stringify({ is_enabled: box.checked })
+          }).then(loadRules).catch(function (err) { banner(esc(err.message), 'error'); });
+        });
+      });
+      Array.prototype.forEach.call(el('rulesWrap').querySelectorAll('.js-del'), function (btn) {
+        btn.addEventListener('click', function () {
+          if (!window.confirm('Delete this rule? Its past flags are kept.')) return;
+          api('/guardrails/rules/' + btn.getAttribute('data-id'), { method: 'DELETE' })
+            .then(loadRules).catch(function (err) { banner(esc(err.message), 'error'); });
+        });
+      });
+    });
+  }
+
+  function loadPolicies() {
+    api('/guardrails/policies').then(function (data) {
+      if (!data.policies.length) {
+        el('policiesWrap').innerHTML = '<div class="empty">No policies yet.</div>';
+        return;
+      }
+      el('policiesWrap').innerHTML = '<table class="ob-table"><thead><tr><th>Policy</th>' +
+        '<th>Rules</th><th>Active</th><th></th></tr></thead><tbody>' +
+        data.policies.map(function (p) {
+          return '<tr><td><strong>' + esc(p.name) + '</strong>' +
+            (p.description ? '<div class="muted">' + esc(p.description) + '</div>' : '') + '</td>' +
+            '<td>' + p.rules.map(function (r) { return esc(r.name); }).join(', ') + '</td>' +
+            '<td><input type="checkbox" class="js-ptoggle" data-id="' + esc(p.id) + '"' +
+              (p.is_active ? ' checked' : '') + ' aria-label="Active"></td>' +
+            '<td><button class="btn btn-danger btn-xs js-pdel" data-id="' + esc(p.id) + '">Delete</button></td></tr>';
+        }).join('') + '</tbody></table>';
+
+      Array.prototype.forEach.call(el('policiesWrap').querySelectorAll('.js-ptoggle'), function (box) {
+        box.addEventListener('change', function () {
+          api('/guardrails/policies/' + box.getAttribute('data-id'), {
+            method: 'PUT', body: JSON.stringify({ is_active: box.checked })
+          }).then(function () { loadPolicies(); loadRules(); })
+            .catch(function (err) { banner(esc(err.message), 'error'); });
+        });
+      });
+      Array.prototype.forEach.call(el('policiesWrap').querySelectorAll('.js-pdel'), function (btn) {
+        btn.addEventListener('click', function () {
+          if (!window.confirm('Delete this policy? Its rules stay as they are.')) return;
+          api('/guardrails/policies/' + btn.getAttribute('data-id'), { method: 'DELETE' })
+            .then(loadPolicies).catch(function (err) { banner(esc(err.message), 'error'); });
+        });
+      });
+    }).catch(function () {
+      el('policiesWrap').innerHTML = '<div class="empty">Could not load policies.</div>';
+    });
+  }
+
+  el('btnNewPolicy').addEventListener('click', function () {
+    var name = window.prompt('Policy name');
+    if (!name) return;
+    var ids = state.rules.filter(function (r) { return r.is_enabled; }).map(function (r) { return r.id; });
+    api('/guardrails/policies', {
+      method: 'POST',
+      body: JSON.stringify({ name: name, rule_ids: ids,
+        description: 'Bundles the ' + ids.length + ' rules enabled when it was created.' })
+    }).then(loadPolicies).catch(function (err) { banner(esc(err.message), 'error'); });
+  });
+
+  // ── the rule drawer ────────────────────────────────────────────────────
+  var DEF_FIELDS = {
+    param_bound: [
+      ['field', 'text', 'Parameter', 'e.g. invest_pct — the form field the agent ran on'],
+      ['min', 'number', 'Minimum', 'leave blank for no floor'],
+      ['max', 'number', 'Maximum', 'leave blank for no cap']
+    ],
+    tool_allowlist: [
+      ['mode', 'select:deny,allow', 'Mode', 'deny blocks the listed tools; allow blocks everything else'],
+      ['tools', 'list', 'Tools', 'comma-separated tool names']
+    ],
+    content_policy: [
+      ['forbid', 'list', 'Forbidden phrases', 'comma-separated; matched case-insensitively'],
+      ['require', 'list', 'Required phrases', 'e.g. a disclaimer the artifact must carry']
+    ],
+    output_filter: [
+      ['regex', 'list', 'Blocked patterns', 'comma-separated regular expressions'],
+      ['max_chars', 'number', 'Maximum length', 'characters']
+    ],
+    rate_limit: [
+      ['max_runs', 'number', 'Maximum runs', ''],
+      ['per_minutes', 'number', 'Per minutes', ''],
+      ['per', 'select:user,global', 'Counted', 'per user, or across the whole platform']
+    ],
+    model_constraint: [
+      ['allowed', 'list', 'Approved models', 'comma-separated model ids'],
+      ['pin_to', 'text', 'Pin to', 'optional — substitute this model instead of flagging']
+    ]
+  };
+
+  function renderDefFields(type, values) {
+    values = values || {};
+    var spec = DEF_FIELDS[type] || [];
+    el('defFields').innerHTML = spec.map(function (f) {
+      var key = f[0], kind = f[1], label = f[2], help = f[3];
+      var value = values[key];
+      if (Array.isArray(value)) value = value.join(', ');
+      var input;
+      if (kind.indexOf('select:') === 0) {
+        input = '<select id="def_' + key + '">' + kind.slice(7).split(',').map(function (o) {
+          return '<option value="' + o + '"' + (String(value) === o ? ' selected' : '') + '>' + o + '</option>';
+        }).join('') + '</select>';
+      } else {
+        input = '<input id="def_' + key + '" type="' + (kind === 'number' ? 'number' : 'text') +
+          '" step="any" value="' + esc(value === undefined || value === null ? '' : value) + '">';
+      }
+      return '<div class="field"><label for="def_' + key + '">' + esc(label) +
+        (help ? ' <span class="sub">' + esc(help) + '</span>' : '') + '</label>' + input + '</div>';
+    }).join('');
+  }
+
+  function readDefinition(type) {
+    var out = {};
+    (DEF_FIELDS[type] || []).forEach(function (f) {
+      var node = el('def_' + f[0]);
+      if (!node) return;
+      var raw = String(node.value || '').trim();
+      if (!raw) return;
+      if (f[1] === 'number') out[f[0]] = Number(raw);
+      else if (f[1] === 'list') out[f[0]] = raw.split(',').map(function (s) { return s.trim(); })
+        .filter(function (s) { return s; });
+      else out[f[0]] = raw;
+    });
+    return out;
+  }
+
+  function fillScopeRef(scope, selected) {
+    var node = el('rScopeRef');
+    el('scopeRefField').hidden = scope === 'global';
+    if (scope === 'layer') {
+      node.innerHTML = meta.layers.map(function (l) {
+        return '<option value="' + l.code + '"' + (selected === l.code ? ' selected' : '') + '>' +
+          l.code + ' · ' + esc(l.name) + '</option>';
+      }).join('');
+    } else if (scope === 'agent') {
+      node.innerHTML = meta.agents.map(function (a) {
+        return '<option value="' + esc(a.action_type) + '"' +
+          (selected === a.action_type ? ' selected' : '') + '>' +
+          a.layer + ' · ' + esc(a.label) + '</option>';
+      }).join('');
+    }
+  }
+
+  function setAction(action) {
+    Array.prototype.forEach.call(el('rAction').querySelectorAll('button'), function (b) {
+      b.classList.toggle('sel', b.getAttribute('data-a') === action);
+    });
+  }
+  function currentAction() {
+    var sel = el('rAction').querySelector('button.sel');
+    return sel ? sel.getAttribute('data-a') : 'log';
+  }
+
+  function openDrawer(rule, prefill) {
+    prefill = prefill || {};
+    el('drawerErr').textContent = '';
+    el('drawerWarn').innerHTML = '';
+    el('rId').value = rule ? rule.id : '';
+    el('drawerTitle').textContent = rule ? 'Edit guardrail' : 'New guardrail';
+    el('drawerSub').textContent = rule
+      ? 'Evaluated ' + num(rule.eval_count) + ' times, fired ' + num(rule.fire_count) + '.'
+      : (prefill.label
+          ? 'Pre-filled from a run of ' + prefill.label + '. Scope it as narrowly as the behaviour you saw.'
+          : 'Scope it as narrowly as the behaviour you saw.');
+
+    el('rName').value = rule ? rule.name : '';
+    el('rScope').value = rule ? rule.scope : (prefill.scope || 'global');
+    fillScopeRef(el('rScope').value, rule ? rule.scope_ref : prefill.scope_ref);
+    el('rType').value = rule ? rule.rule_type : 'param_bound';
+    renderDefFields(el('rType').value, rule ? rule.definition : {});
+    setAction(rule ? rule.action : 'log');
+    el('rSeverity').value = rule ? rule.severity : 'medium';
+    el('rNotes').value = rule ? (rule.notes || '') : '';
+    if (rule && rule.promotion_warning) {
+      el('drawerWarn').innerHTML = '<div class="warn-box">' + esc(rule.promotion_warning) + '</div>';
+    }
+
+    el('obOvl').classList.add('open');
+    el('obDrawer').classList.add('open');
+    el('obDrawer').setAttribute('aria-hidden', 'false');
+    el('rName').focus();
+  }
+
+  function closeDrawer() {
+    el('obOvl').classList.remove('open');
+    el('obDrawer').classList.remove('open');
+    el('obDrawer').setAttribute('aria-hidden', 'true');
+  }
+
+  el('obOvl').addEventListener('click', closeDrawer);
+  el('btnCancelRule').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && el('obDrawer').classList.contains('open')) closeDrawer();
+  });
+  el('btnNewRule').addEventListener('click', function () { openDrawer(null); });
+  el('rScope').addEventListener('change', function () { fillScopeRef(this.value); });
+  el('rType').addEventListener('change', function () { renderDefFields(this.value, {}); });
+  Array.prototype.forEach.call(el('rAction').querySelectorAll('button'), function (b) {
+    b.addEventListener('click', function () { setAction(b.getAttribute('data-a')); });
+  });
+
+  el('btnSaveRule').addEventListener('click', function () {
+    var id = el('rId').value;
+    var scope = el('rScope').value;
+    var payload = {
+      name: el('rName').value,
+      scope: scope,
+      scope_ref: scope === 'global' ? null : el('rScopeRef').value,
+      rule_type: el('rType').value,
+      definition: readDefinition(el('rType').value),
+      action: currentAction(),
+      severity: el('rSeverity').value,
+      notes: el('rNotes').value
+    };
+    api('/guardrails/rules' + (id ? '/' + id : ''), {
+      method: id ? 'PUT' : 'POST', body: JSON.stringify(payload)
+    }).then(function (data) {
+      closeDrawer();
+      if (data.warning) banner(esc(data.warning));
+      loadRules();
+    }).catch(function (err) { el('drawerErr').textContent = err.message; });
+  });
+
+  // ── access audit ───────────────────────────────────────────────────────
+  function loadAudit() {
+    api('/observability/audit').then(function (data) {
+      el('auditWrap').innerHTML = data.entries.length
+        ? '<table class="ob-table"><thead><tr><th>When</th><th>Admin</th><th>Action</th>' +
+          '<th>Target</th><th>Subject</th></tr></thead><tbody>' + data.entries.map(function (e) {
+            return '<tr><td class="muted">' + ago(e.ts) + '</td>' +
+              '<td>' + esc(e.admin_label || e.admin_user_id || '—') + '</td>' +
+              '<td class="mono">' + esc(e.action) + '</td>' +
+              '<td class="mono">' + esc(e.target_id || '—') + '</td>' +
+              '<td>' + esc(e.subject_label || e.subject_user_id || '—') + '</td></tr>';
+          }).join('') + '</tbody></table>'
+        : '<div class="empty">No cross-user access recorded yet.</div>';
+    }).catch(function (err) {
+      el('auditWrap').innerHTML = '<div class="empty">' + esc(err.message) + '</div>';
+    });
+  }
+
+  // ── settings ───────────────────────────────────────────────────────────
+  function loadSettings() {
+    api('/observability/settings').then(function (data) {
+      el('settingsWrap').innerHTML = data.settings.map(function (s) {
+        var control;
+        if (s.type === 'bool') {
+          control = '<input type="checkbox" data-key="' + esc(s.key) + '" data-type="bool"' +
+            (s.value ? ' checked' : '') + '>';
+          return '<div class="switch-row">' + control + '<div class="txt"><strong>' +
+            esc(s.label) + '</strong><span>' + esc(s.help) + '</span></div></div>';
+        }
+        control = '<input class="val" type="' + (s.type === 'int' ? 'number' : 'text') +
+          '" data-key="' + esc(s.key) + '" data-type="' + s.type + '" value="' + esc(s.value) + '">';
+        return '<div class="switch-row"><div class="txt" style="flex:1;"><strong>' + esc(s.label) +
+          '</strong><span>' + esc(s.help) + '</span></div>' + control + '</div>';
+      }).join('');
+    }).catch(function (err) {
+      el('settingsWrap').innerHTML = '<div class="empty">' + esc(err.message) + '</div>';
+    });
+  }
+
+  el('btnSaveSettings').addEventListener('click', function () {
+    var payload = {};
+    Array.prototype.forEach.call(el('settingsWrap').querySelectorAll('[data-key]'), function (node) {
+      payload[node.getAttribute('data-key')] =
+        node.getAttribute('data-type') === 'bool' ? node.checked : node.value;
+    });
+    el('settingsErr').textContent = '';
+    api('/observability/settings', { method: 'PUT', body: JSON.stringify({ settings: payload }) })
+      .then(function () { banner('Settings saved.'); loadSettings(); loadMeta(); })
+      .catch(function (err) { el('settingsErr').textContent = err.message; });
+  });
+
+  el('btnPurge').addEventListener('click', function () {
+    if (!window.confirm('Delete everything past its retention window now?')) return;
+    api('/observability/purge', { method: 'POST' }).then(function (data) {
+      banner('Purged: ' + Object.keys(data.removed).map(function (k) {
+        return data.removed[k] + ' ' + k;
+      }).join(', ') + '.');
+    }).catch(function (err) { banner(esc(err.message), 'error'); });
+  });
+
+  el('btnExport').addEventListener('click', function () {
+    window.location.href = API + '/observability/export?' + filters();
+  });
+
+  // ── live feed ──────────────────────────────────────────────────────────
+  function toggleLive() {
+    if (state.live) {
+      state.live.close();
+      state.live = null;
+      el('btnLive').classList.remove('on');
+      return;
+    }
+    var source = new EventSource(API + '/observability/stream');
+    state.live = source;
+    el('btnLive').classList.add('on');
+    source.addEventListener('run_started', function () { if (state.tab === 'runs') loadRuns(); });
+    source.addEventListener('run_finished', function () {
+      if (state.tab === 'runs') loadRuns();
+      if (state.tab === 'overview') loadOverview();
+    });
+    // The endpoint closes itself after two minutes so it does not hold a
+    // worker; EventSource reconnects on its own, which is the intent.
+    source.onerror = function () { if (source.readyState === 2) { state.live = null; toggleLive(); } };
+  }
+  el('btnLive').addEventListener('click', toggleLive);
+
+  // ── tabs & wiring ──────────────────────────────────────────────────────
+  function showTab(name) {
+    state.tab = name;
+    Array.prototype.forEach.call(document.querySelectorAll('.ob-tab'), function (t) {
+      t.classList.toggle('active', t.getAttribute('data-panel') === name);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.ob-panel'), function (p) {
+      p.classList.toggle('active', p.id === 'panel-' + name);
+    });
+    if (name === 'flags') loadFlags();
+    if (name === 'guardrails') { loadRules(); loadPolicies(); }
+    if (name === 'audit') loadAudit();
+    if (name === 'settings') loadSettings();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.ob-tab'), function (t) {
+    t.addEventListener('click', function () { showTab(t.getAttribute('data-panel')); });
+  });
+
+  function reload() {
+    closeRun();
+    loadOverview();
+    if (state.tab === 'runs') { loadAgents(); loadRuns(); }
+    if (state.tab === 'flags') loadFlags();
+  }
+  ['fLayer', 'fAgent', 'fStatus', 'fModel', 'fHours'].forEach(function (id) {
+    el(id).addEventListener('change', reload);
+  });
+  el('btnMoreRuns').addEventListener('click', function () { loadRuns(true); });
+
+  function loadMeta() {
+    return api('/observability/meta').then(function (data) {
+      meta = data;
+      el('fLayer').innerHTML = '<option value="">All</option>' + data.layers.map(function (l) {
+        return '<option value="' + l.code + '">' + l.code + ' · ' + esc(l.name) + '</option>';
+      }).join('');
+      el('fAgent').innerHTML = '<option value="">All</option>' + data.agents.map(function (a) {
+        return '<option value="' + esc(a.action_type) + '">' + a.layer + ' · ' + esc(a.label) + '</option>';
+      }).join('');
+      el('fModel').innerHTML = '<option value="">All</option>' + data.models.map(function (m) {
+        return '<option value="' + esc(m) + '">' + esc(m) + '</option>';
+      }).join('');
+      el('rType').innerHTML = data.rule_types.map(function (t) {
+        return '<option value="' + t + '">' + t.replace(/_/g, ' ') + '</option>';
+      }).join('');
+      el('fHours').value = String(data.default_window_hours);
+      if (!data.capture_enabled) {
+        banner('Telemetry capture is switched off — nothing new is being recorded.', 'error');
+      }
+    });
+  }
+
+  loadMeta().then(function () {
+    loadOverview();
+    loadAgents();
+    loadRuns();
+    loadRules();
+  }).catch(function (err) { banner(esc(err.message), 'error'); });
+})();
+</script>
+{% endblock %}
