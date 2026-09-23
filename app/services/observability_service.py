@@ -636,14 +636,29 @@ def _tier_of(model_name: str) -> str:
     return 'sonnet'
 
 
+def _as_float(value) -> float:
+    """A SUM() from the database as a plain float.
+
+    MySQL returns SUM() over an INT column as decimal.Decimal while SQLite
+    returns int, so anything doing arithmetic on an aggregate has to normalise
+    first or it works in dev and raises in production.
+    """
+    if value is None:
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def estimate_spend(rows) -> float:
     """USD for (model, prompt_tokens, completion_tokens) triples."""
     prices = _token_prices()
     total = 0.0
     for model_name, prompt_tokens, completion_tokens in rows:
         pair = prices.get(_tier_of(model_name)) or [0, 0]
-        total += (prompt_tokens or 0) / 1e6 * float(pair[0])
-        total += (completion_tokens or 0) / 1e6 * float(pair[1])
+        total += _as_float(prompt_tokens) / 1e6 * float(pair[0])
+        total += _as_float(completion_tokens) / 1e6 * float(pair[1])
     return round(total, 2)
 
 
@@ -731,7 +746,7 @@ def layer_rollups(hours=None) -> list:
                 'flagged': flagged,
                 'error_rate': round(100.0 * errors / runs, 1) if runs else 0.0,
                 'flag_rate': round(100.0 * flagged / runs, 1) if runs else 0.0,
-                'tokens': int((row[5] or 0) + (row[6] or 0)) if row else 0,
+                'tokens': int(_as_float(row[5]) + _as_float(row[6])) if row else 0,
                 'spend': spend.get(code, 0.0),
                 'top_tools': _top_values(AgentRunTool.tool_name, since, code),
                 'top_artifacts': _top_values(AgentArtifact.artifact_type, since, code,
@@ -766,7 +781,7 @@ def agent_rollups(layer=None, hours=None) -> list:
                 'flagged': flagged,
                 'error_rate': round(100.0 * errors / runs, 1) if runs else 0.0,
                 'flag_rate': round(100.0 * flagged / runs, 1) if runs else 0.0,
-                'tokens': int((row[5] or 0) + (row[6] or 0)),
+                'tokens': int(_as_float(row[5]) + _as_float(row[6])),
                 'spend': spend.get(key, 0.0),
             })
         out.sort(key=lambda a: a['runs'], reverse=True)

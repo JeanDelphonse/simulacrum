@@ -176,6 +176,26 @@ def main():
         check('per-agent rollups are scoped to the layer',
               'income_allocation' in agents and 'rate_card' not in agents)
 
+        # MySQL returns SUM() over an INT column as Decimal where SQLite returns
+        # int, so the aggregate path has to be exercised with Decimal directly —
+        # this database will never hand it one, and production always will.
+        from decimal import Decimal
+        spend = obs.estimate_spend([
+            ('claude-haiku-4-5-20251001', Decimal('1000000'), Decimal('2000000')),
+        ])
+        check('spend survives Decimal aggregates from MySQL',
+              abs(spend - 11.0) < 0.001, spend)
+        check('spend handles a null aggregate',
+              obs.estimate_spend([('claude-sonnet-4-6', None, None)]) == 0.0)
+        check('spend handles an unknown model',
+              obs.estimate_spend([(None, Decimal('1000000'), 0)]) == 3.0,
+              obs.estimate_spend([(None, Decimal('1000000'), 0)]))
+        check('every rollup number is JSON-serialisable',
+              all(isinstance(c[k], (int, float))
+                  for c in cards.values()
+                  for k in ('runs', 'errors', 'flagged', 'tokens', 'spend',
+                            'error_rate', 'flag_rate')))
+
         # ── 6. Guardrails — parameter bound ────────────────────────────────
         print('\n6. Guardrails: parameter bound')
         cap = new_rule(name='invest-cap-55', rule_type='param_bound', scope='agent',
