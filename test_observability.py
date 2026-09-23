@@ -723,6 +723,40 @@ def main():
     with app.app_context():
         obs.save_setting('obs_capture_enabled', True)
 
+    # -- 19. Deployed without the migration ---------------------------------
+    # The code can reach production before sql/050 is run. That has to read as
+    # a set-up step with a named fix, not as "Internal server error" -- the
+    # app-wide handler would otherwise hide the one failure with an easy answer.
+    # Runs last: it drops the tables the sections above depend on.
+    print('\n19. Deployed without the migration')
+
+    owned = ('agent_runs', 'agent_run_tools', 'agent_events', 'agent_artifacts',
+             'guardrail_rules', 'guardrail_policies', 'observability_flags',
+             'admin_access_audit')
+    with app.app_context():
+        db.metadata.drop_all(db.engine, tables=[
+            db.metadata.tables[t] for t in owned], checkfirst=True)
+
+    res = client_for(admin_id).get('/api/admin/observability/layers')
+    body = res.get_json() or {}
+    check('a missing table answers 503, not 500', res.status_code == 503, res.status_code)
+    check('the response is flagged as a set-up problem', body.get('setup_required') is True)
+    check('the response names the migration to run',
+          body.get('migration') == 'sql/050_observability.sql', body.get('migration'))
+    check('the response names the missing table',
+          body.get('missing_table') in owned, body.get('missing_table'))
+    check('the message tells the admin what to do',
+          'Run sql/050_observability.sql' in (body.get('error') or ''), body.get('error'))
+
+    res = client_for(admin_id).get('/api/admin/guardrails/rules')
+    check('the guardrails endpoint reports it too',
+          res.status_code == 503 and (res.get_json() or {}).get('setup_required') is True)
+
+    check('the console page still renders so the message has somewhere to show',
+          client_for(admin_id).get('/admin/observability').status_code == 200)
+    check('a non-admin is still refused before any of that',
+          client_for(owner_id).get('/api/admin/observability/layers').status_code == 403)
+
     print('\n{} passed, {} failed'.format(len(PASS), len(FAIL)))
     if FAIL:
         print('\nFailures:')

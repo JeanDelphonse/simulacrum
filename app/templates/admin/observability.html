@@ -429,10 +429,30 @@
       headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin'
     }, options || {})).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (body) {
-        if (!res.ok) throw new Error(body.error || ('Request failed (' + res.status + ')'));
+        if (!res.ok) {
+          var err = new Error(body.error || ('Request failed (' + res.status + ')'));
+          err.setupRequired = !!body.setup_required;
+          err.migration = body.migration;
+          throw err;
+        }
         return body;
       });
     });
+  }
+
+  // The migration not having run is the one failure with an obvious fix, so it
+  // gets said plainly once, at the top, instead of repeated per panel.
+  function reportError(err, where) {
+    if (err && err.setupRequired) {
+      banner('<strong>Set-up needed.</strong> ' + esc(err.message) +
+             ' Until then no agent telemetry is being recorded — agent runs ' +
+             'themselves are unaffected.', 'error');
+      return true;
+    }
+    banner(esc((where ? where + ': ' : '') + (err && err.message || 'Request failed')) +
+           ' <span style="opacity:.8">The full traceback is in the server error log.</span>',
+           'error');
+    return false;
   }
 
   function filters() {
@@ -490,7 +510,10 @@
           reload();
         });
       });
-    }).catch(function (err) { banner(esc(err.message), 'error'); });
+    }).catch(function (err) {
+      reportError(err, 'Layer overview');
+      el('layerGrid').innerHTML = '<div class="empty">Unavailable — see the message above.</div>';
+    });
   }
 
   // ── runs ───────────────────────────────────────────────────────────────
@@ -568,7 +591,7 @@
       el('runDetail').innerHTML = detailHtml(run);
       wireDetail(run);
       window.scrollTo(0, 0);
-    }).catch(function (err) { banner(esc(err.message), 'error'); });
+    }).catch(function (err) { reportError(err); });
   }
 
   function closeRun() {
@@ -672,7 +695,7 @@
           if (!window.confirm('Release this output to the user who ran the agent?')) return;
           api('/observability/artifacts/' + id + '/release', { method: 'POST' })
             .then(function () { openRun(run.run_id); })
-            .catch(function (err) { banner(esc(err.message), 'error'); });
+            .catch(function (err) { reportError(err); });
         });
       }
     });
@@ -749,14 +772,14 @@
         box.addEventListener('change', function () {
           api('/guardrails/rules/' + box.getAttribute('data-id'), {
             method: 'PUT', body: JSON.stringify({ is_enabled: box.checked })
-          }).then(loadRules).catch(function (err) { banner(esc(err.message), 'error'); });
+          }).then(loadRules).catch(function (err) { reportError(err); });
         });
       });
       Array.prototype.forEach.call(el('rulesWrap').querySelectorAll('.js-del'), function (btn) {
         btn.addEventListener('click', function () {
           if (!window.confirm('Delete this rule? Its past flags are kept.')) return;
           api('/guardrails/rules/' + btn.getAttribute('data-id'), { method: 'DELETE' })
-            .then(loadRules).catch(function (err) { banner(esc(err.message), 'error'); });
+            .then(loadRules).catch(function (err) { reportError(err); });
         });
       });
     });
@@ -784,14 +807,14 @@
           api('/guardrails/policies/' + box.getAttribute('data-id'), {
             method: 'PUT', body: JSON.stringify({ is_active: box.checked })
           }).then(function () { loadPolicies(); loadRules(); })
-            .catch(function (err) { banner(esc(err.message), 'error'); });
+            .catch(function (err) { reportError(err); });
         });
       });
       Array.prototype.forEach.call(el('policiesWrap').querySelectorAll('.js-pdel'), function (btn) {
         btn.addEventListener('click', function () {
           if (!window.confirm('Delete this policy? Its rules stay as they are.')) return;
           api('/guardrails/policies/' + btn.getAttribute('data-id'), { method: 'DELETE' })
-            .then(loadPolicies).catch(function (err) { banner(esc(err.message), 'error'); });
+            .then(loadPolicies).catch(function (err) { reportError(err); });
         });
       });
     }).catch(function () {
@@ -807,7 +830,7 @@
       method: 'POST',
       body: JSON.stringify({ name: name, rule_ids: ids,
         description: 'Bundles the ' + ids.length + ' rules enabled when it was created.' })
-    }).then(loadPolicies).catch(function (err) { banner(esc(err.message), 'error'); });
+    }).then(loadPolicies).catch(function (err) { reportError(err); });
   });
 
   // ── the rule drawer ────────────────────────────────────────────────────
@@ -1030,7 +1053,7 @@
       banner('Purged: ' + Object.keys(data.removed).map(function (k) {
         return data.removed[k] + ' ' + k;
       }).join(', ') + '.');
-    }).catch(function (err) { banner(esc(err.message), 'error'); });
+    }).catch(function (err) { reportError(err); });
   });
 
   el('btnExport').addEventListener('click', function () {
@@ -1115,7 +1138,14 @@
     loadAgents();
     loadRuns();
     loadRules();
-  }).catch(function (err) { banner(esc(err.message), 'error'); });
+  }).catch(function (err) {
+    // loadMeta gates everything else, so if it fails the page would otherwise
+    // sit on "Loading…" forever with no explanation.
+    reportError(err, 'Console');
+    ['layerGrid', 'agentsWrap', 'runsWrap'].forEach(function (id) {
+      el(id).innerHTML = '<div class="empty">Unavailable — see the message above.</div>';
+    });
+  });
 })();
 </script>
 {% endblock %}

@@ -30,6 +30,7 @@ import csv
 import io
 import logging
 import time
+import traceback
 from datetime import datetime
 from functools import wraps
 
@@ -59,6 +60,60 @@ def admin_required(f):
             return jsonify({'error': 'Admin access required'}), 403
         return f(*args, **kwargs)
     return decorated
+
+
+# Tables this console owns. If one is absent the deploy step was missed, which
+# is a setup problem with an obvious fix, not a server fault.
+_OWNED_TABLES = (
+    'agent_runs', 'agent_run_tools', 'agent_events', 'agent_artifacts',
+    'guardrail_rules', 'guardrail_policies', 'observability_flags',
+    'admin_access_audit',
+)
+_MIGRATION = 'sql/050_observability.sql'
+
+
+def _missing_table(exc) -> str:
+    """The name of one of our tables the database says is absent, or ''.
+
+    MySQL raises 1146 "Table '...' doesn't exist"; SQLite says "no such table".
+    Both land here as a DBAPI error, so match on the text of either.
+    """
+    text = str(getattr(exc, 'orig', exc)).lower()
+    if "doesn't exist" not in text and 'no such table' not in text:
+        return ''
+    for table in _OWNED_TABLES:
+        if table in text:
+            return table
+    return ''
+
+
+@observability_bp.errorhandler(Exception)
+def _observability_failed(exc):
+    """Answer a failure in this console with something an admin can act on.
+
+    The app-wide handler turns everything into "Internal server error", which
+    for this blueprint hides the one failure mode that is actually common: the
+    deploy ran the code without running the migration.
+    """
+    from werkzeug.exceptions import HTTPException
+    if isinstance(exc, HTTPException):
+        return exc
+
+    table = _missing_table(exc)
+    if table:
+        logger.error('Observability console is missing table %s — %s has not '
+                     'been run on this database.', table, _MIGRATION)
+        return jsonify({
+            'error': ('This console is not set up on this database yet: the '
+                      'table "%s" is missing. Run %s, then reload.'
+                      % (table, _MIGRATION)),
+            'setup_required': True,
+            'missing_table': table,
+            'migration': _MIGRATION,
+        }), 503
+
+    logger.error('Observability console error:\n%s', traceback.format_exc())
+    return jsonify({'error': 'Internal server error'}), 500
 
 
 # ---------------------------------------------------------------------------
