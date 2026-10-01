@@ -160,6 +160,248 @@ def delete_discount(discount_id):
 
 
 # ---------------------------------------------------------------------------
+# Per-user discount grants — admin comps
+#
+# The routes above manage the global sale: a time window everyone shares. These
+# manage the other axis — a discount for one named user, typically 100% off, that
+# nobody else gets and that the marketing copy never mentions.
+#
+# A grant is a voucher: it carries a use count, so "comp this person one
+# simulation" and "this person never pays" are different grants rather than the
+# same one behaving differently. Unlimited is available but has to be asked for,
+# because an unlimited 100% comp is unbounded generation spend.
+# ---------------------------------------------------------------------------
+
+_COMP_TABLES = ('user_discounts', 'user_discount_redemptions')
+_COMP_MIGRATION = 'sql/052_user_discounts.sql'
+
+
+def _comp_tables_ready(exc) -> bool:
+    """Is this exception the database saying our tables are not there yet?
+
+    MySQL raises 1146 "Table '...' doesn't exist"; SQLite says "no such table".
+    Both arrive as a DBAPI error, so match on the text of either.
+    """
+    text = str(getattr(exc, 'orig', exc)).lower()
+    if "doesn't exist" not in text and 'no such table' not in text:
+        return True
+    return not any(t in text for t in _COMP_TABLES)
+
+
+def comp_endpoint(f):
+    """Answer a missing migration with the fix instead of a 500.
+
+    Without this the console shows "Internal server error" for the one failure
+    mode that is actually common right after a deploy: the code shipped and the
+    migration did not.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as exc:
+            from werkzeug.exceptions import HTTPException
+            if isinstance(exc, HTTPException):
+                raise
+            if not _comp_tables_ready(exc):
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+                logging.getLogger(__name__).error(
+                    'Per-user comps are missing their tables — %s has not been '
+                    'run on this database.', _COMP_MIGRATION)
+                return jsonify({
+                    'error': ('Per-user discounts are not set up on this '
+                              'database yet. Run %s, then reload.'
+                              % _COMP_MIGRATION),
+                    'setup_required': True,
+                    'migration': _COMP_MIGRATION,
+                }), 503
+            raise
+    return decorated
+
+
+def _grant_payload(grant, user=None):
+    out = grant.to_dict()
+    if user is not None:
+        out['user_email'] = user.email
+        out['user_name'] = user.full_name or ''
+    return out
+
+
+@admin_bp.route('/users/<user_id>/discounts', methods=['GET'])
+@login_required
+@admin_required
+@comp_endpoint
+def list_user_discounts(user_id):
+    """Every grant this user has ever held, newest first, plus what they spent."""
+    from app.models.discount import UserDiscount, UserDiscountRedemption
+    from app.services.pricing_service import price_for_user
+
+    u = User.query.get_or_404(user_id)
+    grants = UserDiscount.query.filter_by(user_id=user_id).order_by(
+        UserDiscount.created_at.desc()
+    ).all()
+    redemptions = UserDiscountRedemption.query.filter_by(user_id=user_id).order_by(
+        UserDiscountRedemption.created_at.desc()
+    ).limit(50).all()
+
+    effective = price_for_user(user_id)
+    return jsonify({
+        'user': {'id': u.id, 'email': u.email, 'full_name': u.full_name or ''},
+        'grants': [_grant_payload(g) for g in grants],
+        'redemptions': [r.to_dict() for r in redemptions],
+        # What this user would be charged if they bought right now — the number
+        # that actually answers "is the comp working".
+        'effective_price': {
+            'base_price_cents': effective['base_price_cents'],
+            'price_cents': effective['discounted_price_cents'],
+            'discount_percentage': effective['discount_percentage'],
+            'is_comped': effective['is_comped'],
+        },
+        # Suggestions for the console's dropdown. Any 1-100 is accepted on POST;
+        # a per-user comp is not restricted to the global sale's ladder.
+        'percentage_presets': [100, 50, 25, 20, 15, 10],
+    }), 200
+
+
+@admin_bp.route('/users/<user_id>/discounts', methods=['POST'])
+@login_required
+@admin_required
+@comp_endpoint
+def grant_user_discount(user_id):
+    """Grant this user a discount on the simulation price.
+
+    Body: {"discount_percentage": 100, "max_uses": 1, "reason": "...",
+           "expires_in_days": 30}
+
+    `max_uses` defaults to 1 and `0` means unlimited. `expires_in_days` is
+    optional; omitting it leaves the grant open-ended.
+    """
+    from datetime import datetime, timedelta
+    from app.models.discount import UserDiscount
+
+    u = User.query.get_or_404(user_id)
+    if u.deleted_at is not None:
+        return jsonify({'error': 'That account is deactivated. Reactivate it first.'}), 400
+
+    data = request.get_json(silent=True) or {}
+
+    try:
+        pct = int(data.get('discount_percentage', 100))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'discount_percentage must be a whole number.'}), 400
+    if not 1 <= pct <= 100:
+        return jsonify({'error': 'discount_percentage must be between 1 and 100.'}), 400
+
+    try:
+        max_uses = int(data.get('max_uses', 1))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'max_uses must be a whole number.'}), 400
+    if max_uses < 0:
+        return jsonify({'error': 'max_uses cannot be negative. Use 0 for unlimited.'}), 400
+
+    expires_at = None
+    if data.get('expires_in_days') not in (None, '', 0, '0'):
+        try:
+            days = int(data['expires_in_days'])
+        except (TypeError, ValueError):
+            return jsonify({'error': 'expires_in_days must be a whole number.'}), 400
+        if days < 1:
+            return jsonify({'error': 'expires_in_days must be at least 1.'}), 400
+        expires_at = datetime.utcnow() + timedelta(days=days)
+
+    reason = (str(data.get('reason') or '').strip() or None)
+    if reason:
+        reason = reason[:200]
+
+    grant = UserDiscount(
+        user_id=user_id,
+        discount_percentage=pct,
+        max_uses=max_uses,
+        reason=reason,
+        expires_at=expires_at,
+        granted_by=current_user.id,
+    )
+    db.session.add(grant)
+    db.session.flush()
+
+    AuditLog.log('user_discount_granted', user_id=current_user.id,
+                 resource_id=grant.id, metadata={
+                     'subject_user_id': user_id,
+                     'subject_email': u.email,
+                     'discount_percentage': pct,
+                     'max_uses': max_uses,
+                     'unlimited': max_uses == UserDiscount.UNLIMITED,
+                     'expires_at': expires_at.isoformat() if expires_at else None,
+                     'reason': reason,
+                 })
+    db.session.commit()
+    return jsonify(_grant_payload(grant, u)), 201
+
+
+@admin_bp.route('/users/<user_id>/discounts/<grant_id>', methods=['DELETE'])
+@login_required
+@admin_required
+@comp_endpoint
+def revoke_user_discount(user_id, grant_id):
+    """Revoke a grant.
+
+    Revokes rather than deletes: the redemption history has to keep pointing at
+    something, and "who comped whom, and when it was withdrawn" is exactly the
+    record an audit wants. Already-generated simulations are untouched — the
+    money is spent.
+    """
+    from datetime import datetime
+    from app.models.discount import UserDiscount
+
+    grant = UserDiscount.query.filter_by(id=grant_id, user_id=user_id).first()
+    if grant is None:
+        return jsonify({'error': 'Grant not found.'}), 404
+    if grant.revoked_at is not None:
+        return jsonify(_grant_payload(grant)), 200
+
+    grant.revoked_at = datetime.utcnow()
+    grant.revoked_by = current_user.id
+    AuditLog.log('user_discount_revoked', user_id=current_user.id,
+                 resource_id=grant.id, metadata={
+                     'subject_user_id': user_id,
+                     'discount_percentage': grant.discount_percentage,
+                     'uses_spent': grant.uses_count or 0,
+                 })
+    db.session.commit()
+    return jsonify(_grant_payload(grant)), 200
+
+
+@admin_bp.route('/user-discounts', methods=['GET'])
+@login_required
+@admin_required
+@comp_endpoint
+def list_all_user_discounts():
+    """Every per-user grant across the platform, for the console's comp table."""
+    from app.models.discount import UserDiscount, UserDiscountRedemption
+    from sqlalchemy import func
+
+    grants = UserDiscount.query.order_by(UserDiscount.created_at.desc()).limit(200).all()
+    users = {}
+    if grants:
+        ids = list({g.user_id for g in grants})
+        users = {u.id: u for u in User.query.filter(User.id.in_(ids)).all()}
+
+    comped_cents = db.session.query(
+        func.coalesce(func.sum(UserDiscountRedemption.base_price_cents
+                               - UserDiscountRedemption.charged_cents), 0)
+    ).scalar() or 0
+
+    return jsonify({
+        'grants': [_grant_payload(g, users.get(g.user_id)) for g in grants],
+        'active_count': sum(1 for g in grants if g.status() == 'active'),
+        'total_comped_usd': round(float(comped_cents) / 100, 2),
+    }), 200
+
+
+# ---------------------------------------------------------------------------
 # Prospect Tier Config (SIM-REQ-PROSPECT-001 — FR-TIER-02)
 # ---------------------------------------------------------------------------
 

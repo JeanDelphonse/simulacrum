@@ -66,6 +66,11 @@ from app.models.peer import (
     AgentShare, PeerInvite, ParameterSuggestion, SuggestionBlend,
     ReciprocityLedger,
 )
+# Registered here (rather than only imported lazily at the call sites) so the
+# discount tables are always on the metadata db.create_all() walks.
+from app.models.discount import (
+    SimulationDiscount, UserDiscount, UserDiscountRedemption,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -107,4 +112,5 @@ __all__ = [
     'GuardrailRule', 'GuardrailPolicy', 'ObservabilityFlag', 'AdminAccessAudit',
     'AgentShare', 'PeerInvite', 'ParameterSuggestion', 'SuggestionBlend',
     'ReciprocityLedger',
+    'SimulationDiscount', 'UserDiscount', 'UserDiscountRedemption',
 ]

@@ -235,6 +235,7 @@
           <td style="white-space:nowrap">
             <button onclick="openUserEdit('{{ u.id }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(0,0,0,.2);border-radius:5px;background:none;color:#374151;cursor:pointer;margin-right:.3rem">Edit</button>
             <button onclick="openCycleAdmin('{{ u.id }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(14,116,144,.45);border-radius:5px;background:none;color:#0e7490;cursor:pointer;margin-right:.3rem">Cycles</button>
+            <button onclick="openCompModal('{{ u.id }}', '{{ u.email }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(180,83,9,.45);border-radius:5px;background:none;color:#b45309;cursor:pointer;margin-right:.3rem">Comp</button>
             {% if u.deleted_at %}
             <button onclick="toggleUserActive('{{ u.id }}', true)" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(22,163,74,.5);border-radius:5px;background:none;color:#16a34a;cursor:pointer">Reactivate</button>
             {% else %}
@@ -290,6 +291,77 @@
       <button onclick="saveUserEdit()" style="padding:.45rem 1rem;border:none;border-radius:7px;background:#0f7b72;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600" id="saveUserEditBtn">Save Changes</button>
     </div>
     <div id="editUserMsg" style="margin-top:.75rem;font-size:.8rem;text-align:center;display:none"></div>
+  </div>
+</div>
+
+<!-- ── Comp Modal: grant one user a discount on the simulation price ────────
+     The global Discount Configuration panel above is a sale everyone shares.
+     This is a comp for one named person. It is a voucher with a use count, so
+     "one free simulation" and "never pays" are two different grants rather than
+     one setting that behaves differently — an unlimited 100% comp is unbounded
+     generation spend, so it has to be chosen rather than defaulted into. -->
+<div id="compModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:1.5rem">
+  <div style="background:#1a2236;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.35rem">
+      <h3 style="margin:0;font-size:1rem">Comp simulation price</h3>
+      <button onclick="closeCompModal()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+    </div>
+    <div id="compUserLabel" style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:1.25rem"></div>
+    <input type="hidden" id="compUserId">
+
+    <div id="compEffective" style="display:none;margin-bottom:1.25rem;padding:.6rem .8rem;border-radius:8px;font-size:.82rem"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Discount</label>
+        <select id="compPct" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+          <option value="100" selected>100% — free</option>
+          <option value="50">50% off</option>
+          <option value="25">25% off</option>
+          <option value="20">20% off</option>
+          <option value="15">15% off</option>
+          <option value="10">10% off</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Covers</label>
+        <select id="compUses" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+          <option value="1" selected>1 simulation</option>
+          <option value="2">2 simulations</option>
+          <option value="3">3 simulations</option>
+          <option value="5">5 simulations</option>
+          <option value="10">10 simulations</option>
+          <option value="0">Unlimited — never pays</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Expires</label>
+        <select id="compExpiry" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+          <option value="">No expiry</option>
+          <option value="7">In 7 days</option>
+          <option value="30" selected>In 30 days</option>
+          <option value="90">In 90 days</option>
+          <option value="365">In 1 year</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Reason</label>
+        <input id="compReason" type="text" maxlength="200" placeholder="e.g. Design partner" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+      </div>
+    </div>
+
+    <div id="compWarning" style="display:none;margin-top:1rem;padding:.6rem .8rem;border-radius:8px;background:rgba(180,83,9,.14);border:1px solid rgba(180,83,9,.4);font-size:.8rem;color:#fbbf24"></div>
+
+    <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem">
+      <button onclick="closeCompModal()" style="padding:.45rem 1rem;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:.85rem">Cancel</button>
+      <button onclick="grantComp()" id="grantCompBtn" style="padding:.45rem 1rem;border:none;border-radius:7px;background:#b45309;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600">Grant discount</button>
+    </div>
+    <div id="compMsg" style="margin-top:.75rem;font-size:.8rem;text-align:center;display:none"></div>
+
+    <div style="margin-top:1.75rem;border-top:1px solid rgba(255,255,255,.1);padding-top:1rem">
+      <h4 style="font-size:.85rem;color:rgba(255,255,255,.6);margin:0 0 .5rem">Grants for this user</h4>
+      <div id="compGrants"><span style="font-size:.8rem;color:rgba(255,255,255,.35)">Loading…</span></div>
+    </div>
   </div>
 </div>
 
@@ -408,6 +480,197 @@ async function deleteDiscount(id) {
 }
 
 loadDiscounts();
+
+// ── Per-user comps ────────────────────────────────────────────────────────
+// A grant here affects exactly one person's checkout. It never touches the
+// marketing copy or the global sale, and it is spent per simulation rather than
+// flipping the user into a permanent free tier.
+
+function compEsc(t) {
+  return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function compMoney(cents) {
+  var n = Number(cents) || 0;
+  return n % 100 === 0
+    ? '$' + (n / 100).toLocaleString()
+    : '$' + (n / 100).toFixed(2);
+}
+
+function openCompModal(uid, email) {
+  document.getElementById('compUserId').value = uid;
+  document.getElementById('compUserLabel').textContent = email || uid;
+  document.getElementById('compMsg').style.display = 'none';
+  document.getElementById('compReason').value = '';
+  document.getElementById('compPct').value = '100';
+  document.getElementById('compUses').value = '1';
+  document.getElementById('compExpiry').value = '30';
+  document.getElementById('compEffective').style.display = 'none';
+  document.getElementById('compGrants').innerHTML =
+    '<span style="font-size:.8rem;color:rgba(255,255,255,.35)">Loading…</span>';
+  // Re-enable in case a previous open hit the not-migrated state and disabled it.
+  document.getElementById('grantCompBtn').disabled = false;
+  updateCompWarning();
+  document.getElementById('compModal').style.display = 'flex';
+  loadCompGrants(uid);
+}
+
+function closeCompModal() {
+  document.getElementById('compModal').style.display = 'none';
+}
+
+// The one combination worth a second look before it ships: unlimited + 100%
+// means every simulation this person ever runs is free, with no expiry to catch
+// it. Say so plainly rather than relying on the admin to notice.
+function updateCompWarning() {
+  var pct = document.getElementById('compPct').value;
+  var uses = document.getElementById('compUses').value;
+  var expiry = document.getElementById('compExpiry').value;
+  var box = document.getElementById('compWarning');
+  if (uses === '0') {
+    box.style.display = 'block';
+    box.textContent = pct === '100'
+      ? 'Unlimited and free: every simulation this user runs is comped'
+        + (expiry ? ', until the grant expires.' : ', with no expiry. '
+           + 'Each one still costs generation spend — consider setting an expiry.')
+      : 'Unlimited uses: this discount applies to every simulation this user buys'
+        + (expiry ? ', until it expires.' : ', with no expiry.');
+  } else {
+    box.style.display = 'none';
+  }
+}
+['compPct', 'compUses', 'compExpiry'].forEach(function (id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('change', updateCompWarning);
+});
+
+async function loadCompGrants(uid) {
+  var box = document.getElementById('compGrants');
+  try {
+    const res = await fetch(ROOT + '/api/admin/users/' + uid + '/discounts');
+    const d = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      // A missing migration is the common case right after a deploy, and it has
+      // an obvious fix — show that instead of an HTTP code.
+      var text = d.setup_required
+        ? d.error
+        : (d.error || ('Could not load grants: HTTP ' + res.status));
+      box.innerHTML = '<p style="font-size:.8rem;color:#fbbf24">' + compEsc(text) + '</p>';
+      document.getElementById('grantCompBtn').disabled = !!d.setup_required;
+      return;
+    }
+
+    document.getElementById('grantCompBtn').disabled = false;
+
+    var eff = document.getElementById('compEffective');
+    if (d.effective_price) {
+      var p = d.effective_price;
+      eff.style.display = 'block';
+      if (p.is_comped) {
+        eff.style.background = 'rgba(16,185,129,.12)';
+        eff.style.border = '1px solid rgba(16,185,129,.3)';
+        eff.style.color = '#34d399';
+        eff.textContent = 'Pays ' + compMoney(p.price_cents) + ' right now — '
+          + p.discount_percentage + '% off ' + compMoney(p.base_price_cents) + '.';
+      } else {
+        eff.style.background = 'rgba(255,255,255,.05)';
+        eff.style.border = '1px solid rgba(255,255,255,.12)';
+        eff.style.color = 'rgba(255,255,255,.6)';
+        eff.textContent = 'Pays ' + compMoney(p.price_cents) + ' right now'
+          + (p.discount_percentage
+              ? ' (' + p.discount_percentage + '% off, from the global sale).'
+              : ' — no discount applied.');
+      }
+    }
+
+    if (!d.grants.length) {
+      box.innerHTML = '<p style="font-size:.8rem;color:rgba(255,255,255,.35)">'
+        + 'No grants yet.</p>';
+      return;
+    }
+    var colours = { active: '#34d399', used: 'rgba(255,255,255,.4)',
+                    expired: 'rgba(255,255,255,.4)', revoked: '#ef4444' };
+    var html = '<table class="admin-table" style="font-size:.78rem"><thead><tr>'
+      + '<th>Discount</th><th>Used</th><th>Expires</th><th>Reason</th>'
+      + '<th>Status</th><th></th></tr></thead><tbody>';
+    d.grants.forEach(function (g) {
+      var used = g.is_unlimited
+        ? (g.uses_count + ' / ∞')
+        : (g.uses_count + ' / ' + g.max_uses);
+      html += '<tr>'
+        + '<td>' + g.discount_percentage + '%</td>'
+        + '<td>' + used + '</td>'
+        + '<td>' + (g.expires_at ? new Date(g.expires_at).toLocaleDateString() : '—') + '</td>'
+        + '<td>' + compEsc(g.reason || '—') + '</td>'
+        + '<td style="color:' + (colours[g.status] || '#fff') + '">' + g.status + '</td>'
+        + '<td>' + (g.status === 'active'
+            ? '<button onclick="revokeComp(\'' + g.id + '\')" style="background:none;'
+              + 'border:none;color:#ef4444;cursor:pointer;font-size:.75rem">revoke</button>'
+            : '') + '</td>'
+        + '</tr>';
+    });
+    box.innerHTML = html + '</tbody></table>';
+  } catch (err) {
+    box.innerHTML = '<p style="font-size:.8rem;color:#ef4444">Could not load grants: '
+      + compEsc(err.message) + '</p>';
+  }
+}
+
+async function grantComp() {
+  var uid = document.getElementById('compUserId').value;
+  var btn = document.getElementById('grantCompBtn');
+  var msg = document.getElementById('compMsg');
+  var uses = document.getElementById('compUses').value;
+  var pct = document.getElementById('compPct').value;
+
+  if (uses === '0' && !confirm(
+      'Grant an unlimited ' + pct + '% discount? Every simulation this user runs '
+      + 'will be discounted until you revoke it.')) {
+    return;
+  }
+
+  btn.disabled = true;
+  msg.style.display = 'none';
+  try {
+    const res = await fetch(ROOT + '/api/admin/users/' + uid + '/discounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        discount_percentage: parseInt(pct, 10),
+        max_uses: parseInt(uses, 10),
+        expires_in_days: document.getElementById('compExpiry').value || null,
+        reason: document.getElementById('compReason').value.trim() || null,
+      }),
+    });
+    const body = await res.json().catch(function () { return {}; });
+    msg.style.display = 'block';
+    if (res.ok) {
+      msg.style.color = '#34d399';
+      msg.textContent = 'Granted.';
+      document.getElementById('compReason').value = '';
+      loadCompGrants(uid);
+    } else {
+      msg.style.color = '#ef4444';
+      msg.textContent = body.error || ('Failed (HTTP ' + res.status + ')');
+    }
+  } catch (err) {
+    msg.style.display = 'block';
+    msg.style.color = '#ef4444';
+    msg.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function revokeComp(grantId) {
+  var uid = document.getElementById('compUserId').value;
+  if (!confirm('Revoke this grant? Simulations already generated are unaffected.')) return;
+  await fetch(ROOT + '/api/admin/users/' + uid + '/discounts/' + grantId,
+              { method: 'DELETE' });
+  loadCompGrants(uid);
+}
 
 // Prospect Tier Config
 async function loadProspectTierConfig() {

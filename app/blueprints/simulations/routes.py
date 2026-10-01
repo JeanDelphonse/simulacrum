@@ -44,9 +44,14 @@ def _get_action_layer(action_type: str):
 
 @simulations_bp.route('/price', methods=['GET'])
 def get_simulation_price():
-    """Public endpoint — returns current simulation pricing including any active discount."""
-    from app.services.pricing_service import get_current_price, format_price_usd
-    pricing = get_current_price()
+    """Current simulation pricing, including any active discount.
+
+    Public, but buyer-aware: a signed-in user holding an admin comp is quoted
+    the price they will actually be charged, so the checkout screen and the
+    charge agree. An anonymous visitor sees the public price.
+    """
+    from app.services.pricing_service import price_for_user, format_price_usd
+    pricing = price_for_user(current_user.id if current_user.is_authenticated else None)
     return jsonify({
         'amount_cents': pricing['discounted_price_cents'],
         'amount_usd': format_price_usd(pricing['discounted_price_cents']),
@@ -56,6 +61,7 @@ def get_simulation_price():
         'discount_percentage': pricing['discount_percentage'],
         'label': pricing['label'],
         'expires_at': pricing['expires_at'],
+        'is_comped': pricing['is_comped'],
     }), 200
 
 
@@ -180,14 +186,35 @@ def create_simulation():
                 logging.getLogger(__name__).error('send_bcc_simulation_notification failed: %s', _e)
     _threading.Thread(target=_bcc_notify, daemon=True).start()
 
-    # Resolve current pricing (applies any active discount — FR-DISC-10)
-    from app.services.pricing_service import get_current_price
-    pricing = get_current_price()
+    # Resolve current pricing (applies any active discount — FR-DISC-10 — and
+    # any admin comp granted to this specific buyer).
+    from app.services.pricing_service import price_for_user, redeem_user_discount
+    pricing = price_for_user(current_user.id)
     charge_cents = pricing['discounted_price_cents']
 
     sim.base_price_at_purchase_cents = pricing['base_price_cents']
     sim.discount_applied_percentage = pricing['discount_percentage']
     sim.amount_charged_cents = charge_cents
+
+    # An admin comp is a voucher with a use count, so spend it here — at the
+    # point the purchase is actually happening — rather than when the price was
+    # merely displayed. If the last use went to a concurrent checkout, redeeming
+    # fails and this buyer falls back to the price everyone else pays rather
+    # than getting a discount the grant can no longer cover.
+    if pricing['is_comped']:
+        if redeem_user_discount(current_user.id, sim, pricing):
+            AuditLog.log('user_discount_redeemed', user_id=current_user.id,
+                         resource_id=sim_id, metadata={
+                             'discount_id': pricing['user_discount_id'],
+                             'discount_percentage': pricing['discount_percentage'],
+                             'charged_cents': charge_cents,
+                         })
+        else:
+            from app.services.pricing_service import get_current_price
+            pricing = get_current_price()
+            charge_cents = pricing['discounted_price_cents']
+            sim.discount_applied_percentage = pricing['discount_percentage']
+            sim.amount_charged_cents = charge_cents
 
     # SIM-PRD-ORG-001: redeem an org credit if the member's pool has one.
     # Runs the simulation at no cost to the member; falls through to the normal
@@ -596,8 +623,8 @@ def seed_simulation(sim_id):
     data = request.get_json() or {}
 
     new_name = data.get('name') or f'{source.name} (fork)'
-    from app.services.pricing_service import get_current_price
-    pricing = get_current_price()
+    from app.services.pricing_service import price_for_user, redeem_user_discount
+    pricing = price_for_user(current_user.id)
 
     new_sim_id = generate_id()
     new_sim = Simulation(
@@ -649,6 +676,25 @@ def seed_simulation(sim_id):
     new_sim.base_price_at_purchase_cents = pricing['base_price_cents']
     new_sim.discount_applied_percentage = pricing['discount_percentage']
     new_sim.amount_charged_cents = charge_cents
+
+    # A fork is a purchase, so an admin comp covers it and is spent on it. Same
+    # fallback as the new-simulation path: if the grant ran out between pricing
+    # and here, this buyer pays the normal price rather than a stale discount.
+    if pricing['is_comped']:
+        if redeem_user_discount(current_user.id, new_sim, pricing):
+            AuditLog.log('user_discount_redeemed', user_id=current_user.id,
+                         resource_id=new_sim_id, metadata={
+                             'discount_id': pricing['user_discount_id'],
+                             'discount_percentage': pricing['discount_percentage'],
+                             'charged_cents': charge_cents,
+                             'source': 'seed',
+                         })
+        else:
+            from app.services.pricing_service import get_current_price
+            pricing = get_current_price()
+            charge_cents = pricing['discounted_price_cents']
+            new_sim.discount_applied_percentage = pricing['discount_percentage']
+            new_sim.amount_charged_cents = charge_cents
 
     # SIM-PRD-ORG-001: org credit pool funds forks too (never a hard block).
     if charge_cents > 0:
