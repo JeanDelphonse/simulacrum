@@ -180,6 +180,8 @@
 .pod-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border,rgba(0,0,0,.07)); font-size: .88rem; color: var(--dark,#1A1A2E); }
 </style>
 
+{# Column filters for every table.admin-table on the page. #}
+<script src="{{ url_for('static', filename='js/admin_table_filter.js') }}"></script>
 <script>
 const TIER_CREDITS = { pilot: 25, cohort: 200, enterprise: 500, partner: 100 };
 // Tier defaults are a create-time convenience — never overwrite a live pool size.

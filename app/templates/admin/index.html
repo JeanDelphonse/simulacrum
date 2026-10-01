@@ -204,8 +204,17 @@
   </section>
 
   <section class="admin-section">
-    <h2>Users (Top 50)</h2>
-    <table class="admin-table" id="usersTable">
+    <h2>Users ({{ users|length }}{% if users_total and users_total > users|length %} newest of {{ users_total }}{% endif %})</h2>
+    {% if users_total and users_total > users|length %}
+    {# Filtering runs in the browser over the rows rendered here, so say plainly
+       when that is not everyone — otherwise "no match" would be a false answer. #}
+    <p style="font-size:.78rem;opacity:.75;margin:-.4rem 0 .8rem">
+      Filters search the {{ users|length }} newest accounts. Raise
+      <code>admin_users_render_limit</code> in settings to include more.
+    </p>
+    {% endif %}
+    {# data-filter="on": always filterable, even on a small user base. #}
+    <table class="admin-table" id="usersTable" data-filter="on">
       <thead><tr><th>Name</th><th>Email</th><th>Simulations</th><th>Spend</th><th>Joined</th><th>Public Profile</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>
         {% for u in users %}
@@ -398,6 +407,8 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{# Column filters for every table.admin-table on the page. #}
+<script src="{{ url_for('static', filename='js/admin_table_filter.js') }}"></script>
 <script>
 async function updateSetting(key, value) {
   await fetch(ROOT + `/api/admin/settings/${key}`, {
@@ -827,18 +838,36 @@ const USERS_PER_PAGE = 25;
 let usersCurrentPage = 1;
 let usersAllRows = [];
 
+// Pagination runs over the rows the column filter keeps, not over every row.
+// The filter hides rows with the `atf-hidden` class and this code owns the
+// inline display style; keeping the two on separate properties is what stops
+// a page turn from un-hiding a filtered-out row (see admin_table_filter.js).
+function usersMatchingRows() {
+  return usersAllRows.filter(row => !row.classList.contains('atf-hidden'));
+}
+
 function renderUsersPage() {
-  const totalPages = Math.max(1, Math.ceil(usersAllRows.length / USERS_PER_PAGE));
+  const rows = usersMatchingRows();
+  const totalPages = Math.max(1, Math.ceil(rows.length / USERS_PER_PAGE));
   usersCurrentPage = Math.min(Math.max(1, usersCurrentPage), totalPages);
   const start = (usersCurrentPage - 1) * USERS_PER_PAGE;
   const end = start + USERS_PER_PAGE;
-  usersAllRows.forEach((row, i) => {
+
+  usersAllRows.forEach(row => { row.style.display = 'none'; });
+  rows.forEach((row, i) => {
     row.style.display = (i >= start && i < end) ? '' : 'none';
   });
+
+  const filtered = rows.length !== usersAllRows.length;
   document.getElementById('usersPageInfo').textContent =
-    `Showing ${usersAllRows.length ? start + 1 : 0}–${Math.min(end, usersAllRows.length)} of ${usersAllRows.length}`;
+    `Showing ${rows.length ? start + 1 : 0}–${Math.min(end, rows.length)} of ${rows.length}`
+    + (filtered ? ` (filtered from ${usersAllRows.length})` : '');
   document.getElementById('usersPrevBtn').disabled = usersCurrentPage <= 1;
   document.getElementById('usersNextBtn').disabled = usersCurrentPage >= totalPages;
+
+  // Only offer paging when there is more than one page of *matches*.
+  document.getElementById('usersPagination').style.display =
+    rows.length > USERS_PER_PAGE ? 'flex' : 'none';
 }
 
 function changeUsersPage(delta) {
@@ -847,13 +876,18 @@ function changeUsersPage(delta) {
 }
 
 (function initUsersPagination() {
-  const tbody = document.querySelector('#usersTable tbody');
+  const table = document.getElementById('usersTable');
+  const tbody = table && table.tBodies[0];
   if (!tbody) return;
   usersAllRows = Array.from(tbody.querySelectorAll('tr'));
-  if (usersAllRows.length > USERS_PER_PAGE) {
-    document.getElementById('usersPagination').style.display = 'flex';
-  }
   renderUsersPage();
+
+  // A new filter means a new result set, so start again from page one —
+  // staying on page 4 of a 1-page result would show nothing.
+  table.addEventListener('admin-table:filtered', () => {
+    usersCurrentPage = 1;
+    renderUsersPage();
+  });
 })();
 
 // ── Run Cycle Admin ──────────────────────────────────────────────────────────

@@ -866,7 +866,21 @@ def admin_view():
     from app.extensions import db
 
     settings = {s.key: s.value for s in PlatformSetting.query.all()}
-    users = User.query.order_by(User.created_at.desc()).limit(50).all()
+
+    # The users table is filtered and paginated in the browser, so whatever is
+    # rendered here is all the column filter can search. At the old cap of 50, a
+    # filter for anyone who signed up before the fiftieth-newest account would
+    # silently report "no match" — a filter that lies. Rendering costs two
+    # queries total (users + profiles) whatever the count, because spend and
+    # simulation count are plain columns, so the cap can sit high. It stays
+    # admin-configurable for the day the user base outgrows the page.
+    try:
+        render_limit = int(PlatformSetting.get('admin_users_render_limit') or 1000)
+    except (TypeError, ValueError):
+        render_limit = 1000
+    render_limit = max(50, render_limit)
+    users_total = User.query.count()
+    users = User.query.order_by(User.created_at.desc()).limit(render_limit).all()
     user_ids = [u.id for u in users]
     profiles = {p.user_id: p for p in UserProfile.query.filter(UserProfile.user_id.in_(user_ids)).all()}
 
@@ -892,7 +906,8 @@ def admin_view():
     }
 
     return render_template('admin/index.html', settings=settings, users=users,
-                           profiles=profiles, revenue_stats=revenue_stats)
+                           profiles=profiles, revenue_stats=revenue_stats,
+                           users_total=users_total)
 
 
 @pages_bp.route('/admin/analytics')

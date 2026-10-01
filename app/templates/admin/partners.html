@@ -101,6 +101,8 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{# Column filters for every table.admin-table on the page. #}
+<script src="{{ url_for('static', filename='js/admin_table_filter.js') }}"></script>
 <script>
 function filterPartners(status) {
   document.querySelectorAll('#partnersTable tbody tr[data-status]').forEach(row => {
