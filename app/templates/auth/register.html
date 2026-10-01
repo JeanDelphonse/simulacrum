@@ -8,11 +8,14 @@
     <form class="auth-form" id="registerForm">
       <div class="form-group">
         <label for="full_name">Full name</label>
-        <input type="text" id="full_name" name="full_name" required placeholder="Jane Smith">
+        <input type="text" id="full_name" name="full_name" required
+               minlength="2" maxlength="100" autocomplete="name"
+               placeholder="Jane Smith">
       </div>
       <div class="form-group">
         <label for="email">Email address</label>
-        <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+        <input type="email" id="email" name="email" required maxlength="254"
+               autocomplete="email" placeholder="you@example.com">
       </div>
       <div class="form-group">
         <label for="password">Password</label>
@@ -27,11 +30,155 @@
 {% endblock %}
 {% block scripts %}
 <script>
+// Client-side mirror of utils/validators.py. It exists to fail fast and say why
+// while the person is still looking at the field — the server check is the one
+// that actually protects the database, and it runs regardless of this.
+//
+// Same reasoning as the server: test shape, not keywords, and use Unicode
+// property escapes so every script's names pass. \p{L} matches letters in any
+// alphabet; an /[A-Za-z]/ check here would reject most of the world's names,
+// which is a worse failure than the spam it prevents.
+
+// Invisible characters are stripped by codepoint rather than with a regex
+// class. They are invisible in the field but can hide a host name from the URL
+// check, and writing them as a literal range inside a regex would put raw
+// control bytes in this file.
+function stripInvisible(text) {
+  var out = '';
+  for (var i = 0; i < text.length; i++) {
+    var c = text.charCodeAt(i);
+    var invisible = c <= 31                    // C0 controls
+      || (c >= 127 && c <= 159)                // DEL + C1 controls
+      || c === 173                             // soft hyphen
+      || (c >= 8203 && c <= 8207)              // zero-width + bidi marks
+      || c === 8232 || c === 8233               // line/paragraph separators
+      || c === 65279;                           // BOM / zero-width no-break
+    if (!invisible) out += text.charAt(i);
+  }
+  return out;
+}
+
+// Punctuation a real name can carry: O'Brien, Muñoz-Pérez, "Jr.", "Smith, III",
+// and the middle dots used in some Catalan and CJK names. Listed by codepoint
+// to keep this file free of escape sequences.
+var NAME_PUNCT = [
+  32,      // space
+  39,      // '
+  8217,    // right single quote
+  45,      // -
+  8208, 8209, 8210, 8211, 8212,   // hyphen/dash variants
+  46,      // .
+  44,      // ,
+  40, 41,  // ( )
+  183,     // middle dot
+  12539    // katakana middle dot
+];
+
+function nameProblem(raw) {
+  // Whitespace controls become spaces first, matching the server, so a tabbed
+  // "Jane<TAB>Smith" ends up as "Jane Smith" and not "JaneSmith".
+  var name = stripInvisible(
+    (raw || '').normalize('NFKC').replace(/[\t\n\r\v\f]+/g, ' ')
+  ).replace(/\s+/g, ' ').trim();
+
+  if (!name) return 'Enter your full name.';
+  if (name.length < 2) return 'That name is too short.';
+  if (name.length > 100) return 'Please keep your name under 100 characters.';
+
+  if (/(https?:\/\/|www\.|:\/\/)/i.test(name)
+      || /\b[a-z0-9-]{2,}\.(com|net|org|ru|cn|io|co|me|info|biz|xyz|top|live|link|click|tk|ly|gl|cc|to|shop|site|online|store|vip|club|bet|casino)\b/i.test(name)) {
+    return 'Your name cannot contain a web address.';
+  }
+  if (name.indexOf('@') !== -1) return 'Your name cannot contain an email address.';
+  if (/\d/.test(name)) return 'Your name cannot contain numbers.';
+
+  var letterRe, markRe;
+  try {
+    letterRe = new RegExp('\\p{L}', 'u');
+    markRe = new RegExp('\\p{M}', 'u');
+  } catch (e) {
+    // Older browser without Unicode property escapes — let the server decide
+    // rather than guessing with an ASCII-only rule that would reject most of
+    // the world's names.
+    return null;
+  }
+
+  var letters = 0, marks = 0;
+  for (var i = 0; i < name.length; i++) {
+    var ch = name.charAt(i);
+    if (letterRe.test(ch)) { letters++; continue; }
+    if (markRe.test(ch)) { marks++; continue; }
+    if (NAME_PUNCT.indexOf(name.charCodeAt(i)) !== -1) continue;
+    return 'Your name contains a character we cannot accept: ' + ch;
+  }
+
+  if (letters < 2) return 'Please enter your real name.';
+
+  // Combining marks count as letter-like, not decoration: in Devanagari,
+  // Tamil, Thai and vocalised Arabic they are the vowels, so a plain
+  // letters-over-length ratio would reject real names.
+  var body = name.replace(/ /g, '').length;
+  if (body && (letters + marks) < body * 0.6) return 'Please enter your real name.';
+  if (name.split(' ').length > 6) return 'That looks like a sentence rather than a name.';
+  if (/(.)\1{4,}/.test(name)) return 'Please enter your real name.';
+  return null;
+}
+
+function emailProblem(raw) {
+  var email = stripInvisible((raw || '').normalize('NFKC')).trim().toLowerCase();
+
+  if (!email) return 'Enter your email address.';
+  if (email.length > 254) return 'That email address is too long.';
+  if (/\s/.test(email)) return 'An email address cannot contain spaces.';
+  if ((email.match(/@/g) || []).length !== 1) return 'Enter a valid email address.';
+
+  var parts = email.split('@');
+  var local = parts[0], domain = parts[1];
+  if (!local || local.length > 64) return 'Enter a valid email address.';
+  if (local.charAt(0) === '.' || local.charAt(local.length - 1) === '.') {
+    return 'Enter a valid email address.';
+  }
+  if (email.indexOf('..') !== -1 || domain.indexOf('.') === -1) {
+    return 'Enter a valid email address.';
+  }
+  if (!/^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(email)) {
+    return 'Enter a valid email address.';
+  }
+  return null;
+}
+
+// Inline feedback once a field has been left, so nobody is told they are wrong
+// while still typing the second character of their name.
+['full_name', 'email'].forEach(function (id) {
+  var field = document.getElementById(id);
+  field.addEventListener('blur', function () {
+    var problem = id === 'full_name'
+      ? nameProblem(field.value) : emailProblem(field.value);
+    var errEl = document.getElementById('registerError');
+    if (problem && field.value.trim()) {
+      errEl.textContent = problem;
+      errEl.classList.remove('hidden');
+    } else {
+      errEl.classList.add('hidden');
+    }
+  });
+});
+
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector('button[type=submit]');
-  btn.disabled = true; btn.textContent = 'Creating account…';
   const errEl = document.getElementById('registerError');
+
+  const nameIssue = nameProblem(document.getElementById('full_name').value);
+  const problem = nameIssue || emailProblem(document.getElementById('email').value);
+  if (problem) {
+    errEl.textContent = problem;
+    errEl.classList.remove('hidden');
+    document.getElementById(nameIssue ? 'full_name' : 'email').focus();
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Creating account…';
   errEl.classList.add('hidden');
   try {
     const res = await fetch(ROOT + '/api/auth/register', {

@@ -58,8 +58,17 @@ def apply():
     if data['partner_type'] not in ReferralPartner.PARTNER_TYPES:
         return jsonify({'error': f'Invalid partner_type. Must be one of: {", ".join(ReferralPartner.PARTNER_TYPES)}'}), 400
 
+    # Public form, same vector as registration: a partner's full_name is shown
+    # in the admin console and on referral pages.
+    from utils.validators import ValidationError, validate_email, validate_full_name
+    try:
+        full_name = validate_full_name(data['full_name'])
+        email = validate_email(data['email'], allow_disposable=True)
+    except ValidationError as exc:
+        return jsonify({'error': str(exc)}), 400
+
     # Prevent duplicate pending/active applications for same email
-    existing = ReferralPartner.query.filter_by(email=data['email'].lower()).filter(
+    existing = ReferralPartner.query.filter_by(email=email).filter(
         ReferralPartner.status.in_([ReferralPartner.STATUS_PENDING, ReferralPartner.STATUS_ACTIVE])
     ).first()
     if existing:
@@ -71,9 +80,9 @@ def apply():
     partner = ReferralPartner(
         id=generate_id(),
         user_id=user_id,
-        full_name=data['full_name'],
+        full_name=full_name,
         business_name=data.get('business_name'),
-        email=data['email'].lower(),
+        email=email,
         partner_type=data['partner_type'],
         website_url=data.get('website_url'),
         practice_description=data.get('practice_description', '')[:300],

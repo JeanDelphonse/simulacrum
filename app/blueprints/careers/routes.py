@@ -31,7 +31,10 @@ from utils.id_gen import generate_id
 
 logger = logging.getLogger(__name__)
 
-_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$')
+# Email and name validation now comes from utils.validators, which this module
+# calls in apply(). The local regex it used to keep here accepted anything with
+# an @ and a dot, so it is gone rather than left to drift out of agreement with
+# the shared one.
 _PHONE_RE = re.compile(r'^[\d\s()+.\-]{7,25}$')
 
 # Soft per-IP throttle. This is an unauthenticated upload endpoint, so cap how
@@ -88,10 +91,17 @@ def apply():
     job = careers_service.get_job(job_slug)
     if not job:
         return jsonify({'error': 'Unknown role. Please pick a role from the careers page.'}), 400
-    if not full_name or len(full_name) < 2:
-        return jsonify({'error': 'Please enter your full name.'}), 400
-    if not _EMAIL_RE.match(email):
-        return jsonify({'error': 'Please enter a valid email address.'}), 400
+    # Same shared validator registration uses — this is a public form with the
+    # same name-advert vector, and a job application also lands in the admin
+    # console and in an email to the founder.
+    from utils.validators import ValidationError, validate_email, validate_full_name
+    try:
+        full_name = validate_full_name(full_name)
+        # An applicant may reasonably apply from any provider, so the
+        # throwaway-domain list is not enforced here; the format check is.
+        email = validate_email(email, allow_disposable=True)
+    except ValidationError as exc:
+        return jsonify({'error': str(exc)}), 400
     if not _PHONE_RE.match(phone):
         return jsonify({'error': 'Please enter a valid phone number.'}), 400
 

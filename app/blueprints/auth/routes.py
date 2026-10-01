@@ -66,7 +66,22 @@ def register():
     if not data or not data.get('email') or not data.get('password') or not data.get('full_name'):
         return jsonify({'error': 'email, password, and full_name are required'}), 400
 
-    if User.query.filter_by(email=data['email'].lower()).first():
+    # Validate before anything else touches the database. `full_name` is
+    # rendered on the public bio page, in outreach emails and in the admin
+    # console, so an unchecked name is a content-injection surface with a
+    # distribution channel attached — which is how a signup once landed
+    # advertising a betting site in its name field.
+    #
+    # The validators return the cleaned value, so what is stored is exactly
+    # what was checked.
+    from utils.validators import ValidationError, validate_email, validate_full_name
+    try:
+        full_name = validate_full_name(data['full_name'])
+        email = validate_email(data['email'])
+    except ValidationError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+    if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered'}), 409
 
     pw_hash = bcrypt.generate_password_hash(
@@ -76,9 +91,9 @@ def register():
     verify_token = secrets.token_urlsafe(32)
     user = User(
         id=generate_id(),
-        email=data['email'].lower(),
+        email=email,
         password_hash=pw_hash,
-        full_name=data['full_name'],
+        full_name=full_name,
         email_verified=False,
         email_verify_token=verify_token,
         email_verify_token_expires=datetime.utcnow() + timedelta(hours=24),
