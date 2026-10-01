@@ -1332,7 +1332,8 @@
           "key": "start_date_price",
           "label": "Target start date and price",
           "type": "text",
-          "required": true
+          "required": true,
+          "peer_param_kind": "text"
         },
         {
           "key": "application_type",

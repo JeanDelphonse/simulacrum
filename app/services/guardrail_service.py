@@ -466,6 +466,63 @@ def evaluate_run(run, artifact=None, params=None, model=None, tools=None) -> Dec
 
 
 # ---------------------------------------------------------------------------
+# External input (PRD-SIM-PEER-001 §7, §14)
+# ---------------------------------------------------------------------------
+
+def check_param_value(agent_key, layer, param_key, value, user_id=None) -> Decision:
+    """Evaluate one *proposed* parameter value before it is stored anywhere.
+
+    The third evaluation point, and the only one whose subject is not a run: a
+    peer proposing a value for someone else's agent is untrusted input arriving
+    ahead of any agent invocation. Peer Calibration is the feature that creates
+    that risk, so the check happens at submission — an out-of-bounds proposal
+    never enters the blend pool and so can never be recommended.
+
+    Blocking here is a rejection, not a quarantine: there is no output to
+    withhold. Otherwise the posture is the familiar one — a `log`/`warn` rule
+    records the flag and lets the proposal through, and a broken `block` rule
+    fails closed.
+    """
+    decision = Decision()
+    if not _enabled():
+        return decision
+
+    context = {'params': {param_key: value}}
+    try:
+        rules = rules_for(layer, agent_key, (RULE_PARAM_BOUND,))
+    except Exception as exc:
+        logger.warning('peer-proposal guardrail lookup failed: %s', exc)
+        return decision
+
+    for rule in rules:
+        try:
+            reason = _eval_param_bound(rule, context)
+        except Exception as exc:
+            logger.warning('guardrail %s failed on a proposed value: %s', rule.name, exc)
+            if _effective_action(rule) == ACTION_BLOCK:
+                decision.blocked = True
+                decision.flags.append(record_flag(
+                    rule, 'rule evaluation failed: %s' % exc, 'suggestion', '',
+                    layer=layer, agent_key=agent_key, user_id=user_id))
+                _persist(rule.id, fired=1, blocked=1)
+            continue
+
+        _persist(rule.id)
+        if not reason:
+            continue
+
+        action = _effective_action(rule)
+        decision.flags.append(record_flag(
+            rule, reason, 'suggestion', '', action=action,
+            layer=layer, agent_key=agent_key, user_id=user_id))
+        _persist(rule.id, evaluated=0, fired=1, blocked=1 if action == ACTION_BLOCK else 0)
+        if action == ACTION_BLOCK:
+            decision.blocked = True
+
+    return decision
+
+
+# ---------------------------------------------------------------------------
 # Authoring — validation shared by the API and by "create guardrail from this"
 # ---------------------------------------------------------------------------
 

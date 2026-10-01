@@ -362,6 +362,49 @@
     .form-msg.success { color: #059669; }
     .form-msg.error { color: #dc2626; }
 
+    /* ── Peer Calibration (PRD-SIM-PEER-001 §5, §6) ─────────────────── */
+    /* The bio page is where an invited peer reaches the owner's engine. The
+       whole section is hidden unless the owner actually shares something, so a
+       page with no circle looks exactly as it did before. */
+    #peer-calibration[hidden] { display: none; }
+    .pc-intro { font-size: .9rem; color: var(--muted); max-width: 640px; margin: 0 0 1rem; }
+    .pc-blind {
+      display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem;
+      font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      color: #0F7B72; background: rgba(15,123,114,.1);
+      border-radius: 999px; padding: .2rem .55rem; margin-bottom: .6rem;
+    }
+    .pc-agent {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: .8rem;
+      box-shadow: var(--card-shadow);
+    }
+    .pc-agent h3 { font-size: .98rem; margin: 0 0 .2rem; color: var(--text); }
+    .pc-agent .pc-goal { font-size: .8rem; color: var(--muted); margin: 0 0 .75rem; }
+    .pc-param { padding: .7rem 0; border-top: 1px solid var(--border); }
+    .pc-param:first-of-type { border-top: none; padding-top: 0; }
+    .pc-param label { display: block; margin-bottom: .35rem; }
+    .pc-unit { font-weight: 500; color: var(--muted); }
+    .pc-brief {
+      font-size: .78rem; color: var(--muted); line-height: 1.55;
+      border-left: 2px solid var(--border); padding-left: .6rem; margin: 0 0 .5rem;
+    }
+    .pc-brief b { color: var(--text); font-weight: 600; }
+    .pc-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: flex-start; }
+    .pc-row input, .pc-row select { flex: 1; min-width: 160px; }
+    .pc-row textarea { width: 100%; }
+    .pc-note { font-size: .8rem; }
+    .pc-done { font-size: .8rem; color: #0F7B72; font-weight: 600; }
+    .pc-msg { font-size: .8rem; margin-top: .4rem; }
+    .pc-msg.ok { color: #059669; }
+    .pc-msg.bad { color: #dc2626; }
+    .pc-gate {
+      background: rgba(15,123,114,.06); border: 1px solid rgba(15,123,114,.22);
+      border-radius: 12px; padding: 1rem 1.1rem; font-size: .88rem;
+      color: var(--text); max-width: 640px;
+    }
+    .pc-gate p { margin: 0 0 .75rem; color: var(--muted); font-size: .85rem; }
+
     /* ── Simulation Bios accordion ─────────────────────────────────── */
     .sim-bio-card {
       background: var(--card-bg); border: 1px solid var(--border);
@@ -1508,6 +1551,18 @@
     </div>
   </section>
   {% endif %}
+
+  {# ── Peer Calibration (PRD-SIM-PEER-001 §5) ───────────────────────────── #}
+  {# Rendered client-side from /api/u/<slug>/shared-agents, which is the only
+     endpoint that knows what this viewer may see. That keeps the blindness a
+     retrieval boundary rather than a hidden DOM node: the owner's values are
+     never sent to this page in any branch, for any viewer. #}
+  <section id="peer-calibration" hidden
+           data-slug="{{ slug }}"
+           data-authenticated="{{ '1' if current_user.is_authenticated else '0' }}">
+    <h2 class="section-heading-static">Calibrate this engine</h2>
+    <div id="pc-body"></div>
+  </section>
 
   {% if profile.show_contact_form != False %}
   <!-- ── Contact ────────────────────────────────────────────────────── -->
@@ -2762,6 +2817,252 @@ async function publishNow() {
 }());
 </script>
 {% endif %}
+
+{# ── Peer Calibration (PRD-SIM-PEER-001 §4 step 2, §5, §6) ──────────────── #}
+<script>
+(function () {
+  'use strict';
+  var ROOT = {{ request.script_root | tojson }};
+  var section = document.getElementById('peer-calibration');
+  if (!section) return;
+  var body = document.getElementById('pc-body');
+  var SLUG = section.dataset.slug;
+  var AUTHED = section.dataset.authenticated === '1';
+  var data = null;
+
+  function esc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function api(path, options) {
+    options = options || {};
+    options.credentials = 'same-origin';
+    if (options.body) options.headers = { 'Content-Type': 'application/json' };
+    return fetch(ROOT + path, options).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (b) {
+        if (!r.ok) throw new Error(b.error || ('HTTP ' + r.status));
+        return b;
+      });
+    });
+  }
+
+  function load() {
+    return api('/api/u/' + encodeURIComponent(SLUG) + '/shared-agents')
+      .then(function (payload) {
+        data = payload;
+        // Nothing shared, or the feature is off: leave the page exactly as it
+        // was. A bio page with no circle shows no trace of one.
+        if (!payload.enabled || !payload.shares_anything) { section.hidden = true; return; }
+        section.hidden = false;
+        render();
+      })
+      .catch(function () { section.hidden = true; });
+  }
+
+  function render() {
+    if (data.is_owner) { renderOwner(); return; }
+    if (!data.is_peer) { renderGate(); return; }
+    renderPropose();
+  }
+
+  function renderOwner() {
+    body.innerHTML = '<p class="pc-intro">You have shared <b>' + data.agent_count
+      + '</b> agent' + (data.agent_count === 1 ? '' : 's') + ' with a circle of <b>'
+      + data.circle_size + '</b> peer' + (data.circle_size === 1 ? '' : 's') + '. '
+      + 'They propose blind, and their suggestions blend into a recommendation at '
+      + 'your next cycle — which you accept or ignore.</p>'
+      + '<a class="btn btn-outline" href="' + ROOT
+      + '/settings/visibility#peer-calibration">Manage sharing and circle</a>';
+  }
+
+  function renderGate() {
+    // A non-invited visitor learns only that a circle exists. That is enough to
+    // make asking meaningful, and it leaks nothing about the engine itself.
+    var html = '<div class="pc-gate">'
+      + '<p>This engine is calibrated by an invited circle of '
+      + data.circle_size + ' peer' + (data.circle_size === 1 ? '' : 's') + ', who propose '
+      + 'values for its Layer 1 and Layer 2 agents without seeing the current ones.</p>';
+
+    if (!AUTHED) {
+      // Invited-only means identified: there is no anonymous proposal path, so
+      // the ask starts with an account. (The login page does not carry a return
+      // URL, so this promises nothing about coming back automatically.)
+      html += '<p>Joining a circle needs an account — peer calibration is '
+        + 'invited-only, never anonymous.</p>'
+        + '<a class="btn btn-primary" href="' + ROOT + '/login">Sign in</a> '
+        + '<a class="btn btn-outline" href="' + ROOT + '/register">Create an account</a>'
+        + '</div>';
+      body.innerHTML = html;
+      return;
+    }
+    if (data.status === 'pending' && data.invite_id) {
+      html += '<p>You have been invited into this circle.</p>'
+        + '<button class="btn btn-primary" id="pc-accept">Accept the invitation</button>'
+        + '<div class="pc-msg" id="pc-gate-msg"></div></div>';
+      body.innerHTML = html;
+      document.getElementById('pc-accept').addEventListener('click', function () {
+        var button = this;
+        button.disabled = true;
+        api('/api/peers/' + data.invite_id + '/accept', { method: 'POST' })
+          .then(load)
+          .catch(function (err) { button.disabled = false; gateMsg(err.message, true); });
+      });
+      return;
+    }
+    if (data.status === 'pending') {
+      html += '<p><b>Your request is with them.</b> You will be able to propose '
+        + 'once they approve it.</p></div>';
+      body.innerHTML = html;
+      return;
+    }
+
+    html += '<div class="form-group"><label for="pc-why">Why you would be a useful '
+      + 'peer (optional)</label><textarea id="pc-why" rows="3" '
+      + 'placeholder="How you know this work..."></textarea></div>'
+      + '<button class="btn btn-primary" id="pc-request">Ask to join the circle</button>'
+      + '<div class="pc-msg" id="pc-gate-msg"></div></div>';
+    body.innerHTML = html;
+
+    document.getElementById('pc-request').addEventListener('click', function () {
+      var button = this;
+      button.disabled = true;
+      api('/api/peers/request', {
+        method: 'POST',
+        body: JSON.stringify({
+          handle: SLUG,
+          message: (document.getElementById('pc-why').value || '').trim()
+        })
+      }).then(function () {
+        gateMsg('Sent. They decide whether to add you.', false);
+        return load();
+      }).catch(function (err) { button.disabled = false; gateMsg(err.message, true); });
+    });
+  }
+
+  function gateMsg(text, bad) {
+    var box = document.getElementById('pc-gate-msg');
+    if (!box) return;
+    box.textContent = text;
+    box.className = 'pc-msg ' + (bad ? 'bad' : 'ok');
+  }
+
+  function renderPropose() {
+    var html = '<span class="pc-blind">◍ Blind — you never see their value</span>'
+      + '<p class="pc-intro">You are in this circle. Propose a value for any '
+      + 'parameter below; you are proposing cold, so your honest number is worth '
+      + 'more than a careful one. Nothing you suggest changes anything — it blends '
+      + 'with their own value at their next cycle, and they decide.</p>';
+
+    data.shared_agents.forEach(function (agent) {
+      html += '<div class="pc-agent"><h3>' + esc(agent.label) + '</h3>';
+      if (agent.description) {
+        html += '<p class="pc-goal">' + esc(agent.description) + '</p>';
+      }
+      agent.params.forEach(function (param) {
+        html += paramHtml(agent, param);
+      });
+      html += '</div>';
+    });
+
+    body.innerHTML = html;
+    wire();
+  }
+
+  function paramHtml(agent, param) {
+    var id = 'pc_' + agent.share_id + '_' + param.param_key;
+    var html = '<div class="pc-param" data-share="' + esc(agent.share_id)
+      + '" data-param="' + esc(param.param_key) + '" data-kind="' + esc(param.kind) + '">';
+
+    html += '<label for="' + id + '">' + esc(param.label)
+      + (param.kind === 'numeric' && param.unit
+          ? ' <span class="pc-unit">(' + esc(param.unit) + ')</span>' : '')
+      + '</label>';
+
+    // A text parameter is context-blind, not blind: the peer gets the brief so
+    // the proposal is coherent, but never the owner's draft (§6).
+    if (param.kind === 'text' && param.brief) {
+      html += '<p class="pc-brief"><b>Goal:</b> ' + esc(param.brief.goal)
+        + '<br><b>For:</b> ' + esc(param.brief.persona)
+        + (param.brief.constraints
+            ? '<br><b>Constraints:</b> ' + esc(param.brief.constraints) : '')
+        + '</p>';
+    }
+
+    if (param.cooldown_until) {
+      html += '<div class="pc-done">◍ Proposed. You can revise this after '
+        + esc(new Date(param.cooldown_until).toLocaleString()) + '.</div></div>';
+      return html;
+    }
+
+    html += '<div class="pc-row">';
+    if (param.kind === 'choice') {
+      html += '<select id="' + id + '"><option value="">Choose…</option>';
+      (param.options || []).forEach(function (opt) {
+        html += '<option value="' + esc(opt) + '">' + esc(opt) + '</option>';
+      });
+      html += '</select>';
+    } else if (param.kind === 'text') {
+      html += '<textarea id="' + id + '" rows="3" placeholder="Your version…"></textarea>';
+    } else {
+      html += '<input id="' + id + '" type="text" inputmode="decimal" '
+        + 'placeholder="Your number…">';
+    }
+    html += '<button class="btn btn-primary" data-pc-submit="' + esc(id)
+      + '">Propose</button></div>';
+    html += '<div class="form-group" style="margin:.5rem 0 0"><input class="pc-note" '
+      + 'id="' + id + '_note" type="text" placeholder="Why, in a line (optional)"></div>';
+    html += '<div class="pc-msg" id="' + id + '_msg"></div></div>';
+    return html;
+  }
+
+  function wire() {
+    body.querySelectorAll('[data-pc-submit]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var id = button.getAttribute('data-pc-submit');
+        var wrap = button.closest('.pc-param');
+        var field = document.getElementById(id);
+        var note = document.getElementById(id + '_note');
+        var msg = document.getElementById(id + '_msg');
+        var value = (field.value || '').trim();
+        if (!value) {
+          msg.textContent = 'Enter a value first.';
+          msg.className = 'pc-msg bad';
+          return;
+        }
+        button.disabled = true;
+        msg.textContent = 'Sending…';
+        msg.className = 'pc-msg';
+        api('/api/peers/suggest', {
+          method: 'POST',
+          body: JSON.stringify({
+            share_id: wrap.dataset.share,
+            param_key: wrap.dataset.param,
+            value: value,
+            note: note ? (note.value || '').trim() : null
+          })
+        }).then(function (res) {
+          msg.textContent = res.duplicate
+            ? 'Recorded — same as your last proposal, so it counts once.'
+            : (res.counted_toward_unlock
+                ? 'Proposed. It blends into their recommendation at their next cycle.'
+                : 'Proposed.');
+          msg.className = 'pc-msg ok';
+          field.disabled = true;
+          button.disabled = true;
+        }).catch(function (err) {
+          msg.textContent = err.message;
+          msg.className = 'pc-msg bad';
+          button.disabled = false;
+        });
+      });
+    });
+  }
+
+  load();
+})();
+</script>
 
 </body>
 </html>

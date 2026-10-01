@@ -97,6 +97,12 @@ _ROUTING: dict[str, ModelTier] = {
     # Layer's marginal cost per artifact effectively nil.
     'cohort_classification':       ModelTier.HAIKU,
     'calibration_metric_extract':  ModelTier.HAIKU,
+    # ── SONNET — peer text synthesis (PRD-SIM-PEER-001 §7) ───────────────
+    # Numeric peer blends are arithmetic and cost no tokens at all. Text is the
+    # one place the model earns its keep: merging several peers' phrasings with
+    # the owner's own, in the owner's voice, is judgement rather than
+    # extraction, so it does not belong on Haiku.
+    'peer_text_synthesis':         ModelTier.SONNET,
     # ── SONNET — conversational, creative, long-form copy ────────────────
     'consulting_outreach_email':   ModelTier.SONNET,  # 10 deeply personalized emails
     'chat_copilot':                ModelTier.SONNET,

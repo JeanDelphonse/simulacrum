@@ -845,6 +845,23 @@
         <p class="settings-hint" style="margin-bottom:1rem">By default, layers unlock progressively as you complete key milestones. Turn this off to access all layers immediately.</p>
         <div id="unlockLayersList" style="font-size:.875rem;color:#4B5563">Loading…</div>
       </div>
+
+      {# ── Peer Calibration (PRD-SIM-PEER-001 §5) ───────────────────────── #}
+      {# Sharing lives here because it is a visibility decision: which of your
+         Layer 1 and Layer 2 agents your trusted circle may propose values on.
+         Nothing they propose ever changes a value — you decide at the next
+         cycle. Layers 3–5 are never offered. #}
+      <div id="peerCalSection" class="settings-section" style="margin-top:2.5rem" data-loaded="0">
+        <div id="peer-calibration" style="position:relative;top:-90px"></div>
+        <div class="settings-section-title" style="margin-bottom:.5rem;border:none;padding:0">Peer Calibration</div>
+        <p class="settings-hint" style="margin-bottom:1rem">
+          Let a trusted circle propose values for your Layer&nbsp;1 and Layer&nbsp;2 agents.
+          They propose <strong>blind</strong> — they never see your current value — and
+          nothing changes until you accept a recommendation at your next cycle.
+          Layers 3–5 are never shareable.
+        </p>
+        <div id="peerCalBody" style="font-size:.875rem;color:#4B5563">Loading…</div>
+      </div>
     </div>
     {% endif %}
     {% if active_tab == 'visibility' %}
@@ -886,6 +903,253 @@
         credentials: 'same-origin',
       });
     }
+    </script>
+
+    {# ── Peer Calibration panel (PRD-SIM-PEER-001 §5) ─────────────────── #}
+    <script>
+    (function() {
+      var ROOT_P = (typeof ROOT !== 'undefined' ? ROOT : (window.ROOT || ''));
+      var section = document.getElementById('peerCalSection');
+      var body = document.getElementById('peerCalBody');
+      if (!section || !body || section.dataset.loaded === '1') return;
+      section.dataset.loaded = '1';
+
+      var state = { sims: [], simId: null, data: null };
+
+      function esc(t) {
+        return String(t == null ? '' : t).replace(/[&<>"']/g, function(c) {
+          return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+      }
+
+      function api(path, options) {
+        options = options || {};
+        options.credentials = 'same-origin';
+        if (options.body) options.headers = {'Content-Type': 'application/json'};
+        return fetch(ROOT_P + path, options).then(function(r) {
+          return r.json().catch(function() { return {}; }).then(function(b) {
+            if (!r.ok) throw new Error(b.error || ('HTTP ' + r.status));
+            return b;
+          });
+        });
+      }
+
+      function boot() {
+        api('/api/simulations').then(function(data) {
+          var sims = (Array.isArray(data) ? data : (data.simulations || []))
+            .filter(function(s) { return s.status !== 'deleted'; });
+          state.sims = sims;
+          if (!sims.length) {
+            body.innerHTML = '<p class="settings-hint">Create a simulation first — '
+              + 'peer calibration shares the agents inside one.</p>';
+            return;
+          }
+          state.simId = sims[0].id;
+          reload();
+        }).catch(fail);
+      }
+
+      function reload() {
+        return api('/api/simulations/' + state.simId + '/shares')
+          .then(function(data) { state.data = data; render(); })
+          .catch(fail);
+      }
+
+      function fail(err) {
+        body.innerHTML = '<p class="settings-hint" style="color:#b45309">'
+          + esc(err.message) + '</p>';
+      }
+
+      function render() {
+        var d = state.data;
+        if (!d.enabled) {
+          body.innerHTML = '<p class="settings-hint">Peer calibration is not '
+            + 'available on this platform right now.</p>';
+          return;
+        }
+
+        var html = '';
+
+        if (state.sims.length > 1) {
+          html += '<label style="display:block;margin-bottom:1rem">'
+            + '<span class="settings-hint" style="display:block;margin-bottom:.25rem">Simulation</span>'
+            + '<select id="peerSimSel" style="padding:.45rem .6rem;border-radius:8px;'
+            + 'border:1px solid rgba(13,27,62,.18);font:inherit">';
+          state.sims.forEach(function(s) {
+            html += '<option value="' + esc(s.id) + '"'
+              + (s.id === state.simId ? ' selected' : '') + '>' + esc(s.name) + '</option>';
+          });
+          html += '</select></label>';
+        }
+
+        // The reciprocity gate, stated plainly rather than discovered later.
+        var r = d.reciprocity || {};
+        if (r.enabled && r.reason) {
+          html += '<div style="background:rgba(201,149,42,.1);border:1px solid '
+            + 'rgba(201,149,42,.3);border-radius:8px;padding:.6rem .75rem;'
+            + 'margin-bottom:1rem;font-size:.8rem;color:#92400e">◍ '
+            + esc(r.reason) + '</div>';
+        }
+
+        // ── Shareable agents ──────────────────────────────────────────────
+        html += '<div style="font-size:.78rem;font-weight:700;letter-spacing:.04em;'
+          + 'text-transform:uppercase;color:#6b7b8d;margin:0 0 .5rem">'
+          + 'Shareable agents</div>';
+
+        var byLayer = {};
+        (d.agents || []).forEach(function(a) {
+          (byLayer[a.layer] = byLayer[a.layer] || []).push(a);
+        });
+        var layerNames = {1: 'Layer 1 · Active Income', 2: 'Layer 2 · Leveraged Income'};
+        Object.keys(byLayer).sort().forEach(function(layer) {
+          html += '<div style="font-size:.72rem;color:#0F7B72;font-weight:600;'
+            + 'margin:.75rem 0 .25rem">' + esc(layerNames[layer] || ('Layer ' + layer))
+            + '</div>';
+          byLayer[layer].forEach(function(a) {
+            var params = (a.params || []).length;
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;'
+              + 'gap:1rem;padding:.6rem 0;border-bottom:1px solid rgba(13,27,62,.07)">'
+              + '<div><div style="font-size:.85rem;font-weight:500;color:#0D1B3E">'
+              + esc(a.label) + (a.active ? '' : ' <span style="font-size:.7rem;'
+                + 'color:#9CA3AF">(inactive)</span>') + '</div>'
+              + '<div style="font-size:.72rem;color:#9CA3AF">'
+              + (params ? params + ' parameter' + (params === 1 ? '' : 's')
+                   + ' a peer could propose on'
+                 : 'No parameters to propose on')
+              + '</div></div>'
+              + (params
+                  ? '<label class="toggle-switch" style="flex-shrink:0">'
+                    + '<input type="checkbox" data-peer-share="' + esc(a.agent_key) + '"'
+                    + (a.is_shareable ? ' checked' : '') + '>'
+                    + '<span class="toggle-slider"></span></label>'
+                  : '<span style="font-size:.72rem;color:#9CA3AF">—</span>')
+              + '</div>';
+          });
+        });
+
+        // ── The circle ────────────────────────────────────────────────────
+        var c = d.circle || {};
+        html += '<div style="font-size:.78rem;font-weight:700;letter-spacing:.04em;'
+          + 'text-transform:uppercase;color:#6b7b8d;margin:1.75rem 0 .35rem">'
+          + 'Your circle</div>'
+          + '<p class="settings-hint" style="margin-bottom:.75rem">Invited peers only — '
+          + 'no stranger can propose on your engine. Up to ' + (c.max_size || 25)
+          + ' peers.</p>';
+
+        html += '<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">'
+          + '<input id="peerInviteTo" type="text" placeholder="email or @handle" '
+          + 'style="flex:1;min-width:190px;padding:.45rem .6rem;border-radius:8px;'
+          + 'border:1px solid rgba(13,27,62,.18);font:inherit">'
+          + '<button class="btn btn-primary btn-sm" id="peerInviteBtn">Invite</button>'
+          + '</div><div id="peerInviteMsg" style="font-size:.78rem;margin-bottom:.75rem"></div>';
+
+        html += group('Requests to join', c.requests, function(p) {
+          return '<button class="btn btn-primary btn-sm" data-peer-approve="'
+            + esc(p.id) + '">Approve</button>'
+            + '<button class="btn btn-ghost btn-sm" data-peer-decline="'
+            + esc(p.id) + '">Decline</button>';
+        }, 'Nobody has asked to join yet.');
+
+        html += group('In your circle', c.accepted, function(p) {
+          return '<button class="btn btn-ghost btn-sm" data-peer-remove="'
+            + esc(p.id) + '">Remove</button>';
+        }, 'No peers yet — invite someone above.');
+
+        html += group('Invited, not yet accepted', c.invited, function(p) {
+          return '<button class="btn btn-ghost btn-sm" data-peer-remove="'
+            + esc(p.id) + '">Cancel</button>';
+        }, null);
+
+        body.innerHTML = html;
+        wire();
+      }
+
+      function group(title, rows, actions, emptyText) {
+        rows = rows || [];
+        if (!rows.length && !emptyText) return '';
+        var html = '<div style="font-size:.74rem;color:#6b7b8d;font-weight:600;'
+          + 'margin:.9rem 0 .25rem">' + esc(title) + '</div>';
+        if (!rows.length) {
+          return html + '<div style="font-size:.78rem;color:#9CA3AF">'
+            + esc(emptyText) + '</div>';
+        }
+        rows.forEach(function(p) {
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;'
+            + 'gap:.75rem;padding:.5rem 0;border-bottom:1px solid rgba(13,27,62,.07)">'
+            + '<div><div style="font-size:.85rem;color:#0D1B3E">'
+            + esc(p.display_name) + '</div>'
+            + (p.message ? '<div style="font-size:.74rem;color:#6b7b8d">'
+                 + esc(p.message) + '</div>' : '')
+            + '</div><div style="display:flex;gap:.35rem;flex-shrink:0">'
+            + actions(p) + '</div></div>';
+        });
+        return html;
+      }
+
+      function wire() {
+        var sel = document.getElementById('peerSimSel');
+        if (sel) sel.addEventListener('change', function() {
+          state.simId = this.value;
+          body.innerHTML = 'Loading…';
+          reload();
+        });
+
+        body.querySelectorAll('[data-peer-share]').forEach(function(input) {
+          input.addEventListener('change', function() {
+            var key = input.getAttribute('data-peer-share');
+            var want = input.checked;
+            api('/api/simulations/' + state.simId + '/shares', {
+              method: 'PUT',
+              body: JSON.stringify({ agent_key: key, is_shareable: want })
+            }).then(reload).catch(function(err) {
+              input.checked = !want;
+              msg(err.message, true);
+            });
+          });
+        });
+
+        var button = document.getElementById('peerInviteBtn');
+        if (button) button.addEventListener('click', function() {
+          var field = document.getElementById('peerInviteTo');
+          var raw = (field.value || '').trim();
+          if (!raw) { msg('Enter an email address or a @handle.', true); return; }
+          var payload = raw.indexOf('@') === 0 || raw.indexOf('@') === -1
+            ? { handle: raw.replace(/^@/, '') } : { email: raw };
+          button.disabled = true;
+          api('/api/peers/invite', { method: 'POST', body: JSON.stringify(payload) })
+            .then(function() {
+              field.value = '';
+              msg('Invited. They decide whether to join.', false);
+              return reload();
+            })
+            .catch(function(err) { msg(err.message, true); })
+            .then(function() { button.disabled = false; });
+        });
+
+        [['data-peer-approve', '/approve', 'POST'],
+         ['data-peer-decline', '/decline', 'POST'],
+         ['data-peer-remove', '', 'DELETE']].forEach(function(spec) {
+          body.querySelectorAll('[' + spec[0] + ']').forEach(function(el) {
+            el.addEventListener('click', function() {
+              el.disabled = true;
+              api('/api/peers/' + el.getAttribute(spec[0]) + spec[1],
+                  { method: spec[2] })
+                .then(reload)
+                .catch(function(err) { el.disabled = false; msg(err.message, true); });
+            });
+          });
+        });
+      }
+
+      function msg(text, bad) {
+        var box = document.getElementById('peerInviteMsg');
+        if (!box) return;
+        box.textContent = text;
+        box.style.color = bad ? '#b45309' : '#059669';
+      }
+
+      boot();
+    })();
     </script>
     {% endif %}
 

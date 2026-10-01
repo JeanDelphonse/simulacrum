@@ -191,6 +191,101 @@
 .wew-dr-msg.ok { color: var(--wew-teal); }
 .wew-dr-msg.bad { color: #f87171; }
 
+/* ── Peers overlay (PRD-SIM-PEER-001 §9) ─────────────────────────────────── */
+/* A second kind of energy on the same board: peer signal is teal and flows
+   inward, run flow is gold and flows up. Off by default — the base world stays
+   legible until the owner asks for the circle. */
+.wew-btn.teal { background: transparent; border-color: rgba(19,168,158,.45); color: var(--wew-teal); }
+.wew-btn.teal:hover { background: rgba(19,168,158,.1); }
+.wew-btn.teal[aria-pressed="true"] { background: var(--wew-teal); color: #04221f; border-color: var(--wew-teal); }
+
+.wew-peer-dot { fill: var(--wew-teal); stroke: #0a1226; stroke-width: 1.5; }
+.wew-peer-n { fill: #04221f; font-size: 9px; font-weight: 700; }
+.wew-peer { pointer-events: none; }
+.wew-node.has-peers .wew-box { stroke: var(--wew-teal); }
+/* Only L1/L2 objects can carry a badge. The upper layers visibly cannot, which
+   teaches the sharing scope without a tooltip (§9.1). */
+.wew-mote { fill: var(--wew-teal); }
+
+.wew-circle {
+  position: absolute; right: 14px; top: 14px; max-width: 190px;
+  background: rgba(8,18,38,.82); border: 1px solid rgba(19,168,158,.3);
+  border-radius: 12px; padding: .5rem .6rem; display: none;
+}
+.wew-circle.show { display: block; }
+.wew-circle .k {
+  font-size: .58rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--wew-teal); font-weight: 700; margin-bottom: .35rem;
+}
+.wew-avs { display: flex; flex-wrap: wrap; gap: .25rem; }
+.wew-av {
+  width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
+  border: 1.5px solid rgba(255,255,255,.14); background: #1b2c52;
+  font-size: .6rem; font-weight: 700; color: var(--wew-subtl);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.wew-av.did { border-color: var(--wew-teal); box-shadow: 0 0 0 1px rgba(19,168,158,.35); }
+.wew-circle .n { font-size: .64rem; color: var(--wew-mute); margin-top: .35rem; }
+
+.wew-peer-panel {
+  margin-top: .7rem; padding-top: .6rem; border-top: 1px solid rgba(19,168,158,.28);
+}
+.wew-peer-panel .h {
+  font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--wew-teal); font-weight: 700; margin-bottom: .4rem;
+}
+.wew-pb { margin-bottom: .75rem; }
+.wew-pb-param { font-size: .74rem; color: var(--wew-offw); font-weight: 600; }
+/* The hero of the recommendation moment: because proposals are blind, the
+   distribution is the information (§9.2). */
+.wew-strip { position: relative; height: 26px; margin: .45rem 0 .3rem; }
+.wew-strip-track {
+  position: absolute; left: 0; right: 0; top: 11px; height: 4px;
+  background: rgba(255,255,255,.09); border-radius: 2px;
+}
+.wew-strip-range {
+  position: absolute; top: 9px; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, rgba(19,168,158,.35), rgba(19,168,158,.8));
+}
+.wew-strip-tick { position: absolute; top: 4px; width: 2px; height: 18px; border-radius: 1px; }
+.wew-strip-tick.cluster { background: var(--wew-teal); }
+.wew-strip-tick.mine { background: var(--wew-subtl); }
+.wew-strip-tick.rec { background: var(--wew-gold-l); width: 3px; top: 1px; height: 24px; }
+.wew-strip-cap {
+  position: absolute; top: -3px; font-size: .56rem; color: var(--wew-mute);
+  transform: translateX(-50%); white-space: nowrap;
+}
+.wew-pb-line { font-size: .73rem; color: var(--wew-subtl); line-height: 1.5; }
+.wew-pb-line b { color: var(--wew-offw); }
+.wew-pb-line b.teal { color: var(--wew-teal); }
+.wew-pb-rec {
+  font-size: .78rem; color: var(--wew-gold-l); font-weight: 700; margin-top: .3rem;
+}
+.wew-pb-sig {
+  font-size: .58rem; letter-spacing: .06em; text-transform: uppercase;
+  font-weight: 700; padding: .1rem .3rem; border-radius: 4px; margin-left: .3rem;
+}
+.wew-pb-sig.tight { background: rgba(19,168,158,.18); color: var(--wew-teal); }
+.wew-pb-sig.wide  { background: rgba(201,149,42,.16); color: var(--wew-gold-l); }
+.wew-pb-why {
+  font-size: .68rem; color: var(--wew-mute); margin: .3rem 0 .4rem;
+  padding-left: .5rem; border-left: 2px solid rgba(19,168,158,.3); line-height: 1.45;
+}
+.wew-pb-actions { display: flex; gap: .4rem; }
+.wew-pb-actions .wew-btn { flex: 1; text-align: center; padding: .35rem .5rem; font-size: .74rem; }
+.wew-peer-wait {
+  font-size: .72rem; color: var(--wew-teal); background: rgba(19,168,158,.08);
+  border-radius: 6px; padding: .35rem .5rem;
+}
+.wew-peer-lock {
+  font-size: .72rem; color: var(--wew-gold-l); background: rgba(201,149,42,.08);
+  border-radius: 6px; padding: .35rem .5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wew-mote { display: none; }
+}
+
 .wew-legend {
   display: flex; gap: 1.1rem; flex-wrap: wrap; padding: .6rem 1rem .9rem;
   color: var(--wew-mute); font-size: .72rem; align-items: center;
@@ -237,6 +332,9 @@
       <option value="configured">Configured only</option>
       <option value="all">All agents</option>
     </select>
+    {# Peer signal is a view, not an always-on layer (PRD-SIM-PEER-001 §9.1). #}
+    <button type="button" class="wew-btn teal" id="wewPeers" aria-pressed="false"
+            title="Show suggestions from your calibration circle">◍ Peers</button>
     <button type="button" class="wew-btn gold"  id="wewRun">▶ Run cycle</button>
     <button type="button" class="wew-btn ghost" id="wewAuto" aria-pressed="false">Auto ▶</button>
     <button type="button" class="wew-btn ghost" id="wewReset">↺ Reset</button>
@@ -253,12 +351,16 @@
          role="group" aria-label="Wealth engine world — agents by layer"></svg>
     <div class="wew-drawer" id="wewDrawer" role="region"
          aria-label="Agent configuration"></div>
+    {# The circle, lightly: who is in it and who contributed this cycle (§9.2). #}
+    <div class="wew-circle" id="wewCircle" aria-label="Your calibration circle"></div>
   </div>
 
   <div class="wew-legend">
     <span>● configured &nbsp; ◐ active, needs parameters &nbsp; ○ inactive &nbsp; 🔒 layer locked</span>
     <span>Gold edges are live — both ends active</span>
     <span>◎ The orchestrator points at the next best agent</span>
+    <span id="wewPeerLegend" style="display:none">◍ Teal is peer signal — suggestions
+      flowing in from your circle, on L1 and L2 only</span>
   </div>
 
   <div id="wewAnnounce" aria-live="polite" aria-atomic="true"

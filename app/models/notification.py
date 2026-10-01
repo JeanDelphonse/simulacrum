@@ -21,6 +21,14 @@ EMAIL_DEFAULTS = {
     # SIM-PRD-SME-002 — advisor transparency touchpoints
     'sme_assignment':    {'email_enabled': True,  'digest_mode': False},
     'sme_recommendation':{'email_enabled': True,  'digest_mode': False},
+    # PRD-SIM-PEER-001 — peer calibration. None of these digest: each one is
+    # either an invitation someone is waiting on an answer to, or a
+    # recommendation sitting on a cycle boundary. Batching them into tomorrow's
+    # summary would be batching the decision.
+    'peer_invite':       {'email_enabled': True,  'digest_mode': False},
+    'peer_request':      {'email_enabled': True,  'digest_mode': False},
+    'peer_approved':     {'email_enabled': True,  'digest_mode': False},
+    'peer_blend':        {'email_enabled': True,  'digest_mode': False},
 }
 
 

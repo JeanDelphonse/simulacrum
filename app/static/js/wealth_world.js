@@ -40,7 +40,16 @@
     bands: {},          // layer -> y
     viewW: CANVAS_MIN_W,
     viewH: 640,
-    loading: false
+    loading: false,
+    // Peers overlay (PRD-SIM-PEER-001 §9). Off by default: the base world stays
+    // legible, and nothing is fetched until the owner flips it on.
+    peers: {
+      on: false,
+      model: null,
+      stream: null,
+      seen: {},         // action_type -> pending count last drawn, for the motes
+      busy: false
+    }
   };
 
   // ── Small DOM helpers ──────────────────────────────────────────────────────
@@ -73,7 +82,11 @@
   // ── Data ───────────────────────────────────────────────────────────────────
 
   function api(path, options) {
-    return fetch(state.root + '/api/simulations/' + state.simId + path, options)
+    return rootApi('/api/simulations/' + state.simId + path, options);
+  }
+
+  function rootApi(path, options) {
+    return fetch(state.root + path, options)
       .then(function (r) {
         return r.json().then(function (body) {
           if (!r.ok) throw new Error(body && body.error ? body.error : 'Request failed');
@@ -263,6 +276,7 @@
     });
 
     el('g', { id: 'wewTokens' }, svg);
+    el('g', { id: 'wewMotes' }, svg);
     el('g', { id: 'wewFloats' }, svg);
 
     var nodeGroup = el('g', { id: 'wewNodes' }, svg);
@@ -316,6 +330,16 @@
     var mark = el('text', { class: 'wew-mark', x: NODE_W / 2 - 11, y: -NODE_H / 2 + 15,
       'text-anchor': 'middle', 'font-size': 10 }, g);
     mark.textContent = stateGlyph(n);
+
+    // Peer-signal badge (PRD-SIM-PEER-001 §9.1). Drawn on every node but only
+    // ever filled for a shared L1/L2 agent, so the upper layers visibly cannot
+    // carry one — which teaches the sharing scope without a tooltip.
+    var badge = el('g', { class: 'wew-peer', id: 'wewP_' + actionType,
+      display: 'none' }, g);
+    el('circle', { class: 'wew-peer-dot', cx: NODE_W / 2 - 10,
+      cy: NODE_H / 2 - 10, r: 9 }, badge);
+    el('text', { class: 'wew-peer-n', x: NODE_W / 2 - 10, y: NODE_H / 2 - 6.5,
+      'text-anchor': 'middle' }, badge);
 
     var title = el('title', {}, g);
     title.textContent = ariaLabel(n);
@@ -406,6 +430,7 @@
     setText('wewIncome', money(state.income));
     setText('wewCycle', String(state.cycle));
     renderSuggestion();
+    refreshPeers();
   }
 
   function setText(id, text) { var node = $(id); if (node) node.textContent = text; }
@@ -426,6 +451,22 @@
     document.querySelectorAll('.wew-node').forEach(function (n) { n.classList.remove('suggest'); });
     var orc = $('wewOrc'), label = $('wewOrcLabel');
     var s = state.model.suggestion;
+
+    // Peer signal is an input the orchestrator ranks, and while the Peers view
+    // is on it outranks "activate something new": a recommendation waiting on a
+    // decision is something the owner can act on right now, whereas an inactive
+    // agent is a suggestion they can take any time (PRD-PEER §9.2).
+    var peerNudge = state.peers.on && peerModel() ? peerModel().nudge : null;
+    if (peerNudge && peerNudge.agent_key && state.layout[peerNudge.agent_key]) {
+      var peerPos = state.layout[peerNudge.agent_key];
+      var peerNode = $('wewN_' + peerNudge.agent_key);
+      if (peerNode) peerNode.classList.add('suggest');
+      if (orc) orc.setAttribute('transform',
+        'translate(' + (peerPos.x - NODE_W / 2 - 34) + ',' + peerPos.y + ')');
+      if (label) label.textContent = 'peers?';
+      renderHint();
+      return;
+    }
 
     if (!s) {
       if (orc) orc.setAttribute('transform', 'translate(150,' + (state.viewH - 40) + ')');
@@ -485,7 +526,41 @@
         + 'engine compound.');
     }
 
+    // Peer signal is one more input the Layer 6 orchestrator can rank, so its
+    // nudge sits in the same bar as the activation suggestion (PRD-PEER §9.2).
+    var peerModelRef = peerModel();
+    if (state.peers.on && peerModelRef && peerModelRef.nudge) {
+      var nudge = peerModelRef.nudge;
+      parts.push('<b>◍ ' + esc(nudge.text) + '</b>'
+        + (nudge.agent_key && state.nodes[nudge.agent_key]
+            ? ' <button type="button" class="wew-link" id="wewGoPeer">Review it</button>'
+            : ''));
+    }
+
     hint.innerHTML = parts.join(' ');
+
+    var peerGo = $('wewGoPeer');
+    if (peerGo && peerModelRef && peerModelRef.nudge
+        && peerModelRef.nudge.agent_key) {
+      peerGo.addEventListener('click', function () {
+        var key = peerModelRef.nudge.agent_key;
+        var node = state.nodes[key];
+        // A shared agent can be inactive, so widen just far enough to reach it,
+        // the same way the activation suggestion does.
+        if (node && !state.layout[key]) {
+          if (!node.active) state.scope = 'all';
+          else if (!node.configured && state.scope === 'configured') {
+            state.scope = 'selected';
+          }
+          state.layerFocus = node.layer;
+          state.scopeFellBack = false;
+          build();
+          renderChrome();
+        }
+        selectNode(key);
+        pulse(key);
+      });
+    }
 
     var go = $('wewGoSuggest');
     if (go && s) go.addEventListener('click', function () {
@@ -606,6 +681,10 @@
     html += '</div><div class="wew-dr-msg" id="wewDrawerMsg" role="status"></div>';
     html += '</form>';
 
+    // The peer panel sits below the form it may change, so the owner reads
+    // their own value first and the recommendation second (PRD-PEER §9.2).
+    html += peerPanelHtml(actionType);
+
     drawer.innerHTML = html;
     drawer.classList.add('show');
 
@@ -616,6 +695,7 @@
     });
     var toggle = $('wewToggle');
     if (toggle) toggle.addEventListener('click', function () { toggleActive(actionType); });
+    wirePeerPanel(actionType);
 
     var url = new URL(window.location);
     url.searchParams.set('agent', actionType);
@@ -704,6 +784,398 @@
         + ' Monthly income now ' + money(state.income) + '.');
     }).catch(function (err) {
       if (button) { button.disabled = false; button.textContent = want ? 'Activate' : 'Deactivate'; }
+      drawerMsg(err.message, 'bad');
+    });
+  }
+
+  // ── Peers overlay (PRD-SIM-PEER-001 §9) ──────────────────────────────────
+  //
+  // A second kind of energy on the same board. Run flow is gold and moves up
+  // between agents; peer signal is teal and moves inward from the edge. Badges
+  // and counts update live over the stream, but the blended recommendation only
+  // resolves at the next cycle — the presence is real-time, the decision stays
+  // on the cycle rhythm.
+
+  function peerModel() { return state.peers.model; }
+
+  function peerEntry(actionType) {
+    var model = peerModel();
+    return model && model.agents ? model.agents[actionType] : null;
+  }
+
+  function blendsFor(actionType) {
+    var model = peerModel();
+    if (!model || !model.blends) return [];
+    return model.blends.filter(function (b) { return b.agent_key === actionType; });
+  }
+
+  function togglePeers() {
+    var button = $('wewPeers');
+    if (state.peers.on) {
+      state.peers.on = false;
+      stopPeerStream();
+      if (button) button.setAttribute('aria-pressed', 'false');
+      var legend = $('wewPeerLegend');
+      if (legend) legend.style.display = 'none';
+      var circle = $('wewCircle');
+      if (circle) circle.classList.remove('show');
+      refresh();
+      if (state.selected) openDrawer(state.selected);
+      announce('Peer signal hidden.');
+      return;
+    }
+
+    state.peers.on = true;
+    if (button) button.setAttribute('aria-pressed', 'true');
+    loadPeers(true).then(function () {
+      var model = peerModel();
+      if (!model || model.enabled === false) {
+        setStatus('Peer Calibration is switched off for this platform.');
+        state.peers.on = false;
+        if (button) button.setAttribute('aria-pressed', 'false');
+        return;
+      }
+      var legend = $('wewPeerLegend');
+      if (legend) legend.style.display = '';
+      startPeerStream();
+      announce('Peer signal shown. ' + (model.pending_total || 0)
+        + ' proposal(s) waiting across ' + Object.keys(model.agents || {}).length
+        + ' shared agent(s).');
+    });
+  }
+
+  function loadPeers(animate) {
+    return api('/world/peer-signal', {})
+      .then(function (model) {
+        var previous = state.peers.seen;
+        state.peers.model = model;
+        state.peers.seen = {};
+        for (var at in (model.agents || {})) {
+          state.peers.seen[at] = model.agents[at].pending;
+        }
+        refresh();
+        renderCircle();
+        if (state.selected) openDrawer(state.selected);
+        if (animate) {
+          // First reveal: one mote per badged agent, so switching the view on
+          // shows the circle arriving rather than a static number.
+          for (var key in (model.agents || {})) {
+            if (model.agents[key].pending > 0) animateMote(key);
+          }
+        } else {
+          for (var k in (model.agents || {})) {
+            var before = previous[k] || 0;
+            var now = model.agents[k].pending;
+            for (var i = before; i < now; i++) animateMote(k);
+          }
+        }
+        return model;
+      })
+      .catch(function (err) {
+        setStatus('Could not load peer signal: ' + err.message);
+        return null;
+      });
+  }
+
+  function refreshPeers() {
+    var model = peerModel();
+    visibleTypes().forEach(function (at) {
+      var g = $('wewN_' + at);
+      var badge = $('wewP_' + at);
+      if (!g || !badge) return;
+      var entry = state.peers.on && model ? peerEntry(at) : null;
+      var count = entry ? (entry.pending || 0) + (entry.blends || 0) : 0;
+      if (!entry || !count) {
+        badge.setAttribute('display', 'none');
+        g.classList.remove('has-peers');
+        return;
+      }
+      badge.removeAttribute('display');
+      var label = badge.querySelector('.wew-peer-n');
+      if (label) label.textContent = count > 9 ? '9+' : String(count);
+      g.classList.add('has-peers');
+      g.setAttribute('aria-label', ariaLabel(state.nodes[at])
+        + '. ' + count + ' peer signal(s) waiting.');
+    });
+  }
+
+  function renderCircle() {
+    var box = $('wewCircle');
+    var model = peerModel();
+    if (!box) return;
+    if (!state.peers.on || !model || !(model.circle || []).length) {
+      box.classList.remove('show');
+      box.innerHTML = '';
+      return;
+    }
+    var did = model.circle.filter(function (c) { return c.contributed; }).length;
+    var html = '<div class="k">◍ Your circle</div><div class="wew-avs">';
+    model.circle.slice(0, 12).forEach(function (c) {
+      var initials = (c.display_name || '?').trim().charAt(0).toUpperCase();
+      if (c.avatar_path) {
+        html += '<img class="wew-av' + (c.contributed ? ' did' : '') + '" src="'
+          + esc(state.root + '/avatars/' + encodeURIComponent(c.avatar_path))
+          + '" alt="' + esc(c.display_name) + '">';
+      } else {
+        html += '<span class="wew-av' + (c.contributed ? ' did' : '') + '" title="'
+          + esc(c.display_name) + '">' + esc(initials) + '</span>';
+      }
+    });
+    html += '</div><div class="n">' + did + ' of ' + model.circle.length
+      + ' contributed this cycle</div>';
+    box.innerHTML = html;
+    box.classList.add('show');
+  }
+
+  // Inbound flow: teal motes travel from the edge toward the agent — the visual
+  // opposite of the gold tokens that flow upward on a run (§9.1).
+  function animateMote(actionType) {
+    var pos = state.layout[actionType];
+    var motes = $('wewMotes');
+    if (!pos || !motes) return;
+    var dot = el('circle', { class: 'wew-mote', r: 3.4, cx: pos.x, cy: pos.y,
+      filter: 'drop-shadow(0 0 4px #13A89E)' }, motes);
+    if (state.reduced) { dot.remove(); return; }
+
+    var fromX = pos.x > state.viewW / 2 ? state.viewW + 20 : -20;
+    var fromY = pos.y + (Math.random() * 60 - 30);
+    var duration = 900;
+    var t0 = performance.now();
+
+    function step(now) {
+      var k = Math.min((now - t0) / duration, 1);
+      var eased = 1 - Math.pow(1 - k, 3);
+      dot.setAttribute('cx', fromX + (pos.x - fromX) * eased);
+      dot.setAttribute('cy', fromY + (pos.y - fromY) * eased);
+      dot.setAttribute('opacity', k < 0.85 ? 1 : (1 - k) / 0.15);
+      if (k < 1) requestAnimationFrame(step);
+      else { dot.remove(); pulse(actionType); }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function startPeerStream() {
+    stopPeerStream();
+    var model = peerModel();
+    if (!window.EventSource || !model) return;
+    var source = new EventSource(
+      state.root + '/api/simulations/' + state.simId + '/peer-stream');
+    state.peers.stream = source;
+
+    source.addEventListener('peer_signal', function (ev) {
+      if (!state.peers.on) return;
+      var payload;
+      try { payload = JSON.parse(ev.data); } catch (e) { return; }
+      var current = peerModel();
+      if (!current) return;
+      var previous = state.peers.seen;
+      current.agents = payload.agents || current.agents;
+      current.nudge = payload.nudge;
+      current.circle = payload.circle || current.circle;
+      current.pending_total = payload.pending_total;
+      state.peers.seen = {};
+      for (var at in current.agents) {
+        state.peers.seen[at] = current.agents[at].pending;
+        var before = previous[at] || 0;
+        for (var i = before; i < current.agents[at].pending; i++) animateMote(at);
+      }
+      refreshPeers();
+      renderCircle();
+      renderHint();
+    });
+
+    // The stream closes itself so it never holds a worker indefinitely; picking
+    // it back up is the client's job.
+    source.addEventListener('reconnect', function () {
+      stopPeerStream();
+      if (state.peers.on) setTimeout(startPeerStream, 1500);
+    });
+    source.onerror = function () {
+      stopPeerStream();
+      // No reconnect loop on a hard error: the badges are already drawn, and a
+      // failing stream should degrade to "not live" rather than hammer.
+    };
+  }
+
+  function stopPeerStream() {
+    if (state.peers.stream) {
+      try { state.peers.stream.close(); } catch (e) { /* already closed */ }
+      state.peers.stream = null;
+    }
+  }
+
+  // ── The recommendation moment (PRD §9.2) ─────────────────────────────────
+
+  function peerValue(value, unit) {
+    if (value === null || value === undefined || value === '') return '—';
+    if (typeof value !== 'number' && isNaN(Number(value))) return String(value);
+    var n = Number(value);
+    if (unit === 'USD') return money(n);
+    if (unit === '%') return (Math.round(n * 10) / 10) + '%';
+    var rounded = Math.round(n * 100) / 100;
+    return unit ? rounded + ' ' + unit : String(rounded);
+  }
+
+  // The distribution strip. Because proposals are blind, the spread is the
+  // information — so the owner sees where the circle landed before they see a
+  // single recommended number.
+  function stripHtml(blend) {
+    var low = Number(blend.range_low), high = Number(blend.range_high);
+    if (!isFinite(low) || !isFinite(high)) return '';
+    var mine = Number(blend.owner_prior);
+    var rec = Number(blend.recommendation);
+    var cluster = blend.posterior && blend.posterior.cluster !== undefined
+      ? Number(blend.posterior.cluster) : NaN;
+
+    var points = [low, high];
+    if (isFinite(mine)) points.push(mine);
+    if (isFinite(rec)) points.push(rec);
+    var min = Math.min.apply(null, points), max = Math.max.apply(null, points);
+    var span = (max - min) || Math.abs(max) || 1;
+    var pad = span * 0.12;
+    min -= pad; max += pad;
+    span = max - min;
+
+    function pct(value) {
+      return Math.max(0, Math.min(100, ((value - min) / span) * 100));
+    }
+
+    var html = '<div class="wew-strip">'
+      + '<div class="wew-strip-track"></div>'
+      + '<div class="wew-strip-range" style="left:' + pct(low).toFixed(1)
+      + '%;width:' + (pct(high) - pct(low)).toFixed(1) + '%"></div>';
+    if (isFinite(cluster)) {
+      html += '<div class="wew-strip-tick cluster" style="left:'
+        + pct(cluster).toFixed(1) + '%"></div>';
+    }
+    if (isFinite(mine)) {
+      html += '<div class="wew-strip-tick mine" style="left:' + pct(mine).toFixed(1)
+        + '%"></div><div class="wew-strip-cap" style="left:' + pct(mine).toFixed(1)
+        + '%">yours</div>';
+    }
+    if (isFinite(rec)) {
+      html += '<div class="wew-strip-tick rec" style="left:' + pct(rec).toFixed(1)
+        + '%"></div>';
+    }
+    return html + '</div>';
+  }
+
+  function peerPanelHtml(actionType) {
+    if (!state.peers.on) return '';
+    var model = peerModel();
+    var entry = peerEntry(actionType);
+    if (!model || !entry) return '';
+
+    var html = '<div class="wew-peer-panel"><div class="h">◍ Peer calibration</div>';
+    var blends = blendsFor(actionType);
+
+    blends.forEach(function (b) {
+      html += '<div class="wew-pb" data-blend="' + esc(b.id) + '">';
+      html += '<div class="wew-pb-param">' + esc(b.param_label || b.param_key) + '</div>';
+
+      if (b.locked) {
+        html += '<div class="wew-peer-lock">' + esc(
+          (model.reciprocity && model.reciprocity.reason)
+          || 'Contribute on a peer\'s engine to unlock this recommendation.')
+          + '</div></div>';
+        return;
+      }
+
+      html += stripHtml(b);
+      var unit = b.unit || '';
+      var bits = [];
+      if (b.owner_prior !== null && b.owner_prior !== undefined && b.owner_prior !== '') {
+        bits.push('Your <b>' + esc(peerValue(b.owner_prior, unit)) + '</b>');
+      }
+      if (b.range_low !== null && b.range_high !== null) {
+        bits.push('peers landed <b class="teal">' + esc(peerValue(b.range_low, unit))
+          + '–' + esc(peerValue(b.range_high, unit)) + '</b>');
+        if (b.posterior && b.posterior.cluster !== undefined) {
+          bits.push('clustered at <b class="teal">'
+            + esc(peerValue(b.posterior.cluster, unit)) + '</b>');
+        }
+      } else if (b.n_suggestions) {
+        bits.push('<b class="teal">' + b.n_suggestions + '</b> peer version(s)');
+      }
+      if (bits.length) html += '<div class="wew-pb-line">' + bits.join(' · ') + '</div>';
+
+      html += '<div class="wew-pb-rec">Recommendation: '
+        + esc(peerValue(b.recommendation, unit))
+        + (b.spread_signal
+            ? '<span class="wew-pb-sig ' + esc(b.spread_signal) + '">'
+              + (b.spread_signal === 'tight' ? 'tight cluster' : 'wide spread')
+              + '</span>'
+            : '')
+        + '</div>';
+      if (b.rationale) html += '<p class="wew-pb-why">' + esc(b.rationale) + '</p>';
+      html += '<div class="wew-pb-actions">'
+        + '<button type="button" class="wew-btn gold" data-peer-accept="' + esc(b.id)
+        + '">Accept</button>'
+        + '<button type="button" class="wew-btn ghost" data-peer-keep="' + esc(b.id)
+        + '">Keep mine</button></div>';
+      html += '</div>';
+    });
+
+    if (entry.pending) {
+      html += '<div class="wew-peer-wait">' + entry.pending + ' proposal'
+        + (entry.pending === 1 ? '' : 's') + ' from ' + (entry.contributors || 0)
+        + ' peer' + (entry.contributors === 1 ? '' : 's')
+        + ' waiting. They blend at the next cycle'
+        + (model.min_suggestions
+            ? ', once ' + model.min_suggestions + ' have arrived on the same parameter'
+            : '')
+        + '.</div>';
+    } else if (!blends.length) {
+      html += '<div class="wew-peer-wait">Shared with your circle. No proposals '
+        + 'yet.</div>';
+    }
+
+    return html + '</div>';
+  }
+
+  function wirePeerPanel(actionType) {
+    var drawer = $('wewDrawer');
+    if (!drawer) return;
+    drawer.querySelectorAll('[data-peer-accept]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        decideBlend(button.getAttribute('data-peer-accept'), 'accepted', actionType);
+      });
+    });
+    drawer.querySelectorAll('[data-peer-keep]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        decideBlend(button.getAttribute('data-peer-keep'), 'kept', actionType);
+      });
+    });
+  }
+
+  function decideBlend(blendId, decision, actionType) {
+    if (state.peers.busy) return;
+    state.peers.busy = true;
+    drawerMsg(decision === 'accepted' ? 'Applying…' : 'Keeping yours…');
+
+    rootApi('/api/blends/' + encodeURIComponent(blendId) + '/decision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: decision })
+    }).then(function (res) {
+      state.peers.busy = false;
+      // Accepting changes a real parameter, so the node's own form has to be
+      // re-read rather than patched in place from the blend.
+      return Promise.all([load(), loadPeers(false)]).then(function () {
+        openDrawer(actionType);
+        if (decision === 'accepted') {
+          drawerMsg('Applied. Your ' + actionType.replace(/_/g, ' ')
+            + ' now runs on the blended value.', 'ok');
+          floatText(actionType, '◍ applied');
+          announce('Peer recommendation applied.');
+        } else {
+          drawerMsg('Kept your own value. Nothing changed.', 'ok');
+          announce('Kept your own value.');
+        }
+        return res;
+      });
+    }).catch(function (err) {
+      state.peers.busy = false;
       drawerMsg(err.message, 'bad');
     });
   }
@@ -968,11 +1440,15 @@
     if (auto) auto.addEventListener('click', toggleAuto);
     var reset = $('wewReset');
     if (reset) reset.addEventListener('click', resetWorld);
+    var peersButton = $('wewPeers');
+    if (peersButton) peersButton.addEventListener('click', togglePeers);
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape' && state.selected) closeDrawer();
     });
 
     return load().then(function () {
+      // ?peers=1 is the deep link the blend-ready notification sends the owner.
+      if (params.get('peers') === '1') togglePeers();
       var deep = params.get('agent');
       if (deep && state.nodes[deep]) {
         if (!state.layout[deep]) {
@@ -990,7 +1466,14 @@
   };
 
   // Stop the auto timer when the tab is hidden — no point animating offscreen.
+  // The peer stream goes with it: holding a server worker open for a tab nobody
+  // is looking at is the one cost this overlay must not impose.
   document.addEventListener('visibilitychange', function () {
     if (document.hidden && state.autoTimer) toggleAuto();
+    if (document.hidden) {
+      stopPeerStream();
+    } else if (state.peers.on && !state.peers.stream) {
+      loadPeers(false).then(startPeerStream);
+    }
   });
 })();

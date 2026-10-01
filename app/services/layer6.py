@@ -980,6 +980,21 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
     except Exception as _spe:
         logger.warning('Posterior snapshot failed for cycle %s: %s', cycle.id, _spe)
 
+    # ── PEER CALIBRATION: resolve the blends (PRD-SIM-PEER-001 §4, §7) ──
+    # The cycle boundary is the stopping rule. Peer badges update live, but a
+    # blended recommendation only resolves here, once per cycle, and only for
+    # parameters that have met the minimum-proposal threshold. It recommends
+    # and never writes: the owner accepts it or keeps their own.
+    try:
+        from app.services import peer_service as _peers
+        _pb = _peers.resolve_blends_for_cycle(simulation_id, cycle.id)
+        if _pb['blends']:
+            logger.info('Cycle %s resolved %d peer blend(s) for %s',
+                        cycle_number, _pb['blends'], simulation_id)
+    except Exception as _pce:
+        logger.warning('Peer blend resolution failed for cycle %s: %s',
+                       cycle.id, _pce)
+
     # Fire escalation notifications + emails (best-effort, must not raise)
     try:
         from app.services.notification_service import send_notification as _send_notif

@@ -62,6 +62,10 @@ from app.models.observability import (
     AgentRun, AgentRunTool, AgentEvent, AgentArtifact,
     GuardrailRule, GuardrailPolicy, ObservabilityFlag, AdminAccessAudit,
 )
+from app.models.peer import (
+    AgentShare, PeerInvite, ParameterSuggestion, SuggestionBlend,
+    ReciprocityLedger,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -101,4 +105,6 @@ __all__ = [
     'BlogPost', 'BlogLike', 'BlogComment', 'BlogCommentLike', 'BlogReport',
     'AgentRun', 'AgentRunTool', 'AgentEvent', 'AgentArtifact',
     'GuardrailRule', 'GuardrailPolicy', 'ObservabilityFlag', 'AdminAccessAudit',
+    'AgentShare', 'PeerInvite', 'ParameterSuggestion', 'SuggestionBlend',
+    'ReciprocityLedger',
 ]

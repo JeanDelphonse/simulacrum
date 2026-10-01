@@ -702,6 +702,44 @@ def send_collab_invite_email(invitee_email: str, inviter_name: str, sim_name: st
         logger.error('Failed to send collab invite to %s: %s', invitee_email, e, exc_info=True)
 
 
+def send_peer_invite_email(invitee_email: str, owner_name: str, bio_url: str):
+    """PRD-SIM-PEER-001 §5 — an invite-out to someone without an account yet.
+
+    Says what proposing actually involves, because "blind" is the part that
+    makes the ask reasonable: the peer is never shown the owner's numbers, and
+    nothing they propose changes anything on its own.
+    """
+    try:
+        plain = (
+            f'Hi,\n\n'
+            f'{owner_name} has invited you into their Simulacrum calibration circle.\n\n'
+            f'They have shared a few of the agents that drive their income engine '
+            f'and would like your view on the numbers. You propose blind — you '
+            f'never see their current value, and nothing you suggest changes '
+            f'anything until they accept it.\n\n'
+            f'See what they shared: {bio_url}\n\n'
+            f'— SimulacrumAI.io'
+        )
+        html = _html_wrap(
+            _h1(f'{owner_name} invited you to calibrate their engine') +
+            _p(f'{owner_name} has shared a few of the agents that drive their '
+               f'income engine and would like your view on the numbers.') +
+            _p('You propose blind — you never see their current value — and '
+               'nothing you suggest changes anything until they accept it.') +
+            _btn(bio_url, 'See what they shared') +
+            _fallback_link(bio_url) +
+            _divider() +
+            _p('You were invited directly. Peer calibration is invited-only: no '
+               'stranger can propose on anyone\'s engine.', muted=True),
+            preheader=f'{owner_name} invited you into their calibration circle.',
+        )
+        _send(subject=f'{owner_name} invited you to calibrate their engine',
+              recipients=[invitee_email], body=plain, html=html)
+    except Exception as e:
+        logger.error('Failed to send peer invite to %s: %s', invitee_email, e,
+                     exc_info=True)
+
+
 def send_alert_digest_email(user, alerts: list):
     """Daily digest of active proactive alerts (ENH-04)."""
     if not alerts:
