@@ -1527,18 +1527,18 @@
   {% endif %}
 
   <!-- ── 12. Testimonials ──────────────────────────────────────────── -->
-  {% if visibility.get('testimonials', True) and bio_page.custom_testimonials %}
+  {% if visibility.get('testimonials', True) and testimonials %}
   <section id="testimonials">
     <div class="section-toggle open" onclick="toggleSection(this, 'testimonials-body')" role="button" tabindex="0">
       <div class="section-toggle-left">
         <h2 class="section-heading">What clients say</h2>
-        <span class="count-badge">{{ bio_page.custom_testimonials | length }}</span>
+        <span class="count-badge">{{ testimonials | length }}</span>
       </div>
       <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <div class="section-body" id="testimonials-body">
       <div class="testimonials-grid">
-        {% for t in bio_page.custom_testimonials | sort(attribute='order') %}
+        {% for t in testimonials | sort(attribute='order') %}
         <div class="testimonial-card">
           <p class="testimonial-quote">"{{ t.quote }}"</p>
           <div class="testimonial-author">{{ t.name }}</div>

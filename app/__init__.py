@@ -296,6 +296,18 @@ def create_app(config_name=None):
             return ''
         return '%s %d, %d' % (value.strftime('%B'), value.day, value.year)
 
+    # Mask email addresses and phone numbers in a template expression. Used for
+    # the few public templates that read free text straight off a model rather
+    # than from an assembled context dict — masking the model attribute itself
+    # would put the masked value into the session and risk persisting it.
+    @app.template_filter('mask_contacts')
+    def _mask_contacts(value):
+        try:
+            from app.services import contact_masking
+            return contact_masking.mask_text(value)
+        except Exception:
+            return value
+
     # PRD-SIM-BLOG-001 — whether the top-nav Journal link should render.
     # Gated on blog_nav_min_posts so an empty journal need not be advertised.
     @app.context_processor

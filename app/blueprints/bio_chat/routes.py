@@ -305,9 +305,21 @@ def _get_bio_page(slug: str) -> BioPage | None:
     return None
 
 
+def _sse_text(text: str) -> str:
+    """One SSE text frame. Kept in one place so the masking path and the
+    unmasked path cannot drift apart in how they frame a chunk."""
+    return 'data: %s\n\n' % json.dumps({'text': text})
+
+
 def _assemble_system_prompt(bp: BioPage) -> str:
     from app.blueprints.bio.routes import _assemble_context
-    ctx = _assemble_context(bp.user_id, bp)
+    from app.services import contact_masking
+
+    # Mask the context before it reaches the model, not only the reply on the
+    # way out. A visitor can ask "what is his email?" in a hundred phrasings,
+    # and the only answer that holds for all of them is that the model was
+    # never told. Output masking is the second line of defence, not the first.
+    ctx = contact_masking.mask_deep(_assemble_context(bp.user_id, bp))
 
     from app.models.user import User
     user = User.query.get(bp.user_id)
@@ -567,9 +579,31 @@ def send_message(session_id: str):
 
     def generate():
         import anthropic
+        from app.services.contact_masking import StreamMasker, is_enabled
+
         client = anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
         full_text = ''
         in_tokens = out_tokens = 0
+
+        # Tokens arrive split — the model emits "jean@" and "example.com" as
+        # separate chunks, and neither half matches a pattern on its own. So
+        # text goes through a masker that holds it back until it can no longer
+        # be the start of a contact detail. With masking off the stream is
+        # untouched and stays token-by-token.
+        masking = is_enabled()
+        masker = StreamMasker() if masking else None
+
+        def emit(text):
+            """The SSE payload for whatever is now safe to send, or ''."""
+            if not masking:
+                return _sse_text(text)
+            safe = masker.feed(text)
+            return _sse_text(safe) if safe else ''
+
+        def drain():
+            """Whatever the masker is still holding, at end of stream."""
+            leftover = masker.flush() if masking else ''
+            return _sse_text(leftover) if leftover else ''
 
         try:
             # First pass: streaming with tools enabled (never for a gated session —
@@ -583,7 +617,9 @@ def send_message(session_id: str):
             ) as stream:
                 for text in stream.text_stream:
                     full_text += text
-                    yield f'data: {json.dumps({"text": text})}\n\n'
+                    payload = emit(text)
+                    if payload:
+                        yield payload
                 first_msg = stream.get_final_message()
                 in_tokens = first_msg.usage.input_tokens
                 out_tokens = first_msg.usage.output_tokens
@@ -613,7 +649,9 @@ def send_message(session_id: str):
                 ) as stream2:
                     for text in stream2.text_stream:
                         full_text += text
-                        yield f'data: {json.dumps({"text": text})}\n\n'
+                        payload = emit(text)
+                        if payload:
+                            yield payload
                     final2 = stream2.get_final_message()
                     out_tokens += final2.usage.output_tokens
 
@@ -624,6 +662,18 @@ def send_message(session_id: str):
             logger.error('Bio chat stream error: %s', e)
             yield f'data: {json.dumps({"error": "Stream error"})}\n\n'
             return
+
+        # Release whatever the masker is still holding, before the done event.
+        tail = drain()
+        if tail:
+            yield tail
+
+        if masking:
+            from app.services.contact_masking import mask_text
+            # Store what the visitor actually saw. The owner reads these
+            # transcripts in My Chats, and a stored copy carrying the address
+            # the stream masked would just be the leak in a slower place.
+            full_text = mask_text(full_text)
 
         # Persist assistant message
         try:

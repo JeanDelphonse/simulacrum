@@ -13,7 +13,7 @@
   <meta property="og:site_name" content="{{ seo.site_name }}">
   <meta property="og:title" content="{{ seo.title }}">
   <meta property="og:url" content="{{ seo.canonical }}">
-  {% if profile.tagline %}<meta property="og:description" content="{{ profile.tagline }}">{% endif %}
+  {% if profile.tagline %}<meta property="og:description" content="{{ profile.tagline | mask_contacts }}">{% endif %}
   {% if profile.avatar_path %}<meta property="og:image" content="{{ url_for('public.serve_avatar', filename=profile.avatar_path, _external=True) }}">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <style>
@@ -105,8 +105,8 @@
 
     <div style="flex:1">
       <h1 class="pub-name">{{ profile.display_name or user.full_name }}</h1>
-      {% if profile.tagline %}<p class="pub-tagline">{{ profile.tagline }}</p>{% endif %}
-      {% if profile.location %}<p class="pub-location">{{ profile.location }}</p>{% endif %}
+      {% if profile.tagline %}<p class="pub-tagline">{{ profile.tagline | mask_contacts }}</p>{% endif %}
+      {% if profile.location %}<p class="pub-location">{{ profile.location | mask_contacts }}</p>{% endif %}
 
       <div class="pub-socials">
         {% if profile.linkedin_url %}
@@ -128,7 +128,7 @@
         </a>
         {% endif %}
         {% if profile.other_link_url %}
-        <a href="{{ profile.other_link_url }}" target="_blank" rel="noopener" class="pub-social-link">{{ profile.other_link_label or 'Link' }}</a>
+        <a href="{{ profile.other_link_url }}" target="_blank" rel="noopener" class="pub-social-link">{{ (profile.other_link_label or 'Link') | mask_contacts }}</a>
         {% endif %}
       </div>
     </div>
@@ -190,8 +190,8 @@
       {% set vis = item.vis %}
       {% set sim = item.sim %}
       <div class="zone-card">
-        <p class="zone-card-name">{{ sim.expertise_zone or sim.name }}</p>
-        {% if vis.zone_tagline %}<p class="zone-card-tagline">{{ vis.zone_tagline }}</p>{% endif %}
+        <p class="zone-card-name">{{ (sim.expertise_zone or sim.name) | mask_contacts }}</p>
+        {% if vis.zone_tagline %}<p class="zone-card-tagline">{{ vis.zone_tagline | mask_contacts }}</p>{% endif %}
         {% if item.unique_services %}
         <div class="zone-services">
           {% for svc in item.unique_services %}<span class="zone-service-pill">{{ svc }}</span>{% endfor %}

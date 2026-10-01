@@ -70,17 +70,19 @@ def profile_page(username):
                 _owner_user = _User.query.get(profile.user_id)
                 pending = _priv.pending_request_for_session(profile.user_id)
                 from app.services import bio_seo as _seo
+                from app.services import contact_masking as _mask
+                _teaser = _mask.mask_deep(
+                    _priv.teaser_context(profile, _owner_user, bio_page))
                 return render_template(
                     'public/bio_teaser.html',
                     profile=profile,
                     user=_owner_user,
                     slug=slug,
-                    seo=_seo.seo_context(profile, bio_page,
-                                         {'full_name': _priv.teaser_context(
-                                             profile, _owner_user, bio_page
-                                         ).get('display_name', '')},
-                                         request.url_root, slug),
-                    teaser=_priv.teaser_context(profile, _owner_user, bio_page),
+                    seo=_seo.seo_context(
+                        profile, bio_page,
+                        {'full_name': _teaser.get('display_name', '')},
+                        request.url_root, slug),
+                    teaser=_teaser,
                     access_status=request.args.get('access', ''),
                     has_pending=bool(pending and pending.is_pending),
                     is_blocked=bool(pending and pending.status ==
@@ -89,6 +91,15 @@ def profile_page(username):
 
         from app.blueprints.bio.routes import _assemble_context
         ctx = _assemble_context(profile.user_id, bio_page)
+
+        # Mask contact details here, at the public render boundary, rather than
+        # inside _assemble_context — the owner's own editor reads that same
+        # function, and handing them a masked copy of their bio is how they end
+        # up saving the mask over their real text. The SEO description is built
+        # from this dict too, so masking it also keeps addresses out of search
+        # results.
+        from app.services import contact_masking
+        ctx = contact_masking.mask_deep(ctx)
 
         # Track view (skip owner's own views)
         if not is_owner:
@@ -152,10 +163,16 @@ def profile_page(username):
             except Exception:
                 pass
 
+        # Testimonials are read off the model by the template rather than from
+        # ctx, so they need masking of their own — a quote often signs off with
+        # the referee's work email.
+        testimonials = contact_masking.mask_deep(bio_page.custom_testimonials)
+
         from app.services import bio_seo
         return render_template(
             'public/bio_page.html',
             bio_page=bio_page,
+            testimonials=testimonials,
             profile=profile,
             user=user,
             ctx=ctx,
@@ -234,6 +251,14 @@ def profile_page(username):
     is_owner = current_user.is_authenticated and current_user.id == profile.user_id
     bio_sections = _parse_bio(profile.bio) if profile.bio else None
 
+    # The legacy profile page answers the same public /u/ URL as the bio page,
+    # so it gets the same treatment. Missing it would leave a second, quieter
+    # copy of the leak on exactly the URL the first one was closed on.
+    from app.services import contact_masking as _mask
+    bio_sections = _mask.mask_deep(bio_sections)
+    zone_cards = _mask.mask_deep(zone_cards)
+    sim_bios = _mask.mask_deep(sim_bios)
+
     # The legacy profile page answers the same /u/ URL, so it gets the same
     # title pattern and the same indexability gate. It has no BioPage, which
     # is_indexable() treats as not-a-document — correct: this page is a stub
@@ -283,9 +308,12 @@ def bio_page_json(username: str):
     if not bio_page:
         return jsonify({'error': 'Not found'}), 404
     ctx = _assemble_context(bio_page.user_id, bio_page)
+    # Unauthenticated endpoint, so the same masking the page gets. It also backs
+    # the owner's live preview, where seeing the mask is the point.
+    from app.services import contact_masking
     return jsonify({
         'bio_page': bio_page.to_dict(),
-        'context': ctx,
+        'context': contact_masking.mask_deep(ctx),
     })
 
 
