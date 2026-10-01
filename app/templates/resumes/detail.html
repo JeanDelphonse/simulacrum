@@ -55,7 +55,12 @@
       <p id="simZoneLabel" class="sim-zone-label"></p>
       <input type="text" id="simName" placeholder="Simulation name" class="input-text">
       <textarea id="simFocusHint" placeholder="Optional: focus hint (e.g. 'Focus on SaaS products only')" class="input-textarea" rows="3"></textarea>
-      <div class="card-fields">
+      {# Hidden when the simulation costs this buyer nothing — see the price
+         fetch below. Asking a comped user for a card would be asking for
+         something we will never charge. #}
+      <div id="simFreeNote" class="sim-zone-label hidden"
+           style="color:#34d399;font-weight:600"></div>
+      <div class="card-fields" id="simCardFields">
         <div class="card-field-row">
           <label class="card-field-label">Card Number</label>
           <div id="stripe-card-number" class="stripe-field"></div>
@@ -110,11 +115,31 @@ let selectedZone = null;
 let selectedResumeId = null;
 let simPriceLabel = 'Charge & Generate →';
 
-// Fetch current price and update button labels
+// Fetch current price and update button labels. The quote is buyer-aware, so a
+// user holding an admin comp is shown what they will actually be charged — and
+// when that is nothing, the card fields come off the form rather than sitting
+// there implying otherwise.
 fetch(ROOT + '/api/simulations/price').then(r => r.json()).then(p => {
-  simPriceLabel = `Charge ${p.amount_usd} & Generate →`;
+  const isFree = Number(p.amount_cents) === 0;
+  simPriceLabel = isFree ? 'Generate →' : `Charge ${p.amount_usd} & Generate →`;
+
   const btn = document.getElementById('confirmSimBtn');
   if (btn) btn.textContent = simPriceLabel;
+
+  const cards = document.getElementById('simCardFields');
+  const note  = document.getElementById('simFreeNote');
+  if (isFree) {
+    if (cards) cards.classList.add('hidden');
+    if (note) {
+      note.textContent = p.is_comped
+        ? `No charge — ${p.label || 'complimentary'}.`
+        : 'No charge for this simulation.';
+      note.classList.remove('hidden');
+    }
+  } else {
+    if (cards) cards.classList.remove('hidden');
+    if (note) note.classList.add('hidden');
+  }
 }).catch(() => {});
 
 async function extractZones(resumeId) {
@@ -192,6 +217,17 @@ async function confirmCreateSim() {
       errEl.textContent = data.error || 'Failed to create simulation';
       errEl.classList.remove('hidden');
       btn.disabled = false; btn.textContent = simPriceLabel;
+      return;
+    }
+
+    // A simulation can legitimately cost nothing — a 100% sale, an org credit,
+    // or an admin comp. The server has already started generating it and there
+    // is no PaymentIntent to confirm, so Stripe is skipped entirely. Falling
+    // through to confirmCardPayment(undefined) throws, which is what used to
+    // surface as "Request failed. Please try again."
+    if (data.is_free) {
+      closeModal();
+      window.location.href = ROOT + '/simulations/' + data.simulation_id + '/confirmed';
       return;
     }
 
