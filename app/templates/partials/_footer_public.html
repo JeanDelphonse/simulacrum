@@ -9,13 +9,7 @@
    italic rule main.css already defines under that name.
 
    Product links point at the landing page's anchors, so they work from any page
-   rather than only from the one that happens to contain those sections.
-
-   Layout: columns side by side by default. A page that is itself a narrow,
-   centred column (the private-bio "Request access with LinkedIn" teaser) sets
-   `{% set footer_layout = 'stacked' %}` before the include, and the footer
-   stacks its columns vertically to match. #}
-{% set _pf_stacked = footer_layout is defined and footer_layout == 'stacked' %}
+   rather than only from the one that happens to contain those sections. #}
 
 <style>
 .pf {
@@ -67,18 +61,9 @@
 @media (max-width: 1024px) { .pf-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 768px)  { .pf-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 480px)  { .pf-grid { grid-template-columns: 1fr; } }
-
-/* Stacked: one centred column at every width. The selectors outrank the
-   .pf-grid media queries above, so no breakpoint pulls it back into a row. */
-.pf--stacked .pf-c { max-width: 480px; }
-.pf--stacked .pf-grid { grid-template-columns: 1fr; gap: 28px; text-align: center; }
-.pf--stacked .pf-brand { justify-content: center; }
-.pf--stacked .pf-tagline { margin-left: auto; margin-right: auto; }
-.pf--stacked .pf-links { align-items: center; }
-.pf--stacked .pf-bottom { justify-content: center; text-align: center; }
 </style>
 
-<footer class="pf{{ ' pf--stacked' if _pf_stacked }}">
+<footer class="pf">
   <div class="pf-c">
     <div class="pf-grid">
       <div>

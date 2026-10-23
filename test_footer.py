@@ -64,10 +64,7 @@ def main():
     section('One footer, one file')
     partial = io.open('app/templates/partials/_footer_public.html',
                       encoding='utf-8').read()
-    # The root class carries an optional modifier (pf--stacked), so the source
-    # holds `class="pf{{ ... }}"`; the default render is still exactly MARKER.
-    check('the partial exists and defines the shared root class',
-          'class="pf{{' in partial and '.pf {' in partial)
+    check('the partial exists and defines the shared root class', MARKER in partial)
 
     landing_tpl = io.open('app/templates/landing.html', encoding='utf-8').read()
     check('landing.html includes the partial rather than its own copy',
@@ -205,8 +202,8 @@ def main():
     check('an external page shows the public footer even when signed in',
           MARKER in res.get_data(as_text=True))
 
-    # ── Stacked layout: only on the private-bio access-request teaser ──────
-    section('Stacked footer on the "Request access with LinkedIn" page')
+    # ── The private-bio access-request teaser ───────────────────────────────
+    section('Footer on the "Request access with LinkedIn" page')
     from app.models.bio_page import BioPage
     from app.models.profile import UserProfile
     from app.models.user import User as _User
@@ -228,20 +225,18 @@ def main():
     check('a stranger on a private bio gets the access-request teaser',
           res.status_code == 200 and 'Request access with LinkedIn' in teaser,
           res.status_code)
-    check('the teaser renders the shared footer stacked vertically',
-          'class="pf pf--stacked"' in teaser)
-    check('the stacked rules force a single column',
-          '.pf--stacked .pf-grid { grid-template-columns: 1fr;' in teaser)
+    def footer_of(html):
+        start = html.index('<footer class="pf">')
+        return html[start:html.index('</footer>', start)]
+
+    landing = client.get('/').get_data(as_text=True)
+    check('the teaser footer is the landing page footer, item for item',
+          footer_of(teaser) == footer_of(landing))
     # The body is a flex container; in a row the footer sat beside the card.
     check('the teaser lays the page out as a column, so the footer sits below the card',
           'flex-direction:column' in teaser
-          and teaser.index('class="card"') < teaser.index('class="pf pf--stacked"'))
+          and teaser.index('class="card"') < teaser.index(MARKER))
     check('the teaser footer spans the full width', 'body > .pf{align-self:stretch;}' in teaser)
-
-    for url in ('/', '/blog', '/careers', '/login', '/legal/privacy'):
-        body = client.get(url).get_data(as_text=True)
-        check('{:<14} keeps the side-by-side footer'.format(url),
-              MARKER in body and 'class="pf pf--stacked"' not in body)
 
     # ── The user-owned bio footer is deliberately left alone ───────────────
     section('User-owned surfaces left alone')
