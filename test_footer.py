@@ -232,6 +232,11 @@ def main():
           'class="pf pf--stacked"' in teaser)
     check('the stacked rules force a single column',
           '.pf--stacked .pf-grid { grid-template-columns: 1fr;' in teaser)
+    # The body is a flex container; in a row the footer sat beside the card.
+    check('the teaser lays the page out as a column, so the footer sits below the card',
+          'flex-direction:column' in teaser
+          and teaser.index('class="card"') < teaser.index('class="pf pf--stacked"'))
+    check('the teaser footer spans the full width', 'body > .pf{align-self:stretch;}' in teaser)
 
     for url in ('/', '/blog', '/careers', '/login', '/legal/privacy'):
         body = client.get(url).get_data(as_text=True)

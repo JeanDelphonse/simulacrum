@@ -25,11 +25,17 @@
       --bg:#f4f6f8; --card:#ffffff; --border:rgba(13,27,62,.10);
     }
     *{box-sizing:border-box}
+    /* A column, so the shared footer sits below the card rather than beside it.
+       The card's auto top margin and the footer's own margin-top:auto split the
+       free space, keeping the card centred in the area above the footer. */
     body{margin:0;font-family:'DM Sans',system-ui,-apple-system,Segoe UI,sans-serif;
       background:var(--bg);color:var(--navy);min-height:100vh;
-      display:flex;align-items:center;justify-content:center;padding:2rem 1rem;}
-    .card{background:var(--card);max-width:480px;width:100%;border-radius:16px;
-      padding:2.25rem 2rem;box-shadow:0 4px 24px rgba(13,27,62,.08);text-align:center;}
+      display:flex;flex-direction:column;align-items:center;padding:2rem 0 0;}
+    .card{background:var(--card);max-width:480px;width:calc(100% - 2rem);border-radius:16px;
+      padding:2.25rem 2rem;box-shadow:0 4px 24px rgba(13,27,62,.08);text-align:center;
+      margin:auto 1rem 2rem;}
+    /* Full-width footer band; align-items:center would otherwise shrink it to its content. */
+    body > .pf{align-self:stretch;}
     .avatar{width:88px;height:88px;border-radius:50%;object-fit:cover;margin:0 auto .9rem;
       display:block;background:#e5eaf0;}
     .avatar-ph{width:88px;height:88px;border-radius:50%;margin:0 auto .9rem;
