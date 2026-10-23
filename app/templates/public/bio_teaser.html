@@ -230,6 +230,8 @@
   if (input) input.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); send(); }});
 })();
 </script>
+{# The page is a single centred card, so the footer stacks vertically to match. #}
+{% set footer_layout = 'stacked' %}
 {% include 'partials/_footer_public.html' %}
 </body>
 </html>

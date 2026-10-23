@@ -64,7 +64,10 @@ def main():
     section('One footer, one file')
     partial = io.open('app/templates/partials/_footer_public.html',
                       encoding='utf-8').read()
-    check('the partial exists and defines the shared root class', MARKER in partial)
+    # The root class carries an optional modifier (pf--stacked), so the source
+    # holds `class="pf{{ ... }}"`; the default render is still exactly MARKER.
+    check('the partial exists and defines the shared root class',
+          'class="pf{{' in partial and '.pf {' in partial)
 
     landing_tpl = io.open('app/templates/landing.html', encoding='utf-8').read()
     check('landing.html includes the partial rather than its own copy',
@@ -201,6 +204,39 @@ def main():
     res = client.get('/blog')
     check('an external page shows the public footer even when signed in',
           MARKER in res.get_data(as_text=True))
+
+    # ── Stacked layout: only on the private-bio access-request teaser ──────
+    section('Stacked footer on the "Request access with LinkedIn" page')
+    from app.models.bio_page import BioPage
+    from app.models.profile import UserProfile
+    from app.models.user import User as _User
+    with app.app_context():
+        owner = _User(id=generate_id(), email='private@t.local', full_name='Private Owner',
+                      password_hash=bcrypt.generate_password_hash('pw12345678').decode(),
+                      email_verified=True, onboarding_completed_at=datetime.utcnow())
+        db.session.add(owner)
+        db.session.commit()
+        db.session.add(UserProfile(id=generate_id(), user_id=owner.id, username='privateowner',
+                                   display_name='Private Owner', privacy_mode='private'))
+        db.session.add(BioPage(id=generate_id(), user_id=owner.id, slug='privateowner',
+                               status='published', published_at=datetime.utcnow()))
+        db.session.commit()
+
+    client.post('/api/auth/logout')
+    res = client.get('/u/privateowner')
+    teaser = res.get_data(as_text=True)
+    check('a stranger on a private bio gets the access-request teaser',
+          res.status_code == 200 and 'Request access with LinkedIn' in teaser,
+          res.status_code)
+    check('the teaser renders the shared footer stacked vertically',
+          'class="pf pf--stacked"' in teaser)
+    check('the stacked rules force a single column',
+          '.pf--stacked .pf-grid { grid-template-columns: 1fr;' in teaser)
+
+    for url in ('/', '/blog', '/careers', '/login', '/legal/privacy'):
+        body = client.get(url).get_data(as_text=True)
+        check('{:<14} keeps the side-by-side footer'.format(url),
+              MARKER in body and 'class="pf pf--stacked"' not in body)
 
     # ── The user-owned bio footer is deliberately left alone ───────────────
     section('User-owned surfaces left alone')
