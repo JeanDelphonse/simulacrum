@@ -3551,6 +3551,9 @@ async function togglePublish() {
       btn.className = 'btn btn-primary btn-sm';
     }
     toast(data.is_published ? 'Profile is now live' : 'Profile set to private');
+  } else {
+    // 422 when there's no resume, LinkedIn import or career history to back the bio.
+    alert(data.error || 'Could not publish your profile.');
   }
 }
 {% endif %}

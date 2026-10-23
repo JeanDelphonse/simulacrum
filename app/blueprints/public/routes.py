@@ -168,6 +168,15 @@ def profile_page(username):
         # the referee's work email.
         testimonials = contact_masking.mask_deep(bio_page.custom_testimonials)
 
+        # Owner-only: whether this page has real source material behind it.
+        owner_readiness = None
+        if is_owner:
+            try:
+                from app.services import bio_readiness
+                owner_readiness = bio_readiness.public(bio_readiness.readiness(profile.user_id))
+            except Exception:
+                owner_readiness = None
+
         from app.services import bio_seo
         return render_template(
             'public/bio_page.html',
@@ -181,6 +190,7 @@ def profile_page(username):
             hide_owner_bar=request.args.get('embed') == '1',
             connections_panel=connections_panel,
             org_cobrand=org_cobrand,
+            owner_readiness=owner_readiness,
             seo=bio_seo.seo_context(profile, bio_page, ctx,
                                     request.url_root, slug),
         )

@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}Bio Review — Admin{% endblock %}
+{% block head %}
+<style>
+/* Bio review — public bio pages without enough source material behind them.
+   Light palette matched to admin/careers.html so the admin area reads as one surface. */
+.br-page { max-width: 1280px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.br-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0 0 .35rem; }
+.br-sub { font-size: .85rem; color: #6b7280; margin: 0 0 1.25rem; max-width: 80ch; line-height: 1.6; }
+.br-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+.br-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: .8rem 1rem; }
+.br-stat .l { font-size: .66rem; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; margin-bottom: .3rem; }
+.br-stat .n { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+.br-stat.alert { border-color: #fca5a5; background: #fef2f2; }
+.br-stat.alert .n { color: #b91c1c; }
+.br-tabs { display: flex; gap: .25rem; border-bottom: 1px solid #e5e7eb; margin-bottom: 1rem; }
+.br-tab { font-size: .85rem; font-weight: 600; padding: .55rem .9rem; background: none; border: none;
+  border-bottom: 2px solid transparent; color: #6b7280; cursor: pointer; font-family: inherit; }
+.br-tab.on { color: #0f172a; border-bottom-color: #C9952A; }
+.br-panel { display: none; }
+.br-panel.on { display: block; }
+.br-card { background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid #f59e0b; border-radius: 10px;
+  padding: 1rem 1.15rem; margin-bottom: .8rem; }
+.br-card.kept { border-left-color: #10b981; }
+.br-top { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.br-top h3 { font-size: .98rem; margin: 0; color: #0f172a; }
+.br-meta { font-size: .78rem; color: #6b7280; margin-top: .25rem; }
+.br-reasons { margin: .6rem 0 0 1.1rem; padding: 0; font-size: .84rem; color: #374151; line-height: 1.55; }
+.br-pill { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  border-radius: 4px; padding: .15rem .45rem; background: #fef3c7; color: #92400e; }
+.br-pill.legacy { background: #e0e7ff; color: #3730a3; }
+.br-link { margin-left: auto; font-size: .8rem; font-weight: 600; color: #0f766e; }
+.br-actions { display: flex; gap: .5rem; margin-top: .8rem; flex-wrap: wrap; align-items: center; }
+.br-btn { font-size: .8rem; font-weight: 600; padding: .4rem .85rem; border-radius: 7px; border: 1px solid #d1d5db;
+  background: #fff; color: #0f172a; cursor: pointer; font-family: inherit; }
+.br-btn:hover { border-color: #9ca3af; }
+.br-btn.danger { color: #b91c1c; border-color: #fca5a5; }
+.br-btn.ok { color: #047857; border-color: #6ee7b7; }
+.br-btn[disabled] { opacity: .45; cursor: default; }
+.br-note { flex: 1; min-width: 220px; border: 1px solid #d1d5db; border-radius: 7px; padding: .4rem .6rem;
+  font-size: .8rem; font-family: inherit; }
+.br-none { color: #6b7280; font-size: .9rem; padding: 1.25rem 0; }
+.br-set { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: .9rem 1.1rem; margin-bottom: .6rem;
+  display: grid; grid-template-columns: 1fr 180px; gap: 1rem; align-items: start; }
+.br-set .k { font-size: .9rem; font-weight: 600; color: #0f172a; }
+.br-set .k code { font-size: .7rem; color: #6b7280; background: #f3f4f6; border-radius: 3px; padding: .05em .35em; margin-left: .35rem; }
+.br-set .h { font-size: .8rem; color: #6b7280; line-height: 1.55; margin-top: .2rem; }
+.br-set input[type=number] { width: 100%; border: 1px solid #d1d5db; border-radius: 7px; padding: .45rem .6rem; font-size: .88rem; }
+.br-msg { font-size: .85rem; margin-left: .75rem; }
+.br-msg.err { color: #b91c1c; }
+.br-msg.ok { color: #047857; }
+@media (max-width: 700px) { .br-set { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="br-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
+    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link">Experts</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
+    <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
+    <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link">Calibration</a>
+    <a href="{{ url_for('pages.admin_observability_view') }}" class="subnav-link">Observability</a>
+    <a href="{{ url_for('pages.admin_careers_view') }}" class="subnav-link">Careers</a>
+    <a href="{{ url_for('pages.admin_blog_view') }}" class="subnav-link">Blog</a>
+    <a href="{{ url_for('pages.admin_bio_review_view') }}" class="subnav-link active">Bio Review</a>
+  </nav>
+
+  <h1 class="br-title">Bio Review</h1>
+  <p class="br-sub">
+    Bio pages that are visible to the public but have no real source material behind them:
+    no resume or LinkedIn import that passes the checks, and too little self-entered career history.
+    These pages were most likely written from a name alone. Each owner sees a notice asking them to
+    add a resume. Decide each one here: <strong>Keep live</strong> if you've checked it is accurate,
+    or <strong>Unpublish</strong> to take it down until the owner adds a source. New pages can no
+    longer be published without a source.
+  </p>
+
+  <div class="br-summary">
+    <div class="br-stat alert" id="statFlaggedCard"><div class="l">Awaiting review</div><div class="n" id="statFlagged">–</div></div>
+    <div class="br-stat"><div class="l">Kept live by admin</div><div class="n" id="statKept">–</div></div>
+  </div>
+
+  <div class="br-tabs">
+    <button class="br-tab on" type="button" data-panel="flagged">Awaiting review</button>
+    <button class="br-tab" type="button" data-panel="kept">Kept live</button>
+    <button class="br-tab" type="button" data-panel="settings">Thresholds</button>
+  </div>
+
+  <div class="br-panel on" id="panel-flagged"><div class="br-none">Loading…</div></div>
+  <div class="br-panel" id="panel-kept"><div class="br-none">Loading…</div></div>
+
+  <div class="br-panel" id="panel-settings">
+    <form id="brSettings">
+      {% for s in settings %}
+      <div class="br-set">
+        <div>
+          <div class="k">{{ s.label }}<code>{{ s.key }}</code></div>
+          <div class="h">{{ s.help }}</div>
+        </div>
+        <div>
+          {% if s.type == 'bool' %}
+          <label style="font-size:.85rem"><input type="checkbox" name="{{ s.key }}" {{ 'checked' if s.value }}> On</label>
+          {% else %}
+          <input type="number" name="{{ s.key }}" min="0" value="{{ s.value }}">
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      <button class="br-btn ok" type="submit" id="brSave">Save thresholds</button>
+      <span class="br-msg" id="brSetMsg"></span>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function api(url, options) {
+    return fetch(url, options).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) { throw new Error(d.error || 'Request failed.'); }
+        return d;
+      });
+    });
+  }
+
+  document.querySelectorAll('.br-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.br-tab').forEach(function (t) { t.classList.toggle('on', t === tab); });
+      document.querySelectorAll('.br-panel').forEach(function (p) {
+        p.classList.toggle('on', p.id === 'panel-' + tab.dataset.panel);
+      });
+    });
+  });
+
+  function card(row, kept) {
+    var reasons = (row.reasons || []).map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('');
+    var when = row.published_at ? row.published_at.slice(0, 10) : 'unknown date';
+    var actions = kept
+      ? '<button class="br-btn" data-act="clear" data-user="' + esc(row.user_id) + '">Return to review</button>' +
+        '<button class="br-btn danger" data-act="unpublish" data-user="' + esc(row.user_id) + '">Unpublish</button>' +
+        '<span class="br-meta">Kept live by ' + esc(row.override.by_name || 'an admin') + ' on ' +
+          esc((row.override.at || '').slice(0, 10)) +
+          (row.override.note ? ' — “' + esc(row.override.note) + '”' : '') + '</span>'
+      : '<input class="br-note" placeholder="Note (optional) — why it is OK to keep live" data-note="' + esc(row.user_id) + '">' +
+        '<button class="br-btn ok" data-act="keep" data-user="' + esc(row.user_id) + '">Keep live</button>' +
+        '<button class="br-btn danger" data-act="unpublish" data-user="' + esc(row.user_id) + '">Unpublish</button>';
+    return '<div class="br-card' + (kept ? ' kept' : '') + '">' +
+      '<div class="br-top"><h3>' + esc(row.name) + '</h3>' +
+        '<span class="br-pill' + (row.via === 'legacy profile page' ? ' legacy' : '') + '">via ' + esc(row.via) + '</span>' +
+        '<a class="br-link" href="/u/' + encodeURIComponent(row.slug) + '" target="_blank" rel="noopener">View page ↗</a></div>' +
+      '<div class="br-meta">' + esc(row.email) + ' · published ' + esc(when) + ' · bio ' + row.bio_words + ' words · ' +
+        row.manual_roles + ' self-entered career entr' + (row.manual_roles === 1 ? 'y' : 'ies') + '</div>' +
+      '<ul class="br-reasons">' + reasons + '</ul>' +
+      '<div class="br-actions">' + actions + '</div></div>';
+  }
+
+  function load() {
+    api('/api/admin/bio-review').then(function (d) {
+      document.getElementById('statFlagged').textContent = d.flagged.length;
+      document.getElementById('statKept').textContent = d.kept.length;
+      document.getElementById('statFlaggedCard').classList.toggle('alert', d.flagged.length > 0);
+      document.getElementById('panel-flagged').innerHTML = d.flagged.length
+        ? d.flagged.map(function (r) { return card(r, false); }).join('')
+        : '<div class="br-none">Nothing to review. Every public bio has source material behind it.</div>';
+      document.getElementById('panel-kept').innerHTML = d.kept.length
+        ? d.kept.map(function (r) { return card(r, true); }).join('')
+        : '<div class="br-none">No pages have been kept live by an admin.</div>';
+    }).catch(function (e) {
+      document.getElementById('panel-flagged').innerHTML = '<div class="br-none">' + esc(e.message) + '</div>';
+    });
+  }
+
+  document.querySelector('.br-page').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-act]');
+    if (!btn) { return; }
+    var user = btn.dataset.user, act = btn.dataset.act, req;
+    if (act === 'unpublish') {
+      if (!window.confirm('Unpublish this bio? It goes offline (including the legacy profile page at the same URL) until the owner adds a source and republishes.')) { return; }
+      req = api('/api/admin/bio-review/' + encodeURIComponent(user) + '/unpublish', { method: 'POST' });
+    } else if (act === 'keep') {
+      var note = document.querySelector('[data-note="' + user + '"]');
+      req = api('/api/admin/bio-review/' + encodeURIComponent(user) + '/keep', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: note ? note.value : '' }),
+      });
+    } else if (act === 'clear') {
+      req = api('/api/admin/bio-review/' + encodeURIComponent(user) + '/override', { method: 'DELETE' });
+    }
+    btn.disabled = true;
+    req.then(load).catch(function (err) { alert(err.message); btn.disabled = false; });
+  });
+
+  document.getElementById('brSettings').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var settings = {};
+    this.querySelectorAll('[name]').forEach(function (f) {
+      settings[f.name] = f.type === 'checkbox' ? f.checked : f.value;
+    });
+    var msg = document.getElementById('brSetMsg');
+    api('/api/admin/bio-review/settings', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings: settings }),
+    }).then(function () {
+      msg.textContent = 'Saved. The review list below reflects the new thresholds.';
+      msg.className = 'br-msg ok';
+      load();
+    }).catch(function (err) {
+      msg.textContent = err.message;
+      msg.className = 'br-msg err';
+    });
+  });
+
+  load();
+})();
+</script>
+{% endblock %}

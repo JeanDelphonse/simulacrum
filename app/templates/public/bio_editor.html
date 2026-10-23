@@ -223,6 +223,10 @@
   </div>
 </header>
 
+{% with is_live = bio_page and bio_page.status == 'published' %}
+{% include 'public/_bio_readiness_banner.html' %}
+{% endwith %}
+
 <div class="editor-layout">
   <!-- LEFT: editing panel -->
   <aside class="editor-panel" id="editor-panel">
@@ -655,6 +659,14 @@
             }
           } else {
             publishBtn.disabled = false;
+            // 422: not enough source material. The banner above already lists
+            // what's missing; bring it into view rather than failing silently.
+            var banner = document.getElementById('bio-readiness-banner');
+            if (banner) {
+              banner.scrollIntoView({behavior: 'smooth', block: 'center'});
+            } else {
+              alert((result.data && result.data.error) || 'Could not publish your page.');
+            }
           }
         })
         .catch(function() { publishBtn.disabled = false; });

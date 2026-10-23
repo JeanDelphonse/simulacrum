@@ -132,6 +132,11 @@ def update_profile():
         if field in data:
             val = data[field]
             if isinstance(val, list):
+                if field == 'career_history':
+                    # Keep each entry's provenance across the save; the editor
+                    # rebuilds entries from form fields and would drop the tag.
+                    from app.services.bio_readiness import merge_career_provenance
+                    val = merge_career_provenance(profile.career_history, val)
                 setattr(profile, field, val)
 
     if 'bio_sections_visible' in data and isinstance(data['bio_sections_visible'], dict):
@@ -195,20 +200,42 @@ def generate_bio():
             if sim.expertise_zone:
                 zones.append({'zone_name': sim.expertise_zone})
 
-    resume_text = (resume.parsed_text if resume and resume.parsed_text else '') or ''
+    # A bio is written only from real source material: a resume or LinkedIn
+    # import that passes the structural checks, or career history the user
+    # entered themselves. A name, a tagline, simulation zones or an earlier bio
+    # are not sources, and writing from them is how fabricated bios happened.
+    from app.services import bio_readiness
+    state = bio_readiness.readiness(current_user.id)
+    if not state['ready']:
+        return jsonify({
+            'error': ('There isn\'t enough source material to write a factual bio yet. '
+                      + ' '.join(state['reasons'])),
+            'readiness': bio_readiness.public(state),
+        }), 422
+    source_text = state['source_text']
 
-    # Only block if there is genuinely nothing to work from
-    if not resume_text and not zones and not (profile.tagline or profile.bio or current_user.full_name):
-        return jsonify({'error': 'Upload a resume or create a simulation first'}), 400
-
+    from app.services.bio_service import (
+        UngroundedBioError, generate_wikipedia_bio, ground_bio,
+    )
     try:
-        from app.services.bio_service import generate_wikipedia_bio
-        bio_text = generate_wikipedia_bio(profile, resume_text, zones, existing_bio=existing_bio)
+        bio_text = generate_wikipedia_bio(profile, source_text, zones, existing_bio=existing_bio)
     except Exception as e:
         current_app.logger.error('Bio generation failed: %s', e)
         return jsonify({'error': 'Bio generation failed. Please try again.'}), 500
 
-    return jsonify({'bio': bio_text})
+    grounding = {'status': 'skipped', 'removed': []}
+    if bio_readiness.setting('bio_ready_grounding_check'):
+        try:
+            bio_text, grounding = ground_bio(bio_text, source_text)
+        except UngroundedBioError as e:
+            current_app.logger.warning('Bio for %s failed grounding: %s', current_user.id, e)
+            return jsonify({
+                'error': ('We couldn\'t write a bio that sticks to what your source material '
+                          'says. Please try again, or add more detail to your resume.'),
+                'unsupported': e.claims[:10],
+            }), 422
+
+    return jsonify({'bio': bio_text, 'source': state['source'], 'grounding': grounding})
 
 
 def _run_career_extraction(source_text: str) -> list:
@@ -261,7 +288,11 @@ def import_career_from_bio():
     if not bio_text:
         return jsonify({'error': 'No bio text provided'}), 400
     try:
-        clean = _run_career_extraction(bio_text)
+        # Tagged 'bio' so these entries never count as source material: a bio
+        # is generated text, and its "facts" are only as good as what it was
+        # written from.
+        from app.services.bio_readiness import tag_entries
+        clean = tag_entries(_run_career_extraction(bio_text), 'bio')
         return jsonify({'entries': clean})
     except Exception as e:
         current_app.logger.error('Career import from bio failed: %s', e)
@@ -281,7 +312,9 @@ def import_career_from_resume(resume_id):
     if profile.career_history:
         return jsonify({'ok': True, 'skipped': True, 'reason': 'career_history already set'}), 200
     try:
-        entries = _run_career_extraction(resume.parsed_text)
+        from app.services.bio_readiness import tag_entries
+        entries = tag_entries(_run_career_extraction(resume.parsed_text),
+                              'linkedin' if resume.source == 'linkedin' else 'resume')
         if entries:
             profile.career_history = entries
             profile.updated_at = datetime.utcnow()
@@ -448,7 +481,16 @@ def get_visibility():
 def toggle_publish():
     data = request.get_json(force=True, silent=True) or {}
     profile = _get_or_create_profile(current_user)
-    profile.is_published = bool(data.get('is_published', not profile.is_published))
+    want = bool(data.get('is_published', not profile.is_published))
+    if want and not profile.is_published:
+        # The legacy profile page renders profile.bio publicly, so it is held
+        # to the same source-data gate as the bio page.
+        from app.services import bio_readiness
+        state = bio_readiness.readiness(current_user.id)
+        if not state['can_publish']:
+            return jsonify({'error': bio_readiness.not_ready_message(state),
+                            'readiness': bio_readiness.public(state)}), 422
+    profile.is_published = want
     db.session.commit()
     return jsonify({'is_published': profile.is_published})
 

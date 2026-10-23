@@ -957,12 +957,17 @@
 <div class="owner-bar">
   {% if bio_page.status != 'published' %}
   <strong>Draft preview</strong> — this page is not yet visible to visitors.
+  {% if not owner_readiness or owner_readiness.can_publish %}
   <button onclick="publishNow()" style="margin-left:.75rem;background:#0F7B72;color:#fff;border:none;padding:.25rem .75rem;border-radius:6px;font-size:.8rem;cursor:pointer;font-family:inherit">Publish now</button>
+  {% endif %}
   <span style="margin:0 .5rem;opacity:.5">·</span>
   {% endif %}
   <a href="/u/{{ slug }}/edit">Edit bio page →</a>
   <a href="{{ url_for('pages.settings_profile') }}" style="margin-left:.75rem">Settings →</a>
 </div>
+{% with readiness = owner_readiness, is_live = bio_page.status == 'published' %}
+{% include 'public/_bio_readiness_banner.html' %}
+{% endwith %}
 {% endif %}
 
 <div class="bio-page-layout">
@@ -2053,7 +2058,10 @@ function toggleSimBio(card) {
 {% if is_owner %}
 async function publishNow() {
   const res = await fetch('/api/bio/publish', {method: 'POST'});
-  if (res.ok) { location.reload(); }
+  if (res.ok) { location.reload(); return; }
+  // 422 when there isn't enough source material; say so instead of doing nothing.
+  const data = await res.json().catch(() => ({}));
+  alert(data.error || 'Could not publish your page.');
 }
 {% endif %}
 </script>

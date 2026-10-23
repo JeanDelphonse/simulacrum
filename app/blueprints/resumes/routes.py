@@ -169,6 +169,22 @@ def upload_resume():
         db.session.rollback()
         return jsonify({'error': f'Failed to parse file: {str(e)}'}), 422
 
+    # A file that parses but yields almost no text — typically a scanned image
+    # PDF — is not a resume to the rest of the platform. Refuse it here, where
+    # the user can still fix it, instead of saving an empty "resume" that later
+    # lets a bio be written from nothing.
+    from app.services import bio_readiness
+    assessment = bio_readiness.assess_resume_text(parsed_text)
+    if assessment['unreadable']:
+        os.remove(file_path)
+        db.session.rollback()
+        return jsonify({
+            'error': ('We could read almost no text from this file — it may be a scanned '
+                      'image. Please upload a text-based PDF or Word document (export it '
+                      'from Word or Google Docs rather than scanning it).'),
+            'unreadable': True,
+        }), 422
+
     label = request.form.get('label', filename)
     resume = Resume(
         id=generate_id(),
@@ -189,6 +205,10 @@ def upload_resume():
         'label': resume.label,
         'parsed_text_preview': parsed_text[:500],
         'message': 'Resume uploaded and parsed successfully',
+        # Accepted either way (simulations can use a thin resume), but say up
+        # front whether it can support a published bio and why not.
+        'bio_ready': assessment['sufficient'],
+        'bio_warnings': assessment['reasons'],
     }), 201
 
 

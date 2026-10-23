@@ -534,11 +534,13 @@ def bio_editor(slug: str):
     if not profile:
         abort(403)
     bio_page = BioPage.query.filter_by(user_id=current_user.id).first()
+    from app.services import bio_readiness
     return render_template(
         'public/bio_editor.html',
         profile=profile,
         bio_page=bio_page,
         slug=slug,
+        readiness=bio_readiness.public(bio_readiness.readiness(current_user.id)),
     )
 
 
@@ -2053,6 +2055,17 @@ def blog_edit(slug):
         publish_gate=gate,
         max_chars=svc.setting('blog_max_post_chars'),
     )
+
+
+@pages_bp.route('/admin/bio-review')
+@login_required
+def admin_bio_review_view():
+    """Public bios that lack the source material to back them up. Admin decides each one."""
+    from flask import abort
+    if not current_user.is_admin:
+        abort(403)
+    from app.services import bio_readiness
+    return render_template('admin/bio_review.html', settings=bio_readiness.all_settings())
 
 
 @pages_bp.route('/admin/blog')

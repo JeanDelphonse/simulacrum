@@ -601,6 +601,15 @@
 
     <div id="step7Error" class="alert alert-error" style="display:none"></div>
 
+    <!-- Shown instead of Publish when there is no real source material yet.
+         A bio page is a factual public document; it waits for a resume. -->
+    <div id="step7Draft" class="alert" style="display:none;background:#fdf6e3;border:1px solid rgba(201,149,42,.45);color:#5b4612;text-align:left">
+      <strong style="display:block;margin-bottom:4px">Your page is saved as a draft</strong>
+      <span>We only publish a bio we can back up with your real career history, and we don't have
+        enough yet. Add either of these and you can publish from your dashboard:</span>
+      <ul id="step7DraftList" style="margin:8px 0 0 18px;padding:0"></ul>
+    </div>
+
     <!-- Share modal (PLG) -->
     <div id="shareModal" style="display:none;margin-top:16px">
       <p style="font-size:.9375rem;color:var(--muted);margin-bottom:12px;text-align:center">Share your new page with your network:</p>
@@ -633,6 +642,7 @@
   let privacyVersion = '1.0';
   let resumeUploaded = false;
   let resumeId = null;
+  let bioReadiness = null;   // GET /api/bio/readiness, fetched at step 6
   let avatarUploaded = false;
   let avatarCropper = null;
   let avatarBlob = null;
@@ -777,6 +787,13 @@
         if (r.ok) {
           status.textContent = '✓ ' + f.name + ' uploaded';
           status.className = 'upload-status success';
+          // Accepted, but say now if it can't support a published bio, while
+          // the user is still on the step where they can upload a better one.
+          if (r.data.bio_ready === false && (r.data.bio_warnings || []).length) {
+            status.textContent += ' — but it may not be enough for your bio page: '
+              + r.data.bio_warnings.join(' ');
+            status.className = 'upload-status';
+          }
           resumeUploaded = true;
           resumeId = r.data.id || null;
           contBtn.disabled = false;
@@ -1095,26 +1112,30 @@
         const r = await api('PUT', '/api/bio', { theme: selectedTheme });
         if (!r.ok) { showError('step6Error', r.data.error || 'Failed to save theme.'); return; }
 
-        // 2. Generate professional bio for preview (~20-40 s)
-        btn.innerHTML = '<span class="spinner"></span>&nbsp;Generating your bio preview…';
+        // 2. Generate the bio — only when there is real source material behind
+        //    it. Without a resume (or self-entered career history) there is
+        //    nothing factual to write, so the page stays a draft instead.
+        //    Career history is NOT extracted from the generated bio: it comes
+        //    from the resume at step 2, so generated text never becomes "data".
         try {
-          const bioR = await api('POST', '/api/settings/profile/bio/generate');
-          if (bioR.ok && bioR.data.bio) {
-            await api('PUT', '/api/settings/profile', { bio: bioR.data.bio });
-            // 3. Populate career history from the generated bio (skips if already set via resume)
-            btn.innerHTML = '<span class="spinner"></span>&nbsp;Populating your career timeline…';
-            try {
-              const careerR = await api('POST', '/api/settings/career/import', { bio: bioR.data.bio });
-              if (careerR.ok && careerR.data.entries && careerR.data.entries.length) {
-                await api('PUT', '/api/settings/profile', { career_history: careerR.data.entries });
-              }
-            } catch (_) { /* non-critical */ }
-          }
-        } catch (_) { /* non-critical — preview works even without bio text */ }
+          const readyR = await api('GET', '/api/bio/readiness');
+          bioReadiness = readyR.ok ? readyR.data : null;
+        } catch (_) { bioReadiness = null; }
+
+        if (bioReadiness && bioReadiness.ready) {
+          btn.innerHTML = '<span class="spinner"></span>&nbsp;Generating your bio preview…';
+          try {
+            const bioR = await api('POST', '/api/settings/profile/bio/generate');
+            if (bioR.ok && bioR.data.bio) {
+              await api('PUT', '/api/settings/profile', { bio: bioR.data.bio });
+            }
+          } catch (_) { /* non-critical — preview works even without bio text */ }
+        }
 
         await advanceWizard(6);
         showStep(7);
         if (window.loadBioUrl) window.loadBioUrl();
+        if (window.applyBioReadiness) window.applyBioReadiness(bioReadiness);
       } catch (e) {
         showError('step6Error', 'Network error. Please try again.');
       } finally {
@@ -1162,12 +1183,50 @@
       });
     }
 
+    let draftMode = false;
+
+    // Draft mode: no Publish, a checklist of what's missing, finish to dashboard.
+    window.applyBioReadiness = function(state) {
+      if (!state || state.can_publish) return;
+      draftMode = true;
+      const list = document.getElementById('step7DraftList');
+      list.innerHTML = '';
+      (state.checklist || []).forEach(item => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = item.href;
+        a.textContent = item.label;
+        a.style.color = 'inherit';
+        a.style.fontWeight = '700';
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+      document.getElementById('step7Draft').style.display = 'block';
+      const desc = document.querySelector('[data-step="7"] .step-desc');
+      if (desc) desc.textContent = "Here's how your page will look once it's published.";
+      btn.textContent = 'Save Draft & Go to Dashboard';
+    };
+
     btn.addEventListener('click', async () => {
       showError('step7Error', '');
       setLoading(btn, true);
       try {
+        if (draftMode) {
+          await advanceWizard(7);
+          window.location.href = resumeId ? '/resumes/' + resumeId : '/dashboard';
+          return;
+        }
         const r = await api('POST', '/api/bio/publish');
-        if (!r.ok) { showError('step7Error', r.data.error || 'Failed to publish.'); return; }
+        if (!r.ok) {
+          if (r.status === 422 && r.data.readiness) {
+            window.applyBioReadiness(r.data.readiness);
+            setLoading(btn, false);
+            btn.textContent = 'Save Draft & Go to Dashboard';
+            return;
+          }
+          showError('step7Error', r.data.error || 'Failed to publish.');
+          return;
+        }
         await advanceWizard(7);
 
         // Confetti

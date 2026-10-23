@@ -301,6 +301,16 @@ def update_bio_page():
 @login_required
 def publish_bio_page():
     bp = _get_or_create_bio_page(current_user)
+
+    # Source-data gate. A bio page is a public factual document about a real
+    # person; it goes live only with a real resume, LinkedIn import or
+    # self-entered career history behind it (or an admin's explicit keep-live).
+    from app.services import bio_readiness
+    state = bio_readiness.readiness(current_user.id)
+    if not state['can_publish']:
+        return jsonify({'error': bio_readiness.not_ready_message(state),
+                        'readiness': bio_readiness.public(state)}), 422
+
     is_first_publish = bp.published_at is None
     bp.status = BioPage.STATUS_PUBLISHED
     bp.published_at = bp.published_at or datetime.utcnow()
@@ -352,11 +362,141 @@ def publish_bio_page():
 @login_required
 def unpublish_bio_page():
     bp = _get_or_create_bio_page(current_user)
+    _take_offline(bp)
+    db.session.commit()
+    return jsonify({'status': bp.status})
+
+
+def _take_offline(bp):
+    """Unpublish the bio page AND the legacy profile page behind the same URL.
+
+    /u/<slug> falls back to the legacy profile page — which renders profile.bio —
+    whenever the bio page is not published and profile.is_published is set.
+    Publishing sets that flag, so unpublishing must clear it, or the bio stays
+    readable after the owner (or an admin) took it down.
+    """
     bp.status = BioPage.STATUS_UNPUBLISHED
     bp.unpublished_at = datetime.utcnow()
     bp.updated_at = datetime.utcnow()
+    profile = UserProfile.query.filter_by(user_id=bp.user_id).first()
+    if profile:
+        profile.is_published = False
+
+
+# ── GET /api/bio/readiness ─────────────────────────────────────────────────
+
+@bio_bp.route('/api/bio/readiness', methods=['GET'])
+@login_required
+def bio_readiness_status():
+    """Whether the signed-in user has enough source material for a bio, and what's missing."""
+    from app.services import bio_readiness
+    return jsonify(bio_readiness.public(bio_readiness.readiness(current_user.id)))
+
+
+# ── Admin: review of public bios without enough source ─────────────────────
+
+def _require_admin():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    return None
+
+
+@bio_bp.route('/api/admin/bio-review', methods=['GET'])
+@login_required
+def admin_bio_review():
+    denied = _require_admin()
+    if denied:
+        return denied
+    from app.services import bio_readiness
+    return jsonify(bio_readiness.review_queue())
+
+
+@bio_bp.route('/api/admin/bio-review/<user_id>/keep', methods=['POST'])
+@login_required
+def admin_bio_keep(user_id):
+    """Admin judged this page factual despite thin source: keep it live and stop flagging it."""
+    denied = _require_admin()
+    if denied:
+        return denied
+    from app.models.audit_log import AuditLog
+    from app.services import bio_readiness
+    bp = BioPage.query.filter_by(user_id=user_id).first()
+    if not bp:
+        # A legacy-only profile has no BioPage yet; the override has to live somewhere.
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return jsonify({'error': 'Not found'}), 404
+        bp = BioPage(id=generate_id(), user_id=user_id, slug=profile.username)
+        db.session.add(bp)
+    note = (request.get_json(silent=True) or {}).get('note')
+    bio_readiness.keep_live(bp, current_user, note)
+    AuditLog.log('bio_review_kept', user_id=current_user.id, resource_id=user_id,
+                 metadata={'note': note})
     db.session.commit()
-    return jsonify({'status': bp.status})
+    return jsonify({'ok': True, 'override': bio_readiness.override_for(bp)})
+
+
+@bio_bp.route('/api/admin/bio-review/<user_id>/unpublish', methods=['POST'])
+@login_required
+def admin_bio_unpublish(user_id):
+    """Take a thin bio offline. The owner sees why the next time they look at their page."""
+    denied = _require_admin()
+    if denied:
+        return denied
+    from app.models.audit_log import AuditLog
+    bp = BioPage.query.filter_by(user_id=user_id).first()
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if bp:
+        _take_offline(bp)
+        sections = dict(bp.sections or {})
+        sections['readiness_unpublished'] = {'at': datetime.utcnow().isoformat()}
+        bp.sections = sections
+    elif profile:
+        profile.is_published = False
+    else:
+        return jsonify({'error': 'Not found'}), 404
+    AuditLog.log('bio_review_unpublished', user_id=current_user.id, resource_id=user_id)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@bio_bp.route('/api/admin/bio-review/<user_id>/override', methods=['DELETE'])
+@login_required
+def admin_bio_clear_override(user_id):
+    denied = _require_admin()
+    if denied:
+        return denied
+    from app.models.audit_log import AuditLog
+    from app.services import bio_readiness
+    bp = BioPage.query.filter_by(user_id=user_id).first()
+    if not bp:
+        return jsonify({'error': 'Not found'}), 404
+    bio_readiness.clear_override(bp)
+    AuditLog.log('bio_review_override_cleared', user_id=current_user.id, resource_id=user_id)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@bio_bp.route('/api/admin/bio-review/settings', methods=['GET', 'PUT'])
+@login_required
+def admin_bio_review_settings():
+    denied = _require_admin()
+    if denied:
+        return denied
+    from app.services import bio_readiness
+    if request.method == 'PUT':
+        data = (request.get_json(silent=True) or {}).get('settings')
+        if not isinstance(data, dict) or not data:
+            return jsonify({'error': 'Send a settings object'}), 400
+        errors = {}
+        for key, value in data.items():
+            try:
+                bio_readiness.save_setting(key, value, updated_by=current_user.id)
+            except ValueError as exc:
+                errors[key] = str(exc)
+        if errors:
+            return jsonify({'error': '; '.join(errors.values()), 'errors': errors}), 400
+    return jsonify({'settings': bio_readiness.all_settings()})
 
 
 # ── POST /api/bio/hero-image ───────────────────────────────────────────────

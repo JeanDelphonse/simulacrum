@@ -1,0 +1,38 @@
+{#- Owner-only notice: this bio doesn't have enough real source material behind it.
+    Needs `readiness` (bio_readiness.public(...)) and `is_live` (page currently public).
+    Renders nothing once the page is backed by a resume, LinkedIn import or
+    self-entered career history, or when an admin chose to keep it live. -#}
+{% if readiness and not readiness.ready and not readiness.override %}
+<div id="bio-readiness-banner" role="status"
+     style="margin:12px auto;max-width:1100px;padding:14px 18px;border-radius:10px;
+            background:#fdf6e3;border:1px solid rgba(201,149,42,.5);color:#5b4612;
+            font-size:.9rem;line-height:1.55;text-align:left">
+  <strong style="display:block;margin-bottom:4px">
+    {%- if is_live -%}
+      Your bio page is live, but it isn't backed by your real career history yet
+    {%- else -%}
+      Add your career history to publish this page
+    {%- endif -%}
+  </strong>
+  <span>
+    {%- if is_live -%}
+      We only want to show visitors facts we can trace to your own source material. Please add
+      one of these so your page stays accurate — our team may otherwise take it down for review.
+    {%- else -%}
+      Your bio page is a public, factual profile, so we publish it only once it's based on your
+      real career history.
+    {%- endif -%}
+  </span>
+  <ul style="margin:8px 0 0 18px;padding:0">
+    {% for item in readiness.checklist %}
+    <li><a href="{{ item.href }}" style="color:inherit;font-weight:700">{{ item.label }}</a></li>
+    {% endfor %}
+  </ul>
+  {% if readiness.resume and readiness.resume.reasons %}
+  <div style="margin-top:8px;font-size:.82rem;opacity:.85">
+    About your current {{ 'LinkedIn import' if readiness.resume.kind == 'linkedin' else 'resume' }}:
+    {{ readiness.resume.reasons | join(' ') }}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
