@@ -39,20 +39,20 @@ class Config:
     SIMULATION_PRICE_CENTS = 69500  # $695.00
     LINKEDIN_CLIENT_ID = os.environ.get('LINKEDIN_CLIENT_ID')
     LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET')
-    LINKEDIN_REDIRECT_URI = os.environ.get('LINKEDIN_REDIRECT_URI', 'https://simulacrumai.io/api/resumes/linkedin/callback')
+    LINKEDIN_REDIRECT_URI = os.environ.get('LINKEDIN_REDIRECT_URI', 'https://simisi.io/api/resumes/linkedin/callback')
     # SIM-PRD-PRIVACY-001: public (no-login) callback for bio-page access requests.
     # Must ALSO be registered as an authorized redirect URL on the LinkedIn app.
-    LINKEDIN_BIO_REDIRECT_URI = os.environ.get('LINKEDIN_BIO_REDIRECT_URI', 'https://simulacrumai.io/bio/access/linkedin/callback')
+    LINKEDIN_BIO_REDIRECT_URI = os.environ.get('LINKEDIN_BIO_REDIRECT_URI', 'https://simisi.io/bio/access/linkedin/callback')
     GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
-    GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'https://simulacrumai.io/api/auth/google/callback')
+    GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'https://simisi.io/api/auth/google/callback')
     ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')  # AES-256 for OAuth tokens
     APOLLO_CLIENT_ID = os.environ.get('APOLLO_CLIENT_ID')
     APOLLO_CLIENT_SECRET = os.environ.get('APOLLO_CLIENT_SECRET')
-    APOLLO_REDIRECT_URI = os.environ.get('APOLLO_REDIRECT_URI', 'https://simulacrumai.io/api/integrations/apollo/callback')
+    APOLLO_REDIRECT_URI = os.environ.get('APOLLO_REDIRECT_URI', 'https://simisi.io/api/integrations/apollo/callback')
     PANDADOC_CLIENT_ID = os.environ.get('PANDADOC_CLIENT_ID')
     PANDADOC_CLIENT_SECRET = os.environ.get('PANDADOC_CLIENT_SECRET')
-    PANDADOC_REDIRECT_URI = os.environ.get('PANDADOC_REDIRECT_URI', 'https://simulacrumai.io/api/integrations/pandadoc/callback')
+    PANDADOC_REDIRECT_URI = os.environ.get('PANDADOC_REDIRECT_URI', 'https://simisi.io/api/integrations/pandadoc/callback')
     BASE_URL = os.environ.get('BASE_URL', 'https://simisi.io')
     STRIPE_CLIENT_ID = os.environ.get('STRIPE_CLIENT_ID')                          # ca_xxxx (Connect app client ID)
     STRIPE_CONNECT_WEBHOOK_SECRET = os.environ.get('STRIPE_CONNECT_WEBHOOK_SECRET') # whsec_xxxx for Connect events
