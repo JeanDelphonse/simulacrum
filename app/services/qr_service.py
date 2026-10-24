@@ -53,7 +53,7 @@ def _qr_dir() -> str:
 
 def _bio_url(slug: str) -> str:
     """Public bio URL the QR resolves to. Uses the configured canonical base."""
-    base = (current_app.config.get('BASE_URL') or 'https://simulacrumai.io').rstrip('/')
+    base = (current_app.config.get('BASE_URL') or 'https://simisi.io').rstrip('/')
     return f'{base}/u/{slug}'
 
 

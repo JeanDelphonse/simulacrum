@@ -53,7 +53,7 @@ class Config:
     PANDADOC_CLIENT_ID = os.environ.get('PANDADOC_CLIENT_ID')
     PANDADOC_CLIENT_SECRET = os.environ.get('PANDADOC_CLIENT_SECRET')
     PANDADOC_REDIRECT_URI = os.environ.get('PANDADOC_REDIRECT_URI', 'https://simulacrumai.io/api/integrations/pandadoc/callback')
-    BASE_URL = os.environ.get('BASE_URL', 'https://simulacrumai.io')
+    BASE_URL = os.environ.get('BASE_URL', 'https://simisi.io')
     STRIPE_CLIENT_ID = os.environ.get('STRIPE_CLIENT_ID')                          # ca_xxxx (Connect app client ID)
     STRIPE_CONNECT_WEBHOOK_SECRET = os.environ.get('STRIPE_CONNECT_WEBHOOK_SECRET') # whsec_xxxx for Connect events
     CAL_CLIENT_ID = os.environ.get('CAL_CLIENT_ID')

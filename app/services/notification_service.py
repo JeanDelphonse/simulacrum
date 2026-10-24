@@ -84,7 +84,7 @@ def _absolute(url: Optional[str]) -> Optional[str]:
     if url.startswith(('http://', 'https://', 'mailto:')):
         return url
     from flask import current_app
-    base = (current_app.config.get('BASE_URL') or 'https://simulacrumai.io').rstrip('/')
+    base = (current_app.config.get('BASE_URL') or 'https://simisi.io').rstrip('/')
     return base + (url if url.startswith('/') else '/' + url)
 
 

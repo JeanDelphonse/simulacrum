@@ -536,7 +536,7 @@ def _base_url() -> str:
         return request.url_root.rstrip('/')
     except Exception:
         return (current_app.config.get('APP_BASE_URL')
-                or 'https://simulacrumai.io').rstrip('/')
+                or 'https://simisi.io').rstrip('/')
 
 
 # ── Analytics (distinct from public-page views, FR-PRV-09) ──────────────────

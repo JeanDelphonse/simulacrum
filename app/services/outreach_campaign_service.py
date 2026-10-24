@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = 'https://simulacrumai.io'
+BASE_URL = 'https://simisi.io'
 BUSINESS_NAME = 'Bay Area Experiences Ventures'
 BUSINESS_ADDRESS = 'Santa Clara, CA'
 

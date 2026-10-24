@@ -1001,7 +1001,7 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
         from app.services.email_service import send_escalation_email as _send_esc_email
         from app.models.user import User as _User
         from flask import request as _req, has_request_context as _hrc
-        _base = 'https://simulacrumai.io'
+        _base = 'https://simisi.io'
         if _hrc():
             _base = _req.host_url.rstrip('/')
         _user = _User.query.get(sim.user_id)
@@ -1114,7 +1114,7 @@ def _send_cycle_report(sim, config, cycle, dispatch_entries: list) -> None:
         return
 
     sim_name = sim.name or sim.expertise_zone or 'your simulation'
-    gcc_url = f'https://simulacrumai.io/simulations/{sim.id}/gcc'
+    gcc_url = f'https://simisi.io/simulations/{sim.id}/gcc'
 
     dispatched = []
     escalated = []

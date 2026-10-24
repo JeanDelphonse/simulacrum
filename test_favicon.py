@@ -39,7 +39,7 @@ def main():
 
     app = create_app('testing')
     app.config.update(SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
-                      WTF_CSRF_ENABLED=False, BASE_URL='https://simulacrumai.io')
+                      WTF_CSRF_ENABLED=False, BASE_URL='https://simisi.io')
 
     with app.app_context():
         from app.models.bio_page import BioPage
@@ -139,7 +139,7 @@ def main():
     check('the manifest is linked', 'site.webmanifest' in body)
     check('a theme colour is set', 'name="theme-color"' in body)
     check('social cards no longer use the 55x57 JPEG',
-          'og:image" content="https://simulacrumai.io/static/icons/'
+          'og:image" content="https://simisi.io/static/icons/'
           'simulacrum-icon-512.png"' in body)
 
     # ── The root paths browsers ask for unprompted ──────────────────────────

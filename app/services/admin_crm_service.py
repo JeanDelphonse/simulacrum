@@ -582,7 +582,7 @@ def _email_briefing(queue: list, overdue: list, today, discovery: dict = None) -
     # FOUNDER_EMAIL only — MAIL_DEFAULT_SENDER is the From address for outbound
     # user mail and is set to a noreply box, which would silently swallow this.
     to = current_app.config.get('FOUNDER_EMAIL') or 'simi@simulacrumai.io'
-    base = (current_app.config.get('BASE_URL') or 'https://simulacrumai.io').rstrip('/')
+    base = (current_app.config.get('BASE_URL') or 'https://simisi.io').rstrip('/')
 
     plain = ['Outreach queue for {}'.format(today.strftime('%A, %B %d, %Y')), '']
     if overdue:

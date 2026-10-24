@@ -288,7 +288,7 @@ def _send_escalation_email(item) -> None:
         sim = Simulation.query.get(item.simulation_id)
         sim_name = (sim.name or sim.expertise_zone or 'your simulation') if sim else 'your simulation'
 
-        base = request.host_url.rstrip('/') if has_request_context() else 'https://simulacrumai.io'
+        base = request.host_url.rstrip('/') if has_request_context() else 'https://simisi.io'
         action_url = base + (item.action_url or f'/simulations/{item.simulation_id}/gcc')
 
         send_escalation_email(

@@ -1807,7 +1807,7 @@ def proposals_for_param(share_id: str, param_key: str, owner_user_id: str) -> li
 def _base_url() -> str:
     from flask import current_app
     return (current_app.config.get('BASE_URL')
-            or 'https://simulacrumai.io').rstrip('/')
+            or 'https://simisi.io').rstrip('/')
 
 
 def _owner_name(user_id: str) -> str:

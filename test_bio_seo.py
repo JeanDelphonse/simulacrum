@@ -45,7 +45,7 @@ def main():
     # Canonicals and sitemap entries come from BASE_URL, not the request host,
     # so they stay stable however a visitor arrived. Pinned here so the
     # assertions below describe production shapes rather than test-client ones.
-    ORIGIN = 'https://simulacrumai.io'
+    ORIGIN = 'https://simisi.io'
     app.config.update(SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
                       WTF_CSRF_ENABLED=False, BASE_URL=ORIGIN)
 

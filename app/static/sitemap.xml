@@ -3,7 +3,7 @@
 
   <!-- Homepage -->
   <url>
-    <loc>https://simulacrumai.io/</loc>
+    <loc>https://simisi.io/</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -11,19 +11,19 @@
 
   <!-- Auth pages -->
   <url>
-    <loc>https://simulacrumai.io/login</loc>
+    <loc>https://simisi.io/login</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://simulacrumai.io/register</loc>
+    <loc>https://simisi.io/register</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://simulacrumai.io/forgot-password</loc>
+    <loc>https://simisi.io/forgot-password</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
@@ -31,13 +31,13 @@
 
   <!-- Sample use cases -->
   <url>
-    <loc>https://simulacrumai.io/samples/marcus</loc>
+    <loc>https://simisi.io/samples/marcus</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://simulacrumai.io/samples/maya</loc>
+    <loc>https://simisi.io/samples/maya</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -45,13 +45,13 @@
 
   <!-- Legal -->
   <url>
-    <loc>https://simulacrumai.io/legal/terms</loc>
+    <loc>https://simisi.io/legal/terms</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://simulacrumai.io/legal/privacy</loc>
+    <loc>https://simisi.io/legal/privacy</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
@@ -59,7 +59,7 @@
 
   <!-- Partner program -->
   <url>
-    <loc>https://simulacrumai.io/partners/apply</loc>
+    <loc>https://simisi.io/partners/apply</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -69,7 +69,7 @@
        posts are member-authored and appear continuously, and the feed links
        every one of them, so a crawler reaches them from here. -->
   <url>
-    <loc>https://simulacrumai.io/blog</loc>
+    <loc>https://simisi.io/blog</loc>
     <lastmod>2026-09-05</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -77,31 +77,31 @@
 
   <!-- Careers -->
   <url>
-    <loc>https://simulacrumai.io/careers</loc>
+    <loc>https://simisi.io/careers</loc>
     <lastmod>2026-09-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://simulacrumai.io/careers/growth-marketing-lead</loc>
+    <loc>https://simisi.io/careers/growth-marketing-lead</loc>
     <lastmod>2026-09-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://simulacrumai.io/careers/partnerships-corporate-sales-lead</loc>
+    <loc>https://simisi.io/careers/partnerships-corporate-sales-lead</loc>
     <lastmod>2026-09-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://simulacrumai.io/careers/onboarding-workshop-lead</loc>
+    <loc>https://simisi.io/careers/onboarding-workshop-lead</loc>
     <lastmod>2026-09-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://simulacrumai.io/careers/coaching-agent-enablement-lead</loc>
+    <loc>https://simisi.io/careers/coaching-agent-enablement-lead</loc>
     <lastmod>2026-09-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
@@ -109,7 +109,7 @@
 
   <!-- Professionals directory -->
   <url>
-    <loc>https://simulacrumai.io/explore</loc>
+    <loc>https://simisi.io/explore</loc>
     <lastmod>2026-09-14</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>

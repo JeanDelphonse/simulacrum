@@ -27,7 +27,7 @@ def _html_wrap(body_html: str, preheader: str = '') -> str:
 
       <!-- Logo -->
       <tr><td align="center" style="padding-bottom:24px;">
-        <a href="https://simulacrumai.io" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
+        <a href="https://simisi.io" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
           <span style="display:inline-block;width:32px;height:32px;background:#14b8a6;border-radius:7px;text-align:center;line-height:32px;font-size:16px;color:#fff;">✦</span>
           <span style="font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.2px;">SimiSI</span>
         </a>
@@ -591,12 +591,12 @@ def send_feedback_approved_email(user_email: str, user_name: str, is_featured: b
         body_text = 'Your SimiSI story has been approved and is now live on our home page. Thank you for sharing your experience.'
         preheader = 'Your SimiSI story is now live on our home page.'
     try:
-        plain = f'Hi {first},\n\n{body_text}\n\nView it live at simulacrumai.io\n\n— SimiSI'
+        plain = f'Hi {first},\n\n{body_text}\n\nView it live at simisi.io\n\n— SimiSI'
         html = _html_wrap(
             _h1(headline) +
             _p(f'Hi {first},') +
             _p(body_text) +
-            _btn('https://simulacrumai.io', 'View your story live'),
+            _btn('https://simisi.io', 'View your story live'),
             preheader=preheader,
         )
         _send(subject=headline, recipients=[user_email], body=plain, html=html)
@@ -650,7 +650,7 @@ def send_feedback_withdrawal_request_email(admin_email: str, submitter_name: str
 def send_data_retention_warning_email(user_email: str, user_name: str, deletion_date: str):
     first = (user_name or '').strip().split()[0] or 'there'
     try:
-        login_url = 'https://simulacrumai.io/login'
+        login_url = 'https://simisi.io/login'
         plain = (
             f'Hi {first},\n\n'
             f'Your SimiSI account has been inactive for an extended period.\n\n'
@@ -749,7 +749,7 @@ def send_alert_digest_email(user, alerts: list):
         lines = [f'Hi {first},\n', 'Here is your daily SimiSI activity digest:\n']
         for a in alerts:
             lines.append(f'  • [{a.item_type.replace("_", " ").title()}] {a.title}')
-        lines.append('\nLog in to take action: https://simulacrumai.io/simulations')
+        lines.append('\nLog in to take action: https://simisi.io/simulations')
         lines.append('\n— SimiSI')
 
         alert_rows = ''.join(
@@ -764,7 +764,7 @@ def send_alert_digest_email(user, alerts: list):
             _h1(f'Your daily digest — {len(alerts)} alert{"s" if len(alerts) != 1 else ""}') +
             _p(f'Hi {first}, here is your SimiSI activity digest.') +
             f'<table cellpadding="0" cellspacing="0" border="0" style="width:100%;">{alert_rows}</table>' +
-            _btn('https://simulacrumai.io/simulations', 'View in SimiSI'),
+            _btn('https://simisi.io/simulations', 'View in SimiSI'),
             preheader=f'{len(alerts)} alert{"s" if len(alerts) != 1 else ""} in your SimiSI digest.',
         )
         _send(

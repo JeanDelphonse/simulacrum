@@ -1,4 +1,4 @@
-/* SimiSI inline card embed — simulacrumai.io/embed/card.js */
+/* SimiSI inline card embed — simisi.io/embed/card.js */
 (function () {
   var BASE = {{ base_url | tojson }};
 
@@ -25,7 +25,7 @@
         '<a href="' + bioUrl + '" target="_blank" rel="noopener" style="background:#0e7490;color:#fff;padding:.4rem .85rem;border-radius:7px;font-size:.8rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;">Chat →</a>' +
       '</div>' +
       '<div style="text-align:right;font-size:10px;color:#9ca3af;margin-top:3px;">' +
-        '<a href="https://simulacrumai.io?src=embed" target="_blank" rel="noopener" style="color:#9ca3af;text-decoration:none;">Powered by SimiSI</a>' +
+        '<a href="https://simisi.io?src=embed" target="_blank" rel="noopener" style="color:#9ca3af;text-decoration:none;">Powered by SimiSI</a>' +
       '</div>';
   }
 
