@@ -567,7 +567,7 @@ def embed_badge_js(slug: str):
         slug=slug.lower(), status=BioPage.STATUS_PUBLISHED,
     ).first()
     if not bp:
-        return ('console.warn("Simulacrum: bio page not found — ' + slug + '");',
+        return ('console.warn("SimiSI: bio page not found — ' + slug + '");',
                 404, {'Content-Type': 'application/javascript'})
 
     profile = UserProfile.query.filter_by(user_id=bp.user_id).first()

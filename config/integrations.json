@@ -10,7 +10,7 @@
       "status_label": "Outreach email",
       "runtime_provider": null,
       "min_layer": 1,
-      "benefit_copy": "Outreach and sequence sends run on Simulacrum's own email infrastructure.",
+      "benefit_copy": "Outreach and sequence sends run on SimiSI's own email infrastructure.",
       "powered_by_note": "Sends on the platform domain with your name as sender."
     },
     {
@@ -73,7 +73,7 @@
       "runtime_provider": "kajabi",
       "min_layer": 3,
       "benefit_copy": "Publish courses, memberships and landing pages to your existing Kajabi account.",
-      "advanced_note": "Default: hosted on Simulacrum. Connect Kajabi to publish to your own account."
+      "advanced_note": "Default: hosted on SimiSI. Connect Kajabi to publish to your own account."
     },
     {
       "key": "convertkit",

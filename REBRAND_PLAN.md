@@ -241,3 +241,18 @@ choose admin-edit vs. a new SQL migration, and the stale `noreply@` / `admin@sim
 
 Batches 1–6 can ship now. Users will see "SimiSI" while links still point at simulacrumai.io,
 which keeps working. Batches 7–8 wait on the MANUAL list.
+
+---
+
+## Rulings received (2026-10-23)
+
+- **R0**: commit the in-flight mascot/landing work first. Done in `3875139`.
+- **C1–C13 + D1–D15**: accept all recommendations as written (batches 1–6 now; 7–8 held for DNS/OAuth; 9 after a legal ruling).
+- **D7**: drop the `@SimulacrumAI` mention; hashtag becomes `#SimiSI`.
+- **D8**: TTS scripts say **"Simmy S I dot I O"**.
+- Wordmark: `SimulacrumAI.io` → **`SimiSI`** (the canonical display name; no `.io` suffix in the wordmark).
+
+## Gate note
+
+The protected-email invariant is checked as *occurrence count in the worktree == occurrence count at
+HEAD* (`git grep -o`). That count is 39; the §2 table's 32 counted matching lines, not occurrences.

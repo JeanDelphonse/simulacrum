@@ -1483,7 +1483,7 @@ def plaid_link_token():
             'client_id': plaid_client_id,
             'secret':    plaid_secret,
             'user':      {'client_user_id': current_user.id},
-            'client_name': 'Simulacrum',
+            'client_name': 'SimiSI',
             'products':  ['transactions', 'investments', 'liabilities'],
             'country_codes': ['US'],
             'language': 'en',
@@ -1686,7 +1686,7 @@ def alpaca_fintech_toggle():
     consent = (data.get('consent_text') or '').strip()
 
     expected_consent = (
-        'I understand that Simulacrum will place trades in my brokerage account '
+        'I understand that SimiSI will place trades in my brokerage account '
         'based on my investment plan.'
     )
     if enabled and consent != expected_consent:

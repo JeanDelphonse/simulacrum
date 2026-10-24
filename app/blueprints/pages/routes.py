@@ -151,8 +151,8 @@ def site_webmanifest():
     from flask import jsonify
     static = request.url_root.rstrip('/') + '/static/icons/'
     resp = jsonify({
-        'name': 'Simulacrum',
-        'short_name': 'Simulacrum',
+        'name': 'SimiSI',
+        'short_name': 'SimiSI',
         'icons': [
             {'src': static + 'favicon-32.png', 'sizes': '32x32', 'type': 'image/png'},
             {'src': static + 'apple-touch-icon.png', 'sizes': '180x180',
@@ -1195,7 +1195,7 @@ def admin_revoke_token(target_uid, provider):
                 notification_type='escalation',
                 title=f'Your {provider.title()} connection was revoked',
                 body=(
-                    f'Your {provider.title()} connection was revoked by a Simulacrum '
+                    f'Your {provider.title()} connection was revoked by a SimiSI '
                     f'administrator. Please reconnect from Settings → Integrations.'
                 ),
                 cta_url=f'/settings/integrations?reauth={provider}',

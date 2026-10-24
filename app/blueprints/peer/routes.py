@@ -183,7 +183,7 @@ def invite():
     if handle:
         profile = UserProfile.query.filter_by(username=handle.lower()).first()
         if profile is None:
-            return jsonify({'error': 'No Simulacrum member with that handle.'}), 404
+            return jsonify({'error': 'No SimiSI member with that handle.'}), 404
         peer_user_id = profile.user_id
         label = label or profile.display_name
 

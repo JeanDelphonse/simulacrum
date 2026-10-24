@@ -818,7 +818,7 @@
           <div class="settings-section-title" style="margin:0;border:none;padding:0">Partner Access</div>
           <button onclick="showPartnerHelp()" style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.5);border-radius:50%;width:18px;height:18px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0" title="What can a partner see?">?</button>
         </div>
-        <p class="settings-hint" style="margin-bottom:1rem">Control which of your advisors and coaches can view your Simulacrum plan.</p>
+        <p class="settings-hint" style="margin-bottom:1rem">Control which of your advisors and coaches can view your SimiSI plan.</p>
         <div id="partnerAccessContainer">
           <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
         </div>
@@ -1286,7 +1286,7 @@
 
       {# ════════════════════════════════════════════════════
          SIM-PRD-CONNECT-001 — status dashboard, not a checklist.
-         Three tiers: Powered by Simulacrum (brokered, always-on),
+         Three tiers: Powered by SimiSI (brokered, always-on),
          Your connections (one-tap oauth), Advanced (collapsed, opt-in).
          ════════════════════════════════════════════════════ #}
       <style>
@@ -1307,9 +1307,9 @@
         @keyframes integPulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0)}50%{box-shadow:0 0 0 4px rgba(96,165,250,.35)}}
       </style>
 
-      {# ── Powered by Simulacrum (brokered — always on, no action) ── #}
-      <div class="integ-group-title">Powered by Simulacrum</div>
-      <div class="integ-section-sub">Outreach, research and documents run on Simulacrum's own infrastructure — nothing to set up.</div>
+      {# ── Powered by SimiSI (brokered — always on, no action) ── #}
+      <div class="integ-group-title">Powered by SimiSI</div>
+      <div class="integ-section-sub">Outreach, research and documents run on SimiSI's own infrastructure — nothing to set up.</div>
       <div class="integ-brokered-grid">
         <div class="integ-brokered-row">
           <span class="bk-dot"></span>
@@ -1694,7 +1694,7 @@
             <div class="integ-manage-title">Alpaca settings <button class="integ-secondary-link" onclick="toggleManage('alpaca')" style="font-size:.68rem">&#x2715; close</button></div>
             <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:.75rem;margin-bottom:.75rem">
               <div style="font-size:.75rem;font-weight:600;color:#fca5a5;margin-bottom:.4rem">Automated trade execution</div>
-              <div style="font-size:.72rem;color:rgba(255,255,255,.5);margin-bottom:.5rem;font-style:italic">&#8220;I understand that Simulacrum will place trades in my brokerage account based on my investment plan.&#8221;</div>
+              <div style="font-size:.72rem;color:rgba(255,255,255,.5);margin-bottom:.5rem;font-style:italic">&#8220;I understand that SimiSI will place trades in my brokerage account based on my investment plan.&#8221;</div>
               <div style="display:flex;align-items:center;gap:.5rem">
                 <label class="toggle-switch" style="width:36px;height:20px">
                   <input type="checkbox" id="fintechToggle" {% if alpaca_fintech_toggle %}checked{% endif %} onchange="alpacaFintechToggle(this.checked)">
@@ -1754,7 +1754,7 @@
       {# ── Compliance ── #}
       <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.9rem 1.25rem;margin-top:1.25rem;font-size:.78rem;color:rgba(255,255,255,.45);line-height:1.7">
         <strong style="color:rgba(255,255,255,.7)">CAN-SPAM:</strong> Every email includes your business address and a one-click unsubscribe. Hard bounces and unsubscribes permanently block re-outreach.
-        &nbsp;&bull;&nbsp; <strong style="color:rgba(255,255,255,.7)">GDPR:</strong> Consult legal counsel before sending to EU contacts at scale. Simulacrum's lawful basis is legitimate interest for B2B outreach.
+        &nbsp;&bull;&nbsp; <strong style="color:rgba(255,255,255,.7)">GDPR:</strong> Consult legal counsel before sending to EU contacts at scale. SimiSI's lawful basis is legitimate interest for B2B outreach.
       </div>
 
       </details>{# end advanced #}
@@ -2191,7 +2191,7 @@
             <div style="font-weight:700;margin-bottom:.75rem">Step 1 of 3 — Consent</div>
             <p style="font-size:.83rem;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:1.25rem">Before creating your voice model, please read and accept the following:</p>
             <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:1rem;font-size:.8rem;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:1.25rem">
-              I confirm this is my own voice and I authorize Simulacrum to create a synthetic voice model for use in my simulation videos. My voice model is private and will never be shared with other users or used outside my own content.
+              I confirm this is my own voice and I authorize SimiSI to create a synthetic voice model for use in my simulation videos. My voice model is private and will never be shared with other users or used outside my own content.
             </div>
             <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;font-size:.83rem;color:rgba(255,255,255,.8)">
               <input type="checkbox" id="voiceConsentCheck" style="margin-top:.15rem;accent-color:#0f7b72">
@@ -2353,7 +2353,7 @@ async function startLinkedInInteg(btn) {
 }
 
 async function disconnectLinkedIn() {
-  if (!confirm('Disconnect LinkedIn? This removes your imported LinkedIn profile from Simulacrum. You can reconnect at any time.')) return;
+  if (!confirm('Disconnect LinkedIn? This removes your imported LinkedIn profile from SimiSI. You can reconnect at any time.')) return;
   const res = await fetch(ROOT2 + '/api/resumes/linkedin/disconnect', { method: 'POST' });
   if (res.ok) { window.location.reload(); }
   else { alert('Disconnect failed — please try again.'); }
@@ -3459,7 +3459,7 @@ function renderPartnerAccess(partners) {
   if (!el) return;
   if (!partners.length) {
     el.innerHTML = `<div style="font-size:.85rem;color:rgba(255,255,255,.4);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:1rem">
-      You have no advisors connected to your account. If a life coach, career coach, or financial advisor referred you to Simulacrum, ask them for their referral link to get connected.
+      You have no advisors connected to your account. If a life coach, career coach, or financial advisor referred you to SimiSI, ask them for their referral link to get connected.
     </div>`;
     return;
   }
@@ -3714,7 +3714,7 @@ const _wzDefs = {
   pandadoc: {
     name: 'PandaDoc', logo: 'PD',
     title1: "Let's connect your PandaDoc account",
-    instructions: "Generate an API key from your PandaDoc settings. This key gives Simulacrum access to create and send documents in your workspace.",
+    instructions: "Generate an API key from your PandaDoc settings. This key gives SimiSI access to create and send documents in your workspace.",
     steps: ["Log in to your PandaDoc account.", "Navigate to <strong>Settings → Integrations → API</strong>.", "Click <strong>Create API Key</strong> and copy the key."],
     fields: [{id: 'wzKey', label: 'API Key', placeholder: 'PandaDoc API key', fieldName: 'api_key'}],
     validateUrl: '/api/integrations/pandadoc/validate',
@@ -4227,7 +4227,7 @@ async function saveApolloConfig() {
 async function alpacaFintechToggle(enabled) {
   const errEl = document.getElementById('fintechToggleErr');
   errEl.style.display = 'none';
-  const consentText = 'I understand that Simulacrum will place trades in my brokerage account based on my investment plan.';
+  const consentText = 'I understand that SimiSI will place trades in my brokerage account based on my investment plan.';
   if (enabled) {
     const confirmed = confirm(
       'By enabling automated trading, you acknowledge:\n\n' +

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% include 'partials/_favicon.html' %}
-  <title>Activity Feed — Simulacrum</title>
+  <title>Activity Feed — SimiSI</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #f9fafb; color: #111827; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
@@ -67,7 +67,7 @@
 <body>
 
 <nav class="feed-nav">
-  <a class="brand" href="/">SimulacrumAI.io</a>
+  <a class="brand" href="/">SimiSI</a>
   <a href="/explore">Explore</a>
   <a href="/my-chats">My Chats</a>
   <div class="nav-right">
@@ -113,7 +113,7 @@
             {% set lc = ev.metadata.get('like_count', '') %}
             reached {{ lc }} likes on their bio page!
           {% elif ev.event_type == 'connection_made' %}
-            joined the Simulacrum network.
+            joined the SimiSI network.
           {% elif ev.event_type == 'blog_post_published' %}
             published a Journal post{% if ev.metadata.get('title') %}, &ldquo;{{ ev.metadata.title }}&rdquo;{% endif %}.
             {% if ev.metadata.get('slug') %}
@@ -171,7 +171,7 @@
             bio_page_updated: ' updated their professional bio page.',
             simulation_started: ' started a new income simulation.',
             likes_milestone: ' reached a new likes milestone!',
-            connection_made: ' joined the Simulacrum network.',
+            connection_made: ' joined the SimiSI network.',
             blog_post_published: ' published a Journal post.',
           }[ev.event_type] || ' had some activity.';
           card.innerHTML = avatar +

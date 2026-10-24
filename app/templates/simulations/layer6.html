@@ -3977,7 +3977,7 @@ function shareLinkedIn() {
   fetch('/api/voice/videos/' + _latestVideoId + '/share-caption', {method: 'GET'})
   .then(function(r) { return r.json(); })
   .then(function(d) {
-    var caption = d.caption || 'Check out my latest career wealth simulation on Simulacrum AI.';
+    var caption = d.caption || 'Check out my latest career wealth simulation on SimiSI.';
     var shareUrl = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(window.location.origin);
     // Open share dialog; user can paste caption
     navigator.clipboard && navigator.clipboard.writeText(caption).catch(function(){});

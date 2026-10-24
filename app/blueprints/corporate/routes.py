@@ -786,12 +786,12 @@ def _send_invite_email(emp: CorporateEmployee, org: CorporateAccount, reminder: 
             f'/corporate/invite/{emp.invite_token}'
         )
         if reminder:
-            subject = f'Reminder: your Simulacrum access from {org_display} is waiting'
-            lead = (f'A quick nudge — {org_display} has sponsored your Simulacrum access '
+            subject = f'Reminder: your SimiSI access from {org_display} is waiting'
+            lead = (f'A quick nudge — {org_display} has sponsored your SimiSI access '
                     f'and your invitation is still open.')
         else:
-            subject = f'{org_display} has sponsored your Simulacrum access'
-            lead = (f'{org_display} has sponsored your access to Simulacrum, a career '
+            subject = f'{org_display} has sponsored your SimiSI access'
+            lead = (f'{org_display} has sponsored your access to SimiSI, a career '
                     f'wealth simulation platform.')
         logo_html = (f'<img src="{org.white_label_logo_url}" alt="{org_display}" '
                      f'style="max-height:48px;margin-bottom:16px">'

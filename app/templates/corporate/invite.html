@@ -33,7 +33,7 @@
   <h1>This invite link is no longer active.</h1>
   <p class="subtitle">The link from {{ org.display_name }} has expired or reached its limit. Please ask your organization for a new one.</p>
   {% else %}
-  <h1>{{ org.display_name }} has sponsored your Simulacrum access{% if emp and emp.full_name %}, {{ emp.full_name.split()[0] }}{% endif %}.</h1>
+  <h1>{{ org.display_name }} has sponsored your SimiSI access{% if emp and emp.full_name %}, {{ emp.full_name.split()[0] }}{% endif %}.</h1>
   <p class="subtitle">
     Create your free account to run a personalized career wealth simulation and build
     a professional bio page — sponsored by {{ org.display_name }}.
@@ -63,7 +63,7 @@
 
   <p class="disclaimer">
     {% if emp %}This invite is unique to {{ emp.email }}.{% endif %}
-    Powered by <strong>Simulacrum</strong> — Career Wealth Platform.
+    Powered by <strong>SimiSI</strong> — Career Wealth Platform.
   </p>
   {% endif %}
 </div>

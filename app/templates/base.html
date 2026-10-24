@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% include 'partials/_favicon.html' %}
-  <title>{% block title %}Simulacrum{% endblock %} — AI Career Wealth Platform</title>
+  <title>{% block title %}SimiSI{% endblock %} — AI Career Wealth Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
         </svg>
-      </span><span class="logo-text">SimulacrumAI.io</span>
+      </span><span class="logo-text">SimiSI</span>
     </a>
     {% if current_user.is_authenticated %}
     <div class="nav-links">
@@ -76,7 +76,7 @@
 {% block footer %}
 <footer class="footer">
   <div class="footer-inner">
-    <span>© 2026 Simulacrum — Bay Area Experiences Ventures</span>
+    <span>© 2026 SimiSI — Bay Area Experiences Ventures</span>
     <a href="{{ url_for('pages.partner_apply_page') }}" class="footer-tagline" style="text-decoration:none;color:inherit">Become a Partner</a>
     <a href="{{ url_for('pages.blog_index') }}" class="footer-tagline" style="text-decoration:none;color:inherit">The Journal</a>
     <a href="{{ url_for('pages.careers_index') }}" class="footer-tagline" style="text-decoration:none;color:inherit">Careers</a>
@@ -181,7 +181,7 @@ if (signOutBtn) {
       style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6b7280;line-height:1">&times;</button>
     <div id="fbModalContent">
       <h2 style="font-size:1.2rem;font-weight:800;color:#111827;margin:0 0 .25rem">Share Your Story</h2>
-      <p style="font-size:.85rem;color:#6b7280;margin:0 0 1.5rem">Your feedback helps others discover what Simulacrum made possible for you.</p>
+      <p style="font-size:.85rem;color:#6b7280;margin:0 0 1.5rem">Your feedback helps others discover what SimiSI made possible for you.</p>
 
       <div style="margin-bottom:1rem">
         <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#374151;margin-bottom:.5rem">Your rating *</div>
@@ -219,11 +219,11 @@ if (signOutBtn) {
 
       <div style="margin-bottom:1rem">
         <label for="fbQuote" style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#374151;display:block;margin-bottom:.3rem">
-          In your own words — what would you tell someone considering Simulacrum? *
+          In your own words — what would you tell someone considering SimiSI? *
         </label>
         <textarea id="fbQuote" maxlength="200" rows="3"
           style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font-size:.9rem;font-family:inherit;resize:vertical;box-sizing:border-box"
-          placeholder="e.g. Simulacrum showed me I was sitting on 15 years of expertise I had never thought to sell…"
+          placeholder="e.g. SimiSI showed me I was sitting on 15 years of expertise I had never thought to sell…"
           oninput="document.getElementById('quoteCount').textContent=this.value.length+'/200'"></textarea>
         <div style="font-size:.72rem;color:#9ca3af;text-align:right" id="quoteCount">0/200</div>
       </div>
