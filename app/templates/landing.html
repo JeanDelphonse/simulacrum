@@ -576,6 +576,15 @@
   .track::after{ content:""; position:absolute; left:6%; right:6%; bottom:26px; height:2px; border-radius:2px;
     background:linear-gradient(90deg,transparent,rgba(201,149,42,.32),transparent); }
 
+  /* The runway sets pointer-events:none so it never intercepts a click, and
+     that inherits all the way down. The mascot is a link, so the pointer has
+     to be handed back to it specifically — otherwise it stays clickable by
+     keyboard (Tab, Enter) and dead to the mouse, which is the worst of both.
+     display:block so the <a> wraps the SVG's box instead of sitting inline
+     around it. */
+  .walker a { pointer-events:auto; display:block; cursor:pointer; }
+  .walker a:focus-visible { outline:2px solid var(--gold-l); outline-offset:3px; border-radius:8px; }
+
   /* resting position = left. bottom:20px puts the mascot's own floor shadow
      (cy=336 of a 360 viewBox) on the ground line above, the way the doc seats
      it.
@@ -592,6 +601,18 @@
   .m-body,.m-armL,.m-armR,.m-footL,.m-footR,.m-swoosh{ transition:transform .2s ease; }
   .walker svg{ width:100%; height:auto; overflow:visible; filter:drop-shadow(0 12px 20px rgba(0,0,0,.45)); }
 
+  /* Per-load colours. The body is one gradient shared by the feet, torso and
+     head, and each arm is a single stroked line, so two custom properties
+     recolour the whole mascot — no extra gradients, no duplicated artwork.
+
+     The defaults here are the original light body and arm, so the mascot is
+     correct before the script below the SVG runs and stays correct if it never
+     does (JS off, or a parse error elsewhere on the page). */
+  .walker { --m-body-1:#F4F7FB; --m-body-2:#D6DEEA; --m-arm:#E4EAF2; }
+  .walker .m-stop-1 { stop-color: var(--m-body-1); }
+  .walker .m-stop-2 { stop-color: var(--m-body-2); }
+  .walker .m-limb   { stroke: var(--m-arm); }
+
   /* always-on micro-motions — scoped to .walker so .m-bar and friends
      cannot reach anything else on the page */
   .walker .m-eyes  { animation:mBlink 4.8s infinite; transform-box:fill-box; transform-origin:center; }
@@ -602,7 +623,9 @@
 
   /* ===== WALK IN (plays once) ===== */
   .walker.walking{ animation:walkX 4.8s ease-in-out forwards; }
-  .walker.walking > svg{ transform-origin:50% 100%; animation:mLean 4.8s ease-in-out forwards; }
+  /* Descendant, not direct child: the SVG is wrapped in a link, so `> svg`
+     silently stopped matching and the walk-in lost its lean with no error. */
+  .walker.walking svg{ transform-origin:50% 100%; animation:mLean 4.8s ease-in-out forwards; }
   .walker.walking .m-body{ animation:mWaddle .5s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 100%; }
   .walker.walking .m-footL{ animation:mStep .5s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
   .walker.walking .m-footR{ animation:mStep .5s ease-in-out infinite; transform-box:fill-box; transform-origin:center; animation-delay:-.25s; }
@@ -760,48 +783,98 @@
            the hands that already ride inside .m-armL / .m-armR, so during the
            wave a second gold hand stayed behind at the rest position.
            docs/mascot_2d.html and the mockup drop them too. #}
-        <div class="walker" title="Simulacrum — walks in, dances, then idles">
-          <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg"
-               role="img" aria-label="Simulacrum mascot">
-            <defs>
-              <linearGradient id="mascotBody" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#F4F7FB"/><stop offset="1" stop-color="#D6DEEA"/></linearGradient>
-              <linearGradient id="mascotSw" x1="0" y1="1" x2="1" y2="0">
-                <stop offset="0" stop-color="#C9952A"/><stop offset="1" stop-color="#EBC46A"/></linearGradient>
-              <linearGradient id="mascotVisor" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#17294f"/><stop offset="1" stop-color="#0b1730"/></linearGradient>
-              <radialGradient id="mascotEye" cx="40%" cy="35%" r="70%">
-                <stop offset="0" stop-color="#5fe6da"/><stop offset="55%" stop-color="#13A89E"/><stop offset="100%" stop-color="#0d8379"/></radialGradient>
-            </defs>
-            <ellipse cx="150" cy="336" rx="66" ry="11" fill="#000" opacity="0.26"/>
-            <g class="m-body">
-              <g class="m-footL"><rect x="116" y="300" width="34" height="18" rx="9" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.4"/></g>
-              <g class="m-footR"><rect x="150" y="300" width="34" height="18" rx="9" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.4"/></g>
-              <g class="m-armL"><line x1="102" y1="196" x2="70" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="70" cy="252" r="13" fill="#C9952A"/></g>
-              <g class="m-armR"><line x1="198" y1="196" x2="230" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="230" cy="252" r="13" fill="#C9952A"/></g>
-              <rect x="92" y="170" width="116" height="140" rx="46" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.6"/>
-              <rect x="118" y="206" width="64" height="52" rx="12" fill="url(#mascotVisor)" stroke="#C9952A" stroke-width="1.2"/>
-              <rect class="m-bar m-b1" x="126" y="240" width="6.5" height="10" rx="2" fill="#0B4A46"/>
-              <rect class="m-bar m-b2" x="137" y="236" width="6.5" height="15" rx="2" fill="#0F7B72"/>
-              <rect class="m-bar m-b3" x="148" y="231" width="6.5" height="20" rx="2" fill="#139488"/>
-              <rect class="m-bar m-b4" x="159" y="226" width="6.5" height="26" rx="2" fill="#13A89E"/>
-              <rect class="m-bar m-b5" x="170" y="220" width="6.5" height="32" rx="2" fill="#C9952A"/>
-              <rect x="78" y="44" width="144" height="118" rx="48" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.6"/>
-              <ellipse cx="112" cy="72" rx="24" ry="11" fill="#FFFFFF" opacity="0.35" transform="rotate(-18 112 72)"/>
-              <path class="m-swoosh" d="M146,46 C150,16 174,8 194,4 C178,24 172,34 166,46 Z" fill="url(#mascotSw)"/>
-              <rect x="98" y="70" width="104" height="74" rx="30" fill="url(#mascotVisor)"/>
-              <path d="M112,88 Q124,81 136,86" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-              <path d="M164,86 Q176,81 188,88" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-              <g class="m-eyes">
-                <ellipse cx="128" cy="106" rx="15" ry="17" fill="url(#mascotEye)"/><ellipse cx="172" cy="106" rx="15" ry="17" fill="url(#mascotEye)"/>
-                <circle cx="123" cy="100" r="5" fill="#EAFFFB"/><circle cx="167" cy="100" r="5" fill="#EAFFFB"/>
-                <circle cx="132" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/><circle cx="176" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/>
+        {# The walker's animation states are documented in the CSS above; that
+           note used to live in a title attribute here, which became a hover
+           tooltip the moment the link accepted the pointer — "walks in,
+           dances, then idles" is not what to say about a sign-in link. #}
+        <div class="walker">
+          <a href="{{ url_for('pages.login_page') }}"
+             aria-label="Sign in to Simulacrum" title="Sign in to Simulacrum">
+            <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true" focusable="false">
+              <defs>
+                <linearGradient id="mascotBody" x1="0" y1="0" x2="0" y2="1">
+                  <stop class="m-stop-1" offset="0" stop-color="#F4F7FB"/><stop class="m-stop-2" offset="1" stop-color="#D6DEEA"/></linearGradient>
+                <linearGradient id="mascotSw" x1="0" y1="1" x2="1" y2="0">
+                  <stop offset="0" stop-color="#C9952A"/><stop offset="1" stop-color="#EBC46A"/></linearGradient>
+                <linearGradient id="mascotVisor" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#17294f"/><stop offset="1" stop-color="#0b1730"/></linearGradient>
+                <radialGradient id="mascotEye" cx="40%" cy="35%" r="70%">
+                  <stop offset="0" stop-color="#5fe6da"/><stop offset="55%" stop-color="#13A89E"/><stop offset="100%" stop-color="#0d8379"/></radialGradient>
+              </defs>
+              <ellipse cx="150" cy="336" rx="66" ry="11" fill="#000" opacity="0.26"/>
+              <g class="m-body">
+                <g class="m-footL"><rect x="116" y="300" width="34" height="18" rx="9" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.4"/></g>
+                <g class="m-footR"><rect x="150" y="300" width="34" height="18" rx="9" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.4"/></g>
+                <g class="m-armL"><line class="m-limb" x1="102" y1="196" x2="70" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="70" cy="252" r="13" fill="#C9952A"/></g>
+                <g class="m-armR"><line class="m-limb" x1="198" y1="196" x2="230" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="230" cy="252" r="13" fill="#C9952A"/></g>
+                <rect x="92" y="170" width="116" height="140" rx="46" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.6"/>
+                <rect x="118" y="206" width="64" height="52" rx="12" fill="url(#mascotVisor)" stroke="#C9952A" stroke-width="1.2"/>
+                <rect class="m-bar m-b1" x="126" y="240" width="6.5" height="10" rx="2" fill="#0B4A46"/>
+                <rect class="m-bar m-b2" x="137" y="236" width="6.5" height="15" rx="2" fill="#0F7B72"/>
+                <rect class="m-bar m-b3" x="148" y="231" width="6.5" height="20" rx="2" fill="#139488"/>
+                <rect class="m-bar m-b4" x="159" y="226" width="6.5" height="26" rx="2" fill="#13A89E"/>
+                <rect class="m-bar m-b5" x="170" y="220" width="6.5" height="32" rx="2" fill="#C9952A"/>
+                <rect x="78" y="44" width="144" height="118" rx="48" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.6"/>
+                <ellipse cx="112" cy="72" rx="24" ry="11" fill="#FFFFFF" opacity="0.35" transform="rotate(-18 112 72)"/>
+                <path class="m-swoosh" d="M146,46 C150,16 174,8 194,4 C178,24 172,34 166,46 Z" fill="url(#mascotSw)"/>
+                <rect x="98" y="70" width="104" height="74" rx="30" fill="url(#mascotVisor)"/>
+                <path d="M112,88 Q124,81 136,86" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                <path d="M164,86 Q176,81 188,88" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                <g class="m-eyes">
+                  <ellipse cx="128" cy="106" rx="15" ry="17" fill="url(#mascotEye)"/><ellipse cx="172" cy="106" rx="15" ry="17" fill="url(#mascotEye)"/>
+                  <circle cx="123" cy="100" r="5" fill="#EAFFFB"/><circle cx="167" cy="100" r="5" fill="#EAFFFB"/>
+                  <circle cx="132" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/><circle cx="176" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/>
+                </g>
+                <ellipse cx="110" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/><ellipse cx="190" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/>
+                <path d="M134,130 Q150,141 166,130" stroke="#2FB6A9" stroke-width="3" fill="none" stroke-linecap="round"/>
               </g>
-              <ellipse cx="110" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/><ellipse cx="190" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/>
-              <path d="M134,130 Q150,141 166,130" stroke="#2FB6A9" stroke-width="3" fill="none" stroke-linecap="round"/>
-            </g>
-          </svg>
+            </svg>
+          </a>
         </div>
+        {# Recolour the mascot on every load. Inline and immediately after the
+           artwork rather than in the page's load handler, so the colour is set
+           before first paint instead of flashing the default first.
+
+           Body tints stay light on purpose: the mascot sits on a dark navy hero
+           and its own face and chest screen are near-black, so a saturated or
+           dark body would lose its outline against one and its features against
+           the other. The arms are mid-tone because they are drawn behind the
+           torso — the only part you ever see is the lower stretch, against
+           the dark background. #}
+        <script>
+        (function () {
+          var W = document.querySelector('.walker');
+          if (!W) return;
+          /* [body light, body mid, arm]. "white" appears twice in the brief;
+             one entry is enough. */
+          var P = {
+            red:    ['#FFD9D4', '#F0A99E', '#E8705C'],
+            white:  ['#F4F7FB', '#D6DEEA', '#E4EAF2'],
+            blue:   ['#D9E8FF', '#A6C4EE', '#6D9BD8'],
+            yellow: ['#FFF3C9', '#F2DC8E', '#E3C455'],
+            brown:  ['#EADBC8', '#C9A882', '#A8794E'],
+            purple: ['#EADCFB', '#C3A8E8', '#9B7BD0'],
+            green:  ['#DAF5DC', '#A7DCAC', '#70BF7A'],
+            teal:   ['#D3F3EF', '#9BDDD5', '#5FC3B8'],
+            gold:   ['#FBEBC4', '#EBC46A', '#C9952A'],
+            silver: ['#F0F2F5', '#C8CFD8', '#A8B2BF']
+          };
+          var names = Object.keys(P);
+          var body = names[Math.floor(Math.random() * names.length)];
+          /* Draw the arm from the others, so it never disappears into the body
+             it is attached to. */
+          var rest = names.filter(function (n) { return n !== body; });
+          var arm = rest[Math.floor(Math.random() * rest.length)];
+
+          W.style.setProperty('--m-body-1', P[body][0]);
+          W.style.setProperty('--m-body-2', P[body][1]);
+          W.style.setProperty('--m-arm', P[arm][2]);
+          /* Handy when someone asks which pair they just saw. */
+          W.setAttribute('data-body', body);
+          W.setAttribute('data-arm', arm);
+        })();
+        </script>
       </div>
 
       <div class="hero-chip">
