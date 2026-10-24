@@ -126,13 +126,13 @@ def _send_email(notif) -> None:
         f'<p>{notif.body}</p>'
         f'{cta_html}'
         f'<hr style="margin-top:32px;border:none;border-top:1px solid #e5e7eb">'
-        f'<p style="font-size:12px;color:#9ca3af">Simulacrum · '
+        f'<p style="font-size:12px;color:#9ca3af">SimiSI · '
         f'<a href="{_absolute("/settings/notifications")}" style="color:#9ca3af">Manage notification preferences</a></p>'
         f'</div>'
     )
 
     message = Mail(
-        from_email=From('simi@simulacrumai.io', 'SimulacrumAI.io'),
+        from_email=From('simi@simulacrumai.io', 'SimiSI'),
         to_emails=To(user.email),
         subject=Subject(notif.title),
         plain_text_content=PlainTextContent(notif.body),
@@ -260,15 +260,15 @@ def send_daily_digest(user_id: str) -> Optional[str]:
         return None
 
     lines = [f'• {n.title}' for n in unsent]
-    body = 'Your Simulacrum digest for ' + yesterday_start.strftime('%b %-d') + ':\n\n' + '\n'.join(lines)
+    body = 'Your SimiSI digest for ' + yesterday_start.strftime('%b %-d') + ':\n\n' + '\n'.join(lines)
 
     notif_id = send_notification(
         user_id=user_id,
         notification_type='cycle_summary',
-        title=f'Your Simulacrum digest — {yesterday_start.strftime("%b %-d")}',
+        title=f'Your SimiSI digest — {yesterday_start.strftime("%b %-d")}',
         body=body,
         cta_url='/simulations',
-        cta_label='Open Simulacrum →',
+        cta_label='Open SimiSI →',
         priority='low',
     )
 

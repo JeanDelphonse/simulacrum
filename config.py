@@ -16,7 +16,7 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
-    MAIL_DEFAULT_SENDER_NAME = os.environ.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
+    MAIL_DEFAULT_SENDER_NAME = os.environ.get('MAIL_DEFAULT_SENDER_NAME', 'SimiSI')
     # Placeholder address assigned to prospects with no verified email; sends to
     # these land in an inbox the operator controls, never a real third party.
     FALLBACK_CONTACT_EMAIL = os.environ.get('FALLBACK_CONTACT_EMAIL', 'valuemanager.management@gmail.com')

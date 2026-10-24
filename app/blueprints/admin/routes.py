@@ -569,7 +569,7 @@ def test_outreach_email():
         return jsonify({'error': 'SENDGRID_API_KEY is not configured on this server'}), 500
 
     sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
-    sender_name  = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
+    sender_name  = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimiSI')
 
     try:
         import sendgrid as sg_module
@@ -577,7 +577,7 @@ def test_outreach_email():
             Mail, From, TrackingSettings, OpenTracking, ClickTracking,
         )
         html_body = (
-            '<p>This is a <strong>production outreach email test</strong> from SimulacrumAI.io.</p>'
+            '<p>This is a <strong>production outreach email test</strong> from SimiSI.</p>'
             '<p>If you received this, the outreach email pipeline (SendGrid + open/click tracking) '
             'is working correctly.</p>'
             '<p style="color:#6b7280;font-size:12px;">Sent via Admin → Test Outreach Email</p>'
@@ -585,7 +585,7 @@ def test_outreach_email():
         message = Mail(
             from_email=From(sender_email, sender_name),
             to_emails=to_addr,
-            subject='[Simulacrum Test] Outreach email pipeline check',
+            subject='[SimiSI Test] Outreach email pipeline check',
             html_content=html_body,
         )
         message.tracking_settings = TrackingSettings(

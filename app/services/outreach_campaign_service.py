@@ -67,7 +67,7 @@ DEFAULT_TEMPLATES = {
         'preview_text': 'A few places to add your page so the right people find it.',
         'body': (
             "Hi {{first_name}},\n\n"
-            "Your Simulacrum bio page is live at {{bio_url}}. It's ready to introduce your "
+            "Your SimiSI bio page is live at {{bio_url}}. It's ready to introduce your "
             "expertise, answer questions from prospects, and book calls on your behalf — but it "
             "can only do that when people can find it.\n\n"
             "Here are three places to add your link today:\n\n"
@@ -78,7 +78,7 @@ DEFAULT_TEMPLATES = {
             "directories, speaker pages.\n\n"
             "The more places your page appears, the more often your expertise gets discovered. "
             "It takes five minutes and works for you around the clock.\n\n"
-            "Best regards,\nThe Simulacrum Team"
+            "Best regards,\nThe SimiSI Team"
         ),
     },
     'drip_2': {
@@ -88,7 +88,7 @@ DEFAULT_TEMPLATES = {
         'body': (
             "Hi {{first_name}},\n\n"
             "Now that your bio page is working for you, the next step is your wealth "
-            "simulation — where Simulacrum turns your resume into real income opportunities.\n\n"
+            "simulation — where SimiSI turns your resume into real income opportunities.\n\n"
             "The fastest results come from the first two layers:\n\n"
             "Layer 1 — Active Income. AI agents build your rate card, research prospects, and "
             "send personalized outreach, then generate proposals and agreements when someone "
@@ -99,12 +99,12 @@ DEFAULT_TEMPLATES = {
             "your expertise. The system recommends the right mix for you automatically. Most "
             "users see their first opportunities within the first few cycles.\n\n"
             "Start your simulation: {{dashboard_url}}\n\n"
-            "Best regards,\nThe Simulacrum Team"
+            "Best regards,\nThe SimiSI Team"
         ),
     },
     'drip_3': {
         'name': 'Drip 3 — The Full System (Layers 3-5 + Orchestrator)',
-        'subject': 'How Simulacrum builds income while you sleep',
+        'subject': 'How SimiSI builds income while you sleep',
         'preview_text': 'Layers 3 to 5, and the engine that runs them automatically.',
         'body': (
             "Hi {{first_name}},\n\n"
@@ -121,7 +121,7 @@ DEFAULT_TEMPLATES = {
             "hours. It reviews what's working, prioritizes the highest-value actions, and "
             "dispatches the right agents automatically. You review and approve; it does the work.\n\n"
             "When you're ready to build the full system, your dashboard is here: {{dashboard_url}}\n\n"
-            "Best regards,\nThe Simulacrum Team"
+            "Best regards,\nThe SimiSI Team"
         ),
     },
 }
@@ -239,7 +239,7 @@ def render_email_html(body_text: str, unsubscribe_url: str, preheader: str = '')
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>SimulacrumAI.io</title>
+<title>SimiSI</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f6f8;font-family:'Helvetica Neue',Arial,sans-serif;">
 {pre}
@@ -249,17 +249,17 @@ def render_email_html(body_text: str, unsubscribe_url: str, preheader: str = '')
       <tr><td align="center" style="padding-bottom:24px;">
         <a href="{BASE_URL}" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
           <span style="display:inline-block;width:32px;height:32px;background:#14b8a6;border-radius:7px;text-align:center;line-height:32px;font-size:16px;color:#fff;">&#10022;</span>
-          <span style="font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.2px;">SimulacrumAI.io</span>
+          <span style="font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.2px;">SimiSI</span>
         </a>
       </td></tr>
       <tr><td style="background:#ffffff;border-radius:12px;padding:40px 40px 32px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
         {body_html}
       </td></tr>
       <tr><td align="center" style="padding-top:24px;font-size:12px;color:#9ca3af;line-height:1.6;">
-        SimulacrumAI.io &middot; {BUSINESS_NAME}<br>
+        SimiSI &middot; {BUSINESS_NAME}<br>
         {BUSINESS_ADDRESS}<br>
         <a href="{unsubscribe_url}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
-        from Simulacrum outreach emails.
+        from SimiSI outreach emails.
       </td></tr>
     </table>
   </td></tr>
@@ -568,7 +568,7 @@ def _dispatch_send(send) -> dict:
 
     api_key = current_app.config.get('SENDGRID_API_KEY')
     sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
-    sender_name = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
+    sender_name = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimiSI')
 
     unsub_url = unsubscribe_url_for(to_email)
     html = render_email_html(send.body_snapshot, unsub_url, preheader=send.preview_text or '')
@@ -721,7 +721,7 @@ def send_test_email(to_email: str, subject: str, body: str,
 
     api_key = current_app.config.get('SENDGRID_API_KEY')
     sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
-    sender_name = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
+    sender_name = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimiSI')
     if not api_key:
         return {'status': 'error', 'reason': 'SENDGRID_API_KEY not configured'}
     try:

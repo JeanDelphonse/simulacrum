@@ -492,7 +492,7 @@ def _email_requester_approved(req: BioAccessRequest) -> None:
             f'{owner_name} approved your request to view their full profile.\n\n'
             f'View it here: {view_url}\n\n'
             f'(Sign in with the same LinkedIn account you used to request access.)\n\n'
-            f'— Simulacrum')
+            f'— SimiSI')
     try:
         from app.services.email_service import _send, _html_wrap, _btn
         html = _html_wrap(

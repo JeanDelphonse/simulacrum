@@ -188,7 +188,7 @@ def _generate_cover(sim, user, bundle, artifacts: list) -> str:
 
 def _fallback_cover(sim, user, bundle, artifacts: list) -> str:
     lines = [
-        bundle.bundle_name or 'Simulacrum Bundle',
+        bundle.bundle_name or 'SimiSI Bundle',
         '=' * 60,
         f'User: {user.full_name}',
         f'Expertise Zone: {sim.expertise_zone}',
@@ -259,15 +259,15 @@ def _notify_user(user, sim, bundle):
     try:
         from app.services.email_service import _send
         _send(
-            subject=f'Your Simulacrum Bundle is Ready — {bundle.bundle_name}',
+            subject=f'Your SimiSI Bundle is Ready — {bundle.bundle_name}',
             recipients=[user.email],
             body=(
                 f'Hi {user.full_name},\n\n'
                 f'Your "{bundle.bundle_name}" bundle for simulation "{sim.name}" '
                 f'has been compiled and is ready to download.\n\n'
-                f'Log in to your Simulacrum dashboard to download it. '
+                f'Log in to your SimiSI dashboard to download it. '
                 f'The download link is valid for 7 days.\n\n'
-                f'— Simulacrum'
+                f'— SimiSI'
             ),
         )
     except Exception as e:

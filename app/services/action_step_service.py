@@ -531,7 +531,7 @@ def process_due_steps(simulation_id: str, user_id: str) -> dict:
     user = User.query.get(user_id)
     from flask import current_app as _ca
     from_email = _ca.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
-    from_name = (user.full_name or '') if user else 'Simulacrum'
+    from_name = (user.full_name or '') if user else 'SimiSI'
 
     due_steps = ActionStep.query.filter(
         ActionStep.simulation_id == simulation_id,

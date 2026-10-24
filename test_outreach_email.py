@@ -23,7 +23,7 @@ app = create_app('production')
 with app.app_context():
     api_key = app.config.get('SENDGRID_API_KEY', '')
     sender  = app.config.get('MAIL_DEFAULT_SENDER', '(not set)')
-    name    = app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimulacrumAI.io')
+    name    = app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimiSI')
     print(f'Provider : sendgrid (outreach path)')
     print(f'SG key   : {api_key[:8]}...({len(api_key)} chars)' if api_key else 'SG key   : NOT SET')
     print(f'Sender   : {name} <{sender}>')
@@ -41,7 +41,7 @@ with app.app_context():
         )
 
         html_body = (
-            '<p>This is a <strong>production outreach email test</strong> from SimulacrumAI.io.</p>'
+            '<p>This is a <strong>production outreach email test</strong> from SimiSI.</p>'
             '<p>If you received this, the outreach email pipeline (SendGrid + tracking) is working correctly.</p>'
             '<p style="color:#6b7280;font-size:12px;">Sent via test_outreach_email.py</p>'
         )
@@ -49,7 +49,7 @@ with app.app_context():
         message = Mail(
             from_email=From(sender, name),
             to_emails=to_addr,
-            subject='[Simulacrum Test] Outreach email pipeline check',
+            subject='[SimiSI Test] Outreach email pipeline check',
             html_content=html_body,
         )
         message.tracking_settings = TrackingSettings(

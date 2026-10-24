@@ -569,14 +569,14 @@ def grant_advisor_access(sim_id):
         from app.services.email_service import _send
         advisor_name = partner.full_name if partner else advisor_email
         _send(
-            subject=f'{current_user.full_name} shared a Simulacrum Simulation with you',
+            subject=f'{current_user.full_name} shared a SimiSI Simulation with you',
             recipients=[advisor_email],
             body=(
                 f'Hi {advisor_name},\n\n'
                 f'{current_user.full_name} has granted you advisor read-only access to their '
-                f'Simulation "{sim.name}" on Simulacrum.\n\n'
+                f'Simulation "{sim.name}" on SimiSI.\n\n'
                 f'Log in to your Partner Dashboard to view it.\n\n'
-                f'— Simulacrum'
+                f'— SimiSI'
             ),
         )
     except Exception:
@@ -1003,7 +1003,7 @@ def send_agent_artifact(sim_id, layer_num, action_id):
         from app.models.user import User
         owner = User.query.get(sim.user_id)
         _send(
-            subject=f'Your Simulacrum Artifact — {action.action_type.replace("_", " ").title()} (Layer {layer_num})',
+            subject=f'Your SimiSI Artifact — {action.action_type.replace("_", " ").title()} (Layer {layer_num})',
             recipients=[owner.email],
             body=(
                 f'Hi {owner.full_name},\n\n'
@@ -1012,7 +1012,7 @@ def send_agent_artifact(sim_id, layer_num, action_id):
                 f'{"—" * 40}\n\n'
                 f'{action.artifact}\n\n'
                 f'{"—" * 40}\n\n'
-                f'— Simulacrum'
+                f'— SimiSI'
             ),
         )
     except Exception as e:

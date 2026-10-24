@@ -35,9 +35,9 @@ with app.app_context():
     try:
         from app.services.email_service import _send
         _send(
-            subject='Simulacrum email test',
+            subject='SimiSI email test',
             recipients=[to_addr],
-            body='This is a test email from Simulacrum production.\n\nIf you received this, outgoing email is working.',
+            body='This is a test email from SimiSI production.\n\nIf you received this, outgoing email is working.',
         )
         print('SUCCESS — email sent.')
     except Exception as e:
