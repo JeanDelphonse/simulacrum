@@ -30,7 +30,7 @@ def create_org_invoice(org, inv) -> str | None:
         customer=customer.id,
         amount=inv.amount_cents,
         currency='usd',
-        description=f'{inv.credits} Simulacrum simulation credits'
+        description=f'{inv.credits} SimiSI simulation credits'
                     + (f' (PO {inv.po_number})' if inv.po_number else ''),
     )
     invoice = s.Invoice.create(
@@ -58,8 +58,8 @@ def create_payment_intent(
     """Create a Stripe PaymentIntent for simulation generation."""
     s = _stripe()
     base = base_price_cents if base_price_cents is not None else amount_cents
-    desc = f'Simulacrum Pro Simulation — {discount_percentage}% off (was ${base/100:.2f})' \
-        if discount_percentage else 'Simulacrum Pro Simulation'
+    desc = f'SimiSI Pro Simulation — {discount_percentage}% off (was ${base/100:.2f})' \
+        if discount_percentage else 'SimiSI Pro Simulation'
     intent = s.PaymentIntent.create(
         amount=amount_cents,
         currency='usd',
@@ -156,7 +156,7 @@ def create_voice_training_checkout(user_id: str, success_url: str, cancel_url: s
         line_items=[{
             'price_data': {
                 'currency': 'usd',
-                'product_data': {'name': 'Voice Training — Simulacrum AI'},
+                'product_data': {'name': 'Voice Training — SimiSI'},
                 'unit_amount': 499,
             },
             'quantity': 1,

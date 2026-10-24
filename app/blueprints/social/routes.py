@@ -26,7 +26,7 @@ _SONNET_MODEL = 'claude-sonnet-4-6'
 
 _PLATFORM_SYSTEM_PROMPT = """\
 You are {owner_first_name}'s professional assistant.
-You are chatting with {chatter_name}, an authenticated Simulacrum member.
+You are chatting with {chatter_name}, an authenticated SimiSI member.
 Answer questions about {owner_first_name}'s services, expertise, and availability.
 
 RULES:
@@ -35,7 +35,7 @@ RULES:
 - Keep responses concise (2-4 sentences). Suggest concrete next steps.
 - Address {chatter_first_name} by first name.
 - You are {owner_first_name}'s assistant, not {owner_first_name} directly.
-- Because {chatter_first_name} is already a Simulacrum member, do not ask for contact info.
+- Because {chatter_first_name} is already a SimiSI member, do not ask for contact info.
 
 === CONTEXT ===
 Professional title: {professional_title}
@@ -444,7 +444,7 @@ def _ensure_platform_chat_contact(chat: PlatformChat):
             last_name=parts[1] if len(parts) > 1 else '',
             email=email,
             source='platform_chat',
-            source_notes='Started a platform chat via Simulacrum',
+            source_notes='Started a platform chat via SimiSI',
             pipeline_stage='prospect',
         )
         db.session.add(contact)

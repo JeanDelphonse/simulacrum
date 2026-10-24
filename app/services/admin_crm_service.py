@@ -210,7 +210,7 @@ def _prospect_brief(p) -> str:
 
 _PROMPTS = {
     'research': (
-        "You are prepping a sales research task for Simulacrum, an AI career-wealth "
+        "You are prepping a sales research task for SimiSI, an AI career-wealth "
         "simulation platform sold to consultancies as a corporate pilot.\n\n{brief}\n\n"
         "List 3-4 short bullet checks to confirm this firm is a fit: rough headcount, "
         "whether it is independent (not a big-4 subsidiary), and who the right "
@@ -227,14 +227,14 @@ _PROMPTS = {
         "Write a short LinkedIn DM to {lead} at {firm}, who just accepted a "
         "connection request.\n\n{brief}\n\n"
         "Hard rules: this is a genuine question, NOT a pitch. Do not mention "
-        "Simulacrum, a product, a demo, a pilot or a price. Ask one specific question "
+        "SimiSI, a product, a demo, a pilot or a price. Ask one specific question "
         "about how they handle career or compensation planning for their consultants. "
         "2-3 sentences. Return only the message."
     ),
     'touch3': (
         "Write a LinkedIn message to {lead} at {firm}, who replied to a question about "
         "career and compensation planning for their consultants.\n\n{brief}\n\n"
-        "This is the earned pitch. Introduce Simulacrum as an AI career-wealth "
+        "This is the earned pitch. Introduce SimiSI as an AI career-wealth "
         "simulation platform, name one concrete benefit for a consultancy of their "
         "type, and propose a 20-minute call. Mention that a sell sheet and pilot "
         "offer are attached. 4-6 sentences, direct, no hype, no bullet lists. "

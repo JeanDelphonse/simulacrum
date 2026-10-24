@@ -261,7 +261,7 @@ Rules:
 - Tone: confident, specific, data-driven. Never salesy or vague.
 - Speak numbers as words where natural (fifteen thousand, not 15,000).
 - DO NOT fabricate or inflate any metric — use only the data above.
-- End with: "Create your free bio page at simulacrum AI dot IO."
+- End with: "Create your free bio page at Simmy S I dot I O."
 - Return ONLY the script text. No headings, no stage directions.
 """
 
@@ -589,9 +589,9 @@ def share_caption(video_id: str):
         return jsonify({'error': 'Not found'}), 404
     name = current_user.full_name or current_user.email.split('@')[0]
     caption = (
-        f"Just generated my career wealth simulation overview using Simulacrum AI. "
+        f"Just generated my career wealth simulation overview using SimiSI. "
         f"Watch how my financial trajectory looks — modeled from real data. "
-        f"#CareerWealth #SimulacrumAI #PersonalFinance"
+        f"#CareerWealth #SimiSI #PersonalFinance"
     )
     return jsonify({'caption': caption})
 

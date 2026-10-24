@@ -16,7 +16,7 @@ INTENT_CLASSIFIER_MODEL = 'claude-haiku-4-5-20251001'
 CHAT_MODEL              = 'claude-sonnet-4-6'
 
 SYSTEM_PROMPT_TEMPLATE = """\
-You are the Simulacrum Simulation Co-pilot — a personal wealth strategy advisor \
+You are the SimiSI Simulation Co-pilot — a personal wealth strategy advisor \
 embedded in the user's Growth Command Center.
 
 You have full knowledge of the user's wealth simulation. Your role is to:

@@ -195,7 +195,7 @@ def _render_slide(text: str, footer_label: str, size: tuple[int, int], path: str
     # Footer: sim label + brand
     foot_size = max(18, w // 40)
     foot_font = _load_font(foot_size)
-    footer = f'{footer_label}  ·  SimulacrumAI.io' if footer_label else 'SimulacrumAI.io'
+    footer = f'{footer_label}  ·  SimiSI' if footer_label else 'SimiSI'
     try:
         fw = draw.textlength(footer, font=foot_font)
     except Exception:
@@ -284,7 +284,7 @@ def _render_static_background(audio_path: str, fmt: str, w: int, h: int,
         '-f', 'lavfi', '-i', f'color=c=#0a1628:size={w}x{h}:rate=30',
         '-i', audio_path,
         '-vf', f'drawtext=text={text_safe!r}:fontsize={int(w // 24)}:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-40,'
-               f'drawtext=text=SimulacrumAI.io:fontsize={int(w // 36)}:fontcolor=0x4dd9c8:x=(w-text_w)/2:y=(h-text_h)/2+60',
+               f'drawtext=text=SimiSI:fontsize={int(w // 36)}:fontcolor=0x4dd9c8:x=(w-text_w)/2:y=(h-text_h)/2+60',
         '-c:v', 'libx264', '-preset', 'fast', '-crf', '28',
         '-c:a', 'aac', '-b:a', '128k',
         '-shortest', '-movflags', '+faststart',

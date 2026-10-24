@@ -151,7 +151,7 @@ def deploy_email_campaign(action_id: str, simulation_id: str, artifact: dict) ->
             })
 
     sequence = apollo.create_sequence(
-        name=f'Simulacrum — {action_id} — {datetime.utcnow():%Y%m%d}',
+        name=f'SimiSI — {action_id} — {datetime.utcnow():%Y%m%d}',
         steps=apollo_steps,
         daily_limit=daily_limit,
     )

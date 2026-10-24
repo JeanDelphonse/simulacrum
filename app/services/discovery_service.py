@@ -217,7 +217,7 @@ def known_domains() -> set:
 # ── The Claude fit scorer ─────────────────────────────────────────────────────
 
 _THESIS = (
-    "Simulacrum is sold to small consultancies as an employer pilot. The thesis: a "
+    "SimiSI is sold to small consultancies as an employer pilot. The thesis: a "
     "good-fit firm is one whose consultants ARE the product — senior people selling "
     "their own expertise — and whose growth constraint is business-development "
     "capacity. Staffing agencies, recruiters, franchises and productized-service "

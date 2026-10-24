@@ -225,7 +225,7 @@ def _zip_filename(sim, bundle) -> str:
     safe_zone = (sim.expertise_zone or 'Simulation').replace(' ', '_').replace('/', '-')[:30]
     safe_type = bundle.bundle_type.replace('_', '-')
     date_str = datetime.utcnow().strftime('%b%Y')
-    return f'Simulacrum_{safe_type}_{safe_zone}_{date_str}_{bundle.id}.zip'
+    return f'SimiSI_{safe_type}_{safe_zone}_{date_str}_{bundle.id}.zip'
 
 
 def _artifact_filename(action, version) -> str:

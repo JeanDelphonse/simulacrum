@@ -483,7 +483,7 @@ async function pyrExportPDF() {
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'simulacrum_' + SIM_ID + '.pdf'; a.click();
+    a.href = url; a.download = 'simisi_' + SIM_ID + '.pdf'; a.click();
     URL.revokeObjectURL(url);
   } else { alert('Export failed'); }
 }

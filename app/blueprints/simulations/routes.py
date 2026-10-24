@@ -479,7 +479,7 @@ def export_simulation(sim_id):
 
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename=simulacrum_{sim_id}.pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=simisi_{sim_id}.pdf'
         return response
     except Exception as e:
         return jsonify({'error': f'Export failed: {str(e)}'}), 500
@@ -976,7 +976,7 @@ def download_agent_artifact(sim_id, layer_num, action_id):
         return jsonify({'error': 'No artifact available'}), 404
 
     from flask import make_response
-    filename = f'simulacrum_{sim_id}_L{layer_num}_{action.action_type}.txt'
+    filename = f'simisi_{sim_id}_L{layer_num}_{action.action_type}.txt'
     response = make_response(action.artifact)
     response.headers['Content-Type'] = 'text/plain; charset=utf-8'
     response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'

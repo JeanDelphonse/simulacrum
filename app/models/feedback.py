@@ -49,7 +49,7 @@ class UserFeedback(db.Model):
         from app.models.profile import UserProfile
         user = User.query.get(self.user_id)
         profile = UserProfile.query.filter_by(user_id=self.user_id).first()
-        name = (profile.display_name if profile else None) or (user.full_name if user else 'Simulacrum User')
+        name = (profile.display_name if profile else None) or (user.full_name if user else 'SimiSI User')
         parts = name.strip().split()
         if self.name_display == 'full':
             return name
@@ -57,7 +57,7 @@ class UserFeedback(db.Model):
             return f'{parts[0]} {parts[-1][0]}.' if len(parts) > 1 else parts[0]
         if self.name_display == 'first_only':
             return parts[0]
-        return 'Simulacrum User'
+        return 'SimiSI User'
 
     def layer_names_list(self):
         if not self.layers_attributed:

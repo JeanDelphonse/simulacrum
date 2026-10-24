@@ -737,7 +737,7 @@ def invites_for_peer(peer_user_id: str) -> list:
         out.append({
             'id': row.id,
             'owner_name': (profile.display_name if profile and profile.display_name
-                           else (owner.full_name if owner else 'A Simulacrum member')),
+                           else (owner.full_name if owner else 'A SimiSI member')),
             'owner_slug': profile.username if profile else None,
             'created_at': row.created_at.isoformat() if row.created_at else None,
         })
@@ -1817,7 +1817,7 @@ def _owner_name(user_id: str) -> str:
     if profile and profile.display_name:
         return profile.display_name
     user = User.query.get(user_id)
-    return (user.full_name if user else None) or 'A Simulacrum member'
+    return (user.full_name if user else None) or 'A SimiSI member'
 
 
 def _owner_slug(user_id: str):
