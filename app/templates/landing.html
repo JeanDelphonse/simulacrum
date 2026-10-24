@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% include 'partials/_favicon.html' %}
-  <title>Simulacrum — See the five ways your career becomes wealth, before you live any of them.</title>
-  <meta name="description" content="Simulacrum reads your resume, simulates your next 24 months across five layers of income, and deploys 49 AI agents to execute the path you choose. Calibrated projections with their sources. Free bio page forever.">
+  <title>SimiSI — See the five ways your career becomes wealth, before you live any of them.</title>
+  <meta name="description" content="SimiSI reads your resume, simulates your next 24 months across five layers of income, and deploys 49 AI agents to execute the path you choose. Calibrated projections with their sources. Free bio page forever.">
   <link rel="canonical" href="https://simulacrumai.io">
-  <meta property="og:title" content="Simulacrum — Career-to-wealth simulation">
+  <meta property="og:title" content="SimiSI — Career-to-wealth simulation">
   <meta property="og:description" content="One resume. Five layers of income. Forty-nine AI agents. Run the decision forward before you commit a single real month to it.">
   {# Social cards use the 512px mark: the old 55x57 JPEG was below every
      platform's minimum and rendered as a blurry thumbnail or was dropped
@@ -21,7 +21,7 @@
   <meta property="og:url" content="https://simulacrumai.io">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Simulacrum — Career-to-wealth simulation">
+  <meta name="twitter:title" content="SimiSI — Career-to-wealth simulation">
   <meta name="twitter:description" content="One resume. Five layers of income. Forty-nine AI agents. See the consequences before you live them.">
   <meta name="twitter:image" content="https://simulacrumai.io/static/icons/simulacrum-icon-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -721,7 +721,7 @@
           <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
         </svg>
       </div>
-      <span>SimulacrumAI.io</span>
+      <span>SimiSI</span>
     </a>
     <div class="lp-nav-links">
       <a href="#model"        class="lp-nav-link" data-spy="model">The Model</a>
@@ -789,7 +789,7 @@
            dances, then idles" is not what to say about a sign-in link. #}
         <div class="walker">
           <a href="{{ url_for('pages.login_page') }}"
-             aria-label="Sign in to Simulacrum" title="Sign in to Simulacrum">
+             aria-label="Sign in to SimiSI" title="Sign in to SimiSI">
             <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true" focusable="false">
               <defs>
@@ -882,7 +882,7 @@
         Career-to-Wealth Simulation
       </div>
       <h1 class="hero-h1">See the five ways your career becomes wealth — <em>before you live any of them.</em></h1>
-      <p class="hero-sub">Simulacrum reads your resume, simulates your next twenty-four months across five layers of income, and deploys forty-nine AI agents to execute the path you choose. Run the decision forward before you commit a single real month to it.</p>
+      <p class="hero-sub">SimiSI reads your resume, simulates your next twenty-four months across five layers of income, and deploys forty-nine AI agents to execute the path you choose. Run the decision forward before you commit a single real month to it.</p>
       <div class="hero-ctas">
         <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold">Run your first simulation</a>
         <a href="{{ url_for('pages.register_page') }}" class="btn btn-ghost">Get your free bio page →</a>
@@ -956,7 +956,7 @@
   <div class="lp-c">
     <span class="s-label fade-up">The Model</span>
     <h2 class="s-h2 fade-up">One resume. Five layers. Forty-nine agents.</h2>
-    <p class="lp-lead fade-up">Most careers stall on Layer 1 — trading time for money — and never see the four layers above it. Simulacrum maps your whole engine and shows how income compounds into wealth, layer by layer.</p>
+    <p class="lp-lead fade-up">Most careers stall on Layer 1 — trading time for money — and never see the four layers above it. SimiSI maps your whole engine and shows how income compounds into wealth, layer by layer.</p>
     <div class="ladder">
       <div class="ladder-arrow fade-up">▲ each layer builds on the one below</div>
       <div class="layer fade-up" style="background:rgba(201,149,42,.12);">
@@ -1016,7 +1016,7 @@
       </div>
     </div>
     <div class="lp-callout fade-up">
-      <b>Why layers?</b> You can't productize (L3) expertise you haven't learned to sell one-to-one (L1), or deploy wealth (L5) the first four layers haven't produced yet. Simulacrum runs them in the right order — and a Bayesian orchestrator decides which agent to fire when.
+      <b>Why layers?</b> You can't productize (L3) expertise you haven't learned to sell one-to-one (L1), or deploy wealth (L5) the first four layers haven't produced yet. SimiSI runs them in the right order — and a Bayesian orchestrator decides which agent to fire when.
     </div>
   </div>
 </section>
@@ -1058,7 +1058,7 @@
   <div class="lp-c">
     <span class="s-label fade-up">Why you can trust it</span>
     <h2 class="s-h2 fade-up">Numbers you can actually stand behind.</h2>
-    <p class="lp-lead fade-up">Most tools generate a plausible-sounding number and hope you believe it. Simulacrum shows its work.</p>
+    <p class="lp-lead fade-up">Most tools generate a plausible-sounding number and hope you believe it. SimiSI shows its work.</p>
     <div class="proof3">
       <div class="pcard fade-up d1">
         <div class="k">Calibrated</div>
@@ -1113,7 +1113,7 @@
   <div class="lp-c">
     <div class="bss-wrap">
       <div class="bss-inner">
-        <span class="bss-label">On Simulacrum</span>
+        <span class="bss-label">On SimiSI</span>
         {% for p in recent_bio_pages %}
         <a class="bss-card" href="{{ url_for('public.profile_page', username=p.slug) }}">
           {% if p.avatar_path %}
@@ -1323,7 +1323,7 @@
           Do I need all nine integrations?
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-a"><div class="faq-a-inner">No — all integrations are optional. Simulacrum works fully without connecting any third-party tool. Connecting Cal.com, Kajabi, Apollo, or Stripe simply unlocks richer automation for each deliverable. Your bio page and AI chat are live from the moment you upload your resume.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">No — all integrations are optional. SimiSI works fully without connecting any third-party tool. Connecting Cal.com, Kajabi, Apollo, or Stripe simply unlocks richer automation for each deliverable. Your bio page and AI chat are live from the moment you upload your resume.</div></div>
       </div>
     </div>
   </div>

@@ -133,7 +133,7 @@ def main():
     check('the lean survives a wrapper round the svg',
           '.walker.walking svg{' in tpl and '.walker.walking > svg' not in tpl)
     check('the link names its destination',
-          'aria-label="Sign in to Simulacrum"' in tpl)
+          'aria-label="Sign in to SimiSI"' in tpl)
     check('the artwork is hidden from assistive tech, so the name is stated once',
           'aria-hidden="true" focusable="false"' in tpl
           and 'aria-label="Simulacrum mascot"' not in tpl)
