@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # land on something readable in the SERP.
 TITLE_SUFFIX = 'Professional AI Agent Simulation Bio | AI agent career builder'
 
-SITE_NAME = 'Simulacrum'
+SITE_NAME = 'SimiSI'
 
 # Google truncates around 155-160 characters; past that we are writing for
 # nobody. Titles get more room but still want a ceiling.
@@ -72,7 +72,7 @@ def meta_description(full_name: str, professional_title: str = '',
             text = ('%s is a %s. See the career-to-wealth simulation behind this '
                     'bio and the AI agents building it.' % (name, role))
         else:
-            text = ('%s on Simulacrum. See the career-to-wealth simulation behind '
+            text = ('%s on SimiSI. See the career-to-wealth simulation behind '
                     'this bio and the AI agents building it.' % name)
     if len(text) <= MAX_DESCRIPTION:
         return text

@@ -1,4 +1,4 @@
-/* Simulacrum floating badge embed — simulacrumai.io/embed/{{ slug }}.js */
+/* SimiSI floating badge embed — simulacrumai.io/embed/{{ slug }}.js */
 (function () {
   if (document.getElementById('sim-badge-{{ slug }}')) return;
   var NAME     = {{ name | tojson }};
@@ -42,7 +42,7 @@
       '<div class="sim-card-name">' + NAME + '</div>' +
     '</div>' +
     '<a class="sim-card-cta" href="' + BIO_URL + '" target="_blank" rel="noopener">Chat with me</a>' +
-    '<div class="sim-powered"><a href="https://simulacrumai.io?src=embed" target="_blank" rel="noopener">Powered by Simulacrum</a></div>';
+    '<div class="sim-powered"><a href="https://simulacrumai.io?src=embed" target="_blank" rel="noopener">Powered by SimiSI</a></div>';
 
   document.body.appendChild(badge);
   document.body.appendChild(card);
