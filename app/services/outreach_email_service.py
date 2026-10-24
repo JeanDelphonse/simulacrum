@@ -96,7 +96,7 @@ def send_outreach_email(
             click_tracking=ClickTracking(enable=True, enable_text=True),
         )
 
-        # Reply-to routes through Simulacrum for inbound parse tracking,
+        # Reply-to routes through SimiSI for inbound parse tracking,
         # but points back to the user so replies also reach their inbox.
         base_domain = current_app.config.get('INBOUND_PARSE_DOMAIN', 'mail.simulacrumai.io')
         message.reply_to = f'reply-{contact_id}@{base_domain}'

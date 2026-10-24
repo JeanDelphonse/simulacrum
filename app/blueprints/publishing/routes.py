@@ -43,7 +43,7 @@ def serve_artifact(artifact_version_id):
 @publishing_bp.route('/p/<slug>')
 def serve_page(slug):
     """
-    Serve a Simulacrum-hosted sales/landing page by slug.
+    Serve a SimiSI-hosted sales/landing page by slug.
     No auth required — these are intentionally public.
     """
     from app.models.published_page import PublishedPage

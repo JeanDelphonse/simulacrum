@@ -1,6 +1,6 @@
 /**
  * orchestrator_diagram.js
- * Interactive Orchestrator Cycle Diagram — Simulacrum Layer 6
+ * Interactive Orchestrator Cycle Diagram — SimiSI Layer 6
  * Vanilla JS, no framework dependencies. D3 v7 optional (loaded from CDN).
  * Expects: SIM_ID, basePath, API globals from layer6.html
  */

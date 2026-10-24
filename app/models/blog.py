@@ -1,5 +1,5 @@
 """
-PRD-SIM-BLOG-001 - The Community Blog ("The Simulacrum Journal").
+PRD-SIM-BLOG-001 - The Community Blog ("The SimiSI Journal").
 
 Models: BlogPost, BlogLike, BlogComment, BlogCommentLike, BlogReport.
 

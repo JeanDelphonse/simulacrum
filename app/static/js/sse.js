@@ -1,5 +1,5 @@
 /**
- * Simulacrum Simulation Poller
+ * SimiSI Simulation Poller
  * Polls GET /api/simulations/<id> every 3 s instead of holding an SSE connection open.
  * A long-lived SSE connection would monopolize Passenger's worker thread and block
  * navigation. Short polling releases the worker between requests.

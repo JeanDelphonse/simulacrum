@@ -945,7 +945,7 @@ def admin_outreach_view():
 def admin_contacts_view():
     """Admin Contacts — the founder's own outreach pipeline (SIM-PRD-CRM-001).
 
-    The prospects here are firms Simulacrum is selling TO, which is the opposite
+    The prospects here are firms SimiSI is selling TO, which is the opposite
     direction from every other 'contacts' view in the app. Admin-only (FR-CRM-01).
     """
     if not current_user.is_admin:

@@ -1,6 +1,6 @@
-# Simulacrum Project Review Report
+# SimiSI Project Review Report
 
-This report provides an in-depth audit of the Simulacrum codebase, evaluating its functional alignment with the Product Requirements Documents (PRDs) and its technical readiness for deployment on GoDaddy Managed Servers (Passenger WSGI).
+This report provides an in-depth audit of the SimiSI codebase, evaluating its functional alignment with the Product Requirements Documents (PRDs) and its technical readiness for deployment on GoDaddy Managed Servers (Passenger WSGI).
 
 ---
 

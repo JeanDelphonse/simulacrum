@@ -1,6 +1,6 @@
 """
 Content Publishing Pipeline (SIM-PRD-PUB-001).
-Handles Simulacrum-hosted artifact URLs, sales page deployment, and ConvertKit integration.
+Handles SimiSI-hosted artifact URLs, sales page deployment, and ConvertKit integration.
 """
 from __future__ import annotations
 import re
@@ -28,7 +28,7 @@ CONVERTKIT_ACTION_TYPES = {'waitlist_landing_page', 'lead_magnet_funnel'}
 
 def publish_artifact_url(artifact_version_id: str) -> str | None:
     """
-    Assign a Simulacrum-hosted public URL to an existing ArtifactVersion.
+    Assign a SimiSI-hosted public URL to an existing ArtifactVersion.
     Returns the public_url string, or None if the version has no content.
     """
     from app.models.artifact import ArtifactVersion

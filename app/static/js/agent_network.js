@@ -1,5 +1,5 @@
 /**
- * agent_network.js — Simulacrum Agent Network Visualization
+ * agent_network.js — SimiSI Agent Network Visualization
  * Full 26-node 7-tier force-directed D3.js diagram with inspector panels,
  * SSE particle animation, breadcrumb trail, and diff mode.
  * PRD: SIM-PRD-VIZ-002

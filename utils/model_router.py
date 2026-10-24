@@ -14,7 +14,7 @@ class ModelTier(str, Enum):
 
 # ── Model IDs ────────────────────────────────────────────────────────────────
 # DO NOT use claude-opus-4-7: new tokenizer adds up to 35% tokens for same input.
-# Pin Opus to 4.6 until tokenizer benchmarking is complete against Simulacrum prompts.
+# Pin Opus to 4.6 until tokenizer benchmarking is complete against SimiSI prompts.
 
 MODELS = {
     ModelTier.HAIKU:  'claude-haiku-4-5-20251001',

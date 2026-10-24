@@ -1,6 +1,6 @@
 """SIM-PRD-CRM-001 — Admin Outreach Pipeline models.
 
-The founder's own sales pipeline: firms Simulacrum is selling TO. Deliberately
+The founder's own sales pipeline: firms SimiSI is selling TO. Deliberately
 separate from the per-user lead CRM (app/models/contact.py) and the per-org
 shared CRM — this is admin-only and never surfaced to users, SMEs or org admins.
 """

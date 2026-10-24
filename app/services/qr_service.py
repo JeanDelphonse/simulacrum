@@ -22,7 +22,7 @@ from flask import current_app
 
 logger = logging.getLogger(__name__)
 
-# Simulacrum palette
+# SimiSI palette
 NAVY = '#0D1B3E'
 NAVY_RGB = (13, 27, 62)
 TEAL_RGB = (19, 168, 158)

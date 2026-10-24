@@ -2243,7 +2243,7 @@ def sme_coverage():
 
 # ── SIM-PRD-CRM-001: Admin Outreach Pipeline ─────────────────────────────────
 #
-# The founder's own sales pipeline for firms Simulacrum is selling TO. Every
+# The founder's own sales pipeline for firms SimiSI is selling TO. Every
 # route here is admin-only: this data is never exposed to users, SMEs or org
 # admins (FR-CRM-01).
 

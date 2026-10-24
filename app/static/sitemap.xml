@@ -65,7 +65,7 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- The Simulacrum Journal (PRD-SIM-BLOG-001). Only the index is listed:
+  <!-- The SimiSI Journal (PRD-SIM-BLOG-001). Only the index is listed:
        posts are member-authored and appear continuously, and the feed links
        every one of them, so a crawler reaches them from here. -->
   <url>

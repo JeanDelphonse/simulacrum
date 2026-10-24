@@ -42,7 +42,7 @@ _SOC_RE = re.compile(r'^\d{2}-\d{4}$')
 # Keys cover both vocabularies in the codebase: the 8 canonical
 # expertise_categories slugs and the 15 agents.json expertise_relevance keys.
 # The SOC chosen is the closest *individual-contributor professional* match,
-# because that is the population Simulacrum's users belong to.
+# because that is the population SimiSI's users belong to.
 ZONE_TO_SOC = {
     'consulting':   '13-1111',   # Management Analysts
     'operations':   '11-1021',   # General and Operations Managers
@@ -62,7 +62,7 @@ ZONE_TO_SOC = {
 }
 
 # Last-resort occupation when no zone matches at all. Management Analysts is the
-# broadest professional-services occupation and the one most Simulacrum users
+# broadest professional-services occupation and the one most SimiSI users
 # read against, but a cohort that lands here is a proxy and is tiered as such.
 DEFAULT_SOC = '13-1111'
 
