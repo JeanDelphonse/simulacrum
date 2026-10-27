@@ -1,0 +1,88 @@
+You are performing a BRAND MIGRATION of the Simulacrum codebase: rebrand the
+product from "Simulacrum" / "SimulacrumAI" (simulacrumai.io) to "SimiSI"
+(simisi.io). This is a user-facing rename, NOT a refactor — do it safely and
+incrementally, not as one global find-replace.
+
+## Canonical brand (single source of truth — use exactly these)
+- Wordmark / display name:            SimiSI
+- All-lower (domains, handles, slugs): simisi
+- All-caps (constants in COPY only):   SIMISI
+- Primary domain:                      simisi.io
+- Old domain (kept, redirected):       simulacrumai.io
+
+## HARD RULES — read before touching anything
+1. BRANCH FIRST: `git checkout -b rebrand/simisi`. Never work on main.
+2. DO NOT CHANGE THE EMAIL. The address `simi@simulacrumai.io` stays EXACTLY as
+   is, everywhere it appears. Never rewrite it, and never rewrite the string
+   `simulacrumai.io` when it is part of that email address or any @…
+   mail context. When in doubt about a `simulacrumai.io` occurrence, leave it
+   and flag it in the plan.
+3. CHANGE BRAND + DOMAIN REFERENCES ONLY. By default, change only user-facing
+   brand text, marketing/UI copy, generated-artifact content, page titles,
+   meta/OG/SEO tags, canonical URLs, alt/ARIA text, documentation, and web
+   links/domains. 
+4. DO NOT rename technical identifiers by default — variable/function/class
+   names, DB table/column names, env-var KEYS, package/module names, migration
+   files already applied, stored primary keys, API field names, or anything
+   that would change behavior, break imports, or require a data migration.
+   List every such occurrence in the plan and WAIT for my explicit approval
+   before changing any of them. (My default answer will be: leave them.)
+5. NEVER touch: .git/, node_modules/, vendored/third-party code, LICENSE files,
+   lockfiles, or historical/applied DB migration files.
+6. Preserve behavior. This rename must not change any logic. Do not change the
+   simulation price or any admin-configurable value.
+7. Work in small, reviewable commits by area. Run the build + tests after each;
+   stop if anything goes red.
+
+## Casing / replacement map (apply only in the allowed contexts from Rule 3)
+  "SimulacrumAI" | "Simulacrum AI" | "Simulacrum"  ->  SimiSI
+  "simulacrum" (lowercase display/handle/slug)     ->  simisi
+  "SIMULACRUM"                                      ->  SIMISI
+  "simulacrumai.io" (as a web URL/link/canonical)  ->  simisi.io
+  EXCEPTION (never change): "simi@simulacrumai.io"
+
+## PHASE 1 — INVENTORY (read-only, NO edits)
+Scan the whole repo and write /REBRAND_PLAN.md containing:
+1. A table: every distinct variant of the brand/domain string, its occurrence
+   count, and the file areas it appears in.
+2. A classification of each occurrence group as one of:
+   (a) BRAND/DISPLAY — safe to change,
+   (b) EMAIL/MAIL-CONTEXT — must NOT change (list every one so I can confirm),
+   (c) TECHNICAL IDENTIFIER — do not change by default; list for my decision,
+   (d) AMBIGUOUS — needs my ruling.
+3. The specific surfaces to update, grouped: UI components, marketing/landing
+   pages, bio-page template, email TEMPLATE bodies (copy only — not the
+   from-address), generated-artifact / report / PDF / export content, SEO
+   (title/meta/OG/Twitter/canonical/sitemap/robots), manifest.json + favicon +
+   logo asset filenames + alt text, README/docs, and config/constants holding a
+   display name or web URL.
+4. A separate "MANUAL / INFRA — do not attempt in code" list for me to do:
+   register simisi.io; 301-redirect simulacrumai.io -> simisi.io; KEEP
+   simulacrumai.io's MX/DNS so simi@ email keeps working; update analytics
+   property, OAuth redirect URIs, and any external dashboards.
+Do not edit any file in this phase.
+
+## PHASE 2 — PLAN
+From the inventory, propose the ordered edit batches (by the surface groups
+above), each with scope, risk, and how it'll be verified. Explicitly ask me to
+rule on the TECHNICAL IDENTIFIER and AMBIGUOUS groups. Wait for approval.
+
+## PHASE 3 — EXECUTE (one approved batch at a time)
+For each batch: make the edits (brand/display + domain only, honoring the email
+exception and the casing map), update any affected tests/snapshots, run the full
+build + test suite, and if green, commit with a clear message
+(`rebrand(simisi): <area>`). Then STOP and show me the diff before the next
+batch. Re-render or describe key user-facing pages (home, bio page, a generated
+artifact) so I can eyeball the brand.
+
+## VERIFICATION (after all batches)
+- Grep the repo for any remaining "simulacrum" (case-insensitive). Every
+  survivor must be EITHER the `simi@simulacrumai.io` email OR an approved
+  kept-identifier — list them and confirm nothing else remains.
+- Confirm the build passes, tests pass, and no route/link/asset 404s from a
+  renamed path. List any asset files you renamed and the references you updated
+  to match.
+- Produce /REBRAND_REPORT.md: what changed by area, what was intentionally
+  kept (email + identifiers), and the outstanding MANUAL/INFRA checklist.
+
+Start with PHASE 1 only. Write /REBRAND_PLAN.md and wait.
