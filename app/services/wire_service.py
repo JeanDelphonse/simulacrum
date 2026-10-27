@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Integration provider keys — match UserIntegration.provider values
 APOLLO     = 'apollo'
-CALCOM     = 'cal.com'
+CALCOM     = 'cal'        # UserIntegration.provider for Cal.com
 CONVERTKIT = 'convertkit'
 PANDADOC   = 'pandadoc'
 STRIPE     = 'stripe'
@@ -31,43 +31,53 @@ LINKEDIN   = 'linkedin'
 # independently; missing or failed integrations escalate to GCC action items.
 
 AGENT_INTEGRATION_MAP: dict[str, list[str]] = {
+    # Canonical action_type keys only (config/agents.json). 13 entries used to sit
+    # under legacy aliases (coaching_curriculum, launch_email_sequence, ...), so
+    # those agents never deployed anywhere. Lookups resolve aliases first.
     # ── L1 Active Income ─────────────────────────────────────────────────
     'cold_email_campaign':          [APOLLO, CONVERTKIT],
     'consulting_outreach':          [APOLLO, PANDADOC, CALCOM],
-    'outreach_email':               [APOLLO],
     'referral_network':             [APOLLO],
     'booking_page':                 [CALCOM],
     'consulting_proposal':          [PANDADOC, STRIPE, CALCOM, LINKEDIN],
-    'consulting_agreement':         [PANDADOC, STRIPE],
+    'agreement_template':           [PANDADOC, STRIPE],
     'rate_card':                    [PANDADOC],
-    'social_proof':                 [APOLLO],
-    'linkedin_optimize':            [LINKEDIN],
+    'linkedin_optimization':        [LINKEDIN],
 
     # ── L2 Leveraged Delivery ─────────────────────────────────────────────
     'speaking_proposals':           [APOLLO, CALCOM, CONVERTKIT, LINKEDIN],
     'speaker_fee_rider':            [PANDADOC],
-    'coaching_curriculum':          [CALCOM, CONVERTKIT, STRIPE, KAJABI],
-    'corporate_training_proposal':  [APOLLO, PANDADOC],
-    'workshop_content':             [CALCOM, CONVERTKIT, PANDADOC, APOLLO],
+    'group_coaching':               [CALCOM, CONVERTKIT, STRIPE, KAJABI],
+    'corporate_training':           [APOLLO, PANDADOC],
+    'workshop_curriculum':          [CALCOM, CONVERTKIT, PANDADOC, APOLLO],
     'waitlist_landing_page':        [CONVERTKIT],
     'alumni_reactivation':          [APOLLO, CONVERTKIT],
 
     # ── L3 Productized Income ─────────────────────────────────────────────
-    'course_framework':             [KAJABI, STRIPE, CONVERTKIT, LINKEDIN, CALCOM],
+    'course_curriculum':            [KAJABI, STRIPE, CONVERTKIT, LINKEDIN, CALCOM],
     'sales_page':                   [STRIPE, CONVERTKIT],
-    'ebook_guide':                  [CONVERTKIT, KAJABI],
-    'launch_email_sequence':        [CONVERTKIT],
+    'ebook_outline':                [CONVERTKIT, KAJABI],
+    'launch_sequence':              [CONVERTKIT],
     'affiliate_program':            [APOLLO, CONVERTKIT],
-    'membership_structure':         [KAJABI, STRIPE, CONVERTKIT],
-    'lapsed_buyer_reactivation':    [CONVERTKIT],
+    'membership':                   [KAJABI, STRIPE, CONVERTKIT],
+    'lapsed_buyer':                 [CONVERTKIT],
 
     # ── L4 Automated / Residual ───────────────────────────────────────────
-    'funnel_design':                [CONVERTKIT, CALCOM],
-    'newsletter_monetization':      [CONVERTKIT, STRIPE],
+    'newsletter':                   [CONVERTKIT, STRIPE],
     'lead_magnet_funnel':           [CONVERTKIT, CALCOM, LINKEDIN],
     'seo_content_calendar':         [LINKEDIN],
-    'youtube_podcast':              [LINKEDIN, CONVERTKIT],
-    'community_flywheel':           [CONVERTKIT, LINKEDIN],
+    'video_podcast':                [LINKEDIN, CONVERTKIT],
+    'community':                    [CONVERTKIT, LINKEDIN],
+}
+
+# Providers whose deploy reaches people outside the user's account, and the
+# autonomy channel (Layer6Config.channel_approvals) that must be approved first.
+# PandaDoc sends a document for signature to a CRM contact; ConvertKit enrols
+# contacts in sequences that email them; LinkedIn publishes.
+PROVIDER_CHANNEL: dict[str, str] = {
+    PANDADOC:   'email',
+    CONVERTKIT: 'email_funnels',
+    LINKEDIN:   'linkedin',
 }
 
 
@@ -193,7 +203,7 @@ def _deploy_convertkit(rec, *, user_id, action_type, artifact, simulation_id,
 
     # For launch_email_sequence: try to find sequences in the artifact
     sequences_added = 0
-    if action_type in ('launch_email_sequence', 'funnel_design', 'waitlist_landing_page'):
+    if action_type in ('launch_sequence', 'lead_magnet_funnel', 'waitlist_landing_page'):
         try:
             data = json.loads(artifact)
             sequences = client.list_sequences()
@@ -397,11 +407,14 @@ def deploy_to_integration(
     but Stripe succeeds, Stripe objects are live and Apollo escalates.
     Returns {'deployed': [...], 'escalated': [...], 'skipped': [...]}.
     """
+    from app.services.agent_registry import resolve_alias
+    action_type = resolve_alias(action_type)
     chain = AGENT_INTEGRATION_MAP.get(action_type, [])
     if not chain:
         return {'deployed': [], 'escalated': [], 'skipped': [], 'no_chain': True}
 
     active = _load_integrations(user_id)
+    approvals = _channel_approvals(simulation_id)
     logger.info('wire_service: deploying %s → %s (active: %s)',
                 action_type, chain, list(active.keys()))
 
@@ -422,10 +435,17 @@ def deploy_to_integration(
     for provider in chain:
         rec = active.get(provider)
         if rec is None:
-            # Integration not connected — escalate with a GCC action item
-            _escalate(user_id, simulation_id, action_id, action_type, provider,
-                      reason='Integration not connected')
-            escalated.append(provider)
+            # Not connected: skip quietly. The artifact's "connect to activate"
+            # card (SIM-PRD-CONNECT-001 activation_state) is the user-facing prompt;
+            # a notification per unconnected provider per run was pure noise.
+            skipped.append(provider)
+            continue
+
+        channel = PROVIDER_CHANNEL.get(provider)
+        if channel and not approvals.get(channel, False):
+            logger.info('wire_service: %s → %s held — channel %r not approved',
+                        action_type, provider, channel)
+            skipped.append(provider)
             continue
 
         deployer = _DEPLOYERS.get(provider)
@@ -450,6 +470,18 @@ def deploy_to_integration(
     logger.info('wire_service: %s — deployed=%s escalated=%s skipped=%s',
                 action_type, deployed, escalated, skipped)
     return {'deployed': deployed, 'escalated': escalated, 'skipped': skipped}
+
+
+def _channel_approvals(simulation_id: str) -> dict:
+    """Layer 6 channel approvals — the model defaults when Layer 6 isn't set up
+    for this simulation; fail closed (nothing approved) if unreadable."""
+    try:
+        from app.models.layer6 import Layer6Config
+        cfg = Layer6Config.query.filter_by(simulation_id=simulation_id).first()
+        return (cfg or Layer6Config()).channel_approvals
+    except Exception as exc:
+        logger.warning('wire_service: channel approvals unreadable for %s: %s', simulation_id, exc)
+        return {}
 
 
 # ---------------------------------------------------------------------------

@@ -35,10 +35,7 @@ _ROUTING: dict[str, ModelTier] = {
     'booking_page':                ModelTier.HAIKU,
     'roi_calculator':              ModelTier.HAIKU,
     'linkedin_optimization':       ModelTier.HAIKU,
-    'pitch_deck_outline':          ModelTier.HAIKU,
-    'sow_template':                ModelTier.HAIKU,
     'negotiation_script':          ModelTier.HAIKU,
-    'agreement_template':          ModelTier.HAIKU,
     'referral_network':            ModelTier.HAIKU,
     # L2 — structured lists, templates, email sequences
     'speaker_fee_rider':           ModelTier.HAIKU,
@@ -65,23 +62,12 @@ _ROUTING: dict[str, ModelTier] = {
     'community':                   ModelTier.HAIKU,
     'ip_licensing':                ModelTier.HAIKU,
     'programmatic_ads':            ModelTier.HAIKU,
-    'seo_content_calendar':        ModelTier.HAIKU,
     # L5 — financial strategy, projections, allocation
-    'income_allocation':           ModelTier.HAIKU,
     'projections':                 ModelTier.HAIKU,
-    'fund_recommendations':        ModelTier.HAIKU,
     'real_estate_strategy':        ModelTier.HAIKU,
     'insurance_review':            ModelTier.HAIKU,
     # Structured calculation/analysis helpers (all layers)
-    'compound_projections':        ModelTier.HAIKU,
     'dca_schedule':                ModelTier.HAIKU,
-    'workshop_roi':                ModelTier.HAIKU,
-    'competitive_pricing':         ModelTier.HAIKU,
-    'testimonial_system':          ModelTier.HAIKU,
-    'lapsed_buyer_reactivation':   ModelTier.HAIKU,
-    'template_pack_spec':          ModelTier.HAIKU,
-    'compound_growth':             ModelTier.HAIKU,
-    'insurance_gap_analysis':      ModelTier.HAIKU,
     'competitor_research':         ModelTier.HAIKU,
     # Orchestrator / system calls
     'orchestrator_reasoning':      ModelTier.HAIKU,
@@ -92,6 +78,9 @@ _ROUTING: dict[str, ModelTier] = {
     'contact_score':               ModelTier.HAIKU,
     'intent_classify':             ModelTier.HAIKU,
     'consulting_outreach_research': ModelTier.HAIKU,
+    # Planning pass that precedes every agent's generation call — a structured
+    # outline/assumptions JSON from the briefing; cheap by design.
+    'agent_planning':              ModelTier.HAIKU,
     # SIM-PRD-CAL-001 — cohort keys and numeric-field extraction are pure
     # structured-output tasks; Haiku is the right tier and keeps the Calibration
     # Layer's marginal cost per artifact effectively nil.
@@ -111,6 +100,11 @@ _ROUTING: dict[str, ModelTier] = {
     'sales_page':                  ModelTier.SONNET,  # long-form persuasive copy
     'video_podcast':               ModelTier.SONNET,  # 3 full episode scripts
     'saas_product_spec':           ModelTier.SONNET,  # complex product specification
+    'sow_template':                ModelTier.SONNET,  # contract terms — not a Haiku task
+    'agreement_template':          ModelTier.SONNET,  # legal clauses (IP, liability)
+    'seo_content_calendar':        ModelTier.SONNET,  # 36 titles + 5 drafted articles
+    'income_allocation':           ModelTier.SONNET,  # root of every L5 agent
+    'fund_recommendations':        ModelTier.SONNET,  # named funds feed IPS + DCA
     # ── HAIKU — bio chat classification and simple questions ─────────────
     'bio_chat_classify':           ModelTier.HAIKU,
     'bio_chat_simple':             ModelTier.HAIKU,

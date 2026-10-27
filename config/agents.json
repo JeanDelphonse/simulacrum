@@ -77,7 +77,19 @@
         "legal": 0.7,
         "real_estate": 0.7
       },
-      "description_template": "Rate card and pricing tiers for {primary_expertise} professionals"
+      "description_template": "Rate card and pricing tiers for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Positioning statement (1-2 sentences)",
+        "Three service tiers with scope, deliverables, timeline and price",
+        "Engagement terms (payment, minimums, rush fees)",
+        "Walk-away rate and floor rationale",
+        "Capability one-pager: outcomes, proof points, ideal client"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "linkedin_optimization",
@@ -156,7 +168,18 @@
         "legal": 0.65,
         "real_estate": 0.7
       },
-      "description_template": "LinkedIn headline and profile for {primary_expertise} experts"
+      "description_template": "LinkedIn headline and profile for {primary_expertise} experts",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "linkedin",
+      "output_spec": [
+        "Three headline options (<=220 chars) with the recommended one marked",
+        "About section (first 3 lines optimised for the fold)",
+        "Featured section: 3 items with titles and descriptions",
+        "Call to action consistent with the rate card offer"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "booking_page",
@@ -232,13 +255,25 @@
         "legal": 0.75,
         "real_estate": 0.65
       },
-      "description_template": "Booking page configuration for {primary_expertise} engagements"
+      "description_template": "Booking page configuration for {primary_expertise} engagements",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Session types with duration, price and description",
+        "Availability rules and buffer times",
+        "Intake questions per session type",
+        "Confirmation and reminder message copy",
+        "Cancellation/no-show policy"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "cold_email_campaign",
       "layer": 1,
       "label": "Execute Cold Email Campaign",
-      "description": "Research and build a 25-company prospect list with a 3-step email sequence per company.",
+      "description": "Build a prospect list sized to your plan with a 3-step email sequence per prospect.",
       "model": "sonnet",
       "cold_start_chain": true,
       "cold_start_order": 4,
@@ -312,7 +347,18 @@
         "legal": 0.6,
         "real_estate": 0.7
       },
-      "description_template": "Cold outreach campaign targeting {primary_expertise} buyers"
+      "description_template": "Cold outreach campaign targeting {primary_expertise} buyers",
+      "produces_contacts": true,
+      "contacts_mode": "create",
+      "research_enabled": true,
+      "autonomy_channel": null,
+      "output_spec": [
+        "One entry per supplied prospect",
+        "Step 1 opener tied to a specific prospect signal",
+        "Steps 2-3 short, non-repetitive nudges",
+        "Single clear CTA per email"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "consulting_outreach",
@@ -402,13 +448,24 @@
         "legal": 0.7,
         "real_estate": 0.7
       },
-      "description_template": "Consulting outreach to {primary_expertise} decision-makers"
+      "description_template": "Consulting outreach to {primary_expertise} decision-makers",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "email",
+      "output_spec": [
+        "One email per researched prospect",
+        "Opener grounded in a real personalization signal",
+        "Value framed with the rate card offer",
+        "Exactly one CTA"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "role_search",
       "layer": 1,
       "label": "Search Active Fractional & Contract Roles",
-      "description": "Surface 15–20 active fractional and contract postings matched to your Expertise Zone.",
+      "description": "Surface fractional and contract opportunities matched to your Expertise Zone, with hiring contacts sized to your plan.",
       "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.5,
@@ -479,7 +536,20 @@
         "legal": 0.75,
         "real_estate": 0.5
       },
-      "description_template": "Fractional and contract {primary_expertise} role opportunities"
+      "description_template": "Fractional and contract {primary_expertise} role opportunities",
+      "produces_contacts": true,
+      "contacts_mode": "create",
+      "research_enabled": true,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Search criteria used (titles, rate floor, locations, exclusions)",
+        "Opportunity list with fit rationale per item",
+        "Hiring contacts from the supplied prospect list",
+        "Application/outreach next step per opportunity"
+      ],
+      "external_facts": [
+        "specific open job postings, their rates and links"
+      ]
     },
     {
       "action_type": "consulting_proposal",
@@ -563,7 +633,19 @@
         "legal": 0.75,
         "real_estate": 0.6
       },
-      "description_template": "Consulting proposal template for {primary_expertise} projects"
+      "description_template": "Consulting proposal template for {primary_expertise} projects",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Executive summary of the client problem",
+        "Scope, approach and deliverables",
+        "Timeline with milestones",
+        "Investment options anchored to the rate card tiers",
+        "Companion SOW summary and next steps"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "sow_template",
@@ -645,7 +727,19 @@
         "legal": 0.85,
         "real_estate": 0.55
       },
-      "description_template": "Statement of Work template for {primary_expertise} engagements"
+      "description_template": "Statement of Work template for {primary_expertise} engagements",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Parties and project overview",
+        "Deliverables with acceptance criteria",
+        "Milestone timeline",
+        "Payment schedule tied to milestones",
+        "Change-request and assumptions clauses"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "agreement_template",
@@ -721,14 +815,27 @@
         "legal": 0.95,
         "real_estate": 0.7
       },
-      "description_template": "Consulting agreement template for {primary_expertise} clients"
+      "description_template": "Consulting agreement template for {primary_expertise} clients",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Parties, term and scope reference",
+        "Fees, invoicing and late payment",
+        "IP ownership and licence-back",
+        "Confidentiality and non-solicitation",
+        "Termination, liability cap and governing law",
+        "Not-legal-advice notice"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "referral_network",
       "layer": 1,
-      "label": "Activate Referral Network (×15 Messages)",
-      "description": "Draft 15 personalized referral request messages to top contacts.",
-      "model": "sonnet",
+      "label": "Activate Referral Network",
+      "description": "Draft personalized referral request messages, one per contact, sized to your plan.",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.28,
       "prerequisites": [
@@ -800,7 +907,18 @@
         "legal": 0.8,
         "real_estate": 0.85
       },
-      "description_template": "Referral network activation for {primary_expertise} professionals"
+      "description_template": "Referral network activation for {primary_expertise} professionals",
+      "produces_contacts": true,
+      "contacts_mode": "create",
+      "research_enabled": true,
+      "autonomy_channel": "email",
+      "output_spec": [
+        "Referral offer derived from the rate card",
+        "One personalised message per supplied contact",
+        "Referral incentive and how to make an intro",
+        "Follow-up cadence"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "negotiation_script",
@@ -872,14 +990,26 @@
         "legal": 0.8,
         "real_estate": 0.75
       },
-      "description_template": "Rate negotiation coaching for {primary_expertise} contracts"
+      "description_template": "Rate negotiation coaching for {primary_expertise} contracts",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Anchor statement using the rate card",
+        "Responses to the three most likely objections",
+        "Counter-offer ladder that never goes below the walk-away rate",
+        "Value trades instead of discounts",
+        "Walk-away script"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "speaking_proposals",
       "layer": 2,
       "label": "Research & Submit Speaking Proposals",
-      "description": "Find 20 matched conferences and podcasts with pre-drafted CFP proposals.",
-      "model": "sonnet",
+      "description": "Find matched conferences and podcasts with pre-drafted CFP proposals, one pitch per organizer contact.",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.48,
       "prerequisites": [
@@ -964,7 +1094,20 @@
         "legal": 0.65,
         "real_estate": 0.6
       },
-      "description_template": "Speaking proposals for {primary_expertise} conferences and events"
+      "description_template": "Speaking proposals for {primary_expertise} conferences and events",
+      "produces_contacts": true,
+      "contacts_mode": "create",
+      "research_enabled": true,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Speaker bio drawn from the LinkedIn/rate card artifacts",
+        "Two or three talk abstracts with titles and takeaways",
+        "One pitch per supplied organiser contact",
+        "Target event list marked illustrative where unverified"
+      ],
+      "external_facts": [
+        "conference names, dates, CFP deadlines and submission links"
+      ]
     },
     {
       "action_type": "speaker_fee_rider",
@@ -1043,14 +1186,27 @@
         "legal": 0.65,
         "real_estate": 0.55
       },
-      "description_template": "Speaker fee structure for {primary_expertise} keynotes"
+      "description_template": "Speaker fee structure for {primary_expertise} keynotes",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Tiered fee table by event type",
+        "Travel and logistics rider",
+        "AV/technical requirements",
+        "Fee-negotiation response template"
+      ],
+      "external_facts": [
+        "market speaking-fee benchmarks"
+      ]
     },
     {
       "action_type": "group_coaching",
       "layer": 2,
       "label": "Design Group Coaching Program & Curriculum",
       "description": "Create a structured multi-week group coaching program with CRM setup.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.45,
       "prerequisites": [
@@ -1125,14 +1281,26 @@
         "legal": 0.5,
         "real_estate": 0.5
       },
-      "description_template": "Group coaching program for {primary_expertise} professionals"
+      "description_template": "Group coaching program for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Program promise and ideal participant",
+        "Week-by-week curriculum with outcomes",
+        "Session format and community cadence",
+        "Pricing anchored to the rate card",
+        "Enrollment and CRM/tagging setup steps"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "workshop_curriculum",
       "layer": 2,
       "label": "Workshop Curriculum & Facilitator Guide",
       "description": "Generate a full workshop curriculum with facilitator guide, exercises, and slide outline.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.42,
       "prerequisites": [
@@ -1205,14 +1373,26 @@
         "legal": 0.55,
         "real_estate": 0.5
       },
-      "description_template": "Workshop curriculum for {primary_expertise} training programs"
+      "description_template": "Workshop curriculum for {primary_expertise} training programs",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Learning objectives",
+        "Agenda with timings",
+        "Exercises with facilitator notes",
+        "Slide outline",
+        "Materials and pre-work list"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "corporate_training",
       "layer": 2,
       "label": "Corporate Training Buyer Outreach",
-      "description": "Identify 25 companies with L&D leads, training deck outline, and 5 outreach emails.",
-      "model": "sonnet",
+      "description": "Identify companies with L&D buyers, a training deck outline, and one outreach email per buyer contact.",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.4,
       "prerequisites": [
@@ -1297,14 +1477,28 @@
         "legal": 0.6,
         "real_estate": 0.5
       },
-      "description_template": "Corporate training program for {primary_expertise} teams"
+      "description_template": "Corporate training program for {primary_expertise} teams",
+      "produces_contacts": true,
+      "contacts_mode": "create",
+      "research_enabled": true,
+      "autonomy_channel": "email",
+      "output_spec": [
+        "Buyer profile and departments",
+        "Target companies from the supplied prospect list",
+        "Training deck outline adapted from the workshop curriculum",
+        "Outreach emails, one per contact",
+        "Pricing options"
+      ],
+      "external_facts": [
+        "company training budgets and L&D initiatives"
+      ]
     },
     {
       "action_type": "waitlist_landing_page",
       "layer": 2,
       "label": "Waitlist Landing Page & Email Sequence",
       "description": "Build landing page copy and a 3-email confirmation sequence for your first cohort.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.38,
       "prerequisites": [],
@@ -1370,14 +1564,26 @@
         "legal": 0.45,
         "real_estate": 0.5
       },
-      "description_template": "Waitlist landing page for your {primary_expertise} program launch"
+      "description_template": "Waitlist landing page for your {primary_expertise} program launch",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "email_funnels",
+      "output_spec": [
+        "Headline, subhead and promise",
+        "Program details and start date",
+        "Social proof slots",
+        "Application/opt-in form fields",
+        "Three confirmation emails"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "alumni_reactivation",
       "layer": 2,
       "label": "Cohort Graduation & Alumni Reactivation",
       "description": "Create a graduation ceremony guide, alumni onboarding sequence, and re-enrollment offer.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.3,
       "prerequisites": [],
@@ -1442,7 +1648,18 @@
         "legal": 0.45,
         "real_estate": 0.45
       },
-      "description_template": "Alumni reactivation for past {primary_expertise} students and clients"
+      "description_template": "Alumni reactivation for past {primary_expertise} students and clients",
+      "produces_contacts": true,
+      "contacts_mode": "update_only",
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Graduation ceremony outline",
+        "Alumni onboarding sequence",
+        "Re-enrollment offer and deadline",
+        "Messages only for supplied existing contacts"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "roi_calculator",
@@ -1511,7 +1728,18 @@
         "legal": 0.6,
         "real_estate": 0.6
       },
-      "description_template": "ROI calculator for {primary_expertise} programs and services"
+      "description_template": "ROI calculator for {primary_expertise} programs and services",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Inputs table",
+        "Step-by-step ROI calculation with shown arithmetic",
+        "Comparison against 1:1 consulting at the current rate",
+        "Recommended delivery cadence"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "course_curriculum",
@@ -1598,7 +1826,19 @@
         "legal": 0.65,
         "real_estate": 0.6
       },
-      "description_template": "Online course curriculum for {primary_expertise} learners"
+      "description_template": "Online course curriculum for {primary_expertise} learners",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Course promise and target student",
+        "Module list with lessons and outcomes",
+        "Assessments and projects",
+        "Pricing positioned against consulting rates",
+        "Platform setup checklist"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "pricing_research",
@@ -1658,7 +1898,20 @@
         "legal": 0.55,
         "real_estate": 0.6
       },
-      "description_template": "Pricing research for {primary_expertise} digital products"
+      "description_template": "Pricing research for {primary_expertise} digital products",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Positioning map of the niche",
+        "Competitor comparison table (marked illustrative)",
+        "Recommended price and tier structure",
+        "How to verify the comparison data"
+      ],
+      "external_facts": [
+        "competitor course names, prices and enrollment figures"
+      ]
     },
     {
       "action_type": "sales_page",
@@ -1737,14 +1990,27 @@
         "legal": 0.5,
         "real_estate": 0.55
       },
-      "description_template": "Sales page for {primary_expertise} course or program"
+      "description_template": "Sales page for {primary_expertise} course or program",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Headline and subhead",
+        "Problem/agitation section",
+        "Module preview drawn from the course curriculum",
+        "Offer stack and price",
+        "FAQ and guarantee",
+        "Calls to action (HTML)"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "ebook_outline",
       "layer": 3,
       "label": "E-Book / Digital Guide Outline & Listing",
       "description": "Draft a full e-book outline with introduction, chapters, conclusion, and Gumroad listing.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.35,
       "prerequisites": [],
@@ -1812,7 +2078,19 @@
         "legal": 0.65,
         "real_estate": 0.6
       },
-      "description_template": "E-book outline on {primary_expertise} for your target audience"
+      "description_template": "E-book outline on {primary_expertise} for your target audience",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Title and subtitle options",
+        "Introduction summary",
+        "Chapter outline with key points",
+        "Conclusion and CTA",
+        "Gumroad listing copy and price"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "ab_test_plan",
@@ -1880,14 +2158,26 @@
         "legal": 0.4,
         "real_estate": 0.45
       },
-      "description_template": "A/B pricing experiment for {primary_expertise} products"
+      "description_template": "A/B pricing experiment for {primary_expertise} products",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Hypothesis per variant drawn from the sales page",
+        "Variants table",
+        "Sample size calculation with shown arithmetic",
+        "Primary metric and guardrail metric",
+        "Decision rules and test duration"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "membership",
       "layer": 3,
       "label": "Design Membership Community Structure",
       "description": "Create tier structure, 12-week content calendar, and churn-prevention sequence.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.23,
       "prerequisites": [
@@ -1962,14 +2252,25 @@
         "legal": 0.5,
         "real_estate": 0.55
       },
-      "description_template": "Membership community structure for {primary_expertise} practitioners"
+      "description_template": "Membership community structure for {primary_expertise} practitioners",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Tier structure with prices",
+        "12-week content calendar",
+        "Onboarding flow",
+        "Churn-prevention sequence"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "launch_sequence",
       "layer": 3,
       "label": "Generate 7-Email Product Launch Sequence",
       "description": "Write a full 7-email launch sequence with subject lines, body copy, and send schedule.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.3,
       "prerequisites": [
@@ -2041,14 +2342,25 @@
         "legal": 0.45,
         "real_estate": 0.5
       },
-      "description_template": "7-email launch sequence for your {primary_expertise} product"
+      "description_template": "7-email launch sequence for your {primary_expertise} product",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "email_funnels",
+      "output_spec": [
+        "Send schedule relative to launch day",
+        "Seven emails with subject, preview text and body",
+        "Early-bird mechanics",
+        "Cart-close urgency that is truthful"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "affiliate_program",
       "layer": 3,
       "label": "Build Affiliate Recruitment Program",
-      "description": "Define commission structure, identify 20 potential affiliates, and write recruitment emails.",
-      "model": "sonnet",
+      "description": "Define commission structure, profile potential affiliates, and write recruitment emails.",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.2,
       "prerequisites": [
@@ -2128,7 +2440,20 @@
         "legal": 0.45,
         "real_estate": 0.5
       },
-      "description_template": "Affiliate program for {primary_expertise} course or product"
+      "description_template": "Affiliate program for {primary_expertise} course or product",
+      "produces_contacts": true,
+      "contacts_mode": "create",
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Commission structure",
+        "Affiliate candidate profiles (marked illustrative unless supplied)",
+        "Recruitment email",
+        "Affiliate onboarding kit"
+      ],
+      "external_facts": [
+        "named affiliate candidates and their audience sizes"
+      ]
     },
     {
       "action_type": "testimonials",
@@ -2203,7 +2528,18 @@
         "legal": 0.65,
         "real_estate": 0.7
       },
-      "description_template": "Testimonial and case study system for {primary_expertise} clients"
+      "description_template": "Testimonial and case study system for {primary_expertise} clients",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Collection email sequence",
+        "Intake form questions",
+        "Consent/permission language",
+        "Display copy templates"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "lapsed_buyer",
@@ -2275,7 +2611,18 @@
         "legal": 0.45,
         "real_estate": 0.5
       },
-      "description_template": "Reactivation campaign for lapsed {primary_expertise} buyers"
+      "description_template": "Reactivation campaign for lapsed {primary_expertise} buyers",
+      "produces_contacts": true,
+      "contacts_mode": "update_only",
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Segmentation logic",
+        "Three-email reactivation sequence",
+        "Offer and deadline",
+        "Projected revenue with stated assumptions"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "seo_content_calendar",
@@ -2353,14 +2700,27 @@
         "legal": 0.55,
         "real_estate": 0.65
       },
-      "description_template": "90-day SEO content calendar for {primary_expertise} authority"
+      "description_template": "90-day SEO content calendar for {primary_expertise} authority",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "content_publishing",
+      "output_spec": [
+        "Content pillars and target keywords (volumes marked illustrative)",
+        "90-day calendar with 36 titles",
+        "Five drafted articles",
+        "Internal linking and CTA plan"
+      ],
+      "external_facts": [
+        "keyword search volumes and difficulty scores"
+      ]
     },
     {
       "action_type": "lead_magnet_funnel",
       "layer": 4,
       "label": "Build Automated Lead Magnet & Email Funnel",
       "description": "Create a complete funnel: lead magnet, opt-in page, thank-you page, and 5-email nurture sequence.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.28,
       "prerequisites": [],
@@ -2426,14 +2786,25 @@
         "legal": 0.5,
         "real_estate": 0.6
       },
-      "description_template": "Lead magnet funnel for {primary_expertise} audience"
+      "description_template": "Lead magnet funnel for {primary_expertise} audience",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "email_funnels",
+      "output_spec": [
+        "Lead magnet concept and outline",
+        "Opt-in page copy",
+        "Thank-you page copy",
+        "Five-email nurture sequence"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "newsletter",
       "layer": 4,
       "label": "Newsletter Monetization Strategy",
       "description": "Build a sponsorship rate card, paid tier structure, and 4-week editorial calendar.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.2,
       "prerequisites": [
@@ -2506,7 +2877,20 @@
         "legal": 0.65,
         "real_estate": 0.65
       },
-      "description_template": "Newsletter monetization strategy for {primary_expertise} readers"
+      "description_template": "Newsletter monetization strategy for {primary_expertise} readers",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Positioning and audience",
+        "Sponsorship rate card (benchmarks marked illustrative)",
+        "Paid tier structure",
+        "Four-week editorial calendar"
+      ],
+      "external_facts": [
+        "sponsorship CPM and rate benchmarks"
+      ]
     },
     {
       "action_type": "saas_product_spec",
@@ -2581,14 +2965,26 @@
         "legal": 0.25,
         "real_estate": 0.2
       },
-      "description_template": "SaaS product spec for {primary_expertise} workflow automation"
+      "description_template": "SaaS product spec for {primary_expertise} workflow automation",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Problem and target customer",
+        "Core workflows derived from the methodology",
+        "Feature list with MVP cut",
+        "Data model and integrations",
+        "Pricing model and success metrics"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "ip_licensing",
       "layer": 4,
       "label": "IP Licensing Outreach & Agreement Template",
-      "description": "Draft a licensing one-pager, identify 15 licensee targets, and write a licensing agreement.",
-      "model": "sonnet",
+      "description": "Draft a licensing one-pager, profile licensee targets, and outline a licensing agreement.",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.15,
       "prerequisites": [
@@ -2664,13 +3060,27 @@
         "legal": 0.85,
         "real_estate": 0.5
       },
-      "description_template": "IP licensing strategy for {primary_expertise} frameworks and systems"
+      "description_template": "IP licensing strategy for {primary_expertise} frameworks and systems",
+      "produces_contacts": true,
+      "contacts_mode": "create",
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Licensable IP definition",
+        "Licensing one-pager",
+        "Licensee target profiles",
+        "Licensing model and fee structure",
+        "Licensing agreement outline with not-legal-advice notice"
+      ],
+      "external_facts": [
+        "named licensee organisations and licensing fee benchmarks"
+      ]
     },
     {
       "action_type": "affiliate_partnerships",
       "layer": 4,
       "label": "Affiliate & Referral Partnership Opportunities",
-      "description": "Curate 20 affiliate programs with fit scores and draft a recruitment program.",
+      "description": "Curate affiliate programs with fit scores and draft a recruitment program.",
       "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.18,
@@ -2739,7 +3149,20 @@
         "legal": 0.45,
         "real_estate": 0.55
       },
-      "description_template": "Affiliate partnership opportunities in the {primary_expertise} ecosystem"
+      "description_template": "Affiliate partnership opportunities in the {primary_expertise} ecosystem",
+      "produces_contacts": true,
+      "contacts_mode": "create",
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Fit criteria",
+        "Program list with fit scores (marked illustrative)",
+        "Sponsor/affiliate pitch",
+        "Tracking and disclosure plan"
+      ],
+      "external_facts": [
+        "affiliate program names, commission rates and cookie windows"
+      ]
     },
     {
       "action_type": "video_podcast",
@@ -2819,14 +3242,25 @@
         "legal": 0.6,
         "real_estate": 0.6
       },
-      "description_template": "YouTube and podcast strategy for {primary_expertise} thought leadership"
+      "description_template": "YouTube and podcast strategy for {primary_expertise} thought leadership",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "content_publishing",
+      "output_spec": [
+        "Show positioning and format",
+        "24-episode plan",
+        "Three full episode scripts",
+        "Distribution and CTA plan"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "community",
       "layer": 4,
       "label": "Community Flywheel Activation Plan",
       "description": "Build a content-to-community strategy with engagement calendar and paid tier upgrade pathway.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.15,
       "prerequisites": [
@@ -2893,14 +3327,25 @@
         "legal": 0.55,
         "real_estate": 0.55
       },
-      "description_template": "Community flywheel for {primary_expertise} practitioners"
+      "description_template": "Community flywheel for {primary_expertise} practitioners",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Platform choice and rationale",
+        "Content-to-community flywheel",
+        "Engagement calendar",
+        "Paid-tier upgrade path"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "programmatic_ads",
       "layer": 4,
       "label": "Programmatic Ad Strategy & Copy Set",
       "description": "Create a full ad strategy brief with 10 copy variations across three creative angles.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.15,
       "prerequisites": [
@@ -2962,7 +3407,20 @@
         "legal": 0.4,
         "real_estate": 0.6
       },
-      "description_template": "Programmatic ad strategy targeting {primary_expertise} buyers"
+      "description_template": "Programmatic ad strategy targeting {primary_expertise} buyers",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Strategy brief and audience",
+        "Budget allocation by platform",
+        "Ten copy variations across three angles",
+        "Measurement plan"
+      ],
+      "external_facts": [
+        "CPM/CPC benchmarks and platform policies"
+      ]
     },
     {
       "action_type": "client_winback",
@@ -3040,7 +3498,18 @@
         "legal": 0.65,
         "real_estate": 0.7
       },
-      "description_template": "Win-back campaign for lapsed {primary_expertise} clients"
+      "description_template": "Win-back campaign for lapsed {primary_expertise} clients",
+      "produces_contacts": true,
+      "contacts_mode": "update_only",
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Segment definition",
+        "Three-email win-back sequence",
+        "Offer and deadline",
+        "Messages only for supplied existing contacts"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "income_allocation",
@@ -3114,7 +3583,19 @@
         "legal": 0.85,
         "real_estate": 0.9
       },
-      "description_template": "Income allocation strategy for {primary_expertise} professionals"
+      "description_template": "Income allocation strategy for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Monthly income summary by layer",
+        "Allocation table (tax, emergency fund, operating, investing, lifestyle)",
+        "Rationale tied to risk tolerance and horizon",
+        "Rebalance triggers",
+        "Disclaimer"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "projections",
@@ -3186,7 +3667,18 @@
         "legal": 0.85,
         "real_estate": 0.9
       },
-      "description_template": "Compound growth projections for {primary_expertise} income"
+      "description_template": "Compound growth projections for {primary_expertise} income",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Assumptions table",
+        "Projection table using the supplied computed figures exactly",
+        "Interpretation of the three scenarios",
+        "Disclaimer"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "fund_recommendations",
@@ -3271,14 +3763,27 @@
         "legal": 0.83,
         "real_estate": 0.85
       },
-      "description_template": "Index fund and ETF portfolio for {primary_expertise} professionals"
+      "description_template": "Index fund and ETF portfolio for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Model portfolio allocation",
+        "Fund list by asset class (tickers and expense ratios flagged to verify)",
+        "Account placement guidance",
+        "Disclaimer"
+      ],
+      "external_facts": [
+        "fund tickers, expense ratios and historical returns"
+      ]
     },
     {
       "action_type": "investment_policy",
       "layer": 5,
       "label": "Personal Investment Policy Statement (IPS)",
       "description": "Draft a complete 2-page IPS with objectives, allocation, rebalancing triggers, and review cadence.",
-      "model": "sonnet",
+      "model": "opus",
       "cold_start_chain": false,
       "cold_start_prior": 0.13,
       "prerequisites": [
@@ -3337,14 +3842,26 @@
         "legal": 0.85,
         "real_estate": 0.88
       },
-      "description_template": "Investment policy statement for {primary_expertise} professionals"
+      "description_template": "Investment policy statement for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Objectives and constraints",
+        "Target allocation with ranges",
+        "Rebalancing triggers",
+        "Review cadence",
+        "Disclaimer"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "real_estate_strategy",
       "layer": 5,
       "label": "Real Estate Entry Strategy",
       "description": "Build a real estate strategy brief with market comparisons and acquisition checklist.",
-      "model": "sonnet",
+      "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.15,
       "prerequisites": [
@@ -3415,14 +3932,28 @@
         "legal": 0.8,
         "real_estate": 0.98
       },
-      "description_template": "Real estate entry strategy for {primary_expertise} professionals"
+      "description_template": "Real estate entry strategy for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Affordability analysis from the income allocation",
+        "Vehicle comparison",
+        "Market comparison (marked illustrative)",
+        "Acquisition checklist",
+        "Disclaimer"
+      ],
+      "external_facts": [
+        "market prices, rents, cap rates and interest rates"
+      ]
     },
     {
       "action_type": "entity_structure",
       "layer": 5,
       "label": "Business Entity Structure Recommendation",
       "description": "Compare sole proprietor, LLC, S-Corp, and C-Corp with a transition checklist.",
-      "model": "sonnet",
+      "model": "opus",
       "cold_start_chain": false,
       "cold_start_prior": 0.13,
       "prerequisites": [
@@ -3494,14 +4025,28 @@
         "legal": 0.95,
         "real_estate": 0.88
       },
-      "description_template": "Business entity structure for {primary_expertise} practice"
+      "description_template": "Business entity structure for {primary_expertise} practice",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Comparison table: sole prop, LLC, S-Corp, C-Corp",
+        "Recommendation at the stated revenue",
+        "Transition checklist",
+        "Questions for a CPA/attorney",
+        "Disclaimer"
+      ],
+      "external_facts": [
+        "state filing fees and payroll tax thresholds"
+      ]
     },
     {
       "action_type": "tax_optimization",
       "layer": 5,
       "label": "Tax Optimization Strategy",
       "description": "Create a tax optimization brief with entity structure, retirement accounts, and deduction list.",
-      "model": "sonnet",
+      "model": "opus",
       "cold_start_chain": false,
       "cold_start_prior": 0.15,
       "prerequisites": [
@@ -3577,7 +4122,21 @@
         "legal": 0.9,
         "real_estate": 0.9
       },
-      "description_template": "Tax optimization strategy for {primary_expertise} income"
+      "description_template": "Tax optimization strategy for {primary_expertise} income",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Current-entity tax picture",
+        "Retirement account options",
+        "Deduction checklist",
+        "Quarterly estimated tax plan",
+        "Disclaimer"
+      ],
+      "external_facts": [
+        "current-year contribution limits, brackets and thresholds"
+      ]
     },
     {
       "action_type": "dca_schedule",
@@ -3665,7 +4224,18 @@
         "legal": 0.83,
         "real_estate": 0.88
       },
-      "description_template": "Dollar-cost averaging schedule for {primary_expertise} professionals"
+      "description_template": "Dollar-cost averaging schedule for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Contribution schedule table",
+        "Per-fund amounts drawn from the fund recommendations",
+        "Brokerage setup steps",
+        "Disclaimer"
+      ],
+      "external_facts": []
     },
     {
       "action_type": "insurance_review",
@@ -3732,14 +4302,27 @@
         "legal": 0.83,
         "real_estate": 0.83
       },
-      "description_template": "Insurance gap analysis for {primary_expertise} professionals"
+      "description_template": "Insurance gap analysis for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Current coverage summary",
+        "Gap analysis per policy type",
+        "Recommended coverage parameters",
+        "Disclaimer"
+      ],
+      "external_facts": [
+        "policy premiums and carrier names"
+      ]
     },
     {
       "action_type": "estate_planning",
       "layer": 5,
       "label": "Estate Planning Trigger Checklist & Beneficiary Review",
       "description": "Build a documents checklist, beneficiary audit, and business succession brief.",
-      "model": "sonnet",
+      "model": "opus",
       "cold_start_chain": false,
       "cold_start_prior": 0.1,
       "prerequisites": [
@@ -3817,7 +4400,19 @@
         "legal": 0.95,
         "real_estate": 0.9
       },
-      "description_template": "Estate planning checklist for {primary_expertise} professionals"
+      "description_template": "Estate planning checklist for {primary_expertise} professionals",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Documents checklist",
+        "Beneficiary audit",
+        "Business succession brief",
+        "Questions for an estate attorney",
+        "Disclaimer"
+      ],
+      "external_facts": []
     }
   ],
   "aliases": {

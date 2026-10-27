@@ -53,6 +53,9 @@ def execute_agent_action_task(action_id: str):
 
         prospect_count = sim.get_prospect_count() if sim else None
         expertise_zone = sim.expertise_zone if sim else ''
+        # First user-triggered run vs a re-run of an existing artifact — the
+        # observability console showed every manual run as a re-run.
+        is_rerun = ArtifactVersion.query.filter_by(action_id=action_id).first() is not None
 
         # Return the DB connection to the pool before the long Claude/research call.
         # Without this, the connection sits idle for minutes and MySQL drops it
@@ -68,7 +71,7 @@ def execute_agent_action_task(action_id: str):
             user_inputs=user_inputs,
             user_id=user_id,
             simulation_id=simulation_id,
-            dispatch_source='user_rerun',
+            dispatch_source='user_rerun' if is_rerun else 'user',
             action_id=action_id,
             prospect_count=prospect_count,
         )
@@ -245,6 +248,11 @@ def _link_upstream_dependencies(action):
     try:
         from app.extensions import db
         from app.models.artifact import ArtifactDependency
+        from app.services.prefill_engine import seed_artifact_dependencies
+
+        # Idempotent; the graph used to be seeded only by a manual POST route
+        # (which always failed), so staleness propagation never had edges.
+        seed_artifact_dependencies(action.simulation_id)
 
         deps = ArtifactDependency.query.filter_by(
             simulation_id=action.simulation_id,

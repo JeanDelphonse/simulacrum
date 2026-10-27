@@ -12,6 +12,7 @@ class AIInteraction(db.Model):
     TYPE_LINKEDIN_NORMALIZE = 'linkedin_normalize'
     TYPE_AGENT_ACTION = 'agent_action'
     TYPE_AGENT_SELECTOR = 'agent_selector'
+    TYPE_AGENT_PLAN = 'agent_plan'
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     user_id = db.Column(db.String(9), db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)

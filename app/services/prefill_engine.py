@@ -1095,45 +1095,65 @@ def resolve_staleness(simulation_id: str, upstream_action_id: str, consumed_vers
         logger.error('resolve_staleness failed: %s', e)
 
 
-def seed_artifact_dependencies(simulation_id: str):
-    """Populate artifact_dependencies from artifact_dependency_config.json (idempotent)."""
-    import os
-    config_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-        'artifact_dependency_config.json',
-    )
-    try:
-        with open(config_path) as f:
-            config = json.load(f)
-    except Exception as e:
-        logger.error('Could not load artifact_dependency_config.json: %s', e)
-        return
+def dependency_edges() -> list[dict]:
+    """Upstream → downstream edges from config/agents.json prerequisites.
 
+    Replaces artifact_dependency_config.json, which was a top-level list read
+    with ``.get('dependencies')`` (so seeding always raised) and named agents by
+    legacy aliases. fields_passed is the set of prompt-form keys the two agents
+    share — the values _from_upstream_artifact can carry forward.
+    """
+    from app.services.agent_registry import get_all_agents
+    agents = {a['action_type']: a for a in get_all_agents()}
+    edges = []
+    for downstream, meta in agents.items():
+        down_keys = {f['key'] for f in meta.get('prompt_form', [])}
+        for pre in meta.get('prerequisites', []):
+            upstream = pre['action_type']
+            up_keys = {f['key'] for f in agents.get(upstream, {}).get('prompt_form', [])}
+            edges.append({
+                'upstream_action_type': upstream,
+                'downstream_action_type': downstream,
+                'fields_passed': sorted(up_keys & down_keys),
+            })
+    return edges
+
+
+def seed_artifact_dependencies(simulation_id: str):
+    """Populate artifact_dependencies from the agents.json prerequisite DAG (idempotent)."""
     try:
         from app.extensions import db
         from app.models.artifact import ArtifactDependency
         from utils.id_gen import generate_id
 
-        for dep_cfg in config.get('dependencies', []):
-            exists = ArtifactDependency.query.filter_by(
+        existing = {
+            (d.upstream_action_type, d.downstream_action_type)
+            for d in ArtifactDependency.query.filter_by(simulation_id=simulation_id).all()
+        }
+        added = 0
+        for edge in dependency_edges():
+            if (edge['upstream_action_type'], edge['downstream_action_type']) in existing:
+                continue
+            dep = ArtifactDependency(
+                id=generate_id(),
                 simulation_id=simulation_id,
-                upstream_action_type=dep_cfg['upstream_action_type'],
-                downstream_action_type=dep_cfg['downstream_action_type'],
-            ).first()
-            if not exists:
-                dep = ArtifactDependency(
-                    id=generate_id(),
-                    simulation_id=simulation_id,
-                    upstream_action_type=dep_cfg['upstream_action_type'],
-                    downstream_action_type=dep_cfg['downstream_action_type'],
-                )
-                dep.fields_passed = dep_cfg.get('fields_passed', [])
-                db.session.add(dep)
+                upstream_action_type=edge['upstream_action_type'],
+                downstream_action_type=edge['downstream_action_type'],
+            )
+            dep.fields_passed = edge['fields_passed']
+            db.session.add(dep)
+            added += 1
 
-        db.session.commit()
-        logger.info('Seeded artifact dependencies for simulation %s', simulation_id)
+        if added:
+            db.session.commit()
+            logger.info('Seeded %d artifact dependencies for simulation %s', added, simulation_id)
     except Exception as e:
         logger.error('seed_artifact_dependencies failed for %s: %s', simulation_id, e)
+        try:
+            from app.extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
 
 
 def _notify_orchestrator(simulation_id: str, stale_count: int):

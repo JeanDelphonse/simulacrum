@@ -35,8 +35,11 @@ _EMAIL_PROMPT = """Write one personalized consulting outreach email from {user_f
 === YOUR POSITIONING ===
 {user_positioning}
 
+=== CAMPAIGN BRIEF (from the planning step and the user's upstream artifacts) ===
+{campaign_brief}
+
 === CALL TO ACTION ===
-Book a discovery call: {booking_url}
+{call_to_action}
 
 === PERSONALIZATION CONTEXT ===
 
@@ -63,7 +66,8 @@ Public pain points (do NOT mention Glassdoor, Reddit, or any negative source —
 - Open with a SPECIFIC reference to one personalization signal — not "I came across your profile"
 - If mutual connections exist, ALWAYS lead with that signal (highest converting opener)
 - Connect that signal to {user_first_name}'s expertise naturally
-- Exactly one CTA (the booking link)
+- Exactly one CTA (the call to action above)
+- Stay consistent with the offer and pricing in the campaign brief; never quote a price it does not contain
 - Subject line: personal, non-deceptive, no "Re:", "Fwd:", or false urgency
 - Tone: {tone}
 
@@ -236,7 +240,12 @@ def _generate_one_email(prospect, ctx, user_info, api_key, sonnet_model):
         prospect_title=prospect.job_title or 'professional',
         prospect_company=prospect.company_name or 'their company',
         user_positioning=user_info['positioning'],
-        booking_url=user_info['booking_url'] or 'your booking link',
+        campaign_brief=user_info.get('campaign_brief') or 'No additional brief.',
+        # No booking URL on file: ask for a reply instead of sending prospects the
+        # literal placeholder text "your booking link".
+        call_to_action=('Book a discovery call: %s' % user_info['booking_url']
+                        if user_info.get('booking_url')
+                        else 'Invite them to reply to set up a short call (no link available).'),
         tone=tone,
         linkedin_activity=_fmt(ctx.get('linkedin_activity')),
         company_news=_fmt(ctx.get('company_news')),
@@ -546,6 +555,7 @@ def execute_consulting_outreach(
     parsed_text,
     user_inputs,
     prospect_count=None,
+    campaign_brief='',
 ):
     """
     Execute the two-pass consulting_outreach agent.
@@ -616,6 +626,7 @@ def execute_consulting_outreach(
         'positioning': positioning,
         'booking_url': booking_url,
         'tone': user_inputs.get('tone', 'balanced'),
+        'campaign_brief': campaign_brief or '',
     }
 
     # ── Pass 2 + email generation — parallel across prospects ────────────────

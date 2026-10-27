@@ -726,11 +726,14 @@ def main():
                 dispatch_source='user_rerun', action_id=None,
             )
 
-    first, second = run_linkedin(), run_linkedin()
+    # Each run makes two calls — the planning step, then generation.
+    first = run_linkedin()
+    calls_after_first = len(calls)
+    second = run_linkedin()
     check('the first run through the limit reaches Claude',
-          'LinkedIn' in first and len(calls) == 1, (first[:30], len(calls)))
+          'LinkedIn' in first and calls_after_first == 2, (first[:30], calls_after_first))
     check('the run past the limit is held', 'Held for review' in second)
-    check('a dispatch block spends no tokens', len(calls) == 1, len(calls))
+    check('a dispatch block spends no tokens', len(calls) == calls_after_first, len(calls))
 
     r = latest_run('linkedin_optimization')
     check('a dispatch block is recorded as blocked',

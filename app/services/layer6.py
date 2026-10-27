@@ -306,10 +306,20 @@ def _beta_mean(alpha: float, beta: float) -> float:
     return alpha / (alpha + beta)
 
 
-def _compute_posterior(outcomes: list[dict]) -> tuple[float, float]:
-    """Update Beta prior with observed successes/failures from outcome history."""
-    alpha = PRIOR_ALPHA
-    beta = PRIOR_BETA
+def _compute_posterior(outcomes: list[dict], prior_mean: float = None) -> tuple[float, float]:
+    """Update a Beta prior with observed successes/failures from outcome history.
+
+    prior_mean is the agent's cold_start_prior from agents.json, encoded at the
+    same strength (4 pseudo-counts) as the flat Beta(2, 2). Outcomes are only
+    recorded per layer, so without it every agent in a layer shared one yield
+    estimate and dispatch order within a layer was decided by noise.
+    """
+    strength = PRIOR_ALPHA + PRIOR_BETA
+    if prior_mean is None:
+        alpha, beta = PRIOR_ALPHA, PRIOR_BETA
+    else:
+        prior_mean = min(max(float(prior_mean), 0.01), 0.99)
+        alpha, beta = prior_mean * strength, (1.0 - prior_mean) * strength
     for o in outcomes:
         actual = float(o.get('actual_income', 0))
         projected = float(o.get('projected_income', 1) or 1)
@@ -337,8 +347,9 @@ def score_action(action_type: str, source_layer: int, outcomes_for_layer: list[d
     into the yield estimate so integration evidence influences dispatch.
     """
     import random as _rnd
+    from app.services.agent_registry import get_cold_start_prior
     w = PHASE_WEIGHTS.get(phase, PHASE_WEIGHTS['exploit'])
-    alpha, beta = _compute_posterior(outcomes_for_layer)
+    alpha, beta = _compute_posterior(outcomes_for_layer, get_cold_start_prior(action_type))
     posterior_mean = _beta_mean(alpha, beta)
     if signal_posterior is not None:
         posterior_mean = 0.7 * posterior_mean + 0.3 * float(signal_posterior)
@@ -403,20 +414,38 @@ def _count_unblocked(action_type: str, completed_types: set[str],
 INTEGRATION_BOOST: dict[str, dict[str, float]] = {
     'apollo':     {
         'cold_email_campaign': 0.15, 'consulting_outreach': 0.15,
-        'outreach_email': 0.12, 'referral_network': 0.08,
+        'referral_network': 0.08,
     },
-    'cal.com':    {
+    # UserIntegration.provider for Cal.com is 'cal' (not 'cal.com').
+    'cal':        {
         'booking_page': 0.20, 'consulting_proposal': 0.08,
     },
     'pandadoc':   {
-        'consulting_proposal': 0.18, 'consulting_agreement': 0.18,
+        'consulting_proposal': 0.18, 'agreement_template': 0.18,
     },
     'convertkit': {
-        'launch_email_sequence': 0.18, 'newsletter_monetization': 0.15,
-        'funnel_design': 0.12, 'waitlist_landing_page': 0.10,
+        'launch_sequence': 0.18, 'newsletter': 0.15,
+        'lead_magnet_funnel': 0.12, 'waitlist_landing_page': 0.10,
     },
 }
 
+
+# Webhook signals keyed by something other than an action_type (Cal.com session
+# type, Kajabi product id, ConvertKit form id, ...). Without this map their
+# posteriors never reached the agent that produced the asset.
+SIGNAL_PREFIX_AGENTS: dict[str, tuple[str, ...]] = {
+    'booking_rate':            ('booking_page',),
+    'cancellation_rate':       ('booking_page',),
+    'meeting_completion_rate': ('booking_page',),
+    'course_sales':            ('course_curriculum', 'sales_page'),
+    'completion_rate':         ('course_curriculum',),
+    'lesson_engagement':       ('course_curriculum',),
+    'renewal_rate':            ('membership',),
+    'form_conversion_rate':    ('lead_magnet_funnel', 'waitlist_landing_page'),
+    'subscriber_growth_rate':  ('newsletter', 'lead_magnet_funnel'),
+    'dca_execution_rate':      ('dca_schedule',),
+    'position_return':         ('fund_recommendations',),
+}
 
 def _get_active_integrations(user_id: str) -> dict:
     """Return {provider: UserIntegration} for all connected (non-expired) integrations."""
@@ -451,8 +480,8 @@ def _build_integration_user_inputs(action_type: str, active_integrations: dict,
     extras: dict = {}
 
     # Cal.com — inject booking URL for booking_page and proposal agents
-    if 'cal.com' in active_integrations:
-        cal = active_integrations['cal.com']
+    if 'cal' in active_integrations:
+        cal = active_integrations['cal']
         booking_url = ''
         if cal.meta_json:
             try:
@@ -513,6 +542,18 @@ def build_dispatch_user_inputs(action_type: str, source_layer: int, sim, resume,
     except Exception as exc:
         logger.warning('Dispatch prefill failed for %s (%s) — integration inputs only',
                        action_type, exc)
+
+    # Context from the event that triggered the agent (e.g. the client who
+    # replied) fills inputs the user hasn't set — never overrides them.
+    try:
+        from app.services.agent_triggers import check_trigger
+        fired, event, ctx = check_trigger(sim.id, resolve_alias(action_type))
+        if fired and event:
+            prefill.setdefault('trigger_event', event)
+            for k, v in ctx.items():
+                prefill.setdefault(k, v)
+    except Exception as exc:
+        logger.warning('Trigger context failed for %s (%s)', action_type, exc)
 
     injected = _build_integration_user_inputs(action_type, active_integrations, sim)
     return {**prefill, **injected}
@@ -617,6 +658,12 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
             if not all(resolve_alias(p) in completed_canonical for p in prereqs):
                 continue
 
+            # Event-triggered agents (agents.json triggered_by) wait for their
+            # event — a proposal needs a client who replied or booked.
+            from app.services.agent_triggers import check_trigger
+            if not check_trigger(simulation_id, canonical)[0]:
+                continue
+
             # Check channel constraints
             required_channel = action_def.get('channel')
             if required_channel and not channel_approvals.get(required_channel, False):
@@ -674,8 +721,10 @@ def _refresh_yield_posteriors(simulation_id: str, scored: list[dict],
     from app.extensions import db
     from app.models.bayesian import BayesianPosterior
 
+    from app.services.agent_registry import get_cold_start_prior
     for a in scored:
-        alpha, beta = _compute_posterior(outcomes_by_layer.get(a['source_layer'], []))
+        alpha, beta = _compute_posterior(outcomes_by_layer.get(a['source_layer'], []),
+                                         get_cold_start_prior(a['action_type']))
         mean = _beta_mean(alpha, beta)
         key = f"yield:{a['action_type']}"
         rec = BayesianPosterior.query.filter_by(
@@ -836,7 +885,9 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
         BayesianPosterior.update_count > 0,
         ~BayesianPosterior.posterior_key.like('yield:%'),
     ).all():
-        for _seg in _bp.posterior_key.split(':')[1:]:
+        _parts = _bp.posterior_key.split(':')
+        _targets = set(_parts[1:]) | set(SIGNAL_PREFIX_AGENTS.get(_parts[0], ()))
+        for _seg in _targets:
             _signal_map.setdefault(_seg, []).append(float(_bp.value))
 
     scored = []
@@ -1152,12 +1203,8 @@ def _send_cycle_report(sim, config, cycle, dispatch_entries: list) -> None:
 
 # Agents that should NEVER be deduplicated — they query live prospect/contact data
 # each cycle, so identical inputs still produce meaningfully different output.
-_NO_DEDUP_ACTIONS = frozenset({
-    'consulting_outreach',
-    'outreach_email',
-    'cold_email_campaign',
-    'referral_network',
-})
+from app.services.agent_registry import RESEARCH_AGENTS as _RESEARCH_AGENTS  # noqa: E402
+_NO_DEDUP_ACTIONS = frozenset({'consulting_outreach'}) | _RESEARCH_AGENTS
 
 
 def _find_reusable_artifact(simulation_id: str, action_type: str, injected_inputs: dict):
@@ -1336,6 +1383,8 @@ def _execute_action_sync(entry) -> None:
         # Update upstream_action_id on matching ArtifactDependency rows so staleness works
         try:
             from app.models.artifact import ArtifactDependency
+            from app.services.prefill_engine import seed_artifact_dependencies
+            seed_artifact_dependencies(agent_action.simulation_id)  # idempotent
             deps = ArtifactDependency.query.filter_by(
                 simulation_id=agent_action.simulation_id,
                 upstream_action_type=agent_action.action_type,
@@ -1466,27 +1515,20 @@ def _check_autonomy_bounds(action_type: str, config) -> tuple[bool, str]:
     Return (is_within_bounds, escalation_reason).
     Actions that touch external channels or spending beyond approved limits are escalated.
     """
-    channel_map = {
-        # outreach_email and cold_email_campaign are NOT here — they generate draft
-        # artifacts only; actual email sending is gated by the post-completion dispatch
-        # hooks (_dispatch_outreach_emails / _dispatch_cold_email_campaign).
-        'consulting_outreach': 'email',
-        'referral_network_activation': 'email',
-        'launch_email_sequence': 'email_funnels',
-        'lead_magnet_funnel': 'email_funnels',
-        'waitlist_landing_page': 'email_funnels',
-        'linkedin_optimization': 'linkedin',
-        'corporate_training_outreach': 'linkedin',
-        'seo_content_calendar': 'content_publishing',
-        'youtube_podcast_strategy': 'content_publishing',
-    }
-    required_channel = channel_map.get(action_type)
+    # The channel comes from `autonomy_channel` in config/agents.json. The old
+    # hand-kept map used legacy names (launch_email_sequence, youtube_podcast_strategy,
+    # ...), so those agents dispatched without the user's channel approval.
+    # cold_email_campaign has no channel here: it generates drafts only, and its
+    # sends are gated at send time (post-completion hook and process_due_steps).
+    from app.services.agent_registry import get_autonomy_channel, resolve_alias
+    action_type = resolve_alias(action_type)
+    required_channel = get_autonomy_channel(action_type)
     if required_channel:
         approvals = config.channel_approvals
         if not approvals.get(required_channel, False):
             return False, f'Channel "{required_channel}" not approved in autonomy boundary settings'
 
-    if action_type in config.blocked_actions:
+    if action_type in {resolve_alias(a) for a in config.blocked_actions}:
         return False, 'Action type is in the blocked list'
 
     return True, ''

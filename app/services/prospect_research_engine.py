@@ -92,15 +92,11 @@ COMPANY_SIZE_TO_APOLLO_RANGE: dict[str, list[str]] = {
     'all':        ['51-200', '201-500', '501-1000'],
 }
 
-# Agents that call the research engine (alumni_reactivation excluded per FR-RESEARCH-11)
-RESEARCH_ENABLED_AGENTS = {
-    'cold_email_campaign',
-    'outreach_email',
-    'role_search',
-    'referral_network',
-    'speaking_proposals',
-    'corporate_training_proposal',
-}
+# Agents that call the research engine (alumni_reactivation excluded per FR-RESEARCH-11).
+# Driven by `research_enabled` in config/agents.json — a hand-kept list here drifted
+# to the legacy name 'corporate_training_proposal', so corporate_training silently
+# ran with no prospects and invented its buyer list.
+from app.services.agent_registry import RESEARCH_AGENTS as RESEARCH_ENABLED_AGENTS  # noqa: E402
 
 
 # ── Targeting builders (per-agent layer) ─────────────────────────────────────
@@ -174,6 +170,8 @@ def build_targeting_criteria(
     user_inputs: dict,
 ) -> TargetingCriteria:
     """Build per-agent targeting criteria from expertise zone + user inputs."""
+    from app.services.agent_registry import resolve_alias
+    action_type = resolve_alias(action_type)
     tags = _extract_expertise_tags(expertise_zone)
 
     if action_type == 'cold_email_campaign':
@@ -187,18 +185,6 @@ def build_targeting_criteria(
             industries=_industries_for_zone(tags),
             geographies=['United States'],
             pain_point=user_inputs.get('pain_point', ''),
-            agent_type=action_type,
-        )
-
-    if action_type == 'outreach_email':
-        return TargetingCriteria(
-            expertise_zone=expertise_zone,
-            expertise_tags=tags,
-            job_titles=_titles_for_zone(tags),
-            seniorities=['vp', 'c_suite', 'director'],
-            company_sizes=['51-200', '201-500'],
-            industries=_industries_from_text(user_inputs.get('target_industries', '')),
-            geographies=['United States'],
             agent_type=action_type,
         )
 
@@ -231,7 +217,7 @@ def build_targeting_criteria(
             agent_type=action_type,
         )
 
-    if action_type == 'corporate_training_proposal':
+    if action_type == 'corporate_training':
         size_key = user_inputs.get('target_company_sizes', 'mid-market')
         buyer_depts = user_inputs.get('buyer_departments', 'HR, L&D')
         dept_titles = [f'VP {d.strip()}' for d in buyer_depts.split(',')[:2]]

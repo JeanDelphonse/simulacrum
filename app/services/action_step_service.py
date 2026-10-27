@@ -60,20 +60,6 @@ AGENT_STEP_CONFIG = {
             {'step_number': 3, 'step_type': 'email_followup', 'delay_hours': 168, 'per_contact': True,  'condition': 'no_reply'},
         ],
     },
-    'sponsorship_outreach': {
-        'steps': [
-            {'step_number': 1, 'step_type': 'email_send',     'delay_hours': 0,   'per_contact': True,  'condition': None},
-            {'step_number': 2, 'step_type': 'email_followup', 'delay_hours': 120, 'per_contact': True,  'condition': 'no_reply'},
-            {'step_number': 3, 'step_type': 'email_followup', 'delay_hours': 240, 'per_contact': True,  'condition': 'no_reply'},
-        ],
-    },
-    'partnership_proposal': {
-        'steps': [
-            {'step_number': 1, 'step_type': 'email_send',     'delay_hours': 0,   'per_contact': True,  'condition': None},
-            {'step_number': 2, 'step_type': 'email_followup', 'delay_hours': 120, 'per_contact': True,  'condition': 'no_reply'},
-            {'step_number': 3, 'step_type': 'email_followup', 'delay_hours': 240, 'per_contact': True,  'condition': 'no_reply'},
-        ],
-    },
     'lapsed_buyer': {
         'steps': [
             {'step_number': 1, 'step_type': 'email_send',     'delay_hours': 0,   'per_contact': True,  'condition': None},
@@ -108,6 +94,8 @@ def create_steps_from_artifact(
     from app.models.action_step import ActionStep
     from utils.id_gen import generate_id
 
+    from app.services.agent_registry import resolve_alias
+    action_type = resolve_alias(action_type)
     step_config = AGENT_STEP_CONFIG.get(action_type)
     if not step_config:
         return 0
@@ -516,6 +504,40 @@ def _execute_convertkit_step(step, payload: dict, user_id: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Autonomy gate — steps reach real people, so they need the channel approved
+# ---------------------------------------------------------------------------
+
+# Step type → Layer6Config.channel_approvals key. Before this gate, follow-up
+# steps for cold_email_campaign / consulting_outreach sent even when the user had
+# switched the email channel off (the post-completion hooks checked it; this
+# path did not).
+STEP_CHANNEL = {
+    'email_send':           'email',
+    'email_followup':       'email',
+    'proposal_followup':    'email',
+    'convertkit_broadcast': 'email_funnels',
+    'drip_release':         'email_funnels',
+    'linkedin_post':        'linkedin',
+}
+
+
+def _channel_approvals(simulation_id: str) -> dict:
+    """Fail closed: an unreadable config approves nothing."""
+    try:
+        from app.models.layer6 import Layer6Config
+        cfg = Layer6Config.query.filter_by(simulation_id=simulation_id).first()
+        return (cfg or Layer6Config()).channel_approvals
+    except Exception as exc:
+        logger.warning('step channel approvals unreadable for %s: %s', simulation_id, exc)
+        return {}
+
+
+def step_channel_approved(step, approvals: dict) -> bool:
+    channel = STEP_CHANNEL.get(step.step_type)
+    return channel is None or bool(approvals.get(channel, False))
+
+
+# ---------------------------------------------------------------------------
 # Cycle integration — called from run_orchestrator_cycle
 # ---------------------------------------------------------------------------
 
@@ -539,9 +561,15 @@ def process_due_steps(simulation_id: str, user_id: str) -> dict:
         ActionStep.scheduled_for <= datetime.utcnow(),
     ).order_by(ActionStep.scheduled_for).all()
 
-    executed = skipped = errors = 0
+    approvals = _channel_approvals(simulation_id) if due_steps else {}
+    executed = skipped = errors = held = 0
     for step in due_steps:
         try:
+            if not step_channel_approved(step, approvals):
+                # Hold, don't skip: the step stays scheduled and goes out on the
+                # first cycle after the user approves the channel.
+                held += 1
+                continue
             if evaluate_condition(step):
                 success = execute_step(step, user_id, from_email, from_name)
                 if success:
@@ -571,10 +599,10 @@ def process_due_steps(simulation_id: str, user_id: str) -> dict:
 
     if due_steps:
         logger.info(
-            'process_due_steps sim=%s: %d executed, %d skipped, %d errors',
-            simulation_id, executed, skipped, errors,
+            'process_due_steps sim=%s: %d executed, %d skipped, %d held, %d errors',
+            simulation_id, executed, skipped, held, errors,
         )
-    return {'executed': executed, 'skipped': skipped, 'errors': errors}
+    return {'executed': executed, 'skipped': skipped, 'errors': errors, 'held': held}
 
 
 def cancel_pending_steps(simulation_id: str) -> int:

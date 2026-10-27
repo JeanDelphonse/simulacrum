@@ -475,7 +475,7 @@ def list_artifact_dependencies(sim_id):
 @artifacts_bp.route('/<sim_id>/artifact-dependencies/seed', methods=['POST'])
 @login_required
 def seed_dependencies(sim_id):
-    """Seed artifact dependencies from the static config file (idempotent)."""
+    """Seed artifact dependencies from the agents.json prerequisite DAG (idempotent)."""
     sim, is_editor = _check_sim_access(sim_id)
     if not sim:
         return jsonify({'error': 'Not found'}), 404

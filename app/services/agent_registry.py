@@ -127,3 +127,43 @@ def is_hub_node(action_type: str) -> bool:
 
 def get_cold_start_prior(action_type: str) -> float:
     return COLD_START_PRIORS.get(action_type, COLD_START_PRIORS.get(resolve_alias(action_type), 0.1))
+
+
+# ---------------------------------------------------------------------------
+# Capability sets — derived from agents.json so no caller keeps its own list of
+# agent names. Hand-maintained name lists drifted to legacy aliases and silently
+# switched features off (contact capture, prospect research, autonomy gating).
+# ---------------------------------------------------------------------------
+
+CONTACT_AGENTS: frozenset[str] = frozenset(
+    a['action_type'] for a in _agents_flat if a.get('produces_contacts')
+)
+UPDATE_ONLY_CONTACT_AGENTS: frozenset[str] = frozenset(
+    a['action_type'] for a in _agents_flat if a.get('contacts_mode') == 'update_only'
+)
+RESEARCH_AGENTS: frozenset[str] = frozenset(
+    a['action_type'] for a in _agents_flat if a.get('research_enabled')
+)
+CANONICAL_ACTION_TYPES: frozenset[str] = frozenset(a['action_type'] for a in _agents_flat)
+
+
+def get_autonomy_channel(action_type: str) -> str | None:
+    """Channel the user must approve before the orchestrator dispatches this agent."""
+    meta = get_agent_meta(action_type)
+    return meta.get('autonomy_channel') if meta else None
+
+
+def get_prerequisites(action_type: str) -> list[dict]:
+    """[{action_type, data_flow}] — what this agent consumes from upstream agents."""
+    meta = get_agent_meta(action_type)
+    return list(meta.get('prerequisites', [])) if meta else []
+
+
+def get_hub_agents() -> list[str]:
+    return [a['action_type'] for a in _agents_flat if a.get('hub_node')]
+
+
+def names_for(action_type: str) -> list[str]:
+    """Canonical name plus every legacy alias — for querying rows stored under old names."""
+    canonical = resolve_alias(action_type)
+    return [canonical] + _reverse_aliases.get(canonical, [])

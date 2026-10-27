@@ -952,6 +952,49 @@ from app.services.agent_registry import AGENT_ACTION_TYPES as _registry_types
 AGENT_ACTION_TYPES = {_layer: dict(_agents) for _layer, _agents in _registry_types.items()}
 
 
+# Token budgets. Canonical names only — action_type is alias-resolved at
+# function entry. Agents not listed get 16384 if agents.json marks them
+# large_output, else 8192.
+ACTION_MAX_TOKENS = {
+    # ── long structured output (15 messages / 7 emails / full guide) ─
+    'referral_network':        6144,
+    'speaking_proposals':      8192,
+    'workshop_curriculum':     8192,
+    'group_coaching':          8192,
+    'launch_sequence':         6144,
+    'lead_magnet_funnel':      6144,
+    'corporate_training':      6144,
+    'affiliate_program':       6144,
+    'ip_licensing':            6144,
+    'ebook_outline':           6144,
+    # ── medium structured output ─────────────────────────────────────
+    'role_search':             4096,
+    'sow_template':            4096,
+    'agreement_template':      4096,
+    'waitlist_landing_page':   4096,
+    'alumni_reactivation':     4096,
+    'membership':              4096,
+    'testimonials':            4096,
+    'lapsed_buyer':            4096,
+    'programmatic_ads':        4096,
+    'projections':             4096,
+    'income_allocation':       4096,
+    # ── short structured output ───────────────────────────────────────
+    'negotiation_script':      3072,
+    'pricing_research':        3072,
+    'newsletter':              3072,
+    'community':               3072,
+    'fund_recommendations':    3072,
+    'real_estate_strategy':    3072,
+    'insurance_review':        3072,
+    # ── very short (headline / calculation / schedule) ────────────────
+    'linkedin_optimization':   2048,
+    'roi_calculator':          2048,
+    'booking_page':            2048,
+    'dca_schedule':            2048,
+}
+
+
 def execute_agent_action(
     action_type: str,
     layer_number: int,
@@ -1067,8 +1110,41 @@ def _execute_agent_action_body(
         layer=layer_number, fields=sorted(k for k, v in (user_inputs or {}).items() if v),
     )
 
-    # Two-pass agents with custom execution paths
+    from app.services import agent_briefing as _brief
+    from app.services.agent_registry import (
+        get_agent_meta, CONTACT_AGENTS, UPDATE_ONLY_CONTACT_AGENTS,
+    )
+    agent_meta = get_agent_meta(action_type) or {}
+
+    inputs_formatted = '\n'.join(
+        f'- {k}: {v}' for k, v in (user_inputs or {}).items() if v
+    ) or 'None provided'
+
+    # ── Briefing: everything the agent grounds its artifact in ────────────────
+    # Upstream artifacts (agents.json prerequisites[].data_flow), the user's
+    # profile, existing contacts for update-only agents, projected income for
+    # Layer 5, and deterministic figures. All DB reads happen here, before any
+    # model call, because _log_interaction() disposes the engine after each call.
+    with _obs.tool_span('briefing') as _span:
+        briefing = _brief.build_briefing(
+            action_type, layer_number, simulation_id, user_id, user_inputs or {},
+            prospect_count=prospect_count,
+        )
+        _span['output'] = 'upstream=%s missing=%s' % (
+            briefing.upstream_used or '-', briefing.upstream_missing or '-')
+
+    # Two-pass consulting_outreach runs its own research + per-prospect drafting;
+    # it still gets a planning step, passed through as a campaign brief.
     if action_type == 'consulting_outreach':
+        plan = _brief.plan_run(
+            client=_client(), meta=agent_meta, layer_name=layer_name,
+            expertise_zone=expertise_zone, inputs_formatted=inputs_formatted,
+            briefing=briefing, prospect_note='researched per prospect in the next pass',
+            parsed_text=parsed_text, user_id=user_id, simulation_id=simulation_id,
+        )
+        from app.extensions import db as _db
+        _db.session.remove()   # _log_interaction disposed the pool
+        _record_plan(_obs, action_meta['label'], plan)
         _obs.record_decision('Two-pass path — research then draft', path='consulting_outreach')
         from app.services.consulting_outreach_service import execute_consulting_outreach
         return execute_consulting_outreach(
@@ -1079,51 +1155,29 @@ def _execute_agent_action_body(
             parsed_text=parsed_text,
             user_inputs=user_inputs,
             prospect_count=prospect_count,
+            campaign_brief=_campaign_brief(briefing, plan),
         )
-
-    if action_type == 'sponsorship_outreach':
-        _obs.record_decision('Two-pass path — research then draft', path='sponsorship_outreach')
-        from app.services.sponsorship_outreach_service import execute_sponsorship_outreach
-        return execute_sponsorship_outreach(
-            user_id=user_id,
-            simulation_id=simulation_id,
-            action_id=action_id,
-            expertise_zone=expertise_zone,
-            parsed_text=parsed_text,
-            user_inputs=user_inputs,
-            prospect_count=prospect_count,
-        )
-
-    inputs_formatted = '\n'.join(
-        f'- {k}: {v}' for k, v in user_inputs.items() if v
-    ) or 'None provided'
 
     # Resolve the effective prospect count up front for cold_email_campaign so BOTH
-    # the research target and the "generate exactly N" constraint below are bounded.
-    # The orchestrator dispatches with prospect_count=None; without this the agent
-    # chases its "25-company" description, over-generates, exhausts the token budget,
-    # and gets truncated — the primary cause of slow Cold Email runs.
+    # the research target and the count constraint below are bounded. The
+    # orchestrator dispatches with prospect_count=None; without this the agent
+    # over-generates, exhausts the token budget, and gets truncated.
     if action_type == 'cold_email_campaign' and not prospect_count:
         try:
             prospect_count = int(user_inputs.get('prospect_count') or 5)
         except (TypeError, ValueError):
             prospect_count = 5
 
-    # outreach_email / cold_email_campaign: pull verified prospects from CRM
-    # contacts (have real emails). Fall back to research engine if CRM is empty.
-    if action_type in ('outreach_email', 'cold_email_campaign'):
+    # cold_email_campaign: pull verified prospects from CRM contacts (real
+    # emails). Fall back to the research engine if the CRM pool is empty.
+    prospect_section = ''
+    if action_type == 'cold_email_campaign':
         with _obs.tool_span('crm_prospect_lookup', {'want': prospect_count}) as _span:
             prospect_section = _get_crm_prospect_section(user_id, simulation_id, user_inputs, prospect_count)
             _span['output'] = 'found verified contacts' if prospect_section else 'CRM empty'
-        if not prospect_section:
-            with _obs.tool_span('prospect_research', {'want': prospect_count}) as _span:
-                prospect_section = _get_prospect_context(
-                    action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
-                    prospect_count=prospect_count,
-                )
-                _span['output'] = '%d chars of prospect context' % len(prospect_section or '')
-    else:
-        # Prospect research injection (FR-RESEARCH-01)
+    if not prospect_section:
+        # Prospect research injection (FR-RESEARCH-01) — no-op unless the agent
+        # has research_enabled in agents.json.
         with _obs.tool_span('prospect_research', {'want': prospect_count}) as _span:
             prospect_section = _get_prospect_context(
                 action_type, expertise_zone, user_inputs, user_id, simulation_id, action_id,
@@ -1131,37 +1185,53 @@ def _execute_agent_action_body(
             )
             _span['output'] = '%d chars of prospect context' % len(prospect_section or '')
 
-    prompt = f"""You are a specialized career wealth agent executing a specific action for a professional.
+    is_json_outreach = action_type == 'cold_email_campaign'
+    produces_contacts = action_type in CONTACT_AGENTS and not is_json_outreach
+    if prospect_section:
+        prospect_note = 'a verified prospect list is supplied (use only those people)'
+    elif action_type in UPDATE_ONLY_CONTACT_AGENTS:
+        prospect_note = ('%d existing contacts supplied' % briefing.existing_contact_count
+                         if briefing.existing_contact_count else 'no existing contacts on file')
+    elif action_type in CONTACT_AGENTS:
+        prospect_note = 'none supplied — describe target profiles, do not name individuals'
+    else:
+        prospect_note = 'not applicable'
 
-LAYER {layer_number}: {layer_name}
-EXPERTISE ZONE: {expertise_zone}
-ACTION: {action_meta['label']}
-ACTION DESCRIPTION: {action_meta['description']}
+    # ── Planning step (runs before every agent's generation call) ─────────────
+    plan = _brief.plan_run(
+        client=_client(), meta=agent_meta, layer_name=layer_name,
+        expertise_zone=expertise_zone, inputs_formatted=inputs_formatted,
+        briefing=briefing, prospect_note=prospect_note, parsed_text=parsed_text,
+        user_id=user_id, simulation_id=simulation_id,
+    )
+    # The planning call's _log_interaction disposed the engine; drop the scoped
+    # session so the queries below (calibration config, contact saves) check out
+    # a live connection.
+    from app.extensions import db as _db
+    _db.session.remove()
+    _record_plan(_obs, action_meta['label'], plan)
 
-USER-PROVIDED INPUTS:
-{inputs_formatted}
-
-PROFESSIONAL BACKGROUND (excerpt):
-{parsed_text[:3500]}
-{prospect_section}
-Generate the complete artifact for this action. Be specific and draw directly from the professional's background, expertise zone, and deliverables. Write in a professional, immediately usable format. Do not include meta-commentary or instructions — only the artifact itself."""
-
-    # outreach_email: override to structured JSON so emails can be sent programmatically
-    if action_type == 'outreach_email':
-        prompt += (
-            '\n\n---\nReturn ONLY a JSON object in this exact format (no markdown fences, '
-            'no commentary outside the JSON):\n'
-            '{"version":"1.0","agent":"outreach_email","prospects":['
-            '{"first_name":"...","last_name":"...","email":"...","job_title":"...",'
-            '"company_name":"...","crm_contact_id":null,"send_status":"draft",'
-            '"email_draft":{"subject":"...","body":"..."}}]}\n'
-            'One entry per prospect from the research list above. '
-            'Use the prospect email addresses provided. '
-            'Subject and body must be complete, personalised, and ready to send.'
-        )
+    sections = [
+        f"LAYER {layer_number}: {layer_name}",
+        f"EXPERTISE ZONE: {expertise_zone}",
+        f"ACTION: {action_meta['label']}",
+        f"ACTION DESCRIPTION: {action_meta['description']}",
+        f"USER-PROVIDED INPUTS:\n{inputs_formatted}",
+        briefing.sections(),
+        f"PROFESSIONAL BACKGROUND (resume excerpt):\n{(parsed_text or '')[:3500]}",
+        (prospect_section or '').strip(),
+        _brief.format_plan(plan),
+        _brief.output_spec_block(agent_meta),
+        _brief.grounding_rules(agent_meta),
+    ]
+    prompt = '\n\n'.join(s for s in sections if s) + (
+        '\n\nGenerate the complete artifact for this action. Be specific and draw directly '
+        "from the professional's background, the upstream artifacts and the plan. Write in a "
+        'professional, immediately usable format.'
+    )
 
     # cold_email_campaign: structured JSON with 3-step sequence per prospect
-    if action_type == 'cold_email_campaign':
+    if is_json_outreach:
         prompt += (
             '\n\n---\nReturn ONLY a JSON object in this exact format (no markdown fences, '
             'no commentary outside the JSON):\n'
@@ -1173,7 +1243,7 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             '{"step":2,"subject":"...","body":"...","send_status":"pending","send_delay_days":7},'
             '{"step":3,"subject":"...","body":"...","send_status":"pending","send_delay_days":14}'
             ']}]}\n'
-            'One entry per prospect from the research list above. '
+            'One entry per prospect from the prospect list above. '
             'Use the prospect email addresses provided. '
             'Step 1 is the initial outreach. Step 2 is a follow-up (day 7). '
             'Step 3 is a final follow-up (day 14). All subjects and bodies must be complete and ready to send. '
@@ -1181,29 +1251,20 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             '(3-4 sentences each) — do not repeat step 1 at length.'
         )
 
-    # Inject prospect limit constraint for all contact-producing agents (FR-TIER-07)
-    _all_contact_agents = {
-        'cold_email_campaign', 'consulting_outreach', 'role_search', 'referral_network',
-        'speaking_proposals', 'corporate_training_proposal', 'affiliate_program',
-        'affiliate_partnerships', 'alumni_reactivation', 'sponsorship_outreach',
-        'partnership_proposal', 'ip_licensing', 'client_winback', 'lapsed_buyer_reactivation',
-    }
-    if prospect_count and action_type in _all_contact_agents:
+    # Count constraint for contact-producing agents (FR-TIER-07). The plan's
+    # prospect count overrides any number in the action description, and the
+    # agent may never pad the list with invented people.
+    if prospect_count and (is_json_outreach or produces_contacts):
+        container = 'prospects[] array' if is_json_outreach else 'CONTACTS block'
         prompt += (
-            f'\n\nCRITICAL CONSTRAINT: Generate exactly {prospect_count} prospects/contacts '
-            f'in the contacts[] array. Do not generate more or fewer than {prospect_count}.'
+            f'\n\nCOUNT CONSTRAINT: this run covers at most {prospect_count} people — this '
+            f'overrides any number in the action description. The {container} must contain '
+            f'one entry per supplied person, up to {prospect_count}. If fewer were supplied, '
+            'use fewer. Never invent people or email addresses to reach the number.'
         )
 
-    # For contact-producing agents, append a structured contacts extraction instruction
-    _contact_agents = {
-        'cold_email_campaign', 'role_search', 'referral_network',
-        'speaking_proposals', 'corporate_training_proposal',
-        'affiliate_program', 'affiliate_partnerships', 'alumni_reactivation',
-        'ip_licensing',
-        'client_winback', 'partnership_proposal', 'lapsed_buyer_reactivation',
-    }
-    _update_only_agents = {'alumni_reactivation', 'client_winback', 'lapsed_buyer_reactivation'}
-    if action_type in _contact_agents:
+    # Structured contacts block for contact-producing markdown agents (FR-CRM-03)
+    if produces_contacts:
         prompt += (
             '\n\n---\nIMPORTANT: After your main response, append this exact block '
             '(mandatory output):\n'
@@ -1211,9 +1272,10 @@ Generate the complete artifact for this action. Be specific and draw directly fr
             '[{"first_name":"...","last_name":"...","email":"...","job_title":"...",'
             '"company_name":"...","qualifying_notes":"..."}]\n'
             'CONTACTS-->\n'
-            'Include one entry per prospect/contact you generated or referenced. '
-            'Required per entry: first_name, last_name. Omit fields you don\'t have. '
-            'If no specific contacts were produced, output <!--CONTACTS [] CONTACTS-->.'
+            'Include only people who appear in the supplied prospect or existing-contact '
+            'lists above, copying their details exactly. Required per entry: first_name, '
+            "last_name. Omit fields you don't have. If no list was supplied, output "
+            '<!--CONTACTS [] CONTACTS-->.'
         )
 
     # SIM-PRD-CAL-001 — ask calibrated agents for a trailing METRICS block so the
@@ -1227,65 +1289,9 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         _log_ = __import__('logging').getLogger(__name__)
         _log_.warning('Could not append METRICS block for %s: %s', action_type, _cal_err)
 
-    # Action types whose descriptions explicitly demand large output get a higher budget.
-    # Everything else defaults to 8192 (was 3000 — the prior limit caused silent truncation).
-    # Canonical names only — action_type is alias-resolved at function entry,
-    # so legacy names (youtube_podcast, course_framework, ...) never match here.
-    _LARGE_OUTPUT_ACTIONS = {
-        'seo_content_calendar', 'video_podcast', 'workshop_curriculum',
-        'saas_product_spec', 'course_curriculum', 'group_coaching',
-        'consulting_proposal', 'sales_page', 'ebook_outline',
-    }
-    _ACTION_MAX_TOKENS = {
-        # ── very large (multi-email / calendar / spec) ───────────────────
-        'cold_email_campaign':    16384,
-        'outreach_email':          8192,
-        # ── long structured output (15 messages / 7 emails / full guide) ─
-        'referral_network':        6144,
-        'speaking_proposals':      6144,
-        'workshop_curriculum':     6144,
-        'launch_sequence':         6144,
-        'lead_magnet_funnel':      6144,
-        # ── medium structured output ─────────────────────────────────────
-        'role_search':             4096,
-        'sow_template':            4096,
-        'agreement_template':      2048,
-        'pitch_deck_outline':      4096,
-        'group_coaching':          4096,
-        'corporate_training':      4096,
-        'waitlist_landing_page':   4096,
-        'alumni_reactivation':     4096,
-        'ebook_outline':           4096,
-        'membership':              4096,
-        'affiliate_program':       4096,
-        'testimonials':            4096,
-        'lapsed_buyer':            4096,
-        'ip_licensing':            4096,
-        'programmatic_ads':        4096,
-        'projections':             4096,
-        # ── short structured output ───────────────────────────────────────
-        'negotiation_script':      3072,
-        'pricing_research':        3072,
-        'newsletter':              3072,
-        'community':               3072,
-        'income_allocation':       3072,
-        'fund_recommendations':    3072,
-        'real_estate_strategy':    3072,
-        'insurance_review':        3072,
-        # ── very short (headline / calculation / schedule) ────────────────
-        'linkedin_optimization':   2048,
-        'roi_calculator':          2048,
-        'booking_page':            2048,
-        'compound_projections':    2048,
-        'dca_schedule':            2048,
-        'workshop_roi':            2048,
-        'competitive_pricing':     2048,
-        'insurance_gap_analysis':  2048,
-        'compound_growth':         2048,
-    }
-    max_tokens = _ACTION_MAX_TOKENS.get(
+    max_tokens = ACTION_MAX_TOKENS.get(
         action_type,
-        16384 if action_type in _LARGE_OUTPUT_ACTIONS else 8192,
+        16384 if agent_meta.get('large_output') else 8192,
     )
 
     # Scale cold_email_campaign tokens to the (already-resolved) prospect count so
@@ -1299,13 +1305,13 @@ Generate the complete artifact for this action. Be specific and draw directly fr
     # The caller resolved the model (and may have re-pinned it via a guardrail),
     # so only fall back to the routing table when called without one.
     model = model or get_model(action_type)
-    _json_outreach = {'outreach_email', 'cold_email_campaign'}
     with _obs.tool_span('claude_generate',
                         {'model': model, 'max_tokens': max_tokens,
                          'prompt_chars': len(prompt)}) as _span:
         response = _client().messages.create(
             model=model,
             max_tokens=max_tokens,
+            system=_brief.system_prompt(agent_meta),
             messages=[{'role': 'user', 'content': prompt}],
         )
         _span['output'] = 'stop_reason=%s out_tokens=%s' % (
@@ -1361,7 +1367,7 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         )
 
     # JSON outreach agents: parse, save contacts, return clean JSON
-    if action_type in _json_outreach:
+    if is_json_outreach:
         with _obs.tool_span('outreach_finalize') as _span:
             raw_artifact = _finalize_outreach_email_artifact(
                 raw_artifact, user_id, simulation_id, action_id,
@@ -1373,15 +1379,38 @@ Generate the complete artifact for this action. Be specific and draw directly fr
         return raw_artifact
 
     # Extract and save contacts[] if present (FR-CRM-03)
-    if action_type in _contact_agents:
+    if produces_contacts:
         with _obs.tool_span('contact_extract') as _span:
             raw_artifact = _extract_and_save_contacts(
                 raw_artifact, user_id, simulation_id, action_type,
-                update_only=(action_type in _update_only_agents),
+                update_only=(action_type in UPDATE_ONLY_CONTACT_AGENTS),
             )
             _span['output'] = 'contacts block processed'
 
     return raw_artifact
+
+
+def _record_plan(_obs, label: str, plan) -> None:
+    """Put the planning step on the run trace (observability console)."""
+    if plan:
+        _obs.record_decision(
+            'Planned %s' % label,
+            objective=plan.get('objective'),
+            sections=[o.get('section') for o in (plan.get('outline') or []) if isinstance(o, dict)],
+            assumptions=plan.get('assumptions') or [],
+            gaps=plan.get('gaps') or [],
+        )
+    else:
+        _obs.record_warning('Planning step unavailable — generated without a plan')
+
+
+def _campaign_brief(briefing, plan) -> str:
+    """Condensed plan + upstream positioning for the per-prospect email drafts."""
+    from app.services import agent_briefing as _brief
+    parts = [_brief.format_plan(plan)]
+    if briefing.upstream:
+        parts.append(briefing.upstream[:2000])
+    return '\n\n'.join(p for p in parts if p)[:3000]
 
 
 def _truncate_prospects_to_limit(artifact_json: str, limit: int) -> str:
@@ -1473,7 +1502,7 @@ def _finalize_outreach_email_artifact(
                 contacts=contacts_payload,
                 user_id=user_id,
                 simulation_id=simulation_id,
-                action_type='outreach_email',
+                action_type='cold_email_campaign',
                 cycle_id=None,
             )
             if saved:
