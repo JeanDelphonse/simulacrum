@@ -853,6 +853,16 @@ def forgot_password_page():
     return render_template('auth/reset_password.html')
 
 
+@pages_bp.route('/reset-password/<token>')
+def reset_password_page(token):
+    """Where the reset email lands: choose a new password. The form posts to
+    POST /api/auth/reset-password/<token>."""
+    from app.blueprints.auth.routes import find_reset_user, MIN_PASSWORD_LENGTH
+    return render_template('auth/reset_password_confirm.html', token=token,
+                           token_valid=find_reset_user(token) is not None,
+                           min_length=MIN_PASSWORD_LENGTH)
+
+
 @pages_bp.route('/admin')
 @login_required
 def admin_view():

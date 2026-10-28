@@ -1,6 +1,6 @@
 import secrets
 from datetime import datetime, timedelta
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, redirect, url_for
 from flask_login import login_user, logout_user, login_required, current_user
 import jwt as pyjwt
 from app.blueprints.auth import auth_bp
@@ -274,14 +274,30 @@ def logout():
     return jsonify({'message': 'Logged out successfully'}), 200
 
 
+MIN_PASSWORD_LENGTH = 8
+
+
+def find_reset_user(token):
+    """The active user holding this unexpired reset token, or None."""
+    if not token:
+        return None
+    user = User.query.filter_by(password_reset_token=token).first()
+    if (not user or user.deleted_at or not user.password_reset_expires
+            or user.password_reset_expires < datetime.utcnow()):
+        return None
+    return user
+
+
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password_request():
-    data = request.get_json()
-    if not data or not data.get('email'):
+    data = request.get_json(silent=True)
+    email = ((data or {}).get('email') or '').strip().lower()
+    if not email:
         return jsonify({'error': 'email is required'}), 400
 
-    user = User.query.filter_by(email=data['email'].lower()).first()
-    if user:
+    user = User.query.filter_by(email=email).first()
+    # Deactivated accounts get no link; the response is identical either way.
+    if user and not user.deleted_at:
         token = secrets.token_urlsafe(32)
         user.password_reset_token = token
         user.password_reset_expires = datetime.utcnow() + timedelta(hours=24)
@@ -290,27 +306,42 @@ def reset_password_request():
             from app.services.email_service import send_password_reset_email
             send_password_reset_email(user.email, user.full_name, token)
         except Exception:
-            pass
+            current_app.logger.exception('Password reset email failed for user %s', user.id)
 
     # Always return 200 to prevent email enumeration
     return jsonify({'message': 'If that email is registered, a reset link has been sent'}), 200
 
 
+@auth_bp.route('/reset-password/<token>', methods=['GET'])
+def reset_password_link(token):
+    """Reset emails sent before the page existed link here. A browser opening
+    that link sends GET to this POST-only API, which answered 405 Method Not
+    Allowed — so forward it to the page that collects the new password."""
+    return redirect(url_for('pages.reset_password_page', token=token))
+
+
 @auth_bp.route('/reset-password/<token>', methods=['POST'])
 def reset_password_confirm(token):
-    data = request.get_json()
-    if not data or not data.get('password'):
+    data = request.get_json(silent=True)
+    password = (data or {}).get('password') or ''
+    if not password:
         return jsonify({'error': 'New password is required'}), 400
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return jsonify({'error': 'Password must be at least %d characters' % MIN_PASSWORD_LENGTH}), 400
 
-    user = User.query.filter_by(password_reset_token=token).first()
-    if not user or not user.password_reset_expires or user.password_reset_expires < datetime.utcnow():
-        return jsonify({'error': 'Invalid or expired reset token'}), 400
+    user = find_reset_user(token)
+    if not user:
+        return jsonify({'error': 'This reset link is invalid or has expired. Request a new one.'}), 400
 
     user.password_hash = bcrypt.generate_password_hash(
-        data['password'], rounds=current_app.config['BCRYPT_LOG_ROUNDS']
+        password, rounds=current_app.config['BCRYPT_LOG_ROUNDS']
     ).decode('utf-8')
     user.password_reset_token = None
     user.password_reset_expires = None
+    # Following the emailed link proves the user controls the address, so an
+    # unverified account isn't left locked out of sign-in after a reset.
+    user.email_verified = True
+    AuditLog.log('user_password_reset', user_id=user.id)
     db.session.commit()
     return jsonify({'message': 'Password reset successfully'}), 200
 

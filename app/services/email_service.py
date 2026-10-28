@@ -163,7 +163,8 @@ def send_password_reset_email(user_email: str, user_name: str, token: str):
     from flask import url_for
     first = (user_name or '').strip().split()[0] or 'there'
     try:
-        reset_url = url_for('auth.reset_password_confirm', token=token, _external=True)
+        # The page, not the POST-only API endpoint — a link click is a GET.
+        reset_url = url_for('pages.reset_password_page', token=token, _external=True)
         plain = (
             f'Hi {first},\n\n'
             f'We received a request to reset your SimiSI password.\n\n'
