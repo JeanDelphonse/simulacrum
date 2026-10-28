@@ -118,8 +118,11 @@ def create_steps_from_artifact(
     # Prefer steps[] from artifact; fall back to static config
     artifact_steps = data.get('steps') or step_config['steps']
 
-    # Extract contacts
+    # Extract contacts — minus anyone an earlier run of this agent already
+    # targeted (recipient_ledger). Steps used to be created for every prospect,
+    # including those the send hook had just skipped as already contacted.
     contacts = _extract_contacts(data, action_type)
+    contacts = _drop_owned_by_other_runs(contacts, simulation_id, action_type, agent_action_id)
     total_steps = len(artifact_steps)
     now = datetime.utcnow()
     created = 0
@@ -198,6 +201,32 @@ def create_steps_from_artifact(
         return 0
 
     return created
+
+
+def _drop_owned_by_other_runs(contacts: dict, simulation_id: str, action_type: str,
+                              agent_action_id: str) -> dict:
+    """Keep only contacts this run owns (or that no run has claimed yet)."""
+    if not contacts:
+        return contacts
+    try:
+        from app.models.agent_recipient import AgentRecipient
+        from app.services.recipient_ledger import recipient_key, used_keys
+        used_keys(simulation_id, action_type)            # triggers backfill if needed
+        owners = {r.recipient_key: r.action_id for r in AgentRecipient.query.filter_by(
+            simulation_id=simulation_id, action_type=action_type).all()}
+    except Exception as exc:
+        logger.warning('step recipient check failed for %s: %s', agent_action_id, exc)
+        return contacts
+    kept = {}
+    for cid, item in contacts.items():
+        key = recipient_key(item.get('email', ''), item.get('first_name', ''),
+                            item.get('last_name', ''), item.get('company_name', ''))
+        owner = owners.get(key)
+        if owner and owner != agent_action_id:
+            logger.info('Steps not created for contact %s — already targeted by run %s', cid, owner)
+            continue
+        kept[cid] = item
+    return kept
 
 
 def _extract_contacts(data: dict, action_type: str) -> dict:

@@ -71,6 +71,8 @@ from app.models.peer import (
 from app.models.discount import (
     SimulationDiscount, UserDiscount, UserDiscountRedemption,
 )
+# Per-agent recipient ledger — registered so db.create_all() builds it.
+from app.models.agent_recipient import AgentRecipient
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',

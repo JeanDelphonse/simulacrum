@@ -36,6 +36,20 @@ def send_outreach_email(
     if not contact or not contact.email:
         return {'status': 'skipped', 'reason': 'no_email'}
 
+    # Recipient uniqueness (recipient_ledger): one agent run per person per
+    # simulation, and never the same email twice from one run. Every agent send
+    # — post-completion hooks and scheduled steps — passes through here.
+    try:
+        from app.services.recipient_ledger import check_send
+        allowed, reason = check_send(simulation_id, action_id, contact, subject)
+    except Exception as _ge:
+        logger.error('recipient guard failed open for contact %s: %s', contact_id, _ge)
+        db.session.rollback()
+        allowed, reason = True, ''
+    if not allowed:
+        logger.info('Outreach to contact %s skipped (%s) action=%s', contact_id, reason, action_id)
+        return {'status': 'skipped', 'reason': reason}
+
     to_email = contact.email.lower().strip()
 
     # Sandbox routing: redirect to the simulation owner's email instead of the real contact

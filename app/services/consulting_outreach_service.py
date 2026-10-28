@@ -428,7 +428,7 @@ def skip_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
     return p, None
 
 
-def _filter_uncontacted(user_id, prospects):
+def _filter_uncontacted(user_id, prospects, simulation_id=None):
     """Return only prospects that have NOT been contacted before.
 
     Each run cycle emails fresh contacts only. Drops: prospects with no email,
@@ -456,6 +456,12 @@ def _filter_uncontacted(user_id, prospects):
                   or c.pipeline_stage in ('active', 'client', 'closed_lost')):
             continue
         kept.append(p)
+    # Unique per agent across cycles: also drop anyone an earlier
+    # consulting_outreach run in this simulation already targeted, even if the
+    # email was never sent (held for approval).
+    if simulation_id:
+        from app.services import recipient_ledger as _ledger
+        kept = _ledger.filter_unused(simulation_id, 'consulting_outreach', kept)
     return kept
 
 
@@ -592,7 +598,7 @@ def execute_consulting_outreach(
     # Only email contacts not previously contacted — fresh outreach each cycle.
     # (All discovered prospects are still saved to the CRM by the research engine;
     # this filter just decides who receives an email this run.)
-    _uncontacted = _filter_uncontacted(user_id, result.prospects)
+    _uncontacted = _filter_uncontacted(user_id, result.prospects, simulation_id=simulation_id)
     _dropped = len(result.prospects) - len(_uncontacted)
     if _dropped:
         logger.info('consulting_outreach: skipped %d already-contacted prospect(s); '

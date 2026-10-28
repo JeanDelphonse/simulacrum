@@ -328,6 +328,16 @@ def delete_cycles(simulation_id: str, cycle_ids: list = None,
                         keys).fetchall()]
                 unlink('outcome_reports', 'run_id', run_ids)
 
+            # Recipient ledger: someone the run actually emailed stays claimed
+            # (unlinked, so no later run of the agent re-emails them); someone it
+            # only drafted is released with the artifact below. This must run
+            # before email_logs is unlinked, while the join still holds.
+            if has('email_logs'):
+                unlink('agent_recipients', 'action_id', aids,
+                       ' AND EXISTS (SELECT 1 FROM email_logs el'
+                       ' WHERE el.action_id = agent_recipients.action_id'
+                       ' AND el.contact_id = agent_recipients.contact_id)')
+
             for table, column in _TIER3_UNLINK:
                 if table == 'outcome_reports':
                     continue
@@ -357,6 +367,7 @@ def delete_cycles(simulation_id: str, cycle_ids: list = None,
             unlink('contacts', 'source_cycle_id', cids)
 
         # ── Tier 2: generated activity, children before parents ─────────────
+        wipe('agent_recipients', 'action_id', aids)   # drafted, never sent
         wipe('contact_activities', 'action_id', aids)
         wipe('action_items', 'source_action_id', aids)
         wipe('prospect_research_runs', 'action_id', aids)

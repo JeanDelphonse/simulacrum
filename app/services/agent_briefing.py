@@ -191,7 +191,8 @@ def _profile_section(user_id: str, simulation, briefing: Briefing) -> None:
     briefing.profile = '\n'.join(lines)
 
 
-def _existing_contacts_section(user_id: str, briefing: Briefing, limit: int) -> None:
+def _existing_contacts_section(user_id: str, briefing: Briefing, limit: int,
+                               simulation_id: str = None, action_type: str = None) -> None:
     """Update-only agents (alumni, win-back, lapsed buyers) write to people the
     user already knows. Without this list the model invents names."""
     from app.models.contact import Contact
@@ -202,9 +203,14 @@ def _existing_contacts_section(user_id: str, briefing: Briefing, limit: int) -> 
                 Contact.do_not_contact.is_(False),
                 Contact.pipeline_stage.in_(('active', 'client')))
         .order_by(Contact.last_contacted_at.desc())
-        .limit(limit)
         .all()
     )
+    # Each person once per agent across cycles — skip those an earlier run of
+    # this agent already wrote to.
+    from app.services import recipient_ledger as _ledger
+    used = _ledger.used_keys(simulation_id, action_type) if simulation_id and action_type else set()
+    rows = [c for c in rows if _ledger.recipient_key(
+        c.email, c.first_name, c.last_name, c.company_name) not in used][:limit]
     briefing.existing_contact_count = len(rows)
     if not rows:
         briefing.existing_contacts = (
@@ -317,7 +323,8 @@ def build_briefing(action_type: str, layer_number: int, simulation_id: str,
     ]
     if action_type in UPDATE_ONLY_CONTACT_AGENTS and user_id:
         steps.append(('existing_contacts', lambda: _existing_contacts_section(
-            user_id, briefing, max(prospect_count or 0, _EXISTING_CONTACTS_LIMIT))))
+            user_id, briefing, max(prospect_count or 0, _EXISTING_CONTACTS_LIMIT),
+            simulation_id=simulation_id, action_type=action_type)))
     if layer_number == 5 and simulation is not None:
         steps.append(('income', lambda: _income_section(simulation, briefing)))
 

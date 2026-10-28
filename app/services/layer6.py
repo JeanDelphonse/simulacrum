@@ -664,6 +664,16 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
             if not check_trigger(simulation_id, canonical)[0]:
                 continue
 
+            # Recipients are unique per agent across cycles; an agent with no
+            # one new left to target sits the cycle out (recipient_ledger).
+            from app.services.recipient_ledger import has_unused_recipients
+            _has_unused, _why = has_unused_recipients(simulation_id, canonical,
+                                                      sim.user_id if sim else None)
+            if not _has_unused:
+                logger.info('Layer 6: %s left out of cycle for %s — %s',
+                            canonical, simulation_id, _why)
+                continue
+
             # Check channel constraints
             required_channel = action_def.get('channel')
             if required_channel and not channel_approvals.get(required_channel, False):

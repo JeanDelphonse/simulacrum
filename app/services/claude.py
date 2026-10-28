@@ -1150,7 +1150,7 @@ def _execute_agent_action_body(
         _record_plan(_obs, action_meta['label'], plan)
         _obs.record_decision('Two-pass path — research then draft', path='consulting_outreach')
         from app.services.consulting_outreach_service import execute_consulting_outreach
-        return execute_consulting_outreach(
+        artifact = execute_consulting_outreach(
             user_id=user_id,
             simulation_id=simulation_id,
             action_id=action_id,
@@ -1160,6 +1160,9 @@ def _execute_agent_action_body(
             prospect_count=prospect_count,
             campaign_brief=_campaign_brief(briefing, plan),
         )
+        from app.services import recipient_ledger as _ledger
+        _ledger.record_from_artifact(simulation_id, action_type, action_id, artifact)
+        return artifact
 
     # Resolve the effective prospect count up front for cold_email_campaign so BOTH
     # the research target and the count constraint below are bounded. The
@@ -1382,6 +1385,10 @@ def _execute_agent_action_body(
         # Enforce prospect count cap — keep highest qualifying_score entries (FR-TIER-07)
         if prospect_count:
             raw_artifact = _truncate_prospects_to_limit(raw_artifact, prospect_count)
+        # Claim these recipients now, not at send time — sends may be held for
+        # approval and the next cycle must not draft the same people again.
+        from app.services import recipient_ledger as _ledger
+        _ledger.record_from_artifact(simulation_id, action_type, action_id, raw_artifact)
         return raw_artifact
 
     # Extract and save contacts[] if present (FR-CRM-03)
@@ -1390,6 +1397,7 @@ def _execute_agent_action_body(
             raw_artifact = _extract_and_save_contacts(
                 raw_artifact, user_id, simulation_id, action_type,
                 update_only=(action_type in UPDATE_ONLY_CONTACT_AGENTS),
+                action_id=action_id,
             )
             _span['output'] = 'contacts block processed'
 
@@ -1587,10 +1595,22 @@ def _save_contacts_list(
     action_type: str,
     update_only: bool,
     source: str,
+    action_id: str = None,
 ) -> None:
     """Resolve user_id if missing, call save_contacts_to_crm, log result."""
     import logging as _log
     _logger = _log.getLogger(__name__)
+
+    # Claim these recipients for the agent (unique across cycles), and drop any
+    # it already targeted in an earlier run before they reach the CRM again.
+    try:
+        from app.services import recipient_ledger as _ledger
+        contacts = _ledger.filter_unused(simulation_id, action_type, contacts)
+        _ledger.record(simulation_id, action_type, action_id, contacts)
+    except Exception as _le:
+        _logger.warning('recipient ledger update failed for %s: %s', action_type, _le)
+    if not contacts:
+        return
 
     if not user_id and simulation_id:
         from app.models.simulation import Simulation as _Sim
@@ -1636,6 +1656,7 @@ def _extract_and_save_contacts(
     simulation_id: str,
     action_type: str,
     update_only: bool = False,
+    action_id: str = None,
 ) -> str:
     """
     Extract <!--CONTACTS [...] CONTACTS--> block and save to CRM.
@@ -1656,7 +1677,7 @@ def _extract_and_save_contacts(
         )
         contacts = _llm_extract_contacts(artifact)
         if contacts:
-            _save_contacts_list(contacts, user_id, simulation_id, action_type, update_only, source='llm_fallback')
+            _save_contacts_list(contacts, user_id, simulation_id, action_type, update_only, source='llm_fallback', action_id=action_id)
         else:
             _logger.error(
                 'CONTACTS_SAVE FAILED action_type=%s sim=%s: no CONTACTS block and LLM fallback returned nothing',
@@ -1682,7 +1703,7 @@ def _extract_and_save_contacts(
         )
         return clean.strip()
 
-    _save_contacts_list(contacts, user_id, simulation_id, action_type, update_only, source='embedded_block')
+    _save_contacts_list(contacts, user_id, simulation_id, action_type, update_only, source='embedded_block', action_id=action_id)
     return clean.strip()
 
 
@@ -1708,7 +1729,14 @@ def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dic
             Contact.pipeline_stage == 'prospect',
             Contact.last_contacted_at.is_(None),
             _or(Contact.outreach_count == 0, Contact.outreach_count.is_(None)),
-        ).order_by(Contact.qualifying_score.desc()).limit(prospect_count or 5).all()
+        ).order_by(Contact.qualifying_score.desc()).all()
+        # Recipients are unique per agent across every cycle (recipient_ledger):
+        # drop anyone an earlier Cold Email run already targeted, including
+        # drafts still waiting on email-channel approval.
+        from app.services import recipient_ledger as _ledger
+        used = _ledger.used_keys(simulation_id, 'cold_email_campaign')
+        contacts = [c for c in contacts
+                    if _ledger.recipient_key(c.email) not in used][:prospect_count or 5]
 
         if not contacts:
             return ''
@@ -1770,6 +1798,9 @@ def _get_prospect_context(
             targeting=targeting,
             target_count=prospect_count or 5,
         )
+        # Never hand the agent someone it targeted in an earlier cycle.
+        from app.services import recipient_ledger as _ledger
+        result.prospects = _ledger.filter_unused(simulation_id, action_type, result.prospects)
         if not result.prospects:
             return ''
         return f'\n\n{result.format_for_prompt()}\n'
