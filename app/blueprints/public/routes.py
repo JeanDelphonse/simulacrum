@@ -401,10 +401,8 @@ def explore():
 
     category = request.args.get('category', 'all').lower().strip()
 
-    rows = db.session.query(BioPage, UserProfile).join(
-        UserProfile, BioPage.user_id == UserProfile.user_id,
-    ).filter(
-        BioPage.status == BioPage.STATUS_PUBLISHED,
+    from app.services.bio_service import listed_bio_pages_query
+    rows = listed_bio_pages_query().filter(
         BioPage.show_on_explore == True,  # noqa: E712
     ).order_by(BioPage.view_count.desc()).all()
 
@@ -461,7 +459,7 @@ def explore():
                 via_name = UserConnection.via_name(current_user.id, bp.user_id)
 
         cards.append({
-            'slug': bp.slug,
+            'slug': profile.username,
             'display_name': profile.display_name or '',
             'tagline': (profile.tagline or '')[:120],
             'avatar_path': profile.avatar_path or '',

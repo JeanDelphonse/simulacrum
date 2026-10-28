@@ -251,15 +251,12 @@ def _get_recent_bio_pages(limit: int = 8) -> list:
         from app.models.profile import UserProfile as _UP
         from sqlalchemy import func as _func
         # Order by published_at when available, fall back to created_at
+        from app.services.bio_service import listed_bio_pages_query
         order_col = _func.coalesce(BioPage.published_at, BioPage.created_at)
-        rows = db.session.query(BioPage, _UP).join(
-            _UP, BioPage.user_id == _UP.user_id,
-        ).filter(
-            BioPage.status == BioPage.STATUS_PUBLISHED,
-        ).order_by(order_col.desc()).limit(limit).all()
+        rows = listed_bio_pages_query().order_by(order_col.desc()).limit(limit).all()
         return [
             {
-                'slug': bp.slug,
+                'slug': p.username,
                 'display_name': p.display_name or '',
                 'tagline': (p.tagline or '')[:80],
                 'avatar_path': p.avatar_path or '',
@@ -281,10 +278,8 @@ def _get_hero_cards(limit: int = 4) -> list:
         from app.models.simulation import Simulation as _Sim
         from app.blueprints.public.routes import _zone_to_category
         from sqlalchemy import exists
-        rows = db.session.query(BioPage, _UP).join(
-            _UP, BioPage.user_id == _UP.user_id,
-        ).filter(
-            BioPage.status == BioPage.STATUS_PUBLISHED,
+        from app.services.bio_service import listed_bio_pages_query
+        rows = listed_bio_pages_query().filter(
             exists().where(_Sim.user_id == BioPage.user_id),
         ).all()
         if len(rows) > limit:
@@ -294,7 +289,7 @@ def _get_hero_cards(limit: int = 4) -> list:
             sim = _Sim.query.filter_by(user_id=bp.user_id).order_by(_Sim.created_at.desc()).first()
             zone = sim.expertise_zone if sim else ''
             cards.append({
-                'slug': bp.slug,
+                'slug': p.username,
                 'display_name': p.display_name or '',
                 'tagline': (p.tagline or '')[:120],
                 'avatar_path': p.avatar_path or '',

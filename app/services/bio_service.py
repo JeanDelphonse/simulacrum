@@ -266,3 +266,27 @@ def suggest_service_bullets(expertise_zone: str, l1_streams: list, l2_streams: l
     )
     lines = [ln.strip().lstrip('-•* ') for ln in response.content[0].text.strip().split('\n') if ln.strip()]
     return [ln[:60] for ln in lines if ln][:6]
+
+
+def listed_bio_pages_query():
+    """(BioPage, UserProfile) rows that may appear in public listings.
+
+    The single rule for the landing page, /explore and the sitemap: the bio page
+    is published AND the owner's account is active (an admin deactivation sets
+    User.deleted_at, which /u/<slug> already treats as unpublished). Listings
+    must link by ``UserProfile.username`` — /u/<slug> resolves the profile by
+    username, and BioPage.slug only re-syncs when the page is visited, so a stale
+    slug lands on "This profile is not yet published".
+    """
+    from app.extensions import db
+    from app.models.bio_page import BioPage
+    from app.models.profile import UserProfile
+    from app.models.user import User
+    return (
+        db.session.query(BioPage, UserProfile)
+        .join(UserProfile, BioPage.user_id == UserProfile.user_id)
+        .join(User, User.id == BioPage.user_id)
+        .filter(BioPage.status == BioPage.STATUS_PUBLISHED,
+                User.deleted_at.is_(None),
+                UserProfile.username.isnot(None))
+    )
