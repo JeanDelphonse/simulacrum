@@ -57,15 +57,14 @@ class FakeClient:
                                stop_reason='end_turn')
 
 
-PLAN = json.dumps({
-    'objective': 'Rewrite the LinkedIn profile around the Tier 2 retainer',
-    'audience': 'COOs at mid-market manufacturers',
-    'key_inputs': ['Tier 2 retainer $9,000/month'],
-    'assumptions': ['Open to engagements selectively'],
-    'gaps': [],
-    'outline': [{'section': 'Headline options', 'content': 'three options'}],
-    'quality_checks': ['Headline under 220 characters'],
-})
+PLAN = """OBJECTIVE: Rewrite the LinkedIn profile around the Tier 2 retainer
+USE: Tier 2 retainer $9,000/month; COO at Acme
+ASSUME: Open to engagements selectively
+GAPS: none
+OUTLINE:
+1. Headline options — three options under 220 characters
+2. About section — fold-optimised first three lines
+"""
 
 
 def name_hygiene():
@@ -275,6 +274,11 @@ def main():
         check('generation has a system prompt with no-fabrication rule',
               'Never invent' in gen.get('system', ''))
         check('artifact returned', out.startswith('## Headline'))
+        plan = brief._parse_plan('**OBJECTIVE:** Price it\nUSE: a; b\nGAPS: none\n'
+                                 'OUTLINE:\n1. Tiers — three tiers\n2) Terms - net 30')
+        check('line-format plan parses (bold headings, "none", both dash styles)',
+              plan and plan['objective'] == 'Price it' and plan['key_inputs'] == ['a', 'b']
+              and plan['gaps'] == [] and [o['section'] for o in plan['outline']] == ['Tiers', 'Terms'], plan)
 
         fake = FakeClient('not json', 'Allocation table')
         claude._client = lambda: fake

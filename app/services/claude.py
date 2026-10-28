@@ -990,7 +990,7 @@ ACTION_MAX_TOKENS = {
     # ── very short (headline / calculation / schedule) ────────────────
     'linkedin_optimization':   2048,
     'roi_calculator':          2048,
-    'booking_page':            2048,
+    'booking_page':            3072,   # 2048 truncated once sections were required
     'dca_schedule':            2048,
 }
 
@@ -1136,12 +1136,15 @@ def _execute_agent_action_body(
     # Two-pass consulting_outreach runs its own research + per-prospect drafting;
     # it still gets a planning step, passed through as a campaign brief.
     if action_type == 'consulting_outreach':
-        plan = _brief.plan_run(
-            client=_client(), meta=agent_meta, layer_name=layer_name,
-            expertise_zone=expertise_zone, inputs_formatted=inputs_formatted,
-            briefing=briefing, prospect_note='researched per prospect in the next pass',
-            parsed_text=parsed_text, user_id=user_id, simulation_id=simulation_id,
-        )
+        with _obs.tool_span('agent_planning') as _span:
+            plan = _brief.plan_run(
+                client=_client(), meta=agent_meta, layer_name=layer_name,
+                expertise_zone=expertise_zone, inputs_formatted=inputs_formatted,
+                briefing=briefing, prospect_note='researched per prospect in the next pass',
+                parsed_text=parsed_text, user_id=user_id, simulation_id=simulation_id,
+            )
+            _span['output'] = 'planned' if plan else 'no plan'
+
         from app.extensions import db as _db
         _db.session.remove()   # _log_interaction disposed the pool
         _record_plan(_obs, action_meta['label'], plan)
@@ -1198,12 +1201,15 @@ def _execute_agent_action_body(
         prospect_note = 'not applicable'
 
     # ── Planning step (runs before every agent's generation call) ─────────────
-    plan = _brief.plan_run(
-        client=_client(), meta=agent_meta, layer_name=layer_name,
-        expertise_zone=expertise_zone, inputs_formatted=inputs_formatted,
-        briefing=briefing, prospect_note=prospect_note, parsed_text=parsed_text,
-        user_id=user_id, simulation_id=simulation_id,
-    )
+    with _obs.tool_span('agent_planning') as _span:
+        plan = _brief.plan_run(
+            client=_client(), meta=agent_meta, layer_name=layer_name,
+            expertise_zone=expertise_zone, inputs_formatted=inputs_formatted,
+            briefing=briefing, prospect_note=prospect_note, parsed_text=parsed_text,
+            user_id=user_id, simulation_id=simulation_id,
+        )
+        _span['output'] = 'planned' if plan else 'no plan'
+
     # The planning call's _log_interaction disposed the engine; drop the scoped
     # session so the queries below (calibration config, contact saves) check out
     # a live connection.

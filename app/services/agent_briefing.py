@@ -343,7 +343,9 @@ def system_prompt(meta: dict) -> str:
         'names or statistics and present them as real. Where the user must fill something '
         'in, use a clearly marked [placeholder].',
         'When a required input is missing, make a reasonable assumption and state it in a '
-        'short "Assumptions" note at the end of the artifact.',
+        'short "Assumptions" note at the end of the artifact (at most 3 bullets).',
+        'Be concise and skimmable: cover every required section, but do not pad — prefer '
+        'tables and bullets over long prose, and do not restate the inputs or the plan.',
         'No meta-commentary, no preamble about what you are going to do — only the artifact.',
     ]
     if meta.get('disclaimer'):
@@ -377,15 +379,21 @@ def output_spec_block(meta: dict) -> str:
 # Planning pass
 # ---------------------------------------------------------------------------
 
-_PLAN_SCHEMA = (
-    '{"objective": "one sentence", '
-    '"audience": "who will read or receive the artifact", '
-    '"key_inputs": ["the specific facts from the briefing you will use"], '
-    '"assumptions": ["assumptions made for missing inputs"], '
-    '"gaps": ["information that is missing or unverifiable and how the artifact handles it"], '
-    '"outline": [{"section": "name", "content": "what goes in it, with concrete specifics"}], '
-    '"quality_checks": ["checks the finished artifact must pass"]}'
-)
+# A plain line format, not JSON: the plan is only rendered back into the
+# generation prompt, and JSON's quotes, keys and indentation roughly doubled the
+# tokens (and so the seconds) every agent spent planning.
+PLAN_MAX_TOKENS = 700
+
+_PLAN_FORMAT = """OBJECTIVE: <one sentence>
+USE: <specific fact from the briefing>; <another>; <another>
+ASSUME: <assumption for a missing input>; <another>
+GAPS: <missing or unverifiable item and how the artifact handles it>; <another>
+OUTLINE:
+1. <section name> — <what goes in it, concrete, under 20 words>
+2. <section name> — <...>"""
+
+_PLAN_KEYS = {'OBJECTIVE': 'objective', 'USE': 'key_inputs',
+              'ASSUME': 'assumptions', 'GAPS': 'gaps'}
 
 
 def _plan_prompt(meta: dict, layer_name: str, expertise_zone: str, inputs_formatted: str,
@@ -411,12 +419,19 @@ PROSPECTS: {prospect_note}
 RESUME EXCERPT:
 {(parsed_text or '')[:1500]}
 
-Write a concrete execution plan. Name the specific details from the briefing the artifact
-will use (rates, tiers, roles, outcomes, upstream figures). Map every required section to an
-outline entry. List assumptions for missing inputs and how unverifiable data is handled.
+Write a short, concrete execution plan. Name the specific details from the briefing the
+artifact will use (rates, tiers, roles, outcomes, upstream figures). Map every required
+section to an outline entry. List assumptions for missing inputs and how unverifiable data
+is handled.
 
-Return ONLY this JSON object, no markdown fences:
-{_PLAN_SCHEMA}"""
+Keep it terse — this plan is read by another model, not a person:
+- at most 6 outline entries; at most 4 items per line, separated by ";"
+- the whole plan under 200 words
+- never invent client results, percentages or statistics; use only figures in the briefing
+- write "none" for a line with nothing to say
+
+Reply with exactly this format and nothing else:
+{_PLAN_FORMAT}"""
 
 
 def format_plan(plan: dict) -> str:
@@ -441,17 +456,33 @@ def format_plan(plan: dict) -> str:
 
 
 def _parse_plan(raw: str) -> dict | None:
-    raw = (raw or '').strip()
-    raw = re.sub(r'^```(?:json)?\s*', '', raw, flags=re.I)
-    raw = re.sub(r'\s*```$', '', raw)
-    start = raw.find('{')
-    if start == -1:
-        return None
-    try:
-        plan, _ = json.JSONDecoder().raw_decode(raw[start:])
-    except Exception:
-        return None
-    return plan if isinstance(plan, dict) and plan.get('outline') else None
+    """Parse the line-format plan into {objective, key_inputs, assumptions, gaps, outline}."""
+    plan: dict = {'outline': []}
+    in_outline = False
+    for line in (raw or '').splitlines():
+        line = line.strip().lstrip('*#').strip()
+        if not line:
+            continue
+        head, sep, rest = line.partition(':')
+        key = _PLAN_KEYS.get(head.strip().upper()) if sep else None
+        if key:
+            in_outline = False
+            rest = rest.strip().strip('*').strip()   # tolerate **BOLD:** headings
+            if key == 'objective':
+                plan['objective'] = rest
+            else:
+                plan[key] = [i.strip() for i in rest.split(';')
+                             if i.strip() and i.strip().lower() != 'none']
+            continue
+        if head.strip().upper() == 'OUTLINE' and sep:
+            in_outline = True
+            continue
+        m = re.match(r'^\d+[.)]\s*(.+)$', line)
+        if in_outline and m:
+            parts = re.split(r'\s+[—–-]\s+', m.group(1), maxsplit=1)
+            plan['outline'].append({'section': parts[0].strip(),
+                                    'content': parts[1].strip() if len(parts) > 1 else ''})
+    return plan if plan['outline'] else None
 
 
 def plan_run(*, client, meta: dict, layer_name: str, expertise_zone: str,
@@ -470,8 +501,11 @@ def plan_run(*, client, meta: dict, layer_name: str, expertise_zone: str,
     prompt = _plan_prompt(meta, layer_name, expertise_zone, inputs_formatted,
                           briefing, prospect_note, parsed_text)
     try:
+        # Bounded so planning stays a few seconds. An unbounded plan ran to the
+        # old 1,500-token cap on every run (~17s), came back truncated and
+        # unparseable, and delayed every agent queued behind it.
         response = client.messages.create(
-            model=model, max_tokens=1500,
+            model=model, max_tokens=PLAN_MAX_TOKENS,
             messages=[{'role': 'user', 'content': prompt}],
         )
     except Exception as exc:
@@ -481,5 +515,7 @@ def plan_run(*, client, meta: dict, layer_name: str, expertise_zone: str,
                      response.usage, model=model)
     plan = _parse_plan(response.content[0].text if response.content else '')
     if plan is None:
-        logger.warning('Planning output unparseable for %s', meta.get('action_type'))
+        logger.warning('Planning output unparseable for %s (stop_reason=%s, out_tokens=%s)',
+                       meta.get('action_type'), response.stop_reason,
+                       getattr(response.usage, 'output_tokens', '?'))
     return plan
