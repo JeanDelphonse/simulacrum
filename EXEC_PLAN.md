@@ -226,7 +226,15 @@ P1 consequence of the immutability rule: agent-generated versions are protected 
   - Autonomy is per user and per agent: L0–L3, never L4; Layer 5 is locked at L0; money movement is capped at L1. Settings page at `/settings/agent-autonomy`.
   - Tools seeded disabled: Alpaca orders, LinkedIn posting, Kajabi publishing.
   - Deviations from §5: the autonomy ladder governs the new execution layer only. The existing `trust_level` / `channel_approvals` keep governing today's pipeline, per owner decision 8a-2. Plans aren't emitted inside the agent run, which keeps the run paths untouched.
-- **P4 — next, awaiting go-ahead:** L2 execution of approved reversible steps (Stripe payment link, Cal.com booking link) through the guardrail boundary, with `execution_runs`, step limits and budget caps, and approvals surfacing in Escalations.
+- **P4 — done.** `app/services/plan_executor.py` and `execution_runs` (`sql/058`, with no foreign keys so that execution records survive a cycle delete as evidence).
+  - **What can run:** only `stripe_payment_link` (undo deactivates the link) and `calcom_booking_link` (undo deletes the event type), on the user's own connected account.
+  - **When:** the step is approved, the plan is current, the user's autonomy for the agent is L2 or higher at execution time, and the inputs pass validation.
+  - **How:** inside an observability run, through `tool_span(side_effecting=True)`, so guardrails are enforced at the tool boundary (a blocking rule blocks). Each run writes the audit log and the artifact action log, and resolves its Escalations item.
+  - **Limits** (platform settings): `exec_max_runs_per_day` (20), `exec_max_runs_per_agent_per_day` (5), `exec_budget_cents_per_month` (1000).
+  - **Idempotent:** a succeeded step returns its existing run.
+  - **Deviation:** plan-level approval (L3) isn't built, so an executable step always needs its own approval, even at L3.
+  - **Untested against live APIs:** Stripe Connect and Cal.com's `api.cal.com/v1`, which Cal.com has been moving away from in favour of v2. Verify on simisi.io with a connected test account.
+- **P5 — next, awaiting go-ahead:** the safe send pipeline (confirmed per-batch sends with preview, unsubscribe, rate limits and budget caps; every send hard-gated).
 
 ## 8. Decisions needed (original questions)
 1. **Sending identity (§3.1).** Which "user's own" send path for P5: (a) Apollo sequences via the user's linked mailbox (no new OAuth; Apollo plan/credits apply), (b) Gmail / Microsoft 365 send-as (new OAuth, Google app verification), or (c) both, with (a) first? And until P5 ships, keep today's SimiSI-domain sends, or pause them?

@@ -81,3 +81,36 @@ def autonomy_page():
     return render_template('execution/autonomy.html',
                            agents=agent_plans.autonomy_overview(current_user.id),
                            level_labels=agent_plans.LEVEL_LABELS)
+
+
+# ---------------------------------------------------------------------------
+# P4 — execute an approved REVERSIBLE step; undo it
+# ---------------------------------------------------------------------------
+
+@execution_bp.route('/api/plan-steps/<step_id>/execute', methods=['POST'])
+@login_required
+def api_step_execute(step_id):
+    """Run one approved reversible step with the inputs the user confirmed."""
+    from app.services import plan_executor
+    body = request.get_json(silent=True) or {}
+    try:
+        run = plan_executor.execute_step(step_id, current_user.id, body.get('inputs') or {})
+    except PermissionError:
+        return jsonify({'error': 'forbidden'}), 403
+    except plan_executor.ExecutionRefused as exc:
+        return jsonify({'error': 'refused', 'message': str(exc)}), 400
+    code = 200 if run['status'] == 'succeeded' else 502
+    return jsonify(run), code
+
+
+@execution_bp.route('/api/execution-runs/<run_id>/undo', methods=['POST'])
+@login_required
+def api_run_undo(run_id):
+    from app.services import plan_executor
+    try:
+        run = plan_executor.undo_run(run_id, current_user.id)
+    except PermissionError:
+        return jsonify({'error': 'forbidden'}), 403
+    except plan_executor.ExecutionRefused as exc:
+        return jsonify({'error': 'refused', 'message': str(exc)}), 400
+    return jsonify(run)

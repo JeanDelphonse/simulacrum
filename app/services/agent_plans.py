@@ -1,6 +1,7 @@
 """Inspectable agent plans, tool registry and autonomy (EXEC_PLAN P3).
 
-P3 is L1 — plan + suggest. A plan decomposes the agent's strategy (the
+P3 is L1 — plan + suggest; P4 adds L2 execution of approved REVERSIBLE steps
+(app/services/plan_executor.py). A plan decomposes the agent's strategy (the
 ``methods`` template in config/agent_execution.json) into steps, each naming a
 registered tool with its reversibility, blast radius and estimated cost. Users
 approve or reject steps; **nothing executes in P3** — there is deliberately no
@@ -225,7 +226,9 @@ def build_plan(action, user_id: str):
             status = 'unavailable'
         elif level == 'L0':
             status = PlanStep.APPROVAL_NOT_REQUIRED     # generate-only: informational
-        elif reason or level in ('L1', 'L2'):
+        elif reason or level in ('L1', 'L2') or _is_executable(tool_key, tool):
+            # Executable steps always take their own approval in P4: plan-level
+            # approval (L3) isn't built yet, so nothing runs without a step OK.
             status = PlanStep.APPROVAL_PENDING
         else:
             status = PlanStep.APPROVAL_NOT_REQUIRED     # L3: covered by plan approval
@@ -239,7 +242,57 @@ def build_plan(action, user_id: str):
                        'version': current.version_number if current else None}
         db.session.add(step)
     db.session.commit()
+    _escalate_executable_steps(plan, action, level)
     return plan
+
+
+def _is_executable(tool_key, tool) -> bool:
+    from app.services.plan_executor import EXECUTABLE_TOOLS
+    return bool(tool is not None and tool_key in EXECUTABLE_TOOLS and tool.enabled)
+
+
+def _escalate_executable_steps(plan, action, level: str) -> None:
+    """Surface steps that could run (L2+) in the Escalations queue — one item
+    per step, resolved when the user decides or runs it."""
+    if level not in ('L2', 'L3'):
+        return
+    from app.models.agent_plan import PlanStep
+    from app.services.agent_registry import get_agent_meta
+    try:
+        from utils.action_items import create_action_item
+        label = (get_agent_meta(plan.agent_key) or {}).get('label', plan.agent_key)
+        for st in PlanStep.query.filter_by(plan_id=plan.id,
+                                           approval_status=PlanStep.APPROVAL_PENDING).all():
+            if st.tool_key not in _executable_keys():
+                continue
+            create_action_item(
+                simulation_id=plan.simulation_id, user_id=plan.user_id,
+                item_type='agent_approval_required',
+                title=('Approve: %s — %s' % (st.tool_key.replace('_', ' '), label))[:200],
+                description='The agent proposes this reversible step. Nothing runs until you approve it '
+                            'and press Run on the artifact\'s plan.',
+                action_url='/simulations/%s/artifacts/%s' % (plan.simulation_id, plan.action_id),
+                layer_number=action.layer_number, source_action_id=plan.action_id,
+                source_artifact_id=st.id)
+    except Exception as exc:
+        logger.warning('plan escalation failed for plan %s: %s', plan.id, exc)
+
+
+def _executable_keys():
+    from app.services.plan_executor import EXECUTABLE_TOOLS
+    return EXECUTABLE_TOOLS
+
+
+def resolve_escalation(step_id: str) -> None:
+    try:
+        from app.models.layer6 import ActionItem
+        from utils.action_items import resolve_action_item
+        for item in ActionItem.query.filter_by(source_artifact_id=step_id,
+                                               item_type='agent_approval_required',
+                                               resolved_at=None).all():
+            resolve_action_item(item.id)
+    except Exception as exc:
+        logger.warning('could not resolve escalation for step %s: %s', step_id, exc)
 
 
 def current_plan(action_id: str):
@@ -299,24 +352,41 @@ def decide(step_id: str, user_id: str, decision: str):
                                   decision=decision))
     _refresh_status(plan)
     db.session.commit()
+    if decision == 'reject':
+        resolve_escalation(step.id)
     return plan
 
 
 def plan_dict(plan) -> dict:
-    from app.models.agent_plan import PlanStep
+    from app.models.agent_action import AgentAction
+    from app.models.agent_plan import ExecutionRun, PlanStep
+    from app.services import plan_executor
     tools = ensure_tools()
     steps = PlanStep.query.filter_by(plan_id=plan.id).order_by(PlanStep.seq_index).all()
+    action = AgentAction.query.get(plan.action_id) if plan.action_id else None
+    level_now = effective_level(plan.user_id, plan.agent_key) if plan.user_id else plan.autonomy_level
+    runs = {}
+    for r in (ExecutionRun.query.filter(ExecutionRun.step_id.in_([s.id for s in steps]))
+              .order_by(ExecutionRun.created_at.desc()).all() if steps else []):
+        runs.setdefault(r.step_id, r.to_dict())
     return {
         'id': plan.id, 'agent_key': plan.agent_key, 'goal': plan.goal, 'method': plan.method,
         'autonomy_level': plan.autonomy_level,
         'autonomy_label': LEVEL_LABELS.get(plan.autonomy_level, plan.autonomy_level),
         'status': plan.status, 'created_at': plan.created_at.isoformat(),
-        'executes': False,          # P3: plans never execute
+        # P4: only approved reversible steps can run, and only at L2+.
+        'executes': level_now in ('L2', 'L3') and any(
+            plan_executor.executable(s, tools.get(s.tool_key)) for s in steps),
+        'level_now': level_now,
         'steps': [{
             'id': s.id, 'seq': s.seq_index + 1, 'method': s.method, 'tool_key': s.tool_key,
             'tool_integration': tools[s.tool_key].integration if s.tool_key in tools else None,
             'expected': s.expected, 'reversibility': s.reversibility, 'blast': s.blast,
             'est_cost_cents': s.est_cost_cents, 'required_reason': s.required_reason,
             'approval_status': s.approval_status,
+            'executable': plan_executor.executable(s, tools.get(s.tool_key)),
+            'default_inputs': (plan_executor.default_inputs(s.tool_key, action)
+                               if plan_executor.executable(s, tools.get(s.tool_key)) else None),
+            'last_run': runs.get(s.id),
         } for s in steps],
     }

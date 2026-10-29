@@ -134,14 +134,18 @@ def main():
               and send['approval_status'] == 'pending' and send['reversibility'] == 'irreversible', send)
         check('manual steps need no approval',
               next(s for s in p['steps'] if s['method'] == 'wait')['approval_status'] == 'not_required')
-        check('the plan says it does not execute', p.get('executes') is False)
+        check('an L1 plan does not execute', p.get('executes') is False)
         check('same plan on the next view (no duplicates)',
               client.get('/api/artifacts/%s/plan' % ids['cold']).get_json()['id'] == p['id']
               and AgentPlan.query.filter_by(action_id=ids['cold']).count() == 1)
 
         b = client.get('/api/artifacts/%s/plan' % ids['booking']).get_json()
-        check('L3 reversible steps are covered by plan approval',
-              b['autonomy_level'] == 'L3' and all(s['approval_status'] == 'not_required' for s in b['steps']), b['steps'])
+        # P4: plan-level approval (L3) isn't built, so an EXECUTABLE step always
+        # takes its own approval; other reversible steps are covered by the plan.
+        check('L3: executable steps still need their own approval; others are covered by the plan',
+              b['autonomy_level'] == 'L3'
+              and all(s['approval_status'] == ('pending' if s['executable'] else 'not_required')
+                      for s in b['steps'] if s['tool_key']), b['steps'])
         d = client.get('/api/artifacts/%s/plan' % ids['dca']).get_json()
         check('dca_schedule plan is plan-only and generate-only',
               d['autonomy_level'] == 'L0' and [s['method'] for s in d['steps']] == ['plan', 'review'])

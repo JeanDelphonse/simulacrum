@@ -98,3 +98,59 @@ class ActionApproval(db.Model):
     decided_by = db.Column(db.String(9), nullable=True)
     decision = db.Column(db.String(10), nullable=False)           # approve | reject
     ts = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ExecutionRun(db.Model):
+    """One execution of an approved plan step (EXEC_PLAN P4). Reversible tools
+    only; ``status`` running -> succeeded | failed | blocked, and
+    succeeded -> undone when the user reverses it."""
+    __tablename__ = 'execution_runs'
+    __table_args__ = (db.Index('ix_execution_runs_step', 'step_id', 'status'),
+                      db.Index('ix_execution_runs_user', 'user_id', 'created_at'))
+
+    STATUS_RUNNING = 'running'
+    STATUS_SUCCEEDED = 'succeeded'
+    STATUS_FAILED = 'failed'
+    STATUS_BLOCKED = 'blocked'
+    STATUS_UNDONE = 'undone'
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_id)
+    plan_id = db.Column(db.String(9), nullable=False)
+    step_id = db.Column(db.String(9), nullable=False)
+    user_id = db.Column(db.String(9), nullable=False)
+    agent_key = db.Column(db.String(50), nullable=False)
+    tool_key = db.Column(db.String(60), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default=STATUS_RUNNING)
+    _request = db.Column('request_ref', db.Text, nullable=True)
+    _response = db.Column('response_ref', db.Text, nullable=True)
+    guardrail_result = db.Column(db.String(300), nullable=True)
+    error = db.Column(db.String(500), nullable=True)
+    cost_cents = db.Column(db.Integer, nullable=False, default=0)
+    obs_run_id = db.Column(db.String(9), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    finished_at = db.Column(db.DateTime, nullable=True)
+
+    @property
+    def request(self) -> dict:
+        return json.loads(self._request) if self._request else {}
+
+    @request.setter
+    def request(self, value):
+        self._request = json.dumps(value) if value else None
+
+    @property
+    def response(self) -> dict:
+        return json.loads(self._response) if self._response else {}
+
+    @response.setter
+    def response(self, value):
+        self._response = json.dumps(value) if value else None
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'plan_id': self.plan_id, 'step_id': self.step_id, 'tool_key': self.tool_key,
+            'status': self.status, 'request': self.request, 'response': self.response,
+            'guardrail_result': self.guardrail_result, 'error': self.error,
+            'cost_cents': self.cost_cents, 'created_at': self.created_at.isoformat(),
+            'finished_at': self.finished_at.isoformat() if self.finished_at else None,
+        }

@@ -76,7 +76,7 @@ from app.models.agent_recipient import AgentRecipient
 # Agent Execution Layer (EXEC_PLAN P2) — artifact units and verb log.
 from app.models.artifact_exec import ArtifactUnit, ArtifactAction
 from app.models.agent_plan import (
-    ToolRegistry, AgentPlan, PlanStep, AgentAutonomyConfig, ActionApproval,
+    ToolRegistry, AgentPlan, PlanStep, AgentAutonomyConfig, ActionApproval, ExecutionRun,
 )
 
 __all__ = [

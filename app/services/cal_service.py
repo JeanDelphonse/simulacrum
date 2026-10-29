@@ -67,19 +67,19 @@ class CalClient:
 
     def _get(self, path, params=None):
         import requests
-        resp = requests.get(f'{CAL_API_BASE}{path}', headers=self._headers(), params=params)
+        resp = requests.get(f'{CAL_API_BASE}{path}', headers=self._headers(), params=params, timeout=20)
         resp.raise_for_status()
         return resp.json()
 
     def _post(self, path, body=None):
         import requests
-        resp = requests.post(f'{CAL_API_BASE}{path}', headers=self._headers(), json=body or {})
+        resp = requests.post(f'{CAL_API_BASE}{path}', headers=self._headers(), json=body or {}, timeout=20)
         resp.raise_for_status()
         return resp.json()
 
     def _delete(self, path):
         import requests
-        resp = requests.delete(f'{CAL_API_BASE}{path}', headers=self._headers())
+        resp = requests.delete(f'{CAL_API_BASE}{path}', headers=self._headers(), timeout=20)
         resp.raise_for_status()
         return resp.json()
 
@@ -120,6 +120,10 @@ class CalClient:
 
     def delete_webhook(self, webhook_id: int):
         return self._delete(f'/webhooks/{webhook_id}')
+
+    def delete_event_type(self, event_type_id):
+        """Undo for an event type created by an approved plan step."""
+        return self._delete(f'/event-types/{event_type_id}')
 
 
 # ── Booking page deployment ───────────────────────────────────────────────────

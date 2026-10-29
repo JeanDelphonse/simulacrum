@@ -92,8 +92,7 @@
       modal.id = 'aabPlanModal';
       modal.className = 'aab-modal';
       modal.innerHTML = '<div class="aab-dialog"><h3>Agent plan</h3>' +
-        '<p class="aab-hint aab-nosend">Plans are suggestions in this release — approving a step records your ' +
-        'decision; nothing runs.</p><div id="aabPlanBody">Loading…</div><div id="aabPlanMsg" class="aab-msg"></div>' +
+        '<p class="aab-hint aab-nosend" id="aabPlanNote"></p><div id="aabPlanBody">Loading…</div><div id="aabPlanMsg" class="aab-msg"></div>' +
         '<div class="aab-actions"><button type="button" class="av-btn" id="aabPlanRegen">Rebuild plan</button>' +
         '<button type="button" class="av-btn primary" id="aabPlanClose">Close</button></div></div>';
       document.body.appendChild(modal);
@@ -101,7 +100,89 @@
     }
     const body = modal.querySelector('#aabPlanBody'), msg = modal.querySelector('#aabPlanMsg');
 
+    const RUN_FIELDS = {
+      stripe_payment_link: [['product_name', 'Product name', 'text'], ['amount_usd', 'Price (USD)', 'number'],
+                            ['description', 'Description (optional)', 'text']],
+      calcom_booking_link: [['title', 'Session title', 'text'], ['length_minutes', 'Length (minutes)', 'number'],
+                            ['price_usd', 'Price (USD, 0 = free)', 'number'], ['description', 'Description (optional)', 'text']],
+    };
+    const RUN_PREVIEW = {
+      stripe_payment_link: function (v) { return 'This creates a payment link for <b>' + esc(v.product_name) + '</b> at <b>$' +
+        esc(v.amount_usd) + '</b> on <b>your connected Stripe account</b>. No money moves until a customer pays; you can deactivate the link with Undo.'; },
+      calcom_booking_link: function (v) { return 'This creates a bookable <b>' + esc(v.length_minutes) + '-minute "' + esc(v.title) +
+        '"</b> session on <b>your Cal.com account</b>. You can delete it with Undo.'; },
+    };
+
+    function runPanel(s) {
+      const r = s.last_run;
+      if (r && r.status === 'succeeded') {
+        const url = r.response && r.response.url;
+        return '<div class="aab-run aab-run-ok">✓ Done' + (url ? ' — <a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(url) + '</a>' : '') +
+          ' <button type="button" class="av-btn aab-undo" data-run="' + esc(r.id) + '">Undo</button></div>';
+      }
+      if (!s.executable || s.approval_status !== 'approved') {
+        return (r && r.status === 'undone') ? '<div class="aab-hint">Undone.</div>' : '';
+      }
+      const v = s.default_inputs || {};
+      const fields = (RUN_FIELDS[s.tool_key] || []).map(function (f) {
+        return '<label class="aab-field">' + esc(f[1]) + '<input class="aab-input aab-in" data-k="' + f[0] + '" type="' + f[2] +
+               '" value="' + esc(v[f[0]] == null ? '' : v[f[0]]) + '"></label>';
+      }).join('');
+      const prev = (r && (r.status === 'failed' || r.status === 'blocked'))
+        ? '<div class="aab-warn">Last attempt ' + esc(r.status) + ': ' + esc(r.error || r.guardrail_result || '') + '</div>' : '';
+      return '<div class="aab-run" data-step="' + esc(s.id) + '" data-tool="' + esc(s.tool_key) + '">' + prev + fields +
+        '<div class="aab-preview"></div>' +
+        '<button type="button" class="av-btn primary aab-run-btn">Run this step</button></div>';
+    }
+
+    function wireRuns() {
+      body.querySelectorAll('.aab-run[data-step]').forEach(function (panel) {
+        const tool = panel.dataset.tool;
+        const preview = panel.querySelector('.aab-preview');
+        function values() {
+          const v = {};
+          panel.querySelectorAll('.aab-in').forEach(function (i) { v[i.dataset.k] = i.value; });
+          return v;
+        }
+        function refresh() { preview.innerHTML = RUN_PREVIEW[tool] ? RUN_PREVIEW[tool](values()) : ''; }
+        panel.querySelectorAll('.aab-in').forEach(function (i) { i.addEventListener('input', refresh); });
+        refresh();
+        panel.querySelector('.aab-run-btn').addEventListener('click', async function () {
+          if (!confirm('Run this step now?\n\n' + preview.textContent)) return;
+          this.disabled = true; this.textContent = 'Running…'; msg.textContent = '';
+          try {
+            const r = await fetch(root() + '/api/plan-steps/' + panel.dataset.step + '/execute', {
+              method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ inputs: values() }) });
+            const d = await r.json();
+            if (!r.ok && r.status !== 502) throw new Error(d.message || d.error);
+            if (d.status !== 'succeeded') msg.textContent = 'Step ' + d.status + ': ' + (d.error || d.guardrail_result || '');
+          } catch (e) { msg.textContent = e.message; }
+          await reload();
+        });
+      });
+      body.querySelectorAll('.aab-undo').forEach(function (b) {
+        b.addEventListener('click', async function () {
+          if (!confirm('Undo this step? The link will stop working.')) return;
+          msg.textContent = '';
+          try { await postJson(root() + '/api/execution-runs/' + b.dataset.run + '/undo'); }
+          catch (e) { msg.textContent = e.message; }
+          await reload();
+        });
+      });
+    }
+
+    async function reload() {
+      const r = await fetch(api(id, '/plan'), { credentials: 'same-origin' });
+      render(await r.json());
+    }
+
     function render(p) {
+      modal.querySelector('#aabPlanNote').textContent = p.executes
+        ? 'Only approved, reversible steps (a payment link, a booking link) can run here, on your own accounts. ' +
+          'Sending, signing, posting and trading never run from a plan.'
+        : 'Plans are suggestions at this autonomy level — approving a step records your decision; nothing runs. ' +
+          'Raise the agent to L2 in Settings → Agent Autonomy to run reversible steps.';
       let html = '<div class="aab-label">' + esc(p.goal || '') + '</div>' +
         '<div class="aab-hint">Strategy <b>' + esc((p.method || '').replace(/_/g, ' ')) + '</b> · autonomy <b>' +
         esc(p.autonomy_level) + '</b> (' + esc(p.autonomy_label) + ') · plan <b>' + esc(p.status) + '</b></div>';
@@ -119,9 +200,10 @@
           '<div class="aab-hint">' + esc(s.reversibility) + ' · reach: ' + esc(BLAST[s.blast] || s.blast) +
           (s.est_cost_cents ? ' · est. ' + (s.est_cost_cents / 100).toFixed(2) + ' USD' : '') +
           (s.required_reason ? ' · <span class="aab-warn">' + esc(REASON_LABEL[s.required_reason] || s.required_reason) + '</span>' : '') +
-          '</div>' + (decide ? '<div style="margin-top:6px">' + decide + '</div>' : '') + '</div>';
+          '</div>' + (decide ? '<div style="margin-top:6px">' + decide + '</div>' : '') + runPanel(s) + '</div>';
       }).join('');
       body.innerHTML = html;
+      wireRuns();
       body.querySelectorAll('.aab-dec').forEach(function (b) {
         b.addEventListener('click', async function () {
           msg.textContent = '';
