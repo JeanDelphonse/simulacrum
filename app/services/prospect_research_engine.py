@@ -567,70 +567,128 @@ class ProspectResearchEngine:
     # ── Stage 1 — Apollo ──────────────────────────────────────────────────────
 
     def _search_apollo(self, user_id: str, targeting: TargetingCriteria, count: int) -> list:
+        """Apollo in two steps: People API Search (free, no emails), then
+        Bulk People Enrichment (credits) for just enough people to fill
+        ``count``. Credits are capped at 2x count per run."""
         from app.models.integration import UserIntegration
-        from app.services.token_crypto import decrypt_token
-        from app.services.apollo_client import ApolloClient
+        from app.services.apollo_client import client_for
 
         rec = UserIntegration.query.filter_by(user_id=user_id, provider='apollo').first()
         if not rec or not rec.access_token_enc:
             return []
+        client = client_for(rec)
 
-        token  = decrypt_token(rec.access_token_enc)
-        client = ApolloClient(token)
-
-        # Advance the Apollo page as the user's agent-sourced CRM grows, so each
-        # run cycle surfaces NEW prospects instead of re-fetching the same first
-        # page every time (which the caller would then filter out as already
-        # contacted).
-        per_page = min(count, 50) or 25
+        # Start deeper in Apollo's results as the user's agent-sourced CRM grows,
+        # so each cycle reaches people it has not seen.
+        per_page = 25
         try:
             from app.models.contact import Contact
-            already = Contact.query.filter(
-                Contact.user_id == user_id,
-                Contact.source.in_(['agent_action', 'agent_generated']),
-            ).count()
-            page = (already // per_page) + 1
+            known_rows = Contact.query.with_entities(
+                Contact.first_name, Contact.company_name, Contact.source,
+            ).filter(Contact.user_id == user_id).all()
+            agent_sourced = sum(1 for r in known_rows if r.source in ('agent_action', 'agent_generated'))
+            start_page = (agent_sourced // per_page) + 1
         except Exception:
-            page = 1
+            known_rows, start_page = [], 1
+        # Apollo shows only the first name and company before enrichment, so that
+        # pair is how people already in the CRM are skipped without spending credits.
+        known = {((r.first_name or '').strip().lower(), (r.company_name or '').strip().lower())
+                 for r in known_rows}
 
-        people = client.people_search(
-            person_titles=targeting.job_titles[:5],
-            person_seniorities=targeting.seniorities,
-            organization_num_employees_ranges=targeting.company_sizes,
-            person_locations=targeting.geographies,
-            per_page=per_page,
-            page=page,
-        )
-        self._apollo_calls += 1
+        stats = {'searched': 0, 'has_email': 0, 'known': 0, 'enriched': 0,
+                 'found': 0, 'credits': 0, 'pages': 0}
+        candidates = []
+        max_enrich = max(count * 2, 10)
+        for page in range(start_page, start_page + 3):
+            if len(candidates) >= max_enrich or self._out_of_time():
+                break
+            try:
+                people = client.people_search(
+                    person_titles=targeting.job_titles[:5],
+                    person_seniorities=targeting.seniorities,
+                    organization_num_employees_ranges=targeting.company_sizes,
+                    person_locations=targeting.geographies,
+                    per_page=per_page,
+                    page=page,
+                )
+            except Exception as exc:
+                code = getattr(getattr(exc, 'response', None), 'status_code', None)
+                if code in (401, 403):
+                    logger.error(
+                        'Apollo refused People API Search for user %s (HTTP %s): the saved key '
+                        'needs to be a master API key, or have mixed_people/api_search in its '
+                        'scopes. Create one in Apollo > Settings > Integrations > API Keys and '
+                        'reconnect Apollo.', user_id, code)
+                    return []
+                raise
+            self._apollo_calls += 1
+            stats['pages'] += 1
+            stats['searched'] += len(people)
+            for person in people:
+                if not person.get('has_email'):
+                    continue
+                stats['has_email'] += 1
+                org = person.get('organization') or {}
+                key = ((person.get('first_name') or '').strip().lower(),
+                       (org.get('name') or '').strip().lower())
+                if key in known:
+                    stats['known'] += 1
+                    continue
+                known.add(key)
+                candidates.append(person)
+            if len(people) < per_page:
+                break                      # last page of results
 
         prospects = []
-        for person in people:
-            email = person.get('email') or ''
-            if not email:
-                continue
-            org   = person.get('organization') or {}
-            p = Prospect(
-                first_name=person.get('first_name', ''),
-                last_name=person.get('last_name', ''),
-                email=email,
-                email_source='apollo',
-                email_verified=True,
-                email_confidence=1.0,
-                job_title=person.get('title', ''),
-                company_name=org.get('name', ''),
-                company_size=str(org.get('estimated_num_employees', '') or ''),
-                company_website=org.get('website_url'),
-                industry=org.get('industry'),
-                linkedin_url=person.get('linkedin_url'),
-                city=person.get('city'),
-                state=person.get('state'),
-                country=person.get('country', 'United States'),
-                source='apollo_people_search',
-                apollo_person_id=person.get('id'),
-                why_this_fits=f'{person.get("title", "")} at {org.get("name", "")} matches targeting criteria',
-            )
-            prospects.append(p)
+        for i in range(0, min(len(candidates), max_enrich), 10):
+            if len(prospects) >= count or self._out_of_time():
+                break
+            batch = candidates[i:i + 10]
+            matches, credits = client.bulk_enrich([c.get('id') for c in batch])
+            stats['enriched'] += len(batch)
+            stats['credits'] += credits
+            for m in matches:
+                p = self._prospect_from_apollo(m)
+                if p is not None:
+                    prospects.append(p)
+        prospects = self._drop_excluded(prospects)[:count]
+        stats['found'] = len(prospects)
+        self.apollo_stats = stats
+        logger.info('Apollo for user %s: searched %d (pages %d), with email %d, already in CRM %d, '
+                    'enriched %d, credits %d, new prospects %d', user_id, stats['searched'],
+                    stats['pages'], stats['has_email'], stats['known'], stats['enriched'],
+                    stats['credits'], stats['found'])
         return prospects
+
+    @staticmethod
+    def _prospect_from_apollo(person: dict):
+        """Prospect from an enrichment match; None without a usable work email."""
+        email = (person.get('email') or '').strip()
+        if not email or 'email_not_unlocked' in email or email.endswith('@domain.com'):
+            return None
+        org = person.get('organization') or {}
+        status = (person.get('email_status') or '').lower()
+        return Prospect(
+            first_name=person.get('first_name', '') or '',
+            last_name=person.get('last_name', '') or '',
+            email=email,
+            email_source='apollo',
+            email_verified=status == 'verified',
+            email_confidence=1.0 if status == 'verified' else 0.6,
+            job_title=person.get('title', '') or '',
+            company_name=org.get('name', '') or '',
+            company_size=str(org.get('estimated_num_employees', '') or ''),
+            company_website=org.get('website_url'),
+            industry=org.get('industry'),
+            linkedin_url=person.get('linkedin_url'),
+            city=person.get('city'),
+            state=person.get('state'),
+            country=person.get('country') or 'United States',
+            source='apollo_people_search',
+            apollo_person_id=person.get('id'),
+            why_this_fits='%s at %s matches targeting criteria' % (
+                person.get('title', '') or '', org.get('name', '') or ''),
+        )
 
     # ── Stage 2 — Web search ──────────────────────────────────────────────────
 

@@ -107,9 +107,10 @@ def deploy_email_campaign(action_id: str, simulation_id: str, artifact: dict) ->
     if compliance_errors:
         raise ComplianceError(compliance_errors[0])
 
-    access_token = integration.decrypt_access_token()
     from app.services.apollo_client import ApolloClient
-    apollo = ApolloClient(access_token)
+    apollo = ApolloClient(
+        integration.decrypt_access_token(),
+        auth_type='oauth' if integration.refresh_token_enc else 'api_key')
 
     apollo_contact_ids = []
     prospects = artifact.get('prospects', [])
