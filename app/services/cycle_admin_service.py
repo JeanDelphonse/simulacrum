@@ -368,6 +368,8 @@ def delete_cycles(simulation_id: str, cycle_ids: list = None,
 
         # ── Tier 2: generated activity, children before parents ─────────────
         wipe('agent_recipients', 'action_id', aids)   # drafted, never sent
+        wipe('artifact_units', 'artifact_id', aids)    # P2 send drafts (never sent)
+        wipe('artifact_actions', 'artifact_id', aids)  # verb log of those artifacts
         wipe('contact_activities', 'action_id', aids)
         wipe('action_items', 'source_action_id', aids)
         wipe('prospect_research_runs', 'action_id', aids)

@@ -1,0 +1,1418 @@
+{
+  "version": 1,
+  "generated_from": "config/agents.json",
+  "rules": "app/services/agent_execution.py",
+  "agents": {
+    "rate_card": {
+      "shape": "config",
+      "side_effect_class": "money_link",
+      "hard_gate": false,
+      "default_autonomy": "L2",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "stripe_payment_link",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "payment_link",
+        "steps": [
+          "price",
+          "create_payment_link",
+          "share_link"
+        ]
+      }
+    },
+    "linkedin_optimization": {
+      "shape": "page",
+      "side_effect_class": "public_post",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "publish",
+        "get_link",
+        "connect"
+      ],
+      "suggested_tools": [
+        "linkedin_post",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "publish_post",
+        "steps": [
+          "draft",
+          "review",
+          "schedule",
+          "publish"
+        ]
+      }
+    },
+    "booking_page": {
+      "shape": "page",
+      "side_effect_class": "reversible",
+      "hard_gate": false,
+      "default_autonomy": "L2",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "publish",
+        "get_link",
+        "connect"
+      ],
+      "suggested_tools": [
+        "calcom_booking_link",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "publish_page",
+        "steps": [
+          "draft",
+          "publish",
+          "get_link"
+        ]
+      }
+    },
+    "cold_email_campaign": {
+      "shape": "sequence",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "apollo_prospect_search",
+        "send_email",
+        "ai_refine",
+        "export_pdf",
+        "web_research"
+      ],
+      "methods": {
+        "name": "outreach_sequence",
+        "steps": [
+          "research",
+          "personalize",
+          "send",
+          "wait",
+          "follow_up",
+          "stop_on_reply"
+        ]
+      }
+    },
+    "consulting_outreach": {
+      "shape": "sequence",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "apollo_prospect_search",
+        "send_email",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "outreach_sequence",
+        "steps": [
+          "research",
+          "personalize",
+          "send",
+          "wait",
+          "follow_up",
+          "stop_on_reply"
+        ]
+      }
+    },
+    "role_search": {
+      "shape": "document",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "apollo_prospect_search",
+        "ai_refine",
+        "export_pdf",
+        "web_research"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "consulting_proposal": {
+      "shape": "sequence",
+      "side_effect_class": "contractual",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll"
+      ],
+      "suggested_tools": [
+        "pandadoc_send_for_signature",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "signature_flow",
+        "steps": [
+          "draft",
+          "review",
+          "send_for_signature",
+          "track_signature"
+        ]
+      }
+    },
+    "sow_template": {
+      "shape": "document",
+      "side_effect_class": "contractual",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "pandadoc_send_for_signature",
+        "stripe_payment_link",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "signature_flow",
+        "steps": [
+          "draft",
+          "review",
+          "send_for_signature",
+          "track_signature"
+        ]
+      }
+    },
+    "agreement_template": {
+      "shape": "document",
+      "side_effect_class": "contractual",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "pandadoc_send_for_signature",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "signature_flow",
+        "steps": [
+          "draft",
+          "review",
+          "send_for_signature",
+          "track_signature"
+        ]
+      }
+    },
+    "referral_network": {
+      "shape": "document",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "apollo_prospect_search",
+        "send_email",
+        "ai_refine",
+        "export_pdf",
+        "web_research"
+      ],
+      "methods": {
+        "name": "contact_message",
+        "steps": [
+          "select_contacts",
+          "personalize",
+          "preview",
+          "send",
+          "track_replies"
+        ]
+      }
+    },
+    "negotiation_script": {
+      "shape": "document",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "speaking_proposals": {
+      "shape": "sequence",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "apollo_prospect_search",
+        "send_email",
+        "ai_refine",
+        "export_pdf",
+        "web_research"
+      ],
+      "methods": {
+        "name": "outreach_sequence",
+        "steps": [
+          "research",
+          "personalize",
+          "send",
+          "wait",
+          "follow_up",
+          "stop_on_reply"
+        ]
+      }
+    },
+    "speaker_fee_rider": {
+      "shape": "config",
+      "side_effect_class": "contractual",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "pandadoc_send_for_signature",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "signature_flow",
+        "steps": [
+          "draft",
+          "review",
+          "send_for_signature",
+          "track_signature"
+        ]
+      }
+    },
+    "group_coaching": {
+      "shape": "document",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "stripe_payment_link",
+        "calcom_booking_link",
+        "kajabi_publish",
+        "convertkit_broadcast",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "contact_message",
+        "steps": [
+          "select_contacts",
+          "personalize",
+          "preview",
+          "send",
+          "track_replies"
+        ]
+      }
+    },
+    "workshop_curriculum": {
+      "shape": "document",
+      "side_effect_class": "reversible",
+      "hard_gate": false,
+      "default_autonomy": "L2",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "stripe_payment_link",
+        "calcom_booking_link",
+        "kajabi_publish",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "publish_assets",
+        "steps": [
+          "draft",
+          "publish_assets",
+          "share"
+        ]
+      }
+    },
+    "corporate_training": {
+      "shape": "sequence",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "apollo_prospect_search",
+        "send_email",
+        "ai_refine",
+        "export_pdf",
+        "web_research"
+      ],
+      "methods": {
+        "name": "outreach_sequence",
+        "steps": [
+          "research",
+          "personalize",
+          "send",
+          "wait",
+          "follow_up",
+          "stop_on_reply"
+        ]
+      }
+    },
+    "waitlist_landing_page": {
+      "shape": "page",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "publish",
+        "get_link",
+        "connect",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "kajabi_publish",
+        "convertkit_broadcast",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "contact_message",
+        "steps": [
+          "select_contacts",
+          "personalize",
+          "preview",
+          "send",
+          "track_replies"
+        ]
+      }
+    },
+    "alumni_reactivation": {
+      "shape": "sequence",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "send_email",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "outreach_sequence",
+        "steps": [
+          "research",
+          "personalize",
+          "send",
+          "wait",
+          "follow_up",
+          "stop_on_reply"
+        ]
+      }
+    },
+    "roi_calculator": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "course_curriculum": {
+      "shape": "document",
+      "side_effect_class": "reversible",
+      "hard_gate": false,
+      "default_autonomy": "L2",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "kajabi_publish",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "publish_assets",
+        "steps": [
+          "draft",
+          "publish_assets",
+          "share"
+        ]
+      }
+    },
+    "pricing_research": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "sales_page": {
+      "shape": "page",
+      "side_effect_class": "reversible",
+      "hard_gate": false,
+      "default_autonomy": "L2",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "publish",
+        "get_link",
+        "connect"
+      ],
+      "suggested_tools": [
+        "kajabi_publish",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "publish_page",
+        "steps": [
+          "draft",
+          "publish",
+          "get_link"
+        ]
+      }
+    },
+    "ebook_outline": {
+      "shape": "document",
+      "side_effect_class": "money_link",
+      "hard_gate": false,
+      "default_autonomy": "L2",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "stripe_payment_link",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "payment_link",
+        "steps": [
+          "price",
+          "create_payment_link",
+          "share_link"
+        ]
+      }
+    },
+    "ab_test_plan": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "membership": {
+      "shape": "page",
+      "side_effect_class": "reversible",
+      "hard_gate": false,
+      "default_autonomy": "L2",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "publish",
+        "get_link",
+        "connect"
+      ],
+      "suggested_tools": [
+        "stripe_payment_link",
+        "kajabi_publish",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "publish_page",
+        "steps": [
+          "draft",
+          "publish",
+          "get_link"
+        ]
+      }
+    },
+    "launch_sequence": {
+      "shape": "sequence",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "convertkit_broadcast",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "outreach_sequence",
+        "steps": [
+          "research",
+          "personalize",
+          "send",
+          "wait",
+          "follow_up",
+          "stop_on_reply"
+        ]
+      }
+    },
+    "affiliate_program": {
+      "shape": "document",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "apollo_prospect_search",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "contact_message",
+        "steps": [
+          "select_contacts",
+          "personalize",
+          "preview",
+          "send",
+          "track_replies"
+        ]
+      }
+    },
+    "testimonials": {
+      "shape": "document",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "send_email",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "contact_message",
+        "steps": [
+          "select_contacts",
+          "personalize",
+          "preview",
+          "send",
+          "track_replies"
+        ]
+      }
+    },
+    "lapsed_buyer": {
+      "shape": "sequence",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "send_email",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "outreach_sequence",
+        "steps": [
+          "research",
+          "personalize",
+          "send",
+          "wait",
+          "follow_up",
+          "stop_on_reply"
+        ]
+      }
+    },
+    "seo_content_calendar": {
+      "shape": "schedule",
+      "side_effect_class": "public_post",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "entry_publish",
+        "entry_schedule"
+      ],
+      "suggested_tools": [
+        "linkedin_post",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "publish_post",
+        "steps": [
+          "draft",
+          "review",
+          "schedule",
+          "publish"
+        ]
+      }
+    },
+    "lead_magnet_funnel": {
+      "shape": "page",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "publish",
+        "get_link",
+        "connect",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "convertkit_broadcast",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "contact_message",
+        "steps": [
+          "select_contacts",
+          "personalize",
+          "preview",
+          "send",
+          "track_replies"
+        ]
+      }
+    },
+    "newsletter": {
+      "shape": "document",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "convertkit_broadcast",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "contact_message",
+        "steps": [
+          "select_contacts",
+          "personalize",
+          "preview",
+          "send",
+          "track_replies"
+        ]
+      }
+    },
+    "saas_product_spec": {
+      "shape": "document",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "ip_licensing": {
+      "shape": "document",
+      "side_effect_class": "contractual",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "pandadoc_send_for_signature",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "signature_flow",
+        "steps": [
+          "draft",
+          "review",
+          "send_for_signature",
+          "track_signature"
+        ]
+      }
+    },
+    "affiliate_partnerships": {
+      "shape": "document",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "apollo_prospect_search",
+        "send_email",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "contact_message",
+        "steps": [
+          "select_contacts",
+          "personalize",
+          "preview",
+          "send",
+          "track_replies"
+        ]
+      }
+    },
+    "video_podcast": {
+      "shape": "document",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "community": {
+      "shape": "document",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "programmatic_ads": {
+      "shape": "document",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L3",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "client_winback": {
+      "shape": "sequence",
+      "side_effect_class": "send_blast",
+      "hard_gate": true,
+      "default_autonomy": "L1",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "step_edit",
+        "step_preview",
+        "step_send",
+        "step_reschedule",
+        "step_skip",
+        "step_reorder",
+        "step_insert",
+        "step_enroll",
+        "send_to_contacts"
+      ],
+      "suggested_tools": [
+        "send_email",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "outreach_sequence",
+        "steps": [
+          "research",
+          "personalize",
+          "send",
+          "wait",
+          "follow_up",
+          "stop_on_reply"
+        ]
+      }
+    },
+    "income_allocation": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "projections": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "fund_recommendations": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "investment_policy": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "real_estate_strategy": {
+      "shape": "document",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "entity_structure": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "tax_optimization": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "dca_schedule": {
+      "shape": "schedule",
+      "side_effect_class": "money_move",
+      "hard_gate": true,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "entry_publish",
+        "entry_schedule"
+      ],
+      "suggested_tools": [
+        "alpaca_order",
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "plan_only",
+        "steps": [
+          "plan",
+          "review"
+        ]
+      }
+    },
+    "insurance_review": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    },
+    "estate_planning": {
+      "shape": "config",
+      "side_effect_class": "none",
+      "hard_gate": false,
+      "default_autonomy": "L0",
+      "supported_actions": [
+        "edit",
+        "preview",
+        "export",
+        "copy",
+        "recompute",
+        "compare"
+      ],
+      "suggested_tools": [
+        "ai_refine",
+        "export_pdf"
+      ],
+      "methods": {
+        "name": "generate_only",
+        "steps": [
+          "generate",
+          "refine",
+          "export"
+        ]
+      }
+    }
+  }
+}

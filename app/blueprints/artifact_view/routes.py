@@ -128,6 +128,9 @@ def page_full_view(sim_id, artifact_id):
         agent_update=artifact_actions.agent_update(action.id),
         is_owner=(sim.user_id == current_user.id),
         can_duplicate=(resolve_alias(action.action_type) not in artifact_actions.NO_DUPLICATE_AGENTS),
+        can_send_to_contacts=(sim.user_id == current_user.id
+                              and artifact_actions.send_refusal(action) is None),
+        draft_count=len(artifact_actions.list_drafts(action.id)) if sim.user_id == current_user.id else 0,
     )
 
 
@@ -493,6 +496,8 @@ def api_refine(artifact_id):
     except Exception as exc:
         logger.error('refine failed action=%s: %s', action.id, exc, exc_info=True)
         return jsonify({'error': 'refine_failed', 'message': 'The refine step failed — try again.'}), 502
+    artifact_actions.log_action(action.id, 'refine', actor_id=current_user.id,
+                                result={'based_on_version': current.version_number if current else None})
     return jsonify({'proposed': proposed,
                     'based_on_version': current.version_number if current else None})
 
@@ -519,6 +524,8 @@ def api_export_pdf(artifact_id):
     except Exception as exc:
         logger.error('PDF export failed action=%s: %s', action.id, exc, exc_info=True)
         return jsonify({'error': 'export_failed'}), 500
+    artifact_actions.log_action(action.id, 'export', actor_id=current_user.id,
+                                result={'format': 'pdf', 'version': version.version_number if version else 1})
     fname = '%s-v%s.pdf' % (action.action_type, version.version_number if version else 1)
     return Response(pdf, mimetype='application/pdf',
                     headers={'Content-Disposition': 'attachment; filename="%s"' % fname})
@@ -534,8 +541,67 @@ def api_duplicate(artifact_id):
         copy = artifact_actions.duplicate(action, current_user.id)
     except artifact_actions.ArtifactActionError as exc:
         return jsonify({'error': 'duplicate_refused', 'message': str(exc)}), 400
+    artifact_actions.log_action(action.id, 'duplicate', actor_id=current_user.id,
+                                result={'copy_id': copy.id})
     return jsonify({'action_id': copy.id,
                     'url': url_for('artifact_view.page_full_view', sim_id=sim.id, artifact_id=copy.id)})
+
+
+# ---------------------------------------------------------------------------
+# API — Send to contacts as DRAFTS (EXEC_PLAN P2). Prepares and previews
+# per-recipient messages; nothing is sent, queued or scheduled.
+# ---------------------------------------------------------------------------
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/contacts', methods=['GET'])
+@login_required
+def api_contact_picker(artifact_id):
+    action, sim = _owned_action(artifact_id)
+    if action is None:
+        return sim
+    refusal = artifact_actions.send_refusal(action)
+    if refusal:
+        return jsonify({'error': 'not_supported', 'message': refusal}), 400
+    return jsonify({
+        'contacts': artifact_actions.contact_candidates(action, current_user.id,
+                                                        request.args.get('q', '')),
+        'max_recipients': artifact_actions.max_draft_recipients(),
+    })
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/send-drafts', methods=['GET'])
+@login_required
+def api_send_drafts_list(artifact_id):
+    action, sim = _owned_action(artifact_id)
+    if action is None:
+        return sim
+    return jsonify({'drafts': artifact_actions.list_drafts(action.id)})
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/send-drafts', methods=['POST'])
+@login_required
+def api_send_drafts_prepare(artifact_id):
+    action, sim = _owned_action(artifact_id)
+    if action is None:
+        return sim
+    body = request.get_json(silent=True) or {}
+    try:
+        result = artifact_actions.prepare_send_drafts(
+            action, current_user.id, body.get('contact_ids') or [],
+            body.get('subject') or '', body.get('body') or '')
+    except artifact_actions.ArtifactActionError as exc:
+        return jsonify({'error': 'prepare_refused', 'message': str(exc)}), 400
+    return jsonify(result)
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/send-drafts/discard', methods=['POST'])
+@login_required
+def api_send_drafts_discard(artifact_id):
+    action, sim = _owned_action(artifact_id)
+    if action is None:
+        return sim
+    body = request.get_json(silent=True) or {}
+    n = artifact_actions.discard_drafts(action.id, current_user.id, body.get('batch_id'))
+    return jsonify({'discarded': n})
 
 
 # ---------------------------------------------------------------------------

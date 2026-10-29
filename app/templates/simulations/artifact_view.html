@@ -84,6 +84,17 @@
 .aab-label { font-size:12px; font-weight:600; color:#475569; margin:12px 0 4px; }
 .aab-msg { color:#dc2626; font-size:13px; min-height:18px; margin-top:8px; }
 .aab-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
+.aab-input { width:100%; box-sizing:border-box; border:1px solid #e2e8f0; border-radius:8px; padding:8px 11px; font-size:14px; }
+.aab-list { max-height:220px; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; margin:8px 0 4px; padding:4px 0; }
+.aab-row { display:flex; gap:8px; align-items:flex-start; padding:6px 12px; font-size:13px; cursor:pointer; }
+.aab-row:hover { background:#f8fafc; }
+.aab-off { color:#94a3b8; cursor:default; }
+.aab-nosend { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; border-radius:8px; padding:8px 12px; }
+.aab-draft { border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin:10px 0; font-size:13px; }
+.aab-draft-head { color:#475569; margin-bottom:4px; }
+.aab-badge { background:#f1f5f9; color:#475569; border-radius:100px; padding:1px 8px; font-size:11px; margin-left:6px; }
+.aab-warn { color:#b45309; margin:4px 0; }
+.aab-body { white-space:pre-wrap; font:13px/1.55 inherit; margin:6px 0 0; max-height:220px; overflow:auto; }
 .av-btn.primary {
   background: #0d1a2e; border-color: #0d1a2e; color: #fff;
 }
@@ -477,6 +488,10 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
     {% endif %}
     <a class="av-btn" id="aabPdfBtn" href="{{ url_for('artifact_view.api_export_pdf', artifact_id=action.id) }}" title="Download the current version as PDF">Export PDF</a>
     <button type="button" class="av-btn" id="aabCopyBtn" title="Copy the current version">Copy</button>
+    {% if can_send_to_contacts %}
+    <button type="button" class="av-btn" id="aabSendBtn" data-drafts="{{ draft_count }}"
+            title="Prepare per-recipient drafts — nothing is sent">Send to contacts{% if draft_count %} ({{ draft_count }} drafts){% endif %}</button>
+    {% endif %}
     {% if is_owner and can_duplicate %}
     <button type="button" class="av-btn" id="aabDuplicateBtn" title="Create an editable copy">Duplicate</button>
     {% endif %}

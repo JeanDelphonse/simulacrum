@@ -71,6 +71,144 @@
 
     const refineBtn = document.getElementById('aabRefineBtn');
     if (refineBtn) refineBtn.addEventListener('click', function () { openRefine(id, getEditorText); });
+
+    const sendBtn = document.getElementById('aabSendBtn');
+    if (sendBtn) sendBtn.addEventListener('click', function () { openSendDrafts(id, getEditorText, sendBtn); });
+  }
+
+  /* ── Send to contacts: DRAFTS ONLY (EXEC_PLAN P2) ─────────────────────── */
+  const NOTHING_SENT = 'Drafts only — nothing is sent. Sending arrives in a later release and will ask you to confirm.';
+
+  async function openSendDrafts(id, getEditorText, btn) {
+    let modal = document.getElementById('aabSendModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'aabSendModal';
+      modal.className = 'aab-modal';
+      modal.innerHTML =
+        '<div class="aab-dialog">' +
+          '<h3>Send to contacts</h3>' +
+          '<p class="aab-hint aab-nosend">' + NOTHING_SENT + '</p>' +
+          '<div id="aabSendStep1">' +
+            '<input id="aabContactSearch" class="aab-input" placeholder="Search contacts by name, email or company">' +
+            '<div id="aabContactList" class="aab-list">Loading…</div>' +
+            '<div class="aab-label">Subject</div>' +
+            '<input id="aabSubject" class="aab-input" maxlength="300" placeholder="e.g. Quick intro, [First Name]">' +
+            '<div class="aab-label">Message <span class="aab-hint">— merge fields: [First Name], [Company], {{first_name}} …</span></div>' +
+            '<textarea id="aabBody" rows="10"></textarea>' +
+          '</div>' +
+          '<div id="aabSendStep2" style="display:none"></div>' +
+          '<div id="aabSendMsg" class="aab-msg"></div>' +
+          '<div class="aab-actions">' +
+            '<button type="button" class="av-btn" id="aabSendClose">Close</button>' +
+            '<button type="button" class="av-btn" id="aabSendBack" style="display:none">Back</button>' +
+            '<button type="button" class="av-btn" id="aabSendDiscard" style="display:none">Discard these drafts</button>' +
+            '<button type="button" class="av-btn primary" id="aabSendPrepare">Prepare drafts</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#aabSendClose').addEventListener('click', function () { modal.style.display = 'none'; });
+    }
+    const $ = function (sel) { return modal.querySelector(sel); };
+    const step1 = $('#aabSendStep1'), step2 = $('#aabSendStep2'), msg = $('#aabSendMsg');
+    const prepare = $('#aabSendPrepare'), back = $('#aabSendBack'), discard = $('#aabSendDiscard');
+    let maxRecipients = 50, lastBatch = null;
+
+    function showStep(n) {
+      step1.style.display = n === 1 ? '' : 'none';
+      step2.style.display = n === 2 ? '' : 'none';
+      prepare.style.display = n === 1 ? '' : 'none';
+      back.style.display = n === 2 ? '' : 'none';
+      discard.style.display = n === 2 ? '' : 'none';
+    }
+
+    async function loadContacts(q) {
+      const list = $('#aabContactList');
+      try {
+        const r = await fetch(api(id, '/contacts') + '?q=' + encodeURIComponent(q || ''), { credentials: 'same-origin' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.message || d.error);
+        maxRecipients = d.max_recipients || maxRecipients;
+        if (!d.contacts.length) { list.innerHTML = '<div class="aab-hint">No contacts match.</div>'; return; }
+        list.innerHTML = d.contacts.map(function (c) {
+          return '<label class="aab-row' + (c.eligible ? '' : ' aab-off') + '">' +
+            '<input type="checkbox" value="' + esc(c.id) + '"' + (c.eligible ? '' : ' disabled') + '> ' +
+            '<span><b>' + esc(c.name || '(no name)') + '</b> · ' + esc(c.email || '') +
+            (c.company ? ' · ' + esc(c.company) : '') +
+            (c.eligible ? '' : ' <em>— ' + esc(c.reason) + '</em>') + '</span></label>';
+        }).join('');
+      } catch (e) { list.innerHTML = '<div class="aab-msg">' + esc(e.message) + '</div>'; }
+    }
+
+    function renderDrafts(drafts, skipped) {
+      let html = '<div class="aab-label">' + drafts.length + ' draft' + (drafts.length === 1 ? '' : 's') +
+                 ' prepared · nothing sent</div>';
+      if (skipped && skipped.length) {
+        html += '<div class="aab-hint">Skipped: ' + skipped.map(function (s) {
+          return esc((s.name || s.id) + ' (' + s.reason + ')'); }).join(', ') + '</div>';
+      }
+      html += drafts.map(function (u) {
+        return '<div class="aab-draft">' +
+          '<div class="aab-draft-head">To <b>' + esc(u.name || '') + '</b> &lt;' + esc(u.to || '') + '&gt;' +
+          ' <span class="aab-badge">Draft — not sent</span></div>' +
+          '<div><b>' + esc(u.subject || '') + '</b></div>' +
+          (u.warnings && u.warnings.length ? '<div class="aab-warn">⚠ ' + esc(u.warnings.join('; ')) + '</div>' : '') +
+          '<pre class="aab-body">' + esc(u.body || '') + '</pre></div>';
+      }).join('');
+      step2.innerHTML = html;
+    }
+
+    msg.textContent = '';
+    showStep(1);
+    if (!$('#aabBody').value) {
+      let text = getEditorText();
+      if (text == null) {
+        try { text = (await (await fetch(api(id), { credentials: 'same-origin' })).json()).current_payload || ''; }
+        catch (e) { text = ''; }
+      }
+      $('#aabBody').value = text;
+    }
+    modal.style.display = 'flex';
+    loadContacts('');
+    let t = null;
+    $('#aabContactSearch').oninput = function () {
+      clearTimeout(t); const q = this.value; t = setTimeout(function () { loadContacts(q); }, 250);
+    };
+
+    // Existing drafts open straight on the preview.
+    if (btn && btn.dataset.drafts && parseInt(btn.dataset.drafts, 10) > 0) {
+      try {
+        const d = await (await fetch(api(id, '/send-drafts'), { credentials: 'same-origin' })).json();
+        if (d.drafts && d.drafts.length) { renderDrafts(d.drafts, []); lastBatch = null; showStep(2); }
+      } catch (e) { /* stay on step 1 */ }
+    }
+
+    prepare.onclick = async function () {
+      msg.textContent = '';
+      const ids = Array.prototype.map.call(modal.querySelectorAll('#aabContactList input:checked'),
+                                           function (el) { return el.value; });
+      if (ids.length > maxRecipients) { msg.textContent = 'Pick at most ' + maxRecipients + ' contacts.'; return; }
+      prepare.disabled = true; prepare.textContent = 'Preparing…';
+      try {
+        const d = await postJson(api(id, '/send-drafts'), {
+          contact_ids: ids, subject: $('#aabSubject').value, body: $('#aabBody').value });
+        lastBatch = d.batch_id;
+        renderDrafts(d.drafts, d.skipped);
+        showStep(2);
+        if (btn) btn.dataset.drafts = String((parseInt(btn.dataset.drafts || '0', 10) || 0) + d.drafts.length);
+      } catch (e) { msg.textContent = e.message; }
+      prepare.disabled = false; prepare.textContent = 'Prepare drafts';
+    };
+    back.onclick = function () { showStep(1); };
+    discard.onclick = async function () {
+      if (!confirm('Discard ' + (lastBatch ? 'these drafts' : 'all open drafts') + '?')) return;
+      try {
+        await postJson(api(id, '/send-drafts/discard'), lastBatch ? { batch_id: lastBatch } : {});
+        if (btn) btn.dataset.drafts = '0';
+        step2.innerHTML = '<div class="aab-hint">Drafts discarded.</div>';
+        discard.style.display = 'none';
+      } catch (e) { msg.textContent = e.message; }
+    };
   }
 
   function flash(btn, label) {

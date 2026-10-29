@@ -73,6 +73,8 @@ from app.models.discount import (
 )
 # Per-agent recipient ledger — registered so db.create_all() builds it.
 from app.models.agent_recipient import AgentRecipient
+# Agent Execution Layer (EXEC_PLAN P2) — artifact units and verb log.
+from app.models.artifact_exec import ArtifactUnit, ArtifactAction
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
