@@ -246,6 +246,7 @@
             <button onclick="openUserEdit('{{ u.id }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(0,0,0,.2);border-radius:5px;background:none;color:#374151;cursor:pointer;margin-right:.3rem">Edit</button>
             <button onclick="openCycleAdmin('{{ u.id }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(14,116,144,.45);border-radius:5px;background:none;color:#0e7490;cursor:pointer;margin-right:.3rem">Cycles</button>
             <button onclick="openCompModal('{{ u.id }}', '{{ u.email }}')" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(180,83,9,.45);border-radius:5px;background:none;color:#b45309;cursor:pointer;margin-right:.3rem">Comp</button>
+            <button onclick="openOutreachReset('{{ u.id }}')" title="Reset this user's contacts to never emailed" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(124,58,237,.45);border-radius:5px;background:none;color:#7c3aed;cursor:pointer;margin-right:.3rem">Reset outreach</button>
             {% if u.deleted_at %}
             <button onclick="toggleUserActive('{{ u.id }}', true)" style="font-size:.75rem;padding:.2rem .55rem;border:1px solid rgba(22,163,74,.5);border-radius:5px;background:none;color:#16a34a;cursor:pointer">Reactivate</button>
             {% else %}
@@ -379,6 +380,27 @@
      Destructive and irreversible, so the flow is preview-first: every button
      runs a dry run against /cycles/preview and shows exactly what will be
      deleted and what will be preserved before anything is committed. -->
+<!-- ── Outreach reset (dry run, then confirm) ─────────────────────────────── -->
+<div id="outreachResetModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2.5rem 1rem">
+  <div style="background:#1a2236;border:1px solid rgba(124,58,237,.45);border-radius:14px;padding:1.75rem;width:100%;max-width:620px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.35rem">
+      <h3 style="margin:0;font-size:1rem">Reset outreach history</h3>
+      <button onclick="closeOutreachReset()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+    </div>
+    <div id="orWho" style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:1rem"></div>
+    <div id="orBody" style="font-size:.85rem;color:rgba(255,255,255,.8)">Loading…</div>
+    <label id="orActivitiesRow" style="display:none;margin-top:1rem;font-size:.82rem;color:rgba(255,255,255,.7);cursor:pointer">
+      <input type="checkbox" id="orClearActivities" style="margin-right:.4rem">
+      Also remove outreach entries from each contact's activity timeline (<span id="orActivityCount">0</span>)
+    </label>
+    <div id="orMsg" style="display:none;margin-top:1rem;font-size:.82rem"></div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.25rem">
+      <button onclick="closeOutreachReset()" class="btn btn-secondary btn-sm">Cancel</button>
+      <button id="orConfirmBtn" onclick="confirmOutreachReset()" class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none" disabled>Reset outreach</button>
+    </div>
+  </div>
+</div>
+
 <div id="cycleAdminModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2.5rem 1rem">
   <div style="background:#1a2236;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.75rem;width:100%;max-width:840px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.35rem">
@@ -781,6 +803,85 @@ async function toggleUserActive(uid, reactivate) {
   } else {
     const d = await r.json();
     alert(d.error || 'Action failed');
+  }
+}
+
+// ── Outreach reset ───────────────────────────────────────────────────────────
+let outreachResetUser = null;
+const orEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+async function openOutreachReset(uid) {
+  outreachResetUser = uid;
+  const body = document.getElementById('orBody');
+  const btn = document.getElementById('orConfirmBtn');
+  document.getElementById('orMsg').style.display = 'none';
+  document.getElementById('orActivitiesRow').style.display = 'none';
+  document.getElementById('orClearActivities').checked = false;
+  btn.disabled = true;
+  body.innerHTML = 'Loading…';
+  document.getElementById('orWho').textContent = '';
+  document.getElementById('outreachResetModal').style.display = 'flex';
+  try {
+    const r = await fetch(ROOT + '/api/admin/users/' + uid + '/outreach-reset');
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || d.error || 'Preview failed');
+    document.getElementById('orWho').textContent = (d.user_name ? d.user_name + ' · ' : '') + d.user_email;
+    const row = (n, label) => '<li style="margin:.2rem 0"><strong style="color:#fff">' + n + '</strong> ' + label + '</li>';
+    let html = '<p style="margin:0 0 .6rem">This makes the user\'s contacts look like they were never emailed:</p><ul style="margin:0 0 .8rem 1.1rem;padding:0">' +
+      row(d.contacts_reset, 'contact' + (d.contacts_reset === 1 ? '' : 's') + ' set back to Prospect, never contacted') +
+      row(d.emails_detached, 'sent email' + (d.emails_detached === 1 ? '' : 's') + ' detached from agent runs (the record of what was sent is kept)') +
+      row(d.claims_cleared, 'agent recipient claim' + (d.claims_cleared === 1 ? '' : 's') + ' cleared') +
+      row(d.steps_cancelled, 'queued follow-up email' + (d.steps_cancelled === 1 ? '' : 's') + ' cancelled') + '</ul>';
+    if (d.contacts_protected) {
+      html += '<p style="margin:0 0 .6rem;color:#a7f3d0">' + d.contacts_protected +
+        ' unsubscribed, do-not-contact or archived contact' + (d.contacts_protected === 1 ? ' is' : 's are') + ' left untouched.</p>';
+    }
+    if (d.sample && d.sample.length) {
+      html += '<div style="font-size:.78rem;color:rgba(255,255,255,.5);margin:.2rem 0 .35rem">First contacts to be reset:</div>' +
+        '<div style="font-size:.78rem;color:rgba(255,255,255,.7)">' + d.sample.map((c) =>
+          orEsc(c.name || '(no name)') + ' · ' + orEsc(c.email) + ' · ' + orEsc(c.stage) +
+          ' · ' + c.outreach_count + ' sent').join('<br>') + '</div>';
+    }
+    html += '<p style="margin:.9rem 0 0;color:#fca5a5">The next Cold Email / Consulting Outreach cycle can email these people again, including anyone who already received a message.</p>';
+    body.innerHTML = html;
+    if (d.activities_removable) {
+      document.getElementById('orActivityCount').textContent = d.activities_removable;
+      document.getElementById('orActivitiesRow').style.display = 'block';
+    }
+    const nothing = !d.contacts_reset && !d.emails_detached && !d.claims_cleared && !d.steps_cancelled && !d.activities_removable;
+    if (nothing) body.innerHTML += '<p style="margin:.6rem 0 0;color:rgba(255,255,255,.5)">Nothing to reset.</p>';
+    btn.disabled = nothing;
+  } catch (e) {
+    body.innerHTML = '<span style="color:#f87171">' + orEsc(e.message) + '</span>';
+  }
+}
+
+function closeOutreachReset() {
+  document.getElementById('outreachResetModal').style.display = 'none';
+  outreachResetUser = null;
+}
+
+async function confirmOutreachReset() {
+  const btn = document.getElementById('orConfirmBtn');
+  const msg = document.getElementById('orMsg');
+  btn.disabled = true; btn.textContent = 'Resetting…';
+  try {
+    const r = await fetch(ROOT + '/api/admin/users/' + outreachResetUser + '/outreach-reset', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm: true,
+        clear_activities: document.getElementById('orClearActivities').checked }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || d.error || 'Reset failed');
+    msg.style.display = 'block'; msg.style.color = '#4ade80';
+    msg.textContent = '✓ Reset ' + d.contacts_reset + ' contact(s), detached ' + d.emails_detached +
+      ' email(s), cleared ' + d.claims_cleared + ' claim(s), cancelled ' + d.steps_cancelled + ' step(s).';
+    btn.textContent = 'Done';
+    setTimeout(closeOutreachReset, 2500);
+  } catch (e) {
+    msg.style.display = 'block'; msg.style.color = '#f87171'; msg.textContent = e.message;
+    btn.disabled = false; btn.textContent = 'Reset outreach';
   }
 }
 

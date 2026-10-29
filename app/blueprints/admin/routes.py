@@ -702,6 +702,41 @@ def reactivate_user(user_id):
     return jsonify({'ok': True}), 200
 
 
+# ── Outreach reset: a user's contacts back to "never emailed" ────────────────
+# GET is the dry run the console shows; POST needs {"confirm": true}. See
+# app/services/outreach_reset_service.py for exactly what changes and what is
+# protected (do-not-contact, archived, suppressed addresses).
+
+@admin_bp.route('/users/<user_id>/outreach-reset', methods=['GET'])
+@login_required
+@admin_required
+def outreach_reset_preview(user_id):
+    from app.services import outreach_reset_service
+    u = User.query.get_or_404(user_id)
+    data = outreach_reset_service.preview(u.id)
+    data.update(user_email=u.email, user_name=u.full_name or '')
+    return jsonify(data), 200
+
+
+@admin_bp.route('/users/<user_id>/outreach-reset', methods=['POST'])
+@login_required
+@admin_required
+def outreach_reset(user_id):
+    from app.services import outreach_reset_service
+    u = User.query.get_or_404(user_id)
+    body = request.get_json(silent=True) or {}
+    if body.get('confirm') is not True:
+        return jsonify({'error': 'confirm_required',
+                        'message': 'Send {"confirm": true} after reviewing the preview.'}), 400
+    try:
+        result = outreach_reset_service.reset(
+            u.id, admin_user_id=current_user.id,
+            clear_activities=bool(body.get('clear_activities')))
+    except Exception as exc:
+        return jsonify({'error': 'reset_failed', 'message': str(exc)[:300]}), 500
+    return jsonify({'ok': True, **result}), 200
+
+
 @admin_bp.route('/user/profile', methods=['GET'])
 @login_required
 def get_profile():
