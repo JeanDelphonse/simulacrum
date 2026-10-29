@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Agent autonomy{% endblock %}
+{% block head %}
+<style>
+.aut-wrap { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.aut-back { font-size: .85rem; color: #0F7B72; text-decoration: none; }
+.aut-wrap h1 { font-size: 1.5rem; margin: .6rem 0 .3rem; }
+.aut-sub { color: #6B7B8D; font-size: .92rem; margin: 0 0 1.2rem; max-width: 760px; }
+.aut-rules { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: .8rem 1rem; font-size: .85rem; color: #166534; margin-bottom: 1.2rem; }
+.aut-rules li { margin: .15rem 0; }
+.aut-levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .5rem; margin-bottom: 1.4rem; }
+.aut-level { border: 1px solid #e5e7eb; border-radius: 8px; padding: .55rem .75rem; font-size: .82rem; }
+.aut-level b { display: block; font-size: .85rem; }
+table.aut { width: 100%; border-collapse: collapse; font-size: .86rem; }
+table.aut th { text-align: left; color: #6B7B8D; font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; padding: .5rem; border-bottom: 1px solid #e5e7eb; }
+table.aut td { padding: .5rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.aut-tag { display: inline-block; font-size: .72rem; border-radius: 100px; padding: .05rem .5rem; background: #f1f5f9; color: #475569; }
+.aut-gate { background: #fef3c7; color: #92400e; }
+.aut-msg { font-size: .78rem; margin-left: .4rem; }
+select.aut-sel { padding: .25rem .4rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: .84rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="aut-wrap">
+  <a class="aut-back" href="{{ url_for('pages.settings_profile') }}">← Settings</a>
+  <h1>Agent autonomy</h1>
+  <p class="aut-sub">How far each agent may go on its own. Agents propose a plan for every artifact; this
+    setting decides how much of that plan could run without you. In this release plans are
+    <strong>suggestions only — nothing executes</strong>, whatever the level.</p>
+
+  <ul class="aut-rules">
+    <li><strong>Sending, signing, posting and trading always need your explicit confirmation</strong>, at every level.</li>
+    <li>Full autonomy (L4) is not available.</li>
+    <li>Wealth Deployment (Layer 5) agents only generate advisory documents; they never execute.</li>
+    <li>Money movement (the DCA schedule's trades) is disabled.</li>
+  </ul>
+
+  <div class="aut-levels">
+    {% for key, label in level_labels.items() %}
+    <div class="aut-level"><b>{{ key }}</b>{{ label }}</div>
+    {% endfor %}
+  </div>
+
+  <table class="aut">
+    <thead><tr><th>Agent</th><th>Layer</th><th>Effect</th><th>Default</th><th>Level</th></tr></thead>
+    <tbody>
+    {% for a in agents %}
+      <tr>
+        <td>{{ a.label }}</td>
+        <td>L{{ a.layer }}</td>
+        <td><span class="aut-tag{% if a.hard_gate %} aut-gate{% endif %}">{{ a.side_effect_class | replace('_', ' ') }}{% if a.hard_gate %} · always confirmed{% endif %}</span></td>
+        <td>{{ a.default_level }}</td>
+        <td>
+          <select class="aut-sel" data-agent="{{ a.agent_key }}" {% if a.allowed_levels|length == 1 %}disabled{% endif %}>
+            {% for lv in a.allowed_levels %}
+            <option value="{{ lv }}" {% if lv == a.level %}selected{% endif %}>{{ lv }} — {{ level_labels[lv] }}</option>
+            {% endfor %}
+          </select><span class="aut-msg"></span>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('select.aut-sel').forEach(function (sel) {
+  sel.addEventListener('change', async function () {
+    var msg = sel.nextElementSibling;
+    msg.style.color = '#6B7B8D'; msg.textContent = 'Saving…';
+    try {
+      var r = await fetch(ROOT + '/api/agent-autonomy/' + sel.dataset.agent, {
+        method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: sel.value }),
+      });
+      var d = await r.json();
+      if (!r.ok) throw new Error(d.message || d.error || 'Save failed');
+      msg.style.color = '#16a34a'; msg.textContent = 'Saved';
+    } catch (e) { msg.style.color = '#dc2626'; msg.textContent = e.message; }
+  });
+});
+</script>
+{% endblock %}

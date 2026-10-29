@@ -74,6 +74,75 @@
 
     const sendBtn = document.getElementById('aabSendBtn');
     if (sendBtn) sendBtn.addEventListener('click', function () { openSendDrafts(id, getEditorText, sendBtn); });
+
+    const planBtn = document.getElementById('aabPlanBtn');
+    if (planBtn) planBtn.addEventListener('click', function () { openPlan(id); });
+  }
+
+  /* ── Plan (EXEC_PLAN P3 — L1: suggestions; nothing executes) ─────────── */
+  const BLAST = ['none', 'one person', 'a list', 'public'];
+  const STATUS_LABEL = { not_required: 'no approval needed', pending: 'awaiting your decision',
+                         approved: 'approved', rejected: 'rejected', unavailable: 'unavailable' };
+  const REASON_LABEL = { hard_gate: 'always confirmed', irreversible: 'cannot be undone', blast: 'reaches many people' };
+
+  async function openPlan(id) {
+    let modal = document.getElementById('aabPlanModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'aabPlanModal';
+      modal.className = 'aab-modal';
+      modal.innerHTML = '<div class="aab-dialog"><h3>Agent plan</h3>' +
+        '<p class="aab-hint aab-nosend">Plans are suggestions in this release — approving a step records your ' +
+        'decision; nothing runs.</p><div id="aabPlanBody">Loading…</div><div id="aabPlanMsg" class="aab-msg"></div>' +
+        '<div class="aab-actions"><button type="button" class="av-btn" id="aabPlanRegen">Rebuild plan</button>' +
+        '<button type="button" class="av-btn primary" id="aabPlanClose">Close</button></div></div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#aabPlanClose').addEventListener('click', function () { modal.style.display = 'none'; });
+    }
+    const body = modal.querySelector('#aabPlanBody'), msg = modal.querySelector('#aabPlanMsg');
+
+    function render(p) {
+      let html = '<div class="aab-label">' + esc(p.goal || '') + '</div>' +
+        '<div class="aab-hint">Strategy <b>' + esc((p.method || '').replace(/_/g, ' ')) + '</b> · autonomy <b>' +
+        esc(p.autonomy_level) + '</b> (' + esc(p.autonomy_label) + ') · plan <b>' + esc(p.status) + '</b></div>';
+      html += p.steps.map(function (s) {
+        const decide = (s.approval_status === 'pending' || s.approval_status === 'approved' || s.approval_status === 'rejected')
+          ? '<button type="button" class="av-btn aab-dec" data-step="' + s.id + '" data-d="approve"' +
+              (s.approval_status === 'approved' ? ' disabled' : '') + '>Approve</button> ' +
+            '<button type="button" class="av-btn aab-dec" data-step="' + s.id + '" data-d="reject"' +
+              (s.approval_status === 'rejected' ? ' disabled' : '') + '>Reject</button>'
+          : '';
+        return '<div class="aab-draft"><div class="aab-draft-head"><b>' + s.seq + '. ' +
+          esc(s.method.replace(/_/g, ' ')) + '</b> · ' + esc(s.tool_key ? s.tool_key.replace(/_/g, ' ') : 'manual step') +
+          ' <span class="aab-badge">' + esc(STATUS_LABEL[s.approval_status] || s.approval_status) + '</span></div>' +
+          '<div>' + esc(s.expected || '') + '</div>' +
+          '<div class="aab-hint">' + esc(s.reversibility) + ' · reach: ' + esc(BLAST[s.blast] || s.blast) +
+          (s.est_cost_cents ? ' · est. ' + (s.est_cost_cents / 100).toFixed(2) + ' USD' : '') +
+          (s.required_reason ? ' · <span class="aab-warn">' + esc(REASON_LABEL[s.required_reason] || s.required_reason) + '</span>' : '') +
+          '</div>' + (decide ? '<div style="margin-top:6px">' + decide + '</div>' : '') + '</div>';
+      }).join('');
+      body.innerHTML = html;
+      body.querySelectorAll('.aab-dec').forEach(function (b) {
+        b.addEventListener('click', async function () {
+          msg.textContent = '';
+          try { render(await postJson(root() + '/api/plan-steps/' + b.dataset.step + '/decision', { decision: b.dataset.d })); }
+          catch (e) { msg.textContent = e.message; }
+        });
+      });
+    }
+
+    modal.querySelector('#aabPlanRegen').onclick = async function () {
+      msg.textContent = '';
+      try { render(await postJson(api(id, '/plan/regenerate'))); } catch (e) { msg.textContent = e.message; }
+    };
+    msg.textContent = ''; body.textContent = 'Loading…';
+    modal.style.display = 'flex';
+    try {
+      const r = await fetch(api(id, '/plan'), { credentials: 'same-origin' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message || d.error);
+      render(d);
+    } catch (e) { body.textContent = ''; msg.textContent = e.message; }
   }
 
   /* ── Send to contacts: DRAFTS ONLY (EXEC_PLAN P2) ─────────────────────── */

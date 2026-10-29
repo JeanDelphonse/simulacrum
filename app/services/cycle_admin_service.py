@@ -370,6 +370,23 @@ def delete_cycles(simulation_id: str, cycle_ids: list = None,
         wipe('agent_recipients', 'action_id', aids)   # drafted, never sent
         wipe('artifact_units', 'artifact_id', aids)    # P2 send drafts (never sent)
         wipe('artifact_actions', 'artifact_id', aids)  # verb log of those artifacts
+        # P3 plans (suggestions; nothing executed) and their step decisions
+        if aids and has('agent_plans'):
+            from sqlalchemy import text as _t3
+            plan_ids, step_ids = [], []
+            for batch in _chunk(aids):
+                keys = {'v%d' % i: v for i, v in enumerate(batch)}
+                ph = ', '.join(':' + k for k in keys)
+                plan_ids += [r[0] for r in db.session.execute(
+                    _t3('SELECT id FROM agent_plans WHERE action_id IN ({})'.format(ph)), keys).fetchall()]
+            for batch in _chunk(plan_ids):
+                keys = {'v%d' % i: v for i, v in enumerate(batch)}
+                ph = ', '.join(':' + k for k in keys)
+                step_ids += [r[0] for r in db.session.execute(
+                    _t3('SELECT id FROM plan_steps WHERE plan_id IN ({})'.format(ph)), keys).fetchall()]
+            wipe('action_approvals', 'target_id', step_ids)
+            wipe('plan_steps', 'plan_id', plan_ids)
+            wipe('agent_plans', 'id', plan_ids)
         wipe('contact_activities', 'action_id', aids)
         wipe('action_items', 'source_action_id', aids)
         wipe('prospect_research_runs', 'action_id', aids)

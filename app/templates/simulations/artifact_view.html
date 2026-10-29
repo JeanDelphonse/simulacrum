@@ -488,6 +488,9 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
     {% endif %}
     <a class="av-btn" id="aabPdfBtn" href="{{ url_for('artifact_view.api_export_pdf', artifact_id=action.id) }}" title="Download the current version as PDF">Export PDF</a>
     <button type="button" class="av-btn" id="aabCopyBtn" title="Copy the current version">Copy</button>
+    {% if is_owner %}
+    <button type="button" class="av-btn" id="aabPlanBtn" title="The agent's proposed plan — suggestions only, nothing runs">Plan</button>
+    {% endif %}
     {% if can_send_to_contacts %}
     <button type="button" class="av-btn" id="aabSendBtn" data-drafts="{{ draft_count }}"
             title="Prepare per-recipient drafts — nothing is sent">Send to contacts{% if draft_count %} ({{ draft_count }} drafts){% endif %}</button>

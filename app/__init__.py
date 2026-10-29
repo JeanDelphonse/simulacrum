@@ -174,6 +174,10 @@ def create_app(config_name=None):
     app.register_blueprint(observability_bp)
     # Declares its own full paths (/api/peers/..., /api/blends/..., /api/u/...)
     app.register_blueprint(peer_bp)
+    # Agent Execution Layer P3 — declares its own full paths (/api/artifacts/<id>/plan,
+    # /api/plan-steps/..., /api/agent-autonomy, /settings/agent-autonomy)
+    from app.blueprints.execution import execution_bp
+    app.register_blueprint(execution_bp)
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 
