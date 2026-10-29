@@ -111,11 +111,9 @@ def _deploy_apollo(rec, *, user_id, action_type, artifact, simulation_id,
     and enrol them in a sequence if the artifact contains prospect data.
     FR-WIRE-02.
     """
-    from app.services.apollo_client import ApolloClient
-    from app.services.token_crypto import decrypt_token
+    from app.services.apollo_client import client_for
 
-    token = decrypt_token(rec.access_token_enc)
-    client = ApolloClient(token)
+    client = client_for(rec)      # Bearer for OAuth, X-Api-Key for API keys
 
     # Try to parse structured prospect list from artifact (raw_decode tolerates trailing text)
     prospects = []

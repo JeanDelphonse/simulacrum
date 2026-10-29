@@ -5,6 +5,16 @@ from flask import current_app
 logger = logging.getLogger(__name__)
 
 APOLLO_BASE_URL      = 'https://api.apollo.io/v1'
+# Current API base for People API Search and enrichment (docs.apollo.io).
+APOLLO_API_URL       = 'https://api.apollo.io/api/v1'
+# Every Apollo call is bounded: a stalled request would otherwise hold an agent
+# run (and the one-at-a-time cycle runner) indefinitely.
+REQUEST_TIMEOUT      = 20
+
+# People API Search accepts only these seniorities.
+VALID_SENIORITIES = frozenset({'owner', 'founder', 'c_suite', 'partner', 'vp', 'head',
+                               'director', 'manager', 'senior', 'entry', 'intern'})
+_SENIORITY_ALIASES = {'principal': 'partner', 'executive': 'c_suite', 'cxo': 'c_suite'}
 APOLLO_AUTH_URL      = 'https://api.apollo.io/oauth2/authorize'
 APOLLO_TOKEN_URL     = 'https://api.apollo.io/oauth2/token'
 APOLLO_SCOPES        = 'sequences:write contacts:write emailer_campaigns:write webhooks:write'
@@ -62,13 +72,15 @@ class ApolloClient:
 
     def _get(self, path, params=None):
         import requests
-        resp = requests.get(f'{APOLLO_BASE_URL}{path}', headers=self._headers(), params=params)
+        resp = requests.get(f'{APOLLO_BASE_URL}{path}', headers=self._headers(), params=params,
+                            timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
 
-    def _post(self, path, body=None):
+    def _post(self, path, body=None, params=None, base=APOLLO_BASE_URL):
         import requests
-        resp = requests.post(f'{APOLLO_BASE_URL}{path}', headers=self._headers(), json=body or {})
+        resp = requests.post(f'{base}{path}', headers=self._headers(), json=body or {},
+                             params=params, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         return resp.json()
 
@@ -133,24 +145,51 @@ class ApolloClient:
         page: int = 1,
     ) -> list:
         """
-        Query Apollo's People Search API.
-        Returns a list of person dicts with verified professional emails.
-        Apollo pre-verifies emails — callers can skip Stage 4 verification.
-        """
-        payload = {'per_page': per_page, 'page': page}
-        if person_titles:
-            payload['person_titles'] = person_titles
-        if person_seniorities:
-            payload['person_seniorities'] = person_seniorities
-        if organization_num_employees_ranges:
-            payload['organization_num_employees_ranges'] = organization_num_employees_ranges
-        if organization_industry_tag_ids:
-            payload['organization_industry_tag_ids'] = organization_industry_tag_ids
-        if person_locations:
-            payload['person_locations'] = person_locations
+        Apollo People API Search (POST /api/v1/mixed_people/api_search).
 
-        data = self._post('/mixed_people/search', payload)
-        return data.get('people', [])
+        Returns people WITHOUT email addresses — Apollo's search never returns
+        them, only a ``has_email`` flag, a first name and an obfuscated last
+        name. Use bulk_enrich() on the ``id``s to get emails. The old
+        /v1/mixed_people/search call this replaced assumed an ``email`` field,
+        so every Apollo result was silently dropped. Search uses no credits.
+        Filters go in the query string (the API defines no request body).
+        """
+        params = {'per_page': max(1, min(int(per_page or 25), 100)),
+                  'page': max(1, min(int(page or 1), 500))}
+        if person_titles:
+            params['person_titles[]'] = list(person_titles)
+        seniorities = normalize_seniorities(person_seniorities)
+        if seniorities:
+            params['person_seniorities[]'] = seniorities
+        ranges = normalize_employee_ranges(organization_num_employees_ranges)
+        if ranges:
+            params['organization_num_employees_ranges[]'] = ranges
+        if organization_industry_tag_ids:
+            params['organization_industry_tag_ids[]'] = list(organization_industry_tag_ids)
+        if person_locations:
+            params['person_locations[]'] = list(person_locations)
+
+        data = self._post('/mixed_people/api_search', params=params, base=APOLLO_API_URL)
+        return data.get('people', []) or []
+
+    def bulk_enrich(self, person_ids: list) -> tuple:
+        """Emails for people found by people_search (POST /api/v1/people/bulk_match).
+
+        Up to 10 people per request; consumes credits (about 1 per person with
+        an email found). Personal emails are not requested. Returns
+        (matches, credits_consumed) with unmatched entries dropped.
+        """
+        matches, credits = [], 0
+        ids = [i for i in person_ids if i]
+        for i in range(0, len(ids), 10):
+            data = self._post('/people/bulk_match', base=APOLLO_API_URL, body={
+                'details': [{'id': pid} for pid in ids[i:i + 10]],
+                'reveal_personal_emails': False,
+                'reveal_phone_number': False,
+            })
+            matches += [m for m in (data.get('matches') or []) if m]
+            credits += int(data.get('credits_consumed') or 0)
+        return matches, credits
 
     # ── Company Search (SIM-PRD-CRM-002 FR-DSC-02) ───────────────────────────
 
@@ -193,3 +232,40 @@ class ApolloClient:
 
     def cancel_sequence(self, sequence_id: str):
         return self._post(f'/emailer_campaigns/{sequence_id}/archive')
+
+
+# ── Shared helpers ────────────────────────────────────────────────────────────
+
+def client_for(rec) -> 'ApolloClient':
+    """ApolloClient for a stored UserIntegration with the right auth header.
+
+    An OAuth token must go out as a Bearer header; sending it as X-Api-Key gets
+    a 403. A refresh token is how the app tells the two apart (API keys saved by
+    the connect wizard have none).
+    """
+    from app.services.token_crypto import decrypt_token
+    auth_type = 'oauth' if getattr(rec, 'refresh_token_enc', None) else 'api_key'
+    return ApolloClient(decrypt_token(rec.access_token_enc), auth_type=auth_type)
+
+
+def normalize_employee_ranges(ranges) -> list:
+    """Apollo wants "51,200" (comma, no spaces); targeting uses "51-200" / "10001+"."""
+    out = []
+    for r in ranges or []:
+        r = str(r).strip().replace(' ', '')
+        if r.endswith('+'):
+            r = r[:-1] + ',1000000'
+        r = r.replace('-', ',')
+        if r and r not in out:
+            out.append(r)
+    return out
+
+
+def normalize_seniorities(values) -> list:
+    out = []
+    for v in values or []:
+        v = _SENIORITY_ALIASES.get(str(v).strip().lower(), str(v).strip().lower())
+        if v in VALID_SENIORITIES and v not in out:
+            out.append(v)
+    return out
+
