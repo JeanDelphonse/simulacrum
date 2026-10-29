@@ -1,10 +1,20 @@
 """
 Recipient ledger — each person is targeted once per agent per simulation.
 
-Rule: within one simulation, an agent may target a given person in only one of
-its runs, across every cycle. Follow-up steps of that same run (Step 2/3 of a
+Rule: within one simulation, a person receives email from only one run of a
+given agent, across every cycle. Follow-up steps of that run (Step 2/3 of a
 sequence) still go to them; a later run of the agent never does. When an agent
 has no unused recipients left, the orchestrator leaves it out of the cycle.
+
+A person counts as used by an agent when any of these holds:
+  1. a run of the agent emailed them (EmailLog) — permanent;
+  2. a send to them is still scheduled in a run of the agent (ActionStep,
+     e.g. held for channel approval) — until it is sent or cancelled;
+  3. a run of the agent drafted them within HOLD_DAYS — so the next cycle does
+     not re-draft someone whose email is waiting on manual review.
+A person who was only drafted, long ago, and never emailed is free again: they
+have not received anything, and treating every old draft as "contacted" left
+Cold Email with no CRM contacts at all.
 
 Before this, "already contacted" meant "an email was actually sent". Sends can
 be held for channel approval, so the same CRM contacts stayed "uncontacted" and
@@ -31,7 +41,8 @@ logger = logging.getLogger(__name__)
 # page forward (Apollo) get another chance to surface new people.
 RECHECK_DAYS = 7
 
-_backfilled: set[tuple[str, str]] = set()
+# How long a drafted-but-unsent claim blocks re-drafting (rule 3 above).
+HOLD_DAYS = 14
 
 
 def _ledger_unavailable(where: str, exc: Exception) -> None:
@@ -97,17 +108,86 @@ def _agent_action_ids(simulation_id: str, action_type: str) -> list[str]:
 # Read
 # ---------------------------------------------------------------------------
 
-def used_keys(simulation_id: str, action_type: str) -> set[str]:
-    """Every recipient this agent has already targeted in this simulation."""
+def _contact_keys(contact_ids) -> dict:
+    """{contact_id: recipient_key} for the given CRM contacts."""
+    from app.models.contact import Contact
+    ids = [c for c in set(contact_ids) if c]
+    out = {}
+    for i in range(0, len(ids), 500):
+        for c in Contact.query.filter(Contact.id.in_(ids[i:i + 500])).all():
+            key = recipient_key(c.email, c.first_name, c.last_name, c.company_name)
+            if key:
+                out[c.id] = key
+    return out
+
+
+def _state(simulation_id: str, action_type: str) -> dict:
+    """Evidence for rules 1-3: claims, emailed keys, pending keys, recent runs."""
+    from app.models.action_step import ActionStep
+    from app.models.agent_action import AgentAction
     from app.models.agent_recipient import AgentRecipient
+    from app.models.outreach_email import EmailLog
+    from app.services.agent_registry import names_for
+
+    runs = AgentAction.query.with_entities(AgentAction.id, AgentAction.created_at).filter(
+        AgentAction.simulation_id == simulation_id,
+        AgentAction.action_type.in_(names_for(action_type)),
+    ).all()
+    run_ids = [r.id for r in runs]
+    cutoff = datetime.utcnow() - timedelta(days=HOLD_DAYS)
+    recent = {r.id for r in runs if r.created_at and r.created_at >= cutoff}
+
+    emailed_by: dict = {}     # key -> run that emailed them
+    pending_by: dict = {}     # key -> run with a scheduled send
+    if run_ids:
+        logs = EmailLog.query.with_entities(EmailLog.contact_id, EmailLog.action_id).filter(
+            EmailLog.simulation_id == simulation_id, EmailLog.action_id.in_(run_ids)).all()
+        steps = ActionStep.query.filter(
+            ActionStep.simulation_id == simulation_id,
+            ActionStep.agent_action_id.in_(run_ids),
+            ActionStep.status == ActionStep.STATUS_SCHEDULED).all()
+        step_contacts = [((st.payload or {}).get('contact_id') or st.condition_ref, st.agent_action_id)
+                         for st in steps]
+        keys = _contact_keys([c for c, _ in logs] + [c for c, _ in step_contacts])
+        for cid, aid in logs:
+            if cid in keys:
+                emailed_by.setdefault(keys[cid], aid)
+        for cid, aid in step_contacts:
+            if cid in keys:
+                pending_by.setdefault(keys[cid], aid)
+
+    claims = {r.recipient_key: r for r in AgentRecipient.query.filter_by(
+        simulation_id=simulation_id, action_type=action_type).all()}
+    return {'claims': claims, 'emailed_by': emailed_by, 'pending_by': pending_by,
+            'recent': recent, 'runs': set(run_ids), 'cutoff': cutoff}
+
+
+def _active_claim(row, st: dict) -> bool:
+    """A ledger row still blocks other runs (rules 1-3). An unlinked row
+    (action_id NULL) is one an admin cycle delete kept because it was emailed."""
+    if row.action_id is None or row.action_id in st['recent']:
+        return True
+    # Recency comes from the claiming run; only when that run is unknown does
+    # the claim's own timestamp stand in for it.
+    if row.action_id not in st['runs'] and row.created_at and row.created_at >= st['cutoff']:
+        return True
+    return row.recipient_key in st['emailed_by'] or row.recipient_key in st['pending_by']
+
+
+def _used_from_state(st: dict) -> set[str]:
+    used = set(st['emailed_by']) | set(st['pending_by'])
+    used |= {k for k, row in st['claims'].items() if _active_claim(row, st)}
+    return used
+
+
+def used_keys(simulation_id: str, action_type: str) -> set[str]:
+    """Every person this agent may not target again in this simulation."""
     from app.services.agent_registry import resolve_alias
     action_type = resolve_alias(action_type)
     if not simulation_id or action_type not in tracked_agents():
         return set()
     try:
-        _ensure_backfilled(simulation_id, action_type)
-        return {r.recipient_key for r in AgentRecipient.query.with_entities(AgentRecipient.recipient_key)
-                .filter_by(simulation_id=simulation_id, action_type=action_type).all()}
+        return _used_from_state(_state(simulation_id, action_type))
     except Exception as exc:
         _ledger_unavailable('used_keys', exc)
         return set()
@@ -135,23 +215,30 @@ def record(simulation_id: str, action_type: str, action_id: str | None, items: l
     if not simulation_id or action_type not in tracked_agents() or not items:
         return 0
     try:
-        existing = {r.recipient_key for r in AgentRecipient.query.with_entities(AgentRecipient.recipient_key)
-                    .filter_by(simulation_id=simulation_id, action_type=action_type).all()}
+        st = _state(simulation_id, action_type)
     except Exception as exc:
         _ledger_unavailable('record', exc)
         return 0
+    used = _used_from_state(st)
     added = 0
     from app.services.contact_lookup import is_placeholder_item
     for item in items:
         key = _key_of(item)
-        if not key or key in existing or is_placeholder_item(item):
+        if not key or key in used or is_placeholder_item(item):
             continue
         get = item.get if isinstance(item, dict) else (lambda k, d=None: getattr(item, k, d))
-        db.session.add(AgentRecipient(
-            simulation_id=simulation_id, action_type=action_type, recipient_key=key,
-            contact_id=get('crm_contact_id') or get('contact_id') or None, action_id=action_id,
-        ))
-        existing.add(key)
+        contact_id = get('crm_contact_id') or get('contact_id') or None
+        stale = st['claims'].get(key)
+        if stale is not None:
+            # An old draft that was never sent: this run takes the person over.
+            stale.action_id, stale.contact_id = action_id, contact_id or stale.contact_id
+            stale.created_at = datetime.utcnow()
+        else:
+            db.session.add(AgentRecipient(
+                simulation_id=simulation_id, action_type=action_type, recipient_key=key,
+                contact_id=contact_id, action_id=action_id,
+            ))
+        used.add(key)
         added += 1
     if added:
         try:
@@ -212,16 +299,17 @@ def check_send(simulation_id: str, action_id: str | None, contact, subject: str)
     key = recipient_key(contact.email, contact.first_name, contact.last_name, contact.company_name)
     if not key:
         return True, ''
-    _ensure_backfilled(simulation_id, agent)
-    owner = AgentRecipient.query.filter_by(simulation_id=simulation_id, action_type=agent,
-                                           recipient_key=key).first()
-    if owner is None:
-        record(simulation_id, agent, action_id, [{'email': contact.email, 'contact_id': contact.id}])
-        return True, ''
-    # A NULL owner is a run an admin deleted after it emailed this person
-    # (cycle_admin_service keeps those rows, unlinked) — still blocked.
-    if owner.action_id != action_id:
-        return False, 'already_targeted_by_agent'
+    st = _state(simulation_id, agent)
+    emailed = st['emailed_by'].get(key)
+    if emailed and emailed != action_id:
+        return False, 'already_targeted_by_agent'      # rule 1
+    pending = st['pending_by'].get(key)
+    if pending and pending != action_id:
+        return False, 'already_targeted_by_agent'      # rule 2
+    owner = st['claims'].get(key)
+    if owner is not None and owner.action_id != action_id and _active_claim(owner, st):
+        return False, 'already_targeted_by_agent'      # rule 3 / admin-unlinked
+    record(simulation_id, agent, action_id, [{'email': contact.email, 'contact_id': contact.id}])
     return True, ''
 
 
@@ -305,68 +393,3 @@ def _has_unused_recipients(simulation_id: str, action_type: str, user_id: str) -
     if latest.completed_at and latest.completed_at < datetime.utcnow() - timedelta(days=RECHECK_DAYS):
         return True, ''          # periodic re-probe of research sources
     return False, 'no unused contacts: last run found no one new and the CRM pool is exhausted'
-
-
-# ---------------------------------------------------------------------------
-# Backfill — simulations that ran before the ledger existed
-# ---------------------------------------------------------------------------
-
-def _ensure_backfilled(simulation_id: str, action_type: str) -> None:
-    """Seed the ledger once from history: sent emails, scheduled steps, prior
-    structured artifacts and contacts the agent created. Idempotent."""
-    cache_key = (simulation_id, action_type)
-    if cache_key in _backfilled:
-        return
-    _backfilled.add(cache_key)
-    try:
-        from app.models.agent_recipient import AgentRecipient
-        if AgentRecipient.query.filter_by(simulation_id=simulation_id,
-                                          action_type=action_type).first() is not None:
-            return
-        action_ids = _agent_action_ids(simulation_id, action_type)
-        if not action_ids:
-            return
-        from app.models.agent_action import AgentAction
-        from app.models.action_step import ActionStep
-        from app.models.contact import Contact
-        from app.models.outreach_email import EmailLog
-
-        by_action: dict[str, list] = {}
-
-        def add(aid, contact=None, **item):
-            if contact is not None:
-                item = {'email': contact.email, 'first_name': contact.first_name,
-                        'last_name': contact.last_name, 'company_name': contact.company_name,
-                        'contact_id': contact.id}
-            by_action.setdefault(aid, []).append(item)
-
-        for log in EmailLog.query.filter(EmailLog.simulation_id == simulation_id,
-                                         EmailLog.action_id.in_(action_ids)).all():
-            c = Contact.query.get(log.contact_id) if log.contact_id else None
-            if c is not None:
-                add(log.action_id, c)
-        for step in ActionStep.query.filter(ActionStep.simulation_id == simulation_id,
-                                            ActionStep.agent_action_id.in_(action_ids)).all():
-            cid = (step.payload or {}).get('contact_id') or step.condition_ref
-            c = Contact.query.get(cid) if cid else None
-            if c is not None:
-                add(step.agent_action_id, c)
-        for a in AgentAction.query.filter(AgentAction.id.in_(action_ids)).all():
-            for p in _artifact_prospects(a.artifact) + _artifact_prospects(a.archived_artifact):
-                add(a.id, **p)
-        for c in Contact.query.filter(Contact.source_action_id.in_(action_ids)).all():
-            add(c.source_action_id, c)
-
-        # Oldest run first, so each person is attributed to the run that
-        # targeted them first.
-        order = {a.id: a.created_at or datetime.min for a in
-                 AgentAction.query.filter(AgentAction.id.in_(list(by_action))).all()}
-        total = 0
-        for aid in sorted(by_action, key=lambda x: order.get(x, datetime.min)):
-            total += record(simulation_id, action_type, aid, by_action[aid])
-        if total:
-            logger.info('recipient ledger backfilled %d for sim=%s agent=%s',
-                        total, simulation_id, action_type)
-    except Exception as exc:
-        logger.warning('recipient ledger backfill failed sim=%s agent=%s: %s',
-                       simulation_id, action_type, exc)

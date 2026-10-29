@@ -302,6 +302,12 @@ def main():
               'Include only people who appear in the supplied' in gp)
         check('count constraint forbids padding with invented people',
               'Never invent people' in gp and 'at most 5' in gp)
+        check('CONTACTS block is requested first, so truncation cannot cut it off',
+              'Begin your response with this exact block' in gp)
+        check('every agent gets at least an 8192-token output ceiling',
+              fake.calls[-1]['max_tokens'] >= 8192 and claude.DEFAULT_MAX_TOKENS >= 8192
+              and all(v >= 8192 for v in claude.ACTION_MAX_TOKENS.values()),
+              fake.calls[-1]['max_tokens'])
 
         # ── 5. Triggers and scoring ────────────────────────────────────────
         print('\n5. Triggers and per-agent scoring')

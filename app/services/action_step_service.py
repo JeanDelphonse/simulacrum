@@ -209,11 +209,16 @@ def _drop_owned_by_other_runs(contacts: dict, simulation_id: str, action_type: s
     if not contacts:
         return contacts
     try:
-        from app.models.agent_recipient import AgentRecipient
-        from app.services.recipient_ledger import recipient_key, used_keys
-        used_keys(simulation_id, action_type)            # triggers backfill if needed
-        owners = {r.recipient_key: r.action_id for r in AgentRecipient.query.filter_by(
-            simulation_id=simulation_id, action_type=action_type).all()}
+        from app.services.recipient_ledger import recipient_key, _state, _active_claim
+        st = _state(simulation_id, action_type)
+        # Only evidence that still blocks counts: an email sent, a send pending,
+        # or a recent draft by another run (recipient_ledger rules 1-3).
+        owners = dict(st['emailed_by'])
+        for k, aid in st['pending_by'].items():
+            owners.setdefault(k, aid)
+        for k, row in st['claims'].items():
+            if _active_claim(row, st):
+                owners.setdefault(k, row.action_id or 'deleted-run')
     except Exception as exc:
         logger.warning('step recipient check failed for %s: %s', agent_action_id, exc)
         return contacts

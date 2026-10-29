@@ -952,47 +952,18 @@ from app.services.agent_registry import AGENT_ACTION_TYPES as _registry_types
 AGENT_ACTION_TYPES = {_layer: dict(_agents) for _layer, _agents in _registry_types.items()}
 
 
-# Token budgets. Canonical names only — action_type is alias-resolved at
-# function entry. Agents not listed get 16384 if agents.json marks them
-# large_output, else 8192.
-ACTION_MAX_TOKENS = {
-    # ── long structured output (15 messages / 7 emails / full guide) ─
-    'referral_network':        6144,
-    'speaking_proposals':      8192,
-    'workshop_curriculum':     8192,
-    'group_coaching':          8192,
-    'launch_sequence':         6144,
-    'lead_magnet_funnel':      6144,
-    'corporate_training':      6144,
-    'affiliate_program':       6144,
-    'ip_licensing':            6144,
-    'ebook_outline':           6144,
-    # ── medium structured output ─────────────────────────────────────
-    'role_search':             4096,
-    'sow_template':            4096,
-    'agreement_template':      4096,
-    'waitlist_landing_page':   4096,
-    'alumni_reactivation':     4096,
-    'membership':              4096,
-    'testimonials':            4096,
-    'lapsed_buyer':            4096,
-    'programmatic_ads':        4096,
-    'projections':             4096,
-    'income_allocation':       4096,
-    # ── short structured output ───────────────────────────────────────
-    'negotiation_script':      3072,
-    'pricing_research':        3072,
-    'newsletter':              3072,
-    'community':               3072,
-    'fund_recommendations':    3072,
-    'real_estate_strategy':    3072,
-    'insurance_review':        3072,
-    # ── very short (headline / calculation / schedule) ────────────────
-    'linkedin_optimization':   2048,
-    'roi_calculator':          2048,
-    'booking_page':            3072,   # 2048 truncated once sections were required
-    'dca_schedule':            2048,
-}
+# Token budgets. max_tokens is a ceiling, not a target: the model stops when
+# it is done, so a generous ceiling costs nothing on a normal run and only
+# decides where an over-long answer is cut. Tight per-agent ceilings (2-4k)
+# truncated real artifacts once agents had required sections and a plan —
+# measured 2026-10-28: real_estate_strategy and roi_calculator hit their cap,
+# five more were within 15%, and role_search's output varied 2x between runs.
+# Every agent therefore gets at least DEFAULT_MAX_TOKENS; agents.json
+# large_output ones get LARGE_MAX_TOKENS. cold_email_campaign is scaled to its
+# prospect count below. Add an entry here only to raise an agent further.
+DEFAULT_MAX_TOKENS = 8192
+LARGE_MAX_TOKENS = 16384
+ACTION_MAX_TOKENS: dict = {}
 
 
 def execute_agent_action(
@@ -1287,8 +1258,9 @@ def _execute_agent_action_body(
     # Structured contacts block for contact-producing markdown agents (FR-CRM-03)
     if produces_contacts:
         prompt += (
-            '\n\n---\nIMPORTANT: After your main response, append this exact block '
-            '(mandatory output):\n'
+            '\n\n---\nIMPORTANT: Begin your response with this exact block, before the '
+            'artifact (mandatory; it is removed before the user sees the artifact, and putting '
+            'it first means a long artifact can never cut it off):\n'
             '<!--CONTACTS\n'
             '[{"first_name":"...","last_name":"...","email":"...","job_title":"...",'
             '"company_name":"...","qualifying_notes":"..."}]\n'
@@ -1312,7 +1284,7 @@ def _execute_agent_action_body(
 
     max_tokens = ACTION_MAX_TOKENS.get(
         action_type,
-        16384 if agent_meta.get('large_output') else 8192,
+        LARGE_MAX_TOKENS if agent_meta.get('large_output') else DEFAULT_MAX_TOKENS,
     )
 
     # Scale cold_email_campaign tokens to the (already-resolved) prospect count so
@@ -1354,6 +1326,10 @@ def _execute_agent_action_body(
         )
 
     raw_artifact = response.content[0].text.strip()
+    if response.stop_reason == 'max_tokens' and not raw_artifact.lstrip().startswith('{'):
+        # Say so rather than let the artifact end mid-sentence.
+        raw_artifact += ('\n\n---\n*This artifact reached its length limit and may be '
+                         'incomplete. Re-run the agent to regenerate it.*')
 
     # SIM-PRD-CAL-001 — strip the METRICS block and calibrate, before any of the
     # per-agent return paths below. Wrapped whole: a calibration failure must
@@ -1716,6 +1692,9 @@ def _extract_and_save_contacts(
         return artifact  # nothing to strip
 
     clean = artifact[:match.start()].rstrip() + artifact[match.end():]
+    # The block now leads the response; drop the separator the model tends to
+    # put after it so the artifact doesn't open with a stray horizontal rule.
+    clean = _re.sub(r'^\s*(-{3,}|\*{3,}|_{3,})\s*\n', '', clean.lstrip('\n'))
 
     try:
         contacts = json.loads(match.group(1).strip())
@@ -1766,10 +1745,16 @@ def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dic
         from app.services import recipient_ledger as _ledger
         used = _ledger.used_keys(simulation_id, 'cold_email_campaign')
         from app.services.contact_lookup import is_placeholder_contact as _is_ph
-        contacts = [c for c in contacts
-                    if _ledger.recipient_key(c.email) not in used
-                    and not _is_ph(c.first_name, c.last_name, c.company_name, c.email)
-                    ][:prospect_count or 5]
+        _eligible = len(contacts)
+        _fresh = [c for c in contacts if _ledger.recipient_key(c.email) not in used]
+        _real = [c for c in _fresh if not _is_ph(c.first_name, c.last_name, c.company_name, c.email)]
+        contacts = _real[:prospect_count or 5]
+        import logging as _lg
+        _lg.getLogger(__name__).info(
+            'Cold Email CRM pool sim=%s: %d uncontacted prospect(s) with email, '
+            '%d already used by Cold Email, %d placeholder(s), %d selected',
+            simulation_id, _eligible, _eligible - len(_fresh), len(_fresh) - len(_real),
+            len(contacts))
 
         if not contacts:
             return ''

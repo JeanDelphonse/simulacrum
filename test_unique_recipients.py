@@ -230,6 +230,55 @@ def main():
                                   action_id=(post_delete_run := run('cold_email_campaign', [d])).id)
         check('a new run still cannot email the person a deleted run emailed',
               res.get('reason') == 'already_targeted_by_agent', res)
+        post_delete_id = post_delete_run.id
+
+        # ── 6b. Old drafts that were never sent release their people ───────
+        print('\n6b. Old drafts free their contacts; sent and pending stay blocked')
+        sim3 = Simulation(id=generate_id(), user_id=user.id, name='Drafts',
+                          expertise_zone='Ops', status='complete')
+        db.session.add(sim3)
+        db.session.commit()
+        user3 = sim3.user_id
+        long_ago = datetime.utcnow() - timedelta(days=ledger.HOLD_DAYS + 10)
+        olds = []
+        for n, who in enumerate(('olga@o.com', 'pete@p.com', 'quin@q.com')):
+            act = AgentAction(id=generate_id(), simulation_id=sim3.id, layer_number=1,
+                              action_type='cold_email_campaign', status='complete',
+                              created_at=long_ago, completed_at=long_ago)
+            db.session.add(act)
+            db.session.flush()
+            olds.append(act)
+            ledger.record(sim3.id, 'cold_email_campaign', act.id, [{'email': who}])
+        pete = contact('Pete', 'pete@p.com')
+        quin = contact('Quin', 'quin@q.com')
+        db.session.add(EmailLog(id=generate_id(), simulation_id=sim3.id, contact_id=pete.id,
+                                action_id=olds[1].id, subject='Hi', from_email='me@x.com',
+                                from_name='Me', to_email='pete@p.com', status='sent'))
+        step = ActionStep(id=generate_id(), agent_action_id=olds[2].id, simulation_id=sim3.id,
+                          step_number=1, total_steps=1, action_type='cold_email_campaign',
+                          step_type='email_send', scheduled_for=datetime.utcnow())
+        step.payload = {'contact_id': quin.id}
+        db.session.add(step)
+        db.session.commit()
+        used = ledger.used_keys(sim3.id, 'cold_email_campaign')
+        check('a person drafted long ago and never emailed is available again',
+              'olga@o.com' not in used, sorted(used))
+        check('a person who was emailed stays blocked', 'pete@p.com' in used)
+        check('a person with a send still scheduled stays blocked', 'quin@q.com' in used)
+        new_run = AgentAction(id=generate_id(), simulation_id=sim3.id, layer_number=1,
+                              action_type='cold_email_campaign', status='complete',
+                              completed_at=datetime.utcnow())
+        db.session.add(new_run)
+        db.session.commit()
+        check('a new run can claim the released person',
+              ledger.record(sim3.id, 'cold_email_campaign', new_run.id, [{'email': 'olga@o.com'}]) == 1)
+        check('…and it is then blocked for the following cycle',
+              'olga@o.com' in ledger.used_keys(sim3.id, 'cold_email_campaign'))
+        olga = contact('Olga', 'olga@o.com')
+        res = send_outreach_email(sim3.id, olga.id, 'Hello', '<p>x</p>', 'me@x.com', 'Me',
+                                  action_id=olds[0].id)
+        check('the old run that lost the claim cannot send to her',
+              res.get('reason') == 'already_targeted_by_agent', res)
 
         # ── 8a. Research: skips earlier recipients, respects its time budget ─
         print('\n8a. Prospect research budget and exclusion')
@@ -268,7 +317,6 @@ def main():
         # ── 8. Deployed before sql/054 ran ─────────────────────────────────
         print('\n8. Missing ledger table degrades, never breaks a cycle')
         AgentRecipient.__table__.drop(db.engine)
-        ledger._backfilled.clear()
         check('CRM pool still returned (old behaviour)', 'Dee' in crm_names(), crm_names())
         cfg = Layer6Config.query.filter_by(simulation_id=sim.id).first()
         try:
@@ -280,7 +328,7 @@ def main():
         check('eligibility fails open instead of aborting the cycle', ok, got)
         res = send_outreach_email(sim.id, Contact.query.filter_by(email='dee@d.com').first().id,
                                   'Hi', '<p>x</p>', 'me@x.com', 'Me',
-                                  action_id=post_delete_run.id)
+                                  action_id=post_delete_id)
         check('send path fails open', res.get('reason') == 'no_api_key', res)
 
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
