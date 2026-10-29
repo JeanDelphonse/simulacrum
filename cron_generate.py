@@ -4,10 +4,20 @@ cron_generate.py — run by GoDaddy cron every minute.
 Picks up simulations in STATUS_PROCESSING that have no layers yet
 and generates all 5 layers synchronously.
 
-cPanel cron command:
-  /home/dburriyy6pdz/virtualenv/public_html/simulacrum/3.11/bin/python \
-    /home/dburriyy6pdz/public_html/simulacrum/cron_generate.py >> \
-    /home/dburriyy6pdz/public_html/simulacrum/cron.log 2>&1
+cPanel cron command — layout since the SimiSI cutover (app root ~/simisi,
+Python 3.9 virtualenv; confirm the exact interpreter path on cPanel's
+"Setup Python App" page):
+  * * * * * /home/dburriyy6pdz/virtualenv/simisi/3.9/bin/python \
+    /home/dburriyy6pdz/simisi/cron_generate.py >> \
+    /home/dburriyy6pdz/simisi/cron.log 2>&1
+
+The pre-cutover command pointed at virtualenv/public_html/simulacrum/3.11,
+which no longer exists ("No such file or directory" in cron.log).
+
+Cron jobs do NOT receive the cPanel app's environment variables. config.py
+loads ~/simisi/.env, so that file must hold the same DATABASE_URL, API keys,
+etc.; without it create_app('production') falls back to a local SQLite file
+and this job silently processes nothing.
 """
 import sys
 import os

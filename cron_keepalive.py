@@ -1,16 +1,19 @@
 """
-cron_keepalive.py — keep Passenger warm by hitting /simulacrum/ping every 5 min.
+cron_keepalive.py — keep Passenger warm by hitting https://simisi.io/ping every 5 min.
 
 Without a keepalive, GoDaddy Passenger kills the Python process after ~5 min
 of inactivity. The next user request then waits 10-20 s for cold startup.
 
-cPanel cron command (run every 5 minutes):
-  */5 * * * * /home/dburriyy6pdz/virtualenv/public_html/simulacrum/3.11/bin/python \
-    /home/dburriyy6pdz/public_html/simulacrum/cron_keepalive.py >> \
-    /home/dburriyy6pdz/public_html/simulacrum/cron_keepalive.log 2>&1
+It matters for more than cold starts: agents run in background threads, and a
+process killed for inactivity takes any agent run with it (the UI later marks
+it failed). A Cold Email run with research takes several minutes.
 
-Or using curl (lighter — no Python startup overhead):
-  */5 * * * * curl -s --max-time 10 https://yourdomain.com/simulacrum/ping > /dev/null 2>&1
+cPanel cron command (run every 5 minutes) — layout since the SimiSI cutover
+(app root ~/simisi, served at simisi.io):
+  */5 * * * * curl -s --max-time 10 https://simisi.io/ping > /dev/null 2>&1
+
+Pre-cutover entries pointing at public_html/simulacrum or /simulacrum/ping no
+longer keep the live app warm.
 """
 import urllib.request
 import urllib.error
@@ -28,7 +31,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # Set this to your production domain + path
-PING_URL = os.environ.get('SIMULACRUM_PING_URL', 'http://localhost/simulacrum/ping')
+PING_URL = os.environ.get('SIMULACRUM_PING_URL', 'https://simisi.io/ping')
 
 try:
     req = urllib.request.Request(PING_URL, headers={'User-Agent': 'SimulacrumKeepalive/1.0'})
