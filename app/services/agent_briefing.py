@@ -209,8 +209,11 @@ def _existing_contacts_section(user_id: str, briefing: Briefing, limit: int,
     # this agent already wrote to.
     from app.services import recipient_ledger as _ledger
     used = _ledger.used_keys(simulation_id, action_type) if simulation_id and action_type else set()
-    rows = [c for c in rows if _ledger.recipient_key(
-        c.email, c.first_name, c.last_name, c.company_name) not in used][:limit]
+    from app.services.contact_lookup import is_placeholder_contact
+    rows = [c for c in rows
+            if _ledger.recipient_key(c.email, c.first_name, c.last_name, c.company_name) not in used
+            and not is_placeholder_contact(c.first_name, c.last_name, c.company_name, c.email)
+            ][:limit]
     briefing.existing_contact_count = len(rows)
     if not rows:
         briefing.existing_contacts = (
@@ -348,7 +351,8 @@ def system_prompt(meta: dict) -> str:
         'and prospect lists. Keep numbers and positioning consistent with upstream artifacts.',
         'Never invent people, email addresses, phone numbers, URLs, testimonials, client '
         'names or statistics and present them as real. Where the user must fill something '
-        'in, use a clearly marked [placeholder].',
+        'in, use a clearly marked [placeholder] — but never in a prospect, contact or '
+        'recipient list: those list only real people supplied to you, or are left empty.',
         'When a required input is missing, make a reasonable assumption and state it in a '
         'short "Assumptions" note at the end of the artifact (at most 3 bullets).',
         'Be concise and skimmable: cover every required section, but do not pad — prefer '

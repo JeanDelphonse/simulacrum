@@ -141,9 +141,10 @@ def record(simulation_id: str, action_type: str, action_id: str | None, items: l
         _ledger_unavailable('record', exc)
         return 0
     added = 0
+    from app.services.contact_lookup import is_placeholder_item
     for item in items:
         key = _key_of(item)
-        if not key or key in existing:
+        if not key or key in existing or is_placeholder_item(item):
             continue
         get = item.get if isinstance(item, dict) else (lambda k, d=None: getattr(item, k, d))
         db.session.add(AgentRecipient(
@@ -231,7 +232,8 @@ def check_send(simulation_id: str, action_id: str | None, contact, subject: str)
 def _crm_pool_has_unused(user_id: str, used: set) -> bool:
     from app.models.contact import Contact
     from sqlalchemy import or_
-    rows = Contact.query.with_entities(Contact.email).filter(
+    rows = Contact.query.with_entities(Contact.email, Contact.first_name, Contact.last_name,
+                                       Contact.company_name).filter(
         Contact.user_id == user_id,
         Contact.is_archived.is_(False),
         Contact.do_not_contact.is_(False),
@@ -240,7 +242,10 @@ def _crm_pool_has_unused(user_id: str, used: set) -> bool:
         Contact.last_contacted_at.is_(None),
         or_(Contact.outreach_count == 0, Contact.outreach_count.is_(None)),
     ).all()
-    return any(recipient_key(r.email) not in used for r in rows if recipient_key(r.email))
+    from app.services.contact_lookup import is_placeholder_contact
+    return any(recipient_key(r.email) not in used for r in rows
+               if recipient_key(r.email)
+               and not is_placeholder_contact(r.first_name, r.last_name, r.company_name, r.email))
 
 
 def _existing_contacts_unused(user_id: str, used: set) -> bool:
@@ -251,8 +256,11 @@ def _existing_contacts_unused(user_id: str, used: set) -> bool:
         Contact.do_not_contact.is_(False),
         Contact.pipeline_stage.in_(('active', 'client')),
     ).all()
+    from app.services.contact_lookup import is_placeholder_contact
     return any(_key_of({'email': c.email, 'first_name': c.first_name, 'last_name': c.last_name,
-                        'company_name': c.company_name}) not in used for c in rows)
+                        'company_name': c.company_name}) not in used
+               for c in rows if not is_placeholder_contact(c.first_name, c.last_name,
+                                                           c.company_name, c.email))
 
 
 def has_unused_recipients(simulation_id: str, action_type: str, user_id: str) -> tuple[bool, str]:

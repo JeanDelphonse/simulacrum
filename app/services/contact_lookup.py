@@ -7,6 +7,7 @@ Flow:
 """
 from __future__ import annotations
 import logging
+import re
 from typing import Optional
 
 from app.services.contact_scoring import AGENT_MIN_SCORES
@@ -99,6 +100,64 @@ def format_contacts_for_prompt(contacts: list) -> str:
             parts.append(f'[{c.pipeline_stage}]')
         lines.append('  - ' + ', '.join(p for p in parts if p))
     return '\n'.join(lines)
+
+
+# ── Placeholder detection ────────────────────────────────────────────────────
+# Real surnames include Lead, Client and Test, so a generic word only marks a
+# placeholder when it is numbered ("Prospect 3"), a name-field label ("First
+# Name"), pure filler ("TBD"), or when both names are generic ("Contact Name").
+_TEMPLATE_MARKER_RE = re.compile(r'[\[\]{}<>]')
+_GENERIC_WORD = (r'(first|last|full|contact|prospect|person|client|lead|buyer|'
+                 r'decision[\s-]*maker|hiring[\s-]*manager|recipient|name|firstname|'
+                 r'lastname|sample|example|test|placeholder)')
+_NUMBERED_GENERIC_RE = re.compile(r'^' + _GENERIC_WORD + r'(\s*name)?\s*#?\s*\d+$', re.I)
+_GENERIC_ONLY_RE = re.compile(r'^' + _GENERIC_WORD + r'(\s*name)?$', re.I)
+_FIELD_LABEL_RE = re.compile(r'^(first|last|full)\s*name$|^(firstname|lastname)$', re.I)
+_FILLER_RE = re.compile(r'^(tbd|tba|n/?a|xxx+|placeholder|unknown\s*\d+)$', re.I)
+_GENERIC_COMPANY_RE = re.compile(
+    r'^((enterprise|target|sample|example|your|placeholder)\s+)?'
+    r'(company|organi[sz]ation|firm|business|employer|client|corp(oration)?|inc)'
+    r'(\s*name)?\s*(#?\s*\d+)?$', re.I)
+_PLACEHOLDER_FULL_NAMES = {'john doe', 'jane doe', 'john smith', 'jane smith', 'lorem ipsum'}
+_PLACEHOLDER_EMAIL_RE = re.compile(
+    r'@(example|test|domain|company|companyname|yourcompany|yourdomain|'
+    r'enterprisecompany\d*|placeholder)\.(com|org|net|io)$'
+    r'|^(first|firstname|first\.last|firstname\.lastname|first\.lastname|flast)@', re.I)
+
+
+def is_placeholder_contact(first_name='', last_name='', company_name='', email='') -> bool:
+    """True for template rows an agent wrote instead of a real person, e.g.
+    "[First Name 1] [Last Name 1] [Enterprise Company 1]", "Prospect 3",
+    "John Doe", or name@example.com. These must never reach the CRM: they look
+    like leads, get scheduled emails, and consume the recipient ledger."""
+    first = (first_name or '').strip()
+    last = (last_name or '').strip()
+    company = (company_name or '').strip()
+    mail = (email or '').strip()
+    if any(_TEMPLATE_MARKER_RE.search(v) for v in (first, last, company, mail) if v):
+        return True
+    for name in (first, last):
+        if name and (_NUMBERED_GENERIC_RE.match(name) or _FIELD_LABEL_RE.match(name)
+                     or _FILLER_RE.match(name)):
+            return True
+    if first and _GENERIC_ONLY_RE.match(first) and (not last or _GENERIC_ONLY_RE.match(last)):
+        return True
+    if ('%s %s' % (first, last)).strip().lower() in _PLACEHOLDER_FULL_NAMES:
+        return True
+    if company and _GENERIC_COMPANY_RE.match(company):
+        return True
+    if mail and _PLACEHOLDER_EMAIL_RE.search(mail):
+        return True
+    return False
+
+
+def is_placeholder_item(item) -> bool:
+    """is_placeholder_contact for a dict or Prospect-like object."""
+    get = item.get if isinstance(item, dict) else (lambda k, d='': getattr(item, k, d))
+    return is_placeholder_contact(get('first_name', '') or '', get('last_name', '') or '',
+                                  get('company_name', '') or '', get('email', '') or '')
+
+
 def _fallback_email_parts() -> tuple[str, str]:
     """(local_part, domain) of the configured fallback contact address."""
     from flask import current_app
@@ -184,6 +243,11 @@ def record_agent_contacts(
     used_fallbacks = set()
 
     for data in contact_data_list:
+        if is_placeholder_item(data):
+            logger.warning('record_agent_contacts: skipped placeholder contact %r',
+                           (data.get('first_name'), data.get('last_name'), data.get('company_name')))
+            skipped += 1
+            continue
         email = (data.get('email') or '').strip().lower()
         if not email:
             skipped += 1
@@ -279,6 +343,11 @@ def save_contacts_to_crm(
     used_fallbacks = set()
     for raw in contacts:
         if not raw.get('first_name') and not raw.get('last_name'):
+            continue
+        if is_placeholder_item(raw):
+            logger.warning('save_contacts_to_crm: skipped placeholder contact %r (action_type=%s)',
+                           (raw.get('first_name'), raw.get('last_name'), raw.get('company_name')),
+                           action_type)
             continue
 
         first = (raw.get('first_name') or '').strip()

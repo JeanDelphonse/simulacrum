@@ -313,7 +313,10 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
     # ── Phase 1: upsert ALL named prospects into CRM as 'prospect' ──
     artifact_changed = False
     crm_created = 0
+    from app.services.contact_lookup import is_placeholder_item as _is_placeholder
     for p in prospects:
+        if _is_placeholder(p):
+            continue   # template row, not a person — never into the CRM
         first = (p.get('first_name') or '').strip()
         last  = (p.get('last_name') or '').strip()
         if not first and not last:
@@ -441,7 +444,10 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
     # No/fallback email → match by name+company, create with unique fallback email.
     artifact_changed = False
     crm_created = 0
+    from app.services.contact_lookup import is_placeholder_item as _is_placeholder
     for p in prospects:
+        if _is_placeholder(p):
+            continue   # template row, not a person — never into the CRM
         first = (p.get('first_name') or '').strip()
         last  = (p.get('last_name') or '').strip()
         if not first and not last:

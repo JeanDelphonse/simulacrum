@@ -1192,6 +1192,18 @@ def _execute_agent_action_body(
             _span['output'] = '%d chars of prospect context' % len(prospect_section or '')
 
     is_json_outreach = action_type == 'cold_email_campaign'
+
+    # Cold Email writes one sequence per supplied prospect. With nobody supplied
+    # (CRM pool used up, research found no one new) the model filled the list
+    # with template rows like "[First Name 1] [Last Name 1]", which reached the
+    # CRM. Return an empty campaign instead — no model call, no placeholders.
+    if is_json_outreach and not prospect_section:
+        _obs.record_decision('No new prospects — skipped generation', path='cold_email_campaign')
+        return json.dumps({
+            'version': '1.0', 'agent': 'cold_email_campaign', 'prospects': [],
+            'empty_reason': ('No new prospects this cycle: every CRM prospect has already '
+                             'been targeted by Cold Email and research found no one new.'),
+        })
     produces_contacts = action_type in CONTACT_AGENTS and not is_json_outreach
     if prospect_section:
         prospect_note = 'a verified prospect list is supplied (use only those people)'
@@ -1398,6 +1410,9 @@ def _execute_agent_action_body(
                 raw_artifact, user_id, simulation_id, action_type,
                 update_only=(action_type in UPDATE_ONLY_CONTACT_AGENTS),
                 action_id=action_id,
+                # Re-extracting contacts with Haiku only makes sense when the
+                # agent was given real people; otherwise it harvests templates.
+                allow_llm_fallback=bool(prospect_section or briefing.existing_contact_count),
             )
             _span['output'] = 'contacts block processed'
 
@@ -1472,7 +1487,15 @@ def _finalize_outreach_email_artifact(
         )
         return raw
 
-    prospects = data.get('prospects', [])
+    # Template rows ("[First Name 1] [Last Name 1]") are not people: drop them
+    # from the artifact itself so they get no CRM record, steps or sends.
+    from app.services.contact_lookup import is_placeholder_item as _is_placeholder
+    _all = data.get('prospects', []) or []
+    prospects = [p for p in _all if isinstance(p, dict) and not _is_placeholder(p)]
+    if len(prospects) < len(_all):
+        _logger.warning('cold email: dropped %d placeholder prospect(s) action=%s',
+                        len(_all) - len(prospects), action_id)
+        data['prospects'] = prospects
     if not prospects:
         _logger.error(
             'CONTACTS_SAVE FAILED action=%s sim=%s: JSON parsed but prospects[] is empty',
@@ -1573,7 +1596,8 @@ def _llm_extract_contacts(artifact: str) -> list:
                     'Extract every named person or organisation from the text below as a JSON array.\n'
                     'Each element: {"first_name":"...","last_name":"...","email":"...","job_title":"...","company_name":"..."}\n'
                     'Rules: first_name and last_name are required. Omit keys you do not have. '
-                    'For organisations with no named person use first_name="Contact", last_name=company_name. '
+                    'Only real, named people: skip organisations with no named person and '
+                    'template placeholders such as [First Name] or Prospect 1. '
                     'Return ONLY the JSON array, no commentary, no fences. If none found return [].\n\n'
                     f'TEXT:\n{artifact[:3000]}'
                 ),
@@ -1657,6 +1681,7 @@ def _extract_and_save_contacts(
     action_type: str,
     update_only: bool = False,
     action_id: str = None,
+    allow_llm_fallback: bool = True,
 ) -> str:
     """
     Extract <!--CONTACTS [...] CONTACTS--> block and save to CRM.
@@ -1668,6 +1693,11 @@ def _extract_and_save_contacts(
     _logger = _log.getLogger(__name__)
 
     match = _re.search(r'<!--CONTACTS\s*(.*?)\s*CONTACTS-->', artifact, _re.DOTALL)
+
+    if not match and not allow_llm_fallback:
+        _logger.info('CONTACTS_SAVE action_type=%s sim=%s: no CONTACTS block and no supplied '
+                     'list — nothing to extract', action_type, simulation_id)
+        return artifact
 
     if not match:
         # LLM skipped the block — extract via Haiku fallback
@@ -1735,8 +1765,11 @@ def _get_crm_prospect_section(user_id: str, simulation_id: str, user_inputs: dic
         # drafts still waiting on email-channel approval.
         from app.services import recipient_ledger as _ledger
         used = _ledger.used_keys(simulation_id, 'cold_email_campaign')
+        from app.services.contact_lookup import is_placeholder_contact as _is_ph
         contacts = [c for c in contacts
-                    if _ledger.recipient_key(c.email) not in used][:prospect_count or 5]
+                    if _ledger.recipient_key(c.email) not in used
+                    and not _is_ph(c.first_name, c.last_name, c.company_name, c.email)
+                    ][:prospect_count or 5]
 
         if not contacts:
             return ''

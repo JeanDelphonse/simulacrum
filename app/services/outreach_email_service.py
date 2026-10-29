@@ -36,6 +36,14 @@ def send_outreach_email(
     if not contact or not contact.email:
         return {'status': 'skipped', 'reason': 'no_email'}
 
+    # Never email a template row an agent saved as a contact
+    # ("[First Name 1] [Last Name 1]"), even one already scheduled.
+    from app.services.contact_lookup import is_placeholder_contact
+    if is_placeholder_contact(contact.first_name, contact.last_name,
+                              contact.company_name, contact.email):
+        logger.warning('Outreach to placeholder contact %s skipped', contact_id)
+        return {'status': 'skipped', 'reason': 'placeholder_contact'}
+
     # Recipient uniqueness (recipient_ledger): one agent run per person per
     # simulation, and never the same email twice from one run. Every agent send
     # — post-completion hooks and scheduled steps — passes through here.

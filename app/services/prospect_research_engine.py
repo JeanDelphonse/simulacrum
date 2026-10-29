@@ -420,7 +420,9 @@ class ProspectResearchEngine:
         return time.time() >= self._deadline
 
     def _drop_excluded(self, prospects: list) -> list:
-        """Remove people the calling agent already targeted (recipient ledger)."""
+        """Remove placeholder rows and people the calling agent already targeted."""
+        from app.services.contact_lookup import is_placeholder_item
+        prospects = [p for p in prospects if not is_placeholder_item(p)]
         if not self._exclude:
             return prospects
         from app.services.recipient_ledger import recipient_key
