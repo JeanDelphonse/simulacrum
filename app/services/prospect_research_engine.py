@@ -401,6 +401,9 @@ class ProspectResearchEngine:
     """
 
     def __init__(self):
+        self._deadline: float = float('inf')
+        self._exclude: set = set()
+        self.stage_seconds: dict = {}
         self._sources_log: list[str] = []
         self._total_researched: int  = 0
         self._discarded_count: int   = 0
@@ -413,6 +416,35 @@ class ProspectResearchEngine:
         self._web_search_calls: int  = 0
         self._extraction_calls: int  = 0
 
+    def _out_of_time(self) -> bool:
+        return time.time() >= self._deadline
+
+    def _drop_excluded(self, prospects: list) -> list:
+        """Remove people the calling agent already targeted (recipient ledger)."""
+        if not self._exclude:
+            return prospects
+        from app.services.recipient_ledger import recipient_key
+        kept = [p for p in prospects if recipient_key(
+            p.email, p.first_name, p.last_name, p.company_name) not in self._exclude]
+        if len(kept) < len(prospects):
+            logger.info('Prospect research: dropped %d already-targeted prospect(s)',
+                        len(prospects) - len(kept))
+        return kept
+
+    def _stage(self, name: str, started: float, found: int, **extra) -> None:
+        """Time one research stage onto the run trace (observability console)."""
+        secs = round(time.time() - started, 1)
+        self.stage_seconds[name] = secs
+        logger.info('Prospect research stage %s: %.1fs, %d prospect(s) %s',
+                    name, secs, found, extra or '')
+        try:
+            from app.services import observability_service as _obs
+            _obs.record_tool('research.' + name, input_summary=extra or None,
+                             output_summary='%d prospect(s)' % found,
+                             duration_ms=int(secs * 1000))
+        except Exception:
+            pass
+
     def research(
         self,
         user_id: str,
@@ -421,30 +453,50 @@ class ProspectResearchEngine:
         targeting: TargetingCriteria,
         target_count: int = 25,
         agent_context: dict = None,
+        exclude_keys: set = None,
+        time_budget_s: float = None,
     ) -> ProspectList:
+        """Find up to target_count prospects.
+
+        exclude_keys: recipient keys (recipient_ledger.recipient_key) the calling
+        agent already targeted — skipped during the search so the count only
+        counts people who are new to this agent.
+        time_budget_s: wall-clock cap for the whole search. The web stage is
+        sequential Claude web-search calls; unbounded, a run with an exhausted
+        CRM pool went past the 15-minute mark where the UI declares it failed.
+        """
         t_start = time.time()
+        if time_budget_s is None:
+            time_budget_s = float(current_app.config.get('RESEARCH_TIME_BUDGET_SECONDS', 180))
+        self._deadline = t_start + time_budget_s
+        self._exclude = set(exclude_keys or ())
         prospects = []
 
         # Stage 1: Apollo People Search
         if self._has_integration(user_id, 'apollo'):
+            t = time.time()
             try:
-                apollo_results = self._search_apollo(user_id, targeting, target_count)
+                apollo_results = self._drop_excluded(
+                    self._search_apollo(user_id, targeting, target_count))
                 prospects.extend(apollo_results)
                 self._from_apollo = len(apollo_results)
                 if apollo_results:
                     self._sources_log.append('apollo')
             except Exception as exc:
                 logger.error('Apollo search failed for user %s: %s', user_id, exc)
+            self._stage('apollo', t, len(prospects))
 
         # Stage 2: Web search for shortfall
         shortfall = target_count - len(prospects)
-        if shortfall > 0:
+        if shortfall > 0 and not self._out_of_time():
+            t = time.time()
             try:
                 web_results = self._search_web(targeting, shortfall, agent_context)
                 prospects.extend(web_results)
                 self._from_web = len(web_results)
             except Exception as exc:
                 logger.error('Web search stage failed: %s', exc)
+            self._stage('web_search', t, self._from_web, queries=self._web_search_calls)
 
         self._total_researched = len(prospects)
 
@@ -460,12 +512,21 @@ class ProspectResearchEngine:
         budget_ok = _check_monthly_budget()
         if not budget_ok:
             logger.warning('Monthly email verification budget exhausted — skipping verification')
-        prospects = self._verify_emails(prospects, user_id=user_id, skip_verification=not budget_ok)
+        t = time.time()
+        prospects = self._verify_emails(prospects, user_id=user_id,
+                                        skip_verification=not budget_ok or self._out_of_time())
+        self._stage('email_verification', t, len(prospects))
 
         # Stage 5: CRM merge
-        prospects = self._merge_with_crm(user_id, simulation_id, action_id, prospects, targeting)
+        t = time.time()
+        prospects = self._drop_excluded(
+            self._merge_with_crm(user_id, simulation_id, action_id, prospects, targeting))
+        self._stage('crm_merge', t, len(prospects))
 
         duration = round(time.time() - t_start, 2)
+        if self._out_of_time():
+            logger.warning('Prospect research hit its %.0fs budget (action=%s): returning %d prospects',
+                           time_budget_s, action_id, len(prospects))
 
         # Persist run log
         try:
@@ -587,12 +648,13 @@ class ProspectResearchEngine:
         sources     = self._select_sources(targeting.expertise_tags)
         seen_keys: set[str] = set()
 
+        from app.services.recipient_ledger import recipient_key
         for source in sources:
-            if len(prospects) >= count:
+            if len(prospects) >= count or self._out_of_time():
                 break
             queries = self._build_queries(source, targeting, agent_context)
             for query in queries[:3]:
-                if len(prospects) >= count:
+                if len(prospects) >= count or self._out_of_time():
                     break
                 try:
                     results_text = self._claude_web_search(query)
@@ -604,6 +666,9 @@ class ProspectResearchEngine:
                         self._extraction_calls += 1
                         for p in extracted:
                             key = f'{p.first_name.lower()}.{p.last_name.lower()}.{p.company_name.lower()}'
+                            if recipient_key(p.email, p.first_name, p.last_name,
+                                             p.company_name) in self._exclude:
+                                continue
                             if key not in seen_keys:
                                 seen_keys.add(key)
                                 p.source = f'web_{source}'
@@ -901,6 +966,8 @@ Page content:
             found = False
             risky = False
             for candidate in candidates:
+                if self._out_of_time():
+                    break
                 result = _verify_one_email(candidate, provider, api_key)
                 cost += 1
                 if result.status == 'valid':

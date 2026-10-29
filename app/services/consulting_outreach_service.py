@@ -588,12 +588,15 @@ def execute_consulting_outreach(
     # each additional prospect is expensive. Users can raise this via the agent's
     # prospect_count parameter on the setup page.
     _target = prospect_count or 3
+    from app.services import recipient_ledger as _ledger
     result = engine.research(
         user_id=user_id,
         simulation_id=simulation_id,
         action_id=action_id,
         targeting=targeting,
         target_count=_target,
+        # Search only for people new to this agent, within a time budget.
+        exclude_keys=_ledger.used_keys(simulation_id, 'consulting_outreach'),
     )
     # Only email contacts not previously contacted — fresh outreach each cycle.
     # (All discovered prospects are still saved to the CRM by the research engine;

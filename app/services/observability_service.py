@@ -418,6 +418,15 @@ def tool_span(tool_name, input_summary=None, side_effecting: bool = False):
     started = time.monotonic()
     span = {'output': None, 'status': STATUS_SUCCESS}
 
+    # The trace is buffered and only written when the run finishes, so a worker
+    # killed mid-run (Passenger recycling an idle process) leaves no trace at
+    # all. One unbuffered log line per step boundary means error.log always
+    # shows the last step a run reached.
+    run = current()
+    tag = ('%s run=%s' % (getattr(run, 'agent_key', '?'), getattr(run, 'id', '?'))) if run else None
+    if tag:
+        logger.info('agent step start: %s %s', tag, tool_name)
+
     if side_effecting:
         from app.services import guardrail_service
         guardrail_service.check_tool_call(tool_name, input_summary, current())
@@ -428,9 +437,15 @@ def tool_span(tool_name, input_summary=None, side_effecting: bool = False):
         span['status'] = STATUS_ERROR
         record_tool(tool_name, input_summary, span.get('output'),
                     int((time.monotonic() - started) * 1000), STATUS_ERROR)
+        if tag:
+            logger.warning('agent step FAILED: %s %s after %.1fs', tag, tool_name,
+                           time.monotonic() - started)
         raise
     record_tool(tool_name, input_summary, span.get('output'),
                 int((time.monotonic() - started) * 1000), span.get('status'))
+    if tag:
+        logger.info('agent step done: %s %s %.1fs (%s)', tag, tool_name,
+                    time.monotonic() - started, span.get('output'))
 
 
 def record_artifact(artifact_type, content=None, summary=None, content_ref=None):

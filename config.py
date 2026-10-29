@@ -47,6 +47,10 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'https://simisi.io/api/auth/google/callback')
     ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')  # AES-256 for OAuth tokens
+    # Wall-clock cap on one prospect-research pass (Apollo + web search + email
+    # verification). Unbounded, Cold Email with an exhausted CRM pool ran past the
+    # 15-minute mark where the UI marks a run failed.
+    RESEARCH_TIME_BUDGET_SECONDS = int(os.environ.get('RESEARCH_TIME_BUDGET_SECONDS', 180))
     APOLLO_CLIENT_ID = os.environ.get('APOLLO_CLIENT_ID')
     APOLLO_CLIENT_SECRET = os.environ.get('APOLLO_CLIENT_SECRET')
     APOLLO_REDIRECT_URI = os.environ.get('APOLLO_REDIRECT_URI', 'https://simisi.io/api/integrations/apollo/callback')

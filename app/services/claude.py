@@ -1791,12 +1791,15 @@ def _get_prospect_context(
 
         targeting = build_targeting_criteria(action_type, expertise_zone, user_inputs)
         engine    = ProspectResearchEngine()
+        from app.services import recipient_ledger as _ledger
         result    = engine.research(
             user_id=user_id,
             simulation_id=simulation_id,
             action_id=action_id,
             targeting=targeting,
             target_count=prospect_count or 5,
+            # Search only for people new to this agent, within a time budget.
+            exclude_keys=_ledger.used_keys(simulation_id, action_type),
         )
         # Never hand the agent someone it targeted in an earlier cycle.
         from app.services import recipient_ledger as _ledger

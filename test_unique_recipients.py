@@ -231,6 +231,40 @@ def main():
         check('a new run still cannot email the person a deleted run emailed',
               res.get('reason') == 'already_targeted_by_agent', res)
 
+        # ── 8a. Research: skips earlier recipients, respects its time budget ─
+        print('\n8a. Prospect research budget and exclusion')
+        import time as _time
+        from app.services.prospect_research_engine import (
+            ProspectResearchEngine, build_targeting_criteria)
+        calls = []
+
+        def slow_search(query):
+            calls.append(query)
+            _time.sleep(0.4)
+            return 'results'
+
+        def extract(text, source, targeting):
+            n = len(calls)
+            return [Prospect(first_name='Ann', last_name='X', email='ann@a.com', company_name='Ann Co'),
+                    Prospect(first_name='New%d' % n, last_name='P', company_name='Co%d' % n)]
+
+        eng = ProspectResearchEngine()
+        eng._claude_web_search = slow_search
+        eng._extract_prospects_from_results = extract
+        targeting = build_targeting_criteria('cold_email_campaign', 'Operations Consulting', {})
+        t0 = _time.time()
+        res = eng.research(user_id=user.id, simulation_id=sim.id, action_id='x1',
+                           targeting=targeting, target_count=50,
+                           exclude_keys={'ann@a.com'}, time_budget_s=1.0)
+        took = _time.time() - t0
+        check('research stops at its time budget instead of running every query',
+              took < 3.0 and len(calls) <= 4, '%.1fs, %d queries' % (took, len(calls)))
+        check('already-targeted people are skipped during the search',
+              all(p.email != 'ann@a.com' for p in res.prospects) and res.prospects,
+              [p.first_name for p in res.prospects])
+        check('stage timings recorded for the run trace',
+              'web_search' in eng.stage_seconds, eng.stage_seconds)
+
         # ── 8. Deployed before sql/054 ran ─────────────────────────────────
         print('\n8. Missing ledger table degrades, never breaks a cycle')
         AgentRecipient.__table__.drop(db.engine)
@@ -244,7 +278,8 @@ def main():
         except Exception as exc:
             ok, got = False, exc
         check('eligibility fails open instead of aborting the cycle', ok, got)
-        res = send_outreach_email(sim.id, d.id, 'Hi', '<p>x</p>', 'me@x.com', 'Me',
+        res = send_outreach_email(sim.id, Contact.query.filter_by(email='dee@d.com').first().id,
+                                  'Hi', '<p>x</p>', 'me@x.com', 'Me',
                                   action_id=post_delete_run.id)
         check('send path fails open', res.get('reason') == 'no_api_key', res)
 
