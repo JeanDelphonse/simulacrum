@@ -370,6 +370,9 @@ def release_artifact(artifact_id):
             version = ArtifactVersion.query.filter_by(
                 action_id=action_id, is_current=True).first()
             if version:
+                # Sanctioned exception to original-immutability: releasing a
+                # quarantined run restores the agent's own withheld output.
+                version._allow_original_write = True
                 version.content = content
             written = True
 

@@ -92,6 +92,8 @@ _ROUTING: dict[str, ModelTier] = {
     # the owner's own, in the owner's voice, is judgement rather than
     # extraction, so it does not belong on Haiku.
     'peer_text_synthesis':         ModelTier.SONNET,
+    # AI refine of an artifact the user is editing — judgement on long copy.
+    'artifact_refine':             ModelTier.SONNET,
     # ── SONNET — conversational, creative, long-form copy ────────────────
     'consulting_outreach_email':   ModelTier.SONNET,  # 10 deeply personalized emails
     'chat_copilot':                ModelTier.SONNET,

@@ -4,6 +4,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# Edit summary on an agent re-run that was parked because the user's version is current.
+AGENT_UPDATE_SUMMARY = 'Agent update available — not applied because this artifact has your edits'
+
+
 @celery.task
 def execute_agent_action_task(action_id: str):
     """Async Celery task: execute an AgentAction, create ArtifactVersion, propagate staleness."""
@@ -82,7 +86,12 @@ def execute_agent_action_task(action_id: str):
             logger.info('AgentAction %s cancelled during execution — discarding result', action_id)
             return
 
-        action.artifact = artifact
+        # A re-run never takes over a version the user edited (or that carries
+        # send tracking): the new agent output is stored as a non-current
+        # "agent update available" version and the user's version stays current.
+        prior_current = ArtifactVersion.current_for(action_id)
+        keep_user_version = prior_current is not None and not prior_current.is_agent_original
+        action.artifact = prior_current.content if keep_user_version else artifact
         action.status = AgentAction.STATUS_COMPLETE
         action.completed_at = datetime.utcnow()
         # SIM-PRD-CONNECT-001: mark 'connect to activate' if a needed one-tap
@@ -95,8 +104,8 @@ def execute_agent_action_task(action_id: str):
         prior_count = ArtifactVersion.query.filter_by(action_id=action_id).count()
         new_version_number = prior_count + 1
 
-        # Demote any previous current version
-        if prior_count:
+        # Demote any previous current version (unless it holds the user's edits)
+        if prior_count and not keep_user_version:
             ArtifactVersion.query.filter_by(
                 action_id=action_id, is_current=True,
             ).update({'is_current': False})
@@ -119,7 +128,8 @@ def execute_agent_action_task(action_id: str):
             content=artifact,
             file_type='text',
             change_summary=change_summary,
-            is_current=True,
+            is_current=not keep_user_version,
+            edit_summary=(AGENT_UPDATE_SUMMARY if keep_user_version else None),
             created_by='user',
         )
         av.prefill_inputs = user_inputs
@@ -164,7 +174,7 @@ def execute_agent_action_task(action_id: str):
                     agent_action_id=action_id,
                     simulation_id=simulation_id,
                     action_type=action_type,
-                    artifact_json=artifact,
+                    artifact_json=action.artifact,   # the current version, not a parked update
                     parent_action_id=None,  # user-triggered; no queue entry
                 )
                 if _n:
@@ -353,6 +363,7 @@ def _dispatch_outreach_emails(action_id: str, simulation_id: str, user_id: str):
             artifact_changed = True
 
     if artifact_changed:
+        av = ArtifactVersion.ensure_writable(av)   # never edit the agent original in place
         av.content = json.dumps(data, ensure_ascii=False)
 
     try:
@@ -484,6 +495,7 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
             artifact_changed = True
 
     if artifact_changed:
+        av = ArtifactVersion.ensure_writable(av)   # never edit the agent original in place
         av.content = json.dumps(data, ensure_ascii=False)
 
     try:
@@ -558,6 +570,7 @@ def _dispatch_cold_email_campaign(action_id: str, simulation_id: str, user_id: s
             except Exception as exc:
                 logger.warning('cold_email step1 send failed prospect %d: %s', idx, exc)
 
+        av = ArtifactVersion.ensure_writable(av)   # never edit the agent original in place
         av.content = json.dumps(data, ensure_ascii=False)
         try:
             db.session.commit()

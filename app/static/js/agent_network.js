@@ -1347,6 +1347,10 @@
       html += `<div style="color:#475569;font-size:0.68rem;margin-bottom:0.35rem">
         <span class="ned-version-badge">v1</span>Re-run will archive this and generate a new version.
       </div>`;
+      if (window.ArtifactActions && _nedActionId) {
+        html += '<div style="font-size:0.72rem;margin-bottom:0.35rem">' +
+                ArtifactActions.compact(_simId, _nedActionId) + '</div>';
+      }
     }
 
     if (!_nedActionId) {

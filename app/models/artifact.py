@@ -30,6 +30,8 @@ class ArtifactVersion(db.Model):
     EDITED_BY_AGENT    = 'agent'
     EDITED_BY_USER     = 'user'
     EDITED_BY_COPILOT  = 'co-pilot'
+    EDITED_BY_REFINE   = 'agent_refine'   # AI refine the user accepted
+    EDITED_BY_SYSTEM   = 'system'         # send/skip tracking on a campaign artifact
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     action_id = db.Column(
@@ -75,6 +77,44 @@ class ArtifactVersion(db.Model):
                 .order_by(cls.version_number.desc())
                 .first())
 
+    @property
+    def is_agent_original(self) -> bool:
+        """An agent-generated version — immutable (EXEC_PLAN P1). Edits, refines
+        and send tracking are always new versions on top of it."""
+        return (self.edited_by or self.EDITED_BY_AGENT) == self.EDITED_BY_AGENT
+
+    @classmethod
+    def ensure_writable(cls, version, edited_by: str = None, summary: str = None):
+        """Return a version that may be changed in place.
+
+        Code that updates a version in place (campaign send/skip status, inline
+        outreach email edits) calls this first. A user or system version is
+        returned as is; an agent original is cloned into a new current version
+        (once — later writes reuse the clone), so the original never changes.
+        """
+        if version is None or not version.is_agent_original:
+            return version
+        from datetime import datetime as _dt
+        from app.extensions import db as _db
+        from utils.id_gen import generate_id as _gid
+        top = (cls.query.filter_by(action_id=version.action_id)
+               .order_by(cls.version_number.desc()).first())
+        n = (top.version_number if top else version.version_number) + 1
+        clone = cls(
+            id=_gid(), action_id=version.action_id, simulation_id=version.simulation_id,
+            layer_number=version.layer_number, action_type=version.action_type,
+            version_number=n, version_label='v%d — %s' % (n, _dt.utcnow().strftime('%b %d')),
+            content=version.content, file_type=version.file_type,
+            edited_by=edited_by or cls.EDITED_BY_SYSTEM,
+            edit_summary=summary or 'Send tracking',
+            parent_version_id=version.id, edited_at=_dt.utcnow(),
+            is_current=True, created_by='user',
+        )
+        clone._prefill_inputs = version._prefill_inputs
+        version.is_current = False
+        _db.session.add(clone)
+        return clone
+
     @classmethod
     def history_for(cls, action_id: str):
         return (cls.query
@@ -106,6 +146,29 @@ class ArtifactVersion(db.Model):
             'created_at': self.created_at.isoformat(),
             'created_by': self.created_by,
         }
+
+
+class OriginalArtifactImmutable(Exception):
+    """Raised when code tries to change an agent-generated version in place."""
+
+
+def _guard_agent_original(mapper, connection, target):
+    """Enforced invariant (EXEC_PLAN P1): the agent's generated artifact is
+    immutable. Edits, refines and send tracking go to new versions — use
+    ArtifactVersion.ensure_writable(). The only sanctioned exception sets
+    ``_allow_original_write`` (admin release of a quarantined artifact, which
+    restores the agent's own withheld output)."""
+    from sqlalchemy import inspect as _inspect
+    if not target.is_agent_original or getattr(target, '_allow_original_write', False):
+        return
+    if _inspect(target).attrs.content.history.has_changes():
+        raise OriginalArtifactImmutable(
+            'artifact version %s is an agent original and cannot be edited in place; '
+            'write a new version (ArtifactVersion.ensure_writable)' % target.id)
+
+
+from sqlalchemy import event as _sa_event  # noqa: E402
+_sa_event.listen(ArtifactVersion, 'before_update', _guard_agent_original)
 
 
 class ArtifactBundle(db.Model):

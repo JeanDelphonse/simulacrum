@@ -24,6 +24,8 @@ from utils.id_gen import generate_id
 
 logger = logging.getLogger(__name__)
 
+from app.services import artifact_actions  # noqa: E402
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -123,6 +125,9 @@ def page_full_view(sim_id, artifact_id):
         linkedin_connected=bool(li_int and li_int.is_connected),
         prompt_form=prompt_form,
         connect_card=connect_card,
+        agent_update=artifact_actions.agent_update(action.id),
+        is_owner=(sim.user_id == current_user.id),
+        can_duplicate=(resolve_alias(action.action_type) not in artifact_actions.NO_DUPLICATE_AGENTS),
     )
 
 
@@ -207,6 +212,9 @@ def api_save(artifact_id):
         return jsonify({'error': 'forbidden'}), 403
 
     new_text = payload if isinstance(payload, str) else str(payload)
+    # An accepted AI refine is recorded as such; anything else is a user edit.
+    origin = (ArtifactVersion.EDITED_BY_REFINE if body.get('origin') == 'agent_refine'
+              else ArtifactVersion.EDITED_BY_USER)
 
     current = ArtifactVersion.current_for(artifact_id)
     if not current:
@@ -236,8 +244,9 @@ def api_save(artifact_id):
         version_number=new_version_number,
         version_label=f'v{new_version_number} — {datetime.utcnow().strftime("%b %d")}',
         content=new_text,
-        edited_by=ArtifactVersion.EDITED_BY_USER,
-        edit_summary=summary,
+        edited_by=origin,
+        edit_summary=(('AI refine: ' + str(body.get('instruction') or '')[:200]).strip()
+                      if origin == ArtifactVersion.EDITED_BY_REFINE else summary),
         parent_version_id=current.id,
         edited_at=datetime.utcnow(),
         is_current=True,
@@ -429,14 +438,104 @@ def api_rerun(artifact_id):
     action.error_message = None
     db.session.commit()
 
+    # Run in a background thread like every other agent run. `.delay()` needs a
+    # Celery worker, which production does not run, so the re-run never started.
     try:
+        import threading
+        from flask import current_app
         from app.tasks.agent import execute_agent_action_task
-        execute_agent_action_task.delay(action.id)
+        app = current_app._get_current_object()
+        action_id = action.id
+
+        def _run():
+            with app.app_context():
+                execute_agent_action_task.apply(args=[action_id])
+
+        threading.Thread(target=_run, daemon=True).start()
     except Exception as exc:
         logger.error('rerun dispatch failed action=%s: %s', action.id, exc)
         return jsonify({'error': 'dispatch_failed', 'detail': str(exc)}), 500
 
     return jsonify({'status': 'rerun_dispatched', 'action_id': action.id})
+
+
+# ---------------------------------------------------------------------------
+# API — Safe artifact actions (EXEC_PLAN P1): refine, export, duplicate
+# None of these reach an integration, send email or publish anything.
+# ---------------------------------------------------------------------------
+
+def _owned_action(artifact_id):
+    """(action, sim) for the simulation owner, else (None, error response)."""
+    action = AgentAction.query.get_or_404(artifact_id)
+    sim = Simulation.query.get(action.simulation_id)
+    if not sim or sim.user_id != current_user.id:
+        return None, (jsonify({'error': 'forbidden'}), 403)
+    return action, sim
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/refine', methods=['POST'])
+@login_required
+def api_refine(artifact_id):
+    """Propose an AI revision of the current version. Saves nothing: the page
+    shows the proposal and the user accepts it via /save with origin=agent_refine."""
+    action, sim = _owned_action(artifact_id)
+    if action is None:
+        return sim
+    body = request.get_json(silent=True) or {}
+    current = ArtifactVersion.current_for(action.id)
+    base = body.get('content') if isinstance(body.get('content'), str) else (
+        current.content if current else action.artifact)
+    try:
+        proposed = artifact_actions.refine(base or '', body.get('instruction') or '',
+                                           user_id=current_user.id, simulation_id=sim.id)
+    except artifact_actions.ArtifactActionError as exc:
+        return jsonify({'error': 'refine_refused', 'message': str(exc)}), 400
+    except Exception as exc:
+        logger.error('refine failed action=%s: %s', action.id, exc, exc_info=True)
+        return jsonify({'error': 'refine_failed', 'message': 'The refine step failed — try again.'}), 502
+    return jsonify({'proposed': proposed,
+                    'based_on_version': current.version_number if current else None})
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/export.pdf', methods=['GET'])
+@login_required
+def api_export_pdf(artifact_id):
+    """PDF of the current version (or ?version=N). Same access as viewing."""
+    from flask import Response
+    action = AgentAction.query.get_or_404(artifact_id)
+    sim, action, current = _resolve_artifact(action.simulation_id, artifact_id)
+    version = current
+    if request.args.get('version', '').isdigit():
+        version = ArtifactVersion.query.filter_by(
+            action_id=action.id, version_number=int(request.args['version'])).first() or current
+    content = version.content if version else action.artifact
+    if not content:
+        return jsonify({'error': 'empty'}), 404
+    title = _plain_name(action.action_type)
+    subtitle = '%s · v%s · %s' % (sim.name or 'Simulation', version.version_number if version else 1,
+                                  datetime.utcnow().strftime('%b %d, %Y'))
+    try:
+        pdf = artifact_actions.export_pdf(title, content, subtitle)
+    except Exception as exc:
+        logger.error('PDF export failed action=%s: %s', action.id, exc, exc_info=True)
+        return jsonify({'error': 'export_failed'}), 500
+    fname = '%s-v%s.pdf' % (action.action_type, version.version_number if version else 1)
+    return Response(pdf, mimetype='application/pdf',
+                    headers={'Content-Disposition': 'attachment; filename="%s"' % fname})
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/duplicate', methods=['POST'])
+@login_required
+def api_duplicate(artifact_id):
+    action, sim = _owned_action(artifact_id)
+    if action is None:
+        return sim
+    try:
+        copy = artifact_actions.duplicate(action, current_user.id)
+    except artifact_actions.ArtifactActionError as exc:
+        return jsonify({'error': 'duplicate_refused', 'message': str(exc)}), 400
+    return jsonify({'action_id': copy.id,
+                    'url': url_for('artifact_view.page_full_view', sim_id=sim.id, artifact_id=copy.id)})
 
 
 # ---------------------------------------------------------------------------
@@ -547,6 +646,10 @@ def co_edit(artifact_id, idx):
     if email_body is not None:
         prospects[idx]['email_draft']['body'] = email_body
 
+    # Never edit the agent's original in place (EXEC_PLAN P1).
+    current = ArtifactVersion.ensure_writable(current, ArtifactVersion.EDITED_BY_USER,
+                                              'Edited outreach email')
     current.content = _json.dumps(data, ensure_ascii=False)
+    action.artifact = current.content
     db.session.commit()
     return jsonify({'ok': True})

@@ -330,6 +330,8 @@ def send_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
         p['sent_at'] = datetime.datetime.utcnow().isoformat()
     else:
         # Leave send_status as 'draft' so the next dispatch attempt can retry
+        from app.models.artifact import ArtifactVersion as _AV
+        current = _AV.ensure_writable(current)   # send tracking never edits the original
         current.content = json.dumps(data, ensure_ascii=False)
         try:
             db.session.commit()
@@ -359,6 +361,8 @@ def send_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
             db.session.add(activity)
 
     # Persist updated JSON in place (not a new version — status change only)
+    from app.models.artifact import ArtifactVersion as _AV
+    current = _AV.ensure_writable(current)   # send tracking never edits the original
     current.content = json.dumps(data, ensure_ascii=False)
     try:
         db.session.commit()
@@ -417,6 +421,8 @@ def skip_prospect_email(artifact_id, prospect_idx, user_id, simulation_id):
             )
             db.session.add(activity)
 
+    from app.models.artifact import ArtifactVersion as _AV
+    current = _AV.ensure_writable(current)   # send tracking never edits the original
     current.content = json.dumps(data, ensure_ascii=False)
     try:
         db.session.commit()

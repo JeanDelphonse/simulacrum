@@ -69,6 +69,21 @@
   transition: background .15s;
 }
 .av-btn:hover { background: #f1f5f9; }
+/* EXEC_PLAN P1 — artifact action bar (safe actions) */
+.aab-update { display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#eff6ff;
+  border:1px solid #bfdbfe; border-radius:10px; padding:10px 14px; margin:0 0 14px; font-size:13px; color:#1e3a8a; }
+.aab-update .av-btn { padding:5px 10px; font-size:12.5px; }
+.aab-modal { display:none; position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:120;
+  align-items:center; justify-content:center; }
+.aab-dialog { background:#fff; border-radius:14px; padding:22px 26px; width:min(760px,92vw);
+  max-height:90vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.aab-dialog h3 { margin:0 0 6px; font-size:17px; color:#0f172a; }
+.aab-dialog textarea { width:100%; box-sizing:border-box; border:1px solid #e2e8f0; border-radius:8px;
+  padding:10px 12px; font:14px/1.55 inherit; resize:vertical; }
+.aab-hint { font-size:13px; color:#64748b; margin:0 0 10px; }
+.aab-label { font-size:12px; font-weight:600; color:#475569; margin:12px 0 4px; }
+.aab-msg { color:#dc2626; font-size:13px; min-height:18px; margin-top:8px; }
+.aab-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
 .av-btn.primary {
   background: #0d1a2e; border-color: #0d1a2e; color: #fff;
 }
@@ -401,6 +416,14 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
   </div>
   {% else %}
   <main class="av-body">
+    {% if agent_update and is_owner %}
+    <div class="aab-update" role="status" id="aabUpdate">
+      <span><strong>Agent update available.</strong> A re-run produced v{{ agent_update.version_number }},
+        but your edited version stays current until you choose.</span>
+      <button type="button" class="av-btn" id="aabUseUpdate" data-version="{{ agent_update.version_number }}">Use the agent's version</button>
+      <button type="button" class="av-btn" onclick="document.getElementById('aabUpdate').style.display='none'">Keep mine</button>
+    </div>
+    {% endif %}
     {% if connect_card %}
     <div class="av-connect-card" role="status">
       <div class="av-connect-icon" aria-hidden="true">🔌</div>
@@ -448,6 +471,14 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
     <div class="av-spacer"></div>
     {% if not is_co %}
     <button type="button" class="av-btn" id="avDiscardBtn" style="display:none;">Discard changes</button>
+    {% endif %}
+    {% if is_owner and not is_co %}
+    <button type="button" class="av-btn" id="aabRefineBtn" title="Propose an AI revision; you review it before it is saved">Refine with AI</button>
+    {% endif %}
+    <a class="av-btn" id="aabPdfBtn" href="{{ url_for('artifact_view.api_export_pdf', artifact_id=action.id) }}" title="Download the current version as PDF">Export PDF</a>
+    <button type="button" class="av-btn" id="aabCopyBtn" title="Copy the current version">Copy</button>
+    {% if is_owner and can_duplicate %}
+    <button type="button" class="av-btn" id="aabDuplicateBtn" title="Create an editable copy">Duplicate</button>
     {% endif %}
     <button type="button" class="av-btn" id="avRerunBtn">Re-run</button>
     {% if action.archived_at %}
@@ -1271,4 +1302,27 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
 })();
 </script>
 {% endif %}
+<script src="{{ url_for('static', filename='js/artifact_action_bar.js') }}"></script>
+<script>
+ArtifactActions.initPage({
+  artifactId: '{{ action.id }}',
+  getEditorText: function () {
+    var ta = document.getElementById('avContent');
+    return ta ? ta.value : null;
+  },
+});
+(function () {
+  var btn = document.getElementById('aabUseUpdate');
+  if (!btn) return;
+  btn.addEventListener('click', async function () {
+    btn.disabled = true;
+    try {
+      var r = await fetch(ROOT + '/api/artifacts/{{ action.id }}/versions/' + btn.dataset.version + '/restore',
+                          { method: 'POST', credentials: 'same-origin' });
+      if (!r.ok) throw new Error((await r.json()).error || 'Restore failed');
+      window.location.reload();
+    } catch (e) { alert(e.message); btn.disabled = false; }
+  });
+})();
+</script>
 {% endblock %}

@@ -2352,7 +2352,9 @@ function renderJourneyV3(data) {
 
         var controlsHtml;
         if (row.status === 'complete' && row.has_artifact) {
-          controlsHtml = '<a class="jrn3-a-artifact" href="/simulations/' + SIM_ID + '/artifacts/' + row.id + '">View artifact →</a>';
+          controlsHtml = window.ArtifactActions
+            ? '<span class="jrn3-a-artifact">' + ArtifactActions.compact(SIM_ID, row.id) + '</span>'
+            : '<a class="jrn3-a-artifact" href="' + ROOT + '/simulations/' + SIM_ID + '/artifacts/' + row.id + '">View artifact →</a>';
         } else if (row.id && row.status === 'in_progress') {
           controlsHtml = '<div class="jrn3-action-controls">' +
             '<button class="jrn3-btn-ctrl jrn3-btn-stop" onclick="jrnStopAgent(\'' + row.id + '\',this)">Stop</button>' +
@@ -3718,7 +3720,9 @@ function _cycAgents(agents) {
     var ok = (a.status !== 'failed');
     var icon = ok ? '✅' : '🔴';
     var linkHtml = (ok && a.has_artifact && a.agent_action_id)
-      ? '<a class="cyc-agent-link" href="' + ROOT + '/simulations/' + SIM_ID + '/artifacts/' + a.agent_action_id + '">View artifact →</a>'
+      ? (window.ArtifactActions
+          ? '<span class="cyc-agent-link">' + ArtifactActions.compact(SIM_ID, a.agent_action_id) + '</span>'
+          : '<a class="cyc-agent-link" href="' + ROOT + '/simulations/' + SIM_ID + '/artifacts/' + a.agent_action_id + '">View artifact →</a>')
       : '';
     var failHtml = ok ? '' : '<div class="cyc-agent-failed">Failed — will retry next cycle</div>';
     return '<div class="cyc-agent-row">' +
@@ -3842,6 +3846,7 @@ function _cycBookings(bookings) {
 </script>
 
 <script src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/artifact_action_bar.js') }}"></script>
 <script src="{{ url_for('static', filename='js/agent_network.js') }}"></script>
 <script src="{{ url_for('static', filename='js/swimlane.js') }}"></script>
 {% if world_enabled %}<script src="{{ url_for('static', filename='js/wealth_world.js') }}"></script>{% endif %}
