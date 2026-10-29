@@ -308,6 +308,7 @@
 .jrn3-st-complete  { background: #1A8754; }
 .jrn3-st-in_progress { background: #C9952A; animation: jrn-pulse 1.2s ease-in-out infinite; }
 .jrn3-st-pending   { background: transparent; border: 2px solid #d0d5dd; color: var(--gcc-muted); }
+.jrn3-st-waiting   { background: transparent; border: 2px dashed #C9952A; color: #C9952A; }
 .jrn3-st-failed    { background: #E85D4A; }
 .jrn3-st-escalated  { background: #7c3aed; }
 .jrn3-st-rejected   { background: #9ca3af; }
@@ -317,6 +318,7 @@
 .jrn3-badge-complete   { background: #dcfce7; color: #15803d; }
 .jrn3-badge-in_progress { background: #fef3c7; color: #b45309; }
 .jrn3-badge-pending    { background: #f3f4f6; color: #6b7280; }
+.jrn3-badge-waiting    { background: #fffbeb; color: #b45309; }
 .jrn3-badge-failed     { background: #fee2e2; color: #b91c1c; }
 .jrn3-badge-escalated  { background: #ede9fe; color: #6d28d9; }
 .jrn3-badge-rejected   { background: #f3f4f6; color: #9ca3af; }
@@ -2344,9 +2346,9 @@ function renderJourneyV3(data) {
     } else {
       layer.actions.forEach(function(row) {
         var stClass = 'jrn3-st-' + row.status;
-        var stIcon  = {complete:'✓', in_progress:'⟳', pending:'', failed:'⚠', escalated:'⬆', rejected:'—', cancelled:'✕'}[row.status] || '';
+        var stIcon  = {complete:'✓', in_progress:'⟳', waiting:'…', pending:'', failed:'⚠', escalated:'⬆', rejected:'—', cancelled:'✕'}[row.status] || '';
         var badgeCls = 'jrn3-badge-' + row.status;
-        var badgeLabel = {complete:'complete', in_progress:'in progress', pending:'pending', failed:'failed', escalated:'escalated', rejected:'rejected', cancelled:'cancelled'}[row.status] || row.status;
+        var badgeLabel = {complete:'complete', in_progress:'in progress', waiting:'waiting to start', pending:'pending', failed:'failed', escalated:'escalated', rejected:'rejected', cancelled:'cancelled'}[row.status] || row.status;
 
         var controlsHtml;
         if (row.status === 'complete' && row.has_artifact) {
@@ -2389,7 +2391,7 @@ function renderJourneyV3(data) {
   // Auto-refresh every 5 s while any agent is running or pending
   var hasActive = layers.some(function(l) {
     return l.actions.some(function(a) {
-      return a.status === 'in_progress' || a.status === 'pending';
+      return a.status === 'in_progress' || a.status === 'waiting' || a.status === 'pending';
     });
   });
   if (hasActive) {

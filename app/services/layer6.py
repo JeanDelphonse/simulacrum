@@ -693,6 +693,62 @@ def build_eligible_actions(simulation_id: str, config, completed_types: set[str]
 # Orchestrator cycle
 # ---------------------------------------------------------------------------
 
+# A started agent run older than this is dead: with the research time budget no
+# single agent takes anywhere near it. A dispatched entry that never started
+# gets longer, because it legitimately waits for the agents ahead of it.
+STALE_RUNNING_MINUTES = 30
+STALE_WAITING_MINUTES = 45
+STALE_RUN_MESSAGE = ('Interrupted: the server stopped this run before it finished '
+                     '(worker process recycled). It will run again next cycle.')
+
+
+def recover_stale_dispatches(simulation_id: str, commit: bool = True) -> int:
+    """Fail dispatched entries (and their agent runs) whose background thread died.
+
+    Used to run only at the start of the next cycle, so on a daily cadence a dead
+    run showed "in progress" on the Journey tab for up to a day. Now also called
+    when the Journey tab loads. Returns the number of entries recovered.
+    """
+    from app.extensions import db
+    from app.models.agent_action import AgentAction
+    from app.models.layer6 import Layer6ActionQueue
+
+    now = datetime.utcnow()
+    recovered = 0
+    for q in Layer6ActionQueue.query.filter(
+        Layer6ActionQueue.simulation_id == simulation_id,
+        Layer6ActionQueue.status == Layer6ActionQueue.STATUS_DISPATCHED,
+    ).all():
+        action = AgentAction.query.get(q.agent_action_id) if q.agent_action_id else None
+        if action is not None and action.status == AgentAction.STATUS_IN_PROGRESS:
+            dead = action.created_at and action.created_at < now - timedelta(minutes=STALE_RUNNING_MINUTES)
+        elif action is None:
+            dead = q.dispatched_at and q.dispatched_at < now - timedelta(minutes=STALE_WAITING_MINUTES)
+        else:
+            dead = False          # finished; the runner will close the entry
+        if not dead:
+            continue
+        q.status = Layer6ActionQueue.STATUS_FAILED
+        if action is not None:
+            action.status = AgentAction.STATUS_FAILED
+            action.error_message = STALE_RUN_MESSAGE
+            action.completed_at = now
+        recovered += 1
+        logger.warning('Recovered stale dispatched entry %s (%s, sim=%s)',
+                       q.id, q.action_type, simulation_id)
+    if recovered and commit:
+        db.session.commit()
+    return recovered
+
+
+# Agents whose runs take minutes (prospect research, long multi-email drafts).
+# The cycle runs agents one at a time; these go last so quick agents are not
+# stuck "waiting" behind them.
+def _run_order_key(action_type: str) -> int:
+    from app.services.agent_registry import RESEARCH_AGENTS
+    return 1 if (action_type in _RECURRING_ACTIONS or action_type in RESEARCH_AGENTS) else 0
+
+
 def _dispatch_with_celery(dispatch_entries, simulation_id):
     from celery import chain as celery_chain, group as celery_group
     from app.tasks.layer6 import dispatch_layer6_action
@@ -823,19 +879,8 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
     except Exception as _spe:
         logger.warning('process_due_steps failed for %s: %s', simulation_id, _spe)
 
-    # Recover stale dispatched entries — anything still "dispatched" after 30 min
-    # means the sync execution thread died or the Celery worker never ran.
-    # Mark them failed so they become eligible for re-dispatch this cycle.
-    stale_cutoff = datetime.utcnow() - timedelta(minutes=30)
-    stale_entries = Layer6ActionQueue.query.filter(
-        Layer6ActionQueue.simulation_id == simulation_id,
-        Layer6ActionQueue.status == Layer6ActionQueue.STATUS_DISPATCHED,
-        Layer6ActionQueue.dispatched_at < stale_cutoff,
-    ).all()
-    for s in stale_entries:
-        s.status = Layer6ActionQueue.STATUS_FAILED
-        logger.warning('Recovered stale dispatched entry %s (%s)', s.id, s.action_type)
-    if stale_entries:
+    # Recover runs the background thread never finished (worker recycled).
+    if recover_stale_dispatches(simulation_id, commit=False):
         db.session.flush()
 
     # Get cycle number first (needed for determine_phase)
@@ -1107,7 +1152,8 @@ def run_orchestrator_cycle(simulation_id: str, force_rerun: bool = False) -> dic
         # Run in a background thread so the web response returns immediately.
         # GoDaddy shared hosting kills long-running requests before Claude responds.
         import threading as _threading
-        entries_to_run = [entry.id for entry, within_bounds in dispatch_entries if within_bounds]
+        entries_to_run = [entry.id for entry, within_bounds in sorted(
+            dispatch_entries, key=lambda e: _run_order_key(e[0].action_type)) if within_bounds]
         if entries_to_run:
             def _bg_runner(eids, app=_app_obj):
                 # Execute dispatched agents SEQUENTIALLY, not one thread per agent.

@@ -1567,8 +1567,17 @@ def get_journey(sim_id):
 
     # Scope to the latest cycle — ALL queue items (including escalated/queued ones
     # with no AgentAction yet) so every dispatched agent appears on the Journey tab.
+    # Clear runs whose worker died, so they don't sit at "in progress" until
+    # the next cycle starts (up to a day on a daily cadence).
+    try:
+        from app.services.layer6 import recover_stale_dispatches
+        recover_stale_dispatches(sim_id)
+    except Exception as _rse:
+        current_app.logger.warning('Journey stale recovery failed for %s: %s', sim_id, _rse)
+    # A dispatched entry with no agent run yet is waiting for the agents ahead
+    # of it in the one-at-a-time runner — "waiting", not "in progress".
     _qstatus_map = {
-        'complete': 'complete', 'dispatched': 'in_progress',
+        'complete': 'complete', 'dispatched': 'waiting',
         'queued': 'pending', 'escalated': 'escalated',
         'failed': 'failed', 'rejected': 'rejected',
     }
@@ -1608,7 +1617,7 @@ def get_journey(sim_id):
         _cycle_records = []
 
     # Apply optional status filter on top of the cycle scope.
-    _all_display_statuses = valid_statuses | {'escalated', 'rejected', 'cancelled'}
+    _all_display_statuses = valid_statuses | {'escalated', 'rejected', 'cancelled', 'waiting'}
     if status_filter in _all_display_statuses:
         display_records = [r for r in _cycle_records if r['status'] == status_filter]
     else:
