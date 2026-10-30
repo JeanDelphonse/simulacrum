@@ -1,3 +1,4 @@
+{% import "partials/_mascot_mini.html" as mascot_ui %}
 {# The public site footer — one copy, shared by the landing page and every
    external page.
 
@@ -26,11 +27,7 @@
   margin-bottom: 48px;
 }
 .pf-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.pf-mark {
-  width: 28px; height: 28px; border-radius: 7px;
-  background: linear-gradient(135deg, #0F7B72, #13A89E);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
+.pf-brand .mascot-mini { flex-shrink: 0; display: block; }
 .pf-brand span {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 18px; font-weight: 700; color: #fff;
@@ -68,9 +65,7 @@
     <div class="pf-grid">
       <div>
         <div class="pf-brand">
-          <div class="pf-mark">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/></svg>
-          </div>
+          {{ mascot_ui.mascot_mini(30) }}
           <span>SimiSI</span>
         </div>
         <p class="pf-tagline">Simulate your career-to-wealth path — and deploy the agents that build it.</p>

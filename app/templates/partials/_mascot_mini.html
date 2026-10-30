@@ -1,0 +1,25 @@
+{# The hero mascot at logo size (nav and footer brand mark). Static: no m-*
+   animation hooks, so the hero's CSS and per-load recolour never touch it.
+   Solid fills, no gradients: nothing to see at this size, and no element ids
+   to collide with the hero's mascot* gradients or another copy. Outlines
+   are thicker than the hero artwork's because a 1.6-unit stroke vanishes at
+   logo size. The viewBox is cropped to the figure (no floor shadow). #}
+{% macro mascot_mini(height=32, label=None) -%}
+<svg class="mascot-mini" width="{{ (height / 1.8)|round(1) }}" height="{{ height }}" viewBox="60 0 180 324"
+     xmlns="http://www.w3.org/2000/svg" {% if label %}role="img" aria-label="{{ label }}"{% else %}aria-hidden="true"{% endif %} focusable="false">
+  <rect x="116" y="300" width="34" height="18" rx="9" fill="#EEF2F8" stroke="#C9952A" stroke-width="6"/>
+  <rect x="150" y="300" width="34" height="18" rx="9" fill="#EEF2F8" stroke="#C9952A" stroke-width="6"/>
+  <line x1="102" y1="196" x2="72" y2="248" stroke="#C9952A" stroke-width="22" stroke-linecap="round"/>
+  <line x1="198" y1="196" x2="228" y2="248" stroke="#C9952A" stroke-width="22" stroke-linecap="round"/>
+  <rect x="92" y="170" width="116" height="140" rx="46" fill="#EEF2F8" stroke="#C9952A" stroke-width="7"/>
+  <rect x="118" y="206" width="64" height="52" rx="12" fill="#12224A"/>
+  <rect x="128" y="236" width="10" height="14" rx="2" fill="#0F7B72"/>
+  <rect x="145" y="228" width="10" height="22" rx="2" fill="#13A89E"/>
+  <rect x="162" y="218" width="10" height="32" rx="2" fill="#C9952A"/>
+  <rect x="78" y="44" width="144" height="118" rx="48" fill="#EEF2F8" stroke="#C9952A" stroke-width="7"/>
+  <path d="M146,46 C150,16 174,8 194,4 C178,24 172,34 166,46 Z" fill="#D9AD4A"/>
+  <rect x="98" y="70" width="104" height="74" rx="30" fill="#12224A"/>
+  <ellipse cx="128" cy="106" rx="16" ry="18" fill="#13A89E"/><ellipse cx="172" cy="106" rx="16" ry="18" fill="#13A89E"/>
+  <circle cx="123" cy="99" r="6" fill="#EAFFFB"/><circle cx="167" cy="99" r="6" fill="#EAFFFB"/>
+</svg>
+{%- endmacro %}

@@ -105,11 +105,7 @@
     font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--navy);
   }
   .lp-logo:hover { color: var(--teal); }
-  .lp-logo-mark {
-    width: 32px; height: 32px; border-radius: 8px;
-    background: linear-gradient(135deg, var(--teal), var(--teal-light));
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
+  .lp-logo .mascot-mini { flex-shrink: 0; display: block; filter: drop-shadow(0 1px 2px rgba(13,27,62,.25)); }
   .lp-nav-links { display: flex; align-items: center; gap: 2px; flex: 1; }
   .lp-nav-link {
     font-size: 14px; font-weight: 500; color: var(--muted);
@@ -725,6 +721,7 @@
 </head>
 <body>
 {% import "partials/_layers.html" as layers_ui %}
+{% import "partials/_mascot_mini.html" as mascot_ui %}
 <script>
   window.addEventListener('load', function(){
     var w = document.querySelector('.walker');
@@ -748,11 +745,7 @@
 <nav class="lp-nav" id="lpNav">
   <div class="lp-nav-inner">
     <a href="/" class="lp-logo">
-      <div class="lp-logo-mark">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
-        </svg>
-      </div>
+      {{ mascot_ui.mascot_mini(34) }}
       <span>SimiSI</span>
     </a>
     <div class="lp-nav-links">
