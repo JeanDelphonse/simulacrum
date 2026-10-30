@@ -227,8 +227,8 @@
     } catch (e) { body.textContent = ''; msg.textContent = e.message; }
   }
 
-  /* ── Send to contacts: DRAFTS ONLY (EXEC_PLAN P2) ─────────────────────── */
-  const NOTHING_SENT = 'Drafts only — nothing is sent. Sending arrives in a later release and will ask you to confirm.';
+  /* ── Send to contacts: drafts (EXEC_PLAN P2) + confirmed send (P5) ───── */
+  const NOTHING_SENT = 'Preparing makes drafts only. Nothing is sent until you review the drafts and confirm the send.';
 
   async function openSendDrafts(id, getEditorText, btn) {
     let modal = document.getElementById('aabSendModal');
@@ -293,7 +293,7 @@
 
     function renderDrafts(drafts, skipped) {
       let html = '<div class="aab-label">' + drafts.length + ' draft' + (drafts.length === 1 ? '' : 's') +
-                 ' prepared · nothing sent</div>';
+                 ' prepared · not sent yet</div>';
       if (skipped && skipped.length) {
         html += '<div class="aab-hint">Skipped: ' + skipped.map(function (s) {
           return esc((s.name || s.id) + ' (' + s.reason + ')'); }).join(', ') + '</div>';
@@ -306,7 +306,74 @@
           (u.warnings && u.warnings.length ? '<div class="aab-warn">⚠ ' + esc(u.warnings.join('; ')) + '</div>' : '') +
           '<pre class="aab-body">' + esc(u.body || '') + '</pre></div>';
       }).join('');
-      step2.innerHTML = html;
+      step2.innerHTML = html + '<div id="aabSendPanel" class="aab-send-panel"></div>';
+      renderSendPanel();
+    }
+
+    // Confirm-and-send (P5): one panel per open batch, bound to the exact
+    // drafts shown via the batch hash the server returns.
+    async function renderSendPanel() {
+      const panel = $('#aabSendPanel');
+      if (!panel) return;
+      let d;
+      try {
+        const r = await fetch(api(id, '/send-drafts'), { credentials: 'same-origin' });
+        d = await r.json();
+        if (!r.ok) throw new Error(d.message || d.error);
+      } catch (e) { panel.innerHTML = '<div class="aab-msg">' + esc(e.message) + '</div>'; return; }
+      const sender = d.sender || {};
+      const batches = (d.batches || []).filter(function (b) { return !lastBatch || b.batch_id === lastBatch; });
+      if (!batches.length) { panel.innerHTML = ''; return; }
+      if (!sender.ready) {
+        let html = '<div class="aab-label">Sending account</div><div class="aab-hint">' + esc(sender.message || '') + '</div>';
+        if (sender.provider === 'own_sendgrid') {
+          html += '<input id="aabSgKey" class="aab-input" type="password" autocomplete="off" placeholder="SendGrid API key (SG.…)">' +
+                  '<input id="aabSgFrom" class="aab-input" placeholder="Sender email verified in your SendGrid">' +
+                  '<input id="aabSgName" class="aab-input" placeholder="Sender name (optional)">' +
+                  '<button type="button" class="av-btn" id="aabSgConnect">Connect SendGrid</button>';
+        }
+        panel.innerHTML = html;
+        const c = panel.querySelector('#aabSgConnect');
+        if (c) c.onclick = async function () {
+          msg.textContent = ''; c.disabled = true;
+          try {
+            await postJson(root() + '/api/send-account', { api_key: panel.querySelector('#aabSgKey').value,
+              from_email: panel.querySelector('#aabSgFrom').value, from_name: panel.querySelector('#aabSgName').value });
+            renderSendPanel();
+          } catch (e) { msg.textContent = e.message; c.disabled = false; }
+        };
+        return;
+      }
+      panel.innerHTML = batches.map(function (b) {
+        return '<div class="aab-send-batch" data-batch="' + esc(b.batch_id) + '" data-hash="' + esc(b.hash) + '" data-count="' + b.count + '">' +
+          '<label class="aab-row"><input type="checkbox" class="aab-send-ok"> <span>I reviewed ' +
+          (b.count === 1 ? 'this email' : 'these ' + b.count + ' emails') + '. Send from <b>' + esc(sender.from_name || '') +
+          '</b> &lt;' + esc(sender.from_email || '') + '&gt; via ' + esc(sender.label || '') + '.</span></label>' +
+          '<div class="aab-hint">Each email includes an unsubscribe link. Drafts with unresolved merge fields, and contacts who became ineligible, are skipped.</div>' +
+          '<button type="button" class="av-btn primary aab-send-go" disabled>Send ' + b.count + ' email' + (b.count === 1 ? '' : 's') + '</button>' +
+          '</div>';
+      }).join('');
+      panel.querySelectorAll('.aab-send-batch').forEach(function (el) {
+        const ok = el.querySelector('.aab-send-ok'), go = el.querySelector('.aab-send-go');
+        ok.onchange = function () { go.disabled = !ok.checked; };
+        go.onclick = async function () {
+          const n = el.dataset.count;
+          if (!confirm('Send ' + n + ' email' + (n === '1' ? '' : 's') + ' now? This cannot be undone.')) return;
+          msg.textContent = ''; go.disabled = true; go.textContent = 'Sending…';
+          try {
+            const r = await postJson(api(id, '/send-drafts/send'),
+                                     { batch_id: el.dataset.batch, confirm_hash: el.dataset.hash, confirm: true });
+            el.innerHTML = '<div class="aab-label">Sent ' + r.sent + ' of ' + r.total + '</div>' +
+              (r.blocked ? '<div class="aab-msg">Stopped by a guardrail: ' + esc(r.blocked) + '</div>' : '') +
+              r.results.filter(function (x) { return x.status !== 'sent'; }).map(function (x) {
+                return '<div class="aab-hint">' + esc(x.to || x.contact_id) + ' — ' + esc(x.status) + (x.error ? ': ' + esc(x.error) : '') + '</div>';
+              }).join('');
+            step2.querySelectorAll('.aab-badge').forEach(function (bd) { bd.textContent = 'Processed'; });
+            discard.style.display = 'none';
+            if (btn) btn.dataset.drafts = '0';
+          } catch (e) { msg.textContent = e.message; go.disabled = false; go.textContent = 'Send ' + n + ' email' + (n === '1' ? '' : 's'); }
+        };
+      });
     }
 
     msg.textContent = '';

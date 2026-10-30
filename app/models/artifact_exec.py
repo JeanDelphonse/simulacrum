@@ -24,6 +24,9 @@ class ArtifactUnit(db.Model):
 
     STATUS_DRAFT = 'draft'          # prepared, previewed, NOT sent
     STATUS_DISCARDED = 'discarded'
+    STATUS_SENT = 'sent'            # P5: sent after an explicit batch confirmation
+    STATUS_SKIPPED = 'skipped'      # P5: recipient no longer eligible at send time
+    STATUS_FAILED = 'failed'
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     artifact_id = db.Column(db.String(9), nullable=False)
@@ -36,6 +39,9 @@ class ArtifactUnit(db.Model):
     _warnings = db.Column('warnings', db.Text, nullable=True)
     status = db.Column(db.String(20), nullable=False, default=STATUS_DRAFT)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    sent_at = db.Column(db.DateTime, nullable=True)
+    email_log_id = db.Column(db.String(9), nullable=True)
+    error = db.Column(db.String(300), nullable=True)
 
     @property
     def warnings(self) -> list:
@@ -51,6 +57,7 @@ class ArtifactUnit(db.Model):
             'seq_index': self.seq_index, 'kind': self.kind, 'contact_id': self.contact_id,
             'subject': self.subject, 'body': self.body_ref, 'warnings': self.warnings,
             'status': self.status, 'created_at': self.created_at.isoformat(),
+            'sent_at': self.sent_at.isoformat() if self.sent_at else None, 'error': self.error,
         }
 
 

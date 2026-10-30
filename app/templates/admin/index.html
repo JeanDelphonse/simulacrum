@@ -67,6 +67,21 @@
           <span id="simPriceMsg" style="font-size:0.8rem;color:var(--success);display:none;">Saved!</span>
         </div>
       </div>
+      <div class="setting-card">
+        <div class="setting-info">
+          <h3>Send-to-Contacts Email Account</h3>
+          <p>Which SendGrid account delivers emails users confirm from "Send to contacts". With "Your own account", each user connects their own SendGrid API key and verified sender before they can send.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <select id="execSendProvider"
+            onchange="updateSetting('exec_send_provider', this.value).then(() => { const m = document.getElementById('execSendProviderMsg'); m.style.display = 'inline'; setTimeout(() => { m.style.display = 'none'; }, 2500); })"
+            style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+            <option value="simisi_sendgrid" {% if settings.get('exec_send_provider', 'simisi_sendgrid') != 'own_sendgrid' %}selected{% endif %}>SimiSI's SendGrid (default)</option>
+            <option value="own_sendgrid" {% if settings.get('exec_send_provider') == 'own_sendgrid' %}selected{% endif %}>Your own account</option>
+          </select>
+          <span id="execSendProviderMsg" style="font-size:0.8rem;color:var(--success);display:none;">Saved!</span>
+        </div>
+      </div>
     </div>
     <div id="priceHistorySection" style="margin-top:1.25rem;">
       <h3 style="font-size:0.9rem;margin-bottom:0.25rem;color:rgba(255,255,255,0.7);">Price Change History</h3>

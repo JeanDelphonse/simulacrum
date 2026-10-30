@@ -234,7 +234,12 @@ P1 consequence of the immutability rule: agent-generated versions are protected 
   - **Idempotent:** a succeeded step returns its existing run.
   - **Deviation:** plan-level approval (L3) isn't built, so an executable step always needs its own approval, even at L3.
   - **Untested against live APIs:** Stripe Connect and Cal.com's `api.cal.com/v1`, which Cal.com has been moving away from in favour of v2. Verify on simisi.io with a connected test account.
-- **P5 — next, awaiting go-ahead:** the safe send pipeline (confirmed per-batch sends with preview, unsubscribe, rate limits and budget caps; every send hard-gated).
+- **P5 — done.** `app/services/send_pipeline.py`; `artifact_units` gains `sent_at`, `email_log_id`, `error` (`sql/059`).
+  - **Sends only a confirmed batch of P2 drafts.** `POST /api/artifacts/<id>/send-drafts/send` needs `confirm: true` plus the batch hash (sha256 of every draft's id, recipient, subject and body) the preview was shown with; any change since the preview invalidates it. Each confirmation is recorded in `action_approvals` (`send_batch`, `hard_gate`). An agent at L0 cannot send.
+  - **Re-checked per recipient at send time:** do-not-contact, unsubscribed/bounced, placeholder, already contacted by this agent, still the user's contact. Drafts with unresolved merge fields are skipped, never sent. Sends go through `send_outreach_email` (recipient ledger, suppression, email log, CRM update) with a one-click unsubscribe footer and `List-Unsubscribe` headers, inside an observability run via `tool_span('send_email', side_effecting=True)`; a blocking guardrail stops the rest of the batch.
+  - **Sending account** — admin setting `exec_send_provider` (Platform Settings card): `simisi_sendgrid` (default; platform sender, user's name as display name) or `own_sendgrid` ("Your own account": each user connects their SendGrid API key and a verified sender via `/api/send-account`, stored encrypted as `user_integrations` provider `sendgrid`).
+  - **Limits:** `exec_send_max_per_day` (50 per user), `exec_send_cost_cents` (0) counted against `exec_budget_cents_per_month`.
+  - **Deviation (owner decision 8a-2):** the existing orchestrator auto-send and campaign send paths are not routed through this gate, and still send without the unsubscribe footer.
 
 ## 8. Decisions needed (original questions)
 1. **Sending identity (§3.1).** Which "user's own" send path for P5: (a) Apollo sequences via the user's linked mailbox (no new OAuth; Apollo plan/credits apply), (b) Gmail / Microsoft 365 send-as (new OAuth, Google app verification), or (c) both, with (a) first? And until P5 ships, keep today's SimiSI-domain sends, or pause them?

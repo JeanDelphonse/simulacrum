@@ -19,6 +19,8 @@ def send_outreach_email(
     from_name: str,
     step_id: str = None,
     action_id: str = None,
+    api_key: str = None,
+    unsubscribe: bool = False,
 ) -> dict:
     """
     Send a single outreach email via SendGrid.
@@ -78,7 +80,9 @@ def send_outreach_email(
     if EmailSuppression.is_suppressed(to_email):
         return {'status': 'skipped', 'reason': 'suppressed'}
 
-    api_key = current_app.config.get('SENDGRID_API_KEY')
+    # api_key: the user's own SendGrid key when the platform send provider is
+    # 'own_sendgrid' (EXEC_PLAN P5); otherwise SimiSI's account.
+    api_key = api_key or current_app.config.get('SENDGRID_API_KEY')
     if not api_key:
         logger.warning('SENDGRID_API_KEY not set — outreach email skipped for contact %s', contact_id)
         return {'status': 'skipped', 'reason': 'no_api_key'}
@@ -90,6 +94,20 @@ def send_outreach_email(
             Header, CustomArg,
         )
 
+        unsub_url = None
+        if unsubscribe:
+            # One-click unsubscribe (CAN-SPAM / RFC 8058): footer link plus
+            # List-Unsubscribe headers; the link adds the address to the
+            # suppression list every send checks.
+            from app.services.outreach_campaign_service import (
+                unsubscribe_url_for, BUSINESS_NAME, BUSINESS_ADDRESS)
+            unsub_url = unsubscribe_url_for(to_email)
+            html_body = (html_body or '') + (
+                '<p style="font-size:12px;color:#888;margin-top:24px;">'
+                'Sent by %s via SimiSI · %s, %s · '
+                '<a href="%s" style="color:#888;">Unsubscribe</a></p>'
+                % (from_name or 'SimiSI', BUSINESS_NAME, BUSINESS_ADDRESS, unsub_url))
+
         message = Mail(
             from_email=From(from_email, from_name),
             to_emails=to_email,
@@ -98,11 +116,17 @@ def send_outreach_email(
         )
 
         # Custom headers for webhook attribution
-        message.header = [
+        headers = [
             Header('X-Simulacrum-Simulation', simulation_id),
             Header('X-Simulacrum-Contact', contact_id),
             Header('X-Simulacrum-Step', step_id or 'direct'),
         ]
+        if unsub_url:
+            headers += [
+                Header('List-Unsubscribe', '<%s>' % unsub_url),
+                Header('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click'),
+            ]
+        message.header = headers
 
         # Unique args so webhook events can be attributed
         message.custom_arg = [
@@ -151,7 +175,7 @@ def send_outreach_email(
 
         db.session.commit()
         logger.info('Outreach email sent to %s (contact=%s, step=%s)', to_email, contact_id, step_id)
-        return {'status': 'sent', 'message_id': provider_message_id}
+        return {'status': 'sent', 'message_id': provider_message_id, 'email_log_id': log.id}
 
     except Exception as exc:
         logger.error('send_outreach_email failed contact=%s: %s', contact_id, exc, exc_info=True)

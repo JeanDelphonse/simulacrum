@@ -574,7 +574,10 @@ def api_send_drafts_list(artifact_id):
     action, sim = _owned_action(artifact_id)
     if action is None:
         return sim
-    return jsonify({'drafts': artifact_actions.list_drafts(action.id)})
+    from app.services import send_pipeline
+    return jsonify({'drafts': artifact_actions.list_drafts(action.id),
+                    'batches': send_pipeline.batches(action.id),
+                    'sender': _sender_info()})
 
 
 @artifact_view_bp.route('/api/artifacts/<artifact_id>/send-drafts', methods=['POST'])
@@ -602,6 +605,69 @@ def api_send_drafts_discard(artifact_id):
     body = request.get_json(silent=True) or {}
     n = artifact_actions.discard_drafts(action.id, current_user.id, body.get('batch_id'))
     return jsonify({'discarded': n})
+
+
+# ---------------------------------------------------------------------------
+# API — Send a confirmed draft batch (EXEC_PLAN P5). Hard-gated: the request
+# must carry confirm=true and the hash of exactly the drafts previewed.
+# ---------------------------------------------------------------------------
+
+def _sender_info() -> dict:
+    """What the send view shows about the sending account."""
+    from app.services import send_pipeline
+    prov = send_pipeline.provider()
+    info = {'provider': prov, 'label': send_pipeline.PROVIDERS[prov], 'ready': True, 'message': None}
+    if prov == send_pipeline.PROVIDER_OWN:
+        info['account'] = send_pipeline.own_account_info(current_user.id)
+    try:
+        sender = send_pipeline.sender_for(current_user)
+        info['from_email'], info['from_name'] = sender['from_email'], sender['from_name']
+    except send_pipeline.SendRefused as exc:
+        info['ready'], info['message'] = False, str(exc)
+    return info
+
+
+@artifact_view_bp.route('/api/artifacts/<artifact_id>/send-drafts/send', methods=['POST'])
+@login_required
+def api_send_drafts_send(artifact_id):
+    from app.services import send_pipeline
+    action, sim = _owned_action(artifact_id)
+    if action is None:
+        return sim
+    body = request.get_json(silent=True) or {}
+    try:
+        result = send_pipeline.send_batch(action, current_user, body.get('batch_id') or '',
+                                          body.get('confirm_hash') or '', body.get('confirm'))
+    except send_pipeline.SendRefused as exc:
+        return jsonify({'error': 'send_refused', 'message': str(exc)}), 400
+    return jsonify(result)
+
+
+@artifact_view_bp.route('/api/send-account', methods=['GET'])
+@login_required
+def api_send_account():
+    return jsonify(_sender_info())
+
+
+@artifact_view_bp.route('/api/send-account', methods=['POST'])
+@login_required
+def api_send_account_connect():
+    from app.services import send_pipeline
+    body = request.get_json(silent=True) or {}
+    try:
+        send_pipeline.connect_own_account(current_user.id, body.get('api_key') or '',
+                                          body.get('from_email') or '', body.get('from_name') or '')
+    except send_pipeline.SendRefused as exc:
+        return jsonify({'error': 'invalid', 'message': str(exc)}), 400
+    return jsonify(_sender_info())
+
+
+@artifact_view_bp.route('/api/send-account', methods=['DELETE'])
+@login_required
+def api_send_account_disconnect():
+    from app.services import send_pipeline
+    send_pipeline.disconnect_own_account(current_user.id)
+    return jsonify(_sender_info())
 
 
 # ---------------------------------------------------------------------------
