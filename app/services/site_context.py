@@ -97,3 +97,13 @@ def integration_unlocks() -> list:
         known = None
     return [{'key': k, 'group': g, 'name': n, 'unlocks': u, 'rolling_out': bool(r)}
             for k, g, n, u, r in _UNLOCKS if known is None or k in known]
+
+
+def show_integrations() -> bool:
+    """The home-page integrations section is hidden unless the platform setting
+    ``site_integrations_section`` is 'on' (owner decision 2026-10-29)."""
+    try:
+        from app.models.platform_settings import PlatformSetting
+        return str(PlatformSetting.get('site_integrations_section', 'off')).lower() == 'on'
+    except Exception:
+        return False

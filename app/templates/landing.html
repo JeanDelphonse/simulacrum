@@ -1173,6 +1173,7 @@
   </div>
 </section>
 
+{% if show_integrations %}
 <!-- ── INTEGRATIONS ─────────────────────────────────────────────────── -->
 <section id="integrations" class="lp-s lp-tint">
   <div class="lp-c">
@@ -1190,6 +1191,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- ── PRICING ──────────────────────────────────────────────────────── -->
 <section id="pricing" class="lp-s">
@@ -1378,7 +1380,7 @@
           What does each integration unlock?
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-a"><div class="faq-a-inner">All integrations are optional — SimiSI works fully without connecting any tool. Each one lets your agents act through it: Apollo finds prospects to contact, ConvertKit publishes to your list, Cal.com sets up your booking page, Stripe creates payment links, and PandaDoc prepares proposals. <a href="#integrations">See the full list.</a> Your bio page and AI chat are live from the moment you upload your resume.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">All integrations are optional — SimiSI works fully without connecting any tool. Each one lets your agents act through it: Apollo finds prospects to contact, ConvertKit publishes to your list, Cal.com sets up your booking page, Stripe creates payment links, and PandaDoc prepares proposals.{% if show_integrations %} <a href="#integrations">See the full list.</a>{% endif %} Your bio page and AI chat are live from the moment you upload your resume.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">

@@ -288,6 +288,7 @@ def index():
                            pricing=site_context.pricing_context(),
                            site_layers=site_context.site_layers(),
                            integrations=site_context.integration_unlocks(),
+                           show_integrations=site_context.show_integrations(),
                            recent_bio_pages=_get_recent_bio_pages(),
                            hero_cards=_get_hero_cards(),
                            playbook_url=current_app.config['PLAYBOOK_URL'])

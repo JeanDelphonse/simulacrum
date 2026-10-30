@@ -134,12 +134,20 @@ def main():
         check('D: control pillar next to Calibrated / Validated',
               all(t in text for t in ("You're always in control", 'Calibrated', 'Validated',
                                       'Never touches your money')))
-        intg = page.split('id="integrations"')[1].split('</section>')[0]
-        check('F: integrations section lists what each unlocks',
-              'Connect your tools; your agents work through them.' in text
-              and all(n in intg for n in ('Apollo', 'ConvertKit', 'Cal.com', 'Stripe', 'Kajabi', 'PandaDoc')))
+        check('F: integrations section hidden by default',
+              'id="integrations"' not in page and 'href="#integrations"' not in page)
+        PlatformSetting.set('site_integrations_section', 'on')
+        db.session.commit()
+        shown = client.get('/').get_data(as_text=True)
+        intg = shown.split('id="integrations"')[1].split('</section>')[0]
+        check('F: setting site_integrations_section=on shows it, listing what each unlocks',
+              'Connect your tools; your agents work through them.' in text_of(shown)
+              and all(n in intg for n in ('Apollo', 'ConvertKit', 'Cal.com', 'Stripe', 'Kajabi', 'PandaDoc'))
+              and 'href="#integrations"' in shown)
         check('F: not-yet-live integrations are marked rolling out',
               intg.count('Rolling out') == 2 and 'never places trades' in intg)
+        PlatformSetting.set('site_integrations_section', 'off')
+        db.session.commit()
         check('F: FAQ asks what each integration unlocks',
               'What does each integration unlock?' in text and 'Do I need all nine' not in text)
         check('G: value line', 'Not 49 documents. 49 agents that act.' in text)
