@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% include 'partials/_favicon.html' %}
   <title>SimiSI — See the five ways your career becomes wealth, before you live any of them.</title>
-  <meta name="description" content="SimiSI reads your resume, simulates your next 24 months across five layers of income, and deploys 49 AI agents to execute the path you choose. Calibrated projections with their sources. Free bio page forever.">
+  <meta name="description" content="SimiSI reads your resume, simulates your next 24 months across five layers of income, and its {{ site_layers.agent_total }} AI agents do the work — writing, sending under your name and following up on the channels you allow. Calibrated projections with their sources. Free bio page forever.">
   <link rel="canonical" href="https://simisi.io">
   <meta property="og:title" content="SimiSI — Career-to-wealth simulation">
   <meta property="og:description" content="One resume. Five layers of income. Forty-nine AI agents. Run the decision forward before you commit a single real month to it.">
@@ -440,8 +440,34 @@
   }
   .lp-callout b { color: var(--gold-l); }
 
-  /* ── How it works: four steps ────────────────────────────────────── */
-  .hiw4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 18px; margin-top: 34px; }
+  /* ── How it works: five steps (generate, then act) ───────────────── */
+  .hiw4 { display: grid; grid-template-columns: repeat(5,1fr); gap: 18px; margin-top: 34px; }
+  .hiw4.loop4 { grid-template-columns: repeat(4,1fr); }
+  .loop4 .step4 .arrow { position: absolute; top: 24px; right: -14px; color: var(--teal); font-weight: 700; z-index: 1; }
+  .roll-pill {
+    display: inline-block; background: rgba(201,149,42,.14); color: #8a6414;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .05em; padding: 2px 7px;
+    border-radius: 6px; text-transform: uppercase; vertical-align: middle; margin-left: 4px;
+  }
+  .lp-dark .roll-pill { background: rgba(201,149,42,.2); color: var(--gold-l); }
+
+  /* ── From plan to done: execution cards ──────────────────────────── */
+  .act3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 26px; }
+  .act-card { background: var(--paper2); border: 1px solid #eadfc7; border-radius: 14px; padding: 22px; }
+  .act-card h3 { font-size: 17px; color: var(--navy); margin-bottom: 6px; }
+  .act-card p { color: #55606f; font-size: 14.5px; line-height: 1.65; }
+
+  /* ── Integrations ─────────────────────────────────────────────────── */
+  .intg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 28px; }
+  .intg-card { background: #fff; border: 1px solid #eadfc7; border-radius: 12px; padding: 18px; }
+  .intg-group { color: var(--teal); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+  .intg-name { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 17px; color: var(--navy); margin-bottom: 6px; }
+  .intg-card p { color: #55606f; font-size: 14px; line-height: 1.6; }
+
+  /* ── Control pillar (inside #proof) ───────────────────────────────── */
+  .pcard ul.ctl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .pcard ul.ctl li { color: var(--subtl); font-size: 14.5px; line-height: 1.6; }
+  .pcard ul.ctl b { color: var(--offw); }
   .hiw4 .step4 {
     background: #fff; border: 1px solid #eadfc7; border-radius: 14px;
     padding: 22px; position: relative;
@@ -677,15 +703,20 @@
   }
   /*end*/
 
+  @media (max-width: 1100px) {
+    .hiw4 { grid-template-columns: repeat(3,1fr); }
+    .hiw4.loop4 { grid-template-columns: 1fr 1fr; }
+    .loop4 .step4 .arrow { display: none; }
+  }
   @media (max-width: 900px) {
-    .hiw4 { grid-template-columns: 1fr 1fr; }
+    .hiw4, .hiw4.loop4 { grid-template-columns: 1fr 1fr; }
     .proof3 { grid-template-columns: 1fr; }
   }
   @media (max-width: 820px) {
     .onramp { grid-template-columns: 1fr; }
   }
   @media (max-width: 640px) {
-    .hiw4 { grid-template-columns: 1fr; }
+    .hiw4, .hiw4.loop4 { grid-template-columns: 1fr; }
     .layer { grid-template-columns: 52px 1fr; }
     .layer-rb { grid-column: 2; text-align: left; }
     .hero-emblem { margin-left: auto; margin-right: auto; }
@@ -693,6 +724,7 @@
   </style>
 </head>
 <body>
+{% import "partials/_layers.html" as layers_ui %}
 <script>
   window.addEventListener('load', function(){
     var w = document.querySelector('.walker');
@@ -882,7 +914,7 @@
         Career-to-Wealth Simulation
       </div>
       <h1 class="hero-h1">See the five ways your career becomes wealth — <em>before you live any of them.</em></h1>
-      <p class="hero-sub">SimiSI reads your resume, simulates your next twenty-four months across five layers of income, and deploys forty-nine AI agents to execute the path you choose. Run the decision forward before you commit a single real month to it.</p>
+      <p class="hero-sub">SimiSI reads your resume and simulates your next twenty-four months across five layers of income. Other AI hands you a plan and 10 emails to copy-paste. SimiSI writes them, sends them under your name, sets up the page prospects book calls on, and follows up — only on the channels you allow, with every action logged for you to review.</p>
       <div class="hero-ctas">
         <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold">Run your first simulation</a>
         <a href="{{ url_for('pages.register_page') }}" class="btn btn-ghost">Get your free bio page →</a>
@@ -955,65 +987,11 @@
 <section id="model" class="lp-s lp-dark">
   <div class="lp-c">
     <span class="s-label fade-up">The Model</span>
-    <h2 class="s-h2 fade-up">One resume. Five layers. Forty-nine agents.</h2>
+    <h2 class="s-h2 fade-up">One resume. Five layers. {{ site_layers.agent_total }} agents.</h2>
     <p class="lp-lead fade-up">Most careers stall on Layer 1 — trading time for money — and never see the four layers above it. SimiSI maps your whole engine and shows how income compounds into wealth, layer by layer.</p>
     <div class="ladder">
       <div class="ladder-arrow fade-up">▲ each layer builds on the one below</div>
-      <div class="layer fade-up" style="background:rgba(201,149,42,.12);">
-        <div class="layer-badge" style="background:#C9952A;color:#241a05;">L5</div>
-        <div>
-          <div class="layer-name">Wealth Deployment</div>
-          <div class="layer-tag">Turn income into compounding capital</div>
-        </div>
-        <div class="layer-rb">
-          <div class="layer-lens">Lens · Overfitting &amp; Relaxation</div>
-          <div class="layer-cnt">10 agents</div>
-        </div>
-      </div>
-      <div class="layer fade-up" style="background:rgba(19,168,158,.10);">
-        <div class="layer-badge" style="background:#13A89E;">L4</div>
-        <div>
-          <div class="layer-name">Automated Residual Income</div>
-          <div class="layer-tag">Systems that run while you sleep</div>
-        </div>
-        <div class="layer-rb">
-          <div class="layer-lens">Lens · Scheduling</div>
-          <div class="layer-cnt">10 agents</div>
-        </div>
-      </div>
-      <div class="layer fade-up" style="background:rgba(19,148,136,.10);">
-        <div class="layer-badge" style="background:#139488;">L3</div>
-        <div>
-          <div class="layer-name">Productized Income</div>
-          <div class="layer-tag">Expertise that sells without you in the room</div>
-        </div>
-        <div class="layer-rb">
-          <div class="layer-lens">Lens · Caching</div>
-          <div class="layer-cnt">10 agents</div>
-        </div>
-      </div>
-      <div class="layer fade-up" style="background:rgba(15,123,114,.10);">
-        <div class="layer-badge" style="background:#0F7B72;">L2</div>
-        <div>
-          <div class="layer-name">Leveraged Income</div>
-          <div class="layer-tag">Earn beyond the hour</div>
-        </div>
-        <div class="layer-rb">
-          <div class="layer-lens">Lens · Explore vs. Exploit</div>
-          <div class="layer-cnt">8 agents</div>
-        </div>
-      </div>
-      <div class="layer fade-up" style="background:rgba(11,74,70,.16);">
-        <div class="layer-badge" style="background:#0B4A46;">L1</div>
-        <div>
-          <div class="layer-name">Active Income</div>
-          <div class="layer-tag">Trade time for money — strategically</div>
-        </div>
-        <div class="layer-rb">
-          <div class="layer-lens">Lens · Optimal Stopping</div>
-          <div class="layer-cnt">11 agents</div>
-        </div>
-      </div>
+{{ layers_ui.ladder(site_layers) }}
     </div>
     <div class="lp-callout fade-up">
       <b>Why layers?</b> You can't productize (L3) expertise you haven't learned to sell one-to-one (L1), or deploy wealth (L5) the first four layers haven't produced yet. SimiSI runs them in the right order — and a Bayesian orchestrator decides which agent to fire when.
@@ -1032,22 +1010,72 @@
         <span class="free">Free</span>
         <div class="n">1</div>
         <h3>Upload your resume</h3>
-        <p>AI reads your full career history and identifies your monetizable expertise zones — and builds your live bio page on the spot.</p>
+        <p>AI maps your expertise and builds your live bio page on the spot.</p>
       </div>
       <div class="step4 fade-up d2">
         <div class="n">2</div>
         <h3>Run your simulation</h3>
-        <p>A Bayesian orchestrator maps your five income layers and models the next twenty-four months forward, path by path.</p>
+        <p>A Bayesian orchestrator models the next 24 months across your five income layers, path by path.</p>
       </div>
       <div class="step4 fade-up d3">
         <div class="n">3</div>
-        <h3>49 agents execute</h3>
-        <p>Rate card, outreach campaign, course outline, content engine, allocation plan — each agent produces a real, deployable deliverable.</p>
+        <h3>Agents build the deliverables</h3>
+        <p>Rate card, outreach, pages, content, allocation plan — {{ site_layers.agent_total }} agents, each producing real work.</p>
       </div>
       <div class="step4 fade-up d3">
         <div class="n">4</div>
+        <h3>Agents act on them</h3>
+        <p>Draft → you approve → send, publish, set up bookings. You choose what runs, agent by agent and channel by channel.</p>
+      </div>
+      <div class="step4 fade-up d3">
+        <div class="n">5</div>
         <h3>Decide with foresight</h3>
         <p>See each path's projected 24-month outcome — as a range, anchored to real data — before you commit to it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FROM PLAN TO DONE ────────────────────────────────────────────── -->
+<section id="plan-to-done" class="lp-s">
+  <div class="lp-c">
+    <span class="s-label teal fade-up">Agents that act</span>
+    <h2 class="s-h2 fade-up">From plan to done.</h2>
+    <p class="lp-lead fade-up">Your agents don't just write the work — they do it, with you in control.</p>
+    <div class="hiw4 loop4">
+      <div class="step4 fade-up d1">
+        <div class="n">1</div><span class="arrow" aria-hidden="true">→</span>
+        <h3>The agent drafts</h3>
+        <p>Outreach, proposals, pages and posts, written from your real experience.</p>
+      </div>
+      <div class="step4 fade-up d2">
+        <div class="n">2</div><span class="arrow" aria-hidden="true">→</span>
+        <h3>You edit or refine</h3>
+        <p>Change anything, or ask the AI to refine it. Your edits are kept as versions; a re-run never overwrites them.</p>
+      </div>
+      <div class="step4 fade-up d3">
+        <div class="n">3</div><span class="arrow" aria-hidden="true">→</span>
+        <h3>It sends under your name</h3>
+        <p>Confirm the exact emails in one click, or let outreach run on the channels you allow. Anyone who opts out is never emailed again.</p>
+      </div>
+      <div class="step4 fade-up d3">
+        <div class="n">4</div>
+        <h3>It follows up</h3>
+        <p>Follow-ups go out on schedule and stop for anyone who replies.</p>
+      </div>
+    </div>
+    <div class="act3">
+      <div class="act-card fade-up d1">
+        <h3>Agents that act, not just advise</h3>
+        <p>Outreach sent under your name, a payment link on your Stripe, a booking page on your Cal.com — real actions, not just documents.</p>
+      </div>
+      <div class="act-card fade-up d2">
+        <h3>You decide what runs</h3>
+        <p>Set autonomy per agent and switch channels on or off. Payment links and booking pages wait for your approval — and can be undone.</p>
+      </div>
+      <div class="act-card fade-up d3">
+        <h3>Works through your tools</h3>
+        <p>Connect Stripe, Cal.com or ConvertKit and your agents work through your own accounts. Nothing to connect? Everything still works.</p>
       </div>
     </div>
   </div>
@@ -1069,6 +1097,16 @@
         <div class="k">Validated</div>
         <p>The engine is built on a documented, tested methodology — pure-function agents composed into a wealth engine, with the math open to inspection.</p>
         <span class="ptag">Documented method</span>
+      </div>
+      <div class="pcard fade-up d3">
+        <div class="k">You're always in control</div>
+        <ul class="ctl">
+          <li><b>You choose what gets sent.</b> Agents send only on channels you allow; switch one off and its messages wait for your okay.</li>
+          <li><b>Works through your tools.</b> Your Stripe, your Cal.com, your newsletter list — emails go out under your name.</li>
+          <li><b>Never touches your money.</b> Investing agents advise; they never place trades or move funds.</li>
+          <li><b>You set the autonomy.</b> From "just draft it" to "do it after I approve," per agent. <span class="roll-pill">"Run it and tell me": rolling out</span></li>
+        </ul>
+        <span class="ptag">Every action logged</span>
       </div>
     </div>
   </div>
@@ -1135,6 +1173,24 @@
   </div>
 </section>
 
+<!-- ── INTEGRATIONS ─────────────────────────────────────────────────── -->
+<section id="integrations" class="lp-s lp-tint">
+  <div class="lp-c">
+    <span class="s-label teal fade-up">Integrations</span>
+    <h2 class="s-h2 fade-up">Connect your tools; your agents work through them.</h2>
+    <p class="lp-lead fade-up">Every integration is optional. Each one you connect lets your agents do more of the work for you.</p>
+    <div class="intg-grid">
+      {% for i in integrations %}
+      <div class="intg-card fade-up">
+        <div class="intg-group">{{ i.group }}</div>
+        <div class="intg-name">{{ i.name }}{% if i.rolling_out %} <span class="roll-pill">Rolling out</span>{% endif %}</div>
+        <p>{{ i.unlocks }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
 <!-- ── PRICING ──────────────────────────────────────────────────────── -->
 <section id="pricing" class="lp-s">
   <div class="lp-c">
@@ -1142,7 +1198,7 @@
       <span class="s-label teal">Pricing</span>
       <h2 class="s-h2">Start free. Simulate when you're ready.</h2>
     </div>
-    <p class="pricing-head-sub fade-up">The bio page is free forever. The simulation is a one-time purchase — no subscription.</p>
+    <p class="pricing-head-sub fade-up"><b>Not {{ site_layers.agent_total }} documents. {{ site_layers.agent_total }} agents that act.</b> The bio page is free forever. The simulation is a one-time purchase — no subscription.</p>
     <div class="pricing-grid">
       <!-- Free -->
       <div class="price-card fade-up d1">
@@ -1166,22 +1222,24 @@
       <div class="price-card featured fade-up d2">
         <div class="price-badge-row"><span class="price-badge">Most popular</span></div>
         <div class="price-tier">The Simulation</div>
-        {% if sim_pricing.is_discounted %}
+        {% if pricing.is_discounted %}
         <div class="price-discounted">
-          <span class="price-original">{{ sim_pricing.base_price_usd }}</span>
-          <span class="price-current">{{ sim_pricing.discounted_price_usd }}</span>
-          {% if sim_pricing.label %}<span class="price-label-badge">{{ sim_pricing.label }}</span>{% endif %}
+          <span class="price-original">{{ pricing.original_price }}</span>
+          <span class="price-current">{{ pricing.current_price }}</span>
+          <span class="price-label-badge">{{ pricing.label or (pricing.discount_pct ~ '% launch pricing') }}</span>
         </div>
-        {% if sim_pricing.expires_at %}
-        <div class="price-countdown" id="priceCountdown" data-expires="{{ sim_pricing.expires_at }}"></div>
+        {% if pricing.expires_at %}
+        <div class="price-countdown" id="priceCountdown" data-expires="{{ pricing.expires_at }}"></div>
         {% endif %}
+        {% elif pricing.available %}
+        <div class="price-amount">{{ pricing.current_price }}</div>
         {% else %}
-        <div class="price-amount">{{ sim_price_usd }}</div>
+        <div class="price-amount" style="font-size:28px;">See price at checkout</div>
         {% endif %}
         <div class="price-per">per simulation · one-time</div>
         <div class="price-features">
           <div class="price-feat"><span class="price-check">✓</span><span>Everything in Bio Page</span></div>
-          <div class="price-divider">Plus all 49 AI agents:</div>
+          <div class="price-divider">Plus all {{ site_layers.agent_total }} AI agents:</div>
           <div class="price-feat"><span class="price-check">✓</span><span>Five-layer wealth map</span></div>
           <div class="price-feat"><span class="price-check">✓</span><span>Calibrated 24-month projections</span></div>
           <div class="price-feat"><span class="price-check">✓</span><span>Rate card, outreach ×10, course outline</span></div>
@@ -1210,9 +1268,6 @@
         <a href="mailto:simi@simulacrumai.io?subject=Corporate%20Licensing%20Enquiry" class="btn" style="width:100%;justify-content:center;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);">Contact sales →</a>
       </div>
     </div>
-    <p class="fade-up" style="text-align:center;color:var(--muted);font-size:13px;margin-top:18px;">
-      Simulation price reflects the current rate configured at checkout.
-    </p>
   </div>
 </section>
 
@@ -1302,14 +1357,14 @@
           What is a simulation?
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-a"><div class="faq-a-inner">A simulation is a complete AI-powered analysis of your career. Our Bayesian orchestrator identifies your Expertise Zone and deploys 49 specialized agents across 6 income layers — from active consulting (Layer 1) to passive wealth deployment (Layer 5). Each agent generates a specific deliverable: rate card, cold email campaign, course outline, blog post, and more.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">A simulation is a complete AI-powered analysis of your career. Our Bayesian orchestrator identifies your Expertise Zone and deploys {{ site_layers.agent_total }} specialized agents across {{ site_layers.count }} income layers — from active consulting (Layer 1) to passive wealth deployment (Layer 5). Each agent generates a specific deliverable: rate card, cold email campaign, course outline, blog post, and more.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">
-          How is the {{ sim_price_usd }} structured?
+          How is the simulation priced?
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-a"><div class="faq-a-inner">It is a one-time payment per simulation — not a subscription. You pay {{ sim_price_usd }} once, receive all 49 deliverables, and keep access to your results indefinitely. Want to run a second simulation on a different expertise zone or updated resume? That is another {{ sim_price_usd }}, separately.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">It is a one-time payment per simulation — not a subscription. {% if pricing.is_discounted %}The simulation is normally {{ pricing.original_price }}; with {{ pricing.discount_pct }}% launch pricing you pay {{ pricing.current_price }} once.{% elif pricing.available %}You pay {{ pricing.current_price }} once.{% else %}You pay once, at the price shown at checkout.{% endif %} You receive all {{ site_layers.agent_total }} deliverables and keep access to your results indefinitely. Want to run a second simulation on a different expertise zone or updated resume? That is a separate one-time purchase at the price shown at checkout.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">
@@ -1320,10 +1375,38 @@
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">
-          Do I need all nine integrations?
+          What does each integration unlock?
           <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="faq-a"><div class="faq-a-inner">No — all integrations are optional. SimiSI works fully without connecting any third-party tool. Connecting Cal.com, Kajabi, Apollo, or Stripe simply unlocks richer automation for each deliverable. Your bio page and AI chat are live from the moment you upload your resume.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">All integrations are optional — SimiSI works fully without connecting any tool. Each one lets your agents act through it: Apollo finds prospects to contact, ConvertKit publishes to your list, Cal.com sets up your booking page, Stripe creates payment links, and PandaDoc prepares proposals. <a href="#integrations">See the full list.</a> Your bio page and AI chat are live from the moment you upload your resume.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Will SimiSI email people without my permission?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">Only on channels you allow. Outreach runs on your simulation's email channel, which is on by default so your campaign can start; switch it off and every message waits for your okay. A one-off send from an artifact always asks you to confirm the exact emails first, with an unsubscribe link in each. Anyone who opts out or is marked do-not-contact is never emailed.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Does it use my own email account?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">Emails go out under your name, and replies come back to you. Where own-account sending is enabled, you connect your SendGrid account and a verified sender, and emails go out from your own domain. Payments, bookings and newsletters run through your own Stripe, Cal.com and ConvertKit accounts.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Can agents move my money?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">No. Wealth-deployment agents advise only — they never place trades or move funds. A payment link on your Stripe collects money for you; nothing ever spends it.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          What if an agent makes a mistake?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">Every deliverable is yours to review and edit, and your edits are kept as versions that a re-run never overwrites. Actions like payment links and booking pages wait for your approval and can be undone, and every action is logged.</div></div>
       </div>
     </div>
   </div>
@@ -1532,7 +1615,7 @@ function signOut() {
 })();
 {% endif %}
 </script>
-{% if sim_pricing.is_discounted and sim_pricing.expires_at %}
+{% if pricing.is_discounted and pricing.expires_at %}
 <script>
 (function() {
   var el = document.getElementById('priceCountdown');

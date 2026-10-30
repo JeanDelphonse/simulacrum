@@ -215,35 +215,6 @@ def ping():
     return jsonify({'ok': True}), 200
 
 
-def _sim_price_usd() -> str:
-    """Return formatted base simulation price, e.g. '$15.95'. Used for FAQ copy."""
-    try:
-        from app.services.pricing_service import get_current_price, format_price_usd
-        return format_price_usd(get_current_price()['base_price_cents'])
-    except Exception:
-        cents = int(current_app.config.get('SIMULATION_PRICE_CENTS', 69500))
-        return f'${cents // 100:,}' if cents % 100 == 0 else f'${cents / 100:,.2f}'
-
-
-def _sim_pricing() -> dict:
-    """Return full pricing dict for discount-aware display."""
-    try:
-        from app.services.pricing_service import get_current_price, format_price_usd
-        p = get_current_price()
-        p['base_price_usd'] = format_price_usd(p['base_price_cents'])
-        p['discounted_price_usd'] = format_price_usd(p['discounted_price_cents'])
-        return p
-    except Exception:
-        cents = int(current_app.config.get('SIMULATION_PRICE_CENTS', 69500))
-        usd = f'${cents // 100:,}' if cents % 100 == 0 else f'${cents / 100:,.2f}'
-        return {
-            'base_price_cents': cents, 'discounted_price_cents': cents,
-            'base_price_usd': usd, 'discounted_price_usd': usd,
-            'discount_percentage': 0, 'is_discounted': False,
-            'label': None, 'expires_at': None,
-        }
-
-
 def _get_recent_bio_pages(limit: int = 8) -> list:
     """FR-SOC-08: Most recently published bio pages for the landing sidebar."""
     try:
@@ -309,12 +280,14 @@ def _get_hero_cards(limit: int = 4) -> list:
 
 @pages_bp.route('/')
 def index():
+    from app.services import site_context
     data = _get_landing_data()
     return render_template('landing.html',
                            testimonials=data['testimonials'],
                            trust_stats=data['trust_stats'],
-                           sim_price_usd=_sim_price_usd(),
-                           sim_pricing=_sim_pricing(),
+                           pricing=site_context.pricing_context(),
+                           site_layers=site_context.site_layers(),
+                           integrations=site_context.integration_unlocks(),
                            recent_bio_pages=_get_recent_bio_pages(),
                            hero_cards=_get_hero_cards(),
                            playbook_url=current_app.config['PLAYBOOK_URL'])

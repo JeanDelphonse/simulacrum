@@ -1,0 +1,17 @@
+{# The five income layers, from site_context.site_layers() — one source for
+   names and agent counts so the site can never drift from agents.json. #}
+{% macro ladder(site_layers) -%}
+{% for layer in site_layers.layers|reverse %}
+      <div class="layer fade-up" style="background:{{ layer.bg }};">
+        <div class="layer-badge" style="background:{{ layer.badge }};color:{{ layer.badge_text }};">{{ layer.code }}</div>
+        <div>
+          <div class="layer-name">{{ layer.name }}</div>
+          <div class="layer-tag">{{ layer.tag }}</div>
+        </div>
+        <div class="layer-rb">
+          <div class="layer-lens">Lens · {{ layer.lens }}</div>
+          <div class="layer-cnt">{{ layer.agents }} agents</div>
+        </div>
+      </div>
+{% endfor %}
+{%- endmacro %}
