@@ -509,12 +509,14 @@ def bio_editor(slug: str):
         abort(403)
     bio_page = BioPage.query.filter_by(user_id=current_user.id).first()
     from app.services import bio_readiness
+    from app.services.bio_quality import HYPE_TERMS
     return render_template(
         'public/bio_editor.html',
         profile=profile,
         bio_page=bio_page,
         slug=slug,
         readiness=bio_readiness.public(bio_readiness.readiness(current_user.id)),
+        hype_terms=HYPE_TERMS,
     )
 
 

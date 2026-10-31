@@ -40,6 +40,7 @@
   {% set _same_as = [] %}
   {% if ctx.linkedin_url %}{% set _ = _same_as.append(ctx.linkedin_url) %}{% endif %}
   {% if ctx.twitter_url %}{% set _ = _same_as.append(ctx.twitter_url) %}{% endif %}
+  {% if ctx.website_url %}{% set _ = _same_as.append(ctx.website_url) %}{% endif %}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -948,6 +949,45 @@
     .ig-fitem { margin-bottom: .42rem; }
     .ig-fitem-name { font-size: .74rem; font-weight: 500; }
     .ig-fitem-sub { font-size: .65rem; color: var(--muted); margin-top: .06rem; }
+
+    /* ── At a glance (Bio Page Enhancements item 1) ───────────────────── */
+    .facts { border: 1px solid var(--border); border-radius: 12px; background: var(--bg2);
+             padding: .9rem 1.1rem; margin: 0 0 1.25rem; }
+    .facts-head { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem;
+                  margin-bottom: .55rem; flex-wrap: wrap; }
+    .facts-title { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+                   color: var(--muted); }
+    .facts-updated { font-size: .75rem; color: var(--muted); }
+    .facts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem 1.5rem; margin: 0; }
+    .facts-row { display: grid; grid-template-columns: 6.5rem 1fr; gap: .5rem; font-size: .86rem; line-height: 1.45; }
+    .facts-row dt { color: var(--muted); font-weight: 600; }
+    .facts-row dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+    .facts-row dd a { color: var(--accent); text-decoration: none; }
+    .facts-row dd a:hover { text-decoration: underline; }
+    .facts-note { display: block; font-size: .72rem; color: var(--muted); margin-top: .1rem; }
+    .facts-wide { grid-column: 1 / -1; }
+
+    /* ── On this page ──────────────────────────────────────────────────── */
+    .bio-toc { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .9rem;
+               font-size: .82rem; margin: 1.25rem 0 .25rem; }
+    .bio-toc-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+                     color: var(--muted); }
+    .bio-toc a { color: var(--accent); text-decoration: none; }
+    .bio-toc a:hover { text-decoration: underline; }
+
+    /* ── Owner-only writing check (items 2 and 4) ──────────────────────── */
+    .owner-quality { max-width: 800px; margin: .75rem auto 0; padding: .8rem 1.1rem; border-radius: 10px;
+                     background: #fff7e6; border: 1px solid #f2d49b; color: #5c4210; font-size: .85rem; line-height: 1.55; }
+    .owner-quality strong { color: #3d2c08; }
+    .owner-quality .oq-who { font-size: .72rem; color: #8a6414; margin-left: .4rem; }
+    .owner-quality ul { margin: .35rem 0 .4rem 1.1rem; padding: 0; }
+    .owner-quality li { margin: .2rem 0; }
+    .owner-quality .oq-snip { display: block; color: #8a6414; font-size: .78rem; font-style: italic; }
+    .owner-quality a { color: #0F7B72; font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .facts-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 
@@ -968,6 +1008,23 @@
 {% with readiness = owner_readiness, is_live = bio_page.status == 'published' %}
 {% include 'public/_bio_readiness_banner.html' %}
 {% endwith %}
+{% if owner_quality and (owner_quality.hype or owner_quality.lead_tip) %}
+<div class="owner-quality" role="note" id="owner-quality">
+  <strong>Writing check</strong><span class="oq-who">Only you see this. Publishing isn't blocked.</span>
+  {% if owner_quality.lead_tip %}
+  <p style="margin:.35rem 0 0"><b>Opening paragraph:</b> {{ owner_quality.lead_tip }}</p>
+  {% endif %}
+  {% if owner_quality.hype %}
+  <p style="margin:.35rem 0 0">{{ owner_quality.hype | length }} word{{ 's' if owner_quality.hype | length != 1 }} may read as hype. Readers trust a concrete fact more:</p>
+  <ul>
+    {% for f in owner_quality.hype %}
+    <li><b>&ldquo;{{ f.term }}&rdquo;</b> in {{ f.field }} — {{ f.suggestion }}.<span class="oq-snip">{{ f.snippet }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <a href="/u/{{ slug }}/edit">Edit bio page →</a>
+</div>
+{% endif %}
 {% endif %}
 
 <div class="bio-page-layout">
@@ -1081,6 +1138,34 @@
     </div>
   </section>
 
+  {# At a glance: a summary of what this page already says — no new claims.
+     Rows come from app/services/bio_facts.py; the rate is the calibrated
+     range with its reference source, never a figure parsed from prose. #}
+  {% if facts and (facts.rows or facts.links or facts.updated) %}
+  <aside class="facts" id="at-a-glance" aria-labelledby="facts-title">
+    <div class="facts-head">
+      <span class="facts-title" id="facts-title">At a glance</span>
+      {% if facts.updated %}<span class="facts-updated">Updated <time datetime="{{ facts.updated_iso }}">{{ facts.updated }}</time></span>{% endif %}
+    </div>
+    {% if facts.rows or facts.links %}
+    <dl class="facts-grid">
+      {% for r in facts.rows %}
+      <div class="facts-row{% if r.label == 'Focus areas' %} facts-wide{% endif %}">
+        <dt>{{ r.label }}</dt>
+        <dd>{% if r.href %}<a href="{{ r.href }}" target="_blank" rel="noopener noreferrer">{{ r.value }}</a>{% else %}{{ r.value }}{% endif %}{% if r.note %}<span class="facts-note">{{ r.note }}</span>{% endif %}</dd>
+      </div>
+      {% endfor %}
+      {% if facts.links %}
+      <div class="facts-row facts-wide">
+        <dt>Links</dt>
+        <dd>{% for l in facts.links %}<a href="{{ l.href }}" target="_blank" rel="noopener noreferrer">{{ l.label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</dd>
+      </div>
+      {% endif %}
+    </dl>
+    {% endif %}
+  </aside>
+  {% endif %}
+
   <!-- ── Tab nav ─────────────────────────────────────────────────────── -->
   <div class="bio-tabs-nav">
     <button class="bio-tab-btn active" onclick="mmTab('profile',this)">Profile</button>
@@ -1157,6 +1242,10 @@
 
   <!-- ── Profile panel ───────────────────────────────────────────────── -->
   <div id="bio-profile-panel">
+
+  <nav class="bio-toc" id="bio-toc" aria-label="On this page" hidden>
+    <span class="bio-toc-label">On this page</span>
+  </nav>
 
   <!-- ── 2. About ────────────────────────────────────────────────────── -->
   {% set visibility = bio_page.sections.get('visibility', {}) %}
@@ -1703,8 +1792,9 @@
 <div id="bio-chat-panel" role="dialog" aria-label="Chat with {{ ctx.full_name.split()[0] if ctx.full_name else 'us' }}">
   <div class="chat-panel-header">
     <div>
-      <h4>{{ ctx.full_name.split()[0] if ctx.full_name else '' }}'s assistant</h4>
-      <div class="powered">Powered by SimiSI</div>
+      {% set _first = ctx.full_name.split()[0] if ctx.full_name else 'the owner' %}
+      <h4>Simi, {{ _first }}'s AI assistant</h4>
+      <div class="powered">An AI, not {{ _first }}. {{ _first }} is notified of your conversation{% if bio_page.chat_settings.get('live_takeover_enabled') %} and can join it live{% endif %}.</div>
     </div>
     <button class="chat-close-btn" id="bio-chat-close" aria-label="Close chat">✕</button>
   </div>
@@ -3072,5 +3162,27 @@ async function publishNow() {
 })();
 </script>
 
+<script>
+/* On this page: built from the sections the Profile tab actually rendered, so
+   it can never list one that isn't there. */
+(function () {
+  var nav = document.getElementById('bio-toc');
+  var panel = document.getElementById('bio-profile-panel');
+  if (!nav || !panel) return;
+  var secs = panel.querySelectorAll('section[id]');
+  var n = 0;
+  secs.forEach(function (sec) {
+    if (sec.hidden) return;
+    var h = sec.querySelector('h2');
+    if (!h) return;
+    var a = document.createElement('a');
+    a.href = '#' + sec.id;
+    a.textContent = h.textContent.trim();
+    nav.appendChild(a);
+    n++;
+  });
+  if (n >= 3) nav.hidden = false;
+})();
+</script>
 </body>
 </html>

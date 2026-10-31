@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 from datetime import datetime, timedelta
 
@@ -11,6 +12,8 @@ from app.models.profile import UserProfile, SimulationVisibility, ProfileInquiry
 from app.models.user import User
 from app.models.simulation import Simulation, SimulationLayer
 from utils.id_gen import generate_id
+
+logger = logging.getLogger(__name__)
 
 _SUBJECTS = (
     'Consulting inquiry',
@@ -177,9 +180,28 @@ def profile_page(username):
             except Exception:
                 owner_readiness = None
 
+        # Bio Page Enhancements: the at-a-glance fact box for everyone, and the
+        # writing checks (hype words, a lead that says who this is) for the
+        # owner only — advisory, never blocking.
+        from app.services import bio_facts, bio_quality
+        try:
+            facts = bio_facts.fact_box(profile, ctx, bio_page)
+        except Exception as exc:
+            logger.warning('bio fact box failed for %s: %s', slug, exc)
+            facts = None
+        owner_quality = None
+        if is_owner:
+            owner_quality = {
+                'hype': bio_quality.find_hype(bio_quality.bio_text_fields(ctx)),
+                'lead_tip': bio_quality.lead_tip(ctx.get('about_text'), ctx.get('full_name'),
+                                                 ctx.get('professional_title')),
+            }
+
         from app.services import bio_seo
         return render_template(
             'public/bio_page.html',
+            facts=facts,
+            owner_quality=owner_quality,
             bio_page=bio_page,
             testimonials=testimonials,
             profile=profile,

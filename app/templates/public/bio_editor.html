@@ -122,6 +122,11 @@
 
     /* ── Saving indicator ── */
     #save-status { font-size: .8rem; color: #6b7280; }
+    /* Hype check (Bio Page Enhancements item 4): advisory, never blocks a save. */
+    .hype-note { display: none; margin-top: .35rem; padding: .45rem .6rem; border-radius: 6px;
+                 background: #fff7e6; border: 1px solid #f2d49b; color: #5c4210; font-size: .78rem; line-height: 1.45; }
+    .hype-note.on { display: block; }
+    .hype-note b { color: #3d2c08; }
     #save-status.saved { color: #059669; }
     #save-status.error { color: #dc2626; }
 
@@ -240,6 +245,7 @@
         <div class="form-group">
           <label>Professional title</label>
           <input type="text" id="hero-title" placeholder="e.g. Brand strategist & advisor" maxlength="200">
+          <div class="hype-note" data-for="hero-title" role="status"></div>
           <label class="custom-toggle">
             <input type="checkbox" id="hero-title-custom"> Use custom title (overrides LinkedIn artifact)
           </label>
@@ -247,6 +253,7 @@
         <div class="form-group">
           <label>Positioning / tagline</label>
           <textarea id="hero-positioning" placeholder="One-sentence pitch..." maxlength="400"></textarea>
+          <div class="hype-note" data-for="hero-positioning" role="status"></div>
           <label class="custom-toggle">
             <input type="checkbox" id="hero-pos-custom"> Use custom positioning (overrides rate card)
           </label>
@@ -279,6 +286,7 @@
         <div class="form-group">
           <label>Custom bio text</label>
           <textarea id="about-bio" placeholder="Your extended professional bio..." style="min-height:160px;" maxlength="2000"></textarea>
+          <div class="hype-note" data-for="about-bio" role="status"></div>
           <label class="custom-toggle">
             <input type="checkbox" id="about-custom"> Use custom bio (overrides LinkedIn About section)
           </label>
@@ -469,6 +477,27 @@
   var SLUG = {{ slug | tojson }};
   var ROOT = {{ request.url_root | tojson }}.replace(/\/$/, '');
   var bioPage = null;
+  // ── Hype check: same term list the bio writer avoids (bio_quality.HYPE_TERMS)
+  var HYPE = {{ hype_terms | tojson }};
+  function hypeCheck(field) {
+    var note = document.querySelector('.hype-note[data-for="' + field.id + '"]');
+    if (!note) return;
+    var text = field.value || '', hits = [];
+    Object.keys(HYPE).forEach(function (term) {
+      var re = new RegExp('(^|[^\\w-])' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w-])', 'i');
+      if (re.test(text)) hits.push('<b>&ldquo;' + term + '&rdquo;</b> — ' + HYPE[term]);
+    });
+    if (/\bleverag(e|es|ed|ing)\b/i.test(text)) hits.push('<b>&ldquo;leverage&rdquo;</b> — use "used" or "applied", or say what it enabled');
+    note.innerHTML = hits.length ? 'May read as hype. Readers trust a concrete fact more:<br>' + hits.join('<br>') : '';
+    note.classList.toggle('on', hits.length > 0);
+  }
+  ['hero-title', 'hero-positioning', 'about-bio'].forEach(function (id) {
+    var f = document.getElementById(id);
+    if (!f) return;
+    f.addEventListener('input', function () { hypeCheck(f); });
+    setTimeout(function () { hypeCheck(f); }, 400);   // after the saved values load
+  });
+
   var saveTimer = null;
   var saveStatus = document.getElementById('save-status');
 
