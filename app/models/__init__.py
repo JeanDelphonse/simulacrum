@@ -78,6 +78,11 @@ from app.models.artifact_exec import ArtifactUnit, ArtifactAction
 from app.models.agent_plan import (
     ToolRegistry, AgentPlan, PlanStep, AgentAutonomyConfig, ActionApproval, ExecutionRun,
 )
+from app.models.mail_crm import (
+    EmailAccount, AccountExclusion, SyncRun, SenderSignal, ContactFieldSource,
+    ContactAccountLink, ReviewItem, UserSuppression, FeatureFlag, UserFeatureOverride,
+    ContactDncFlag, FeatureChange,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',

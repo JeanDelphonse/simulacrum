@@ -184,8 +184,32 @@ def update_contact(contact_id):
         changed = True
 
     if 'do_not_contact' in data:
-        contact.do_not_contact = bool(data['do_not_contact'])
+        # PRD-SIM-MAIL-001: Do Not Contact is one flag per reason. The user can
+        # set or lift their own; only an admin can lift the Email-to-CRM
+        # switch's, and an unsubscribe/bounce/complaint is never lifted here.
+        from app.services import mail_feature
+        if bool(data['do_not_contact']):
+            mail_feature.mark_dnc([contact.id], 'user', None, current_user.id)
+        else:
+            others = [r for r in mail_feature.active_dnc_reasons(contact.id) if r != 'user']
+            if others:
+                return jsonify({'error': 'dnc_locked',
+                                'message': 'This contact is Do Not Contact (%s). Only an administrator can '
+                                           'lift that.' % ', '.join(sorted(set(others))).replace('_', ' ')}), 403
+            from app.models.mail_crm import ContactDncFlag
+            from datetime import datetime as _dt
+            ContactDncFlag.query.filter_by(contact_id=contact.id, reason='user', lifted_at=None).update(
+                {'lifted_at': _dt.utcnow(), 'lifted_by': current_user.id}, synchronize_session=False)
+            contact.do_not_contact = False
         changed = True
+
+    # Values the user typed are theirs: a later email sync never overwrites them.
+    from app.services.mail_contacts import lock_user_edits
+    lock_user_edits(contact, {f: data[f] for f in updatable if f in data})
+    if contact.source == 'email_import' or contact.tier:
+        from app.services import mail_contacts, mail_feature
+        contact.campaign_ready, contact.not_ready_reason = mail_contacts.readiness(
+            contact, mail_feature.setting_list('mail_role_prefixes'))
 
     if 'is_archived' in data:
         contact.is_archived = bool(data['is_archived'])
@@ -204,6 +228,13 @@ def update_contact(contact_id):
 def delete_contact(contact_id):
     contact = Contact.query.filter_by(id=contact_id, user_id=current_user.id).first_or_404()
     contact.is_archived = True
+    # PRD-SIM-MAIL-001: keep a hashed copy so an email sync never re-imports a
+    # person the user removed.
+    from app.models.mail_crm import UserSuppression, email_hash
+    if contact.email and not UserSuppression.query.filter_by(
+            user_id=current_user.id, email_hash=email_hash(contact.email)).first():
+        db.session.add(UserSuppression(user_id=current_user.id, email_hash=email_hash(contact.email),
+                                       reason='deleted'))
     db.session.commit()
     return jsonify({'ok': True})
 

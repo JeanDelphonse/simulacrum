@@ -11,8 +11,11 @@ SENIORITY_OPTIONS = [
 ]
 SOURCE_OPTIONS = [
     'manual_entry', 'csv_import', 'linkedin_import',
-    'agent_generated', 'inbound_referral',
+    'agent_generated', 'inbound_referral', 'email_import',
 ]
+# PRD-SIM-MAIL-001 relationship tiers: warm = the user has written to them,
+# known = a real person, inbound only, role = info@ / sales@ style address.
+TIER_OPTIONS = ['warm', 'known', 'role']
 
 
 class Contact(db.Model):
@@ -54,6 +57,12 @@ class Contact(db.Model):
     outreach_count      = db.Column(db.Integer, nullable=False, default=0)
     is_archived         = db.Column(db.Boolean, nullable=False, default=False)
     do_not_contact      = db.Column(db.Boolean, nullable=False, default=False)
+    # PRD-SIM-MAIL-001 (sql/060): email-import relationship + readiness.
+    tier                = db.Column(db.String(8), nullable=True)
+    campaign_ready      = db.Column(db.Boolean, nullable=True)
+    not_ready_reason    = db.Column(db.String(200), nullable=True)
+    role_to_user        = db.Column(db.String(20), nullable=True)   # inferred until the user confirms
+    expertise           = db.Column(db.String(200), nullable=True)
     notes               = db.Column(db.Text, nullable=True)
     created_at          = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at          = db.Column(db.DateTime, default=datetime.utcnow,
@@ -128,6 +137,12 @@ class Contact(db.Model):
             'last_contacted_at': self.last_contacted_at.isoformat() if self.last_contacted_at else None,
             'outreach_count': self.outreach_count or 0,
             'is_archived': self.is_archived,
+            'tier': self.tier,
+            'campaign_ready': self.campaign_ready,
+            'not_ready_reason': self.not_ready_reason,
+            'role_to_user': self.role_to_user,
+            'expertise': self.expertise,
+            'department': self.department,
             'do_not_contact': self.do_not_contact,
             'notes': self.notes,
             'created_at': self.created_at.isoformat() if self.created_at else None,

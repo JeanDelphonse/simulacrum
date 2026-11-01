@@ -178,6 +178,9 @@ def create_app(config_name=None):
     # /api/plan-steps/..., /api/agent-autonomy, /settings/agent-autonomy)
     from app.blueprints.execution import execution_bp
     app.register_blueprint(execution_bp)
+
+    from app.blueprints.mail import mail_bp
+    app.register_blueprint(mail_bp)
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 

@@ -217,6 +217,14 @@
     <!-- Right column -->
     <div>
 
+      {# PRD-SIM-MAIL-001: where each value came from, for imported contacts. #}
+      {% if contact.source == 'email_import' or contact.tier %}
+      <div class="cd-card" id="srcCard">
+        <div class="cd-card-header">Where this came from</div>
+        <div class="cd-card-body" id="srcBody" style="font-size:13px;color:#374151">Loading…</div>
+      </div>
+      {% endif %}
+
       <!-- Score -->
       <div class="cd-card">
         <div class="cd-card-header">Qualifying Score</div>
@@ -372,9 +380,53 @@ function toggleDNC(cb) {
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ do_not_contact: cb.checked }),
   })
-    .then(r => r.json())
-    .then(() => showToast(cb.checked ? 'Marked as Do Not Contact' : 'Do Not Contact removed'));
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+      if (!ok) { cb.checked = !cb.checked; showToast(d.message || d.error || 'Not allowed'); return; }
+      showToast(cb.checked ? 'Marked as Do Not Contact' : 'Do Not Contact removed');
+      if (window.loadContactSources) loadContactSources();
+    });
 }
+
+window.loadContactSources = function () {
+  var body = document.getElementById('srcBody');
+  if (!body) return;
+  fetch(`${CROOT}/api/mail/contacts/${CONTACT_ID}/sources`, { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(d => {
+      var esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      var SRC = { header: 'Email header', signature: 'Email signature', address_book: 'Address book',
+                  enrichment: 'Enrichment', inferred: 'Inferred', user: 'You' };
+      var TIER = { warm: 'Warm — you have written to them', known: 'Known — real person, inbound only',
+                   role: 'Role address — not a person' };
+      var html = '';
+      if (d.tier) html += '<div style="margin-bottom:6px"><b>' + esc(TIER[d.tier] || d.tier) + '</b></div>';
+      html += '<div style="margin-bottom:8px">' + (d.campaign_ready
+        ? '<span style="color:#065f46">Campaign-ready</span>'
+        : '<span style="color:#92400e">Not campaign-ready: ' + esc(d.not_ready_reason || 'unknown') + '</span>') + '</div>';
+      if (d.dnc_reasons && d.dnc_reasons.length) {
+        html += '<div style="margin-bottom:8px;color:#b91c1c">Do Not Contact: ' + esc(d.dnc_reasons.join(', ').replace(/_/g, ' ')) +
+                (d.dnc_reasons.indexOf('integration_disabled') >= 0 ? ' — only an administrator can lift this.' : '') + '</div>';
+      }
+      if (d.fields && d.fields.length) {
+        html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+        d.fields.forEach(f => {
+          var tag = f.source === 'inferred' ? '<span style="background:#fef3c7;color:#92400e;border-radius:4px;padding:0 4px">Inferred</span>' : esc(SRC[f.source] || f.source);
+          html += '<tr><td style="padding:3px 6px 3px 0;color:#6b7280;vertical-align:top">' + esc(f.label) + '</td>' +
+                  '<td style="padding:3px 0">' + esc(f.value || '—') + '<div style="color:#9ca3af">' + tag +
+                  (f.locked ? ' · locked' : ' · ' + Math.round(f.confidence * 100) + '% sure') + '</div></td></tr>';
+        });
+        html += '</table>';
+      }
+      if (d.accounts && d.accounts.length) {
+        html += '<div style="margin-top:8px;color:#6b7280">From ' + d.accounts.map(a =>
+          esc(a.address) + ' (' + a.sent + ' sent, ' + a.received + ' received)').join('; ') + '</div>';
+      }
+      body.innerHTML = html || 'No source details.';
+    })
+    .catch(() => { body.textContent = 'Could not load source details.'; });
+};
+loadContactSources();
 
 function openAddNote() {
   document.getElementById('noteInput').focus();

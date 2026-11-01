@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}Email import{% endblock %}
+{% block head %}
+<style>
+.em-wrap { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.em-back { font-size: .85rem; color: #0F7B72; text-decoration: none; }
+.em-wrap h1 { font-size: 1.5rem; margin: .6rem 0 .3rem; }
+.em-wrap h2 { font-size: 1.05rem; margin: 1.6rem 0 .6rem; }
+.em-sub { color: #6B7B8D; font-size: .92rem; margin: 0 0 1rem; max-width: 780px; }
+.em-rules { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: .8rem 1rem; font-size: .85rem; color: #166534; margin-bottom: 1.2rem; }
+.em-rules li { margin: .15rem 0; }
+.em-off { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: .9rem 1rem; color: #991b1b; font-size: .9rem; }
+.em-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: .9rem 1rem; margin-bottom: .75rem; background: #fff; }
+.em-row { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; justify-content: space-between; }
+.em-addr { font-weight: 600; }
+.em-meta { color: #6B7B8D; font-size: .8rem; }
+.em-tag { display: inline-block; font-size: .72rem; border-radius: 100px; padding: .05rem .55rem; background: #f1f5f9; color: #475569; margin-left: .35rem; }
+.em-tag.active { background: #dcfce7; color: #166534; }
+.em-tag.reauth, .em-tag.admin_paused { background: #fee2e2; color: #991b1b; }
+.em-tag.paused { background: #fef3c7; color: #92400e; }
+.em-btn { padding: .35rem .8rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .82rem; cursor: pointer; font-family: inherit; }
+.em-btn.primary { background: #0F7B72; color: #fff; border-color: #0F7B72; }
+.em-btn.danger { color: #b91c1c; border-color: #fca5a5; }
+.em-btn:disabled { opacity: .5; cursor: not-allowed; }
+.em-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .5rem; align-items: end; }
+.em-form label { font-size: .75rem; color: #6B7B8D; display: block; margin-bottom: .2rem; }
+.em-form input { width: 100%; padding: .45rem .55rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: .86rem; box-sizing: border-box; }
+.em-msg { font-size: .82rem; margin-top: .4rem; min-height: 1.1em; }
+.em-msg.err { color: #b91c1c; } .em-msg.ok { color: #166534; }
+.em-excl { font-size: .8rem; margin-top: .5rem; }
+.em-excl span { display: inline-block; background: #f1f5f9; border-radius: 100px; padding: .05rem .5rem; margin: .1rem .2rem 0 0; }
+.em-excl a { color: #b91c1c; text-decoration: none; margin-left: .25rem; cursor: pointer; }
+table.em-rev { width: 100%; border-collapse: collapse; font-size: .84rem; }
+table.em-rev th { text-align: left; color: #6B7B8D; font-weight: 600; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; padding: .4rem; border-bottom: 1px solid #e5e7eb; }
+table.em-rev td { padding: .4rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+.em-why { color: #6B7B8D; font-size: .76rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="em-wrap">
+  <a class="em-back" href="{{ url_for('pages.settings_profile') }}">← Settings</a>
+  <h1>Email import</h1>
+  <p class="em-sub">Connect your email and SimiSI turns the real people you correspond with into contacts in
+    My Contacts, each field labelled with where it came from. Spam, marketing and automated mail are skipped.</p>
+
+  <ul class="em-rules">
+    <li><strong>Read-only.</strong> SimiSI can't send, delete or change your mail.</li>
+    <li><strong>The minimum.</strong> Message headers, and the signature block of the newest message from each
+      person. Email bodies, attachments and signature text are never stored.</li>
+    <li><strong>Nothing sends.</strong> Imported contacts wait in My Contacts for you; any outreach still needs
+      your approval.</li>
+    <li>Your email data is never used to train models, sold, or shared with data brokers.</li>
+  </ul>
+
+  {% if not state.feature.enabled %}
+  <div class="em-off">
+    Email import isn't available on your account right now.
+    {% if imported_dnc %}<br>{{ imported_dnc }} contact{{ 's' if imported_dnc != 1 }} it imported
+      {{ 'are' if imported_dnc != 1 else 'is' }} marked <b>Do Not Contact</b>, so no campaign or agent will email them.{% endif %}
+    Questions? <a href="mailto:simi@simulacrumai.io">simi@simulacrumai.io</a>
+  </div>
+  {% endif %}
+
+  <h2>Connected accounts <span class="em-meta" id="emCount"></span></h2>
+  <div id="emAccounts"></div>
+
+  {% if state.feature.enabled %}
+  <h2>Connect an account</h2>
+  {% if gmail_error %}<div class="em-msg err">{{ gmail_error }}</div>{% endif %}
+  {% if state.feature.providers.gmail %}
+  <div class="em-card">
+    <div class="em-row">
+      <div><span class="em-addr">Gmail</span> <span class="em-tag">contacts only</span>
+        <div class="em-meta">Imports the people Gmail lists as "Other contacts" and your saved contacts: names,
+          emails and phones. Reading signatures from Gmail needs Google's security review, which is in progress.</div></div>
+      <a class="em-btn primary" href="{{ url_for('mail.gmail_connect') }}">Connect Gmail</a>
+    </div>
+  </div>
+  {% endif %}
+  {% if state.feature.providers.imap %}
+  <div class="em-card">
+    <div><span class="em-addr">Other email (IMAP)</span>
+      <div class="em-meta" style="margin-bottom:.6rem">Yahoo, iCloud, Zoho, Fastmail or your own domain. Use an
+        <b>app password</b> from your provider's security settings, not your normal password. It is stored encrypted
+        and deleted when you disconnect.</div></div>
+    <div class="em-form">
+      <div><label for="imAddr">Email address</label><input id="imAddr" type="email" autocomplete="off" placeholder="you@yourdomain.com"></div>
+      <div><label for="imPass">App password</label><input id="imPass" type="password" autocomplete="new-password"></div>
+      <div><label for="imHost">IMAP server <span id="imHostHint"></span></label><input id="imHost" placeholder="imap.yourdomain.com"></div>
+      <div><label for="imPort">Port</label><input id="imPort" type="number" value="993"></div>
+      <div><button class="em-btn primary" id="imGo" type="button">Connect</button></div>
+    </div>
+    <div class="em-msg" id="imMsg"></div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <h2>Needs your review <span class="em-meta" id="revCount"></span></h2>
+  <p class="em-sub" style="margin-bottom:.5rem">People SimiSI wasn't sure about. Approve to add them to My Contacts;
+    reject and they won't be suggested again.</p>
+  <div id="emReview" class="em-card">Loading…</div>
+</div>
+
+<script>
+(function () {
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  var PRESETS = {{ {'yahoo.com': 'imap.mail.yahoo.com', 'ymail.com': 'imap.mail.yahoo.com', 'icloud.com': 'imap.mail.me.com',
+                    'me.com': 'imap.mail.me.com', 'mac.com': 'imap.mail.me.com', 'zoho.com': 'imap.zoho.com',
+                    'aol.com': 'imap.aol.com', 'fastmail.com': 'imap.fastmail.com', 'gmx.com': 'imap.gmx.com'} | tojson }};
+  var STATUS = { active: 'Syncing', paused: 'Paused by you', admin_paused: 'Paused by an administrator',
+                 reauth: 'Reconnect needed', disconnected: 'Disconnected' };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function api(url, method, body) {
+    return fetch(ROOT + url, { method: method || 'GET', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message || d.error || 'Failed'); return d; }); });
+  }
+
+  function renderAccounts(state) {
+    var box = document.getElementById('emAccounts');
+    document.getElementById('emCount').textContent = '(' + state.accounts.length + ' of ' + state.max_accounts + ')';
+    if (!state.accounts.length) { box.innerHTML = '<div class="em-meta">No accounts connected yet.</div>'; return; }
+    box.innerHTML = state.accounts.map(function (a) {
+      var run = a.last_run, last = a.last_sync_at ? new Date(a.last_sync_at + 'Z').toLocaleString() : 'not yet';
+      var progress = a.initial_sync_done ? 'Up to date; checks for new mail every 15 minutes.' : 'First sync in progress — contacts appear as it runs.';
+      var excl = (a.exclusions || []).map(function (e) {
+        return '<span>' + esc(e.kind) + ': ' + esc(e.value) + '<a data-x="' + esc(e.id) + '" data-acc="' + esc(a.id) + '" title="Remove">×</a></span>';
+      }).join('');
+      return '<div class="em-card" data-acc="' + esc(a.id) + '">' +
+        '<div class="em-row"><div><span class="em-addr">' + esc(a.address) + '</span>' +
+        '<span class="em-tag">' + (a.provider === 'gmail' ? 'Gmail · contacts' : 'IMAP') + '</span>' +
+        '<span class="em-tag ' + esc(a.status) + '">' + esc(STATUS[a.status] || a.status) + '</span>' +
+        '<div class="em-meta">' + a.contacts + ' contacts · last sync ' + esc(last) +
+        (run ? ' · last batch: ' + run.messages_scanned + ' read, ' + run.imported + ' imported, ' + run.queued + ' for review, ' + run.skipped + ' skipped' : '') +
+        '<br>' + esc(a.last_error || progress) + '</div></div>' +
+        '<div style="display:flex;gap:.35rem;flex-wrap:wrap">' +
+        (a.status === 'active' ? '<button class="em-btn" data-act="sync">Sync now</button><button class="em-btn" data-act="pause">Pause</button>' : '') +
+        (a.status === 'paused' ? '<button class="em-btn" data-act="resume">Resume</button>' : '') +
+        '<button class="em-btn danger" data-act="disconnect">Disconnect</button></div></div>' +
+        '<div class="em-excl">Excluded: ' + (excl || '<i>none</i>') +
+        ' <input data-exin="' + esc(a.id) + '" placeholder="Exclude a domain, e.g. family.com" style="padding:.2rem .4rem;border:1px solid #d1d5db;border-radius:5px;font-size:.78rem">' +
+        ' <button class="em-btn" data-act="exclude">Add</button></div>' +
+        '<div class="em-msg" data-msg></div></div>';
+    }).join('');
+  }
+
+  function load() { api('/api/mail/accounts').then(renderAccounts).catch(function () {}); loadReview(); }
+
+  document.getElementById('emAccounts').addEventListener('click', function (ev) {
+    var card = ev.target.closest('[data-acc]'); if (!card) return;
+    var id = card.getAttribute('data-acc'), msg = card.querySelector('[data-msg]');
+    var x = ev.target.getAttribute('data-x');
+    if (x) { api('/api/mail/accounts/' + id + '/exclusions/' + x, 'DELETE').then(renderAccounts); return; }
+    var act = ev.target.getAttribute('data-act'); if (!act) return;
+    var p;
+    if (act === 'sync') { ev.target.disabled = true; ev.target.textContent = 'Syncing…'; p = api('/api/mail/accounts/' + id + '/sync', 'POST'); }
+    else if (act === 'pause' || act === 'resume') p = api('/api/mail/accounts/' + id + '/pause', 'POST', { paused: act === 'pause' });
+    else if (act === 'exclude') {
+      var v = card.querySelector('[data-exin]').value.trim(); if (!v) return;
+      p = api('/api/mail/accounts/' + id + '/exclusions', 'POST', { kind: 'domain', value: v });
+    } else if (act === 'disconnect') {
+      if (!confirm('Disconnect this account? Its access is revoked and deleted now.')) return;
+      var del = confirm('Also delete contacts that came ONLY from this account?\n\nOK = delete them, Cancel = keep them.\n' +
+                        'Contacts you have emailed or that came from another source are always kept.');
+      p = api('/api/mail/accounts/' + id + '/disconnect', 'POST', { delete_contacts: del });
+    }
+    p.then(function (d) { renderAccounts(d); loadReview(); })
+     .catch(function (e) { if (msg) { msg.className = 'em-msg err'; msg.textContent = e.message; } load(); });
+  });
+
+  var addr = document.getElementById('imAddr');
+  if (addr) {
+    addr.addEventListener('input', function () {
+      var d = (addr.value.split('@')[1] || '').toLowerCase(), host = document.getElementById('imHost');
+      document.getElementById('imHostHint').textContent = PRESETS[d] ? '(filled in for you)' : '';
+      if (PRESETS[d] && !host.dataset.touched) host.value = PRESETS[d];
+    });
+    document.getElementById('imHost').addEventListener('input', function () { this.dataset.touched = '1'; });
+    document.getElementById('imGo').addEventListener('click', function () {
+      var btn = this, msg = document.getElementById('imMsg');
+      btn.disabled = true; msg.className = 'em-msg'; msg.textContent = 'Checking the sign-in…';
+      api('/api/mail/accounts/imap', 'POST', { address: addr.value, password: document.getElementById('imPass').value,
+        host: document.getElementById('imHost').value, port: document.getElementById('imPort').value })
+        .then(function (d) { renderAccounts(d); msg.className = 'em-msg ok'; msg.textContent = 'Connected. The first sync starts within a minute.';
+                             document.getElementById('imPass').value = ''; })
+        .catch(function (e) { msg.className = 'em-msg err'; msg.textContent = e.message; })
+        .then(function () { btn.disabled = false; });
+    });
+  }
+
+  function loadReview() {
+    var box = document.getElementById('emReview');
+    api('/api/mail/review').then(function (d) {
+      document.getElementById('revCount').textContent = d.items.length ? '(' + d.items.length + ')' : '';
+      if (!d.items.length) { box.innerHTML = '<div class="em-meta">Nothing to review.</div>'; return; }
+      box.innerHTML = '<div style="display:flex;gap:.4rem;margin-bottom:.5rem">' +
+        '<button class="em-btn" id="revAll" type="button">Select all</button>' +
+        '<button class="em-btn primary" data-dec="approve" type="button">Approve selected</button>' +
+        '<button class="em-btn danger" data-dec="reject" type="button">Reject selected</button></div>' +
+        '<table class="em-rev"><thead><tr><th></th><th>Person</th><th>Company</th><th>Score</th><th>Why</th></tr></thead><tbody>' +
+        d.items.map(function (i) {
+          return '<tr><td><input type="checkbox" value="' + esc(i.id) + '"></td><td><b>' + esc(i.name || '(no name)') +
+            '</b><div class="em-why">' + esc(i.email) + '</div></td><td>' + esc(i.company || '') + '</td><td>' + esc(i.score) +
+            '</td><td class="em-why">' + esc((i.reasons || []).join(' · ')) + '</td></tr>';
+        }).join('') + '</tbody></table><div class="em-msg" id="revMsg"></div>';
+    }).catch(function () { box.textContent = 'Could not load the review queue.'; });
+  }
+
+  document.getElementById('emReview').addEventListener('click', function (ev) {
+    if (ev.target.id === 'revAll') {
+      this.querySelectorAll('input[type=checkbox]').forEach(function (c) { c.checked = true; }); return;
+    }
+    var dec = ev.target.getAttribute('data-dec'); if (!dec) return;
+    var ids = Array.prototype.map.call(this.querySelectorAll('input[type=checkbox]:checked'), function (c) { return c.value; });
+    if (!ids.length) return;
+    api('/api/mail/review/decide', 'POST', { ids: ids, decision: dec }).then(function (r) {
+      loadReview(); load();
+      if (r.exclude_domain_hint) {
+        var h = r.exclude_domain_hint;
+        setTimeout(function () { alert('You have rejected ' + h.rejected + ' people from ' + h.domain +
+          '. To stop seeing that domain, add it to "Excluded" on the account.'); }, 50);
+      }
+    }).catch(function (e) { var m = document.getElementById('revMsg'); if (m) { m.className = 'em-msg err'; m.textContent = e.message; } });
+  });
+
+  renderAccounts({{ state | tojson }});
+  loadReview();
+})();
+</script>
+{% endblock %}

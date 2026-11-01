@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block title %}Email Import — Admin{% endblock %}
+{% block head %}
+<style>
+/* Email-to-CRM switch (PRD-SIM-MAIL-001). Light palette matched to the other admin pages. */
+.ec-page { max-width: 1180px; margin: 0 auto; padding: 1.5rem 1rem 3rem; font-family: 'DM Sans', sans-serif; }
+.ec-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0 0 .35rem; }
+.ec-sub { font-size: .85rem; color: #6b7280; margin: 0 0 1.25rem; max-width: 80ch; }
+.ec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.ec-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.1rem; }
+.ec-card h2 { font-size: .95rem; margin: 0 0 .5rem; color: #0f172a; }
+.ec-note { font-size: .78rem; color: #6b7280; margin: .25rem 0 .6rem; }
+.ec-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: .35rem 0; }
+.ec-row label { font-size: .78rem; color: #374151; min-width: 9rem; }
+.ec-page select, .ec-page input[type=text], .ec-page textarea { border: 1px solid #d1d5db; border-radius: 6px; padding: .4rem .55rem; font-size: .83rem; font-family: inherit; }
+.ec-page textarea { width: 100%; box-sizing: border-box; }
+.ec-btn { padding: .4rem .9rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .82rem; cursor: pointer; font-family: inherit; }
+.ec-btn.primary { background: #0f766e; color: #fff; border-color: #0f766e; }
+.ec-btn.danger { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+.ec-mode { display: inline-block; font-size: .72rem; font-weight: 700; border-radius: 100px; padding: .1rem .55rem; text-transform: uppercase; }
+.ec-mode.on { background: #dcfce7; color: #166534; } .ec-mode.off { background: #fee2e2; color: #991b1b; }
+.ec-mode.allowlist { background: #fef3c7; color: #92400e; }
+.ec-warn { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: .55rem .75rem; font-size: .78rem; color: #9a3412; margin: .5rem 0; }
+.ec-msg { font-size: .8rem; margin-top: .4rem; min-height: 1em; }
+.ec-msg.err { color: #b91c1c; } .ec-msg.ok { color: #166534; }
+table.ec-t { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.ec-t th { text-align: left; font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; padding: .45rem .5rem; border-bottom: 1px solid #e5e7eb; }
+.ec-t td { padding: .45rem .5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ec-page">
+  <nav class="admin-subnav">
+    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
+    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
+    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
+    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link">Experts</a>
+    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
+    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
+    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
+    <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
+    <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link">Calibration</a>
+    <a href="{{ url_for('pages.admin_observability_view') }}" class="subnav-link">Observability</a>
+    <a href="{{ url_for('pages.admin_careers_view') }}" class="subnav-link">Careers</a>
+    <a href="{{ url_for('pages.admin_blog_view') }}" class="subnav-link">Blog</a>
+    <a href="{{ url_for('pages.admin_bio_review_view') }}" class="subnav-link">Bio Review</a>
+    <a href="{{ url_for('mail.admin_page') }}" class="subnav-link active">Email Import</a>
+  </nav>
+
+  <h1 class="ec-title">Email Import (Email-to-CRM)</h1>
+  <p class="ec-sub">Users connect mailboxes and SimiSI imports the real people they correspond with into their CRM.
+    A global <b>off</b> always wins. Turning it off for anyone pauses or revokes their connections and marks every
+    contact it imported <b>Do Not Contact</b> straight away; turning it back on lifts nothing. Every change needs a
+    reason and is logged.</p>
+
+  <div class="ec-grid">
+    <div class="ec-card">
+      <h2>Email-to-CRM for all users <span class="ec-mode {{ state.modes['email_to_crm'] }}" id="gMode">{{ state.modes['email_to_crm'] }}</span></h2>
+      <div class="ec-note">Off: no one can connect or sync. Allowlisted: only users marked Allowed (beta).
+        On: everyone except users marked Blocked.</div>
+      <div class="ec-row"><label for="gSel">New setting</label>
+        <select id="gSel"><option value="off">Off for everyone</option><option value="allowlist">Allowlisted users only</option>
+          <option value="on">On for everyone</option></select></div>
+      <div class="ec-row"><label for="gAct">Connections, if turned off</label>
+        <select id="gAct"><option value="pause">Pause (resume later)</option><option value="revoke">Revoke (delete tokens)</option></select></div>
+      <div class="ec-warn">Restricting it marks the affected users' imported contacts Do Not Contact and cancels their
+        scheduled sends. Users are told in the app and by email.</div>
+      <textarea id="gWhy" rows="2" placeholder="Reason (required)"></textarea>
+      <div class="ec-row"><button class="ec-btn primary" data-switch="email_to_crm">Apply</button></div>
+      <div class="ec-msg" data-msg="email_to_crm"></div>
+      <div class="ec-note">Accounts — active {{ state.accounts.active }} · paused by users {{ state.accounts.paused }} ·
+        paused by admin {{ state.accounts.admin_paused }} · need reconnect {{ state.accounts.reauth }}</div>
+    </div>
+
+    <div class="ec-card">
+      <h2>Providers and enrichment</h2>
+      <div class="ec-note">Stop one provider (for example if Google verification lapses) without turning off the
+        whole feature.</div>
+      {% for key, label in [('email_to_crm.imap', 'IMAP (other providers)'), ('email_to_crm.gmail', 'Gmail (contacts only)'),
+                            ('email_to_crm.m365', 'Microsoft 365 — not built yet'), ('email_to_crm.enrichment', 'Enrichment (Apollo) — off until legal sign-off')] %}
+      <div class="ec-row"><label>{{ label }}</label> <span class="ec-mode {{ state.modes[key] }}">{{ state.modes[key] }}</span>
+        {% if key not in ('email_to_crm.m365', 'email_to_crm.enrichment') %}
+        <select data-psel="{{ key }}"><option value="on">On</option><option value="off">Off</option></select>
+        <button class="ec-btn" data-switch="{{ key }}">Apply</button>{% endif %}</div>
+      <div class="ec-msg" data-msg="{{ key }}"></div>
+      {% endfor %}
+      <textarea id="pWhy" rows="2" placeholder="Reason (required for provider changes)"></textarea>
+    </div>
+
+    <div class="ec-card">
+      <h2>Per-user setting</h2>
+      <div class="ec-note">Allowed users get it while the global setting is Allowlisted or On. Blocked users never do.</div>
+      <textarea id="uEmails" rows="2" placeholder="User emails, comma or line separated"></textarea>
+      <div class="ec-row"><label for="uState">Setting</label>
+        <select id="uState"><option value="allowed">Allowed</option><option value="blocked">Blocked</option>
+          <option value="follow_global">Follow global</option></select>
+        <select id="uAct"><option value="pause">Pause on block</option><option value="revoke">Revoke on block</option></select></div>
+      <textarea id="uWhy" rows="2" placeholder="Reason (required)"></textarea>
+      <div class="ec-row"><button class="ec-btn primary" id="uGo">Apply to users</button></div>
+      <div class="ec-msg" id="uMsg"></div>
+      <table class="ec-t" id="uTable"></table>
+    </div>
+  </div>
+
+  <div class="ec-card" style="margin-bottom:1rem">
+    <h2>Settings</h2>
+    <div class="ec-note">Proposed defaults from the PRD; saved per field.</div>
+    <div class="ec-grid" style="margin:0">
+      {% for key, val in settings.items() %}
+      <div class="ec-row"><label for="s_{{ key }}" style="min-width:14rem">{{ key[5:].replace('_', ' ') }}</label>
+        {% if val is string and val | length > 40 %}
+        <textarea id="s_{{ key }}" rows="2" data-setting="{{ key }}">{{ val }}</textarea>
+        {% else %}<input type="text" id="s_{{ key }}" data-setting="{{ key }}" value="{{ val }}" style="width:8rem">{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="ec-row"><button class="ec-btn" id="sSave">Save settings</button> <span class="ec-msg" id="sMsg"></span></div>
+  </div>
+
+  <div class="ec-card">
+    <h2>Change log</h2>
+    <div class="ec-note">Do Not Contact flags a change set stay until you lift them here. Lifting never clears an
+      unsubscribe, bounce, complaint or the user's own choice.</div>
+    <table class="ec-t" id="cTable"></table>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function api(url, method, body) {
+    return fetch(ROOT + url, { method: method || 'GET', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message || d.error || 'Failed'); return d; }); });
+  }
+  function render(st) {
+    document.getElementById('gSel').value = st.modes['email_to_crm'];
+    var g = document.getElementById('gMode'); g.textContent = st.modes['email_to_crm']; g.className = 'ec-mode ' + st.modes['email_to_crm'];
+    document.querySelectorAll('[data-psel]').forEach(function (s) { s.value = st.modes[s.getAttribute('data-psel')]; });
+    document.getElementById('uTable').innerHTML = st.overrides.length ? '<tr><th>User</th><th>Setting</th><th>Reason</th></tr>' +
+      st.overrides.map(function (o) { return '<tr><td>' + esc(o.name) + '<br><span style="color:#6b7280">' + esc(o.email) +
+        '</span></td><td>' + esc(o.state) + '</td><td>' + esc(o.reason) + '</td></tr>'; }).join('') : '';
+    document.getElementById('cTable').innerHTML = '<tr><th>When</th><th>What</th><th>Reason</th><th>Accounts</th><th>Contacts marked DNC</th><th></th></tr>' +
+      st.changes.map(function (c) {
+        var lift = c.contacts_marked && !c.flags_lifted_at
+          ? '<button class="ec-btn" data-lift="' + esc(c.id) + '">Lift its DNC flags</button>'
+          : (c.flags_lifted_at ? 'lifted ' + esc(c.flags_lifted_at.slice(0, 10)) : '');
+        return '<tr><td>' + esc(c.changed_at.replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(c.feature_key) + ' · ' +
+          esc(c.scope) + (c.scope_ref ? ' (' + esc(c.scope_ref.slice(0, 40)) + ')' : '') + ': ' + esc(c.old_value || '—') + ' → ' +
+          esc(c.new_value) + '</td><td>' + esc(c.reason) + '</td><td>' + c.accounts_affected + '</td><td>' + c.contacts_marked +
+          '</td><td>' + lift + '</td></tr>';
+      }).join('');
+  }
+  document.querySelector('.ec-page').addEventListener('click', function (ev) {
+    var key = ev.target.getAttribute('data-switch'), lift = ev.target.getAttribute('data-lift');
+    if (key) {
+      var global = key === 'email_to_crm', msg = document.querySelector('[data-msg="' + key + '"]');
+      var mode = global ? document.getElementById('gSel').value : document.querySelector('[data-psel="' + key + '"]').value;
+      var reason = document.getElementById(global ? 'gWhy' : 'pWhy').value;
+      if (mode !== 'on' && !confirm('Apply "' + mode + '" to ' + key + '? Affected users\' imported contacts become Do Not Contact.')) return;
+      api('/api/admin/email-crm/switch', 'POST', { feature_key: key, mode: mode, reason: reason,
+          connection_action: document.getElementById('gAct').value })
+        .then(function (d) { render(d); msg.className = 'ec-msg ok';
+          msg.textContent = 'Saved. ' + d.change.accounts_affected + ' account(s) affected, ' + d.change.contacts_marked + ' contact(s) marked Do Not Contact.'; })
+        .catch(function (e) { msg.className = 'ec-msg err'; msg.textContent = e.message; });
+    }
+    if (lift) {
+      var why = prompt('Reason for lifting these Do Not Contact flags?'); if (!why) return;
+      api('/api/admin/email-crm/changes/' + lift + '/lift', 'POST', { reason: why })
+        .then(function (d) { render(d); alert(d.contacts_cleared + ' contact(s) cleared. Others stay Do Not Contact for another reason.'); })
+        .catch(function (e) { alert(e.message); });
+    }
+  });
+  document.getElementById('uGo').addEventListener('click', function () {
+    var msg = document.getElementById('uMsg');
+    var emails = document.getElementById('uEmails').value.split(/[\s,;]+/).filter(Boolean);
+    api('/api/admin/email-crm/users', 'POST', { emails: emails, state: document.getElementById('uState').value,
+        reason: document.getElementById('uWhy').value, connection_action: document.getElementById('uAct').value })
+      .then(function (d) { render(d); msg.className = 'ec-msg ok'; msg.textContent = 'Saved. ' + d.change.contacts_marked + ' contact(s) marked Do Not Contact.'; })
+      .catch(function (e) { msg.className = 'ec-msg err'; msg.textContent = e.message; });
+  });
+  document.getElementById('sSave').addEventListener('click', function () {
+    var msg = document.getElementById('sMsg'), els = document.querySelectorAll('[data-setting]'), n = 0;
+    Promise.all(Array.prototype.map.call(els, function (el) {
+      return fetch(ROOT + '/api/admin/settings/' + el.getAttribute('data-setting'), { method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: el.value.trim() }) }).then(function (r) { if (r.ok) n++; });
+    })).then(function () { msg.className = 'ec-msg ok'; msg.textContent = 'Saved ' + n + ' setting(s).'; });
+  });
+  render({{ state | tojson }});
+})();
+</script>
+{% endblock %}

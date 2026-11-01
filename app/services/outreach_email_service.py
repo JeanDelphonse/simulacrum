@@ -38,6 +38,11 @@ def send_outreach_email(
     if not contact or not contact.email:
         return {'status': 'skipped', 'reason': 'no_email'}
 
+    # Final gate: Do Not Contact is checked at send time, whatever queued the
+    # send (PRD-SIM-MAIL-001 — the Email-to-CRM switch marks contacts DNC).
+    if contact.do_not_contact:
+        return {'status': 'skipped', 'reason': 'do_not_contact'}
+
     # Never email a template row an agent saved as a contact
     # ("[First Name 1] [Last Name 1]"), even one already scheduled.
     from app.services.contact_lookup import is_placeholder_contact
