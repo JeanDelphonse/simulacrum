@@ -91,22 +91,8 @@ table.jc-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 
 {% block content %}
 <div class="jc-page">
-  <nav class="admin-subnav">
-    <a href="{{ url_for('pages.admin_view') }}" class="subnav-link">Overview</a>
-    <a href="{{ url_for('pages.admin_analytics_view') }}" class="subnav-link">Analytics</a>
-    <a href="{{ url_for('pages.admin_outreach_view') }}" class="subnav-link">Outreach</a>
-    <a href="{{ url_for('pages.admin_experts_view') }}" class="subnav-link">Experts</a>
-    <a href="{{ url_for('pages.admin_partners_view') }}" class="subnav-link">Partners</a>
-    <a href="{{ url_for('pages.admin_feedback_view') }}" class="subnav-link">Feedback</a>
-    <a href="{{ url_for('pages.admin_corporate_view') }}" class="subnav-link">Corporate</a>
-    <a href="{{ url_for('pages.admin_contacts_view') }}" class="subnav-link">Contacts</a>
-    <a href="{{ url_for('pages.admin_calibration_view') }}" class="subnav-link">Calibration</a>
-    <a href="{{ url_for('pages.admin_observability_view') }}" class="subnav-link">Observability</a>
-    <a href="{{ url_for('pages.admin_careers_view') }}" class="subnav-link active">Careers</a>
-    <a href="{{ url_for('pages.admin_blog_view') }}" class="subnav-link">Blog</a>
-    <a href="{{ url_for('pages.admin_bio_review_view') }}" class="subnav-link">Bio Review</a>
-    <a href="{{ url_for('mail.admin_page') }}" class="subnav-link">Email Import</a>
-  </nav>
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('careers') }}
 
   <h1 class="jc-title">Job Applications</h1>
   <p class="jc-sub">
