@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+{# Transition Package page for employers. Copy is verbatim from the approved mockup
+   (docs/simisi_transition_package_page.html, following PRD-SIM-TRANS-001). Both
+   launch modes live here; transition_package_mode (Admin) picks one:
+     design_partner — "Now enrolling design partners" badge, "Become a design
+                      partner" CTAs, the design-partner perks and form heading.
+     general        — "Request a quote" CTAs; no design-partner perks.
+   Prices: "Per-seat quote" only. Any future seat price must come from Admin. #}
+{% set dp = (mode == 'design_partner') %}
+{% set cta_label = 'Become a design partner' if dp else 'Request a quote' %}
+{% block full_title %}Transition Package for Employers | SimiSI{% endblock %}
+{% block head %}
+<meta name="description" content="Give every departing employee a 24-month plan, a professional bio page, 49 AI agents that act with their approval, and optional human coaching. Digital-first transition support for HR.">
+<link rel="canonical" href="https://simisi.io/transition-package">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/marketing.css') }}">
+{% endblock %}
+{% block content %}
+<div class="tp">
+
+<nav class="tp-subnav" aria-label="On this page"><div class="wrap row">
+  <div class="links">
+    <a href="#included">What's included</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a href="#tiers">Packages</a><a href="#faq">FAQ</a>
+  </div>
+  <a class="btn gold" href="#inquiry">{{ cta_label }}</a>
+</div></nav>
+
+<!-- HERO -->
+<header class="dark"><div class="wrap hero"><div class="grid">
+  <div>
+    <span class="badge"><i></i> For employers{% if dp %} · Now enrolling design partners{% endif %}</span>
+    <h1>When roles end, give every person <em>a plan and the help to act on it.</em></h1>
+    <p class="lead">The SimiSI Transition Package gives each departing employee a 24-month career simulation, a professional bio page, 49 AI agents working on their next move, and optional sessions with a human coach. You see the program work, in aggregate. Their plan stays theirs.</p>
+    <div class="ctas">
+      <a class="btn gold" href="#inquiry">{{ cta_label }}</a>
+      <a class="btn ghost" href="#included">See what's included</a>
+    </div>
+    <div class="micro">Digital-first · Priced per seat, well below traditional outplacement · Works for 5 people or 500</div>
+  </div>
+  <div class="kit">
+    <h3>Every seat includes</h3>
+    <ul>
+      <li><span class="n">1</span><div>A 24-month simulation<small>Five ways to earn, from a new role to consulting and beyond</small></div></li>
+      <li><span class="n">2</span><div>A bio page, open to work<small>Live in the first week, theirs to keep</small></div></li>
+      <li><span class="n">3</span><div>49 agents that do the work<small>Rate card, outreach drafts, launch kit, sent only on their approval</small></div></li>
+      <li><span class="n">4</span><div>Human coaching (Plus, Executive)<small>Coaches who start from the simulation, not a blank page</small></div></li>
+    </ul>
+  </div>
+</div></div></header>
+
+<!-- WHY -->
+<section class="tint"><div class="wrap">
+  <div class="eyebrow">Why it matters</div>
+  <h2 class="big">How you handle a layoff is remembered.</h2>
+  <p class="lead">By the people leaving, the people staying, and the people you'll want to hire next. Transition support is part of a fair severance package. It shouldn't cost more than the severance itself, or stop at the next job search.</p>
+  <div class="strip">
+    <div class="stat"><div class="k">60 days</div><p>WARN Act notice for larger layoffs. Support should start on notice day, not weeks later.</p><div class="src">Source: <a href="https://www.dol.gov/node/21784" target="_blank" rel="noopener">U.S. Department of Labor</a></div></div>
+    <div class="stat"><div class="k">Day one</div><p>Employees get their simulation and bio page right away, without waiting for a coach's calendar.</p></div>
+    <div class="stat"><div class="k">Aggregate only</div><p>You see activation and outcomes for the group. Individual plans, contacts and coaching notes stay private.</p></div>
+  </div>
+</div></section>
+
+<!-- INCLUDED -->
+<section id="included"><div class="wrap">
+  <div class="eyebrow">What employees get</div>
+  <h2 class="big">More than a job search. A plan for what comes next.</h2>
+  <p class="lead">Traditional outplacement focuses on the next job. SimiSI shows each person five ways to earn over the next 24 months, then puts AI agents to work on the path they choose.</p>
+  <div class="cards">
+    <div class="card"><div class="ic">📈</div><h3>24-month career simulation</h3><p>Models a new role, consulting, products and recurring income side by side, with calibrated ranges, so people choose with foresight.</p><span class="tag">All packages</span></div>
+    <div class="card"><div class="ic">🪪</div><h3>Professional bio page</h3><p>An AI-built page from their résumé, marked open to work, with a 24/7 AI assistant that answers recruiters and prospects.</p><span class="tag">All packages · theirs to keep</span></div>
+    <div class="card"><div class="ic">⚡</div><h3>49 agents that act</h3><p>Rate cards, outreach drafts, a consulting launch kit and content, prepared to send from their own accounts. Nothing goes out without their approval.</p><span class="tag">All packages</span></div>
+    <div class="card"><div class="ic">🤝</div><h3>Human coaching</h3><p>One-to-one sessions with vetted transition coaches, plus live group workshops. Executive adds senior coaches.</p><span class="tag">Plus · Executive</span></div>
+  </div>
+</div></section>
+
+<!-- FIVE LAYERS -->
+<section class="dark"><div class="wrap">
+  <div class="eyebrow">Beyond the next job</div>
+  <h2 class="big">Five ways a career can earn.</h2>
+  <p class="lead">Each employee's simulation maps all five layers, so a layoff can become a new role, a consulting practice or something they own.</p>
+  <div class="layers">
+    <div class="ly" style="background:rgba(11,74,70,.25)"><b>L1</b><span>Active income</span><small>A new role, contracting or consulting at a market rate</small></div>
+    <div class="ly" style="background:rgba(15,123,114,.18)"><b>L2</b><span>Leveraged</span><small>Retainers and productized services</small></div>
+    <div class="ly" style="background:rgba(19,148,136,.16)"><b>L3</b><span>Productized</span><small>Courses, templates and digital products</small></div>
+    <div class="ly" style="background:rgba(19,168,158,.14)"><b>L4</b><span>Automated residual</span><small>Newsletters, memberships, content engines</small></div>
+    <div class="ly" style="background:rgba(201,149,42,.16)"><b>L5</b><span>Wealth deployment</span><small>Planning guidance only; never moves money</small></div>
+  </div>
+</div></section>
+
+<!-- HOW -->
+<section class="tint" id="how"><div class="wrap">
+  <div class="eyebrow">How it works</div>
+  <h2 class="big">Live in a day. Useful from day one.</h2>
+  <div class="steps">
+    <div class="step"><span class="who hr">HR</span><h3>Buy seats</h3><p>Choose a package for a cohort, or set up a seat pool for the year.</p></div>
+    <div class="step"><span class="who hr">HR</span><h3>Upload the roster</h3><p>Names and personal emails. Invites go out on the date you choose.</p></div>
+    <div class="step"><span class="who emp">Employee</span><h3>Activate and simulate</h3><p>They see exactly what you will and won't see, then run their simulation.</p></div>
+    <div class="step"><span class="who emp">Employee</span><h3>Act, with help</h3><p>Bio page live, agents drafting outreach, coaching if included.</p></div>
+    <div class="step"><span class="who hr">HR</span><h3>See the results</h3><p>Activation, engagement and opted-in outcomes, for the group only.</p></div>
+  </div>
+</div></section>
+
+<!-- HR CONSOLE -->
+<section><div class="wrap console">
+  <div>
+    <div class="eyebrow">For HR</div>
+    <h2 class="big">One console. No spreadsheets.</h2>
+    <ul class="feat-list">
+      <li><span class="ck">✓</span><div><b>Seats and invites</b><p>Assign, reassign and track every seat. Automatic reminders. Activated seats keep their full access.</p></div></li>
+      <li><span class="ck">✓</span><div><b>Proof the program works</b><p>Activation, simulations run, bio pages live, coaching used and reported outcomes.</p></div></li>
+      <li><span class="ck">✓</span><div><b>Built-in privacy</b><p>No breakdowns for groups under five people, so no one can be singled out.</p></div></li>
+      <li><span class="ck">✓</span><div><b>Simple billing</b><p>Invoices by card or net-30. Several HR admins with owner, manager and viewer roles.</p></div></li>
+    </ul>
+  </div>
+  <div class="dash" aria-label="Example HR report">
+    <div class="hd"><b>Cohort report · Example</b><span>Illustrative data</span></div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">82%</div><div class="l">Seats activated</div></div>
+      <div class="kpi"><div class="v">91%</div><div class="l">Ran a simulation</div></div>
+      <div class="kpi"><div class="v">74%</div><div class="l">Bio page live</div></div>
+    </div>
+    <div class="bars">
+      <div class="hbar"><span>New role</span><div class="t"><i style="width:46%"></i></div><span>46%</span></div>
+      <div class="hbar"><span>Consulting income</span><div class="t"><i style="width:21%"></i></div><span>21%</span></div>
+      <div class="hbar"><span>Started a venture</span><div class="t"><i style="width:7%"></i></div><span>7%</span></div>
+      <div class="hbar"><span>Still searching</span><div class="t"><i style="width:26%"></i></div><span>26%</span></div>
+    </div>
+    <div class="foot">Outcomes shown only from employees who chose to share them, and only for groups of 5 or more.</div>
+  </div>
+</div></section>
+
+<!-- PRIVACY -->
+<section class="dark" id="privacy"><div class="wrap">
+  <div class="eyebrow">Privacy by design</div>
+  <h2 class="big">You see whether it works. Only they see their plan.</h2>
+  <p class="lead">The employee owns their SimiSI account, before, during and after the package. That makes it easier to trust, and easier to use.</p>
+  <div class="privacy">
+    <div class="pv hr"><h3>What HR sees</h3><ul>
+      <li>Seat status: invited, activated, expired</li>
+      <li>Group activation and engagement</li>
+      <li>Outcomes employees choose to share, in aggregate</li>
+      <li>Coaching sessions used, as a total</li>
+    </ul></div>
+    <div class="pv emp"><h3>What stays private</h3><ul>
+      <li>Simulation results and income paths</li>
+      <li>Contacts, outreach and bio-page drafts</li>
+      <li>Coaching notes</li>
+      <li>Anything about a single person</li>
+    </ul></div>
+  </div>
+  <p class="lead" style="margin-top:22px;font-size:.95rem;">Your confidential information is protected too: employees can't connect mailboxes on your company's email domains, and are reminded not to share confidential details before anything goes live.</p>
+</div></section>
+
+<!-- TIERS -->
+<section class="tint" id="tiers"><div class="wrap">
+  <div class="eyebrow">Packages</div>
+  <h2 class="big">Three packages. Priced per seat.</h2>
+  <p class="lead">Mix packages within one cohort, for example Executive for leaders and Plus for everyone else. Volume pricing and annual seat pools are available.</p>
+  <div class="tablewrap"><table class="tiers">
+    <tr><th></th><th>Essentials</th><th class="feat">Plus</th><th>Executive</th></tr>
+    <tr><td>24-month simulation, all five layers</td><td class="y">✓</td><td class="y feat">✓</td><td class="y">✓</td></tr>
+    <tr><td>Simulation re-runs</td><td>1</td><td class="feat">Quarterly</td><td>Monthly</td></tr>
+    <tr><td>Bio page, open to work</td><td class="y">✓</td><td class="y feat">✓</td><td class="y">✓</td></tr>
+    <tr><td>49 agents, with action credits</td><td>Starter</td><td class="feat">Larger</td><td>Largest</td></tr>
+    <tr><td>Contact import from email</td><td class="y">✓</td><td class="y feat">✓</td><td class="y">✓</td></tr>
+    <tr><td>Live group workshops</td><td class="no">—</td><td class="y feat">✓</td><td class="y">✓</td></tr>
+    <tr><td>One-to-one coaching</td><td class="no">—</td><td class="feat">3 sessions</td><td>8 sessions, senior coach</td></tr>
+    <tr><td>Access period</td><td>3 months</td><td class="feat">6 months</td><td>12 months</td></tr>
+    <tr><td>Aggregate HR report</td><td class="y">✓</td><td class="y feat">✓</td><td class="y">✓</td></tr>
+    <tr class="quote"><td>Price</td><td>Per-seat quote</td><td class="feat">Per-seat quote</td><td>Per-seat quote</td></tr>
+  </table></div>
+  <p class="fine">Package contents shown are planned defaults and may change before general availability. After access ends, employees keep their bio page on SimiSI's free plan.</p>
+</div></section>
+
+<!-- COMPARE -->
+<section><div class="wrap">
+  <div class="eyebrow">Why SimiSI</div>
+  <h2 class="big">A different kind of transition support.</h2>
+  <div class="compare">
+    <div class="cmp old"><h3>Traditional outplacement</h3><ul>
+      <li>Focused on landing the next job</li>
+      <li>Value starts when a coach is available</li>
+      <li>Résumé and LinkedIn help, then the person does the work</li>
+      <li>Priced like a full-service engagement</li>
+    </ul></div>
+    <div class="cmp new"><h3>SimiSI Transition Package</h3><ul>
+      <li>Five income paths, including consulting and ventures</li>
+      <li>Simulation and bio page from day one</li>
+      <li>Agents prepare the outreach and launch work, sent on approval</li>
+      <li>Digital-first, with coaching where it adds the most</li>
+    </ul></div>
+  </div>
+</div></section>
+
+<!-- FAQ -->
+<section class="tint" id="faq"><div class="wrap">
+  <div class="eyebrow" style="text-align:center;">FAQ</div>
+  <h2 class="big" style="text-align:center;">Questions HR teams ask.</h2>
+  <div class="faq">
+    <details open><summary>Can we see how individual employees are doing?</summary><p>No. You see seat status for each person (invited, activated, expired), and everything else only in aggregate, for groups of five or more. Simulations, contacts, outreach and coaching notes are private to the employee.</p></details>
+    <details><summary>How fast can employees start?</summary><p>As soon as you upload the roster. Invites go to personal email addresses on the date you choose, and employees can run their simulation and publish their bio page the same day.</p></details>
+    <details><summary>Do the agents send anything without the employee's approval?</summary><p>No. Agents prepare drafts and plans. Anything sent, published or booked goes out from the employee's own account, only after they approve it.</p></details>
+    <details><summary>What happens when the access period ends?</summary><p>The employee keeps their account and bio page on SimiSI's free plan, and can choose to buy simulations themselves. Unused seats can be reassigned while your contract is active.</p></details>
+    <details><summary>Is the package taxable to employees?</summary><p>Employer-paid outplacement is often treated as a non-taxable benefit when it is provided based on need and isn't offered in place of cash severance. Confirm the treatment with your tax adviser.</p></details>
+    <details><summary>Does SimiSI give financial advice?</summary><p>No. The simulation includes planning guidance about wealth, but no part of the package is financial, legal or tax advice, and SimiSI never moves anyone's money.</p></details>
+    <details><summary>How is it priced?</summary><p>Per seat, by package, with volume pricing and annual seat pools. Request a quote and we'll respond within one business day.</p></details>
+  </div>
+</div></section>
+
+<!-- INQUIRY FORM -->
+<section class="dark" id="inquiry"><div class="wrap formgrid">
+  <div>
+    {% if dp %}
+    <div class="eyebrow">Design partners</div>
+    <h2 class="big">Help shape the Transition Package.</h2>
+    <p class="lead">We're working with a small number of employers on the first cohorts.</p>
+    <ul class="perks">
+      <li>Seats set up for you by the SimiSI team</li>
+      <li>Coaching from a small, vetted group</li>
+      <li>Design-partner pricing</li>
+      <li>A direct line to the product team</li>
+    </ul>
+    {% else %}
+    <div class="eyebrow">Get a quote</div>
+    <h2 class="big">Request a quote.</h2>
+    <p class="lead">Tell us about your team and timing. We'll respond within one business day.</p>
+    {% endif %}
+    <p class="contact-line">Prefer email? <a href="mailto:simi@simulacrumai.io">simi@simulacrumai.io</a></p>
+  </div>
+  {% set fv = form_values or {} %}
+  <form class="partner" id="partnerForm" action="{{ url_for('marketing.enterprise_inquiry') }}#inquiry" method="post" novalidate>
+    {% if thanks %}
+    <div class="thanks on" id="thanks" role="status">Thank you. We'll be in touch within one business day.</div>
+    {% else %}
+    <label>Full name<input name="name" required autocomplete="name" maxlength="160" value="{{ fv.get('name', '') }}"/></label>
+    <label>Work email<input name="email" type="email" required autocomplete="email" maxlength="255" value="{{ fv.get('email', '') }}"/></label>
+    <label>Company<input name="company" required autocomplete="organization" maxlength="200" value="{{ fv.get('company', '') }}"/></label>
+    <label>Your role<input name="role" placeholder="e.g. HR Director" maxlength="160" value="{{ fv.get('role', '') }}"/></label>
+    <label>People affected (approx.)<select name="headcount">{% for b in headcount_bands %}<option{% if fv.get('headcount') == b %} selected{% endif %}>{{ b }}</option>{% endfor %}</select></label>
+    <label>Timing<select name="timing">{% for t in timings %}<option{% if fv.get('timing') == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+    <label class="full">Anything we should know?<textarea name="notes" rows="3" maxlength="4000">{{ fv.get('notes', '') }}</textarea></label>
+    <input type="hidden" name="source" value="transition-package"/>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+    {# Honeypot: hidden from people and assistive tech; bots fill it. #}
+    <div class="hp" aria-hidden="true"><label>Website<input name="{{ honeypot }}" tabindex="-1" autocomplete="off"/></label></div>
+    <div class="form-error" id="formError" role="alert">{{ form_error or '' }}</div>
+    <button class="btn gold" type="submit">{{ 'Request a conversation' if dp else 'Request a quote' }}</button>
+    <div class="thanks" id="thanks" role="status">Thank you. We'll be in touch within one business day.</div>
+    {% endif %}
+  </form>
+</div></section>
+
+</div>
+{% endblock %}
+{% block footer %}{% include 'partials/_footer_public.html' %}{% endblock %}
+{% block scripts %}
+<script>
+/* Progressive enhancement: post the inquiry without leaving the page. Without
+   JavaScript the form posts normally and the page re-renders with the result. */
+(function () {
+  var form = document.getElementById('partnerForm');
+  if (!form || !form.querySelector('button')) return;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var btn = form.querySelector('button'), err = document.getElementById('formError');
+    btn.disabled = true; err.textContent = '';
+    fetch(form.getAttribute('action').split('#')[0], { method: 'POST', credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }, body: new FormData(form) })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (!x.ok) { err.textContent = x.d.message || 'Something went wrong. Please try again.'; btn.disabled = false; return; }
+        Array.prototype.forEach.call(form.children, function (el) { if (el.id !== 'thanks') el.style.display = 'none'; });
+        document.getElementById('thanks').classList.add('on');
+      })
+      .catch(function () { err.textContent = 'Something went wrong. Please try again.'; btn.disabled = false; });
+  });
+})();
+</script>
+{% endblock %}

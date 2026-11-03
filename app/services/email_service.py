@@ -1077,3 +1077,24 @@ def send_transition_invite_email(personal_email: str, name: str, employer: str, 
         _send(subject=subject, recipients=[personal_email], body=plain, html=html)
     except Exception as e:
         logger.error('Failed to send transition invite to %s: %s', personal_email, e, exc_info=True)
+
+
+def send_enterprise_inquiry_email(notify_email: str, inquiry):
+    """A new enterprise inquiry, to the admin-set notification address only.
+
+    The submitter's details go to this one address and nowhere else.
+    """
+    import html as _html
+    rows = [('Name', inquiry.name), ('Work email', inquiry.work_email), ('Company', inquiry.company),
+            ('Role', inquiry.role or '—'), ('People affected', inquiry.headcount_band or '—'),
+            ('Timing', inquiry.timing or '—'), ('Source', inquiry.source), ('Page mode', inquiry.mode or '—')]
+    plain = 'New enterprise inquiry\n\n' + '\n'.join('%s: %s' % r for r in rows) + \
+            '\n\nNotes:\n%s\n\nWork it at /admin/inquiries' % (inquiry.notes or '—')
+    html = _html_wrap(
+        _h1('New enterprise inquiry: %s' % _html.escape(inquiry.company)) +
+        ''.join(_p('<b>%s:</b> %s' % (k, _html.escape(str(v)))) for k, v in rows) +
+        _p('<b>Notes:</b><br>%s' % _html.escape(inquiry.notes or '—').replace('\n', '<br>')) +
+        _p('Work it in the admin console under Growth → Inquiries.', muted=True),
+        preheader='%s at %s' % (inquiry.name, inquiry.company),
+    )
+    _send(subject='New enterprise inquiry: %s' % inquiry.company, recipients=[notify_email], body=plain, html=html)

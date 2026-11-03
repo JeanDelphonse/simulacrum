@@ -184,6 +184,9 @@ def create_app(config_name=None):
 
     from app.blueprints.transition import transition_bp
     app.register_blueprint(transition_bp)
+
+    from app.blueprints.marketing import marketing_bp
+    app.register_blueprint(marketing_bp)
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 

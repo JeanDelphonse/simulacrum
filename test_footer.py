@@ -155,6 +155,7 @@ def main():
         'blog/index.html',
         'blog/post.html',
         'corporate/invite.html',
+        'marketing/transition_package.html',
         'simulations/share_roi.html',
         'simulations/layer6_share.html',
         'landing.html',

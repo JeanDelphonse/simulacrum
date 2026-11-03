@@ -14,8 +14,10 @@ class UserEvent(db.Model):
     SIMULATION_LAUNCHED = 'simulation_launched'
     FIRST_INCOME        = 'first_income'
 
-    id         = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    user_id    = db.Column(db.String(9),  nullable=False, index=True)
+    id         = db.Column(db.BigInteger().with_variant(db.Integer, 'sqlite'), primary_key=True, autoincrement=True)
+    # Nullable since sql/062: anonymous marketing events (e.g. an enterprise
+    # inquiry) carry no user and no personal data.
+    user_id    = db.Column(db.String(9),  nullable=True, index=True)
     event_type = db.Column(db.String(30), nullable=False, index=True)
     event_data = db.Column(db.JSON,       nullable=True)
     ip_address = db.Column(db.String(45), nullable=True)

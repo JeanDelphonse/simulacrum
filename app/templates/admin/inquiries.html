@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Inquiries — Admin{% endblock %}
+{% block head %}
+<style>
+/* Enterprise inquiries from the public marketing pages. Light admin palette. */
+.iq { max-width: 1240px; margin: 0 auto; padding: 1.5rem 1rem 3rem; font-family: 'DM Sans', sans-serif; color: #0f172a; }
+.iq h1 { font-size: 1.4rem; margin: 0 0 .35rem; }
+.iq-sub { font-size: .85rem; color: #6b7280; margin: 0 0 1rem; max-width: 85ch; }
+.iq-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.iq-filters a { display: inline-block; padding: .3rem .75rem; border-radius: 999px; font-size: .8rem; color: #475569; text-decoration: none; margin-right: .3rem; }
+.iq-filters a.on { background: rgba(15,118,110,.1); color: #0f766e; font-weight: 600; }
+table.iq-t { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.iq-t th { text-align: left; font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; padding: .5rem; border-bottom: 1px solid #e5e7eb; }
+.iq-t td { padding: .55rem .5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+.iq-note { color: #6b7280; font-size: .76rem; white-space: pre-wrap; max-width: 34ch; }
+.iq select, .iq input { border: 1px solid #d1d5db; border-radius: 6px; padding: .35rem .5rem; font-size: .82rem; font-family: inherit; }
+.iq-btn { padding: .35rem .7rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .78rem; cursor: pointer; }
+.iq-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: .35rem 0; }
+.iq-row label { min-width: 15rem; font-size: .8rem; color: #374151; }
+.iq-msg { font-size: .8rem; color: #166534; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="iq">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('inquiries') }}
+  <h1>Enterprise inquiries</h1>
+  <p class="iq-sub">Submitted from <a href="{{ url_for('marketing.transition_package') }}" target="_blank">/transition-package</a>.
+    Each new inquiry is emailed to the notification address below — and nowhere else. "Add to prospects" puts it in the
+    outbound CRM (Contacts → prospects) with category <b>transition</b>.</p>
+
+  <div class="iq-filters">
+    <a href="{{ url_for('marketing.admin_inquiries') }}" class="{{ 'on' if not status }}">All</a>
+    {% for s in ['new', 'contacted', 'closed'] %}
+    <a href="{{ url_for('marketing.admin_inquiries', status=s) }}" class="{{ 'on' if status == s }}">{{ s|capitalize }} ({{ counts[s] }})</a>
+    {% endfor %}
+  </div>
+
+  <div class="iq-card">
+    <table class="iq-t">
+      <tr><th>Received</th><th>Person</th><th>Company</th><th>People · timing</th><th>Notes</th><th>Mode</th><th>Status</th><th></th></tr>
+      {% for i in inquiries %}
+      <tr data-id="{{ i.id }}">
+        <td>{{ i.created_at[:16].replace('T', ' ') }}</td>
+        <td><b>{{ i.name }}</b><br><a href="mailto:{{ i.work_email }}">{{ i.work_email }}</a>{% if i.role %}<br><span class="iq-note">{{ i.role }}</span>{% endif %}</td>
+        <td>{{ i.company }}</td>
+        <td>{{ i.headcount_band or '—' }}<br><span class="iq-note">{{ i.timing or '' }}</span></td>
+        <td><div class="iq-note">{{ i.notes or '' }}</div></td>
+        <td>{{ (i.mode or '').replace('_', ' ') }}</td>
+        <td><select data-status>{% for s in ['new', 'contacted', 'closed'] %}<option{% if i.status == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></td>
+        <td>{% if i.prospect_id %}<span class="iq-note">In prospects</span>{% else %}<button class="iq-btn" data-promote>Add to prospects</button>{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="iq-note">No inquiries{{ ' with this status' if status }} yet.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="iq-card">
+    <h2 style="font-size:1rem;margin:0 0 .5rem">Page and form settings</h2>
+    <div class="iq-row"><label for="sMode">Transition Package page mode</label>
+      <select id="sMode" data-setting="transition_package_mode">
+        <option value="design_partner" {{ 'selected' if settings.transition_package_mode == 'design_partner' }}>Design partner — "Now enrolling design partners", "Become a design partner"</option>
+        <option value="general" {{ 'selected' if settings.transition_package_mode == 'general' }}>General — "Request a quote", no design-partner perks</option>
+      </select></div>
+    <div class="iq-row"><label for="sMail">Send new inquiries to</label>
+      <input id="sMail" data-setting="enterprise_inquiry_notify_email" value="{{ settings.enterprise_inquiry_notify_email }}" style="min-width:18rem"></div>
+    <div class="iq-row"><label for="sRate">Inquiries allowed per IP per hour</label>
+      <input id="sRate" data-setting="enterprise_inquiry_rate_limit" value="{{ settings.enterprise_inquiry_rate_limit }}" style="width:6rem"></div>
+    <div class="iq-row"><button class="iq-btn" id="sSave">Save settings</button> <span class="iq-msg" id="sMsg"></span></div>
+  </div>
+</div>
+<script>
+(function () {
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  function post(url, body) {
+    return fetch(ROOT + url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}) }).then(function (r) { return r.json().then(function (d) {
+        if (!r.ok) throw new Error(d.message || d.error || 'Failed'); return d; }); });
+  }
+  document.querySelector('.iq-t').addEventListener('change', function (ev) {
+    if (!ev.target.hasAttribute('data-status')) return;
+    var id = ev.target.closest('[data-id]').dataset.id;
+    post('/api/admin/inquiries/' + id + '/status', { status: ev.target.value }).catch(function (e) { alert(e.message); });
+  });
+  document.querySelector('.iq-t').addEventListener('click', function (ev) {
+    if (!ev.target.hasAttribute('data-promote')) return;
+    var tr = ev.target.closest('[data-id]');
+    post('/api/admin/inquiries/' + tr.dataset.id + '/promote').then(function () { location.reload(); })
+      .catch(function (e) { alert(e.message); });
+  });
+  document.getElementById('sSave').onclick = function () {
+    var els = document.querySelectorAll('[data-setting]'), n = 0;
+    Promise.all(Array.prototype.map.call(els, function (el) {
+      return fetch(ROOT + '/api/admin/settings/' + el.dataset.setting, { method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: el.value.trim() }) })
+        .then(function (r) { if (r.ok) n++; });
+    })).then(function () { document.getElementById('sMsg').textContent = 'Saved ' + n + ' setting(s).'; });
+  };
+})();
+</script>
+{% endblock %}

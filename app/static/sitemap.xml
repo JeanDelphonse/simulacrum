@@ -57,6 +57,14 @@
     <priority>0.4</priority>
   </url>
 
+  <!-- Employers: the Transition Package (PRD-SIM-TRANS-001) -->
+  <url>
+    <loc>https://simisi.io/transition-package</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Partner program -->
   <url>
     <loc>https://simisi.io/partners/apply</loc>
