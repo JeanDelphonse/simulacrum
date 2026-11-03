@@ -463,19 +463,25 @@ def accept_invite(token):
 
 
 @corporate_bp.route('/api/corporate/invite/<token>/accept', methods=['POST'])
+@login_required
 def accept_invite_api(token):
-    """Employee completes registration via invite token. Links their user account."""
+    """Employee completes registration via invite token. Links THEIR OWN account.
+
+    The member is always the signed-in user. A user_id in the request body is
+    ignored: trusting it let anyone holding a token attach any account to the
+    org (fixed 2026-11-02).
+    """
     emp = CorporateEmployee.query.filter_by(invite_token=token).first()
     if not emp:
         return jsonify({'error': 'Invalid or expired invite token'}), 404
     if emp.status != CorporateEmployee.STATUS_INVITED:
         return jsonify({'error': 'Invite already used'}), 409
 
-    data = request.get_json() or {}
-    user_id = data.get('user_id')  # set by frontend after login/register
-
-    if not user_id:
-        return jsonify({'error': 'user_id is required'}), 400
+    user_id = current_user.id
+    body_uid = (request.get_json(silent=True) or {}).get('user_id')
+    if body_uid and body_uid != user_id:
+        current_app.logger.warning('org invite accept: body user_id %s ignored for signed-in user %s',
+                                   body_uid, user_id)
 
     emp.user_id = user_id
     emp.status = CorporateEmployee.STATUS_ACTIVE

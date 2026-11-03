@@ -59,8 +59,8 @@ Branch: `feat/transition`, cut from `feat/mail-crm` so deploys keep stacking.
 - **Cohort research caching and the Bayesian outcome update** (PRD lenses) are not built.
 - **Invoicing:** staff issue invoices through the existing org invoices; there's no per-cohort Stripe automation yet (phase 2).
 
-## Found along the way (not changed)
-`POST /api/corporate/invite/<token>/accept` (ORG-001) takes `user_id` from the request body without requiring login. Anyone holding a token can link any account to an org. The transition invite flow requires a signed-in user.
+## Found along the way (fixed 2026-11-02)
+`POST /api/corporate/invite/<token>/accept` (ORG-001) took `user_id` from the request body without login. It now requires a signed-in user and always links that user; a body `user_id` is ignored and logged. `test_org_invite_security.py` covers it.
 
 ## Deploy
 1. Run `sql/061_transition.sql`.
