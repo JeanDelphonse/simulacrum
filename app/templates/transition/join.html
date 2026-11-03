@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Your transition package{% endblock %}
+{% block head %}
+<style>
+.tj { max-width: 720px; margin: 2.5rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.tj h1 { font-size: 1.6rem; margin: 0 0 .4rem; }
+.tj-sub { color: #6B7B8D; margin: 0 0 1.4rem; }
+.tj-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1rem; background: #fff; }
+.tj-card h2 { font-size: 1rem; margin: 0 0 .5rem; }
+.tj-two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.tj-yes li, .tj-no li { margin: .25rem 0; font-size: .9rem; }
+.tj-yes { background: #f0fdf4; border-color: #bbf7d0; }
+.tj-no { background: #fef2f2; border-color: #fecaca; }
+.tj label { display: flex; gap: .55rem; align-items: flex-start; font-size: .9rem; margin: .55rem 0; cursor: pointer; }
+.tj-btn { background: #0F7B72; color: #fff; border: none; border-radius: 8px; padding: .65rem 1.3rem; font-size: .95rem; cursor: pointer; }
+.tj-btn:disabled { opacity: .5; cursor: not-allowed; }
+.tj-msg { color: #b91c1c; font-size: .88rem; margin-top: .6rem; min-height: 1.2em; }
+.tj-fine { color: #6B7B8D; font-size: .78rem; margin-top: 1rem; }
+@media (max-width: 640px) { .tj-two { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="tj">
+  {% if error %}
+  <h1>This invitation isn't valid</h1>
+  <p class="tj-sub">{{ error }}</p>
+  {% else %}
+  <h1>{{ employer }} has given you a SimiSI transition package</h1>
+  <p class="tj-sub"><b>{{ tier.label }}</b> · {{ tier.access_months }} months of access ·
+    {{ 1 + tier.reruns }} simulation{{ 's' if tier.reruns else '' }}{% if tier.coaching_sessions %}
+    · {{ tier.coaching_sessions }} sessions with a human coach{% endif %}{% if tier.workshops %} · live group workshops{% endif %}</p>
+
+  <div class="tj-card">
+    <h2>What you get</h2>
+    <p style="margin:0;font-size:.9rem">A full 24-month simulation of five ways your career can earn, a professional bio page you
+      can mark open to work, and 49 agents that draft your rate card, outreach and launch kit. Nothing is sent without your
+      approval. When the package ends, your account and bio page stay yours on SimiSI's free plan.</p>
+  </div>
+
+  <div class="tj-two">
+    <div class="tj-card tj-yes">
+      <h2>{{ employer }} can see</h2>
+      <ul class="tj-yes">
+        <li>That your seat was activated, and when it ends</li>
+        <li>Group totals only (for example, how many people activated or have a bio page live), and only for groups of 5 or more</li>
+        <li>Your outcome (new role, consulting…) <b>only if you choose to share it</b>, and only as part of a group total</li>
+      </ul>
+    </div>
+    <div class="tj-card tj-no">
+      <h2>{{ employer }} never sees</h2>
+      <ul class="tj-no">
+        <li>Your simulation, income paths or plans</li>
+        <li>Your contacts, outreach or messages</li>
+        <li>Your bio page drafts</li>
+        <li>Your coaching sessions or notes</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tj-card">
+    {% if current_user.is_authenticated %}
+    <label><input type="checkbox" id="tjConsent"> I've read what {{ employer }} can and can't see.</label>
+    <label><input type="checkbox" id="tjShare"> Share my outcome with {{ employer }} as part of a group total (optional — you can change this any time).</label>
+    <button class="tj-btn" id="tjGo" disabled>Activate my package</button>
+    <div class="tj-msg" id="tjMsg"></div>
+    {% else %}
+    <p style="margin:0 0 .8rem;font-size:.9rem">Create a free SimiSI account with your <b>personal</b> email, or sign in if you
+      already have one. This invitation is saved and waits on your dashboard.</p>
+    <a class="tj-btn" style="text-decoration:none;display:inline-block" href="{{ url_for('pages.register_page') }}">Create my account</a>
+    <a style="margin-left:.8rem" href="{{ url_for('pages.login_page', next=url_for('transition.join_page', token=token)) }}">I already have an account</a>
+    {% endif %}
+  </div>
+  <p class="tj-fine">This package is a benefit, not a substitute for severance pay, and it gives no financial, legal or tax
+    advice. Questions about severance, retirement accounts or investing belong with a qualified professional.</p>
+  {% endif %}
+</div>
+{% if not error and current_user.is_authenticated %}
+<script>
+(function () {
+  var c = document.getElementById('tjConsent'), go = document.getElementById('tjGo'), msg = document.getElementById('tjMsg');
+  c.addEventListener('change', function () { go.disabled = !c.checked; });
+  go.addEventListener('click', function () {
+    go.disabled = true; msg.textContent = '';
+    fetch('{{ url_for("transition.api_join", token=token) }}', { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consent: c.checked, share_outcomes: document.getElementById('tjShare').checked }) })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) { if (x.ok) location.href = x.d.next; else { msg.textContent = x.d.message || 'Could not activate.'; go.disabled = false; } });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

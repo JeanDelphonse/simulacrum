@@ -2146,11 +2146,14 @@ function toggleSimBio(card) {
 }());
 
 {% if is_owner %}
-async function publishNow() {
-  const res = await fetch('/api/bio/publish', {method: 'POST'});
+async function publishNow(ack) {
+  const res = await fetch('/api/bio/publish', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                               body: JSON.stringify(ack ? {confidentiality_ack: true} : {})});
   if (res.ok) { location.reload(); return; }
   // 422 when there isn't enough source material; say so instead of doing nothing.
   const data = await res.json().catch(() => ({}));
+  // 428: transition package — confirm the confidentiality reminder, then retry.
+  if (res.status === 428 && !ack) { if (confirm(data.message + '\n\nPublish now?')) publishNow(true); return; }
   alert(data.error || 'Could not publish your page.');
 }
 {% endif %}

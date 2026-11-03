@@ -734,6 +734,10 @@ def dashboard(org_id):
     org = CorporateAccount.query.get_or_404(org_id)
     if not _is_platform_admin() and org.admin_user_id != current_user.id:
         return render_template('public/profile_unpublished.html', username=''), 403
+    if org.org_type == CorporateAccount.ORG_TRANSITION:
+        # PRD-SIM-TRANS-001: transition employers get the aggregate-only report.
+        from flask import redirect
+        return redirect(url_for('transition.employer_report', org_id=org.id))
 
     metrics = org_service.dashboard_metrics(org)
     roster = org_service.roster(org)
@@ -756,6 +760,9 @@ def export_roster_csv(org_id):
     if not _is_platform_admin() and org.admin_user_id != current_user.id:
         from flask import abort
         abort(403)
+    if org.org_type == CorporateAccount.ORG_TRANSITION:
+        from flask import redirect
+        return redirect(url_for('transition.employer_seats_csv', org_id=org.id))
     rows = org_service.roster(org)
     buf = io.StringIO()
     w = csv.writer(buf)

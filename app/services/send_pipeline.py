@@ -44,6 +44,11 @@ class SendRefused(Exception):
     """A user-facing refusal; nothing was sent."""
 
 
+class ConfidentialityAckRequired(SendRefused):
+    """PRD-SIM-TRANS-001: a transition employee must first confirm they won't
+    share their former employer's confidential information."""
+
+
 def _setting(key: str, default):
     try:
         from app.models.platform_settings import PlatformSetting
@@ -194,7 +199,8 @@ def _check_limits(user_id: str, n: int) -> None:
             raise SendRefused('Monthly execution budget reached.')
 
 
-def send_batch(action, user, batch_id: str, confirm_hash: str, confirmed: bool) -> dict:
+def send_batch(action, user, batch_id: str, confirm_hash: str, confirmed: bool,
+               confidentiality_ack: bool = False) -> dict:
     """Send one confirmed batch of drafts. Returns per-recipient results."""
     from app.extensions import db
     from app.models.agent_plan import ActionApproval
@@ -208,6 +214,11 @@ def send_batch(action, user, batch_id: str, confirm_hash: str, confirmed: bool) 
 
     if confirmed is not True:
         raise SendRefused('Sending needs your explicit confirmation.')
+    from app.services import transition_service
+    if transition_service.needs_confidentiality_ack(user.id):
+        if not confidentiality_ack:
+            raise ConfidentialityAckRequired(transition_service.CONFIDENTIALITY_NOTE)
+        transition_service.acknowledge_confidentiality(user.id)
     refusal = artifact_actions.send_refusal(action)
     if refusal:
         raise SendRefused(refusal)

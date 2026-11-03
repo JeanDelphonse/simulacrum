@@ -52,6 +52,17 @@ with app.app_context():
         .all()
     )
 
+    # PRD-SIM-TRANS-001: transition-package invites, reminders and seat expiry.
+    # Self-throttled to once an hour, so this costs one settings read per minute.
+    try:
+        from app.services.transition_service import run_maintenance
+        res = run_maintenance()
+        if not res.get('skipped'):
+            log.info(f'Transition maintenance: {res}')
+    except Exception as e:
+        db.session.rollback()
+        log.error(f'Transition maintenance failed: {e}')
+
     if not pending:
         log.info('No simulations to process')
         sys.exit(0)

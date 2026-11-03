@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Coaching{% endblock %}
+{% block head %}
+<style>
+.tc { max-width: 1000px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.tc h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
+.tc-sub { color: #6B7B8D; font-size: .9rem; margin: 0 0 1rem; }
+.tc-rules { background: #fff7e6; border: 1px solid #f2d49b; border-radius: 10px; padding: .7rem 1rem; font-size: .84rem; color: #5c4210; margin-bottom: 1rem; }
+.tc-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: .9rem 1.1rem; margin-bottom: .8rem; background: #fff; }
+.tc-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.tc-btn { padding: .35rem .75rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .82rem; cursor: pointer; }
+.tc-note { font-size: .78rem; color: #6B7B8D; }
+.tc select, .tc input { padding: .3rem .45rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: .82rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="tc">
+  <h1>Coaching — {{ coach.full_name }}</h1>
+  <p class="tc-sub">Your transition-package clients.{% if coach.coach_avg_rating %} Average rating {{ coach.coach_avg_rating }} / 5.{% endif %}
+    {% if coach.coach_status == 'review' %}<b style="color:#b91c1c">Paused for review — no new matches until SimiSI follows up.</b>{% endif %}</p>
+  <div class="tc-rules">Start from the client's simulation when they've granted access. Early sessions explore paths across the
+    five layers; later ones focus on the path they choose. No financial, legal or tax advice — point those questions to a
+    qualified professional. Don't sell your own paid services to a client during their package. Notes are private to you and
+    the client.</div>
+
+  {% for c in caseload %}
+  <div class="tc-card" data-seat="{{ c.seat_id }}">
+    <div class="tc-row">
+      <div><b>{{ c.name or 'Client' }}</b> · {{ c.tier }} · {{ c.sessions_used }} of {{ c.sessions_total }} sessions used
+        {% if not c.live %}<span class="tc-note">· package ended</span>{% endif %}
+        <div class="tc-note">{% if c.access %}Access granted{% if c.bio_slug %} · <a href="/u/{{ c.bio_slug }}" target="_blank">bio page</a>{% endif %}
+          {% for s in c.simulations or [] %} · {{ s.name }} ({{ s.expertise_zone or 'zone n/a' }}){% endfor %}
+          {% else %}The client hasn't shared their simulation or bio with you.{% endif %}</div></div>
+      {% if c.live %}
+      <div><input type="date" data-date> <select data-status><option value="held">Held</option><option value="no_show">No-show</option>
+        <option value="cancelled">Cancelled</option></select> <button class="tc-btn" data-log>Log session</button></div>
+      {% endif %}
+    </div>
+    {% if c.sessions %}<div class="tc-note" style="margin-top:.4rem">Sessions:
+      {% for s in c.sessions %}{{ (s.scheduled_at or '')[:10] }} {{ s.status.replace('_', ' ') }}{% if s.rating %} ({{ s.rating }}/5){% endif %}
+        <a href="#" data-notes="{{ s.id }}">notes</a>{{ ' · ' if not loop.last }}{% endfor %}</div>
+      <div data-notebox style="display:none;margin-top:.4rem"></div>{% endif %}
+  </div>
+  {% else %}
+  <p class="tc-sub">No clients assigned yet.</p>
+  {% endfor %}
+</div>
+<script>
+(function () {
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function post(url, body) {
+    return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}) }).then(function (r) { return r.json().then(function (d) {
+        if (!r.ok) throw new Error(d.message || 'Failed'); return d; }); });
+  }
+  document.querySelector('.tc').addEventListener('click', function (ev) {
+    var card = ev.target.closest('[data-seat]'); if (!card) return;
+    if (ev.target.hasAttribute('data-log')) {
+      var d = card.querySelector('[data-date]').value;
+      post('/api/coach/seats/' + card.dataset.seat + '/sessions', { status: card.querySelector('[data-status]').value,
+        scheduled_at: d ? d + 'T12:00:00' : null }).then(function () { location.reload(); }).catch(function (e) { alert(e.message); });
+    }
+    var nid = ev.target.getAttribute('data-notes');
+    if (nid) {
+      ev.preventDefault();
+      var box = card.querySelector('[data-notebox]'); box.style.display = '';
+      var load = function (d) {
+        box.innerHTML = (d.notes || []).map(function (n) { return '<div class="tc-note"><b>' + esc(n.author) + '</b> ' +
+          esc(n.created_at.slice(0, 10)) + '</div><div style="white-space:pre-wrap;font-size:.85rem">' + esc(n.body) + '</div>'; }).join('') +
+          '<textarea rows="2" style="width:100%" placeholder="Private note"></textarea><button class="tc-btn">Save note</button>';
+        box.querySelector('button').onclick = function () {
+          post('/api/coach/sessions/' + nid + '/notes', { body: box.querySelector('textarea').value }).then(load)
+            .catch(function (e) { alert(e.message); });
+        };
+      };
+      fetch('/api/coach/sessions/' + nid + '/notes', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(load);
+    }
+  });
+})();
+</script>
+{% endblock %}

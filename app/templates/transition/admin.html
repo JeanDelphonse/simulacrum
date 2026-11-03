@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% block title %}Transition — Admin{% endblock %}
+{% block head %}
+<style>
+/* Transition Package admin (PRD-SIM-TRANS-001 phase 1: staff-run setup). */
+.ta { max-width: 1240px; margin: 0 auto; padding: 1.5rem 1rem 3rem; font-family: 'DM Sans', sans-serif; color: #0f172a; }
+.ta h1 { font-size: 1.4rem; margin: 0 0 .35rem; }
+.ta h2 { font-size: 1rem; margin: 0 0 .5rem; }
+.ta-sub { font-size: .85rem; color: #6b7280; margin: 0 0 1.1rem; max-width: 85ch; }
+.ta-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.ta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+.ta input, .ta select, .ta textarea { border: 1px solid #d1d5db; border-radius: 6px; padding: .38rem .5rem; font-size: .82rem; font-family: inherit; }
+.ta textarea { width: 100%; box-sizing: border-box; }
+.ta-row { display: flex; gap: .45rem; flex-wrap: wrap; align-items: center; margin: .3rem 0; }
+.ta-btn { padding: .38rem .8rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .8rem; cursor: pointer; }
+.ta-btn.primary { background: #0f766e; color: #fff; border-color: #0f766e; }
+.ta-btn.danger { color: #b91c1c; border-color: #fca5a5; }
+.ta-msg { font-size: .8rem; min-height: 1em; margin-top: .3rem; }
+.ta-msg.err { color: #b91c1c; } .ta-msg.ok { color: #166534; }
+table.ta-t { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.ta-t th { text-align: left; font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; padding: .4rem; border-bottom: 1px solid #e5e7eb; }
+.ta-t td { padding: .4rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+.ta-note { font-size: .76rem; color: #6b7280; }
+details summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ta">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('transition') }}
+  <h1>Transition Package</h1>
+  <p class="ta-sub">Phase 1 (design partners): set up employers, cohorts and seats here. Employers see only aggregate numbers at
+    their report link; employees own their accounts. Invites go out on each cohort's invite date (hourly job), with reminders.</p>
+
+  <div class="ta-grid">
+    <div class="ta-card">
+      <h2>New employer</h2>
+      <div class="ta-row"><input id="eName" placeholder="Employer name"><input id="eContact" placeholder="HR contact name"></div>
+      <div class="ta-row"><input id="eEmail" placeholder="HR contact email"><input id="eLogin" placeholder="HR SimiSI login email (optional)"></div>
+      <button class="ta-btn primary" id="eGo">Create employer</button>
+      <div class="ta-msg" id="eMsg"></div>
+      <p class="ta-note">The HR login (an existing SimiSI account) can open the employer report.</p>
+    </div>
+    <div class="ta-card">
+      <h2>Quote</h2>
+      <div class="ta-row">{% for k, t in state.tiers.items() %}<label>{{ t.label }} <input type="number" min="0" value="0" data-q="{{ k }}" style="width:5rem"></label>{% endfor %}
+        <button class="ta-btn" id="qGo">Quote</button></div>
+      <div class="ta-msg" id="qMsg"></div>
+      <p class="ta-note">Prices and volume bands are the settings below — nothing is hardcoded.</p>
+    </div>
+  </div>
+
+  <div id="taEmployers"></div>
+
+  <div class="ta-card">
+    <details><summary>Coaches (SMEs)</summary>
+      <p class="ta-note">Mark SMEs as coaches. Executive seats are matched to senior coaches. A coach whose average rating falls
+        below the review threshold is paused for review automatically.</p>
+      <table class="ta-t" id="taCoaches"></table>
+    </details>
+  </div>
+
+  <div class="ta-card">
+    <details><summary>Tiers, pricing and settings</summary>
+      <p class="ta-note">Tiers JSON: per tier label, access_months, reruns (re-runs on top of the first simulation),
+        coaching_sessions, workshops, senior_coach. Prices are in cents; 0 means not set. Volume bands:
+        [[min_seats, discount_pct], …].</p>
+      <div id="taSettings"></div>
+      <div class="ta-row"><button class="ta-btn primary" id="sSave">Save settings</button>
+        <button class="ta-btn" id="mGo">Run invites / reminders / expiry now</button></div>
+      <div class="ta-msg" id="sMsg"></div>
+    </details>
+  </div>
+</div>
+<script>
+(function () {
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  var STATE = {{ state | tojson }};
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function api(url, body, method) {
+    return fetch(ROOT + url, { method: method || 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message || d.error || 'Failed'); return d; }); });
+  }
+  function tierOptions(sel) { return Object.keys(STATE.tiers).map(function (k) {
+    return '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + esc(STATE.tiers[k].label) + '</option>'; }).join(''); }
+  function coachOptions(sel) { return '<option value="">—</option>' + STATE.coaches.filter(function (c) { return c.is_coach; }).map(function (c) {
+    return '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + esc(c.full_name) + '</option>'; }).join(''); }
+
+  function render(st) {
+    STATE = st;
+    var box = document.getElementById('taEmployers');
+    box.innerHTML = st.employers.map(function (e) {
+      return '<div class="ta-card" data-org="' + e.id + '"><h2>' + esc(e.name) + '</h2>' +
+        '<div class="ta-note">' + esc(e.contact) + (e.hr_login ? ' · HR login ' + esc(e.hr_login) : ' · no HR login linked') +
+        ' · <a href="/transition/employer/' + e.id + '" target="_blank">Employer report</a></div>' +
+        '<details style="margin:.5rem 0"><summary>New cohort</summary><div class="ta-row">' +
+        '<input data-c="name" placeholder="Cohort name"><label>Last day <input type="date" data-c="last_working_day"></label>' +
+        '<label>Invite date <input type="date" data-c="invite_date"></label></div><div class="ta-row">' +
+        '<input data-c="employer_domains" placeholder="Employer email domains, e.g. acme.com" style="min-width:18rem">' +
+        '<input data-c="min_report_size" type="number" placeholder="Min group (default ' + st.settings.transition_min_report_size + ')" style="width:12rem">' +
+        '<button class="ta-btn primary" data-act="cohort">Create cohort</button></div></details>' +
+        e.cohorts.map(function (c) {
+          var counts = Object.keys(c.seats).map(function (k) { return k + ' ' + c.seats[k]; }).join(' · ');
+          return '<div style="border-top:1px solid #f1f5f9;padding-top:.6rem;margin-top:.6rem" data-cohort="' + c.id + '">' +
+            '<b>' + esc(c.name) + '</b> <span class="ta-note">last day ' + esc(c.last_working_day || '—') + ' · invites ' +
+            esc(c.invite_date || 'immediately') + ' · domains ' + esc((c.employer_domains || []).join(', ') || '—') + ' · ' + counts + '</span>' +
+            '<details style="margin:.4rem 0"><summary>Add seats</summary>' +
+            '<textarea rows="3" data-roster placeholder="Roster CSV: name, personal email, tier (essentials|plus|executive)"></textarea>' +
+            '<div class="ta-row">Default tier <select data-deftier>' + tierOptions('essentials') + '</select> · or unassigned: ' +
+            Object.keys(st.tiers).map(function (k) { return '<label>' + esc(st.tiers[k].label) + ' <input type="number" min="0" value="0" style="width:4.5rem" data-un="' + k + '"></label>'; }).join(' ') +
+            ' <button class="ta-btn primary" data-act="seats">Add seats</button></div></details>' +
+            '<table class="ta-t"><tr><th>Name</th><th>Email</th><th>Tier</th><th>Status</th><th>Coach</th><th></th></tr>' +
+            c.seat_list.map(function (s) {
+              var acts = '';
+              if (s.status === 'unassigned' || s.status === 'invited') acts += '<button class="ta-btn" data-seat-act="assign" data-seat="' + s.id + '">Assign…</button>';
+              if (s.status === 'invited') acts += '<button class="ta-btn" data-seat-act="invite" data-seat="' + s.id + '">' + (s.invite_sent ? 'Resend' : 'Send now') + '</button>';
+              if (s.status === 'unassigned' || s.status === 'invited') acts += '<button class="ta-btn danger" data-seat-act="revoke" data-seat="' + s.id + '">Revoke</button>';
+              var coachSel = s.status === 'activated' ? '<select data-coach="' + s.id + '">' + coachOptions(s.coach_id) + '</select>' : '';
+              return '<tr><td>' + esc(s.name || '(unassigned)') + '</td><td>' + esc(s.email || '') + '</td><td>' + esc(s.tier) + '</td><td>' +
+                esc(s.status) + (s.status === 'invited' && !s.invite_sent ? ' (not sent yet)' : '') + '</td><td>' + coachSel + '</td><td>' + acts + '</td></tr>';
+            }).join('') + '</table></div>';
+        }).join('') + '<div class="ta-msg" data-msg></div></div>';
+    }).join('') || '<div class="ta-card ta-note">No transition employers yet.</div>';
+
+    document.getElementById('taCoaches').innerHTML = '<tr><th>SME</th><th>Coach</th><th>Credentials</th><th>Specialties</th><th>Seniority</th><th>Booking link</th><th>Status</th><th>Rating</th><th></th></tr>' +
+      st.coaches.map(function (c) {
+        return '<tr data-sme="' + c.id + '"><td>' + esc(c.full_name) + '<div class="ta-note">' + esc(c.email) + (c.has_login ? '' : ' · no login') + '</div></td>' +
+          '<td><input type="checkbox" data-k="is_coach"' + (c.is_coach ? ' checked' : '') + '></td>' +
+          '<td><input data-k="coach_credentials" value="' + esc(c.coach_credentials || '') + '" style="width:8rem"></td>' +
+          '<td><input data-k="coach_specialties" value="' + esc((c.coach_specialties || []).join(', ')) + '" style="width:10rem"></td>' +
+          '<td><select data-k="coach_seniority"><option' + (c.coach_seniority === 'standard' ? ' selected' : '') + '>standard</option><option' + (c.coach_seniority === 'senior' ? ' selected' : '') + '>senior</option></select></td>' +
+          '<td><input data-k="coach_booking_url" value="' + esc(c.coach_booking_url || '') + '" placeholder="https://cal.com/…" style="width:11rem"></td>' +
+          '<td><select data-k="coach_status"><option' + (c.coach_status === 'active' ? ' selected' : '') + '>active</option><option' + (c.coach_status === 'review' ? ' selected' : '') + '>review</option></select></td>' +
+          '<td>' + (c.coach_avg_rating == null ? '—' : c.coach_avg_rating) + '</td><td><button class="ta-btn" data-save-coach>Save</button></td></tr>';
+      }).join('');
+
+    document.getElementById('taSettings').innerHTML = Object.keys(st.settings).map(function (k) {
+      var v = st.settings[k], long = String(v).length > 40 || k === 'transition_tiers';
+      return '<div class="ta-row"><label style="min-width:17rem" class="ta-note">' + esc(k.replace('transition_', '').replace(/_/g, ' ')) + '</label>' +
+        (long ? '<textarea rows="' + (k === 'transition_tiers' ? 6 : 2) + '" data-setting="' + k + '">' + esc(k === 'transition_tiers' ? JSON.stringify(JSON.parse(v), null, 1) : v) + '</textarea>'
+              : '<input data-setting="' + k + '" value="' + esc(v) + '">') + '</div>';
+    }).join('');
+  }
+
+  document.getElementById('eGo').onclick = function () {
+    var m = document.getElementById('eMsg');
+    api('/api/admin/transition/employers', { name: eName.value, contact_name: eContact.value, contact_email: eEmail.value, hr_login: eLogin.value })
+      .then(function (d) { render(d); m.className = 'ta-msg ok'; m.textContent = 'Created.'; })
+      .catch(function (e) { m.className = 'ta-msg err'; m.textContent = e.message; });
+  };
+  document.getElementById('qGo').onclick = function () {
+    var counts = {}; document.querySelectorAll('[data-q]').forEach(function (i) { counts[i.dataset.q] = +i.value || 0; });
+    api('/api/admin/transition/quote', { counts: counts }).then(function (q) {
+      var m = document.getElementById('qMsg');
+      m.className = 'ta-msg ' + (q.missing_prices.length ? 'err' : 'ok');
+      m.textContent = q.missing_prices.length ? 'Set prices first for: ' + q.missing_prices.join(', ')
+        : q.seats + ' seats · $' + (q.gross_cents / 100).toLocaleString() + (q.discount_pct ? ' − ' + q.discount_pct + '% volume' : '') +
+          ' = $' + (q.total_cents / 100).toLocaleString();
+    });
+  };
+  document.getElementById('taEmployers').addEventListener('click', function (ev) {
+    var orgEl = ev.target.closest('[data-org]'); if (!orgEl) return;
+    var msg = orgEl.querySelector('[data-msg]'), act = ev.target.getAttribute('data-act'), sAct = ev.target.getAttribute('data-seat-act'), p;
+    function fail(e) { msg.className = 'ta-msg err'; msg.textContent = e.message; }
+    if (act === 'cohort') {
+      var b = {}; orgEl.querySelectorAll('[data-c]').forEach(function (i) { b[i.dataset.c] = i.value; });
+      p = api('/api/admin/transition/employers/' + orgEl.dataset.org + '/cohorts', b);
+    } else if (act === 'seats') {
+      var c = ev.target.closest('[data-cohort]'), un = {};
+      c.querySelectorAll('[data-un]').forEach(function (i) { un[i.dataset.un] = +i.value || 0; });
+      p = api('/api/admin/transition/cohorts/' + c.dataset.cohort + '/seats', { roster_csv: c.querySelector('[data-roster]').value,
+        default_tier: c.querySelector('[data-deftier]').value, unassigned: un }).then(function (d) {
+          if (d.result.skipped.length) alert('Skipped ' + d.result.skipped.length + ':\n' + d.result.skipped.map(function (s) {
+            return (s.row.email || s.row.name) + ' — ' + s.reason; }).join('\n'));
+          return d; });
+    } else if (sAct) {
+      var sid = ev.target.dataset.seat, body = {};
+      if (sAct === 'assign') {
+        body.name = prompt('Name'); if (body.name === null) return;
+        body.email = prompt('Personal email'); if (!body.email) return;
+      }
+      if (sAct === 'revoke' && !confirm('Revoke this unused seat?')) return;
+      p = api('/api/admin/transition/seats/' + sid + '/' + sAct, body);
+    }
+    if (p) p.then(render).catch(fail);
+  });
+  document.getElementById('taEmployers').addEventListener('change', function (ev) {
+    var sid = ev.target.getAttribute('data-coach');
+    if (sid && ev.target.value) api('/api/admin/transition/seats/' + sid + '/coach', { coach_id: ev.target.value }).then(render).catch(function (e) { alert(e.message); });
+  });
+  document.getElementById('taCoaches').addEventListener('click', function (ev) {
+    if (!ev.target.hasAttribute('data-save-coach')) return;
+    var tr = ev.target.closest('[data-sme]'), b = {};
+    tr.querySelectorAll('[data-k]').forEach(function (i) { b[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
+    api('/api/admin/transition/coaches/' + tr.dataset.sme, b).then(render).catch(function (e) { alert(e.message); });
+  });
+  document.getElementById('sSave').onclick = function () {
+    var m = document.getElementById('sMsg'), n = 0, bad = null, els = document.querySelectorAll('[data-setting]');
+    els.forEach(function (el) { if (el.dataset.setting === 'transition_tiers') { try { JSON.parse(el.value); } catch (e) { bad = e; } } });
+    if (bad) { m.className = 'ta-msg err'; m.textContent = 'Tiers JSON is not valid: ' + bad.message; return; }
+    Promise.all(Array.prototype.map.call(els, function (el) {
+      var v = el.dataset.setting === 'transition_tiers' ? JSON.stringify(JSON.parse(el.value)) : el.value.trim();
+      return fetch(ROOT + '/api/admin/settings/' + el.dataset.setting, { method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: v }) }).then(function (r) { if (r.ok) n++; });
+    })).then(function () { m.className = 'ta-msg ok'; m.textContent = 'Saved ' + n + ' setting(s).'; });
+  };
+  document.getElementById('mGo').onclick = function () {
+    api('/api/admin/transition/maintenance', {}).then(function (r) { alert('Invites ' + r.invites + ', reminders ' + r.reminders + ', expired ' + r.expired); location.reload(); });
+  };
+  render(STATE);
+})();
+</script>
+{% endblock %}

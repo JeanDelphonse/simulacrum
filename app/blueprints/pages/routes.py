@@ -351,7 +351,27 @@ def dashboard():
     except Exception:
         pass
 
+    # PRD-SIM-TRANS-001: the employee's transition package, or a pending invite
+    # remembered from /transition/join/<token> across sign-up and onboarding.
+    transition_banner = None
+    try:
+        from flask import session as _session
+        from app.services import transition_service as _ts
+        _seat = _ts.live_seat(current_user.id)
+        if _seat is not None:
+            transition_banner = {'kind': 'live', 'tier': _ts.tiers()[_seat.tier]['label'],
+                                 'expires': _seat.expires_at.strftime('%b %d, %Y')}
+        elif _session.get('transition_invite'):
+            try:
+                _ts.seat_for_token(_session['transition_invite'])
+                transition_banner = {'kind': 'invite', 'token': _session['transition_invite']}
+            except _ts.TransitionError:
+                _session.pop('transition_invite', None)
+    except Exception:
+        pass
+
     return render_template('dashboard/index.html',
+                           transition_banner=transition_banner,
                            simulations=simulations,
                            last_cycle_map=last_cycle_map,
                            resumes=resumes,

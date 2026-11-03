@@ -637,7 +637,10 @@ def api_send_drafts_send(artifact_id):
     body = request.get_json(silent=True) or {}
     try:
         result = send_pipeline.send_batch(action, current_user, body.get('batch_id') or '',
-                                          body.get('confirm_hash') or '', body.get('confirm'))
+                                          body.get('confirm_hash') or '', body.get('confirm'),
+                                          confidentiality_ack=bool(body.get('confidentiality_ack')))
+    except send_pipeline.ConfidentialityAckRequired as exc:
+        return jsonify({'error': 'confidentiality_ack_required', 'message': str(exc)}), 428
     except send_pipeline.SendRefused as exc:
         return jsonify({'error': 'send_refused', 'message': str(exc)}), 400
     return jsonify(result)

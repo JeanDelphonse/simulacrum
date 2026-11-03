@@ -79,6 +79,14 @@ def _max_accounts_check(user_id: str) -> None:
         raise SyncError('You can connect up to %d email accounts.' % cap)
 
 
+def _employer_domain_check(user_id: str, address: str) -> None:
+    """PRD-SIM-TRANS-001: never import from a former employer's mailbox."""
+    from app.services import transition_service
+    if transition_service.mailbox_blocked(user_id, address):
+        raise SyncError("That address is on your former employer's email domain. To protect their "
+                        'information, connect a personal mailbox instead.')
+
+
 def connect_imap(user_id: str, address: str, password: str, host: str = '', port: int = 993):
     from app.extensions import db
     from app.models.audit_log import AuditLog
@@ -95,6 +103,7 @@ def connect_imap(user_id: str, address: str, password: str, host: str = '', port
                         'security review, which is still in progress.')
     if not password:
         raise SyncError('Enter an app password for this mailbox.')
+    _employer_domain_check(user_id, address)
     host = (host or '').strip() or IMAP_PRESETS.get(domain, ('', 993))[0]
     port = int(port or IMAP_PRESETS.get(domain, ('', 993))[1] or 993)
     if not host:
@@ -165,6 +174,7 @@ def gmail_complete(user_id: str, code: str, redirect_uri: str):
     info = _http().get('https://openidconnect.googleapis.com/v1/userinfo',
                        headers={'Authorization': 'Bearer ' + data['access_token']}, timeout=15).json()
     address = (info.get('email') or '').lower()
+    _employer_domain_check(user_id, address)
     _max_accounts_check(user_id)
     acc = EmailAccount.query.filter_by(user_id=user_id, provider='gmail', address=address).first()
     if acc is None:

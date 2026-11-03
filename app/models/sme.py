@@ -35,6 +35,14 @@ class SimiSME(db.Model):
     # SIM-PRD-SME-002: console login identity (links to a users.id) + last login
     auth_user_id   = db.Column(db.String(9), db.ForeignKey('users.id'), nullable=True, index=True)
     last_login_at  = db.Column(db.DateTime, nullable=True)
+    # PRD-SIM-TRANS-001 (sql/061): an SME can also coach transition employees.
+    is_coach           = db.Column(db.Boolean, nullable=False, default=False)
+    coach_credentials  = db.Column(db.String(300), nullable=True)   # e.g. ICF PCC
+    _coach_specialties = db.Column('coach_specialties', db.Text, nullable=True)  # JSON list
+    coach_seniority    = db.Column(db.String(10), nullable=False, default='standard')  # standard | senior
+    coach_booking_url  = db.Column(db.String(500), nullable=True)   # their Cal.com link
+    coach_status       = db.Column(db.String(10), nullable=False, default='active')    # active | review
+    coach_avg_rating   = db.Column(db.Float, nullable=True)
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at     = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -50,6 +58,17 @@ class SimiSME(db.Model):
     @zones.setter
     def zones(self, value):
         self._zones = json.dumps(value or [])
+
+    @property
+    def coach_specialties(self):
+        try:
+            return json.loads(self._coach_specialties) if self._coach_specialties else []
+        except (ValueError, TypeError):
+            return []
+
+    @coach_specialties.setter
+    def coach_specialties(self, value):
+        self._coach_specialties = json.dumps([v.strip() for v in (value or []) if v and v.strip()]) or None
 
     @property
     def full_name(self):
@@ -92,6 +111,10 @@ class SimiSME(db.Model):
             'has_login': self.has_login,
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'is_coach': bool(self.is_coach), 'coach_credentials': self.coach_credentials,
+            'coach_specialties': self.coach_specialties, 'coach_seniority': self.coach_seniority,
+            'coach_booking_url': self.coach_booking_url, 'coach_status': self.coach_status,
+            'coach_avg_rating': self.coach_avg_rating,
         }
         if include_users:
             from app.models.profile import UserProfile

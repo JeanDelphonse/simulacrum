@@ -1216,7 +1216,11 @@
           window.location.href = resumeId ? '/resumes/' + resumeId : '/dashboard';
           return;
         }
-        const r = await api('POST', '/api/bio/publish');
+        let r = await api('POST', '/api/bio/publish');
+        // 428: transition package — confirm the confidentiality reminder, then retry.
+        if (r.status === 428 && confirm(r.data.message + '\n\nPublish now?')) {
+          r = await api('POST', '/api/bio/publish', {confidentiality_ack: true});
+        }
         if (!r.ok) {
           if (r.status === 422 && r.data.readiness) {
             window.applyBioReadiness(r.data.readiness);

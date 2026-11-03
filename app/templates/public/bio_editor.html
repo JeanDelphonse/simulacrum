@@ -671,11 +671,20 @@
   var publishBtn   = document.getElementById('publish-btn');
   var unpublishBtn = document.getElementById('unpublish-btn');
   if (publishBtn) {
+    function _publish(ack) {
+      return fetch(ROOT + '/api/bio/publish', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                              body: JSON.stringify(ack ? {confidentiality_ack: true} : {})})
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, status: r.status, data: d}; }); })
+        .then(function(result) {
+          // 428: transition package — confirm the confidentiality reminder, then retry once.
+          if (result.status === 428 && !ack && confirm(result.data.message + '\n\nPublish now?')) return _publish(true);
+          return result;
+        });
+    }
     publishBtn.addEventListener('click', function() {
       if (publishBtn.disabled) return;
       publishBtn.disabled = true;
-      fetch(ROOT + '/api/bio/publish', {method: 'POST'})
-        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+      _publish(false)
         .then(function(result) {
           if (result.ok) {
             document.getElementById('status-badge').textContent = 'Published';

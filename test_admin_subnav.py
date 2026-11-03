@@ -31,6 +31,7 @@ PAGES = {
     '/admin/contacts': ('Growth', 'Contacts'),
     '/admin/partners': ('Growth', 'Partners'),
     '/admin/corporate': ('Growth', 'Organizations'),
+    '/admin/transition': ('Growth', 'Transition'),
     '/admin/experts': ('People', 'Experts'),
     '/admin/careers': ('People', 'Careers'),
     '/admin/feedback': ('People', 'Feedback'),

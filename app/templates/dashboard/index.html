@@ -2,6 +2,24 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <div class="dashboard">
+  {# PRD-SIM-TRANS-001: transition package (employer-paid) #}
+  {% if transition_banner %}
+  <div style="display:flex;align-items:center;gap:.75rem;background:rgba(15,123,114,.08);border:1px solid rgba(15,123,114,.3);border-radius:12px;padding:.85rem 1.1rem;margin-bottom:1.25rem">
+    <div style="flex:1">
+      {% if transition_banner.kind == 'live' %}
+      <div style="font-weight:600;font-size:.9rem">Your {{ transition_banner.tier }} transition package is active until {{ transition_banner.expires }}.</div>
+      <div style="font-size:.75rem;color:var(--muted)">Simulations, coaching and outcomes are on your package page. Your employer sees only aggregate numbers.</div>
+      {% else %}
+      <div style="font-weight:600;font-size:.9rem">You have a transition package waiting to be activated.</div>
+      {% endif %}
+    </div>
+    {% if transition_banner.kind == 'live' %}
+    <a href="{{ url_for('transition.employee_page') }}" class="btn btn-secondary btn-sm">My package →</a>
+    {% else %}
+    <a href="{{ url_for('transition.join_page', token=transition_banner.token) }}" class="btn btn-primary btn-sm">Activate →</a>
+    {% endif %}
+  </div>
+  {% endif %}
   {# SIM-PRD-ORG-001: sponsoring-org banner + transparency on what the org sees #}
   {% if org_banner %}
   <div class="org-banner" style="display:flex;align-items:center;gap:.75rem;background:rgba(79,70,229,.08);border:1px solid rgba(79,70,229,.25);border-radius:12px;padding:.85rem 1.1rem;margin-bottom:1.25rem">

@@ -361,8 +361,14 @@
           if (!confirm('Send ' + n + ' email' + (n === '1' ? '' : 's') + ' now? This cannot be undone.')) return;
           msg.textContent = ''; go.disabled = true; go.textContent = 'Sending…';
           try {
-            const r = await postJson(api(id, '/send-drafts/send'),
-                                     { batch_id: el.dataset.batch, confirm_hash: el.dataset.hash, confirm: true });
+            const payload = { batch_id: el.dataset.batch, confirm_hash: el.dataset.hash, confirm: true };
+            let r;
+            try { r = await postJson(api(id, '/send-drafts/send'), payload); }
+            catch (e0) {
+              // 428: transition package — confirm the confidentiality reminder, then retry.
+              if (!/confidential/i.test(e0.message) || !confirm(e0.message + '\n\nSend now?')) throw e0;
+              r = await postJson(api(id, '/send-drafts/send'), Object.assign({ confidentiality_ack: true }, payload));
+            }
             el.innerHTML = '<div class="aab-label">Sent ' + r.sent + ' of ' + r.total + '</div>' +
               (r.blocked ? '<div class="aab-msg">Stopped by a guardrail: ' + esc(r.blocked) + '</div>' : '') +
               r.results.filter(function (x) { return x.status !== 'sent'; }).map(function (x) {

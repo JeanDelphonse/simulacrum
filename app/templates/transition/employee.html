@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}My transition package{% endblock %}
+{% block head %}
+<style>
+.te { max-width: 900px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.te h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
+.te h2 { font-size: 1.02rem; margin: 0 0 .55rem; }
+.te-sub { color: #6B7B8D; margin: 0 0 1.2rem; font-size: .92rem; }
+.te-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .75rem; margin-bottom: 1.2rem; }
+.te-stat { border: 1px solid #e5e7eb; border-radius: 10px; padding: .75rem .9rem; background: #fff; }
+.te-stat b { display: block; font-size: 1.4rem; }
+.te-stat span { font-size: .78rem; color: #6B7B8D; }
+.te-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.15rem; margin-bottom: 1rem; background: #fff; }
+.te-btn { padding: .4rem .85rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .84rem; cursor: pointer; }
+.te-btn.primary { background: #0F7B72; color: #fff; border-color: #0F7B72; }
+.te label { display: flex; gap: .5rem; align-items: center; font-size: .88rem; margin: .4rem 0; cursor: pointer; }
+.te select { padding: .35rem .5rem; border: 1px solid #d1d5db; border-radius: 6px; }
+table.te-t { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.te-t td, .te-t th { padding: .4rem; border-bottom: 1px solid #f1f5f9; text-align: left; }
+.te-msg { font-size: .82rem; color: #b91c1c; min-height: 1.1em; margin-top: .3rem; }
+.te-note { font-size: .78rem; color: #6B7B8D; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="te">
+  <h1>My transition package</h1>
+  <p class="te-sub">{{ v.tier_label }} · paid for by {{ v.employer }} ·
+    {% if v.live %}active until {{ v.expires_at[:10] }}{% else %}ended {{ (v.expires_at or '')[:10] }} — your account and bio page stay yours on the free plan{% endif %}</p>
+
+  <div class="te-grid">
+    <div class="te-stat"><b>{{ v.sims_left }}</b><span>of {{ v.sims_allowed }} simulations left</span></div>
+    {% if v.sessions_total %}<div class="te-stat"><b>{{ v.sessions_left }}</b><span>of {{ v.sessions_total }} coaching sessions left</span></div>{% endif %}
+    {% if v.workshops %}<div class="te-stat"><b>✓</b><span>Live group workshops included</span></div>{% endif %}
+  </div>
+
+  {% if v.live %}
+  <div class="te-card">
+    <h2>Your first week</h2>
+    <p style="margin:0;font-size:.9rem">Quick wins first: {% if bio_edit_url %}<a href="{{ bio_edit_url }}">get your bio page live</a>{% else %}get your bio page live{% endif %}
+      and run your simulation from the <a href="{{ url_for('pages.dashboard') }}">dashboard</a> — your rate card and three
+      outreach drafts come with it. A good rhythm: explore paths and offers for roughly the first third of your access, then
+      commit to the best you've seen.</p>
+  </div>
+  {% endif %}
+
+  {% if v.coach %}
+  <div class="te-card">
+    <h2>Your coach</h2>
+    <p style="margin:0 0 .5rem"><b>{{ v.coach.name }}</b>{% if v.coach.credentials %} · {{ v.coach.credentials }}{% endif %}
+      {% if v.coach.specialties %}<span class="te-note"> · {{ v.coach.specialties | join(', ') }}</span>{% endif %}</p>
+    {% if v.coach.booking_url and v.sessions_left %}
+    <a class="te-btn primary" style="text-decoration:none" href="{{ v.coach.booking_url }}" target="_blank" rel="noopener">Book a session</a>
+    {% endif %}
+    {% if v.can_change_coach %}<button class="te-btn" data-act="change-coach">Ask for a different coach</button>{% endif %}
+    <label><input type="checkbox" id="teAccess" {% if v.coach_access %}checked{% endif %}>
+      Let my coach see my simulation summary and bio page (you can turn this off any time)</label>
+    <p class="te-note">Coaching notes are private to you and your coach. Your employer and SimiSI staff can't read them.
+      Coaches don't give financial, legal or tax advice, and won't sell you their own services during your package.</p>
+    {% if v.sessions %}
+    <table class="te-t"><tr><th>Date</th><th>Status</th><th>Your rating</th><th></th></tr>
+      {% for s in v.sessions %}
+      <tr><td>{{ (s.scheduled_at or '')[:10] }}</td><td>{{ s.status.replace('_', ' ') }}</td>
+        <td>{% if s.rating %}{{ s.rating }} / 5{% elif s.status == 'held' %}
+          <select data-rate="{{ s.id }}"><option value="">Rate…</option>{% for n in range(5, 0, -1) %}<option>{{ n }}</option>{% endfor %}</select>{% endif %}</td>
+        <td><button class="te-btn" data-notes="{{ s.id }}">Notes</button></td></tr>
+      <tr><td colspan="4" id="notes-{{ s.id }}" style="display:none"></td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="te-card">
+    <h2>What happened next?</h2>
+    <p class="te-note" style="margin:0 0 .5rem">Tell us where you landed. It's private to you unless you choose to share it,
+      and your employer only ever sees group totals.</p>
+    <select id="teOutcome">{% for k in outcome_keys %}<option value="{{ k }}">{{ outcomes[k] }}</option>{% endfor %}</select>
+    <label><input type="checkbox" id="teShareThis" {% if v.share_outcomes %}checked{% endif %}> Include this in {{ v.employer }}'s group totals</label>
+    <button class="te-btn primary" data-act="outcome">Save</button>
+    {% if v.outcomes %}<p class="te-note">Reported: {% for o in v.outcomes %}{{ o.label }} ({{ o.reported_at[:10] }}{{ ', shared' if o.shared else ', private' }}){{ '; ' if not loop.last }}{% endfor %}</p>{% endif %}
+    <div class="te-msg" id="teMsg"></div>
+  </div>
+</div>
+<script>
+(function () {
+  var msg = document.getElementById('teMsg');
+  function post(url, body) {
+    return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}) }).then(function (r) { return r.json().then(function (d) {
+        if (!r.ok) throw new Error(d.message || 'Failed'); return d; }); });
+  }
+  document.querySelector('.te').addEventListener('click', function (ev) {
+    var act = ev.target.getAttribute('data-act'), nid = ev.target.getAttribute('data-notes');
+    if (act === 'change-coach') {
+      if (!confirm('You can ask for a different coach once. Continue?')) return;
+      post('{{ url_for("transition.api_employee_action", action="change-coach") }}').then(function () { location.reload(); })
+        .catch(function (e) { alert(e.message); });
+    } else if (act === 'outcome') {
+      post('{{ url_for("transition.api_employee_action", action="outcome") }}', { outcome: document.getElementById('teOutcome').value,
+        share: document.getElementById('teShareThis').checked }).then(function () { location.reload(); })
+        .catch(function (e) { msg.textContent = e.message; });
+    } else if (nid) {
+      var cell = document.getElementById('notes-' + nid);
+      cell.style.display = cell.style.display === 'none' ? '' : 'none';
+      if (cell.dataset.loaded) return;
+      fetch('/api/transition/sessions/' + nid + '/notes', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+        .then(function (d) { renderNotes(cell, nid, d.notes || []); });
+    }
+  });
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function renderNotes(cell, sid, notes) {
+    cell.dataset.loaded = '1';
+    cell.innerHTML = notes.map(function (n) { return '<div class="te-note"><b>' + esc(n.author) + '</b> ' + esc(n.created_at.slice(0, 10)) +
+      '</div><div style="white-space:pre-wrap;font-size:.86rem;margin-bottom:.4rem">' + esc(n.body) + '</div>'; }).join('') +
+      '<textarea rows="2" style="width:100%" placeholder="Add a private note"></textarea><button class="te-btn">Save note</button>';
+    cell.querySelector('button').onclick = function () {
+      post('/api/transition/sessions/' + sid + '/notes', { body: cell.querySelector('textarea').value })
+        .then(function (d) { renderNotes(cell, sid, d.notes); }).catch(function (e) { alert(e.message); });
+    };
+  }
+  document.querySelectorAll('[data-rate]').forEach(function (s) {
+    s.onchange = function () { if (s.value) post('/api/transition/sessions/' + s.getAttribute('data-rate') + '/rate', { rating: +s.value })
+      .then(function () { location.reload(); }).catch(function (e) { alert(e.message); }); };
+  });
+  var acc = document.getElementById('teAccess');
+  if (acc) acc.onchange = function () { post('{{ url_for("transition.api_employee_action", action="coach-access") }}', { granted: acc.checked }); };
+  var share = document.getElementById('teShareThis');
+  if (share) share.onchange = function () { post('{{ url_for("transition.api_employee_action", action="sharing") }}', { share: share.checked }); };
+})();
+</script>
+{% endblock %}

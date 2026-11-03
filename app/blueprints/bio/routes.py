@@ -311,6 +311,15 @@ def publish_bio_page():
         return jsonify({'error': bio_readiness.not_ready_message(state),
                         'readiness': bio_readiness.public(state)}), 422
 
+    # PRD-SIM-TRANS-001: a transition employee confirms once, before anything
+    # goes live, that they won't share their former employer's confidential info.
+    from app.services import transition_service
+    if transition_service.needs_confidentiality_ack(current_user.id):
+        if not (request.get_json(silent=True) or {}).get('confidentiality_ack'):
+            return jsonify({'error': 'confidentiality_ack_required',
+                            'message': transition_service.CONFIDENTIALITY_NOTE}), 428
+        transition_service.acknowledge_confidentiality(current_user.id)
+
     is_first_publish = bp.published_at is None
     bp.status = BioPage.STATUS_PUBLISHED
     bp.published_at = bp.published_at or datetime.utcnow()

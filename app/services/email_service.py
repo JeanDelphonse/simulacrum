@@ -1037,3 +1037,43 @@ def send_admin_new_job_application_email(admin_email: str, applicant_name: str, 
         _send(subject=f'New application — {job_title}', recipients=[admin_email], body=plain, html=html)
     except Exception as e:
         logger.error('Failed to send admin job application notification to %s: %s', admin_email, e, exc_info=True)
+
+
+def send_transition_invite_email(personal_email: str, name: str, employer: str, tier_label: str,
+                                 access_months: int, join_url: str, reminder: bool = False):
+    """PRD-SIM-TRANS-001 — the employer-paid transition package invite (and its reminders).
+
+    Says up front what the employer can and can't see, because that is the
+    question people ask before they accept anything from a former employer.
+    """
+    first = (name or '').split(' ')[0] or 'there'
+    subject = ('Reminder: your transition package from %s' % employer) if reminder else \
+        ('%s has given you a SimiSI transition package' % employer)
+    try:
+        plain = (
+            f'Hi {first},\n\n'
+            f'{employer} has paid for a SimiSI {tier_label} transition package for you: '
+            f'{access_months} months of access to a full career simulation, a professional bio page '
+            f'and the agents that help with your next move.\n\n'
+            f'Your account is yours, not your employer\'s. {employer} only ever sees aggregate numbers '
+            f'(how many people activated, for example) — never your simulation, contacts, outreach or '
+            f'coaching notes.\n\n'
+            f'Activate: {join_url}\n\n— SimiSI'
+        )
+        html = _html_wrap(
+            _h1(subject) +
+            _p(f'Hi {first}, {employer} has paid for a SimiSI <b>{tier_label}</b> transition package for '
+               f'you: {access_months} months of access to a full career simulation, a professional bio page '
+               f'and the agents that help with your next move.') +
+            _p(f'Your account is yours, not your employer\'s. {employer} only ever sees aggregate numbers — '
+               f'never your simulation, contacts, outreach or coaching notes.') +
+            _btn(join_url, 'Activate my package') +
+            _fallback_link(join_url) +
+            _divider() +
+            _p('You received this because your HR team added this address to the program. '
+               'If you don\'t want it, just ignore this email.', muted=True),
+            preheader=f'{access_months} months of SimiSI, paid for by {employer}.',
+        )
+        _send(subject=subject, recipients=[personal_email], body=plain, html=html)
+    except Exception as e:
+        logger.error('Failed to send transition invite to %s: %s', personal_email, e, exc_info=True)

@@ -34,10 +34,12 @@ class CorporateAccount(db.Model):
     ORG_COHORT = 'cohort'          # 100-500 credits, annual
     ORG_ENTERPRISE = 'enterprise'  # 500+ credits, annual
     ORG_PARTNER = 'partner'        # association / channel
-    ORG_TYPES = (ORG_PILOT, ORG_COHORT, ORG_ENTERPRISE, ORG_PARTNER)
+    ORG_TRANSITION = 'transition'  # PRD-SIM-TRANS-001: employer buying transition seats
+    ORG_TYPES = (ORG_PILOT, ORG_COHORT, ORG_ENTERPRISE, ORG_PARTNER, ORG_TRANSITION)
 
     # Default credit expiry window (days) by org type
-    DEFAULT_EXPIRY_DAYS = {ORG_PILOT: 60, ORG_COHORT: 365, ORG_ENTERPRISE: 365, ORG_PARTNER: 365}
+    DEFAULT_EXPIRY_DAYS = {ORG_PILOT: 60, ORG_COHORT: 365, ORG_ENTERPRISE: 365, ORG_PARTNER: 365,
+                           ORG_TRANSITION: 365}
 
     PROVISION_ON_ISSUE = 'issue'
     PROVISION_ON_PAYMENT = 'payment'

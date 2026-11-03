@@ -73,6 +73,15 @@ def try_redeem_credit(user_id: str, sim) -> bool:
     True if a credit was redeemed (sim should run free), False otherwise
     (caller falls through to self-serve checkout — never a hard block).
     """
+    # PRD-SIM-TRANS-001: a live transition seat funds the simulation first
+    # (the tier's first run plus its re-runs, within the access period).
+    try:
+        from app.services.transition_service import try_redeem_seat
+        if try_redeem_seat(user_id, sim):
+            return True
+    except Exception as exc:
+        _log.warning('transition seat redemption failed for user %s: %s', user_id, exc)
+
     try:
         from app.models.corporate import CorporateAccount, CorporateEmployee, CreditRedemption
 
