@@ -16,6 +16,7 @@ EXCLUDES = [
                          # in a deploy artifact
     "docs",              # PRD/requirements docs — not needed on server
     "*.mp4",             # large marketing videos — already on server, rarely change
+    "app/static/qr/*",   # bio QR codes are generated on the server at publish; local ones are test output
 ]
 
 def should_exclude(path):
