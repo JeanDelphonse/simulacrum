@@ -1,4 +1,5 @@
-"""The logo mascot (docs/simisi_system_mockup.html).
+"""The logo mascot (docs/simisi_system_mockup.html) and the hero lift-off
+(docs/marketing/simisi_mascot_liftoff.html).
 
 The walking hero mascot with per-load colours was retired when the home page
 moved to the system mockup; the mascot now lives in the logo, in the nav and
@@ -33,13 +34,32 @@ def section(title):
 def main():
     section('The partial')
     logo = io.open('app/templates/partials/_logo.html', encoding='utf-8').read()
+    art = io.open('app/templates/partials/_mascot_svg.html', encoding='utf-8').read()
     check('the logo is one macro', '{% macro logo(' in logo)
-    check('no element ids, so two copies can share a page', ' id="' not in logo)
+    check('the logo draws the shared artwork', "mascot_ui.mascot_svg('logo-mascot')" in logo)
+    check('no element ids, so several copies can share a page', ' id="' not in logo + art)
     check('the artwork is hidden from assistive tech; the link carries the name',
-          'aria-hidden="true"' in logo and 'aria-label="{{ label }}"' in logo)
+          'aria-hidden="true"' in art and 'aria-label="{{ label }}"' in logo)
     check('the wordmark is Simi + gold SI', '<span>Simi<b>SI</b></span>' in logo)
     check('the blink and wave hooks are present',
-          'class="lm-eyes"' in logo and 'class="lm-arm"' in logo)
+          'class="lm-eyes"' in art and 'class="lm-arm"' in art)
+    copies = 0
+    for root, _d, files in os.walk('app/templates'):
+        for f in files:
+            # The SME Console draws its own large mascot from its own mockup.
+            if f.endswith('.html') and f != 'console.html':
+                copies += io.open(os.path.join(root, f), encoding='utf-8').read().count('M146,46 C150,16 174,8 194,4')
+    check('the logo and hero artwork lives in one file', copies == 1, copies)
+
+    section('The hero lift-off (docs/marketing/simisi_mascot_liftoff.html)')
+    home_css = io.open('app/static/css/home.css', encoding='utf-8').read()
+    check('a 5 s loop', 'animation:mbLift 5s' in home_css and 'animation:mbShadow 5s' in home_css)
+    check('the lifted copy peaks at .22 and the print sits at .07',
+          'opacity:.22;transform:translateY(-14px)' in home_css and '.mascot-bg .print{opacity:.07;' in home_css)
+    check('never blocks clicks', '.mascot-bg{position:absolute;z-index:5;pointer-events:none;' in home_css)
+    check('reduced motion shows only the print',
+          '@media(prefers-reduced-motion:reduce){.mascot-bg .lift,.mascot-bg .shadow{animation:none;opacity:0;}}' in home_css)
+    check('the logo blink stays off in the hero copy', '.mascot-bg .lm-eyes,.mascot-bg .lm-arm{animation:none;}' in home_css)
 
     css = io.open('app/static/css/system.css', encoding='utf-8').read()
     check('system.css animates those hooks', '.lm-eyes {' in css and '.ss-logo:hover .lm-arm' in css)
@@ -62,6 +82,16 @@ def main():
         home = client.get('/').get_data(as_text=True)
         check('the retired walker is gone from the home page',
               'class="walker"' not in home and 'm-stop-1' not in home)
+        hero = home.split('<header class="hero has-mascot-bg" id="top">')[1] if 'has-mascot-bg' in home else ''
+        first = hero.split('<div class="wrap hero-top">')[0]
+        check('the mascot is the first child of the hero, hidden from assistive tech',
+              '<div class="mascot-bg" aria-hidden="true">' in first
+              and first.count('<svg class="print"') == 1 and first.count('<svg class="lift"') == 1
+              and '<span class="shadow"></span>' in first)
+        check('…on the home page only', 'mascot-bg' not in client.get('/login').get_data(as_text=True)
+              and 'mascot-bg' not in client.get('/careers').get_data(as_text=True))
+        check('the slogan is unchanged',
+              'See the five ways your career becomes wealth&nbsp;— before you live any of them.' in home)
 
     print('\n{} passed, {} failed'.format(len(PASS), len(FAIL)))
     if FAIL:

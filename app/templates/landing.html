@@ -40,11 +40,19 @@
 {% endblock %}
 
 {% block content %}
+{% import 'partials/_mascot_svg.html' as mascot_ui %}
 {% set L = site_layers.layers %}
 {% set register = url_for('pages.register_page') %}
 
 <!-- HERO: the simulation itself is the opening image -->
-<header class="hero" id="top">
+<header class="hero has-mascot-bg" id="top">
+  {# Simi printed faintly over the hero; a copy lifts off every 5 s (css/home.css,
+     docs/marketing/simisi_mascot_liftoff.html). Decorative, never clickable. #}
+  <div class="mascot-bg" aria-hidden="true">
+    <span class="shadow"></span>
+    {{ mascot_ui.mascot_svg('print') }}
+    {{ mascot_ui.mascot_svg('lift') }}
+  </div>
   <div class="wrap hero-top">
     <h1>See the five ways your career becomes wealth&nbsp;— before you live any of them.</h1>
     <div class="side">
