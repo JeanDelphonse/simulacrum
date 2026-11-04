@@ -7,9 +7,11 @@
   <meta name="robots" content="noindex">
   <title>Edit bio page — SimiSI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f9fafb; color: #111827; font-family: system-ui, sans-serif; height: 100vh; overflow: hidden; }
+    body { background: #f9fafb; color: #111827; font-family: var(--sans); height: 100vh; overflow: hidden; }
 
     /* ── Top bar ── */
     .editor-topbar {
@@ -112,7 +114,7 @@
     .testimonial-item .t-name { font-size: .8rem; font-weight: 600; }
     .t-delete {
       position: absolute; top: .5rem; right: .5rem;
-      background: none; border: none; color: #9ca3af; cursor: pointer; font-size: .9rem;
+      background: none; border: none; color: var(--mute); cursor: pointer; font-size: .9rem;
     }
     .t-delete:hover { color: #dc2626; }
 
@@ -148,7 +150,7 @@
       padding: .6rem .75rem; text-align: center;
     }
     .analytics-stat .stat-val { font-size: 1.25rem; font-weight: 800; color: #111827; }
-    .analytics-stat .stat-label { font-size: .7rem; color: #9ca3af; }
+    .analytics-stat .stat-label { font-size: .7rem; color: var(--mute); }
     .embed-code {
       background: #f3f4f6; border-radius: 7px; padding: .65rem .8rem;
       font-size: .75rem; font-family: monospace; color: #374151;
@@ -157,7 +159,7 @@
     }
     .embed-code:hover { background: #e5e7eb; }
     .embed-label { font-size: .75rem; font-weight: 600; color: #6b7280; margin-bottom: .25rem; }
-    .embed-copy-hint { font-size: .7rem; color: #9ca3af; margin-bottom .75rem; }
+    .embed-copy-hint { font-size: .7rem; color: var(--mute); margin-bottom .75rem; }
     .nudge-box {
       background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
       padding: .75rem; margin-bottom: .75rem; font-size: .82rem; color: #1e40af;
@@ -195,7 +197,7 @@
     .share-embed-row { display: flex; gap: .6rem; justify-content: center; margin-bottom: 1rem; flex-wrap: wrap; }
     .s-btn-sm { background: #fff; border: 1px solid #d1d5db; color: #374151; padding: .4rem .9rem; border-radius: 7px; font-size: .8rem; font-weight: 600; cursor: pointer; }
     .s-btn-sm:hover { background: #f3f4f6; }
-    .share-skip { background: none; border: none; color: #9ca3af; font-size: .82rem; cursor: pointer; }
+    .share-skip { background: none; border: none; color: var(--mute); font-size: .82rem; cursor: pointer; }
     .share-skip:hover { color: #6b7280; }
 
     @media (max-width: 900px) {
@@ -408,7 +410,7 @@
 
         <!-- Badge & explore toggles -->
         <div class="section-visibility-row">
-          <span style="font-size:.85rem;">Show SimiSI badge <span style="font-size:.72rem;color:#9ca3af;">(free plan always on)</span></span>
+          <span style="font-size:.85rem;">Show SimiSI badge <span style="font-size:.72rem;color:var(--mute);">(free plan always on)</span></span>
           <input type="checkbox" id="dist-show-badge" checked>
         </div>
         <div class="section-visibility-row" style="margin-bottom:.75rem;">
@@ -426,15 +428,15 @@
 
         <div class="embed-label">Floating badge (paste before &lt;/body&gt;)</div>
         <div class="embed-code" id="embed-badge-code" title="Click to copy"></div>
-        <div class="embed-copy-hint" id="embed-badge-hint" style="font-size:.7rem;color:#9ca3af;margin-bottom:.75rem;">Click to copy</div>
+        <div class="embed-copy-hint" id="embed-badge-hint" style="font-size:.7rem;color:var(--mute);margin-bottom:.75rem;">Click to copy</div>
 
         <div class="embed-label">Inline card</div>
         <div class="embed-code" id="embed-card-code" title="Click to copy"></div>
-        <div class="embed-copy-hint" id="embed-card-hint" style="font-size:.7rem;color:#9ca3af;margin-bottom:.75rem;">Click to copy</div>
+        <div class="embed-copy-hint" id="embed-card-hint" style="font-size:.7rem;color:var(--mute);margin-bottom:.75rem;">Click to copy</div>
 
         <div class="embed-label">Email signature (static HTML)</div>
         <div class="embed-code" id="embed-email-code" title="Click to copy"></div>
-        <div class="embed-copy-hint" id="embed-email-hint" style="font-size:.7rem;color:#9ca3af;"></div>
+        <div class="embed-copy-hint" id="embed-email-hint" style="font-size:.7rem;color:var(--mute);"></div>
 
       </div>
     </div>
@@ -458,7 +460,7 @@
         <a class="s-btn-sm" id="share-qr-btn" href="/static/qr/{{ slug }}.png"
            download="{{ slug }}-simisi-qr.png">Download QR code</a>
       </div>
-      <p class="share-qr-hint" style="font-size:.72rem;color:#9ca3af;margin:.5rem 0 0;">
+      <p class="share-qr-hint" style="font-size:.72rem;color:var(--mute);margin:.5rem 0 0;">
         Add this QR to your business card, email signature, or conference badge.
       </p>
       <button class="share-skip" id="share-skip-btn">Skip for now</button>

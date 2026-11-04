@@ -13,7 +13,7 @@
 .ana-preset-btn { font-size:.75rem; padding:.28rem .6rem; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#374151; cursor:pointer; white-space:nowrap; }
 .ana-preset-btn:hover, .ana-preset-btn.active { background:#0d9488; color:#fff; border-color:#0d9488; }
 .ana-refresh-btn { font-size:.8rem; padding:.3rem .75rem; border:1px solid #0d9488; border-radius:6px; background:#0d9488; color:#fff; cursor:pointer; }
-.ana-last-updated { font-size:.73rem; color:#9ca3af; }
+.ana-last-updated { font-size:.73rem; color:var(--mute); }
 
 /* ── Alert banner ────────────────────────────────────────────────────── */
 .ana-alerts { margin-bottom:1rem; display:flex; flex-direction:column; gap:.5rem; }
@@ -31,7 +31,7 @@
 .ana-stat-trend { font-size:.73rem; margin-top:.3rem; font-weight:600; }
 .ana-stat-trend.up   { color:#16a34a; }
 .ana-stat-trend.down { color:#dc2626; }
-.ana-stat-trend.flat { color:#9ca3af; }
+.ana-stat-trend.flat { color:var(--mute); }
 
 /* ── Cards ───────────────────────────────────────────────────────────── */
 .ana-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; margin-bottom:1rem; overflow:hidden; }
@@ -41,8 +41,8 @@
 .ana-card-metrics { display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
 .ana-card-metric { text-align:right; }
 .ana-card-metric-val { font-size:.95rem; font-weight:700; color:#0f172a; }
-.ana-card-metric-lbl { font-size:.65rem; color:#9ca3af; text-transform:uppercase; letter-spacing:.04em; }
-.ana-card-chevron { font-size:1rem; color:#9ca3af; transition:transform .2s; }
+.ana-card-metric-lbl { font-size:.65rem; color:var(--mute); text-transform:uppercase; letter-spacing:.04em; }
+.ana-card-chevron { font-size:1rem; color:var(--mute); transition:transform .2s; }
 .ana-card-chevron.open { transform:rotate(180deg); }
 .ana-card-body { border-top:1px solid #f3f4f6; display:none; }
 .ana-card-body.open { display:block; }
@@ -73,7 +73,7 @@
 .ana-funnel-bar-wrap { flex:1; background:#f3f4f6; border-radius:4px; height:20px; overflow:hidden; }
 .ana-funnel-bar { height:100%; background:#0d9488; border-radius:4px; transition:width .4s; }
 .ana-funnel-val { font-size:.75rem; font-weight:600; color:#0f172a; width:80px; text-align:right; }
-.ana-spinner { text-align:center; padding:2rem; color:#9ca3af; font-size:.85rem; }
+.ana-spinner { text-align:center; padding:2rem; color:var(--mute); font-size:.85rem; }
 </style>
 {% endblock %}
 {% block content %}
@@ -86,7 +86,7 @@
     <div class="ana-header-right">
       <div class="ana-date-range">
         <input type="date" id="anaStart">
-        <span style="color:#9ca3af;font-size:.8rem">to</span>
+        <span style="color:var(--mute);font-size:.8rem">to</span>
         <input type="date" id="anaEnd">
       </div>
       <button class="ana-preset-btn" onclick="setPreset(7)">7d</button>
@@ -315,7 +315,7 @@ function mkTable(el, headers, rows) {
   var b = '<tbody>' + (rows.length ? rows.map(function(r) {
     var cls = r._bio ? ' class="ana-bio-row"' : '';
     return '<tr' + cls + '>' + r.cells.map(function(c) { return '<td>' + (c||'—') + '</td>'; }).join('') + '</tr>';
-  }).join('') : '<tr><td colspan="' + headers.length + '" style="color:#9ca3af;text-align:center;padding:1.5rem">No data for this period</td></tr>') + '</tbody>';
+  }).join('') : '<tr><td colspan="' + headers.length + '" style="color:var(--mute);text-align:center;padding:1.5rem">No data for this period</td></tr>') + '</tbody>';
   el.innerHTML = h + b;
 }
 function sortTable(th, col) {

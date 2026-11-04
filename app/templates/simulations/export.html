@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
   {% include 'partials/_favicon.html' %}
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
 <style>
-  body { font-family: Arial, sans-serif; color: #1a1a2e; margin: 40px; }
+  body { font-family: var(--sans); color: #1a1a2e; margin: 40px; }
   h1 { color: #0a0e1a; }
   .layer { margin: 30px 0; border-left: 4px solid #f5c842; padding-left: 16px; }
   .layer h2 { font-size: 16px; }
@@ -12,7 +14,7 @@
   .stream h3 { font-size: 14px; margin: 0 0 6px; }
   .reasoning { color: #555; font-size: 13px; }
   .range { color: #2d7a2d; font-weight: bold; }
-  .footer { margin-top: 40px; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
+  .footer { margin-top: 40px; font-size: 11px; color: var(--mute); border-top: 1px solid #eee; padding-top: 12px; }
 </style>
 </head>
 <body>

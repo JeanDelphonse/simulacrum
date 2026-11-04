@@ -1,1636 +1,409 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% include 'partials/_favicon.html' %}
-  <title>SimiSI — See the five ways your career becomes wealth, before you live any of them.</title>
-  <meta name="description" content="SimiSI reads your resume, simulates your next 24 months across five layers of income, and its {{ site_layers.agent_total }} AI agents do the work — writing, sending under your name and following up on the channels you allow. Calibrated projections with their sources. Free bio page forever.">
+{% extends 'base.html' %}
+{# The home page. Design: docs/simisi_system_mockup.html (styles in
+   css/home.css, behaviour in js/home.js; nav and footer come from base.html).
+
+   Everything a visitor could check is live: the price is pricing_context()
+   (the source checkout charges), layers and agent counts come from
+   agents.json, people are published bio pages, ratings are approved feedback.
+   The two charts and the sample runs are illustrative and say so.
+
+   Copy honesty (SITE_UPDATE_PLAN §2, owner decision 2026-10-29): email goes
+   out under the user's name through SimiSI unless they connect their own
+   SendGrid, and the orchestrator sends on channels the user allows, so the
+   page never claims "from your own account" or "nothing goes out without your
+   approval". test_site_pricing.py guards this. #}
+
+{% block full_title %}SimiSI: see the five ways your career becomes wealth, before you live any of them{% endblock %}
+{% block body_class %}home{% endblock %}
+
+{% block head %}
+  <meta name="description" content="SimiSI reads your resume, simulates your next 24 months across five layers of income, and its {{ site_layers.agent_total }} AI agents do the work: writing, sending under your name and following up on the channels you allow. Calibrated projections with their sources. Free bio page forever.">
   <link rel="canonical" href="https://simisi.io">
-  <meta property="og:title" content="SimiSI — Career-to-wealth simulation">
-  <meta property="og:description" content="One resume. Five layers of income. Forty-nine AI agents. Run the decision forward before you commit a single real month to it.">
-  {# Social cards use the 512px mark: the old 55x57 JPEG was below every
-     platform's minimum and rendered as a blurry thumbnail or was dropped
-     outright. Still a square icon rather than a 1200x630 card image — see
-     the note in the handover. #}
+  <meta property="og:title" content="SimiSI: career-to-wealth simulation">
+  <meta property="og:description" content="One resume. Five layers of income. {{ site_layers.agent_total }} AI agents. Run the decision forward before you commit a single real month to it.">
   <meta property="og:image" content="https://simisi.io/static/icons/simulacrum-icon-512.png">
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
   <meta property="og:url" content="https://simisi.io">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="SimiSI — Career-to-wealth simulation">
-  <meta name="twitter:description" content="One resume. Five layers of income. Forty-nine AI agents. See the consequences before you live them.">
+  <meta name="twitter:title" content="SimiSI: career-to-wealth simulation">
+  <meta name="twitter:description" content="One resume. Five layers of income. {{ site_layers.agent_total }} AI agents. See the consequences before you live them.">
   <meta name="twitter:image" content="https://simisi.io/static/icons/simulacrum-icon-512.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-  <style>
-  /* ── Tokens ─────────────────────────────────────────────────────── */
-  :root {
-    --navy: #0D1B3E; --navy-mid: #152A54;
-    --teal: #0F7B72; --teal-light: #13A89E;
-    --gold: #C9952A; --white: #FFFFFF;
-    --off-white: #FAFBFC; --dark: #1A1A2E; --muted: #6B7B8D;
-    --border: rgba(0,0,0,0.06); --coral: #E85D4A;
-    --nav-h: 64px; --max-w: 1200px;
-    --r: 16px; --shadow: 0 1px 3px rgba(0,0,0,.04);
-    --shadow-hover: 0 12px 40px rgba(0,0,0,.12);
-    /* Midnight Gold additions for the repositioned sections. The navy/teal/gold
-       above already match docs/simulacrum_homepage_mockup.html; these are the
-       paper tints, the light gold and the on-dark text greys it also uses. */
-    --navy2: #081027; --navy3: #132449;
-    --paper: #FBFAF5; --paper2: #F3EFE4;
-    --gold-l: #E4B855; --teal-br: #13A89E;
-    --offw: #F5F1E6; --subtl: #C3CDD6; --mute-d: #8794a8;
-    --line: rgba(201,149,42,.22);
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--off-white); color: var(--dark); line-height: 1.65; font-size: 16px; -webkit-font-smoothing: antialiased; }
-  h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; line-height: 1.15; }
-  a { text-decoration: none; }
-  img { max-width: 100%; display: block; }
-  svg { display: block; }
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
 
-  /* ── Layout ─────────────────────────────────────────────────────── */
-  .lp-c  { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
-  .lp-s  { padding: 80px 0; }
-  .s-label {
-    display: block; font-family: 'DM Sans', sans-serif;
-    font-size: 13px; font-weight: 600; letter-spacing: 2px;
-    text-transform: uppercase; margin-bottom: 12px;
-  }
-  .s-label.teal { color: var(--teal); }
-  .s-label.gold { color: var(--gold); }
-  .s-h2 { font-size: clamp(28px,3.5vw,40px); font-weight: 700; color: var(--navy); margin-bottom: 14px; }
-  .s-sub { font-size: 17px; color: var(--muted); line-height: 1.7; }
+{% block announce %}
+{% if playbook_url %}
+<div class="ss-announce"><div class="wrap"><span>The Wealth Simulation Playbook is out now<span class="hide-sm">, with all {{ site_layers.agent_total }} agents documented as case studies</span>.</span> <a href="{{ playbook_url }}" target="_blank" rel="noopener">Get it on Amazon</a></div></div>
+{% endif %}
+{% endblock %}
 
-  /* ── Buttons ─────────────────────────────────────────────────────── */
-  .btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 15px;
-    padding: 12px 22px; border-radius: 10px; cursor: pointer;
-    border: none; transition: all 250ms ease; white-space: nowrap;
-  }
-  .btn-teal  { background: var(--teal); color: #fff; box-shadow: 0 4px 14px rgba(15,123,114,.28); }
-  .btn-teal:hover  { background: #0c6860; transform: translateY(-1px); }
-  .btn-gold  { background: var(--gold); color: #fff; font-size: 16px; box-shadow: 0 4px 20px rgba(201,149,42,.32); }
-  .btn-gold:hover  { background: #b8851f; transform: translateY(-1px); }
-  .btn-outline { background: transparent; color: var(--dark); border: 1px solid rgba(0,0,0,.14); }
-  .btn-outline:hover { background: rgba(0,0,0,.04); }
-  .btn-ghost { background: rgba(255,255,255,.09); color: #fff; border: 1px solid rgba(255,255,255,.18); }
-  .btn-ghost:hover { background: rgba(255,255,255,.17); }
-  .btn-ghost-dk { background: transparent; color: var(--dark); border: 1px solid rgba(0,0,0,.14); }
-  .btn-ghost-dk:hover { background: rgba(0,0,0,.04); }
+{% block content %}
+{% set L = site_layers.layers %}
+{% set register = url_for('pages.register_page') %}
 
-  /* ── Nav ─────────────────────────────────────────────────────────── */
-  .lp-nav {
-    position: fixed; top: 0; inset-inline: 0; z-index: 100;
-    height: var(--nav-h);
-    background: rgba(250,251,252,.93); backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(0,0,0,.06);
-    transition: box-shadow 300ms;
-  }
-  .lp-nav.scrolled { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
-  .lp-nav-inner {
-    max-width: var(--max-w); margin: 0 auto; padding: 0 24px;
-    height: 100%; display: flex; align-items: center; gap: 8px;
-  }
-  .lp-logo {
-    display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-right: 16px;
-    font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--navy);
-  }
-  .lp-logo:hover { color: var(--teal); }
-  .lp-logo .mascot-mini { flex-shrink: 0; display: block; filter: drop-shadow(0 1px 2px rgba(13,27,62,.25)); }
-  .lp-nav-links { display: flex; align-items: center; gap: 2px; flex: 1; }
-  .lp-nav-link {
-    font-size: 14px; font-weight: 500; color: var(--muted);
-    padding: 6px 12px; border-radius: 7px; position: relative;
-    transition: color 250ms, background 250ms;
-  }
-  .lp-nav-link:hover { color: var(--navy); background: rgba(0,0,0,.04); }
-  .lp-nav-link.active { color: var(--teal); }
-  .lp-nav-link.active::after {
-    content: ''; position: absolute; bottom: 3px; left: 12px; right: 12px;
-    height: 2px; background: var(--teal); border-radius: 2px;
-  }
-  .lp-nav-ctas { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .user-menu { position: relative; }
-  .user-menu-btn {
-    background: transparent; border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
-    padding: 9px 14px; font-size: 14px; cursor: pointer; display: flex; align-items: center;
-    gap: 6px; color: var(--dark); white-space: nowrap; font-family: inherit;
-  }
-  .user-menu-btn:hover { background: rgba(0,0,0,.04); }
-  .um-name { overflow: hidden; text-overflow: ellipsis; max-width: 120px; display: inline-block; }
-  .um-chevron { font-size: 10px; opacity: .55; flex-shrink: 0; transition: transform 200ms; }
-  .user-menu.is-open .um-chevron { transform: rotate(180deg); }
-  .user-menu-dropdown {
-    display: none; position: absolute; right: 0; top: calc(100% + 6px);
-    background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 160px; z-index: 300; overflow: hidden;
-  }
-  .user-menu.is-open .user-menu-dropdown { display: block; }
-  .user-menu-dropdown a, .user-menu-dropdown button.um-item {
-    display: block; width: 100%; text-align: left; padding: 10px 16px;
-    font-size: 14px; color: var(--dark); background: none; border: none;
-    cursor: pointer; text-decoration: none; font-family: inherit; box-sizing: border-box;
-  }
-  .user-menu-dropdown a:hover, .user-menu-dropdown button.um-item:hover { background: #f5f7fa; color: var(--dark); }
-  .um-signout { color: #dc2626 !important; }
-  .um-divider { height: 1px; background: rgba(0,0,0,.08); margin: 4px 0; }
-  .lp-hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; }
-  .lp-hamburger span { display: block; width: 22px; height: 2px; background: var(--navy); border-radius: 2px; transition: all 300ms; }
-  .lp-mob-menu { display: none; padding: 12px 24px 20px; border-top: 1px solid rgba(0,0,0,.06); background: rgba(250,251,252,.98); }
-  .lp-mob-menu.open { display: block; }
-  .lp-mob-link { display: block; padding: 11px 0; font-size: 15px; font-weight: 500; color: var(--dark); border-bottom: 1px solid rgba(0,0,0,.05); }
-  .lp-mob-ctas { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-  .lp-mob-ctas .btn { justify-content: center; }
-
-  /* ── Hero ─────────────────────────────────────────────────────────── */
-  #hero {
-    padding-top: calc(var(--nav-h) + 72px); padding-bottom: 88px;
-    background: linear-gradient(135deg, #0d1b3e 0%, #152a54 52%, #0f7b72 100%);
-    position: relative; overflow: hidden;
-  }
-  #hero::before {
-    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .45;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.035'/%3E%3C/svg%3E");
-  }
-  .hero-inner {
-    position: relative; z-index: 1;
-    max-width: var(--max-w); margin: 0 auto; padding: 0 24px;
-    display: flex; align-items: center; gap: 64px;
-  }
-  .hero-text { flex: 1; min-width: 0; }
-  .hero-chip {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14);
-    color: rgba(255,255,255,.82); font-size: 13px; font-weight: 500;
-    padding: 5px 14px; border-radius: 999px; margin-bottom: 24px;
-  }
-  .hero-chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal-light); animation: blink 2s ease-in-out infinite; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
-  .hero-h1 { font-size: clamp(36px,5vw,56px); font-weight: 700; color: #fff; margin-bottom: 20px; line-height: 1.08; }
-  /* Gold italic emphasis, per the mockup — the clause that carries the promise. */
-  .hero-h1 em { font-style: italic; color: var(--gold-l); }
-  /* Wider than the old headline copy needed: the repositioned lead is a full sentence. */
-  .hero-sub { font-size: 18px; color: rgba(255,255,255,.62); line-height: 1.72; max-width: 620px; margin-bottom: 30px; }
-  .hero-ctas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
-  .hero-trust { font-size: 13px; color: rgba(255,255,255,.42); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .hero-trust-sep { color: rgba(255,255,255,.18); }
-
-  /* The hero's right-hand column: trust proof stacked over the live bio cards.
-     The width and centring that used to live on .hero-cards-grid belong here
-     now, so the two stay the same width as each other. */
-  .hero-side {
-    flex-shrink: 0; width: 460px; align-self: center;
-    display: flex; flex-direction: column; gap: 16px;
-  }
-  /* Tighter than the same card in the trust section: the hero is dense, and at
-     full padding this pushed the bio cards off the fold. */
-  .hero-pcard { padding: 18px; background: rgba(255,255,255,.07); }
-  .hero-pcard .k { font-size: 17px; margin-bottom: 6px; }
-  .hero-pcard p { font-size: 13.5px; line-height: 1.6; }
-  .hero-pcard .ptag { margin-top: 10px; }
-
-  /* Hero user cards grid — same style as explore page */
-  .hero-cards-grid {
-    width: 100%;
-    display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
-  }
-  .hero-cards-grid .hc {
-    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
-    padding: 1.125rem; box-shadow: 0 4px 20px rgba(0,0,0,.18);
-    transition: box-shadow .15s, border-color .15s;
-    display: flex; flex-direction: column; text-decoration: none; color: inherit;
-  }
-  .hero-cards-grid .hc:hover { box-shadow: 0 8px 28px rgba(0,0,0,.26); border-color: #0e7490; }
-  .card-top { display: flex; gap: .65rem; align-items: flex-start; margin-bottom: .65rem; }
-  .card-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
-  .card-avatar-placeholder { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #0e7490, #059669); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: 700; }
-  .card-meta { flex: 1; min-width: 0; }
-  .card-name { font-weight: 700; font-size: .85rem; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card-zone { font-size: .68rem; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
-  .card-tagline { font-size: .8rem; color: #6b7280; line-height: 1.5; margin-bottom: .65rem; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
-  .card-link { font-size: .75rem; font-weight: 600; color: #0e7490; padding: .28rem .7rem; border: 1px solid #0e7490; border-radius: 7px; transition: background .12s, color .12s; white-space: nowrap; }
-  .card-link:hover { background: #0e7490; color: #fff; }
-  .card-like { font-size: .73rem; color: #9ca3af; display: flex; align-items: center; gap: .3rem; }
-  .card-like svg { width: 11px; height: 11px; }
-
-  /* ── Pricing ─────────────────────────────────────────────────────── */
-  #pricing { background: var(--off-white); }
-  .pricing-head { text-align: center; margin-bottom: 12px; }
-  .pricing-head-sub { text-align: center; font-size: 15px; color: var(--muted); margin-bottom: 48px; }
-  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; max-width: 1160px; margin: 0 auto; }
-  .price-card {
-    background: #fff; border: 1px solid var(--border);
-    border-radius: 20px; padding: 36px 32px;
-    box-shadow: var(--shadow); display: flex; flex-direction: column;
-    transition: box-shadow 300ms;
-  }
-  .price-card:hover { box-shadow: var(--shadow-hover); }
-  .price-card.featured { border: 2px solid var(--teal); }
-  .price-badge-row { min-height: 26px; margin-bottom: 18px; }
-  .price-badge { background: var(--teal); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-block; }
-  .price-tier { font-family: 'DM Sans',sans-serif; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-  .price-amount { font-family: 'Playfair Display',serif; font-size: 48px; font-weight: 700; color: var(--navy); line-height: 1; }
-  .price-per { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
-  .price-discounted { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 2px; }
-  .price-original { font-family: 'Playfair Display',serif; font-size: 28px; font-weight: 700; color: #9CA3AF; text-decoration: line-through; line-height: 1; }
-  .price-current { font-family: 'Playfair Display',serif; font-size: 48px; font-weight: 700; color: #E85D4A; line-height: 1; }
-  .price-label-badge { background: #E85D4A; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: center; }
-  .price-countdown { font-size: 12px; color: #E85D4A; margin-bottom: 4px; font-weight: 600; }
-  .price-features { display: flex; flex-direction: column; gap: 10px; flex: 1; margin-bottom: 28px; }
-  .price-feat { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--dark); }
-  .price-check { color: var(--teal); font-weight: 700; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-  .price-divider { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding-top: 12px; margin-top: 6px; border-top: 1px solid var(--border); }
-
-  /* ── Social Proof ────────────────────────────────────────────────── */
-  #social-proof { background: var(--white); padding: 80px 0; }
-  .sp-inner  { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
-  .sp-heading { font-size: clamp(28px,3.5vw,40px); font-weight: 700; color: var(--navy); margin: 0 0 .5rem; text-align: center; }
-  .sp-sub    { font-size: 16px; color: var(--muted); text-align: center; margin: 0 0 1.5rem; }
-  .sp-trust-bar { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-bottom: 2rem; flex-wrap: wrap; }
-  .sp-trust-item { font-size: .9rem; font-weight: 700; color: var(--dark); }
-  .sp-trust-sep  { color: var(--muted); opacity: .4; }
-  .sp-featured-card { background: var(--navy); border-radius: 14px; padding: 2rem 2.5rem; margin-bottom: 2rem; }
-  .sp-featured-quote { font-size: 1.1rem; color: #fff; line-height: 1.7; margin-bottom: 1rem; }
-  .sp-featured-quote::before { content: '\201C'; color: var(--gold); font-size: 1.5em; line-height: 0; vertical-align: -.3em; }
-  .sp-featured-quote::after  { content: '\201D'; color: var(--gold); font-size: 1.5em; line-height: 0; vertical-align: -.3em; }
-  .sp-featured-name  { font-weight: 700; color: var(--gold); margin-bottom: .2rem; }
-  .sp-featured-zone  { font-size: .82rem; color: rgba(255,255,255,.5); margin-bottom: .5rem; }
-  .sp-featured-stars { color: var(--gold); font-size: 1rem; }
-  .sp-carousel-wrap  { position: relative; display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
-  .sp-carousel { display: flex; gap: 1rem; overflow: hidden; flex: 1; }
-  .sp-card { flex: 0 0 calc(33.333% - .67rem); background: var(--off-white); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; box-shadow: var(--shadow); }
-  .sp-card-stars { color: var(--gold); font-size: .95rem; margin-bottom: .5rem; }
-  .sp-card-quote { font-size: .95rem; color: var(--dark); line-height: 1.65; margin-bottom: .6rem; min-height: 4em; }
-  .sp-card-name  { font-weight: 700; color: var(--dark); font-size: .875rem; }
-  .sp-card-zone  { font-size: .78rem; color: var(--muted); margin-bottom: .4rem; }
-  .sp-card-meta  { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin-top: .5rem; }
-  .sp-layer-chip { font-size: .7rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; }
-  .sp-lc-1,.sp-lc-2 { background: #ccfbf1; color: #0d9488; }
-  .sp-lc-3,.sp-lc-4 { background: #fef9c3; color: #854d0e; }
-  .sp-lc-5 { background: #dbeafe; color: #1e40af; }
-  .sp-lc-6 { background: #ede9fe; color: #6d28d9; }
-  .sp-lc-0 { background: #f3f4f6; color: #6b7280; }
-  .sp-date  { font-size: .72rem; color: var(--muted); margin-left: auto; }
-  .sp-chevron { background: #fff; border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--dark); flex-shrink: 0; }
-  .sp-chevron:hover { background: var(--off-white); }
-  .sp-dots { display: flex; justify-content: center; gap: .4rem; margin-bottom: 2rem; }
-  .sp-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,.12); cursor: pointer; border: none; padding: 0; }
-  .sp-dot.active { background: var(--teal); }
-  .sp-cta-row { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
-  .sp-cta-col { font-size: .875rem; color: var(--dark); display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; }
-  .sp-cta-link { font-weight: 700; color: var(--teal); }
-  .sp-cta-link:hover { text-decoration: underline; }
-
-  /* ── FAQ ─────────────────────────────────────────────────────────── */
-  #faq { background: var(--white); }
-  .faq-head { text-align: center; margin-bottom: 48px; }
-  .faq-list { max-width: 720px; margin: 0 auto; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: #fff; }
-  .faq-item { border-bottom: 1px solid rgba(0,0,0,.05); }
-  .faq-item:last-child { border-bottom: none; }
-  .faq-q {
-    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 20px 24px; background: none; border: none; cursor: pointer;
-    font-family: 'DM Sans',sans-serif; font-size: 16px; font-weight: 500; color: var(--navy);
-    text-align: left; transition: background 150ms;
-  }
-  .faq-q:hover { background: rgba(0,0,0,.018); }
-  .faq-chevron { flex-shrink: 0; width: 20px; height: 20px; transition: transform 300ms ease; color: var(--muted); }
-  .faq-item.open .faq-chevron { transform: rotate(180deg); color: var(--teal); }
-  .faq-a { max-height: 0; overflow: hidden; transition: max-height 400ms ease; }
-  .faq-a-inner { padding: 0 24px 20px; font-size: 15px; color: var(--muted); line-height: 1.75; }
-
-  /* ── CTA ─────────────────────────────────────────────────────────── */
-  #cta {
-    background: linear-gradient(135deg, #0d1b3e 0%, #152a54 52%, #0f7b72 100%);
-    padding: 96px 0; text-align: center; position: relative; overflow: hidden;
-  }
-  #cta::before {
-    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .4;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.035'/%3E%3C/svg%3E");
-  }
-  .cta-inner { position: relative; z-index: 1; }
-  .cta-h2  { font-size: clamp(28px,4vw,44px); font-weight: 700; color: #fff; max-width: 640px; margin: 0 auto 16px; }
-  .cta-sub { font-size: 17px; color: rgba(255,255,255,.58); margin-bottom: 36px; }
-  .cta-trust { font-size: 13px; color: rgba(255,255,255,.38); margin-top: 16px; letter-spacing: .3px; }
-
-  /* ── Footer ──────────────────────────────────────────────────────── */
-
-  /* ── Fade-in ─────────────────────────────────────────────────────── */
-  .fade-up { opacity: 0; transform: translateY(28px); transition: opacity 700ms ease, transform 700ms ease; }
-  .fade-up.in { opacity: 1; transform: translateY(0); }
-  .d1 { transition-delay: .1s; } .d2 { transition-delay: .2s; } .d3 { transition-delay: .3s; }
-
-  /* ── Responsive ──────────────────────────────────────────────────── */
-  @media (max-width: 1024px) {
-    /* The bio cards go, the trust card stays — so the hero stacks instead of
-       keeping a 460px column beside the copy. */
-    .hero-cards-grid { display: none; }
-    .hero-inner { flex-direction: column; align-items: flex-start; gap: 32px; }
-    .hero-side { width: 100%; align-self: stretch; }
-    .hero-pcard { max-width: 560px; }
-  }
-  @media (max-width: 768px) {
-    .lp-s { padding: 60px 0; }
-    .lp-nav-links, .lp-nav-ctas { display: none; }
-    .lp-hamburger { display: flex; }
-    .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
-    .sp-card { flex: 0 0 85%; }
-    .sp-chevron { display: none; }
-    #hero { padding-top: calc(var(--nav-h) + 44px); padding-bottom: 56px; }
-  }
-  @media (max-width: 480px) {
-    .hero-ctas { flex-direction: column; align-items: flex-start; }
-    .hero-ctas .btn { width: 100%; justify-content: center; }
-    .about-stat-row { flex-wrap: wrap; gap: 20px; }
-  }
-  @media (min-width: 768px) and (max-width: 1024px) {
-    .sp-card { flex: 0 0 calc(50% - .5rem); }
-  }
-
-  /* ── Bio page sidebar strip (FR-SOC-08) ─────────────────────────── */
-  #bio-sidebar-strip { background: var(--white); border-bottom: 1px solid var(--border); padding: 28px 0; }
-  .bss-wrap { display: flex; flex-direction: column; gap: 12px; }
-  .bss-inner { display: flex; align-items: center; gap: 20px; overflow-x: auto; scrollbar-width: none; padding: 0 4px; }
-  .bss-inner::-webkit-scrollbar { display: none; }
-  .bss-label { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
-  .bss-card {
-    flex-shrink: 0; display: flex; align-items: center; gap: 10px;
-    background: var(--off-white); border: 1px solid var(--border);
-    border-radius: 12px; padding: 10px 14px; text-decoration: none; color: var(--dark);
-    transition: border-color .15s, box-shadow .15s; max-width: 200px;
-  }
-  .bss-card:hover { border-color: var(--teal); box-shadow: 0 2px 8px rgba(15,123,114,.12); }
-  .bss-avatar {
-    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
-  }
-  .bss-placeholder {
-    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
-    background: linear-gradient(135deg, var(--teal), var(--teal-light));
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 14px; font-weight: 700;
-  }
-  .bss-info { flex: 1; min-width: 0; }
-  .bss-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bss-likes { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .bss-cta { font-size: 13px; font-weight: 600; color: var(--teal); text-decoration: none; padding: 0 4px; }
-  .bss-cta:hover { text-decoration: underline; }
-
-  /* ════════════════════════════════════════════════════════════════════
-     REPOSITIONED HOMEPAGE (docs/simulacrum_homepage_mockup.html)
-     Simulation-led IA: the five-layer model, why you can trust the
-     numbers, and the free bio page as the on-ramp.
-     ════════════════════════════════════════════════════════════════════ */
-
-  /* Dark and paper section shells */
-  .lp-dark  { background: linear-gradient(165deg,#0c1a38,#0d1b3e 55%,#070f22); color: var(--offw); }
-  .lp-tint  { background: var(--paper2); color: var(--dark); }
-  .lp-dark .s-h2 { color: var(--offw); }
-  .lp-dark .s-sub { color: var(--subtl); }
-  .lp-dark .s-label { color: var(--teal-br); }
-  .lp-lead { font-size: 17px; line-height: 1.7; max-width: 660px; }
-  .lp-dark .lp-lead { color: var(--subtl); }
-  .lp-tint .lp-lead { color: #4a5768; }
-
-  /* Hero emblem — the five layers as ascending bars */
-  .hero-emblem { display: flex; gap: 6px; align-items: flex-end; height: 44px; margin-bottom: 22px; }
-  .hero-emblem i { width: 11px; border-radius: 3px; display: block; }
-  .hero-tagline {
-    font-family: 'Playfair Display', Georgia, serif; font-style: italic;
-    color: var(--teal-light); font-size: 18px; margin-top: 26px;
-  }
-
-  /* ── The Model: five-layer ladder ────────────────────────────────── */
-  .ladder { max-width: 900px; margin: 30px auto 0; display: flex; flex-direction: column; gap: 12px; }
-  .ladder-arrow {
-    color: var(--gold); text-align: center; font-size: 12px; letter-spacing: .15em;
-    text-transform: uppercase; opacity: .8; margin-bottom: 2px;
-  }
-  .layer {
-    display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 16px;
-    border-radius: 14px; padding: 16px 20px; border: 1px solid rgba(255,255,255,.08);
-  }
-  .layer-badge {
-    width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; font-family: 'Playfair Display', Georgia, serif;
-    font-weight: 700; font-size: 18px; color: var(--offw);
-  }
-  .layer-name { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 19px; color: var(--offw); }
-  .layer-tag  { color: var(--subtl); font-size: 14px; font-style: italic; }
-  .layer-rb   { text-align: right; }
-  .layer-lens { color: var(--gold-l); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
-  .layer-cnt  { color: var(--mute-d); font-size: 13px; }
-  .lp-callout {
-    background: rgba(201,149,42,.1); border-left: 3px solid var(--gold);
-    padding: 13px 17px; border-radius: 0 8px 8px 0; margin-top: 24px;
-    font-size: 14.5px; line-height: 1.7; color: var(--subtl); max-width: 900px;
-  }
-  .lp-callout b { color: var(--gold-l); }
-
-  /* ── How it works: five steps (generate, then act) ───────────────── */
-  .hiw4 { display: grid; grid-template-columns: repeat(5,1fr); gap: 18px; margin-top: 34px; }
-  .hiw4.loop4 { grid-template-columns: repeat(4,1fr); }
-  .loop4 .step4 .arrow { position: absolute; top: 24px; right: -14px; color: var(--teal); font-weight: 700; z-index: 1; }
-  .roll-pill {
-    display: inline-block; background: rgba(201,149,42,.14); color: #8a6414;
-    font-size: 10.5px; font-weight: 700; letter-spacing: .05em; padding: 2px 7px;
-    border-radius: 6px; text-transform: uppercase; vertical-align: middle; margin-left: 4px;
-  }
-  .lp-dark .roll-pill { background: rgba(201,149,42,.2); color: var(--gold-l); }
-
-  /* ── From plan to done: execution cards ──────────────────────────── */
-  .act3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 26px; }
-  .act-card { background: var(--paper2); border: 1px solid #eadfc7; border-radius: 14px; padding: 22px; }
-  .act-card h3 { font-size: 17px; color: var(--navy); margin-bottom: 6px; }
-  .act-card p { color: #55606f; font-size: 14.5px; line-height: 1.65; }
-
-  /* ── Integrations ─────────────────────────────────────────────────── */
-  .intg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 28px; }
-  .intg-card { background: #fff; border: 1px solid #eadfc7; border-radius: 12px; padding: 18px; }
-  .intg-group { color: var(--teal); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
-  .intg-name { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 17px; color: var(--navy); margin-bottom: 6px; }
-  .intg-card p { color: #55606f; font-size: 14px; line-height: 1.6; }
-
-  /* ── Control pillar (inside #proof) ───────────────────────────────── */
-  .pcard ul.ctl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  .pcard ul.ctl li { color: var(--subtl); font-size: 14.5px; line-height: 1.6; }
-  .pcard ul.ctl b { color: var(--offw); }
-  .hiw4 .step4 {
-    background: #fff; border: 1px solid #eadfc7; border-radius: 14px;
-    padding: 22px; position: relative;
-  }
-  .hiw4 .step4 .n {
-    width: 32px; height: 32px; border-radius: 50%; background: var(--navy); color: var(--gold-l);
-    font-family: 'Playfair Display', Georgia, serif; font-weight: 700; display: flex;
-    align-items: center; justify-content: center; font-size: 15px; margin-bottom: 12px;
-  }
-  .hiw4 .step4 h3 { font-size: 17px; color: var(--navy); margin-bottom: 6px; }
-  .hiw4 .step4 p  { color: #55606f; font-size: 14.5px; line-height: 1.65; }
-  .hiw4 .step4 .free {
-    position: absolute; top: 16px; right: 16px; background: rgba(15,123,114,.12);
-    color: var(--teal); font-size: 10.5px; font-weight: 700; letter-spacing: .05em;
-    padding: 3px 8px; border-radius: 6px; text-transform: uppercase;
-  }
-
-  /* ── Why you can trust it: proof cards ───────────────────────────── */
-  /* auto-fit rather than a hardcoded count: two cards remain here now that the
-     Playbook card leads the hero, and the track count follows the card count
-     instead of leaving a dead third column. The 900px rule below still forces
-     a single column on small screens. */
-  .proof3 {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 18px; margin-top: 32px;
-  }
-  /* display/color are explicit because the Playbook card is an <a>, not a div —
-     without them it renders inline and picks up the default link colour. */
-  .pcard {
-    display: block; color: inherit;
-    background: rgba(255,255,255,.04); border: 1px solid var(--line);
-    border-radius: 14px; padding: 24px;
-    transition: border-color 150ms, transform 150ms;
-  }
-  .pcard .k {
-    font-family: 'Playfair Display', Georgia, serif; font-size: 19px;
-    color: var(--gold-l); margin-bottom: 8px;
-  }
-  .pcard p { color: var(--subtl); font-size: 14.5px; line-height: 1.7; }
-  .pcard .ptag {
-    display: inline-flex; align-items: center; gap: 7px;
-    margin-top: 12px; color: var(--teal-br);
-    font-size: 13px; font-weight: 700;
-  }
-  /* The real cover, served locally rather than hotlinked from Amazon's CDN.
-     width/height are set on the element too, so the card does not reflow when the
-     lazy-loaded image arrives. */
-  .ptag-cover {
-    flex-shrink: 0; width: 40px; height: 52px; border-radius: 3px;
-    border: 1px solid rgba(255,255,255,.14);
-    box-shadow: 0 4px 14px rgba(0,0,0,.45);
-    transition: transform 150ms;
-  }
-  a.pcard:hover .ptag-cover { transform: scale(1.06) rotate(-1.5deg); }
-  a.pcard:hover { border-color: rgba(201,149,42,.5); transform: translateY(-3px); }
-  a.pcard:hover .ptag { color: var(--gold-l); }
-  .pcard p em { color: var(--offw); font-style: italic; }
-
-  /* The Playbook card's tag is the only actionable "buy" affordance in this
-     section, so it reads as a light pill against the dark card instead of the
-     plain teal label the two non-clickable cards use. Scoped with its own
-     modifier rather than a.pcard .ptag, so making another card a link later
-     doesn't silently inherit the treatment.
-     Text goes navy, not teal: teal on paper fails contrast. */
-  .pcard .ptag-cta {
-    background: var(--paper); color: var(--navy);
-    padding: 6px 12px 6px 8px; border-radius: 9px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.3);
-    transition: background 150ms, color 150ms;
-  }
-  /* Same specificity as a.pcard:hover .ptag above and declared after it, so it
-     wins — otherwise hover would put gold text on a gold background. */
-  a.pcard:hover .ptag-cta { background: var(--gold-l); color: #241a05; }
-  /* The white-ish cover border is invisible on a light pill. */
-  .ptag-cta .ptag-cover { border-color: rgba(13,27,62,.22); box-shadow: 0 3px 10px rgba(13,27,62,.3); }
-
-  /* ── Bio on-ramp ─────────────────────────────────────────────────── */
-  .onramp { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
-  .onramp-chips { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
-  .onramp-chips span {
-    background: #fff; border: 1px solid #e6dcc4; color: var(--navy);
-    font-size: 14px; padding: 7px 12px; border-radius: 8px; font-weight: 600;
-  }
-  .mock-bio {
-    background: linear-gradient(160deg,#0f1f42,#0b1730); border: 1px solid var(--line);
-    border-radius: 16px; padding: 22px; color: var(--offw);
-    box-shadow: 0 20px 50px rgba(0,0,0,.25);
-  }
-  .mock-bio .av { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg,#13A89E,#C9952A); }
-  .mock-bio .nm { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 18px; margin-top: 12px; }
-  .mock-bio .rl { color: var(--subtl); font-size: 14px; }
-  .mock-bio .chat {
-    margin-top: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
-    border-radius: 10px; padding: 12px; font-size: 14px; color: var(--subtl); line-height: 1.7;
-  }
-  .mock-bio .chat b { color: var(--teal-br); }
-  .mock-bio .cap { margin-top: 12px; font-size: 11.5px; color: var(--mute-d); text-align: right; }
-
-  /* Final CTA on dark */
-  .lp-dark .cta-h2 { color: var(--offw); }
-  .lp-dark .cta-sub { color: var(--subtl); }
-  .lp-dark .cta-trust { color: var(--mute-d); }
-
-  /*start*/
-  /* ── The mascot ───────────────────────────────────────────────────────
-     Ported from docs/mascot_sequence.html (walk · dance · idle), whose
-     artwork matches docs/mascot_2d.html and the hero emblem in
-     docs/simulacrum_homepage_mockup.html.
-
-     Two deliberate departures from those files:
-
-     1. Classes are m-* and the gradient ids are mascot* prefixed. The
-        standalone docs are single-mascot pages, so they can afford
-        id="body" and .bar; this is a 1300-line document where a gradient
-        id resolves page-wide, so an unprefixed id="eye" added elsewhere
-        later would silently repaint the face. The mockup prefixes for the
-        same reason.
-     2. The walker rests at left:0, not centred. It sits in the hero's
-        text column, so walkX and danceStep keep this page's left-aligned
-        geometry while the limb choreography comes from the doc.
-
-     The runway is kept IN THE FLOW as the first block of .hero-text, so it
-     lands in the hero's top-left corner: above .hero-chip by markup order,
-     flush with the text column, and below the fixed nav because #hero's
-     padding-top already clears it. position:relative is all it needs —
-     just enough to be the containing block the absolute .walker resolves
-     against. overflow:hidden clips the walk-in so the mascot enters the
-     runway rather than trailing off across the section — which is also
-     why the height has to clear the dance's 12px hop, or it decapitates
-     the mascot at the top of every bounce. */
-  .track{ position:relative; width:min(88vw,460px); height:120px; overflow:hidden; pointer-events:none; }
-  .track::after{ content:""; position:absolute; left:6%; right:6%; bottom:26px; height:2px; border-radius:2px;
-    background:linear-gradient(90deg,transparent,rgba(201,149,42,.32),transparent); }
-
-  /* The runway sets pointer-events:none so it never intercepts a click, and
-     that inherits all the way down. The mascot is a link, so the pointer has
-     to be handed back to it specifically — otherwise it stays clickable by
-     keyboard (Tab, Enter) and dead to the mouse, which is the worst of both.
-     display:block so the <a> wraps the SVG's box instead of sitting inline
-     around it. */
-  .walker a { pointer-events:auto; display:block; cursor:pointer; }
-  .walker a:focus-visible { outline:2px solid var(--gold-l); outline-offset:3px; border-radius:8px; }
-
-  /* resting position = left. bottom:20px puts the mascot's own floor shadow
-     (cy=336 of a 360 viewBox) on the ground line above, the way the doc seats
-     it.
-
-     76px, not the 118px the mockup's static emblem uses: the runway is kept at
-     its original 120px so the hero does not get taller, and a 118px mascot
-     needs a 180px runway to clear its own dance hop without the track's
-     overflow:hidden cropping its head. Holding the hero height is what sets
-     this width. */
-  .walker{ position:absolute; bottom:20px; left:0; width:76px; transition:left .28s ease; }
-  /* These transitions are load-bearing, not decoration: the dance loops, so when
-     .dancing is dropped mid-keyframe the transforms and left offset ease back to
-     rest instead of snapping. */
-  .m-body,.m-armL,.m-armR,.m-footL,.m-footR,.m-swoosh{ transition:transform .2s ease; }
-  .walker svg{ width:100%; height:auto; overflow:visible; filter:drop-shadow(0 12px 20px rgba(0,0,0,.45)); }
-
-  /* Per-load colours. The body is one gradient shared by the feet, torso and
-     head, and each arm is a single stroked line, so two custom properties
-     recolour the whole mascot — no extra gradients, no duplicated artwork.
-
-     The defaults here are the original light body and arm, so the mascot is
-     correct before the script below the SVG runs and stays correct if it never
-     does (JS off, or a parse error elsewhere on the page). */
-  .walker { --m-body-1:#F4F7FB; --m-body-2:#D6DEEA; --m-arm:#E4EAF2; }
-  .walker .m-stop-1 { stop-color: var(--m-body-1); }
-  .walker .m-stop-2 { stop-color: var(--m-body-2); }
-  .walker .m-limb   { stroke: var(--m-arm); }
-
-  /* always-on micro-motions — scoped to .walker so .m-bar and friends
-     cannot reach anything else on the page */
-  .walker .m-eyes  { animation:mBlink 4.8s infinite; transform-box:fill-box; transform-origin:center; }
-  .walker .m-bar   { transform-box:fill-box; transform-origin:bottom; animation:mRise 1.5s ease-in-out infinite; }
-  .walker .m-b2{animation-delay:.15s;} .walker .m-b3{animation-delay:.3s;}
-  .walker .m-b4{animation-delay:.45s;} .walker .m-b5{animation-delay:.6s;}
-  .walker .m-swoosh{ transform-box:fill-box; transform-origin:14% 96%; animation:mSway 2.6s ease-in-out infinite; }
-
-  /* ===== WALK IN (plays once) ===== */
-  .walker.walking{ animation:walkX 4.8s ease-in-out forwards; }
-  /* Descendant, not direct child: the SVG is wrapped in a link, so `> svg`
-     silently stopped matching and the walk-in lost its lean with no error. */
-  .walker.walking svg{ transform-origin:50% 100%; animation:mLean 4.8s ease-in-out forwards; }
-  .walker.walking .m-body{ animation:mWaddle .5s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 100%; }
-  .walker.walking .m-footL{ animation:mStep .5s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
-  .walker.walking .m-footR{ animation:mStep .5s ease-in-out infinite; transform-box:fill-box; transform-origin:center; animation-delay:-.25s; }
-  .walker.walking .m-armL{ animation:mASwing .5s ease-in-out infinite; transform-box:fill-box; transform-origin:85% 10%; }
-  .walker.walking .m-armR{ animation:mASwing .5s ease-in-out infinite; transform-box:fill-box; transform-origin:15% 10%; animation-delay:-.25s; }
-
-  /* ===== DANCE (3s, between the walk-in and idle) ===== */
-  .walker.dancing{ animation:mDanceStep .7s ease-in-out infinite; }
-  .walker.dancing .m-body{ animation:mDanceBody .7s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 100%; }
-  .walker.dancing .m-armL{ animation:mDanceArmL .35s ease-in-out infinite; transform-box:fill-box; transform-origin:85% 10%; }
-  .walker.dancing .m-armR{ animation:mDanceArmR .35s ease-in-out infinite; transform-box:fill-box; transform-origin:15% 10%; }
-  .walker.dancing .m-swoosh{ animation:mWhip .35s ease-in-out infinite; }
-
-  /* ===== IDLE (loops after the dance) ===== */
-  .walker.idle .m-body{ animation:mFloat 3.2s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 100%; }
-  .walker.idle .m-armR{ animation:mWave 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:15% 10%; }
-  .walker.idle .m-armL{ animation:mSway2 3.6s ease-in-out infinite; transform-box:fill-box; transform-origin:85% 10%; }
-
-  @keyframes walkX{ 0%{left:-96px} 55%{left:calc(75% - 96px)} 100%{left:0} }
-  @keyframes mLean { 0%,44%{transform:rotate(3deg)} 56%,94%{transform:rotate(-3deg)} 100%{transform:rotate(0)} }
-  @keyframes mWaddle{ 0%,100%{transform:rotate(-3.5deg) translateY(0)} 50%{transform:rotate(3.5deg) translateY(-4px)} }
-  @keyframes mStep { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-  @keyframes mASwing{ 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)} }
-  @keyframes mFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
-  @keyframes mWave { 0%,58%,100%{transform:rotate(0)} 70%{transform:rotate(17deg)} 80%{transform:rotate(4deg)} 90%{transform:rotate(15deg)} }
-  @keyframes mSway { 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} }
-  @keyframes mSway2{ 0%,100%{transform:rotate(3deg)} 50%{transform:rotate(-3deg)} }
-  @keyframes mBlink{ 0%,92%,100%{transform:scaleY(1)} 96%{transform:scaleY(.08)} }
-  @keyframes mRise { 0%,100%{transform:scaleY(.5)} 50%{transform:scaleY(1)} }
-
-  /* dance moves */
-  @keyframes mDanceStep{ 0%,100%{left:0} 50%{left:18px} }
-  @keyframes mDanceBody{ 0%,100%{transform:translateY(0) rotate(0)} 25%{transform:translateY(-12px) rotate(-6deg)} 50%{transform:translateY(0)} 75%{transform:translateY(-12px) rotate(6deg)} }
-  @keyframes mDanceArmL{ 0%,100%{transform:rotate(-58deg)} 50%{transform:rotate(12deg)} }
-  @keyframes mDanceArmR{ 0%,100%{transform:rotate(12deg)} 50%{transform:rotate(58deg)} }
-  @keyframes mWhip{ 0%,100%{transform:rotate(-16deg)} 50%{transform:rotate(16deg)} }
-
-  @media(prefers-reduced-motion:reduce){
-    .walker,.walker *{ animation:none !important; }
-  }
-  /* In the flow the mascot can't overlap anything — it only takes vertical
-     space — so on a phone it can afford slightly more of it above the
-     headline, which is why the runway here is taller than the desktop one and
-     the mascot larger. Width already flexes via min(88vw,460px); this keeps the
-     same shadow-on-ground-line seating. */
-  @media (max-width: 768px){
-    .track{ height:132px; }
-    .track .walker{ width:84px; bottom:19px; }
-  }
-  /*end*/
-
-  @media (max-width: 1100px) {
-    .hiw4 { grid-template-columns: repeat(3,1fr); }
-    .hiw4.loop4 { grid-template-columns: 1fr 1fr; }
-    .loop4 .step4 .arrow { display: none; }
-  }
-  @media (max-width: 900px) {
-    .hiw4, .hiw4.loop4 { grid-template-columns: 1fr 1fr; }
-    .proof3 { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 820px) {
-    .onramp { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 640px) {
-    .hiw4, .hiw4.loop4 { grid-template-columns: 1fr; }
-    .layer { grid-template-columns: 52px 1fr; }
-    .layer-rb { grid-column: 2; text-align: left; }
-    .hero-emblem { margin-left: auto; margin-right: auto; }
-  }
-  </style>
-</head>
-<body>
-{% import "partials/_layers.html" as layers_ui %}
-{% import "partials/_mascot_mini.html" as mascot_ui %}
-<script>
-  window.addEventListener('load', function(){
-    var w = document.querySelector('.walker');
-    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(reduce){ w.classList.add('idle'); return; }      // no walk-in; rest centered
-    w.classList.add('walking');
-    w.addEventListener('animationend', function handler(e){
-      if(e.animationName === 'walkX'){                  // walk finished → dance
-        w.removeEventListener('animationend', handler);
-        w.classList.remove('walking');
-        w.classList.add('dancing');
-        setTimeout(function(){                           // 3s dance → settle into idle
-          w.classList.remove('dancing');
-          w.classList.add('idle');
-        }, 3000);
-      }
-    });
-  });
-</script>
-<!-- ── NAV ──────────────────────────────────────────────────────────── -->
-<nav class="lp-nav" id="lpNav">
-  <div class="lp-nav-inner">
-    <a href="/" class="lp-logo">
-      {{ mascot_ui.mascot_mini(34) }}
-      <span>SimiSI</span>
-    </a>
-    <div class="lp-nav-links">
-      <a href="#model"        class="lp-nav-link" data-spy="model">The Model</a>
-      <a href="#how-it-works" class="lp-nav-link" data-spy="how-it-works">How it works</a>
-      <a href="#proof"        class="lp-nav-link" data-spy="proof">Why trust it</a>
-      <a href="#pricing"      class="lp-nav-link" data-spy="pricing">Pricing</a>
-      {% if blog_nav_visible %}
-      <a href="{{ url_for('pages.blog_index') }}" class="lp-nav-link">Journal</a>
-      {% endif %}
-    </div>
-    <div class="lp-nav-ctas">
-      <button class="btn btn-ghost-dk" id="videoDemoBtn" type="button" style="font-size:14px;padding:9px 16px;">Watch Demo</button>
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('pages.dashboard') }}" class="btn btn-teal" style="font-size:14px;padding:9px 16px;">Go to Dashboard</a>
-      <div class="user-menu" id="userMenu">
-        <button class="user-menu-btn" type="button" onclick="toggleUserMenu(event)">
-          <span class="um-name">{{ current_user.full_name or current_user.email }}</span>
-          <span class="um-chevron">▾</span>
-        </button>
-        <div class="user-menu-dropdown">
-          <a href="/settings">Settings</a>
-          <div class="um-divider"></div>
-          <button class="um-item um-signout" type="button" onclick="signOut()">Sign out</button>
-        </div>
+<!-- HERO: the simulation itself is the opening image -->
+<header class="hero" id="top">
+  <div class="wrap hero-top">
+    <h1>See the five ways your career becomes wealth&nbsp;— before you live any of them.</h1>
+    <div class="side">
+      <p class="lede">SimiSI reads your resume and simulates the next 24 months across five layers of income. Then {{ site_layers.agent_total }} agents build the path you choose and act on it, on the channels you allow, with every action logged.</p>
+      <div class="ctas">
+        {% if current_user.is_authenticated %}
+        <a class="btn primary" href="{{ url_for('pages.dashboard') }}">Go to your dashboard</a>
+        {% else %}
+        <a class="btn primary" href="{{ register }}">Run your first simulation</a><a class="btn" href="{{ register }}">Get your free bio page</a>
+        {% endif %}
       </div>
-      {% else %}
-      <a href="{{ url_for('pages.login_page') }}"    class="btn btn-outline" style="font-size:14px;padding:9px 16px;">Log in</a>
-      <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal"   style="font-size:14px;padding:9px 16px;">Get started free</a>
-      {% endif %}
-    </div>
-    <button class="lp-hamburger" id="lpHamburger" aria-label="Open menu">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-  <div class="lp-mob-menu" id="lpMobMenu">
-    <a href="#model"        class="lp-mob-link">The Model</a>
-    <a href="#how-it-works" class="lp-mob-link">How it works</a>
-    <a href="#proof"        class="lp-mob-link">Why trust it</a>
-    <a href="#pricing"      class="lp-mob-link">Pricing</a>
-    <div class="lp-mob-ctas">
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('pages.dashboard') }}" class="btn btn-teal">Go to Dashboard</a>
-      <a href="/settings" class="lp-mob-link" style="margin-top:4px;">Settings</a>
-      <button onclick="signOut()" class="lp-mob-link" type="button" style="background:none;border:none;cursor:pointer;color:#dc2626;text-align:left;padding:8px 0;width:100%;font-size:inherit;font-family:inherit;">Sign out</button>
-      {% else %}
-      <a href="{{ url_for('pages.login_page') }}"    class="btn btn-outline">Log in</a>
-      <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal">Get started free</a>
-      {% endif %}
+      <p class="small">The bio page is free forever. No credit card. Setup takes about three minutes. <button type="button" class="demo-link" data-demo>Watch the demo</button></p>
     </div>
   </div>
-</nav>
-<!-- ── HERO ─────────────────────────────────────────────────────────── -->
-<section id="hero">
-  <div class="hero-inner">
-    <div class="hero-text">
-      <div class="track">
-        {# Artwork from docs/mascot_sequence.html. The two stray hand circles
-           that file leaves outside the arm groups are dropped: they duplicate
-           the hands that already ride inside .m-armL / .m-armR, so during the
-           wave a second gold hand stayed behind at the rest position.
-           docs/mascot_2d.html and the mockup drop them too. #}
-        {# The walker's animation states are documented in the CSS above; that
-           note used to live in a title attribute here, which became a hover
-           tooltip the moment the link accepted the pointer — "walks in,
-           dances, then idles" is not what to say about a sign-in link. #}
-        <div class="walker">
-          <a href="{{ url_for('pages.login_page') }}"
-             aria-label="Sign in to SimiSI" title="Sign in to SimiSI">
-            <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true" focusable="false">
-              <defs>
-                <linearGradient id="mascotBody" x1="0" y1="0" x2="0" y2="1">
-                  <stop class="m-stop-1" offset="0" stop-color="#F4F7FB"/><stop class="m-stop-2" offset="1" stop-color="#D6DEEA"/></linearGradient>
-                <linearGradient id="mascotSw" x1="0" y1="1" x2="1" y2="0">
-                  <stop offset="0" stop-color="#C9952A"/><stop offset="1" stop-color="#EBC46A"/></linearGradient>
-                <linearGradient id="mascotVisor" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#17294f"/><stop offset="1" stop-color="#0b1730"/></linearGradient>
-                <radialGradient id="mascotEye" cx="40%" cy="35%" r="70%">
-                  <stop offset="0" stop-color="#5fe6da"/><stop offset="55%" stop-color="#13A89E"/><stop offset="100%" stop-color="#0d8379"/></radialGradient>
-              </defs>
-              <ellipse cx="150" cy="336" rx="66" ry="11" fill="#000" opacity="0.26"/>
-              <g class="m-body">
-                <g class="m-footL"><rect x="116" y="300" width="34" height="18" rx="9" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.4"/></g>
-                <g class="m-footR"><rect x="150" y="300" width="34" height="18" rx="9" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.4"/></g>
-                <g class="m-armL"><line class="m-limb" x1="102" y1="196" x2="70" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="70" cy="252" r="13" fill="#C9952A"/></g>
-                <g class="m-armR"><line class="m-limb" x1="198" y1="196" x2="230" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="230" cy="252" r="13" fill="#C9952A"/></g>
-                <rect x="92" y="170" width="116" height="140" rx="46" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.6"/>
-                <rect x="118" y="206" width="64" height="52" rx="12" fill="url(#mascotVisor)" stroke="#C9952A" stroke-width="1.2"/>
-                <rect class="m-bar m-b1" x="126" y="240" width="6.5" height="10" rx="2" fill="#0B4A46"/>
-                <rect class="m-bar m-b2" x="137" y="236" width="6.5" height="15" rx="2" fill="#0F7B72"/>
-                <rect class="m-bar m-b3" x="148" y="231" width="6.5" height="20" rx="2" fill="#139488"/>
-                <rect class="m-bar m-b4" x="159" y="226" width="6.5" height="26" rx="2" fill="#13A89E"/>
-                <rect class="m-bar m-b5" x="170" y="220" width="6.5" height="32" rx="2" fill="#C9952A"/>
-                <rect x="78" y="44" width="144" height="118" rx="48" fill="url(#mascotBody)" stroke="#C9952A" stroke-width="1.6"/>
-                <ellipse cx="112" cy="72" rx="24" ry="11" fill="#FFFFFF" opacity="0.35" transform="rotate(-18 112 72)"/>
-                <path class="m-swoosh" d="M146,46 C150,16 174,8 194,4 C178,24 172,34 166,46 Z" fill="url(#mascotSw)"/>
-                <rect x="98" y="70" width="104" height="74" rx="30" fill="url(#mascotVisor)"/>
-                <path d="M112,88 Q124,81 136,86" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-                <path d="M164,86 Q176,81 188,88" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-                <g class="m-eyes">
-                  <ellipse cx="128" cy="106" rx="15" ry="17" fill="url(#mascotEye)"/><ellipse cx="172" cy="106" rx="15" ry="17" fill="url(#mascotEye)"/>
-                  <circle cx="123" cy="100" r="5" fill="#EAFFFB"/><circle cx="167" cy="100" r="5" fill="#EAFFFB"/>
-                  <circle cx="132" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/><circle cx="176" cy="112" r="2.4" fill="#EAFFFB" opacity="0.7"/>
-                </g>
-                <ellipse cx="110" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/><ellipse cx="190" cy="128" rx="8" ry="5" fill="#13A89E" opacity="0.3"/>
-                <path d="M134,130 Q150,141 166,130" stroke="#2FB6A9" stroke-width="3" fill="none" stroke-linecap="round"/>
-              </g>
-            </svg>
-          </a>
-        </div>
-        {# Recolour the mascot on every load. Inline and immediately after the
-           artwork rather than in the page's load handler, so the colour is set
-           before first paint instead of flashing the default first.
 
-           Body tints stay light on purpose: the mascot sits on a dark navy hero
-           and its own face and chest screen are near-black, so a saturated or
-           dark body would lose its outline against one and its features against
-           the other. The arms are mid-tone because they are drawn behind the
-           torso — the only part you ever see is the lower stretch, against
-           the dark background. #}
-        <script>
-        (function () {
-          var W = document.querySelector('.walker');
-          if (!W) return;
-          /* [body light, body mid, arm]. "white" appears twice in the brief;
-             one entry is enough. */
-          var P = {
-            red:    ['#FFD9D4', '#F0A99E', '#E8705C'],
-            white:  ['#F4F7FB', '#D6DEEA', '#E4EAF2'],
-            blue:   ['#D9E8FF', '#A6C4EE', '#6D9BD8'],
-            yellow: ['#FFF3C9', '#F2DC8E', '#E3C455'],
-            brown:  ['#EADBC8', '#C9A882', '#A8794E'],
-            purple: ['#EADCFB', '#C3A8E8', '#9B7BD0'],
-            green:  ['#DAF5DC', '#A7DCAC', '#70BF7A'],
-            teal:   ['#D3F3EF', '#9BDDD5', '#5FC3B8'],
-            gold:   ['#FBEBC4', '#EBC46A', '#C9952A'],
-            silver: ['#F0F2F5', '#C8CFD8', '#A8B2BF']
-          };
-          var names = Object.keys(P);
-          var body = names[Math.floor(Math.random() * names.length)];
-          /* Draw the arm from the others, so it never disappears into the body
-             it is attached to. */
-          var rest = names.filter(function (n) { return n !== body; });
-          var arm = rest[Math.floor(Math.random() * rest.length)];
-
-          W.style.setProperty('--m-body-1', P[body][0]);
-          W.style.setProperty('--m-body-2', P[body][1]);
-          W.style.setProperty('--m-arm', P[arm][2]);
-          /* Handy when someone asks which pair they just saw. */
-          W.setAttribute('data-body', body);
-          W.setAttribute('data-arm', arm);
-        })();
-        </script>
-      </div>
-
-      <div class="hero-chip">
-        <span class="hero-chip-dot"></span>
-        Career-to-Wealth Simulation
-      </div>
-      <h1 class="hero-h1">See the five ways your career becomes wealth — <em>before you live any of them.</em></h1>
-      <p class="hero-sub">SimiSI reads your resume and simulates your next twenty-four months across five layers of income. Other AI hands you a plan and 10 emails to copy-paste. SimiSI writes them, sends them under your name, sets up the page prospects book calls on, and follows up — only on the channels you allow, with every action logged for you to review.</p>
-      <div class="hero-ctas">
-        <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold">Run your first simulation</a>
-        <a href="{{ url_for('pages.register_page') }}" class="btn btn-ghost">Get your free bio page →</a>
-      </div>
-      <div class="hero-trust">
-        <span>Free bio page forever</span>
-        <span class="hero-trust-sep">·</span>
-        <span>No credit card</span>
-        <span class="hero-trust-sep">·</span>
-        <span>3-minute setup</span>
-      </div>
-      <div class="hero-tagline">“See the consequences before you live them.”</div>
+  <figure class="strata wrap" aria-labelledby="chartCap">
+    <div class="strata-head">
+      <figcaption class="cap" id="chartCap"><b>A sample simulation.</b> Senior program manager, 12 years in enterprise data. Projected monthly income by layer, month 0 to 24.</figcaption>
+      <div class="legend" id="legend" role="group" aria-label="Show or hide layers"></div>
     </div>
-    {# The trust proof sits above the live bio cards: a published book is the one
-       claim on this page a visitor can verify somewhere other than this page, so
-       it earns the spot above the fold. Wrapped with the cards in a column
-       because .hero-inner is a horizontal flex — "above" means inside the
-       right-hand column, not before it. #}
-    <div class="hero-side">
-      <a class="pcard hero-pcard fade-up d3" href="{{ playbook_url }}"
-         target="_blank" rel="noopener">
-        <div class="k">Documented</div>
-        <p><em>"The Wealth Simulation Playbook"</em> — the full five-layer
-          framework and all forty-nine agents, written up as case studies. Read
-          the book behind the engine.</p>
-        <span class="ptag ptag-cta">
-          <img class="ptag-cover"
-               src="{{ url_for('static', filename='img/playbook-cover.jpg') }}"
-               alt="The Wealth Simulation Playbook, by Jean M. Delphonse — book cover"
-               width="40" height="52" loading="lazy" decoding="async">
-          Get it on Amazon →
-        </span>
+    <div class="chart">
+      <div class="yax" id="yax" aria-hidden="true"></div>
+      <div class="plot" id="plot" tabindex="0" aria-label="Stacked income chart. Use the left and right arrow keys to read each month.">
+        <svg id="svg" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="cursor" id="cursor"></div>
+        <div class="tip" id="tip" role="status" aria-live="polite"></div>
+      </div>
+      <div class="labels" id="labels" aria-hidden="true"></div>
+    </div>
+    <div class="xax" aria-hidden="true"><span></span><div class="ticks"><span>Now</span><span>Month 6</span><span>Month 12</span><span>Month 18</span><span>Month 24</span></div><span></span></div>
+    <p class="strata-note">Illustrative. In your simulation every figure is a range, with its source and a confidence level.</p>
+  </figure>
+
+  {% set faces = (recent_bio_pages or [])[:4] %}
+  {% set show_stats = trust_stats and trust_stats.approved_count > 0 %}
+  {% if faces or show_stats %}
+  <div class="wrap">
+    <div class="proof">
+      {% if faces %}
+      <a class="who" href="#people" style="text-decoration:none;">
+        <span class="faces" aria-hidden="true">{% for p in faces %}<span>{% if p.avatar_path %}<img src="{{ url_for('public.serve_avatar', filename=p.avatar_path) }}" alt="" loading="lazy">{% else %}{{ (p.display_name or '?')[0]|upper }}{% endif %}</span>{% endfor %}</span>
+        {% set firsts = [] %}{% for p in faces %}{% if p.display_name %}{% set _ = firsts.append(p.display_name.split(' ')[0]) %}{% endif %}{% endfor %}
+        <span>{% if firsts %}<b>{{ firsts[:-1]|join(', ') }}{% if firsts|length > 1 %} and {% endif %}{{ firsts[-1] }}</b><br>{% endif %}{{ 'has a live bio page' if faces|length == 1 else 'have live bio pages' }} on SimiSI</span>
       </a>
-
-      <!-- Live user bio cards -->
-      {% if hero_cards %}
-      <div class="hero-cards-grid">
-        {% for c in hero_cards %}
-        <a class="hc" href="/u/{{ c.slug }}">
-          <div class="card-top">
-            {% if c.avatar_path %}
-            <img class="card-avatar" src="{{ url_for('public.serve_avatar', filename=c.avatar_path) }}" alt="{{ c.display_name }}" loading="lazy">
-            {% else %}
-            <div class="card-avatar-placeholder">{{ c.display_name[0]|upper if c.display_name else '?' }}</div>
-            {% endif %}
-            <div class="card-meta">
-              <div class="card-name">{{ c.display_name }}</div>
-              <div class="card-zone">{{ c.category }}</div>
-            </div>
-          </div>
-          {% if c.tagline %}<p class="card-tagline">{{ c.tagline }}</p>{% endif %}
-          <div class="card-footer">
-            {% if c.like_count %}
-            <span class="card-like">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              {{ c.like_count }}
-            </span>
-            {% else %}<span></span>{% endif %}
-            <span class="card-link">View Bio →</span>
-          </div>
-        </a>
-        {% endfor %}
-      </div>
+      {% endif %}
+      {% if show_stats %}
+      <div class="fig"><strong>{{ trust_stats.avg_rating }} <span class="stars" aria-hidden="true">★★★★★</span></strong>average rating from users</div>
+      <div class="fig"><strong>{{ trust_stats.total_simulations }}</strong>simulations run so far</div>
       {% endif %}
     </div>
   </div>
-</section>
+  {% endif %}
+</header>
 
-<!-- ── THE MODEL ────────────────────────────────────────────────────── -->
-<section id="model" class="lp-s lp-dark">
-  <div class="lp-c">
-    <span class="s-label fade-up">The Model</span>
-    <h2 class="s-h2 fade-up">One resume. Five layers. {{ site_layers.agent_total }} agents.</h2>
-    <p class="lp-lead fade-up">Most careers stall on Layer 1 — trading time for money — and never see the four layers above it. SimiSI maps your whole engine and shows how income compounds into wealth, layer by layer.</p>
-    <div class="ladder">
-      <div class="ladder-arrow fade-up">▲ each layer builds on the one below</div>
-{{ layers_ui.ladder(site_layers) }}
+<!-- THE MODEL -->
+<section id="model" class="tint"><div class="wrap">
+  <div class="sec-head">
+    <h2>A career isn't a ladder. It's a stack.</h2>
+    <p>One resume feeds five layers of income. Each layer has its own agents and its own way of deciding what to do next. Open a layer to see its agents.</p>
+  </div>
+  <div class="stack">
+    {% for layer in L %}
+    <details class="layer" style="--c:var(--l{{ layer.n }})">
+      <summary><span class="sw"></span><span class="num">Layer {{ layer.n }}</span><span class="nm">{{ layer.name }}<small>Decision lens: {{ layer.lens }}</small></span><span class="man">{{ layer.tag }}.</span><span class="ct">{{ layer.agents }} agents</span><span class="tg" aria-hidden="true"></span></summary>
+      <div class="agents">
+        <ul>{% for a in layer.agent_names[:7] %}<li>{{ a }}</li>{% endfor %}{% if layer.agents > 7 %}<li class="more">and {{ layer.agents - 7 }} more</li>{% endif %}</ul>
+        {% if layer.n == 5 %}<p class="adv">Advisory only. These agents plan; they never trade or move money.</p>{% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  <div class="why">
+    <h3>Why the layers run in order</h3>
+    <p>You can't productize expertise you haven't learned to sell one-to-one, or invest money the first four layers haven't earned yet. SimiSI works through the layers in order, and a Bayesian orchestrator decides which agent should act next based on your results so far.</p>
+  </div>
+</div></section>
+
+<!-- HOW IT WORKS -->
+<section id="how"><div class="wrap">
+  <div class="sec-head">
+    <h2>From resume to a running engine</h2>
+    <p>Start with the free bio page. Run the simulation when you're ready.</p>
+  </div>
+  <ol class="steps">
+    <li><h3>Upload your resume</h3><p>SimiSI reads your full career history, finds the expertise people will pay for and builds your bio page on the spot.</p><span class="meta">Free, about 3 minutes</span></li>
+    <li><h3>Run your simulation</h3><p>A Bayesian orchestrator maps your five layers and models the next 24 months, path by path.</p><span class="meta">24 months, 5 layers</span></li>
+    <li><h3>Agents build the work</h3><p>Your rate card, outreach, pages, content and an allocation plan, written for you.</p><span class="meta">{{ site_layers.agent_total }} agents</span></li>
+    <li><h3>Agents act on it</h3><p>They draft, then send, publish and set up bookings. You choose what runs, agent by agent and channel by channel.</p><span class="meta">On the channels you allow</span></li>
+    <li><h3>Decide with foresight</h3><p>Every path shows its 24-month outcome as a range, anchored to market data.</p><span class="meta">Ranges, not promises</span></li>
+  </ol>
+</div></section>
+
+<!-- AGENTS ACT -->
+<section id="act" class="tint"><div class="wrap">
+  <div class="act">
+    <div>
+      <h2>Agents that do the work, with you in charge</h2>
+      <p class="lede" style="margin-top:16px;font-size:18px;">Every agent prepares the real thing, not a document you still have to act on. You decide which channels may send, and every action is logged.</p>
+      <ol class="loop" id="loopList">
+        <li class="cur"><div><b>The agent drafts</b><span>Outreach, proposals, pages and posts, written from your real experience.</span></div></li>
+        <li><div><b>You edit or refine</b><span>Change it yourself or ask Simi to refine it. Your edits are kept as versions; a re-run never overwrites them.</span></div></li>
+        <li><div><b>It sends under your name</b><span>Confirm the exact emails in one click, or let outreach run on the channels you allow. Anyone who opts out is never emailed again.</span></div></li>
+        <li><div><b>It follows up</b><span>Follow-ups go out on schedule and stop for anyone who replies.</span></div></li>
+      </ol>
     </div>
-    <div class="lp-callout fade-up">
-      <b>Why layers?</b> You can't productize (L3) expertise you haven't learned to sell one-to-one (L1), or deploy wealth (L5) the first four layers haven't produced yet. SimiSI runs them in the right order — and a Bayesian orchestrator decides which agent to fire when.
+    <div class="draft" id="draft">
+      <div class="bar"><span class="who">Consulting Outreach</span><span style="color:var(--mute)">Layer 1</span><span class="tag" id="draftTag">Waiting for your approval</span></div>
+      <div class="fields">
+        <div><span>To</span>Dana Whitfield, Head of Operations, Kestrel Components</div>
+        <div><span>From</span>Your name, sent through SimiSI</div>
+        <div><span>Subject</span>Support for your Q1 plant rollout</div>
+      </div>
+      <div class="body">
+        <p>Hi Dana,</p>
+        <p>I saw Kestrel is opening a second line in Q1. I've run three similar rollouts as an interim operations lead, most recently cutting changeover time by a third.</p>
+        <p>If it would help, I could take two days a week through launch. Would a 20-minute call next week be useful?</p>
+      </div>
+      <div class="foot">
+        <button class="btn" type="button">Edit</button>
+        <button class="btn" type="button">Ask Simi to refine</button>
+        <button class="btn primary" type="button" id="approve">Approve and send</button>
+      </div>
+      <div class="done" role="status"><span>Sent under your name. A follow-up is scheduled for Thursday and stops if Dana replies.</span><button type="button" id="undo">Reset the example</button></div>
     </div>
   </div>
-</section>
+  <div class="act-notes">
+    <div><h3>Agents that act, not just advise</h3><p>Outreach sent under your name, a payment link on your Stripe, a booking page on your Cal.com: real actions, not just documents.</p></div>
+    <div><h3>You decide what runs</h3><p>Set autonomy per agent and switch channels on or off. Payment links and booking pages wait for your approval, and can be undone.</p></div>
+    <div><h3>Works through your tools</h3><p>Connect Stripe, Cal.com or ConvertKit and your agents work through your own accounts. Nothing to connect? Everything still works.</p></div>
+  </div>
+</div></section>
 
-<!-- ── HOW IT WORKS ─────────────────────────────────────────────────── -->
-<section id="how-it-works" class="lp-s lp-tint">
-  <div class="lp-c">
-    <span class="s-label teal fade-up">How it works</span>
-    <h2 class="s-h2 fade-up">From résumé to a running engine.</h2>
-    <p class="lp-lead fade-up">Start free in three minutes. Your bio page goes live immediately; your simulation runs the moment you're ready.</p>
-    <div class="hiw4">
-      <div class="step4 fade-up d1">
-        <span class="free">Free</span>
-        <div class="n">1</div>
-        <h3>Upload your resume</h3>
-        <p>AI maps your expertise and builds your live bio page on the spot.</p>
+<!-- TRUST -->
+<section id="trust"><div class="wrap">
+  <div class="sec-head">
+    <h2>Numbers you can stand behind</h2>
+    <p>Most tools give you a plausible number and hope you believe it. SimiSI shows where every number comes from.</p>
+  </div>
+  <div class="trust">
+    <div><h3>Calibrated</h3><p>Every projection is anchored to market data and shown as a range, with its source and a confidence level. When the data for your situation is thin, the range widens and the confidence drops rather than pretending.</p><ul><li>Ranges, not single numbers</li><li>Sources shown</li><li>Confidence levels</li></ul></div>
+    <div><h3>Validated</h3><p>Built on a documented, tested method, with the math open to inspection.</p><ul><li>Documented method</li><li>Tested agents</li><li>The Playbook</li></ul></div>
+    <div><h3>You're always in control</h3><p>Agents send only on channels you allow; switch one off and its messages wait for your okay. Never touches your money: investing agents advise, and never place trades or move funds. You set the autonomy, per agent.</p><ul><li>Channel controls</li><li>No trading or fund movement</li><li>Adjustable autonomy <span class="roll">"Run it and tell me": rolling out</span></li></ul></div>
+    <div><h3>Every action is logged</h3><p>Everything an agent does is recorded, so you can see what happened, when and why.</p><ul><li>Full history</li><li>Review before send</li><li>Undo where possible</li></ul></div>
+  </div>
+</div></section>
+
+<!-- BIO PAGE -->
+<section id="bio" class="tint"><div class="wrap">
+  <div class="bio">
+    <div class="page" aria-label="Example bio page">
+      <div class="url"><i></i><i></i><i></i><span>simisi.io/u/elenavasquez</span></div>
+      <div class="pfr"><div class="av" aria-hidden="true">EV</div><div><b>Elena Vasquez</b><span>Operations consultant for manufacturers</span></div></div>
+      <div class="svc"><span>Fractional COO</span><span>Plant rollouts</span><span>Lean audits</span><span>Book a call</span></div>
+      <div class="chat">
+        <div class="msg v">Do you take fractional COO engagements?</div>
+        <div class="msg a"><small>Elena's assistant</small>Yes, usually two days a week. Want to leave your email so Elena can follow up?</div>
+        <div class="msg v">Sure, it's mark@northfield.co</div>
+        <div class="msg a"><small>Elena's assistant</small>Thanks, Mark. Elena will be in touch within a day. You can also book a time below.</div>
+        <div class="in" aria-hidden="true"><span>Ask Elena's assistant a question</span><i></i></div>
       </div>
-      <div class="step4 fade-up d2">
-        <div class="n">2</div>
-        <h3>Run your simulation</h3>
-        <p>A Bayesian orchestrator models the next 24 months across your five income layers, path by path.</p>
-      </div>
-      <div class="step4 fade-up d3">
-        <div class="n">3</div>
-        <h3>Agents build the deliverables</h3>
-        <p>Rate card, outreach, pages, content, allocation plan — {{ site_layers.agent_total }} agents, each producing real work.</p>
-      </div>
-      <div class="step4 fade-up d3">
-        <div class="n">4</div>
-        <h3>Agents act on them</h3>
-        <p>Draft → you approve → send, publish, set up bookings. You choose what runs, agent by agent and channel by channel.</p>
-      </div>
-      <div class="step4 fade-up d3">
-        <div class="n">5</div>
-        <h3>Decide with foresight</h3>
-        <p>See each path's projected 24-month outcome — as a range, anchored to real data — before you commit to it.</p>
-      </div>
+    </div>
+    <div>
+      <h2>Your free bio page is where it starts</h2>
+      <p class="lede" style="margin-top:16px;font-size:18px;">Your resume becomes a professional page with an assistant that answers visitors around the clock, before you ever pay.</p>
+      <ul class="feat">
+        <li><b>Written from your resume</b><span>Ready in minutes, yours to edit.</span></li>
+        <li><b>An assistant for visitors</b><span>Answers questions about your services.</span></li>
+        <li><b>Leads, even at 2 a.m.</b><span>Contacts go straight to your CRM.</span></li>
+        <li><b>Visitor analytics</b><span>See who came and what they asked.</span></li>
+        <li><b>Found in search</b><span>SEO built in, with themes.</span></li>
+        <li><b>Booking</b><span>Visitors book time with you.</span></li>
+      </ul>
+      <a class="btn primary" href="{{ register }}">Get your free bio page</a>
     </div>
   </div>
-</section>
+</div></section>
 
-<!-- ── FROM PLAN TO DONE ────────────────────────────────────────────── -->
-<section id="plan-to-done" class="lp-s">
-  <div class="lp-c">
-    <span class="s-label teal fade-up">Agents that act</span>
-    <h2 class="s-h2 fade-up">From plan to done.</h2>
-    <p class="lp-lead fade-up">Your agents don't just write the work — they do it, with you in control.</p>
-    <div class="hiw4 loop4">
-      <div class="step4 fade-up d1">
-        <div class="n">1</div><span class="arrow" aria-hidden="true">→</span>
-        <h3>The agent drafts</h3>
-        <p>Outreach, proposals, pages and posts, written from your real experience.</p>
+<!-- PEOPLE -->
+{% set people = (recent_bio_pages or [])[:8] %}
+{% if people or testimonials %}
+<section id="people"><div class="wrap">
+  <div class="sec-head">
+    <h2>People on SimiSI</h2>
+    <p>Everyone here has a live bio page. <a class="link" href="{{ url_for('public.explore') }}">Browse everyone</a></p>
+  </div>
+  {% if people %}
+  <div class="people">
+    {% set tones = ['var(--l2)', '#0F7B72', 'var(--l1)', '#7A5410'] %}
+    {% for p in people %}
+    <a class="person" href="{{ url_for('public.profile_page', username=p.slug) }}">
+      <div class="ph" style="--bgc:{{ tones[loop.index0 % 4] }}">{% if p.avatar_path %}<img src="{{ url_for('public.serve_avatar', filename=p.avatar_path) }}" alt="Portrait of {{ p.display_name }}" loading="lazy">{% else %}<span aria-hidden="true">{{ (p.display_name or '?')[0]|upper }}</span>{% endif %}</div>
+      <div><b>{{ p.display_name }}</b><br><span>View bio page</span></div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if testimonials %}
+  <div class="voices">
+    {% if trust_stats and trust_stats.approved_count > 0 %}
+    <div class="score"><strong>{{ trust_stats.avg_rating }}</strong><span class="stars" aria-label="{{ trust_stats.avg_rating }} out of 5 stars">★★★★★</span><span>Average rating from {{ trust_stats.approved_count }} approved {{ 'review' if trust_stats.approved_count == 1 else 'reviews' }}</span></div>
+    {% else %}<div></div>{% endif %}
+    {% for t in testimonials[:2] %}
+    <figure><blockquote>“{{ t.quote_text }}”</blockquote><figcaption>{{ t.display_name }}{% if t.expertise_zone %}, {{ t.expertise_zone }}{% endif %}</figcaption></figure>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div></section>
+{% endif %}
+
+<!-- SAMPLE SIMULATIONS -->
+<section id="sims" class="tint"><div class="wrap">
+  <div class="sec-head">
+    <h2>Three careers, three different stacks</h2>
+    <p>Sample runs on the same scale, so you can compare them. The profiles are illustrative, and every outcome is a range.</p>
+  </div>
+  <div class="sims" id="simGrid"></div>
+</div></section>
+
+<!-- PLAYBOOK -->
+<section id="playbook"><div class="wrap">
+  <div class="book">
+    <div>
+      <div class="cover" role="img" aria-label="Book cover: The Wealth Simulation Playbook by Jean M. Delphonse">
+        <div class="t">The Wealth Simulation Playbook</div>
+        <div class="s">{{ site_layers.agent_total }} agent actions across the five layers of career wealth</div>
+        <div class="bands" aria-hidden="true"><i style="--c:var(--l1);box-shadow:0 0 0 1px rgba(255,255,255,.18)"></i><i style="--c:var(--l2)"></i><i style="--c:var(--l3)"></i><i style="--c:var(--l4)"></i><i style="--c:var(--l5)"></i></div>
+        <div class="au">Jean M. Delphonse</div>
       </div>
-      <div class="step4 fade-up d2">
-        <div class="n">2</div><span class="arrow" aria-hidden="true">→</span>
-        <h3>You edit or refine</h3>
-        <p>Change anything, or ask the AI to refine it. Your edits are kept as versions; a re-run never overwrites them.</p>
-      </div>
-      <div class="step4 fade-up d3">
-        <div class="n">3</div><span class="arrow" aria-hidden="true">→</span>
-        <h3>It sends under your name</h3>
-        <p>Confirm the exact emails in one click, or let outreach run on the channels you allow. Anyone who opts out is never emailed again.</p>
-      </div>
-      <div class="step4 fade-up d3">
-        <div class="n">4</div>
-        <h3>It follows up</h3>
-        <p>Follow-ups go out on schedule and stop for anyone who replies.</p>
-      </div>
+      <div class="book-meta"><div><b>8</b>parts</div><div><b>{{ site_layers.agent_total }}</b>case studies</div><div><b>7</b>decision lenses</div></div>
     </div>
-    <div class="act3">
-      <div class="act-card fade-up d1">
-        <h3>Agents that act, not just advise</h3>
-        <p>Outreach sent under your name, a payment link on your Stripe, a booking page on your Cal.com — real actions, not just documents.</p>
-      </div>
-      <div class="act-card fade-up d2">
-        <h3>You decide what runs</h3>
-        <p>Set autonomy per agent and switch channels on or off. Payment links and booking pages wait for your approval — and can be undone.</p>
-      </div>
-      <div class="act-card fade-up d3">
-        <h3>Works through your tools</h3>
-        <p>Connect Stripe, Cal.com or ConvertKit and your agents work through your own accounts. Nothing to connect? Everything still works.</p>
-      </div>
+    <div>
+      <h2>The Playbook</h2>
+      <p class="lede" style="margin-top:14px;font-size:18px;">The five-layer framework and every agent, written up as case studies. Each part applies one decision lens from <i>Algorithms to Live By</i>.</p>
+      <div class="parts" id="parts" style="margin-top:28px;"></div>
+      <div class="tpl">Every case study follows the same seven steps:<ol id="tpl"></ol></div>
+      {% if playbook_url %}<div class="ctas"><a class="btn primary" href="{{ playbook_url }}" target="_blank" rel="noopener">Get it on Amazon</a></div>{% endif %}
     </div>
   </div>
-</section>
-
-<!-- ── WHY YOU CAN TRUST IT ─────────────────────────────────────────── -->
-<section id="proof" class="lp-s lp-dark">
-  <div class="lp-c">
-    <span class="s-label fade-up">Why you can trust it</span>
-    <h2 class="s-h2 fade-up">Numbers you can actually stand behind.</h2>
-    <p class="lp-lead fade-up">Most tools generate a plausible-sounding number and hope you believe it. SimiSI shows its work.</p>
-    <div class="proof3">
-      <div class="pcard fade-up d1">
-        <div class="k">Calibrated</div>
-        <p>Every projected outcome is anchored to real market data and shown as a range with its source and a confidence tier — not a lone, unfalsifiable number. When the data for your exact situation is thin, the range widens and the tier drops rather than pretending.</p>
-        <span class="ptag">Calibration layer</span>
-      </div>
-      <div class="pcard fade-up d2">
-        <div class="k">Validated</div>
-        <p>The engine is built on a documented, tested methodology — pure-function agents composed into a wealth engine, with the math open to inspection.</p>
-        <span class="ptag">Documented method</span>
-      </div>
-      <div class="pcard fade-up d3">
-        <div class="k">You're always in control</div>
-        <ul class="ctl">
-          <li><b>You choose what gets sent.</b> Agents send only on channels you allow; switch one off and its messages wait for your okay.</li>
-          <li><b>Works through your tools.</b> Your Stripe, your Cal.com, your newsletter list — emails go out under your name.</li>
-          <li><b>Never touches your money.</b> Investing agents advise; they never place trades or move funds.</li>
-          <li><b>You set the autonomy.</b> From "just draft it" to "do it after I approve," per agent. <span class="roll-pill">"Run it and tell me": rolling out</span></li>
-        </ul>
-        <span class="ptag">Every action logged</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── BIO ON-RAMP ──────────────────────────────────────────────────── -->
-<section id="bio-onramp" class="lp-s">
-  <div class="lp-c">
-    <div class="onramp">
-      <div>
-        <span class="s-label teal fade-up">Start free</span>
-        <h2 class="s-h2 fade-up">Your free bio page is the on-ramp.</h2>
-        <p class="lp-lead fade-up">Before you ever pay, your resume becomes a professional, SEO-optimized bio page with a 24/7 AI chat that answers prospects and captures leads to your CRM — even at 2 a.m. It's free forever, and it's how your simulation begins.</p>
-        <div class="onramp-chips fade-up">
-          <span>AI-generated bio page</span>
-          <span>24/7 AI chat</span>
-          <span>Lead capture + CRM</span>
-          <span>Analytics</span>
-          <span>SEO</span>
-          <span>Booking</span>
-        </div>
-        <div style="margin-top:24px;" class="fade-up">
-          <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold">Get your free bio page</a>
-        </div>
-      </div>
-      <div class="mock-bio fade-up d2" aria-hidden="true">
-        <div class="av"></div>
-        <div class="nm">Elena Vasquez</div>
-        <div class="rl">Operations Consultant · Manufacturing</div>
-        <div class="chat">
-          <b>Visitor:</b> Do you take fractional COO engagements?<br>
-          <b>AI:</b> Elena does — typically 2 days/week. Want me to grab your email so she can follow up?
-        </div>
-        <div class="cap">▲ live AI chat + lead capture</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── BIO PAGE SIDEBAR (FR-SOC-08) ──────────────────────────────── -->
-<section id="bio-sidebar-strip">
-  <div class="lp-c">
-    <div class="bss-wrap">
-      <div class="bss-inner">
-        <span class="bss-label">On SimiSI</span>
-        {% for p in recent_bio_pages %}
-        <a class="bss-card" href="{{ url_for('public.profile_page', username=p.slug) }}">
-          {% if p.avatar_path %}
-          <img class="bss-avatar"
-               src="{{ url_for('public.serve_avatar', filename=p.avatar_path) }}"
-               alt="{{ p.display_name }}" loading="lazy">
-          {% else %}
-          <div class="bss-placeholder">{{ p.display_name[0] if p.display_name else '?' }}</div>
-          {% endif %}
-          <div class="bss-info">
-            <div class="bss-name">{{ p.display_name }}</div>
-            {% if p.like_count %}<div class="bss-likes">♥ {{ p.like_count }}</div>{% endif %}
-          </div>
-        </a>
-        {% endfor %}
-      </div>
-      <a class="bss-cta" href="{{ url_for('public.explore') }}">Browse all →</a>
-    </div>
-  </div>
-</section>
+</div></section>
 
 {% if show_integrations %}
-<!-- ── INTEGRATIONS ─────────────────────────────────────────────────── -->
-<section id="integrations" class="lp-s lp-tint">
-  <div class="lp-c">
-    <span class="s-label teal fade-up">Integrations</span>
-    <h2 class="s-h2 fade-up">Connect your tools; your agents work through them.</h2>
-    <p class="lp-lead fade-up">Every integration is optional. Each one you connect lets your agents do more of the work for you.</p>
-    <div class="intg-grid">
-      {% for i in integrations %}
-      <div class="intg-card fade-up">
-        <div class="intg-group">{{ i.group }}</div>
-        <div class="intg-name">{{ i.name }}{% if i.rolling_out %} <span class="roll-pill">Rolling out</span>{% endif %}</div>
-        <p>{{ i.unlocks }}</p>
-      </div>
-      {% endfor %}
-    </div>
+<!-- INTEGRATIONS, grouped by job -->
+<section id="integrations" class="tint"><div class="wrap">
+  <div class="sec-head">
+    <h2>Connect your tools; your agents work through them.</h2>
+    <p>Every integration is optional. Each one you connect lets your agents do more of the work for you.</p>
   </div>
-</section>
+  <div class="tools">
+    {% for group, items in integrations|groupby('group') %}
+    <div><h3>{{ group }}</h3><ul>{% for i in items %}<li>{{ i.name }}{% if i.rolling_out %} <span class="roll">Rolling out</span>{% endif %}<small>{{ i.unlocks }}</small></li>{% endfor %}</ul></div>
+    {% endfor %}
+  </div>
+</div></section>
 {% endif %}
 
-<!-- ── PRICING ──────────────────────────────────────────────────────── -->
-<section id="pricing" class="lp-s">
-  <div class="lp-c">
-    <div class="pricing-head fade-up">
-      <span class="s-label teal">Pricing</span>
-      <h2 class="s-h2">Start free. Simulate when you're ready.</h2>
+<!-- MORE FROM SIMISI -->
+<section id="more"><div class="wrap">
+  <div class="sec-head"><h2>Also from SimiSI</h2><p>Talk your plan through with a guide, or offer the whole platform to people leaving your company.</p></div>
+  <div class="more">
+    <article class="panel light">
+      <span class="st">In beta</span>
+      <h3>SME Console</h3>
+      <p>Talk through your simulation with a guide you choose. It helps you set one goal for each layer and name your skills in your own words.</p>
+      <ul><li>Spoken or typed conversation</li><li>Grounded in your own simulation</li><li>Goals per layer, approved by you</li></ul>
+      <div class="go">{% if guide_enabled %}<a class="btn sm" href="{{ url_for('guide.console_page') }}">Open the SME Console</a>{% else %}<a class="btn sm" href="mailto:simi@simulacrumai.io?subject=SME%20Console%20beta">Ask for beta access</a>{% endif %}</div>
+    </article>
+    <article class="panel dark">
+      <span class="st">For employers</span>
+      <h3>The Transition Package</h3>
+      <p>Give every person affected by a layoff a simulation, a bio page and the agents, with optional human coaching. You see aggregate reporting only.</p>
+      <ul><li>Priced per seat</li><li>Optional human coaching</li><li>Now enrolling design partners</li></ul>
+      <div class="go"><a class="btn sm" href="{{ url_for('marketing.transition_package') }}">See the Transition Package</a></div>
+    </article>
+  </div>
+</div></section>
+
+<!-- PRICING: amounts come from pricing_context(), the source checkout charges -->
+<section id="pricing" class="tint"><div class="wrap">
+  <div class="sec-head">
+    <h2>Start free. Simulate when you're ready.</h2>
+    <p><b>Not {{ site_layers.agent_total }} documents. {{ site_layers.agent_total }} agents that act.</b> The bio page is free forever. The simulation is a one-time payment, with no subscription.</p>
+  </div>
+  <div class="prices">
+    <div class="tier">
+      <span class="badge ghost">Free</span>
+      <h3>Bio page</h3>
+      <div class="amt">$0<small>forever</small></div>
+      <div class="terms">No credit card</div>
+      <ul><li>Bio page written from your resume</li><li>An assistant for visitors, around the clock</li><li>Lead capture and CRM</li><li>Analytics</li><li>SEO and three themes</li><li>Booking</li><li>Updates from LinkedIn</li></ul>
+      <div class="go"><a class="btn" href="{{ register }}">Get started free</a></div>
     </div>
-    <p class="pricing-head-sub fade-up"><b>Not {{ site_layers.agent_total }} documents. {{ site_layers.agent_total }} agents that act.</b> The bio page is free forever. The simulation is a one-time purchase — no subscription.</p>
-    <div class="pricing-grid">
-      <!-- Free -->
-      <div class="price-card fade-up d1">
-        <div class="price-badge-row"></div>
-        <div class="price-tier">Bio Page</div>
-        <div class="price-amount">$0</div>
-        <div class="price-per">forever · no credit card</div>
-        <div class="price-features">
-          <div class="price-feat"><span class="price-check">✓</span><span>AI-generated bio page</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>24/7 AI chat widget</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Lead capture &amp; CRM</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Analytics dashboard</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>SEO optimization</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>3 design themes</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Booking integration</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Auto-updates from LinkedIn</span></div>
-        </div>
-        <a href="{{ url_for('pages.register_page') }}" class="btn btn-outline" style="width:100%;justify-content:center;">Get started free</a>
+    <div class="tier feature">
+      <span class="badge">Most popular</span>
+      <h3>The simulation</h3>
+      {% if pricing.is_discounted %}
+      <div class="price-discounted">
+        <span class="price-current">{{ pricing.current_price }}</span>
+        <span class="price-original">{{ pricing.original_price }}</span>
+        <span class="price-label-badge">{{ pricing.label or (pricing.discount_pct ~ '% launch pricing') }}</span>
       </div>
-      <!-- Pro -->
-      <div class="price-card featured fade-up d2">
-        <div class="price-badge-row"><span class="price-badge">Most popular</span></div>
-        <div class="price-tier">The Simulation</div>
-        {% if pricing.is_discounted %}
-        <div class="price-discounted">
-          <span class="price-original">{{ pricing.original_price }}</span>
-          <span class="price-current">{{ pricing.current_price }}</span>
-          <span class="price-label-badge">{{ pricing.label or (pricing.discount_pct ~ '% launch pricing') }}</span>
-        </div>
-        {% if pricing.expires_at %}
-        <div class="price-countdown" id="priceCountdown" data-expires="{{ pricing.expires_at }}"></div>
-        {% endif %}
-        {% elif pricing.available %}
-        <div class="price-amount">{{ pricing.current_price }}</div>
-        {% else %}
-        <div class="price-amount" style="font-size:28px;">See price at checkout</div>
-        {% endif %}
-        <div class="price-per">per simulation · one-time</div>
-        <div class="price-features">
-          <div class="price-feat"><span class="price-check">✓</span><span>Everything in Bio Page</span></div>
-          <div class="price-divider">Plus all {{ site_layers.agent_total }} AI agents:</div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Five-layer wealth map</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Calibrated 24-month projections</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Rate card, outreach ×10, course outline</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Content engine + allocation plan</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Bayesian orchestrator</span></div>
-          <div class="price-feat"><span class="price-check">✓</span><span>Prospect research engine</span></div>
-        </div>
-        <a href="{{ url_for('pages.register_page') }}" class="btn btn-teal" style="width:100%;justify-content:center;">Run your simulation</a>
-      </div>
-      <!-- Corporate -->
-      <div class="price-card fade-up d3" style="border:2px solid var(--navy);background:var(--navy);color:#fff;">
-        <div class="price-badge-row"><span class="price-badge" style="background:rgba(255,255,255,.15);color:#fff;">Enterprise</span></div>
-        <div class="price-tier" style="color:rgba(255,255,255,.55);">Enterprise</div>
-        <div class="price-amount" style="color:#fff;">Custom</div>
-        <div class="price-per" style="color:rgba(255,255,255,.5);">per seat · annual contract</div>
-        <div class="price-features">
-          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Everything in The Simulation</span></div>
-          <div class="price-divider" style="color:rgba(255,255,255,.35);border-color:rgba(255,255,255,.12);">Plus corporate features:</div>
-          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Bulk seat licensing &amp; SSO</span></div>
-          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Outplacement &amp; career transition programs</span></div>
-          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Cohort dashboards &amp; HR reporting</span></div>
-          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Dedicated success manager</span></div>
-          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>White-label &amp; custom branding</span></div>
-          <div class="price-feat" style="color:rgba(255,255,255,.85);"><span class="price-check" style="color:#4dd9c8;">✓</span><span>Priority API access &amp; SLA</span></div>
-        </div>
-        <a href="mailto:simi@simulacrumai.io?subject=Corporate%20Licensing%20Enquiry" class="btn" style="width:100%;justify-content:center;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);">Contact sales →</a>
-        <a href="{{ url_for('marketing.transition_package') }}" style="display:block;text-align:center;margin-top:12px;color:rgba(255,255,255,.78);font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px;">See the Transition Package →</a>
-      </div>
+      {% if pricing.expires_at %}<div class="price-countdown" id="priceCountdown" data-expires="{{ pricing.expires_at }}"></div>{% endif %}
+      {% elif pricing.available %}
+      <div class="amt">{{ pricing.current_price }}</div>
+      {% else %}
+      <div class="amt" style="font-size:32px;">See price at checkout</div>
+      {% endif %}
+      <div class="terms">One-time payment, per simulation</div>
+      <ul><li>Everything in the bio page</li><li>All {{ site_layers.agent_total }} agents</li><li>Your five-layer wealth map</li><li>Calibrated 24-month projections</li><li>Rate card, outreach ×10, course outline</li><li>Content engine and allocation plan</li><li>Bayesian orchestrator and prospect research</li></ul>
+      <div class="go"><a class="btn primary" href="{{ register }}">Run your simulation</a></div>
+    </div>
+    <div class="tier">
+      <span class="badge ghost">Annual contract</span>
+      <h3>Enterprise</h3>
+      <div class="amt" style="font-size:40px;padding-top:6px;">Custom<small>per seat</small></div>
+      <ul><li>Everything in the simulation</li><li>Bulk seat licensing and SSO</li><li>Outplacement and career transition programs</li><li>Cohort dashboards and HR reporting</li><li>Dedicated success manager</li><li>White-label and custom branding</li><li>Priority API access and SLA</li></ul>
+      <div class="go"><a class="btn" href="mailto:simi@simulacrumai.io?subject=Corporate%20Licensing%20Enquiry">Contact sales</a><a class="link" href="{{ url_for('marketing.transition_package') }}">See the Transition Package</a></div>
     </div>
   </div>
-</section>
+  <p class="price-note">Prices in US dollars. The current price is always confirmed at checkout.</p>
+</div></section>
 
-<!-- ── SOCIAL PROOF ─────────────────────────────────────────────────── -->
-{% if testimonials %}
-<section id="social-proof">
-  <div class="sp-inner">
-    <h2 class="sp-heading fade-up">From people who ran their first simulation.</h2>
-    <p class="sp-sub fade-up">Every story below came from someone who uploaded a resume and ran their first Simulation.</p>
-
-    {% if trust_stats and trust_stats.approved_count > 0 %}
-    <div class="sp-trust-bar fade-up">
-      <span class="sp-trust-item">{{ trust_stats.avg_rating }} ★ average rating</span>
-      <span class="sp-trust-sep">·</span>
-      <span class="sp-trust-item">{{ trust_stats.total_simulations }} Simulations generated</span>
-    </div>
-    {% endif %}
-
-    {% set featured = namespace(items=[]) %}
-    {% for t in testimonials %}{% if t.is_featured %}{% set featured.items = featured.items + [t] %}{% endif %}{% endfor %}
-    {% if featured.items %}{% set f = featured.items[0] %}
-    <div class="sp-featured-card fade-up">
-      <div class="sp-featured-quote">{{ f.quote_text }}</div>
-      <div class="sp-featured-name">{{ f.display_name }}</div>
-      {% if f.expertise_zone %}<div class="sp-featured-zone">{{ f.expertise_zone }}</div>{% endif %}
-      <div class="sp-featured-stars">{{ '★' * f.star_rating }}</div>
-    </div>
-    {% endif %}
-
-    {% set non_feat = namespace(items=[]) %}
-    {% for t in testimonials %}{% if not t.is_featured %}{% set non_feat.items = non_feat.items + [t] %}{% endif %}{% endfor %}
-    {% if non_feat.items %}
-    <div class="sp-carousel-wrap">
-      <button class="sp-chevron sp-prev" onclick="spPrev()" aria-label="Previous">&#8249;</button>
-      <div class="sp-carousel" id="spCarousel">
-        {% for t in non_feat.items %}
-        <div class="sp-card">
-          <div class="sp-card-stars">{{ '★' * t.star_rating }}{{ '☆' * (5 - t.star_rating) }}</div>
-          <div class="sp-card-quote">"{{ t.quote_text }}"</div>
-          <div class="sp-card-name">{{ t.display_name }}</div>
-          {% if t.expertise_zone %}<div class="sp-card-zone">{{ t.expertise_zone }}</div>{% endif %}
-          <div class="sp-card-meta">
-            {% for layer in (t.layers or [])[:2] %}<span class="sp-layer-chip sp-lc-{{ layer.num }}">{{ layer.label }}</span>{% endfor %}
-            {% if (t.layers or [])|length > 2 %}<span class="sp-layer-chip">+{{ (t.layers|length) - 2 }} more</span>{% endif %}
-            {% if t.approved_at %}<span class="sp-date">{{ t.approved_at }}</span>{% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <button class="sp-chevron sp-next" onclick="spNext()" aria-label="Next">&#8250;</button>
-    </div>
-    <div class="sp-dots" id="spDots"></div>
-    {% endif %}
-
-    <div class="sp-cta-row">
-      <div class="sp-cta-col">Ready to write your story? <a href="{{ url_for('pages.register_page') }}" class="sp-cta-link">Create your first Simulation →</a></div>
-      <div class="sp-cta-col">Are you a coach or advisor? <a href="{{ url_for('pages.partner_apply_page') }}" class="sp-cta-link">Join our partner program →</a></div>
+<!-- FAQ -->
+<section id="faq"><div class="wrap">
+  <div class="faq">
+    <div class="intro"><h2>Questions people ask before they start</h2><p>Anything else? Email <a class="link" href="mailto:simi@simulacrumai.io">simi@simulacrumai.io</a>.</p></div>
+    <div class="qa">
+      <details open><summary>What does the free bio page include?</summary><div class="a">Your free bio page is written from your resume and includes a professional bio, an assistant that answers visitors' questions on your behalf, a lead capture form that saves contacts to your CRM, SEO meta tags, and three design themes. No credit card required, free forever.</div></details>
+      <details><summary>How does the assistant on my bio page work?</summary><div class="a">When a visitor opens the chat on your bio page, they talk to an assistant that knows your resume, services and expertise. It answers questions about your background and availability, and captures their name and email into your CRM, even at 2 a.m. when you're not available.</div></details>
+      <details><summary>What is a simulation?</summary><div class="a">A full run of your career-to-wealth engine. Our Bayesian orchestrator identifies your expertise zone and deploys {{ site_layers.agent_total }} specialized agents across {{ site_layers.count }} income layers, from active consulting (Layer 1) to wealth deployment (Layer 5). Each agent produces a specific deliverable: a rate card, a cold email campaign, a course outline, a blog post and more.</div></details>
+      <details><summary>How is the simulation priced?</summary><div class="a">It is a one-time payment per simulation, not a subscription. {% if pricing.is_discounted %}The simulation is normally {{ pricing.original_price }}; with {{ pricing.discount_pct }}% launch pricing you pay {{ pricing.current_price }} once.{% elif pricing.available %}You pay {{ pricing.current_price }} once.{% else %}You pay once, at the price shown at checkout.{% endif %} You receive all {{ site_layers.agent_total }} deliverables and keep access to your results. A second simulation, on a different expertise zone or an updated resume, is a separate one-time purchase at the price shown at checkout.</div></details>
+      <details><summary>What happens to my data?</summary><div class="a">Your resume and career data are processed only to generate your bio page and simulation. We never sell your data. You can delete your account and all its data at any time from Settings. Your visitors' contact details are stored in your private CRM and are never shared.</div></details>
+      <details><summary>What does each integration unlock?</summary><div class="a">All integrations are optional; SimiSI works fully without connecting any tool. Each one lets your agents act through it: Apollo finds prospects to contact, ConvertKit publishes to your list, Cal.com sets up your booking page, Stripe creates payment links, and PandaDoc prepares proposals.{% if show_integrations %} <a class="link" href="#integrations">See the full list.</a>{% endif %} Your bio page and its assistant are live from the moment you upload your resume.</div></details>
+      <details><summary>Will SimiSI email people without my permission?</summary><div class="a">Only on channels you allow. Outreach runs on your simulation's email channel, which is on by default so your campaign can start; switch it off and every message waits for your okay. A one-off send from an artifact always asks you to confirm the exact emails first, with an unsubscribe link in each. Anyone who opts out or is marked do-not-contact is never emailed.</div></details>
+      <details><summary>Does it use my own email account?</summary><div class="a">Emails go out under your name, and replies come back to you. Where own-account sending is enabled, you connect your SendGrid account and a verified sender, and emails go out from your own domain. Payments, bookings and newsletters run through your own Stripe, Cal.com and ConvertKit accounts.</div></details>
+      <details><summary>Can agents move my money?</summary><div class="a">No. Wealth-deployment agents advise only; they never place trades or move funds. A payment link on your Stripe collects money for you; nothing ever spends it.</div></details>
+      <details><summary>What if an agent makes a mistake?</summary><div class="a">Every deliverable is yours to review and edit, and your edits are kept as versions that a re-run never overwrites. Actions like payment links and booking pages wait for your approval and can be undone, and every action is logged.</div></details>
     </div>
   </div>
-</section>
-{% endif %}
+</div></section>
 
-<!-- ── FAQ ──────────────────────────────────────────────────────────── -->
-<section id="faq" class="lp-s">
-  <div class="lp-c">
-    <div class="faq-head fade-up">
-      <span class="s-label gold">FAQ</span>
-      <h2 class="s-h2">Questions? We have answers.</h2>
-    </div>
-    <div class="faq-list fade-up">
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          What does the free bio page include?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">Your free bio page is AI-generated from your resume and includes a professional bio, a 24/7 AI chat widget that answers questions from visitors on your behalf, a lead capture form that automatically saves contacts to your CRM, SEO meta tags, and three design themes. No credit card required — free forever.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          How does the AI chat work?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">When a visitor clicks "Chat with [your name]" on your bio page, they connect to an AI assistant trained on your resume, services, and expertise. It answers questions about your background and availability, and automatically captures their name and email into your CRM — even at 2am when you're not available.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          What is a simulation?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">A simulation is a complete AI-powered analysis of your career. Our Bayesian orchestrator identifies your Expertise Zone and deploys {{ site_layers.agent_total }} specialized agents across {{ site_layers.count }} income layers — from active consulting (Layer 1) to passive wealth deployment (Layer 5). Each agent generates a specific deliverable: rate card, cold email campaign, course outline, blog post, and more.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          How is the simulation priced?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">It is a one-time payment per simulation — not a subscription. {% if pricing.is_discounted %}The simulation is normally {{ pricing.original_price }}; with {{ pricing.discount_pct }}% launch pricing you pay {{ pricing.current_price }} once.{% elif pricing.available %}You pay {{ pricing.current_price }} once.{% else %}You pay once, at the price shown at checkout.{% endif %} You receive all {{ site_layers.agent_total }} deliverables and keep access to your results indefinitely. Want to run a second simulation on a different expertise zone or updated resume? That is a separate one-time purchase at the price shown at checkout.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          What happens to my data?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">Your resume and career data are processed solely to generate your bio page and simulation. We never sell your data to third parties. You can delete your account and all associated data at any time from your Settings page. Your bio page visitors' contact information is stored in your private CRM and is never shared.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          What does each integration unlock?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">All integrations are optional — SimiSI works fully without connecting any tool. Each one lets your agents act through it: Apollo finds prospects to contact, ConvertKit publishes to your list, Cal.com sets up your booking page, Stripe creates payment links, and PandaDoc prepares proposals.{% if show_integrations %} <a href="#integrations">See the full list.</a>{% endif %} Your bio page and AI chat are live from the moment you upload your resume.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          Will SimiSI email people without my permission?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">Only on channels you allow. Outreach runs on your simulation's email channel, which is on by default so your campaign can start; switch it off and every message waits for your okay. A one-off send from an artifact always asks you to confirm the exact emails first, with an unsubscribe link in each. Anyone who opts out or is marked do-not-contact is never emailed.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          Does it use my own email account?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">Emails go out under your name, and replies come back to you. Where own-account sending is enabled, you connect your SendGrid account and a verified sender, and emails go out from your own domain. Payments, bookings and newsletters run through your own Stripe, Cal.com and ConvertKit accounts.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          Can agents move my money?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">No. Wealth-deployment agents advise only — they never place trades or move funds. A payment link on your Stripe collects money for you; nothing ever spends it.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">
-          What if an agent makes a mistake?
-          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="faq-a"><div class="faq-a-inner">Every deliverable is yours to review and edit, and your edits are kept as versions that a re-run never overwrites. Actions like payment links and booking pages wait for your approval and can be undone, and every action is logged.</div></div>
-      </div>
-    </div>
-  </div>
+<!-- CLOSE -->
+<section class="close" id="begin" aria-labelledby="closeH"><div class="wrap">
+  <h2 id="closeH">Turn your resume into a running wealth engine.</h2>
+  <p class="lede">Start with a free bio page today. Run your simulation when you're ready to see all five layers.</p>
+  <div class="ctas"><a class="btn primary" href="{{ register }}">Run your first simulation</a><a class="btn" href="{{ register }}">Get your free bio page</a></div>
+  <p class="small">No credit card. About three minutes.</p>
+  <div class="partner"><span>Coaches, advisors and creators can earn by referring clients.</span><a class="link" href="{{ url_for('pages.partner_apply_page') }}">Join the partner program</a></div>
+</div>
+  <div class="close-bands" aria-hidden="true"><i style="--c:#1B2C57"></i><i style="--c:var(--l2)"></i><i style="--c:var(--l3)"></i><i style="--c:var(--l4)"></i><i style="--c:var(--l5)"></i></div>
 </section>
+{% endblock %}
 
-<!-- ── CTA ───────────────────────────────────────────────────────────── -->
-<section id="cta">
-  <div class="lp-c cta-inner">
-    <h2 class="cta-h2 fade-up">Turn your resume into a running wealth engine.</h2>
-    <p class="cta-sub fade-up d1">One upload gets you a bio page, an AI chat, and a full five-layer simulation — with the numbers to trust it.</p>
-    <div class="fade-up d2">
-      <a href="{{ url_for('pages.register_page') }}" class="btn btn-gold" style="font-size:16px;padding:14px 28px;">
-        Run your first simulation
-      </a>
-    </div>
-    <p class="cta-trust fade-up d3">Free bio page &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; 3 minutes</p>
-  </div>
-</section>
-
-<!-- ── FOOTER ────────────────────────────────────────────────────────── -->
+{% block footer %}
 {# The public footer lives in one place so the landing page and every
    external page cannot drift apart. #}
 {% include 'partials/_footer_public.html' %}
+{% endblock %}
 
-<!-- ── Video Demo Modal ──────────────────────────────────────────────── -->
-<div id="videoModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:2000;align-items:center;justify-content:center;padding:1rem;">
-  <div style="background:#fff;border-radius:14px;max-width:900px;width:100%;box-shadow:0 24px 72px rgba(0,0,0,.4);overflow:hidden;position:relative">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #e2e8f0">
-      <span style="font-weight:700;font-size:.9rem;color:#1e293b">Revenue Engine — Demo</span>
-      <button id="videoModalClose" type="button" style="background:none;border:none;cursor:pointer;font-size:1.4rem;color:#94a3b8;padding:.2rem .4rem;border-radius:4px;line-height:1">&times;</button>
-    </div>
-    <video id="demoVideo" controls muted playsinline style="width:100%;display:block;max-height:72vh;background:#000">
-      <source id="demoVideoSrc" src="" type="video/mp4">
-    </video>
-  </div>
-</div>
-
-<script>
-window.ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
-window.DEMO_VIDEO_URL = '{{ url_for("static", filename="media/Simulacrum_Revenue_Engine.mp4") }}';
-
-(function () {
-  'use strict';
-
-  /* ── Nav scroll shadow ─────────────────────────────────────────── */
-  var nav = document.getElementById('lpNav');
-  window.addEventListener('scroll', function () {
-    nav.classList.toggle('scrolled', window.scrollY > 10);
-  }, {passive: true});
-
-  /* ── Mobile hamburger ──────────────────────────────────────────── */
-  var ham  = document.getElementById('lpHamburger');
-  var menu = document.getElementById('lpMobMenu');
-  ham.addEventListener('click', function () {
-    menu.classList.toggle('open');
-  });
-  menu.querySelectorAll('a').forEach(function (a) {
-    a.addEventListener('click', function () { menu.classList.remove('open'); });
-  });
-
-  /* ── Scroll spy ────────────────────────────────────────────────── */
-  var spyLinks = document.querySelectorAll('[data-spy]');
-  var spySections = [];
-  spyLinks.forEach(function (l) {
-    var el = document.getElementById(l.dataset.spy);
-    if (el) spySections.push({el: el, link: l});
-  });
-  if (spySections.length && 'IntersectionObserver' in window) {
-    var obs = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) {
-          spyLinks.forEach(function (l) { l.classList.remove('active'); });
-          var match = spySections.find(function (s) { return s.el === e.target; });
-          if (match) match.link.classList.add('active');
-        }
-      });
-    }, {rootMargin: '-40% 0px -55% 0px'});
-    spySections.forEach(function (s) { obs.observe(s.el); });
-  }
-
-  /* ── Fade-in on scroll ─────────────────────────────────────────── */
-  if ('IntersectionObserver' in window) {
-    var fadeObs = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) { e.target.classList.add('in'); fadeObs.unobserve(e.target); }
-      });
-    }, {threshold: 0.12});
-    document.querySelectorAll('.fade-up').forEach(function (el) { fadeObs.observe(el); });
-  } else {
-    document.querySelectorAll('.fade-up').forEach(function (el) { el.classList.add('in'); });
-  }
-
-  /* ── FAQ accordion ─────────────────────────────────────────────── */
-  document.querySelectorAll('.faq-q').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var item   = btn.closest('.faq-item');
-      var isOpen = item.classList.contains('open');
-      // close all
-      document.querySelectorAll('.faq-item.open').forEach(function (i) {
-        i.classList.remove('open');
-        i.querySelector('.faq-a').style.maxHeight = '0';
-        i.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
-      });
-      if (!isOpen) {
-        item.classList.add('open');
-        var a = item.querySelector('.faq-a');
-        a.style.maxHeight = a.scrollHeight + 'px';
-        btn.setAttribute('aria-expanded', 'true');
-      }
-    });
-  });
-
-  /* ── Video demo modal ──────────────────────────────────────────── */
-  var overlay   = document.getElementById('videoModalOverlay');
-  var video     = document.getElementById('demoVideo');
-  var videoSrc  = document.getElementById('demoVideoSrc');
-  var closeBtn  = document.getElementById('videoModalClose');
-  var demoBtn   = document.getElementById('videoDemoBtn');
-
-  function openModal() {
-    videoSrc.src = window.DEMO_VIDEO_URL;
-    video.load();
-    overlay.style.display = 'flex';
-    video.currentTime = 0;
-    video.play().catch(function () {});
-  }
-  function closeModal() {
-    overlay.style.display = 'none';
-    video.pause();
-  }
-  if (demoBtn)  demoBtn.addEventListener('click', openModal);
-  if (closeBtn) closeBtn.addEventListener('click', closeModal);
-  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal();
-  });
-})();
-
-/* ── User menu dropdown ────────────────────────────────────────────── */
-function toggleUserMenu(e) {
-  e.stopPropagation();
-  var m = document.getElementById('userMenu');
-  if (m) m.classList.toggle('is-open');
-}
-document.addEventListener('click', function () {
-  var m = document.getElementById('userMenu');
-  if (m) m.classList.remove('is-open');
-});
-function signOut() {
-  fetch('/api/auth/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}})
-    .then(function () { window.location.href = '/'; })
-    .catch(function () { window.location.href = '/'; });
-}
-
-/* ── Social proof carousel ─────────────────────────────────────────── */
-{% if testimonials %}
-(function () {
-  var carousel = document.getElementById('spCarousel');
-  var dotsEl   = document.getElementById('spDots');
-  if (!carousel) return;
-  var cards = carousel.querySelectorAll('.sp-card');
-  if (!cards.length) return;
-  var current = 0, autoTimer = null;
-
-  function visibleCount() {
-    if (window.innerWidth >= 1200) return 3;
-    if (window.innerWidth >= 768)  return 2;
-    return 1;
-  }
-  function maxIdx() { return Math.max(0, cards.length - visibleCount()); }
-
-  function goTo(idx) {
-    current = Math.max(0, Math.min(idx, maxIdx()));
-    var cardW = cards[0].offsetWidth + 16;
-    carousel.scrollTo({left: current * cardW, behavior: 'smooth'});
-    document.querySelectorAll('.sp-dot').forEach(function (d, i) { d.classList.toggle('active', i === current); });
-  }
-  function buildDots() {
-    if (!dotsEl) return;
-    dotsEl.innerHTML = '';
-    for (var i = 0; i <= maxIdx(); i++) {
-      (function(idx) {
-        var d = document.createElement('button');
-        d.className = 'sp-dot' + (idx === 0 ? ' active' : '');
-        d.addEventListener('click', function () { goTo(idx); resetAuto(); });
-        dotsEl.appendChild(d);
-      })(i);
-    }
-  }
-  function startAuto() {
-    if (window.innerWidth < 768) return;
-    clearInterval(autoTimer);
-    autoTimer = setInterval(function () { goTo(current >= maxIdx() ? 0 : current + 1); }, 6000);
-  }
-  function resetAuto() { clearInterval(autoTimer); setTimeout(startAuto, 3000); }
-  window.spNext = function () { goTo(current + 1); resetAuto(); };
-  window.spPrev = function () { goTo(current - 1); resetAuto(); };
-  carousel.addEventListener('mouseenter', function () { clearInterval(autoTimer); });
-  carousel.addEventListener('mouseleave', startAuto);
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowRight') window.spNext();
-    if (e.key === 'ArrowLeft')  window.spPrev();
-  });
-  buildDots(); startAuto();
-  window.addEventListener('resize', function () { buildDots(); goTo(Math.min(current, maxIdx())); });
-})();
-{% endif %}
-</script>
-{% if pricing.is_discounted and pricing.expires_at %}
-<script>
-(function() {
-  var el = document.getElementById('priceCountdown');
-  if (!el) return;
-  var expires = new Date(el.dataset.expires + (el.dataset.expires.endsWith('Z') ? '' : 'Z'));
-  function tick() {
-    var diff = Math.max(0, Math.floor((expires - Date.now()) / 1000));
-    if (diff <= 0) { el.textContent = 'Offer ended'; return; }
-    var HOUR = 72 * 3600;
-    if (diff > HOUR) { el.style.display = 'none'; return; }
-    var d = Math.floor(diff / 86400);
-    var h = Math.floor((diff % 86400) / 3600);
-    var m = Math.floor((diff % 3600) / 60);
-    el.textContent = 'Ends in ' + (d ? d + 'd ' : '') + h + 'h ' + m + 'm';
-  }
-  tick();
-  setInterval(tick, 60000);
-})();
-</script>
-{% endif %}
-</body>
-</html>
+{% block scripts %}
+<script>window.HOME_LAYERS = {{ site_layers.layers|map(attribute='name')|list|tojson }};</script>
+<script src="{{ url_for('static', filename='js/home.js') }}" defer></script>
+{% endblock %}

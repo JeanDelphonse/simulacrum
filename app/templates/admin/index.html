@@ -71,17 +71,17 @@
       </div>
     </div>
     <div id="priceHistorySection" style="margin-top:1.25rem;">
-      <h3 style="font-size:0.9rem;margin-bottom:0.25rem;color:rgba(255,255,255,0.7);">Price Change History</h3>
-      <div id="priceHistoryContent"><span style="font-size:0.8rem;color:rgba(255,255,255,0.4);">Loading…</span></div>
+      <h3 style="font-size:0.9rem;margin-bottom:0.25rem;color:var(--ink-2);">Price Change History</h3>
+      <div id="priceHistoryContent"><span style="font-size:0.8rem;color:var(--mute);">Loading…</span></div>
     </div>
 
     <!-- Discount Configuration (FR-DISC-01) -->
-    <div style="margin-top:2rem;border-top:1px solid rgba(255,255,255,.1);padding-top:1.5rem;">
-      <h3 style="font-size:1rem;margin-bottom:1rem;color:rgba(255,255,255,.85);">Discount Configuration</h3>
-      <div id="activeDiscountBanner" style="display:none;margin-bottom:1rem;padding:10px 14px;border-radius:8px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);font-size:.85rem;color:#34d399;"></div>
+    <div style="margin-top:2rem;border-top:1px solid rgba(13,27,62,.12);padding-top:1.5rem;">
+      <h3 style="font-size:1rem;margin-bottom:1rem;color:var(--ink);">Discount Configuration</h3>
+      <div id="activeDiscountBanner" style="display:none;margin-bottom:1rem;padding:10px 14px;border-radius:8px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);font-size:.85rem;color:#0B6B63;"></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end;">
         <div>
-          <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Discount %</label>
+          <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">Discount %</label>
           <select id="discountPct" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
             <option value="10">10%</option>
             <option value="15">15%</option>
@@ -91,15 +91,15 @@
           </select>
         </div>
         <div>
-          <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Start (UTC)</label>
+          <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">Start (UTC)</label>
           <input type="datetime-local" id="discountStart" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
         </div>
         <div>
-          <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">End (UTC)</label>
+          <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">End (UTC)</label>
           <input type="datetime-local" id="discountEnd" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
         </div>
         <div>
-          <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Label (optional, max 30 chars)</label>
+          <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">Label (optional, max 30 chars)</label>
           <input type="text" id="discountLabel" maxlength="30" placeholder="e.g. Launch Special" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
         </div>
         <div>
@@ -110,8 +110,8 @@
 
       <!-- Discount history table (FR-DISC-03) -->
       <div style="margin-top:1.5rem;">
-        <h4 style="font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:.5rem;">Discount History</h4>
-        <div id="discountHistoryContent"><span style="font-size:.8rem;color:rgba(255,255,255,.35);">Loading…</span></div>
+        <h4 style="font-size:.85rem;color:var(--ink-2);margin-bottom:.5rem;">Discount History</h4>
+        <div id="discountHistoryContent"><span style="font-size:.8rem;color:var(--mute);">Loading…</span></div>
       </div>
     </div>
   </section>
@@ -119,33 +119,33 @@
   <!-- Prospect Tier Configuration (SIM-REQ-PROSPECT-001) -->
   <section class="admin-section">
     <h2>Prospect Tier Configuration</h2>
-    <p style="font-size:.85rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem;">
+    <p style="font-size:.85rem;color:var(--ink-2);margin-bottom:1.25rem;">
       Configure the prospect counts and prices for each tier. All values take effect immediately for new agent runs.
     </p>
     <div id="prospectTierStatus" style="display:none;margin-bottom:.75rem;font-size:.82rem;"></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end;">
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 1 prospects (free)</label>
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">Tier 1 prospects (free)</label>
         <input type="number" id="ptTier1Count" min="1" step="1"
           style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 2 prospects</label>
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">Tier 2 prospects</label>
         <input type="number" id="ptTier2Count" min="1" step="1"
           style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 2 price (USD)</label>
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">Tier 2 price (USD)</label>
         <input type="number" id="ptTier2Price" min="0" step="0.01"
           style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 3 prospects (max)</label>
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">Tier 3 prospects (max)</label>
         <input type="number" id="ptTier3Count" min="1" step="1"
           style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">Tier 3 cumulative price (USD)</label>
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:4px;">Tier 3 cumulative price (USD)</label>
         <input type="number" id="ptTier3Price" min="0" step="0.01"
           style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
       </div>
@@ -232,9 +232,9 @@
             {% if profile and profile.username and profile.is_published %}
             <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" style="color:#0e7490;font-size:.82rem">/u/{{ profile.username }} ↗</a>
             {% elif profile and profile.username %}
-            <span style="font-size:.78rem;color:rgba(255,255,255,.3)">{{ profile.username }} (private)</span>
+            <span style="font-size:.78rem;color:var(--mute)">{{ profile.username }} (private)</span>
             {% else %}
-            <span style="font-size:.78rem;color:rgba(255,255,255,.2)">—</span>
+            <span style="font-size:.78rem;color:var(--mute)">—</span>
             {% endif %}
           </td>
           <td>
@@ -260,7 +260,7 @@
       </tbody>
     </table>
     <div id="usersPagination" style="display:none;align-items:center;justify-content:space-between;gap:1rem;margin-top:1rem;flex-wrap:wrap">
-      <span id="usersPageInfo" style="font-size:.8rem;color:rgba(255,255,255,.5)"></span>
+      <span id="usersPageInfo" style="font-size:.8rem;color:var(--mute)"></span>
       <div style="display:flex;gap:.5rem;align-items:center">
         <button id="usersPrevBtn" onclick="changeUsersPage(-1)" class="btn btn-secondary btn-sm">Prev</button>
         <button id="usersNextBtn" onclick="changeUsersPage(1)" class="btn btn-secondary btn-sm">Next</button>
@@ -271,36 +271,36 @@
 
 <!-- ── User Edit Modal ──────────────────────────────────────────────────── -->
 <div id="userEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:#1a2236;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:2rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+  <div style="background:#FFFFFF;border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:2rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
       <h3 style="margin:0;font-size:1rem">Edit User Profile</h3>
-      <button onclick="closeUserEdit()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+      <button onclick="closeUserEdit()" style="background:none;border:none;color:var(--mute);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
     </div>
     <input type="hidden" id="editUserId">
     <div style="display:flex;flex-direction:column;gap:1rem">
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Full Name</label>
-        <input id="editFullName" type="text" maxlength="100" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Full Name</label>
+        <input id="editFullName" type="text" maxlength="100" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;box-sizing:border-box">
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Username</label>
-        <input id="editUsername" type="text" maxlength="30" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Username</label>
+        <input id="editUsername" type="text" maxlength="30" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;box-sizing:border-box">
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Display Name</label>
-        <input id="editDisplayName" type="text" maxlength="100" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Display Name</label>
+        <input id="editDisplayName" type="text" maxlength="100" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;box-sizing:border-box">
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Tagline</label>
-        <input id="editTagline" type="text" maxlength="200" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Tagline</label>
+        <input id="editTagline" type="text" maxlength="200" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;box-sizing:border-box">
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Bio</label>
-        <textarea id="editBio" rows="5" maxlength="10000" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;resize:vertical;box-sizing:border-box"></textarea>
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Bio</label>
+        <textarea id="editBio" rows="5" maxlength="10000" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;resize:vertical;box-sizing:border-box"></textarea>
       </div>
     </div>
     <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem">
-      <button onclick="closeUserEdit()" style="padding:.45rem 1rem;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:.85rem">Cancel</button>
+      <button onclick="closeUserEdit()" style="padding:.45rem 1rem;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:none;color:var(--ink-2);cursor:pointer;font-size:.85rem">Cancel</button>
       <button onclick="saveUserEdit()" style="padding:.45rem 1rem;border:none;border-radius:7px;background:#0f7b72;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600" id="saveUserEditBtn">Save Changes</button>
     </div>
     <div id="editUserMsg" style="margin-top:.75rem;font-size:.8rem;text-align:center;display:none"></div>
@@ -314,20 +314,20 @@
      one setting that behaves differently — an unlimited 100% comp is unbounded
      generation spend, so it has to be chosen rather than defaulted into. -->
 <div id="compModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:1.5rem">
-  <div style="background:#1a2236;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto">
+  <div style="background:#FFFFFF;border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.35rem">
       <h3 style="margin:0;font-size:1rem">Comp simulation price</h3>
-      <button onclick="closeCompModal()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+      <button onclick="closeCompModal()" style="background:none;border:none;color:var(--mute);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
     </div>
-    <div id="compUserLabel" style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:1.25rem"></div>
+    <div id="compUserLabel" style="font-size:.8rem;color:var(--mute);margin-bottom:1.25rem"></div>
     <input type="hidden" id="compUserId">
 
     <div id="compEffective" style="display:none;margin-bottom:1.25rem;padding:.6rem .8rem;border-radius:8px;font-size:.82rem"></div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Discount</label>
-        <select id="compPct" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Discount</label>
+        <select id="compPct" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;box-sizing:border-box">
           <option value="100" selected>100% — free</option>
           <option value="50">50% off</option>
           <option value="25">25% off</option>
@@ -337,8 +337,8 @@
         </select>
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Covers</label>
-        <select id="compUses" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Covers</label>
+        <select id="compUses" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;box-sizing:border-box">
           <option value="1" selected>1 simulation</option>
           <option value="2">2 simulations</option>
           <option value="3">3 simulations</option>
@@ -348,8 +348,8 @@
         </select>
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Expires</label>
-        <select id="compExpiry" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Expires</label>
+        <select id="compExpiry" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;box-sizing:border-box">
           <option value="">No expiry</option>
           <option value="7">In 7 days</option>
           <option value="30" selected>In 30 days</option>
@@ -358,22 +358,22 @@
         </select>
       </div>
       <div>
-        <label style="font-size:.75rem;color:rgba(255,255,255,.5);display:block;margin-bottom:.3rem">Reason</label>
-        <input id="compReason" type="text" maxlength="200" placeholder="e.g. Design partner" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:.88rem;box-sizing:border-box">
+        <label style="font-size:.75rem;color:var(--mute);display:block;margin-bottom:.3rem">Reason</label>
+        <input id="compReason" type="text" maxlength="200" placeholder="e.g. Design partner" style="width:100%;padding:8px 10px;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:#F9FAFB;color:#fff;font-size:.88rem;box-sizing:border-box">
       </div>
     </div>
 
-    <div id="compWarning" style="display:none;margin-top:1rem;padding:.6rem .8rem;border-radius:8px;background:rgba(180,83,9,.14);border:1px solid rgba(180,83,9,.4);font-size:.8rem;color:#fbbf24"></div>
+    <div id="compWarning" style="display:none;margin-top:1rem;padding:.6rem .8rem;border-radius:8px;background:rgba(180,83,9,.14);border:1px solid rgba(180,83,9,.4);font-size:.8rem;color:#7A5410"></div>
 
     <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem">
-      <button onclick="closeCompModal()" style="padding:.45rem 1rem;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:.85rem">Cancel</button>
+      <button onclick="closeCompModal()" style="padding:.45rem 1rem;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:none;color:var(--ink-2);cursor:pointer;font-size:.85rem">Cancel</button>
       <button onclick="grantComp()" id="grantCompBtn" style="padding:.45rem 1rem;border:none;border-radius:7px;background:#b45309;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600">Grant discount</button>
     </div>
     <div id="compMsg" style="margin-top:.75rem;font-size:.8rem;text-align:center;display:none"></div>
 
-    <div style="margin-top:1.75rem;border-top:1px solid rgba(255,255,255,.1);padding-top:1rem">
-      <h4 style="font-size:.85rem;color:rgba(255,255,255,.6);margin:0 0 .5rem">Grants for this user</h4>
-      <div id="compGrants"><span style="font-size:.8rem;color:rgba(255,255,255,.35)">Loading…</span></div>
+    <div style="margin-top:1.75rem;border-top:1px solid rgba(13,27,62,.12);padding-top:1rem">
+      <h4 style="font-size:.85rem;color:var(--ink-2);margin:0 0 .5rem">Grants for this user</h4>
+      <div id="compGrants"><span style="font-size:.8rem;color:var(--mute)">Loading…</span></div>
     </div>
   </div>
 </div>
@@ -384,14 +384,14 @@
      deleted and what will be preserved before anything is committed. -->
 <!-- ── Outreach reset (dry run, then confirm) ─────────────────────────────── -->
 <div id="outreachResetModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2.5rem 1rem">
-  <div style="background:#1a2236;border:1px solid rgba(124,58,237,.45);border-radius:14px;padding:1.75rem;width:100%;max-width:620px">
+  <div style="background:#FFFFFF;border:1px solid rgba(124,58,237,.45);border-radius:14px;padding:1.75rem;width:100%;max-width:620px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.35rem">
       <h3 style="margin:0;font-size:1rem">Reset outreach history</h3>
-      <button onclick="closeOutreachReset()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+      <button onclick="closeOutreachReset()" style="background:none;border:none;color:var(--mute);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
     </div>
-    <div id="orWho" style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:1rem"></div>
-    <div id="orBody" style="font-size:.85rem;color:rgba(255,255,255,.8)">Loading…</div>
-    <label id="orActivitiesRow" style="display:none;margin-top:1rem;font-size:.82rem;color:rgba(255,255,255,.7);cursor:pointer">
+    <div id="orWho" style="font-size:.8rem;color:var(--mute);margin-bottom:1rem"></div>
+    <div id="orBody" style="font-size:.85rem;color:var(--ink)">Loading…</div>
+    <label id="orActivitiesRow" style="display:none;margin-top:1rem;font-size:.82rem;color:var(--ink-2);cursor:pointer">
       <input type="checkbox" id="orClearActivities" style="margin-right:.4rem">
       Also remove outreach entries from each contact's activity timeline (<span id="orActivityCount">0</span>)
     </label>
@@ -404,27 +404,27 @@
 </div>
 
 <div id="cycleAdminModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2.5rem 1rem">
-  <div style="background:#1a2236;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.75rem;width:100%;max-width:840px">
+  <div style="background:#FFFFFF;border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:1.75rem;width:100%;max-width:840px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.35rem">
       <h3 style="margin:0;font-size:1rem">Run Cycles</h3>
-      <button onclick="closeCycleAdmin()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+      <button onclick="closeCycleAdmin()" style="background:none;border:none;color:var(--mute);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
     </div>
-    <div id="cycleAdminWho" style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:1.25rem"></div>
-    <div id="cycleAdminBody" style="font-size:.85rem;color:rgba(255,255,255,.75)">Loading…</div>
+    <div id="cycleAdminWho" style="font-size:.8rem;color:var(--mute);margin-bottom:1.25rem"></div>
+    <div id="cycleAdminBody" style="font-size:.85rem;color:var(--ink)">Loading…</div>
   </div>
 </div>
 
 <!-- ── Confirm Modal (shows the dry-run result) ─────────────────────────── -->
 <div id="cycleConfirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:1100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2.5rem 1rem">
-  <div style="background:#1a2236;border:1px solid rgba(220,38,38,.4);border-radius:14px;padding:1.75rem;width:100%;max-width:620px">
-    <h3 id="cycleConfirmTitle" style="margin:0 0 1rem;font-size:1rem;color:#fca5a5"></h3>
-    <div id="cycleConfirmBody" style="font-size:.85rem;color:rgba(255,255,255,.8);line-height:1.65"></div>
-    <label style="display:flex;gap:.55rem;align-items:flex-start;margin-top:1.25rem;font-size:.82rem;color:rgba(255,255,255,.7);cursor:pointer">
+  <div style="background:#FFFFFF;border:1px solid rgba(220,38,38,.4);border-radius:14px;padding:1.75rem;width:100%;max-width:620px">
+    <h3 id="cycleConfirmTitle" style="margin:0 0 1rem;font-size:1rem;color:#B91C1C"></h3>
+    <div id="cycleConfirmBody" style="font-size:.85rem;color:var(--ink);line-height:1.65"></div>
+    <label style="display:flex;gap:.55rem;align-items:flex-start;margin-top:1.25rem;font-size:.82rem;color:var(--ink-2);cursor:pointer">
       <input type="checkbox" id="cycleConfirmAck" style="margin-top:.2rem">
       <span>I understand this cannot be undone.</span>
     </label>
     <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25rem">
-      <button onclick="closeCycleConfirm()" style="padding:.45rem 1rem;border:1px solid rgba(255,255,255,.15);border-radius:7px;background:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:.85rem">Cancel</button>
+      <button onclick="closeCycleConfirm()" style="padding:.45rem 1rem;border:1px solid rgba(13,27,62,.12);border-radius:7px;background:none;color:var(--ink-2);cursor:pointer;font-size:.85rem">Cancel</button>
       <button id="cycleConfirmGo" style="padding:.45rem 1rem;border:none;border-radius:7px;background:#dc2626;color:#fff;cursor:pointer;font-size:.85rem;font-weight:600">Confirm</button>
     </div>
     <div id="cycleConfirmMsg" style="margin-top:.85rem;font-size:.8rem;display:none;line-height:1.6"></div>
@@ -469,7 +469,7 @@ function loadDiscounts() {
     }
     // History table
     const el = document.getElementById('discountHistoryContent');
-    if (!rows.length) { el.innerHTML = '<p style="font-size:.8rem;color:rgba(255,255,255,.35)">No discounts yet.</p>'; return; }
+    if (!rows.length) { el.innerHTML = '<p style="font-size:.8rem;color:var(--mute)">No discounts yet.</p>'; return; }
     el.innerHTML = `<table class="admin-table" style="font-size:.8rem">
       <thead><tr><th>%</th><th>Start</th><th>End</th><th>Label</th><th>Status</th><th>Sims</th><th></th></tr></thead>
       <tbody>${rows.map(d => `<tr>
@@ -500,7 +500,7 @@ async function saveDiscount() {
     body: JSON.stringify({ discount_percentage: pct, start_at: start, end_at: end, label: label || null }),
   });
   if (res.ok) {
-    msg.style.display = 'block'; msg.style.color = '#34d399'; msg.textContent = 'Discount created!';
+    msg.style.display = 'block'; msg.style.color = '#0B6B63'; msg.textContent = 'Discount created!';
     setTimeout(() => { msg.style.display = 'none'; }, 2500);
     loadDiscounts();
   } else {
@@ -545,7 +545,7 @@ function openCompModal(uid, email) {
   document.getElementById('compExpiry').value = '30';
   document.getElementById('compEffective').style.display = 'none';
   document.getElementById('compGrants').innerHTML =
-    '<span style="font-size:.8rem;color:rgba(255,255,255,.35)">Loading…</span>';
+    '<span style="font-size:.8rem;color:var(--mute)">Loading…</span>';
   // Re-enable in case a previous open hit the not-migrated state and disabled it.
   document.getElementById('grantCompBtn').disabled = false;
   updateCompWarning();
@@ -593,7 +593,7 @@ async function loadCompGrants(uid) {
       var text = d.setup_required
         ? d.error
         : (d.error || ('Could not load grants: HTTP ' + res.status));
-      box.innerHTML = '<p style="font-size:.8rem;color:#fbbf24">' + compEsc(text) + '</p>';
+      box.innerHTML = '<p style="font-size:.8rem;color:#7A5410">' + compEsc(text) + '</p>';
       document.getElementById('grantCompBtn').disabled = !!d.setup_required;
       return;
     }
@@ -607,13 +607,13 @@ async function loadCompGrants(uid) {
       if (p.is_comped) {
         eff.style.background = 'rgba(16,185,129,.12)';
         eff.style.border = '1px solid rgba(16,185,129,.3)';
-        eff.style.color = '#34d399';
+        eff.style.color = '#0B6B63';
         eff.textContent = 'Pays ' + compMoney(p.price_cents) + ' right now — '
           + p.discount_percentage + '% off ' + compMoney(p.base_price_cents) + '.';
       } else {
-        eff.style.background = 'rgba(255,255,255,.05)';
-        eff.style.border = '1px solid rgba(255,255,255,.12)';
-        eff.style.color = 'rgba(255,255,255,.6)';
+        eff.style.background = '#F9FAFB';
+        eff.style.border = '1px solid rgba(13,27,62,.12)';
+        eff.style.color = 'var(--ink-2)';
         eff.textContent = 'Pays ' + compMoney(p.price_cents) + ' right now'
           + (p.discount_percentage
               ? ' (' + p.discount_percentage + '% off, from the global sale).'
@@ -622,12 +622,12 @@ async function loadCompGrants(uid) {
     }
 
     if (!d.grants.length) {
-      box.innerHTML = '<p style="font-size:.8rem;color:rgba(255,255,255,.35)">'
+      box.innerHTML = '<p style="font-size:.8rem;color:var(--mute)">'
         + 'No grants yet.</p>';
       return;
     }
-    var colours = { active: '#34d399', used: 'rgba(255,255,255,.4)',
-                    expired: 'rgba(255,255,255,.4)', revoked: '#ef4444' };
+    var colours = { active: '#0B6B63', used: 'var(--mute)',
+                    expired: 'var(--mute)', revoked: '#B91C1C' };
     var html = '<table class="admin-table" style="font-size:.78rem"><thead><tr>'
       + '<th>Discount</th><th>Used</th><th>Expires</th><th>Reason</th>'
       + '<th>Status</th><th></th></tr></thead><tbody>';
@@ -683,7 +683,7 @@ async function grantComp() {
     const body = await res.json().catch(function () { return {}; });
     msg.style.display = 'block';
     if (res.ok) {
-      msg.style.color = '#34d399';
+      msg.style.color = '#0B6B63';
       msg.textContent = 'Granted.';
       document.getElementById('compReason').value = '';
       loadCompGrants(uid);
@@ -735,11 +735,11 @@ async function saveProspectTierConfig() {
     body: JSON.stringify(payload),
   });
   if (r.ok) {
-    el.style.display = 'block'; el.style.color = '#34d399'; el.textContent = 'Saved!';
+    el.style.display = 'block'; el.style.color = '#0B6B63'; el.textContent = 'Saved!';
     setTimeout(() => { el.style.display = 'none'; }, 2500);
   } else {
     const d = await r.json();
-    el.style.display = 'block'; el.style.color = '#f87171'; el.textContent = d.error || 'Save failed';
+    el.style.display = 'block'; el.style.color = '#B91C1C'; el.textContent = d.error || 'Save failed';
   }
 }
 
@@ -787,11 +787,11 @@ async function saveUserEdit() {
   });
   btn.disabled = false; btn.textContent = 'Save Changes';
   if (r.ok) {
-    msg.style.display = 'block'; msg.style.color = '#4ade80'; msg.textContent = 'Saved!';
+    msg.style.display = 'block'; msg.style.color = '#15803D'; msg.textContent = 'Saved!';
     setTimeout(closeUserEdit, 1000);
   } else {
     const d = await r.json();
-    msg.style.display = 'block'; msg.style.color = '#f87171'; msg.textContent = d.error || 'Save failed';
+    msg.style.display = 'block'; msg.style.color = '#B91C1C'; msg.textContent = d.error || 'Save failed';
   }
 }
 
@@ -840,22 +840,22 @@ async function openOutreachReset(uid) {
         ' unsubscribed, do-not-contact or archived contact' + (d.contacts_protected === 1 ? ' is' : 's are') + ' left untouched.</p>';
     }
     if (d.sample && d.sample.length) {
-      html += '<div style="font-size:.78rem;color:rgba(255,255,255,.5);margin:.2rem 0 .35rem">First contacts to be reset:</div>' +
-        '<div style="font-size:.78rem;color:rgba(255,255,255,.7)">' + d.sample.map((c) =>
+      html += '<div style="font-size:.78rem;color:var(--mute);margin:.2rem 0 .35rem">First contacts to be reset:</div>' +
+        '<div style="font-size:.78rem;color:var(--ink-2)">' + d.sample.map((c) =>
           orEsc(c.name || '(no name)') + ' · ' + orEsc(c.email) + ' · ' + orEsc(c.stage) +
           ' · ' + c.outreach_count + ' sent').join('<br>') + '</div>';
     }
-    html += '<p style="margin:.9rem 0 0;color:#fca5a5">The next Cold Email / Consulting Outreach cycle can email these people again, including anyone who already received a message.</p>';
+    html += '<p style="margin:.9rem 0 0;color:#B91C1C">The next Cold Email / Consulting Outreach cycle can email these people again, including anyone who already received a message.</p>';
     body.innerHTML = html;
     if (d.activities_removable) {
       document.getElementById('orActivityCount').textContent = d.activities_removable;
       document.getElementById('orActivitiesRow').style.display = 'block';
     }
     const nothing = !d.contacts_reset && !d.emails_detached && !d.claims_cleared && !d.steps_cancelled && !d.activities_removable;
-    if (nothing) body.innerHTML += '<p style="margin:.6rem 0 0;color:rgba(255,255,255,.5)">Nothing to reset.</p>';
+    if (nothing) body.innerHTML += '<p style="margin:.6rem 0 0;color:var(--mute)">Nothing to reset.</p>';
     btn.disabled = nothing;
   } catch (e) {
-    body.innerHTML = '<span style="color:#f87171">' + orEsc(e.message) + '</span>';
+    body.innerHTML = '<span style="color:#B91C1C">' + orEsc(e.message) + '</span>';
   }
 }
 
@@ -876,13 +876,13 @@ async function confirmOutreachReset() {
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.message || d.error || 'Reset failed');
-    msg.style.display = 'block'; msg.style.color = '#4ade80';
+    msg.style.display = 'block'; msg.style.color = '#15803D';
     msg.textContent = '✓ Reset ' + d.contacts_reset + ' contact(s), detached ' + d.emails_detached +
       ' email(s), cleared ' + d.claims_cleared + ' claim(s), cancelled ' + d.steps_cancelled + ' step(s).';
     btn.textContent = 'Done';
     setTimeout(closeOutreachReset, 2500);
   } catch (e) {
-    msg.style.display = 'block'; msg.style.color = '#f87171'; msg.textContent = e.message;
+    msg.style.display = 'block'; msg.style.color = '#B91C1C'; msg.textContent = e.message;
     btn.disabled = false; btn.textContent = 'Reset outreach';
   }
 }
@@ -1039,18 +1039,18 @@ async function loadCycleAdmin() {
       data.user_name + ' · ' + data.user_email;
 
     if (!data.simulations.length) {
-      body.innerHTML = '<div style="padding:1.5rem 0;color:rgba(255,255,255,.4)">' +
+      body.innerHTML = '<div style="padding:1.5rem 0;color:var(--mute)">' +
         'This user has no simulations.</div>';
       return;
     }
 
     body.innerHTML = data.simulations.map((s) =>
-      '<div style="border:1px solid rgba(255,255,255,.1);border-radius:10px;' +
+      '<div style="border:1px solid rgba(13,27,62,.12);border-radius:10px;' +
       'padding:.9rem 1rem;margin-bottom:.85rem">' +
         '<div style="display:flex;align-items:flex-start;gap:.75rem;flex-wrap:wrap">' +
           '<div style="flex:1 1 220px;min-width:0">' +
             '<div style="font-weight:600;color:#fff">' + cycEsc(s.name) + '</div>' +
-            '<div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.15rem">' +
+            '<div style="font-size:.75rem;color:var(--mute);margin-top:.15rem">' +
               cycEsc(s.status) + ' · ' + cycEsc(s.lifecycle_phase) + ' · ' +
               s.cycle_count + ' cycle' + (s.cycle_count === 1 ? '' : 's') + ' · ' +
               s.action_count + ' artifact' + (s.action_count === 1 ? '' : 's') +
@@ -1059,31 +1059,31 @@ async function loadCycleAdmin() {
           '<div style="display:flex;gap:.4rem;flex-wrap:wrap">' +
             (s.cycle_count
               ? '<button onclick="toggleCycleList(\'' + s.id + '\')" ' +
-                'style="font-size:.75rem;padding:.28rem .6rem;border:1px solid rgba(255,255,255,.2);' +
-                'border-radius:5px;background:none;color:rgba(255,255,255,.75);cursor:pointer">' +
+                'style="font-size:.75rem;padding:.28rem .6rem;border:1px solid rgba(13,27,62,.12);' +
+                'border-radius:5px;background:none;color:var(--ink);cursor:pointer">' +
                 'Cycles</button>'
               : '') +
             '<button onclick="confirmCycleReset(\'' + s.id + '\', \'' + cycEsc(s.name).replace(/'/g, "") + '\')" ' +
               'style="font-size:.75rem;padding:.28rem .6rem;border:1px solid rgba(245,158,11,.5);' +
-              'border-radius:5px;background:none;color:#fbbf24;cursor:pointer">Reset</button>' +
+              'border-radius:5px;background:none;color:#7A5410;cursor:pointer">Reset</button>' +
             (s.cycle_count
               ? '<button onclick="confirmCycleDelete(\'' + s.id + '\', null, \'all cycles\')" ' +
                 'style="font-size:.75rem;padding:.28rem .6rem;border:1px solid rgba(220,38,38,.5);' +
-                'border-radius:5px;background:none;color:#f87171;cursor:pointer">Delete all</button>'
+                'border-radius:5px;background:none;color:#B91C1C;cursor:pointer">Delete all</button>'
               : '') +
           '</div>' +
         '</div>' +
         '<div id="cycleList-' + s.id + '" style="display:none;margin-top:.85rem"></div>' +
       '</div>').join('') +
-      '<div style="font-size:.75rem;color:rgba(255,255,255,.35);line-height:1.6;margin-top:.35rem">' +
-      '<strong style="color:rgba(255,255,255,.55)">Reset</strong> deletes every cycle and ' +
+      '<div style="font-size:.75rem;color:var(--mute);line-height:1.6;margin-top:.35rem">' +
+      '<strong style="color:var(--ink-2)">Reset</strong> deletes every cycle and ' +
       'clears the orchestrator\'s learned state so the next run starts at cycle 1, keeping ' +
       'agent selection, Layer 6 config, the resume and the generated layers. ' +
-      '<strong style="color:rgba(255,255,255,.55)">Delete</strong> removes cycles and their ' +
+      '<strong style="color:var(--ink-2)">Delete</strong> removes cycles and their ' +
       'artifacts only. Neither destroys sent email, signed documents, published pages, ' +
       'reported income or CRM contacts.</div>';
   } catch (err) {
-    body.innerHTML = '<div style="color:#f87171">' + cycEsc(err.message) + '</div>';
+    body.innerHTML = '<div style="color:#B91C1C">' + cycEsc(err.message) + '</div>';
   }
 }
 
@@ -1091,16 +1091,16 @@ async function toggleCycleList(simId) {
   const el = document.getElementById('cycleList-' + simId);
   if (el.style.display === 'block') { el.style.display = 'none'; return; }
   el.style.display = 'block';
-  el.innerHTML = '<span style="color:rgba(255,255,255,.4)">Loading cycles…</span>';
+  el.innerHTML = '<span style="color:var(--mute)">Loading cycles…</span>';
   try {
     const { data } = await cycApi('/simulations/' + simId + '/cycles');
     if (!data.cycles.length) {
-      el.innerHTML = '<span style="color:rgba(255,255,255,.4)">No cycles.</span>';
+      el.innerHTML = '<span style="color:var(--mute)">No cycles.</span>';
       return;
     }
     el.innerHTML =
       '<table style="width:100%;border-collapse:collapse;font-size:.78rem">' +
-      '<thead><tr style="color:rgba(255,255,255,.4);text-align:left">' +
+      '<thead><tr style="color:var(--mute);text-align:left">' +
       '<th style="padding:.3rem .4rem;font-weight:600">#</th>' +
       '<th style="padding:.3rem .4rem;font-weight:600">Phase</th>' +
       '<th style="padding:.3rem .4rem;font-weight:600">Dispatched</th>' +
@@ -1108,33 +1108,33 @@ async function toggleCycleList(simId) {
       '<th style="padding:.3rem .4rem;font-weight:600">Started</th>' +
       '<th></th></tr></thead><tbody>' +
       data.cycles.map((c) =>
-        '<tr style="border-top:1px solid rgba(255,255,255,.07)">' +
+        '<tr style="border-top:1px solid rgba(13,27,62,.12)">' +
         '<td style="padding:.35rem .4rem;color:#fff">' + c.cycle_number +
           (c.is_running
-            ? ' <span style="color:#fbbf24;font-size:.68rem">running</span>'
+            ? ' <span style="color:#7A5410;font-size:.68rem">running</span>'
             : '') + '</td>' +
         '<td style="padding:.35rem .4rem">' + cycEsc(c.phase) + '</td>' +
         '<td style="padding:.35rem .4rem">' + c.actions_dispatched + '</td>' +
         '<td style="padding:.35rem .4rem">' + c.artifacts + '</td>' +
-        '<td style="padding:.35rem .4rem;color:rgba(255,255,255,.45)">' +
+        '<td style="padding:.35rem .4rem;color:var(--mute)">' +
           cycEsc((c.started_at || '').slice(0, 16).replace('T', ' ')) + '</td>' +
         '<td style="padding:.35rem .4rem;text-align:right">' +
           '<button onclick="confirmCycleDelete(\'' + simId + '\', [\'' + c.id + '\'], ' +
             '\'cycle ' + c.cycle_number + '\')" ' +
             'style="font-size:.72rem;padding:.2rem .5rem;border:1px solid rgba(220,38,38,.45);' +
-            'border-radius:4px;background:none;color:#f87171;cursor:pointer">Delete</button>' +
+            'border-radius:4px;background:none;color:#B91C1C;cursor:pointer">Delete</button>' +
         '</td></tr>').join('') +
       '</tbody></table>';
   } catch (err) {
-    el.innerHTML = '<span style="color:#f87171">' + cycEsc(err.message) + '</span>';
+    el.innerHTML = '<span style="color:#B91C1C">' + cycEsc(err.message) + '</span>';
   }
 }
 
 function cycRows(map) {
   const keys = Object.keys(map || {});
-  if (!keys.length) return '<div style="color:rgba(255,255,255,.35)">none</div>';
+  if (!keys.length) return '<div style="color:var(--mute)">none</div>';
   return '<ul style="margin:.3rem 0 0;padding-left:1.1rem">' +
-    keys.map((k) => '<li><code style="color:rgba(255,255,255,.6)">' + cycEsc(k) +
+    keys.map((k) => '<li><code style="color:var(--ink-2)">' + cycEsc(k) +
       '</code> — ' + map[k].toLocaleString() + '</li>').join('') + '</ul>';
 }
 
@@ -1144,12 +1144,12 @@ async function showCyclePreview(simId, cycleIds, label, includeOrphans, kind) {
 
   let html = '';
   if (!p.total_rows_deleted) {
-    html = '<div style="color:rgba(255,255,255,.6)">Nothing to delete for ' +
+    html = '<div style="color:var(--ink-2)">Nothing to delete for ' +
       cycEsc(label) + '.</div>';
   } else {
     if (p.running_cycles && p.running_cycles.length) {
       html += '<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);' +
-        'border-radius:8px;padding:.6rem .8rem;margin-bottom:.9rem;color:#fbbf24">' +
+        'border-radius:8px;padding:.6rem .8rem;margin-bottom:.9rem;color:#7A5410">' +
         'Cycle ' + p.running_cycles.join(', ') + ' has not finished. Deleting now ' +
         'cancels work already in flight.</div>';
     }
@@ -1171,7 +1171,7 @@ async function showCyclePreview(simId, cycleIds, label, includeOrphans, kind) {
         '</div>';
     }
     if (includeOrphans) {
-      html += '<div style="margin-top:.8rem;color:rgba(255,255,255,.55)">' +
+      html += '<div style="margin-top:.8rem;color:var(--ink-2)">' +
         'Artifacts the user generated manually (outside any cycle) are included.</div>';
     }
   }
@@ -1209,10 +1209,10 @@ async function confirmCycleReset(simId, simName) {
   try {
     const { html } = await showCyclePreview(simId, null, 'this simulation', true, 'reset');
     const extra =
-      '<div style="margin-top:.9rem;padding-top:.8rem;border-top:1px dashed rgba(255,255,255,.15)">' +
+      '<div style="margin-top:.9rem;padding-top:.8rem;border-top:1px dashed rgba(13,27,62,.12)">' +
       'The orchestrator\'s learned state (Bayesian posteriors, momentum, reported ' +
       'outcomes, agent context) will also be cleared, and the next cycle will start ' +
-      'at cycle 1.<br><span style="color:rgba(255,255,255,.55)">Kept: agent selection, ' +
+      'at cycle 1.<br><span style="color:var(--ink-2)">Kept: agent selection, ' +
       'Layer 6 config, the resume, the calibration cohort and the five generated ' +
       'layers.</span></div>';
     openCycleConfirm('Reset "' + simName + '"?', html + extra, () =>
@@ -1246,7 +1246,7 @@ async function runCycleAction(path, body) {
     await loadCycleAdmin();
     setTimeout(closeCycleConfirm, 2600);
   } catch (err) {
-    msg.style.color = '#f87171';
+    msg.style.color = '#B91C1C';
     msg.textContent = err.message;
     msg.style.display = 'block';
     go.disabled = false;

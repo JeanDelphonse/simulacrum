@@ -8,7 +8,7 @@
 {% if active_tab == 'integrations' %}
 <style>
 /* ── Integration card grid ── */
-.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #9CA3AF; margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(0,0,0,.07); font-family: 'DM Sans', sans-serif; }
+.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--mute); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(0,0,0,.07); font-family: 'Archivo', sans-serif; }
 .integ-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 @media (max-width: 820px) { .integ-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 540px) { .integ-grid { grid-template-columns: 1fr; } }
@@ -16,21 +16,21 @@
 .integ-card-top { display: flex; align-items: flex-start; gap: .75rem; }
 .integ-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; }
 .integ-card-info { flex: 1; min-width: 0; }
-.integ-card-name { font-weight: 700; font-size: .9rem; color: #0D1B3E; line-height: 1.25; font-family: 'DM Sans', sans-serif; }
-.integ-card-desc { font-size: .72rem; color: #9CA3AF; margin-top: .1rem; font-family: 'DM Sans', sans-serif; }
-.integ-badge { position: absolute; top: 1rem; right: 1rem; font-size: .62rem; font-weight: 700; padding: .15rem .55rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
+.integ-card-name { font-weight: 700; font-size: .9rem; color: #0D1B3E; line-height: 1.25; font-family: 'Archivo', sans-serif; }
+.integ-card-desc { font-size: .72rem; color: var(--mute); margin-top: .1rem; font-family: 'Archivo', sans-serif; }
+.integ-badge { position: static; align-self: flex-start; font-size: 12px; font-weight: 650; padding: .15rem .6rem; border-radius: 999px; white-space: nowrap; font-family: var(--sans); }
 .integ-badge.connected { background: rgba(34,197,94,.12); color: #15803d; }
-.integ-badge.not_connected { background: rgba(0,0,0,.06); color: #6B7B8D; }
+.integ-badge.not_connected { background: rgba(0,0,0,.06); color: var(--mute); }
 .integ-badge.expired { background: rgba(201,149,42,.12); color: #92400e; }
 .integ-badge.legal { background: rgba(201,149,42,.08); color: #92400e; }
-.integ-conn-details { font-size: .72rem; color: #6B7B8D; line-height: 1.55; font-family: 'DM Sans', sans-serif; }
+.integ-conn-details { font-size: .72rem; color: var(--mute); line-height: 1.55; font-family: 'Archivo', sans-serif; }
 .integ-health { display: inline-flex; align-items: center; gap: .3rem; }
 .integ-health-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .integ-health-dot.healthy { background: #22c55e; }
 .integ-health-dot.intermittent { background: #C9952A; }
 .integ-health-dot.failing, .integ-health-dot.expired { background: #dc2626; }
 .integ-health-dot.not_connected { background: #D1D5DB; }
-.integ-primary-btn { width: 100%; margin-top: .65rem; padding: .5rem; font-size: .8rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: opacity .15s; text-align: center; text-decoration: none; display: block; font-family: 'DM Sans', sans-serif; }
+.integ-primary-btn { width: 100%; margin-top: .65rem; padding: .5rem; font-size: .8rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: opacity .15s; text-align: center; text-decoration: none; display: block; font-family: 'Archivo', sans-serif; }
 .integ-primary-btn.navy { background: #0D1B3E; color: #fff; }
 .integ-primary-btn.navy:hover { opacity: .85; }
 .integ-primary-btn.outlined { background: transparent; border: 1px solid rgba(15,123,114,.4); color: #0F7B72; }
@@ -38,18 +38,18 @@
 .integ-primary-btn.amber { background: rgba(201,149,42,.1); border: 1px solid rgba(201,149,42,.3); color: #92400e; }
 .integ-primary-btn.amber:hover { background: rgba(201,149,42,.16); }
 .integ-secondary-links { display: flex; gap: 1rem; margin-top: .3rem; }
-.integ-secondary-link { font-size: .72rem; color: #9CA3AF; text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; transition: color .15s; font-family: 'DM Sans', sans-serif; }
+.integ-secondary-link { font-size: .72rem; color: var(--mute); text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; transition: color .15s; font-family: 'Archivo', sans-serif; }
 .integ-secondary-link:hover { color: #0D1B3E; }
 .integ-secondary-link.danger { color: rgba(220,38,38,.55); }
 .integ-secondary-link.danger:hover { color: #b91c1c; }
-.integ-agents { font-size: .68rem; color: #9CA3AF; margin-top: auto; padding-top: .4rem; line-height: 1.4; font-family: 'DM Sans', sans-serif; }
+.integ-agents { font-size: .68rem; color: var(--mute); margin-top: auto; padding-top: .4rem; line-height: 1.4; font-family: 'Archivo', sans-serif; }
 /* Manage panel */
 .integ-manage-panel { background: #F8F9FA; border-top: 1px solid rgba(0,0,0,.07); margin: .75rem -1.25rem -1.25rem; padding: 1rem 1.25rem; border-radius: 0 0 12px 12px; display: none; }
 .integ-manage-panel.open { display: block; }
-.integ-manage-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9CA3AF; margin-bottom: .75rem; display: flex; align-items: center; justify-content: space-between; font-family: 'DM Sans', sans-serif; }
+.integ-manage-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin-bottom: .75rem; display: flex; align-items: center; justify-content: space-between; font-family: 'Archivo', sans-serif; }
 .integ-cfg-row { margin-bottom: .75rem; }
-.integ-cfg-label { font-size: .72rem; font-weight: 600; color: #6B7B8D; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; font-family: 'DM Sans', sans-serif; }
-.integ-cfg-input { background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 6px; padding: .35rem .6rem; color: #1A1A2E; font-size: .8rem; width: 100%; font-family: 'DM Sans', sans-serif; }
+.integ-cfg-label { font-size: .72rem; font-weight: 600; color: var(--mute); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; font-family: 'Archivo', sans-serif; }
+.integ-cfg-input { background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 6px; padding: .35rem .6rem; color: #1A1A2E; font-size: .8rem; width: 100%; font-family: 'Archivo', sans-serif; }
 .integ-cfg-input:focus { outline: none; border-color: rgba(15,123,114,.4); box-shadow: 0 0 0 3px rgba(15,123,114,.1); }
 .integ-cfg-save-btn { margin-top: .5rem; }
 /* Activity log panel */
@@ -61,27 +61,27 @@
 .integ-activity-dot.success { background: #22c55e; }
 .integ-activity-dot.error { background: #dc2626; }
 .integ-activity-dot.retry { background: #C9952A; }
-.integ-activity-time { font-size: .68rem; color: #9CA3AF; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
-.integ-activity-type { font-size: .75rem; color: #374151; flex: 1; font-family: 'DM Sans', sans-serif; }
-.integ-activity-dir { font-size: .65rem; color: #9CA3AF; font-family: 'DM Sans', sans-serif; }
+.integ-activity-time { font-size: .68rem; color: var(--mute); white-space: nowrap; font-family: 'Archivo', sans-serif; }
+.integ-activity-type { font-size: .75rem; color: #374151; flex: 1; font-family: 'Archivo', sans-serif; }
+.integ-activity-dir { font-size: .65rem; color: var(--mute); font-family: 'Archivo', sans-serif; }
 /* Disconnect modal */
 .integ-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; display: none; align-items: center; justify-content: center; }
 .integ-modal-overlay.open { display: flex; }
 .integ-modal { background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; padding: 1.75rem; max-width: 420px; width: 100%; margin: 1rem; box-shadow: 0 16px 56px rgba(0,0,0,.15); }
-.integ-modal-title { font-size: 1.05rem; font-weight: 700; color: #0D1B3E; margin-bottom: .5rem; font-family: 'DM Sans', sans-serif; }
-.integ-modal-body { font-size: .875rem; color: #6B7B8D; margin-bottom: 1rem; line-height: 1.6; font-family: 'DM Sans', sans-serif; }
-.integ-modal-agents { background: #F8F9FA; border-radius: 8px; padding: .65rem .85rem; font-size: .78rem; color: #6B7B8D; margin-bottom: 1.25rem; line-height: 1.6; font-family: 'DM Sans', sans-serif; }
+.integ-modal-title { font-size: 1.05rem; font-weight: 700; color: #0D1B3E; margin-bottom: .5rem; font-family: 'Archivo', sans-serif; }
+.integ-modal-body { font-size: .875rem; color: var(--mute); margin-bottom: 1rem; line-height: 1.6; font-family: 'Archivo', sans-serif; }
+.integ-modal-agents { background: #F8F9FA; border-radius: 8px; padding: .65rem .85rem; font-size: .78rem; color: var(--mute); margin-bottom: 1.25rem; line-height: 1.6; font-family: 'Archivo', sans-serif; }
 .integ-modal-actions { display: flex; gap: .75rem; justify-content: flex-end; }
 /* API key save modals */
 .integ-apikey-modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; display: none; align-items: center; justify-content: center; }
 .integ-apikey-modal.open { display: flex; }
 .integ-apikey-box { background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; padding: 1.75rem; max-width: 400px; width: 100%; margin: 1rem; box-shadow: 0 16px 56px rgba(0,0,0,.15); }
 @media (max-width: 480px) { .integ-apikey-box, .integ-modal { max-width: 100%; margin: .5rem; } }
-.integ-flash { padding: .5rem .9rem; border-radius: 8px; font-size: .82rem; margin-bottom: .6rem; font-family: 'DM Sans', sans-serif; }
+.integ-flash { padding: .5rem .9rem; border-radius: 8px; font-size: .82rem; margin-bottom: .6rem; font-family: 'Archivo', sans-serif; }
 .integ-flash.ok { background: rgba(34,197,94,.09); color: #15803d; }
 .integ-flash.err { background: rgba(220,38,38,.08); color: #b91c1c; }
 /* Kajabi wizard step dots */
-.kj-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.15); border: 1.5px solid rgba(255,255,255,.25); display: inline-block; transition: background .2s, border-color .2s; }
+.kj-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--alt); border: 1.5px solid rgba(13,27,62,.12); display: inline-block; transition: background .2s, border-color .2s; }
 .kj-dot.active { background: #00a896; border-color: #00a896; }
 .kj-dot.done { background: #00a896; border-color: #00a896; }
 </style>
@@ -89,21 +89,21 @@
 <style>
 .settings-layout { display: flex; gap: 2rem; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
 .settings-nav { width: 200px; flex-shrink: 0; }
-.settings-nav-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #9CA3AF; margin-bottom: .75rem; }
-.settings-nav-link { display: block; padding: .45rem .75rem; border-radius: 6px; font-size: .875rem; color: #6B7B8D; text-decoration: none; margin-bottom: .2rem; transition: background .15s, color .15s; font-family: 'DM Sans', sans-serif; }
+.settings-nav-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); margin-bottom: .75rem; }
+.settings-nav-link { display: block; padding: .45rem .75rem; border-radius: 6px; font-size: .875rem; color: var(--mute); text-decoration: none; margin-bottom: .2rem; transition: background .15s, color .15s; font-family: 'Archivo', sans-serif; }
 .settings-nav-link:hover { background: rgba(0,0,0,.04); color: #0D1B3E; }
 .settings-nav-link.active { background: rgba(15,123,114,.1); color: #0F7B72; font-weight: 600; }
 .settings-panel { flex: 1; min-width: 0; }
 .settings-section { margin-bottom: 2rem; }
-.settings-section-title { font-size: 1rem; font-weight: 700; color: #0D1B3E; margin-bottom: 1.25rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(0,0,0,.08); font-family: 'DM Sans', sans-serif; }
+.settings-section-title { font-size: 1rem; font-weight: 700; color: #0D1B3E; margin-bottom: 1.25rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(0,0,0,.08); font-family: 'Archivo', sans-serif; }
 .settings-row { display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1rem; }
-.settings-label { font-size: .8rem; font-weight: 600; color: #6B7B8D; text-transform: uppercase; letter-spacing: .04em; font-family: 'DM Sans', sans-serif; }
-.settings-hint { font-size: .78rem; color: #9CA3AF; margin-top: .2rem; font-family: 'DM Sans', sans-serif; }
+.settings-label { font-size: .8rem; font-weight: 600; color: var(--mute); text-transform: uppercase; letter-spacing: .04em; font-family: 'Archivo', sans-serif; }
+.settings-hint { font-size: .78rem; color: var(--mute); margin-top: .2rem; font-family: 'Archivo', sans-serif; }
 .settings-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,.06); }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: .6rem 0; border-bottom: 1px solid rgba(0,0,0,.05); }
 .toggle-row:last-child { border-bottom: none; }
-.toggle-label { font-size: .875rem; color: #1A1A2E; font-family: 'DM Sans', sans-serif; }
-.toggle-desc { font-size: .78rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
+.toggle-label { font-size: .875rem; color: #1A1A2E; font-family: 'Archivo', sans-serif; }
+.toggle-desc { font-size: .78rem; color: var(--mute); font-family: 'Archivo', sans-serif; }
 .toggle-switch { position: relative; width: 40px; height: 22px; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .toggle-slider { position: absolute; inset: 0; background: rgba(0,0,0,.15); border-radius: 22px; cursor: pointer; transition: background .2s; }
@@ -111,45 +111,45 @@
 .toggle-switch input:checked + .toggle-slider { background: #0F7B72; }
 .toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
 .bio-panel { background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 8px; padding: 1rem; }
-.bio-preview { font-size: .875rem; line-height: 1.7; color: #1A1A2E; white-space: pre-wrap; font-family: 'DM Sans', sans-serif; }
-.bio-section-title { font-weight: 700; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
-.bio-meta { font-size: .75rem; color: #9CA3AF; margin-top: .5rem; font-family: 'DM Sans', sans-serif; }
+.bio-preview { font-size: .875rem; line-height: 1.7; color: #1A1A2E; white-space: pre-wrap; font-family: 'Archivo', sans-serif; }
+.bio-section-title { font-weight: 700; color: #0D1B3E; font-family: 'Archivo', sans-serif; }
+.bio-meta { font-size: .75rem; color: var(--mute); margin-top: .5rem; font-family: 'Archivo', sans-serif; }
 .bio-actions-row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
 /* Bio split panel — tabbed */
 .bio-split-panel { display: block; }
 .bio-split-tabs { display: flex; gap: 0; border-bottom: 2px solid rgba(0,0,0,.08); margin-bottom: .875rem; }
 .bio-split-tab {
   padding: .5rem 1.25rem; font-size: .82rem; font-weight: 600; cursor: pointer;
-  color: #9CA3AF; background: none; border: none; border-bottom: 2px solid transparent;
-  margin-bottom: -2px; font-family: 'DM Sans', sans-serif; transition: color .15s, border-color .15s;
+  color: var(--mute); background: none; border: none; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; font-family: 'Archivo', sans-serif; transition: color .15s, border-color .15s;
 }
 .bio-split-tab:hover { color: #0D1B3E; }
 .bio-split-tab.active { color: #0F7B72; border-bottom-color: #0F7B72; }
 .bio-split-editor { display: flex; flex-direction: column; gap: .35rem; }
 .bio-split-editor.hidden, .bio-split-preview-pane.hidden { display: none; }
-.bio-textarea { min-height: 260px; resize: vertical; font-family: 'DM Sans', sans-serif !important; font-size: .875rem !important; line-height: 1.65 !important; }
-.bio-editor-footer { display: flex; justify-content: space-between; align-items: center; font-size: .72rem; color: #9CA3AF; font-family: 'DM Sans', sans-serif; }
-.bio-save-status { font-size: .72rem; font-family: 'DM Sans', sans-serif; transition: color .2s; }
+.bio-textarea { min-height: 260px; resize: vertical; font-family: 'Archivo', sans-serif !important; font-size: .875rem !important; line-height: 1.65 !important; }
+.bio-editor-footer { display: flex; justify-content: space-between; align-items: center; font-size: .72rem; color: var(--mute); font-family: 'Archivo', sans-serif; }
+.bio-save-status { font-size: .72rem; font-family: 'Archivo', sans-serif; transition: color .2s; }
 .bio-save-status.saving { color: #C9952A; }
 .bio-save-status.saved { color: #15803d; }
 .bio-save-status.error { color: #b91c1c; }
 .bio-split-preview-pane { background: #F8FAFA; border: 1px solid rgba(15,123,114,.12); border-radius: 8px; padding: 1rem; }
-.bio-split-preview-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #9CA3AF; margin-bottom: .6rem; font-family: 'DM Sans', sans-serif; }
-.bio-preview-content { font-size: .875rem; line-height: 1.7; color: #1A1A2E; white-space: pre-wrap; font-family: 'DM Sans', sans-serif; min-height: 80px; }
-.bio-preview-empty { color: #9CA3AF; font-style: italic; }
+.bio-split-preview-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--mute); margin-bottom: .6rem; font-family: 'Archivo', sans-serif; }
+.bio-preview-content { font-size: .875rem; line-height: 1.7; color: #1A1A2E; white-space: pre-wrap; font-family: 'Archivo', sans-serif; min-height: 80px; }
+.bio-preview-empty { color: var(--mute); font-style: italic; }
 /* Profile completion bar */
 .profile-completion-bar { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 10px; padding: .9rem 1rem; margin-bottom: 1.5rem; }
 .pcb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .45rem; }
-.pcb-label { font-size: .8rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
-.pcb-pct { font-size: .8rem; font-weight: 700; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
+.pcb-label { font-size: .8rem; color: var(--mute); font-family: 'Archivo', sans-serif; }
+.pcb-pct { font-size: .8rem; font-weight: 700; color: #0D1B3E; font-family: 'Archivo', sans-serif; }
 .pcb-track { height: 5px; background: rgba(0,0,0,.07); border-radius: 99px; overflow: hidden; margin-bottom: .6rem; }
 .pcb-fill { height: 100%; background: linear-gradient(90deg,#0F7B72,#13A89E); border-radius: 99px; transition: width .4s; }
 .pcb-chips { display: flex; gap: .4rem; flex-wrap: wrap; }
-.pcb-chip { font-size: .72rem; font-weight: 600; padding: .2rem .6rem; border-radius: 20px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: none; transition: opacity .15s; display: inline-block; }
+.pcb-chip { font-size: .72rem; font-weight: 600; padding: .2rem .6rem; border-radius: 20px; border: none; cursor: pointer; font-family: 'Archivo', sans-serif; text-decoration: none; transition: opacity .15s; display: inline-block; }
 .pcb-chip.missing { background: rgba(201,149,42,.1); color: #92400e; border: 1px solid rgba(201,149,42,.25); }
 .pcb-chip.missing:hover { opacity: .75; }
 .pcb-chip.done { background: rgba(34,197,94,.1); color: #15803d; border: 1px solid rgba(34,197,94,.2); pointer-events: none; }
-.username-check { font-size: .78rem; margin-top: .25rem; font-family: 'DM Sans', sans-serif; }
+.username-check { font-size: .78rem; margin-top: .25rem; font-family: 'Archivo', sans-serif; }
 .username-check.ok { color: #15803d; }
 .username-check.err { color: #b91c1c; }
 .avatar-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(0,0,0,.1); }
@@ -157,120 +157,120 @@
 .avatar-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
 .vis-card { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 10px; margin-bottom: .75rem; overflow: hidden; }
 .vis-card-header { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; cursor: pointer; }
-.vis-drag-handle { color: #9CA3AF; cursor: grab; font-size: 1.1rem; user-select: none; flex-shrink: 0; }
+.vis-drag-handle { color: var(--mute); cursor: grab; font-size: 1.1rem; user-select: none; flex-shrink: 0; }
 .vis-card.dragging { opacity: .35; box-shadow: none; }
 .vis-card.drag-over { border: 2px dashed #0F7B72; background: rgba(15,123,114,.04); }
-.vis-sim-name { font-weight: 600; font-size: .9rem; flex: 1; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
-.vis-zone { font-size: .78rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
+.vis-sim-name { font-weight: 600; font-size: .9rem; flex: 1; color: #0D1B3E; font-family: 'Archivo', sans-serif; }
+.vis-zone { font-size: .78rem; color: var(--mute); font-family: 'Archivo', sans-serif; }
 .vis-card-body { padding: 0 1rem 1rem; border-top: 1px solid rgba(0,0,0,.06); display: none; }
 .vis-card-body.open { display: block; padding-top: .75rem; }
 .vis-preview-card { background: #F8F9FA; border: 1px solid rgba(0,0,0,.06); border-radius: 10px; padding: 1rem; margin-top: .75rem; }
-.vis-preview-zone { font-size: .85rem; font-weight: 700; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
-.vis-preview-tagline { font-size: .8rem; color: #374151; margin-top: .25rem; font-family: 'DM Sans', sans-serif; }
+.vis-preview-zone { font-size: .85rem; font-weight: 700; color: #0D1B3E; font-family: 'Archivo', sans-serif; }
+.vis-preview-tagline { font-size: .8rem; color: #374151; margin-top: .25rem; font-family: 'Archivo', sans-serif; }
 .vis-preview-services { margin-top: .5rem; display: flex; flex-wrap: wrap; gap: .3rem; }
-.vis-preview-pill { font-size: .72rem; background: #F3F4F6; color: #374151; border-radius: 20px; padding: .15rem .5rem; font-family: 'DM Sans', sans-serif; }
-.avail-badge { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; font-family: 'DM Sans', sans-serif; }
+.vis-preview-pill { font-size: .72rem; background: #F3F4F6; color: #374151; border-radius: 20px; padding: .15rem .5rem; font-family: 'Archivo', sans-serif; }
+.avail-badge { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; font-family: 'Archivo', sans-serif; }
 .avail-available { background: rgba(34,197,94,.12); color: #15803d; }
 .avail-limited { background: rgba(201,149,42,.12); color: #92400e; }
-.avail-unavailable { background: rgba(0,0,0,.06); color: #6B7B8D; }
+.avail-unavailable { background: rgba(0,0,0,.06); color: var(--mute); }
 .session-list { display: flex; flex-direction: column; gap: .5rem; }
 .session-row { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 8px; padding: .75rem 1rem; display: flex; align-items: center; gap: 1rem; }
-.session-device { font-weight: 600; font-size: .875rem; flex: 1; color: #0D1B3E; font-family: 'DM Sans', sans-serif; }
-.session-meta { font-size: .75rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
-.session-current-badge { font-size: .68rem; background: rgba(15,123,114,.12); color: #0F7B72; border-radius: 20px; padding: .1rem .45rem; font-weight: 700; font-family: 'DM Sans', sans-serif; }
+.session-device { font-weight: 600; font-size: .875rem; flex: 1; color: #0D1B3E; font-family: 'Archivo', sans-serif; }
+.session-meta { font-size: .75rem; color: var(--mute); font-family: 'Archivo', sans-serif; }
+.session-current-badge { font-size: .68rem; background: rgba(15,123,114,.12); color: #0F7B72; border-radius: 20px; padding: .1rem .45rem; font-weight: 700; font-family: 'Archivo', sans-serif; }
 .delete-zone { border: 1px solid rgba(220,38,38,.2); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
-.delete-zone p { font-size: .875rem; color: #6B7B8D; margin-bottom: .75rem; font-family: 'DM Sans', sans-serif; }
+.delete-zone p { font-size: .875rem; color: var(--mute); margin-bottom: .75rem; font-family: 'Archivo', sans-serif; }
 .publish-bar { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1.5rem; }
-.publish-status { font-size: .875rem; font-family: 'DM Sans', sans-serif; }
+.publish-status { font-size: .875rem; font-family: 'Archivo', sans-serif; }
 .publish-status.live { color: #15803d; font-weight: 700; }
-.publish-status.draft { color: #6B7B8D; }
-.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #0D1B3E; border: 1px solid rgba(15,123,114,.4); color: #fff; padding: .65rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity .25s; pointer-events: none; font-family: 'DM Sans', sans-serif; }
+.publish-status.draft { color: var(--mute); }
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #0D1B3E; border: 1px solid rgba(15,123,114,.4); color: #fff; padding: .65rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity .25s; pointer-events: none; font-family: 'Archivo', sans-serif; }
 .toast.show { opacity: 1; }
 @media (max-width: 640px) { .settings-layout { flex-direction: column; } .settings-nav { width: 100%; display: flex; gap: .5rem; overflow-x: auto; } .settings-nav-title { display: none; } .settings-nav-link { white-space: nowrap; } }
 /* ── My Chats ── */
 .chats-search-row { display: flex; gap: .6rem; margin-bottom: 1.25rem; align-items: center; }
-.chats-search-input { flex: 1; background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 7px; padding: .45rem .75rem; color: #1A1A2E; font-size: .875rem; font-family: 'DM Sans', sans-serif; }
-.chats-search-input::placeholder { color: #9CA3AF; }
+.chats-search-input { flex: 1; background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 7px; padding: .45rem .75rem; color: #1A1A2E; font-size: .875rem; font-family: 'Archivo', sans-serif; }
+.chats-search-input::placeholder { color: var(--mute); }
 .chats-search-input:focus { outline: none; border-color: rgba(15,123,114,.5); box-shadow: 0 0 0 3px rgba(15,123,114,.1); }
-.chats-sort-select { background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 7px; padding: .42rem .6rem; color: #1A1A2E; font-size: .8rem; font-family: 'DM Sans', sans-serif; }
-.chats-group-hdr { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9CA3AF; margin: 1.1rem 0 .4rem; padding-bottom: .3rem; border-bottom: 1px solid rgba(0,0,0,.06); font-family: 'DM Sans', sans-serif; }
+.chats-sort-select { background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 7px; padding: .42rem .6rem; color: #1A1A2E; font-size: .8rem; font-family: 'Archivo', sans-serif; }
+.chats-group-hdr { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin: 1.1rem 0 .4rem; padding-bottom: .3rem; border-bottom: 1px solid rgba(0,0,0,.06); font-family: 'Archivo', sans-serif; }
 .chat-session-row { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 8px; padding: .65rem 1rem; display: flex; align-items: center; gap: .85rem; margin-bottom: .35rem; cursor: pointer; transition: background .15s; }
 .chat-session-row:hover { background: #F8F9FA; }
 .chat-session-row.active-thread { background: rgba(15,123,114,.06); border-color: rgba(15,123,114,.25); }
-.chat-session-date { font-size: .72rem; color: #9CA3AF; white-space: nowrap; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
-.chat-session-preview { flex: 1; font-size: .82rem; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Sans', sans-serif; }
-.chat-session-badge { font-size: .68rem; background: rgba(0,0,0,.06); color: #6B7B8D; border-radius: 20px; padding: .1rem .45rem; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
-.chat-session-del { background: none; border: none; cursor: pointer; color: #9CA3AF; font-size: .95rem; padding: .2rem .3rem; border-radius: 4px; transition: color .15s; flex-shrink: 0; }
+.chat-session-date { font-size: .72rem; color: var(--mute); white-space: nowrap; flex-shrink: 0; font-family: 'Archivo', sans-serif; }
+.chat-session-preview { flex: 1; font-size: .82rem; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Archivo', sans-serif; }
+.chat-session-badge { font-size: .68rem; background: rgba(0,0,0,.06); color: var(--mute); border-radius: 20px; padding: .1rem .45rem; flex-shrink: 0; font-family: 'Archivo', sans-serif; }
+.chat-session-del { background: none; border: none; cursor: pointer; color: var(--mute); font-size: .95rem; padding: .2rem .3rem; border-radius: 4px; transition: color .15s; flex-shrink: 0; }
 .chat-session-del:hover { color: #b91c1c; }
 .chat-thread-view { margin-top: 1.25rem; background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 10px; overflow: hidden; }
-.chat-thread-hdr { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1rem; border-bottom: 1px solid rgba(0,0,0,.07); font-size: .78rem; color: #6B7B8D; font-family: 'DM Sans', sans-serif; }
-.chat-thread-back { background: none; border: none; cursor: pointer; color: #6B7B8D; font-size: .8rem; padding: 0; font-family: 'DM Sans', sans-serif; }
+.chat-thread-hdr { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1rem; border-bottom: 1px solid rgba(0,0,0,.07); font-size: .78rem; color: var(--mute); font-family: 'Archivo', sans-serif; }
+.chat-thread-back { background: none; border: none; cursor: pointer; color: var(--mute); font-size: .8rem; padding: 0; font-family: 'Archivo', sans-serif; }
 .chat-thread-back:hover { color: #0D1B3E; }
 .chat-thread-msgs { max-height: 420px; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .6rem; }
 .chat-thread-msg { max-width: 78%; }
 .chat-thread-msg.user { align-self: flex-end; }
 .chat-thread-msg.bot  { align-self: flex-start; }
-.chat-thread-bubble { padding: .55rem .8rem; border-radius: 10px; font-size: .84rem; line-height: 1.55; font-family: 'DM Sans', sans-serif; }
+.chat-thread-bubble { padding: .55rem .8rem; border-radius: 10px; font-size: .84rem; line-height: 1.55; font-family: 'Archivo', sans-serif; }
 .chat-thread-msg.user  .chat-thread-bubble { background: #0D1B3E; color: #e0f2fe; }
 .chat-thread-msg.bot   .chat-thread-bubble { background: #F3F4F6; color: #1A1A2E; border-left: 3px solid #0F7B72; }
-.chat-thread-ts { font-size: .68rem; color: #9CA3AF; margin-top: .2rem; font-family: 'DM Sans', sans-serif; }
+.chat-thread-ts { font-size: .68rem; color: var(--mute); margin-top: .2rem; font-family: 'Archivo', sans-serif; }
 .chat-thread-msg.user  .chat-thread-ts { text-align: right; }
-.chat-thread-continue { display: block; text-align: center; padding: .65rem 1rem; border-top: 1px solid rgba(0,0,0,.06); font-size: .8rem; color: #0F7B72; text-decoration: none; font-family: 'DM Sans', sans-serif; }
+.chat-thread-continue { display: block; text-align: center; padding: .65rem 1rem; border-top: 1px solid rgba(0,0,0,.06); font-size: .8rem; color: #0F7B72; text-decoration: none; font-family: 'Archivo', sans-serif; }
 .chat-thread-continue:hover { background: rgba(15,123,114,.04); }
-.chats-load-more { display: block; width: 100%; margin-top: .75rem; padding: .5rem; background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 7px; color: #6B7B8D; font-size: .82rem; cursor: pointer; text-align: center; font-family: 'DM Sans', sans-serif; }
+.chats-load-more { display: block; width: 100%; margin-top: .75rem; padding: .5rem; background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 7px; color: var(--mute); font-size: .82rem; cursor: pointer; text-align: center; font-family: 'Archivo', sans-serif; }
 .chats-load-more:hover { background: #F8F9FA; color: #0D1B3E; }
-.chats-empty { font-size: .875rem; color: #9CA3AF; padding: 2rem 0; text-align: center; font-family: 'DM Sans', sans-serif; }
-.chats-del-confirm { display: flex; align-items: center; gap: .6rem; background: rgba(220,38,38,.06); border: 1px solid rgba(220,38,38,.18); border-radius: 6px; padding: .45rem .75rem; margin-top: .3rem; font-size: .78rem; color: #374151; font-family: 'DM Sans', sans-serif; }
+.chats-empty { font-size: .875rem; color: var(--mute); padding: 2rem 0; text-align: center; font-family: 'Archivo', sans-serif; }
+.chats-del-confirm { display: flex; align-items: center; gap: .6rem; background: rgba(220,38,38,.06); border: 1px solid rgba(220,38,38,.18); border-radius: 6px; padding: .45rem .75rem; margin-top: .3rem; font-size: .78rem; color: #374151; font-family: 'Archivo', sans-serif; }
 .chats-del-confirm button { background: none; border: none; cursor: pointer; font-size: .78rem; padding: 0 .3rem; }
 .chats-del-confirm .confirm-yes { color: #b91c1c; }
-.chats-del-confirm .confirm-no  { color: #6B7B8D; }
+.chats-del-confirm .confirm-no  { color: var(--mute); }
 /* ── Bio page editor (inline in profile tab) ── */
-.bp-editor-section { border: 1px solid rgba(255,255,255,.07); border-radius: 8px; margin-bottom: .5rem; overflow: hidden; }
-.bp-editor-header { width: 100%; background: none; border: none; padding: .75rem 1rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: .875rem; font-weight: 600; color: #e8eaf0; text-align: left; font-family: 'DM Sans', sans-serif; }
-.bp-editor-header:hover { background: rgba(255,255,255,.04); }
-.bp-editor-body { padding: 1rem; display: none; border-top: 1px solid rgba(255,255,255,.07); }
+.bp-editor-section { border: 1px solid rgba(13,27,62,.12); border-radius: 8px; margin-bottom: .5rem; overflow: hidden; }
+.bp-editor-header { width: 100%; background: none; border: none; padding: .75rem 1rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: .875rem; font-weight: 600; color: var(--ink); text-align: left; font-family: 'Archivo', sans-serif; }
+.bp-editor-header:hover { background: #F9FAFB; }
+.bp-editor-body { padding: 1rem; display: none; border-top: 1px solid rgba(13,27,62,.12); }
 .bp-editor-body.open { display: block; }
 .bp-form-group { margin-bottom: .9rem; }
-.bp-form-group label { display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #cbd5e1; margin-bottom: .3rem; font-family: 'DM Sans', sans-serif; }
-.bp-form-group input, .bp-form-group textarea { width: 100%; padding: .5rem .75rem; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; font-size: .875rem; color: #e8eaf0; background: rgba(255,255,255,.04); font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
+.bp-form-group label { display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); margin-bottom: .3rem; font-family: 'Archivo', sans-serif; }
+.bp-form-group input, .bp-form-group textarea { width: 100%; padding: .5rem .75rem; border: 1px solid rgba(13,27,62,.12); border-radius: 7px; font-size: .875rem; color: var(--ink); background: #F9FAFB; font-family: 'Archivo', sans-serif; box-sizing: border-box; }
 .bp-form-group input:focus, .bp-form-group textarea:focus { outline: none; border-color: rgba(15,123,114,.5); box-shadow: 0 0 0 3px rgba(15,123,114,.1); }
 .bp-form-group textarea { resize: vertical; min-height: 80px; }
-.bp-custom-toggle { display: flex; align-items: center; gap: .45rem; margin-top: .4rem; font-size: .78rem; color: #94a3b8; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.bp-custom-toggle { display: flex; align-items: center; gap: .45rem; margin-top: .4rem; font-size: .78rem; color: var(--mute); cursor: pointer; font-family: 'Archivo', sans-serif; }
 .bp-theme-options { display: flex; gap: .6rem; margin-top: .25rem; }
-.bp-theme-btn { flex: 1; padding: .45rem; border-radius: 8px; border: 2px solid rgba(255,255,255,.12); cursor: pointer; font-size: .78rem; font-weight: 600; text-align: center; transition: border-color .12s; font-family: 'DM Sans', sans-serif; }
+.bp-theme-btn { flex: 1; padding: .45rem; border-radius: 8px; border: 2px solid rgba(13,27,62,.12); cursor: pointer; font-size: .78rem; font-weight: 600; text-align: center; transition: border-color .12s; font-family: 'Archivo', sans-serif; }
 .bp-theme-btn.active { border-color: #0F7B72; }
 .bp-theme-default { background: #f9fafb; color: #111827; }
-.bp-theme-dark { background: #0f172a; color: #f1f5f9; }
+.bp-theme-dark { background: #FFFFFF; color: var(--ink); }
 .bp-theme-warm { background: #fefce8; color: #1c1917; }
-.bp-testimonial-item { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: .7rem; margin-bottom: .5rem; position: relative; }
-.bp-testimonial-item .t-quote { font-size: .83rem; font-style: italic; margin-bottom: .25rem; color: rgba(255,255,255,.7); font-family: 'DM Sans', sans-serif; }
-.bp-testimonial-item .t-name { font-size: .78rem; font-weight: 600; color: #e8eaf0; font-family: 'DM Sans', sans-serif; }
-.bp-t-delete { background: none; border: 1px solid rgba(252,165,165,.35); border-radius: 4px; color: #fca5a5; cursor: pointer; font-size: .72rem; padding: .2rem .55rem; margin-top: .4rem; display: inline-block; }
+.bp-testimonial-item { background: #F9FAFB; border: 1px solid rgba(13,27,62,.12); border-radius: 8px; padding: .7rem; margin-bottom: .5rem; position: relative; }
+.bp-testimonial-item .t-quote { font-size: .83rem; font-style: italic; margin-bottom: .25rem; color: var(--ink-2); font-family: 'Archivo', sans-serif; }
+.bp-testimonial-item .t-name { font-size: .78rem; font-weight: 600; color: var(--ink); font-family: 'Archivo', sans-serif; }
+.bp-t-delete { background: none; border: 1px solid rgba(252,165,165,.35); border-radius: 4px; color: #B91C1C; cursor: pointer; font-size: .72rem; padding: .2rem .55rem; margin-top: .4rem; display: inline-block; }
 .bp-t-delete:hover { background: rgba(252,165,165,.1); }
-.bp-upload-area { border: 2px dashed rgba(255,255,255,.15); border-radius: 8px; padding: .8rem; text-align: center; font-size: .82rem; color: #94a3b8; cursor: pointer; transition: border-color .12s; font-family: 'DM Sans', sans-serif; }
+.bp-upload-area { border: 2px dashed rgba(13,27,62,.12); border-radius: 8px; padding: .8rem; text-align: center; font-size: .82rem; color: var(--mute); cursor: pointer; transition: border-color .12s; font-family: 'Archivo', sans-serif; }
 .bp-upload-area:hover { border-color: #0F7B72; }
 .bp-upload-area input[type=file] { display: none; }
-#bp-save-status { font-size: .78rem; color: #94a3b8; font-family: 'DM Sans', sans-serif; }
-#bp-save-status.saved { color: #86efac; }
-#bp-save-status.error { color: #fca5a5; }
-.bp-add-t-toggle { color: #0F7B72; background: none; border: none; font-size: .85rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; padding: 0; }
+#bp-save-status { font-size: .78rem; color: var(--mute); font-family: 'Archivo', sans-serif; }
+#bp-save-status.saved { color: #15803D; }
+#bp-save-status.error { color: #B91C1C; }
+.bp-add-t-toggle { color: #0F7B72; background: none; border: none; font-size: .85rem; font-weight: 600; cursor: pointer; font-family: 'Archivo', sans-serif; padding: 0; }
 /* Toggle labels inside dark bio editor panels */
-.bp-editor-body .toggle-label { color: #e8eaf0; }
-.bp-editor-body .toggle-desc  { color: #94a3b8; }
+.bp-editor-body .toggle-label { color: var(--ink); }
+.bp-editor-body .toggle-desc  { color: var(--mute); }
 /* Light-bg overrides for #bioPageSection */
 #bioPageSection .settings-section-title { color: #0D1B3E; }
 #bioPageSection .bp-editor-section { border-color: rgba(15,123,114,.18); background: #fff; }
-#bioPageSection .bp-editor-header { color: #0D1B3E; background: rgba(255,255,255,.8); }
+#bioPageSection .bp-editor-header { color: #0D1B3E; background: var(--alt); }
 #bioPageSection .bp-editor-header:hover { background: #fff; }
 #bioPageSection .bp-form-group label { color: #4b6472; }
 #bioPageSection .bp-form-group input,
 #bioPageSection .bp-form-group textarea { color: #0D1B3E; background: #fff; border-color: rgba(0,0,0,.18); }
 #bioPageSection .bp-form-group input::placeholder,
-#bioPageSection .bp-form-group textarea::placeholder { color: #9ca3af; }
+#bioPageSection .bp-form-group textarea::placeholder { color: var(--mute); }
 #bioPageSection .bp-editor-body .toggle-label,
 #bioPageSection .toggle-label { color: #0D1B3E; }
 #bioPageSection .bp-editor-body .toggle-desc,
-#bioPageSection .toggle-desc { color: #6b7b8d; }
+#bioPageSection .toggle-desc { color: var(--mute); }
 #bioPageSection .bp-custom-toggle { color: #4b6472; }
 #bioPageSection .bp-add-t-toggle { color: #0F7B72; }
 #bioPageSection #bp-save-status { color: #059669; }
@@ -349,11 +349,11 @@
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <div>
               {% if profile and profile.username %}
-              <div style="font-size:.875rem;color:#e8eaf0">simisi.io/u/<strong>{{ profile.username }}</strong></div>
+              <div style="font-size:.875rem;color:var(--ink)">simisi.io/u/<strong>{{ profile.username }}</strong></div>
               {% else %}
-              <div style="font-size:.875rem;color:rgba(255,255,255,.5)">Set a username above to get your bio page URL</div>
+              <div style="font-size:.875rem;color:var(--mute)">Set a username above to get your bio page URL</div>
               {% endif %}
-              <div id="bioPageStatusHint" style="font-size:.78rem;margin-top:.25rem;color:rgba(255,255,255,.65)">Loading…</div>
+              <div id="bioPageStatusHint" style="font-size:.78rem;margin-top:.25rem;color:var(--ink-2)">Loading…</div>
             </div>
             <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;flex-shrink:0">
               <span id="bp-save-status"></span>
@@ -483,7 +483,7 @@
           <button class="btn btn-primary btn-sm" id="regenBtn"
                   {% if not has_source_data %}disabled title="Upload a resume or create a simulation first"{% endif %}
                   onclick="regenerateBio()">{% if profile and profile.bio %}Regenerate bio{% else %}Generate bio{% endif %}</button>
-          <span id="regenCooldownLabel" style="display:none;font-size:.75rem;color:#9CA3AF;align-self:center"></span>
+          <span id="regenCooldownLabel" style="display:none;font-size:.75rem;color:var(--mute);align-self:center"></span>
           {% if profile and profile.bio_generated_at %}
           <span class="bio-meta" style="align-self:center">Generated {{ profile.bio_generated_at.strftime('%b %d, %Y') }}{% if profile.bio_edited %} · Edited{% endif %}</span>
           {% endif %}
@@ -586,7 +586,7 @@
                   <input type="file" id="bp-hero-image-input" accept="image/jpeg,image/png,image/webp">
                   Click to upload hero photo (JPEG / PNG / WebP, max 5 MB)
                 </div>
-                <div id="bp-hero-img-preview" style="margin-top:.35rem;font-size:.78rem;color:#86efac;"></div>
+                <div id="bp-hero-img-preview" style="margin-top:.35rem;font-size:.78rem;color:#15803D;"></div>
               </div>
             </div>
           </div>
@@ -658,7 +658,7 @@
                   <button class="btn btn-primary btn-sm" id="bp-t-save-btn" style="flex:1">Save testimonial</button>
                   <button class="btn btn-ghost btn-sm" id="bp-t-cancel-btn">Cancel</button>
                 </div>
-                <div id="bp-t-err" style="color:#fca5a5;font-size:.78rem;margin-top:.4rem;"></div>
+                <div id="bp-t-err" style="color:#B91C1C;font-size:.78rem;margin-top:.4rem;"></div>
               </div>
             </div>
           </div>
@@ -700,12 +700,12 @@
           <div class="bp-editor-section">
             <button class="bp-editor-header" data-bp-section="career">Career Timeline <span>›</span></button>
             <div class="bp-editor-body" id="bp-career-body">
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Auto-populated from your resume. Add, edit, or reorder entries.</div>
+              <div style="font-size:.75rem;color:var(--mute);margin-bottom:.75rem">Auto-populated from your resume. Add, edit, or reorder entries.</div>
               <div id="career-list"></div>
               <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
                 <button class="bp-add-t-toggle" onclick="bio003OpenAdd('career')">+ Add position</button>
-                <button class="bp-add-t-toggle" id="bio003-import-career-btn" onclick="bio003ImportCareer()" style="background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);color:#f5c842">↓ Parse from bio</button>
-                <button class="bp-add-t-toggle" id="bio003-fetch-logos-btn" onclick="bio003FetchLogos()" style="background:rgba(77,217,196,.06);border-color:rgba(77,217,196,.3);color:#4dd9c4">⬡ Fetch logos</button>
+                <button class="bp-add-t-toggle" id="bio003-import-career-btn" onclick="bio003ImportCareer()" style="background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);color:#7A5410">↓ Parse from bio</button>
+                <button class="bp-add-t-toggle" id="bio003-fetch-logos-btn" onclick="bio003FetchLogos()" style="background:rgba(77,217,196,.06);border-color:rgba(77,217,196,.3);color:var(--teal-ink)">⬡ Fetch logos</button>
               </div>
               <div id="bio003-import-career-status" style="font-size:.75rem;margin-top:.4rem;display:none"></div>
               <div id="career-add-form" class="bio003-add-form" style="display:none"></div>
@@ -716,7 +716,7 @@
           <div class="bp-editor-section">
             <button class="bp-editor-header" data-bp-section="notable">Notable Work <span>›</span></button>
             <div class="bp-editor-body" id="bp-notable-body">
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Achievements with measurable outcomes. Up to 10 entries.</div>
+              <div style="font-size:.75rem;color:var(--mute);margin-bottom:.75rem">Achievements with measurable outcomes. Up to 10 entries.</div>
               <div id="notable-list"></div>
               <button class="bp-add-t-toggle" onclick="bio003OpenAdd('notable')">+ Add achievement</button>
               <div id="notable-add-form" class="bio003-add-form" style="display:none"></div>
@@ -727,7 +727,7 @@
           <div class="bp-editor-section">
             <button class="bp-editor-header" data-bp-section="ventures">Ventures <span>›</span></button>
             <div class="bp-editor-body" id="bp-ventures-body">
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Companies you founded, co-founded, or advise.</div>
+              <div style="font-size:.75rem;color:var(--mute);margin-bottom:.75rem">Companies you founded, co-founded, or advise.</div>
               <div id="ventures-list"></div>
               <button class="bp-add-t-toggle" onclick="bio003OpenAdd('ventures')">+ Add venture</button>
               <div id="ventures-add-form" class="bio003-add-form" style="display:none"></div>
@@ -738,11 +738,11 @@
           <div class="bp-editor-section">
             <button class="bp-editor-header" data-bp-section="education">Education &amp; Certifications <span>›</span></button>
             <div class="bp-editor-body" id="bp-education-body">
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Degrees are auto-populated from your resume. Certifications are added manually.</div>
+              <div style="font-size:.75rem;color:var(--mute);margin-bottom:.75rem">Degrees are auto-populated from your resume. Certifications are added manually.</div>
               <div id="education-list"></div>
               <button class="bp-add-t-toggle" onclick="bio003OpenAdd('education')">+ Add degree</button>
               <div id="education-add-form" class="bio003-add-form" style="display:none"></div>
-              <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.35);margin:1rem 0 .5rem">Certifications</div>
+              <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:1rem 0 .5rem">Certifications</div>
               <div id="certifications-list"></div>
               <button class="bp-add-t-toggle" onclick="bio003OpenAdd('certifications')">+ Add certification</button>
               <div id="certifications-add-form" class="bio003-add-form" style="display:none"></div>
@@ -753,7 +753,7 @@
           <div class="bp-editor-section">
             <button class="bp-editor-header" data-bp-section="references">References &amp; Press <span>›</span></button>
             <div class="bp-editor-body" id="bp-references-body">
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Articles, interviews, and press mentions that feature you.</div>
+              <div style="font-size:.75rem;color:var(--mute);margin-bottom:.75rem">Articles, interviews, and press mentions that feature you.</div>
               <div id="references-list"></div>
               <button class="bp-add-t-toggle" onclick="bio003OpenAdd('references')">+ Add reference</button>
               <div id="references-add-form" class="bio003-add-form" style="display:none"></div>
@@ -764,7 +764,7 @@
           <div class="bp-editor-section">
             <button class="bp-editor-header" data-bp-section="publications">Publications &amp; Speaking <span>›</span></button>
             <div class="bp-editor-body" id="bp-publications-body">
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Articles, talks, podcasts, books, and whitepapers.</div>
+              <div style="font-size:.75rem;color:var(--mute);margin-bottom:.75rem">Articles, talks, podcasts, books, and whitepapers.</div>
               <div id="publications-list"></div>
               <button class="bp-add-t-toggle" onclick="bio003OpenAdd('publications')">+ Add publication</button>
               <div id="publications-add-form" class="bio003-add-form" style="display:none"></div>
@@ -775,7 +775,7 @@
           <div class="bp-editor-section">
             <button class="bp-editor-header" data-bp-section="projects-sec">Projects <span>›</span></button>
             <div class="bp-editor-body" id="bp-projects-sec-body">
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.75rem">Links to repos, portfolios, live tools, and deliverables.</div>
+              <div style="font-size:.75rem;color:var(--mute);margin-bottom:.75rem">Links to repos, portfolios, live tools, and deliverables.</div>
               <div id="projects-list"></div>
               <button class="bp-add-t-toggle" onclick="bio003OpenAdd('projects')">+ Add project</button>
               <div id="projects-add-form" class="bio003-add-form" style="display:none"></div>
@@ -801,7 +801,7 @@
           </div>
           <div class="settings-hint">
             {% if profile.is_published %}Your public page is live at
-              <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" style="color:#f5c842">/u/{{ profile.username }}</a>
+              <a href="{{ url_for('public.profile_page', username=profile.username) }}" target="_blank" style="color:#7A5410">/u/{{ profile.username }}</a>
             {% else %}Your profile URL is not yet publicly visible{% endif %}
           </div>
         </div>
@@ -811,32 +811,32 @@
       </div>
 
       <div id="visCards">
-        <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+        <div style="font-size:.875rem;color:var(--mute)">Loading…</div>
       </div>
 
       {# Partner Access sub-section (FR-PCV-15–21) #}
       <div class="settings-section" style="margin-top:2.5rem">
         <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.3rem">
           <div class="settings-section-title" style="margin:0;border:none;padding:0">Partner Access</div>
-          <button onclick="showPartnerHelp()" style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.5);border-radius:50%;width:18px;height:18px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0" title="What can a partner see?">?</button>
+          <button onclick="showPartnerHelp()" style="background:none;border:1px solid rgba(13,27,62,.12);color:var(--mute);border-radius:50%;width:18px;height:18px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0" title="What can a partner see?">?</button>
         </div>
         <p class="settings-hint" style="margin-bottom:1rem">Control which of your advisors and coaches can view your SimiSI plan.</p>
         <div id="partnerAccessContainer">
-          <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+          <div style="font-size:.875rem;color:var(--mute)">Loading…</div>
         </div>
       </div>
 
       {# Partner help modal #}
       <div id="partnerHelpOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:1rem">
-        <div style="background:#1a2235;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:1.5rem;max-width:420px;width:100%">
-          <h3 style="font-size:.95rem;font-weight:700;color:#e8eaf0;margin:0 0 .75rem">What can a partner see?</h3>
-          <ul style="font-size:.82rem;color:rgba(255,255,255,.7);line-height:1.7;padding-left:1.1rem;margin:0 0 1rem">
+        <div style="background:#FFFFFF;border:1px solid rgba(13,27,62,.12);border-radius:12px;padding:1.5rem;max-width:420px;width:100%">
+          <h3 style="font-size:.95rem;font-weight:700;color:var(--ink);margin:0 0 .75rem">What can a partner see?</h3>
+          <ul style="font-size:.82rem;color:var(--ink-2);line-height:1.7;padding-left:1.1rem;margin:0 0 1rem">
             <li>View your Simulation and Growth Command Center in <strong>read-only mode</strong></li>
             <li>Add private <strong>coaching notes</strong> per layer (invisible to you unless shared)</li>
             <li><strong>Flag actions</strong> for your attention — you'll see an amber badge</li>
             <li>Publish <strong>suggestions</strong> that appear in your Journey tab</li>
           </ul>
-          <p style="font-size:.78rem;color:rgba(255,255,255,.4);margin:0 0 1rem">Partners cannot run agents, edit your inputs, or access your account settings.</p>
+          <p style="font-size:.78rem;color:var(--mute);margin:0 0 1rem">Partners cannot run agents, edit your inputs, or access your account settings.</p>
           <button onclick="document.getElementById('partnerHelpOverlay').style.display='none'" class="btn btn-ghost btn-sm">Got it</button>
         </div>
       </div>
@@ -885,8 +885,8 @@
           var html = '';
           sims.forEach(function(s) {
             var checked = s.unlock_all_layers ? 'checked' : '';
-            html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
-              '<div><div style="font-size:.875rem;font-weight:500;color:#0D1B3E">' + s.name + '</div><div style="font-size:.72rem;color:#9CA3AF">' + (s.status || '') + '</div></div>' +
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid rgba(13,27,62,.12)">' +
+              '<div><div style="font-size:.875rem;font-weight:500;color:#0D1B3E">' + s.name + '</div><div style="font-size:.72rem;color:var(--mute)">' + (s.status || '') + '</div></div>' +
               '<label class="toggle-switch" style="flex-shrink:0">' +
               '<input type="checkbox" ' + checked + ' onchange="toggleUnlockLayers(\'' + s.id + '\', this.checked)">' +
               '<span class="toggle-slider"></span></label>' +
@@ -995,7 +995,7 @@
 
         // ── Shareable agents ──────────────────────────────────────────────
         html += '<div style="font-size:.78rem;font-weight:700;letter-spacing:.04em;'
-          + 'text-transform:uppercase;color:#6b7b8d;margin:0 0 .5rem">'
+          + 'text-transform:uppercase;color:var(--mute);margin:0 0 .5rem">'
           + 'Shareable agents</div>';
 
         var byLayer = {};
@@ -1013,8 +1013,8 @@
               + 'gap:1rem;padding:.6rem 0;border-bottom:1px solid rgba(13,27,62,.07)">'
               + '<div><div style="font-size:.85rem;font-weight:500;color:#0D1B3E">'
               + esc(a.label) + (a.active ? '' : ' <span style="font-size:.7rem;'
-                + 'color:#9CA3AF">(inactive)</span>') + '</div>'
-              + '<div style="font-size:.72rem;color:#9CA3AF">'
+                + 'color:var(--mute)">(inactive)</span>') + '</div>'
+              + '<div style="font-size:.72rem;color:var(--mute)">'
               + (params ? params + ' parameter' + (params === 1 ? '' : 's')
                    + ' a peer could propose on'
                  : 'No parameters to propose on')
@@ -1024,7 +1024,7 @@
                     + '<input type="checkbox" data-peer-share="' + esc(a.agent_key) + '"'
                     + (a.is_shareable ? ' checked' : '') + '>'
                     + '<span class="toggle-slider"></span></label>'
-                  : '<span style="font-size:.72rem;color:#9CA3AF">—</span>')
+                  : '<span style="font-size:.72rem;color:var(--mute)">—</span>')
               + '</div>';
           });
         });
@@ -1032,7 +1032,7 @@
         // ── The circle ────────────────────────────────────────────────────
         var c = d.circle || {};
         html += '<div style="font-size:.78rem;font-weight:700;letter-spacing:.04em;'
-          + 'text-transform:uppercase;color:#6b7b8d;margin:1.75rem 0 .35rem">'
+          + 'text-transform:uppercase;color:var(--mute);margin:1.75rem 0 .35rem">'
           + 'Your circle</div>'
           + '<p class="settings-hint" style="margin-bottom:.75rem">Invited peers only — '
           + 'no stranger can propose on your engine. Up to ' + (c.max_size || 25)
@@ -1069,10 +1069,10 @@
       function group(title, rows, actions, emptyText) {
         rows = rows || [];
         if (!rows.length && !emptyText) return '';
-        var html = '<div style="font-size:.74rem;color:#6b7b8d;font-weight:600;'
+        var html = '<div style="font-size:.74rem;color:var(--mute);font-weight:600;'
           + 'margin:.9rem 0 .25rem">' + esc(title) + '</div>';
         if (!rows.length) {
-          return html + '<div style="font-size:.78rem;color:#9CA3AF">'
+          return html + '<div style="font-size:.78rem;color:var(--mute)">'
             + esc(emptyText) + '</div>';
         }
         rows.forEach(function(p) {
@@ -1080,7 +1080,7 @@
             + 'gap:.75rem;padding:.5rem 0;border-bottom:1px solid rgba(13,27,62,.07)">'
             + '<div><div style="font-size:.85rem;color:#0D1B3E">'
             + esc(p.display_name) + '</div>'
-            + (p.message ? '<div style="font-size:.74rem;color:#6b7b8d">'
+            + (p.message ? '<div style="font-size:.74rem;color:var(--mute)">'
                  + esc(p.message) + '</div>' : '')
             + '</div><div style="display:flex;gap:.35rem;flex-shrink:0">'
             + actions(p) + '</div></div>';
@@ -1163,7 +1163,7 @@
         <button class="btn btn-primary btn-sm" onclick="window.openFeedbackModal()">Submit new feedback</button>
       </div>
       <div id="myTestimonialsList">
-        <div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div>
+        <div style="font-size:.875rem;color:var(--mute)">Loading…</div>
       </div>
     </div>
     {% endif %}
@@ -1239,11 +1239,11 @@
 
         {# Requests + grants dashboard #}
         <div class="settings-section-title" style="font-size:.9rem;">Access requests &amp; grants</div>
-        <div id="pm-requests"><div style="color:#6B7B8D;font-size:.88rem;">Loading…</div></div>
+        <div id="pm-requests"><div style="color:var(--mute);font-size:.88rem;">Loading…</div></div>
 
         {# Rules #}
         <div class="settings-section-title" style="font-size:.9rem;margin-top:1.5rem;">Allowlist &amp; blocklist</div>
-        <div style="font-size:.82rem;color:#6B7B8D;margin-bottom:.6rem;">Auto-approve or auto-decline by verified LinkedIn email domain, company, or identity. Blocked requesters only ever see a neutral message.</div>
+        <div style="font-size:.82rem;color:var(--mute);margin-bottom:.6rem;">Auto-approve or auto-decline by verified LinkedIn email domain, company, or identity. Blocked requesters only ever see a neutral message.</div>
         <div id="pm-rules"></div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;align-items:center;">
           <select id="rule-type" class="input-text" style="max-width:120px;"><option value="allow">Allow</option><option value="block">Block</option></select>
@@ -1293,18 +1293,18 @@
          ════════════════════════════════════════════════════ #}
       <style>
         .integ-brokered-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-bottom:.5rem}
-        .integ-brokered-row{display:flex;align-items:center;gap:.75rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:.9rem 1rem}
+        .integ-brokered-row{display:flex;align-items:center;gap:.75rem;background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:12px;padding:.9rem 1rem}
         .integ-brokered-row .bk-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex:none;box-shadow:0 0 0 3px rgba(34,197,94,.15)}
-        .integ-brokered-row .bk-name{font-weight:600;font-size:.85rem;color:#e8eaf0}
-        .integ-brokered-row .bk-sub{font-size:.72rem;color:rgba(255,255,255,.4)}
-        .integ-brokered-row .bk-status{margin-left:auto;font-size:.68rem;font-weight:600;color:#86efac;text-transform:uppercase;letter-spacing:.04em}
-        .integ-section-sub{font-size:.72rem;font-weight:400;color:rgba(255,255,255,.35);margin:.15rem 0 .75rem;text-transform:none;letter-spacing:0}
-        details.integ-advanced{margin-top:1.5rem;border-top:1px solid rgba(255,255,255,.07);padding-top:1rem}
-        details.integ-advanced>summary{cursor:pointer;font-size:.85rem;font-weight:600;color:#e8eaf0;list-style:none;display:flex;align-items:center;gap:.5rem;user-select:none}
+        .integ-brokered-row .bk-name{font-weight:600;font-size:.85rem;color:var(--ink)}
+        .integ-brokered-row .bk-sub{font-size:.72rem;color:var(--mute)}
+        .integ-brokered-row .bk-status{margin-left:auto;font-size:.68rem;font-weight:600;color:#15803D;text-transform:uppercase;letter-spacing:.04em}
+        .integ-section-sub{font-size:.72rem;font-weight:400;color:var(--mute);margin:.15rem 0 .75rem;text-transform:none;letter-spacing:0}
+        details.integ-advanced{margin-top:1.5rem;border-top:1px solid rgba(13,27,62,.12);padding-top:1rem}
+        details.integ-advanced>summary{cursor:pointer;font-size:.85rem;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:.5rem;user-select:none}
         details.integ-advanced>summary::-webkit-details-marker{display:none}
-        details.integ-advanced>summary::before{content:'\25B8';color:rgba(255,255,255,.4);transition:transform .15s;display:inline-block}
+        details.integ-advanced>summary::before{content:'\25B8';color:var(--mute);transition:transform .15s;display:inline-block}
         details.integ-advanced[open]>summary::before{transform:rotate(90deg)}
-        details.integ-advanced>summary .adv-hint{font-size:.72rem;font-weight:400;color:rgba(255,255,255,.35)}
+        details.integ-advanced>summary .adv-hint{font-size:.72rem;font-weight:400;color:var(--mute)}
         .integ-card.pulse{animation:integPulse 1.2s ease-out 2}
         @keyframes integPulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0)}50%{box-shadow:0 0 0 4px rgba(96,165,250,.35)}}
       </style>
@@ -1393,7 +1393,7 @@
           </div>
           <div class="integ-activity-panel" id="activity-stripe">
             <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('stripe')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div id="activity-stripe-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+            <div id="activity-stripe-list" style="font-size:.75rem;color:var(--mute)">Loading…</div>
           </div>
           {% endif %}
         </div>
@@ -1404,7 +1404,7 @@
             {% if cal_status == 'connected' %}Connected{% elif cal_status == 'expired' %}Expired{% else %}Not connected{% endif %}
           </span>
           <div class="integ-card-top">
-            <div class="integ-logo" style="background:#11182720;color:#e8eaf0">CA</div>
+            <div class="integ-logo" style="background:#11182720;color:var(--ink)">CA</div>
             <div class="integ-card-info">
               <div class="integ-card-name">Cal.com</div>
               <div class="integ-card-desc">Booking and scheduling</div>
@@ -1443,7 +1443,7 @@
           </div>
           <div class="integ-activity-panel" id="activity-cal">
             <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('cal')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div id="activity-cal-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+            <div id="activity-cal-list" style="font-size:.75rem;color:var(--mute)">Loading…</div>
           </div>
           {% endif %}
         </div>
@@ -1478,13 +1478,13 @@
               </div>
               <button onclick="startLinkedInInteg(this)" class="integ-primary-btn outlined">↻ Re-sync</button>
             {% else %}
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
+              <div style="font-size:.75rem;color:var(--mute);margin-top:.25rem;line-height:1.5">
                 Connect your LinkedIn profile to import your name, headline, and contact details.
               </div>
               <button onclick="startLinkedInInteg(this)" class="integ-primary-btn navy">Connect LinkedIn →</button>
             {% endif %}
           {% else %}
-            <div style="font-size:.75rem;color:rgba(255,255,255,.4);margin-top:.25rem;line-height:1.5">
+            <div style="font-size:.75rem;color:var(--mute);margin-top:.25rem;line-height:1.5">
               Pending attorney review of the LinkedIn API Terms of Service (FR-LINKEDIN-01).
               The OAuth flow and content publishing are ready to deploy once legal clearance is received.
             </div>
@@ -1545,7 +1545,7 @@
           </div>
           <div class="integ-activity-panel" id="activity-kajabi">
             <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('kajabi')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div id="activity-kajabi-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+            <div id="activity-kajabi-list" style="font-size:.75rem;color:var(--mute)">Loading…</div>
           </div>
           {% endif %}
         </div>
@@ -1597,7 +1597,7 @@
           </div>
           <div class="integ-activity-panel" id="activity-convertkit">
             <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('convertkit')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div id="activity-convertkit-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+            <div id="activity-convertkit-list" style="font-size:.75rem;color:var(--mute)">Loading…</div>
           </div>
           {% endif %}
         </div>
@@ -1608,7 +1608,7 @@
             {% if plaid_status == 'connected' %}Linked{% else %}Not linked{% endif %}
           </span>
           <div class="integ-card-top">
-            <div class="integ-logo" style="background:#11182720;color:#e8eaf0">PL</div>
+            <div class="integ-logo" style="background:#11182720;color:var(--ink)">PL</div>
             <div class="integ-card-info">
               <div class="integ-card-name">Plaid</div>
               <div class="integ-card-desc">Financial account linking</div>
@@ -1651,7 +1651,7 @@
           </div>
           <div class="integ-activity-panel" id="activity-plaid">
             <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('plaid')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div id="activity-plaid-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+            <div id="activity-plaid-list" style="font-size:.75rem;color:var(--mute)">Loading…</div>
           </div>
           {% endif %}
         </div>
@@ -1695,16 +1695,16 @@
           <div class="integ-manage-panel" id="manage-alpaca">
             <div class="integ-manage-title">Alpaca settings <button class="integ-secondary-link" onclick="toggleManage('alpaca')" style="font-size:.68rem">&#x2715; close</button></div>
             <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:.75rem;margin-bottom:.75rem">
-              <div style="font-size:.75rem;font-weight:600;color:#fca5a5;margin-bottom:.4rem">Automated trade execution</div>
-              <div style="font-size:.72rem;color:rgba(255,255,255,.5);margin-bottom:.5rem;font-style:italic">&#8220;I understand that SimiSI will place trades in my brokerage account based on my investment plan.&#8221;</div>
+              <div style="font-size:.75rem;font-weight:600;color:#B91C1C;margin-bottom:.4rem">Automated trade execution</div>
+              <div style="font-size:.72rem;color:var(--mute);margin-bottom:.5rem;font-style:italic">&#8220;I understand that SimiSI will place trades in my brokerage account based on my investment plan.&#8221;</div>
               <div style="display:flex;align-items:center;gap:.5rem">
                 <label class="toggle-switch" style="width:36px;height:20px">
                   <input type="checkbox" id="fintechToggle" {% if alpaca_fintech_toggle %}checked{% endif %} onchange="alpacaFintechToggle(this.checked)">
                   <span class="toggle-slider"></span>
                 </label>
-                <span style="font-size:.78rem;color:rgba(255,255,255,.6)">Enable automated trading</span>
+                <span style="font-size:.78rem;color:var(--ink-2)">Enable automated trading</span>
               </div>
-              <div id="fintechToggleErr" style="font-size:.72rem;color:#fca5a5;margin-top:.35rem;display:none"></div>
+              <div id="fintechToggleErr" style="font-size:.72rem;color:#B91C1C;margin-top:.35rem;display:none"></div>
             </div>
             <div class="integ-cfg-row">
               <div class="integ-cfg-label">DCA amount (USD)</div>
@@ -1725,7 +1725,7 @@
           </div>
           <div class="integ-activity-panel" id="activity-alpaca">
             <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('alpaca')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div id="activity-alpaca-list" style="font-size:.75rem;color:rgba(255,255,255,.4)">Loading…</div>
+            <div id="activity-alpaca-list" style="font-size:.75rem;color:var(--mute)">Loading…</div>
           </div>
           {% endif %}
         </div>
@@ -1734,29 +1734,29 @@
 
       {# ── SendGrid (platform email — technical/admin) ── #}
       <div class="integ-group-title" style="font-size:.8rem">Platform email</div>
-      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:1.25rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+      <div style="background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:12px;padding:1.25rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
-          <div style="font-weight:700;font-size:.9rem;color:#e8eaf0;margin-bottom:.2rem">SendGrid
-            <span style="font-size:.68rem;padding:.1rem .5rem;border-radius:20px;margin-left:.4rem;background:{% if sg_status == 'connected' %}rgba(134,239,172,.15){% else %}rgba(255,255,255,.07){% endif %};color:{% if sg_status == 'connected' %}#86efac{% else %}rgba(255,255,255,.4){% endif %}">{% if sg_status == 'connected' %}Connected{% else %}Not connected{% endif %}</span>
+          <div style="font-weight:700;font-size:.9rem;color:var(--ink);margin-bottom:.2rem">SendGrid
+            <span style="font-size:.68rem;padding:.1rem .5rem;border-radius:20px;margin-left:.4rem;background:{% if sg_status == 'connected' %}rgba(134,239,172,.15){% else %}var(--alt){% endif %};color:{% if sg_status == 'connected' %}#86efac{% else %}var(--mute){% endif %}">{% if sg_status == 'connected' %}Connected{% else %}Not connected{% endif %}</span>
           </div>
-          <div style="font-size:.78rem;color:rgba(255,255,255,.4)">Transactional email for notifications — escalation alerts, income events, replies.</div>
+          <div style="font-size:.78rem;color:var(--mute)">Transactional email for notifications — escalation alerts, income events, replies.</div>
         </div>
         <div style="display:flex;gap:.6rem;align-items:flex-start;flex-wrap:wrap">
           <div style="display:flex;flex-direction:column;gap:.3rem">
             <input type="password" class="input-text" id="sgApiKey" autocomplete="off"
                    placeholder="{% if sg_status == 'connected' %}●●●●●●●● (saved){% else %}SG.xxxxxx{% endif %}"
                    style="width:220px;font-size:.82rem">
-            <div id="sgSaveErr" style="font-size:.72rem;color:#fca5a5;display:none"></div>
+            <div id="sgSaveErr" style="font-size:.72rem;color:#B91C1C;display:none"></div>
           </div>
           <button class="btn btn-ghost btn-sm" onclick="sgSave(this)">{% if sg_status == 'connected' %}Update{% else %}Save{% endif %}</button>
-          {% if sg_status == 'connected' %}<button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" onclick="sgClear(this)">Remove</button>{% endif %}
+          {% if sg_status == 'connected' %}<button class="btn btn-ghost btn-sm" style="color:#B91C1C;border-color:rgba(252,165,165,.3)" onclick="sgClear(this)">Remove</button>{% endif %}
         </div>
       </div>
 
       {# ── Compliance ── #}
-      <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.9rem 1.25rem;margin-top:1.25rem;font-size:.78rem;color:rgba(255,255,255,.45);line-height:1.7">
-        <strong style="color:rgba(255,255,255,.7)">CAN-SPAM:</strong> Every email includes your business address and a one-click unsubscribe. Hard bounces and unsubscribes permanently block re-outreach.
-        &nbsp;&bull;&nbsp; <strong style="color:rgba(255,255,255,.7)">GDPR:</strong> Consult legal counsel before sending to EU contacts at scale. SimiSI's lawful basis is legitimate interest for B2B outreach.
+      <div style="background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:10px;padding:.9rem 1.25rem;margin-top:1.25rem;font-size:.78rem;color:var(--mute);line-height:1.7">
+        <strong style="color:var(--ink-2)">CAN-SPAM:</strong> Every email includes your business address and a one-click unsubscribe. Hard bounces and unsubscribes permanently block re-outreach.
+        &nbsp;&bull;&nbsp; <strong style="color:var(--ink-2)">GDPR:</strong> Consult legal counsel before sending to EU contacts at scale. SimiSI's lawful basis is legitimate interest for B2B outreach.
       </div>
 
       </details>{# end advanced #}
@@ -1791,10 +1791,10 @@
     {% if active_tab == 'integrations' %}
     <div id="apikeyModal" class="integ-apikey-modal">
       <div class="integ-apikey-box">
-        <div style="font-size:1rem;font-weight:700;color:#e8eaf0;margin-bottom:.25rem" id="apikeyModalTitle">Connect</div>
-        <div style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:1.1rem" id="apikeyModalDesc"></div>
+        <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:.25rem" id="apikeyModalTitle">Connect</div>
+        <div style="font-size:.8rem;color:var(--mute);margin-bottom:1.1rem" id="apikeyModalDesc"></div>
         <div id="apikeyModalFields"></div>
-        <div id="apikeyModalErr" style="font-size:.78rem;color:#fca5a5;margin:.4rem 0;display:none"></div>
+        <div id="apikeyModalErr" style="font-size:.78rem;color:#B91C1C;margin:.4rem 0;display:none"></div>
         <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem">
           <button class="btn btn-ghost btn-sm" onclick="closeApiKeyModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" id="apikeyModalSaveBtn" onclick="apikeyModalSave()">Save</button>
@@ -1811,35 +1811,35 @@
           <span class="kj-dot" id="wzDot3"></span>
         </div>
         <div id="wzScreen1">
-          <div id="wzTitle1" style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.35rem;color:#1a2744;margin-bottom:.6rem"></div>
-          <p id="wzInstructions" style="font-size:.88rem;color:rgba(255,255,255,.65);margin-bottom:1rem"></p>
+          <div id="wzTitle1" style="font-family:'Archivo', sans-serif;font-weight:600;font-size:1.35rem;color:#1a2744;margin-bottom:.6rem"></div>
+          <p id="wzInstructions" style="font-size:.88rem;color:var(--ink-2);margin-bottom:1rem"></p>
           <div id="wzSteps" style="background:rgba(0,168,150,.08);border:1px solid rgba(0,168,150,.2);border-radius:8px;padding:.9rem 1rem;margin-bottom:1rem"></div>
-          <div id="wzNote" style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.8rem;display:none"></div>
+          <div id="wzNote" style="font-size:.75rem;color:var(--mute);margin-bottom:.8rem;display:none"></div>
           <button onclick="wzGoTo(2)" class="integ-primary-btn navy" style="width:100%;margin-top:.25rem">I have my API key</button>
         </div>
         <div id="wzScreen2" style="display:none">
-          <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.7rem" id="wzConnectTitle">Paste your API key</div>
+          <div style="font-family:'Archivo', sans-serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.7rem" id="wzConnectTitle">Paste your API key</div>
           <div id="wzFields" style="margin-bottom:.35rem"></div>
           <div id="wzValidState" style="font-size:.78rem;min-height:1.1rem;margin-bottom:.6rem;display:flex;flex-direction:column;gap:.2rem"></div>
           <button id="wzConnectBtn" class="integ-primary-btn navy" style="width:100%" disabled onclick="wzDoConnect()" title="Paste a valid key to continue">Connect</button>
-          <div style="font-size:.72rem;color:rgba(255,255,255,.35);text-align:center;margin-top:.55rem">Your credentials are encrypted and stored securely. We never share them with third parties.</div>
+          <div style="font-size:.72rem;color:var(--mute);text-align:center;margin-top:.55rem">Your credentials are encrypted and stored securely. We never share them with third parties.</div>
         </div>
         <div id="wzScreen3" style="display:none">
-          <div id="wzTitle3" style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.8rem"></div>
-          <div style="background:rgba(255,255,255,.04);border-left:3px solid #00a896;border-radius:6px;padding:.85rem 1rem;margin-bottom:1rem">
+          <div id="wzTitle3" style="font-family:'Archivo', sans-serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.8rem"></div>
+          <div style="background:#F9FAFB;border-left:3px solid #00a896;border-radius:6px;padding:.85rem 1rem;margin-bottom:1rem">
             <div style="display:flex;align-items:center;gap:.65rem">
               <div id="wzConfirmLogo" style="width:32px;height:32px;border-radius:6px;background:rgba(0,168,150,.12);color:#00a896;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem"></div>
               <div>
-                <div id="wzConfirmName" style="font-size:.9rem;font-weight:600;color:#e8eaf0"></div>
-                <div id="wzConfirmSub" style="font-size:.77rem;color:rgba(255,255,255,.5)"></div>
+                <div id="wzConfirmName" style="font-size:.9rem;font-weight:600;color:var(--ink)"></div>
+                <div id="wzConfirmSub" style="font-size:.77rem;color:var(--mute)"></div>
               </div>
               <span style="margin-left:auto;font-size:.7rem;background:#16a34a20;color:#16a34a;border:1px solid #16a34a40;border-radius:20px;padding:.15rem .55rem">Connected</span>
             </div>
           </div>
-          <p id="wzBody" style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1rem"></p>
+          <p id="wzBody" style="font-size:.82rem;color:var(--mute);margin-bottom:1rem"></p>
           <button class="integ-primary-btn navy" style="width:100%" onclick="wzDone()">Done</button>
         </div>
-        <button onclick="closeGenericWizard()" style="position:absolute;top:.75rem;right:.9rem;background:none;border:none;color:rgba(255,255,255,.35);font-size:1.1rem;cursor:pointer;line-height:1">&#x2715;</button>
+        <button onclick="closeGenericWizard()" style="position:absolute;top:.75rem;right:.9rem;background:none;border:none;color:var(--mute);font-size:1.1rem;cursor:pointer;line-height:1">&#x2715;</button>
       </div>
     </div>
 
@@ -1856,10 +1856,10 @@
 
         {# ── Screen 1: Instructions ── #}
         <div id="kjScreen1">
-          <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.35rem;color:#1a2744;margin-bottom:.6rem">Let&#39;s connect your Kajabi account</div>
-          <p style="font-size:.9rem;color:rgba(255,255,255,.65);margin-bottom:1rem">To connect Kajabi, you&#39;ll need to copy your API key from your Kajabi admin panel. Here&#39;s exactly where to find it:</p>
+          <div style="font-family:'Archivo', sans-serif;font-weight:600;font-size:1.35rem;color:#1a2744;margin-bottom:.6rem">Let&#39;s connect your Kajabi account</div>
+          <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:1rem">To connect Kajabi, you&#39;ll need to copy your API key from your Kajabi admin panel. Here&#39;s exactly where to find it:</p>
           <div style="background:rgba(0,168,150,.08);border:1px solid rgba(0,168,150,.2);border-radius:8px;padding:.9rem 1rem;margin-bottom:1rem">
-            <div style="font-size:.82rem;color:rgba(255,255,255,.8);display:flex;flex-direction:column;gap:.45rem">
+            <div style="font-size:.82rem;color:var(--ink);display:flex;flex-direction:column;gap:.45rem">
               <div><span style="display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#00a896;color:#fff;font-size:.65rem;font-weight:700;margin-right:.4rem">1</span>Log in to your Kajabi admin panel.</div>
               <div><span style="display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#00a896;color:#fff;font-size:.65rem;font-weight:700;margin-right:.4rem">2</span>Navigate to <strong>Settings → Site details → Developer</strong>.</div>
               <div><span style="display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#00a896;color:#fff;font-size:.65rem;font-weight:700;margin-right:.4rem">3</span>Click <strong>Generate new token</strong> and copy the token that appears.</div>
@@ -1873,7 +1873,7 @@
 
         {# ── Screen 2: Paste & Validate ── #}
         <div id="kjScreen2" style="display:none">
-          <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.6rem">Paste your Kajabi API key</div>
+          <div style="font-family:'Archivo', sans-serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.6rem">Paste your Kajabi API key</div>
           <div style="position:relative;margin-bottom:.35rem">
             <input type="password" id="kjApiKey" autocomplete="off"
                    class="integ-cfg-input" style="width:100%;font-family:monospace;font-size:.85rem;box-sizing:border-box"
@@ -1882,27 +1882,27 @@
           </div>
           <div id="kjValidState" style="font-size:.78rem;min-height:1.1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.35rem"></div>
           <button id="kjConnectBtn" class="integ-primary-btn navy" style="width:100%" disabled onclick="kjDoConnect()" title="Paste a valid API key to continue">Connect Kajabi</button>
-          <div style="font-size:.72rem;color:rgba(255,255,255,.35);text-align:center;margin-top:.55rem">Your API key is encrypted and stored securely. We never share it with third parties.</div>
+          <div style="font-size:.72rem;color:var(--mute);text-align:center;margin-top:.55rem">Your API key is encrypted and stored securely. We never share it with third parties.</div>
         </div>
 
         {# ── Screen 3: Confirmation ── #}
         <div id="kjScreen3" style="display:none">
-          <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.8rem">You&#39;re connected to Kajabi</div>
-          <div id="kjConfirmCard" style="background:rgba(255,255,255,.04);border-left:3px solid #00a896;border-radius:6px;padding:.85rem 1rem;margin-bottom:1rem">
+          <div style="font-family:'Archivo', sans-serif;font-weight:600;font-size:1.2rem;color:#1a2744;margin-bottom:.8rem">You&#39;re connected to Kajabi</div>
+          <div id="kjConfirmCard" style="background:#F9FAFB;border-left:3px solid #00a896;border-radius:6px;padding:.85rem 1rem;margin-bottom:1rem">
             <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.4rem">
               <div style="width:32px;height:32px;border-radius:6px;background:#2563eb20;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem">KJ</div>
               <div>
-                <div id="kjConfirmName" style="font-size:.9rem;font-weight:600;color:#e8eaf0"></div>
-                <div id="kjConfirmSub" style="font-size:.77rem;color:rgba(255,255,255,.5)"></div>
+                <div id="kjConfirmName" style="font-size:.9rem;font-weight:600;color:var(--ink)"></div>
+                <div id="kjConfirmSub" style="font-size:.77rem;color:var(--mute)"></div>
               </div>
               <span style="margin-left:auto;font-size:.7rem;background:#16a34a20;color:#16a34a;border:1px solid #16a34a40;border-radius:20px;padding:.15rem .55rem">Connected</span>
             </div>
           </div>
-          <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1rem">Your course and membership agents can now deploy products directly to your Kajabi account. When students enroll or members subscribe, the income is captured automatically.</p>
+          <p style="font-size:.82rem;color:var(--mute);margin-bottom:1rem">Your course and membership agents can now deploy products directly to your Kajabi account. When students enroll or members subscribe, the income is captured automatically.</p>
           <button class="integ-primary-btn navy" style="width:100%" onclick="kjDone()">Done</button>
         </div>
 
-        <button onclick="closeKajabiWizard()" style="position:absolute;top:.75rem;right:.9rem;background:none;border:none;color:rgba(255,255,255,.35);font-size:1.1rem;cursor:pointer;line-height:1">&#x2715;</button>
+        <button onclick="closeKajabiWizard()" style="position:absolute;top:.75rem;right:.9rem;background:none;border:none;color:var(--mute);font-size:1.1rem;cursor:pointer;line-height:1">&#x2715;</button>
       </div>
     </div>
 
@@ -1914,7 +1914,7 @@
         <div class="integ-modal-agents" id="discModalAgents"></div>
         <div class="integ-modal-actions">
           <button class="btn btn-ghost btn-sm" onclick="closeDisconnect()">Keep connected</button>
-          <button class="btn btn-ghost btn-sm" style="color:#fca5a5;border-color:rgba(252,165,165,.3)" id="discModalConfirm">Yes, disconnect</button>
+          <button class="btn btn-ghost btn-sm" style="color:#B91C1C;border-color:rgba(252,165,165,.3)" id="discModalConfirm">Yes, disconnect</button>
         </div>
       </div>
     </div>
@@ -1925,7 +1925,7 @@
     <div id="notificationsTab">
       <div class="settings-section">
         <div class="settings-section-title">Email Notification Preferences</div>
-        <div style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1.25rem">
+        <div style="font-size:.82rem;color:var(--mute);margin-bottom:1.25rem">
           In-app notifications cannot be disabled — they are your system log.
           Email can be disabled per type or batched into a daily digest.
         </div>
@@ -1949,7 +1949,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
               <div>
                 <div class="toggle-label">{{ label }}
-                  {% if forced %}<span style="font-size:.68rem;color:#fca5a5;margin-left:.4rem">Required</span>{% endif %}
+                  {% if forced %}<span style="font-size:.68rem;color:#B91C1C;margin-left:.4rem">Required</span>{% endif %}
                 </div>
                 <div class="toggle-desc">{{ desc }}</div>
               </div>
@@ -1970,14 +1970,14 @@
                        onchange="saveNotifPrefs()">
                 <span class="toggle-slider" style="border-radius:18px"></span>
               </label>
-              <span style="font-size:.75rem;color:rgba(255,255,255,.45)">Batch into daily digest (8 am)</span>
+              <span style="font-size:.75rem;color:var(--mute)">Batch into daily digest (8 am)</span>
             </div>
             {% endif %}
           </div>
           {% endfor %}
         </div>
 
-        <div id="notifPrefStatus" style="font-size:.78rem;color:#86efac;margin-top:.75rem;display:none">Preferences saved.</div>
+        <div id="notifPrefStatus" style="font-size:.78rem;color:#15803D;margin-top:.75rem;display:none">Preferences saved.</div>
       </div>
     </div>
     {% endif %}
@@ -2012,7 +2012,7 @@
           <label class="settings-label">New password</label>
           <input type="password" class="input-text" id="sec-new-pw" placeholder="Min 8 chars, uppercase, number, special char"
                  oninput="updatePwStrength(this.value)">
-          <div id="pwStrength" style="font-size:.75rem;margin-top:.25rem;color:rgba(255,255,255,.4)"></div>
+          <div id="pwStrength" style="font-size:.75rem;margin-top:.25rem;color:var(--mute)"></div>
         </div>
         <div class="settings-row">
           <label class="settings-label">Confirm new password</label>
@@ -2029,14 +2029,14 @@
         <div style="margin-bottom:.75rem">
           <button class="btn btn-ghost btn-sm" onclick="revokeAllSessions()">Revoke all other sessions</button>
         </div>
-        <div class="session-list" id="sessionList"><div style="font-size:.875rem;color:rgba(255,255,255,.4)">Loading…</div></div>
+        <div class="session-list" id="sessionList"><div style="font-size:.875rem;color:var(--mute)">Loading…</div></div>
       </div>
 
       <div class="settings-section">
-        <div class="settings-section-title" style="color:#fca5a5">Delete Account</div>
+        <div class="settings-section-title" style="color:#B91C1C">Delete Account</div>
         <div class="delete-zone">
           <p>This will schedule your account for permanent deletion after 30 days. All simulations, artifacts, and profile data will be removed. You can cancel within 30 days using the link in your confirmation email.</p>
-          <button class="btn btn-ghost btn-sm" style="border-color:rgba(239,68,68,.4);color:#fca5a5" onclick="initiateDeleteAccount()">Delete my account</button>
+          <button class="btn btn-ghost btn-sm" style="border-color:rgba(239,68,68,.4);color:#B91C1C" onclick="initiateDeleteAccount()">Delete my account</button>
         </div>
       </div>
     </div>
@@ -2052,8 +2052,8 @@
       {% for sim in trust_sims %}
       {% set cfg = trust_configs.get(sim.id) %}
       {% if cfg %}
-      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:1.25rem;margin-bottom:1rem">
-        <div style="font-size:.875rem;font-weight:600;margin-bottom:1rem;color:#e8eaf0">{{ sim.name }}</div>
+      <div style="background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:12px;padding:1.25rem;margin-bottom:1rem">
+        <div style="font-size:.875rem;font-weight:600;margin-bottom:1rem;color:var(--ink)">{{ sim.name }}</div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem">
           {% for level, label, desc in [
             ('review_all', 'Review All', 'Every action needs approval'),
@@ -2063,7 +2063,7 @@
           {% set active = (cfg.trust_level or 'balanced') == level %}
           <button onclick="setTrustLevel('{{ sim.id }}', '{{ level }}', this)"
                   data-sim="{{ sim.id }}" data-level="{{ level }}"
-                  style="border:1.5px solid {{ 'rgba(15,123,114,.6)' if active else 'rgba(255,255,255,.1)' }};background:{{ 'rgba(15,123,114,.15)' if active else 'transparent' }};border-radius:8px;padding:.75rem .5rem;cursor:pointer;color:inherit;transition:all .15s;text-align:center">
+                  style="border:1.5px solid {{ 'rgba(15,123,114,.6)' if active else 'rgba(13,27,62,.12)' }};background:{{ 'rgba(15,123,114,.15)' if active else 'transparent' }};border-radius:8px;padding:.75rem .5rem;cursor:pointer;color:inherit;transition:all .15s;text-align:center">
             <div style="font-weight:700;font-size:.82rem">{{ label }}</div>
             <div style="font-size:.7rem;opacity:.5;margin-top:.25rem;line-height:1.35">{{ desc }}</div>
           </button>
@@ -2088,7 +2088,7 @@
       <div style="background:#f9fafb;border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:2.5rem;text-align:center;max-width:480px">
         <div style="font-size:2rem;margin-bottom:.75rem">🎬</div>
         <div style="font-weight:600;color:#0D1B3E;margin-bottom:.4rem">No videos yet</div>
-        <div style="font-size:.82rem;color:#9CA3AF;line-height:1.6">Generate a simulation overview video from the GCC (Growth Command Center) Visuals tab, then come back here to manage it.</div>
+        <div style="font-size:.82rem;color:var(--mute);line-height:1.6">Generate a simulation overview video from the GCC (Growth Command Center) Visuals tab, then come back here to manage it.</div>
       </div>
       {% else %}
       <div id="videoCardGrid" style="display:flex;flex-direction:column;gap:1rem;max-width:640px">
@@ -2115,7 +2115,7 @@
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.35rem">
               <span style="font-weight:700;font-size:.9rem;color:#0D1B3E">{{ v.sim_label }}</span>
-              <span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.1rem .45rem;border-radius:20px;background:rgba(0,0,0,.07);color:#6B7B8D">{{ v.format }}</span>
+              <span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.1rem .45rem;border-radius:20px;background:rgba(0,0,0,.07);color:var(--mute)">{{ v.format }}</span>
               {% if v.status == 'complete' %}
               <span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:.1rem .45rem;border-radius:20px;background:rgba(22,163,74,.1);color:#16a34a">Complete</span>
               {% elif v.status == 'processing' %}
@@ -2124,7 +2124,7 @@
               <span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:.1rem .45rem;border-radius:20px;background:rgba(220,38,38,.1);color:#dc2626">Failed</span>
               {% endif %}
             </div>
-            <div style="font-size:.78rem;color:#9CA3AF;margin-bottom:.75rem">
+            <div style="font-size:.78rem;color:var(--mute);margin-bottom:.75rem">
               {% if v.duration_label %}{{ v.duration_label }} &middot; {% endif %}{{ v.created_at }}
             </div>
 
@@ -2365,7 +2365,7 @@ async function setTrustLevel(simId, level, btn) {
   const allBtns = document.querySelectorAll('[data-sim="' + simId + '"]');
   allBtns.forEach(b => {
     const active = b.dataset.level === level;
-    b.style.borderColor = active ? 'rgba(15,123,114,.6)' : 'rgba(255,255,255,.1)';
+    b.style.borderColor = active ? 'rgba(15,123,114,.6)' : 'rgba(13,27,62,.12)';
     b.style.background   = active ? 'rgba(15,123,114,.15)' : 'transparent';
   });
   try {
@@ -2647,12 +2647,12 @@ async function regenerateBio() {
     if (!hint) return;
     if (status === 'published') {
       hint.textContent = '● Live — visitors can see your bio page and chat widget';
-      hint.style.color = '#86efac';
+      hint.style.color = '#15803D';
       if (pubBtn) { pubBtn.textContent = 'Unpublish'; pubBtn.style.display = 'inline-block'; pubBtn.className = 'btn btn-ghost btn-sm'; }
     } else {
       var slug = document.getElementById('usernamePreview') ? document.getElementById('usernamePreview').textContent : '';
       hint.textContent = '○ Draft — not yet visible at /u/' + slug + '. Publish to make it live.';
-      hint.style.color = '#f5c842';
+      hint.style.color = '#7A5410';
       if (pubBtn) { pubBtn.textContent = 'Publish bio page'; pubBtn.style.display = 'inline-block'; pubBtn.className = 'btn btn-primary btn-sm'; }
     }
   }
@@ -2690,7 +2690,7 @@ async function regenerateBio() {
     if (heroImgPrev) {
       if (hero.hero_image_url) {
         heroImgPrev.textContent = 'Hero image on file: ' + hero.hero_image_url.split('/').pop() + ' — upload a new file to replace';
-        heroImgPrev.style.color = '#86efac';
+        heroImgPrev.style.color = '#15803D';
       } else {
         heroImgPrev.textContent = '';
       }
@@ -2958,7 +2958,7 @@ async function regenerateBio() {
   function _render(key, arr) {
     var list = document.getElementById(key + '-list');
     if (!list) return;
-    if (!arr.length) { list.innerHTML = '<div style="font-size:.78rem;color:rgba(255,255,255,.3);padding:.35rem 0">No entries yet.</div>'; return; }
+    if (!arr.length) { list.innerHTML = '<div style="font-size:.78rem;color:var(--mute);padding:.35rem 0">No entries yet.</div>'; return; }
     list.innerHTML = arr.map(function(e, i) {
       var logoHtml = '';
       if (key === 'career' && e.logo_url) {
@@ -2971,7 +2971,7 @@ async function regenerateBio() {
         '</div>' +
         '<div style="display:flex;gap:.3rem;flex-shrink:0">' +
         '<button class="btn btn-ghost btn-sm" style="padding:.2rem .55rem;font-size:.72rem" onclick="bio003Edit(' + JSON.stringify(key) + ',' + i + ')">Edit</button>' +
-        '<button class="btn btn-ghost btn-sm" style="padding:.2rem .55rem;font-size:.72rem;color:#fca5a5;border:1px solid rgba(252,165,165,.35)" onclick="bio003Del(' + JSON.stringify(key) + ',' + i + ')">Delete</button>' +
+        '<button class="btn btn-ghost btn-sm" style="padding:.2rem .55rem;font-size:.72rem;color:#B91C1C;border:1px solid rgba(252,165,165,.35)" onclick="bio003Del(' + JSON.stringify(key) + ',' + i + ')">Delete</button>' +
         '</div></div>';
     }).join('');
   }
@@ -2990,7 +2990,7 @@ async function regenerateBio() {
     var btn = document.getElementById('bio003-import-career-btn');
     var statusEl = document.getElementById('bio003-import-career-status');
     if (btn) { btn.disabled = true; btn.textContent = 'Parsing…'; }
-    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'rgba(255,255,255,.5)'; statusEl.textContent = 'Extracting career entries from your bio…'; }
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'var(--mute)'; statusEl.textContent = 'Extracting career entries from your bio…'; }
     fetch(ROOT2 + '/api/settings/career/import', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -3001,7 +3001,7 @@ async function regenerateBio() {
       if (d.error) { throw new Error(d.error); }
       var entries = d.entries || [];
       if (!entries.length) {
-        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = 'No work history found in bio.'; }
+        if (statusEl) { statusEl.style.color = '#B91C1C'; statusEl.textContent = 'No work history found in bio.'; }
         return;
       }
       var existing = window.bio003State.career || [];
@@ -3016,12 +3016,12 @@ async function regenerateBio() {
       _render('career', existing);
       if (typeof saveProfile === 'function') saveProfile();
       if (statusEl) {
-        statusEl.style.color = '#4dd9c4';
+        statusEl.style.color = 'var(--teal-ink)';
         statusEl.textContent = added + ' entr' + (added === 1 ? 'y' : 'ies') + ' added' + (entries.length - added > 0 ? ', ' + (entries.length - added) + ' duplicate(s) skipped' : '') + '.';
       }
     })
     .catch(function(err) {
-      if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = err.message || 'Parse failed. Try again.'; }
+      if (statusEl) { statusEl.style.color = '#B91C1C'; statusEl.textContent = err.message || 'Parse failed. Try again.'; }
     })
     .finally(function() {
       if (btn) { btn.disabled = false; btn.textContent = '↓ Parse from bio'; }
@@ -3034,7 +3034,7 @@ async function regenerateBio() {
     var btn = document.getElementById('bio003-fetch-logos-btn');
     var statusEl = document.getElementById('bio003-import-career-status');
     if (btn) { btn.disabled = true; btn.textContent = 'Fetching…'; }
-    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'rgba(255,255,255,.5)'; statusEl.textContent = 'Searching for company logos…'; }
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'var(--mute)'; statusEl.textContent = 'Searching for company logos…'; }
     fetch(ROOT2 + '/api/settings/career/logos', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -3051,12 +3051,12 @@ async function regenerateBio() {
       _render('career', entries);
       if (typeof saveProfile === 'function') saveProfile();
       if (statusEl) {
-        statusEl.style.color = found > 0 ? '#4dd9c4' : 'rgba(255,255,255,.4)';
+        statusEl.style.color = found > 0 ? 'var(--teal-ink)' : 'var(--mute)';
         statusEl.textContent = found + ' logo' + (found === 1 ? '' : 's') + ' found out of ' + entries.length + '.';
       }
     })
     .catch(function() {
-      if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = 'Logo fetch failed. Try again.'; }
+      if (statusEl) { statusEl.style.color = '#B91C1C'; statusEl.textContent = 'Logo fetch failed. Try again.'; }
     })
     .finally(function() {
       if (btn) { btn.disabled = false; btn.textContent = '⬡ Fetch logos'; }
@@ -3142,7 +3142,7 @@ async function regenerateBio() {
     var container = document.getElementById(key + '-add-form');
     if (!container) return;
     var fields = _FORMS[key] || [];
-    var html = '<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:.875rem;margin-top:.5rem">';
+    var html = '<div style="background:#F9FAFB;border-radius:8px;padding:.875rem;margin-top:.5rem">';
     fields.forEach(function(f) {
       var val = entry[f.id];
       if (f.type === 'textarea') {
@@ -3166,7 +3166,7 @@ async function regenerateBio() {
     html += '<div style="display:flex;gap:.5rem;margin-top:.5rem">' +
       '<button class="btn btn-primary btn-sm" style="flex:1" onclick="bio003Save(' + JSON.stringify(key) + ')">' + (isEdit ? 'Update' : 'Add') + '</button>' +
       '<button class="btn btn-ghost btn-sm" onclick="bio003CancelForm(' + JSON.stringify(key) + ')">Cancel</button>' +
-      '</div><div id="bio003-err-' + key + '" style="color:#fca5a5;font-size:.78rem;margin-top:.35rem"></div></div>';
+      '</div><div id="bio003-err-' + key + '" style="color:#B91C1C;font-size:.78rem;margin-top:.35rem"></div></div>';
     container.innerHTML = html;
     container.style.display = 'block';
   }
@@ -3223,7 +3223,7 @@ async function regenerateBio() {
 function renderVisCards(sims) {
   const container = document.getElementById('visCards');
   if (!sims.length) {
-    container.innerHTML = '<p style="font-size:.875rem;color:rgba(255,255,255,.4)">No completed Simulations yet. <a href="' + ROOT2 + '/dashboard" style="color:#f5c842">Create your first Simulation →</a></p>';
+    container.innerHTML = '<p style="font-size:.875rem;color:var(--mute)">No completed Simulations yet. <a href="' + ROOT2 + '/dashboard" style="color:#7A5410">Create your first Simulation →</a></p>';
     return;
   }
   container.innerHTML = sims.map(s => visCardHtml(s)).join('');
@@ -3245,7 +3245,7 @@ function visCardHtml(s) {
         <div class="vis-zone">${esc(s.expertise_zone || '')}</div>
       </div>
       ${pubBadge} ${badge}
-      <span style="color:rgba(255,255,255,.3)">▾</span>
+      <span style="color:var(--mute)">▾</span>
     </div>
     <div class="vis-card-body" id="vcb-${s.simulation_id}">
       <div class="toggle-row">
@@ -3460,7 +3460,7 @@ function renderPartnerAccess(partners) {
   const el = document.getElementById('partnerAccessContainer');
   if (!el) return;
   if (!partners.length) {
-    el.innerHTML = `<div style="font-size:.85rem;color:rgba(255,255,255,.4);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:1rem">
+    el.innerHTML = `<div style="font-size:.85rem;color:var(--mute);background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:8px;padding:1rem">
       You have no advisors connected to your account. If a life coach, career coach, or financial advisor referred you to SimiSI, ask them for their referral link to get connected.
     </div>`;
     return;
@@ -3468,7 +3468,7 @@ function renderPartnerAccess(partners) {
   el.innerHTML = partners.map(p => {
     const simRows = (p.simulations || []).map(s => {
       const lastViewedHtml = s.shared
-        ? `<div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-top:.1rem">${s.last_viewed_at ? 'Last viewed: ' + timeAgoSettings(new Date(s.last_viewed_at)) : 'Not yet viewed'}</div>`
+        ? `<div style="font-size:.72rem;color:var(--mute);margin-top:.1rem">${s.last_viewed_at ? 'Last viewed: ' + timeAgoSettings(new Date(s.last_viewed_at)) : 'Not yet viewed'}</div>`
         : '';
       return `<div class="toggle-row" style="padding:.5rem 0">
         <div style="flex:1">
@@ -3483,12 +3483,12 @@ function renderPartnerAccess(partners) {
         </label>
       </div>`;
     }).join('');
-    return `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
+    return `<div style="background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
       <div style="margin-bottom:.5rem">
-        <div style="font-weight:600;font-size:.9rem;color:#e8eaf0">${esc(p.partner_name)}</div>
-        <div style="font-size:.78rem;color:rgba(255,255,255,.45);margin-top:.1rem">${esc(p.partner_type || '')}${p.business_name ? ' · ' + esc(p.business_name) : ''}</div>
+        <div style="font-weight:600;font-size:.9rem;color:var(--ink)">${esc(p.partner_name)}</div>
+        <div style="font-size:.78rem;color:var(--mute);margin-top:.1rem">${esc(p.partner_type || '')}${p.business_name ? ' · ' + esc(p.business_name) : ''}</div>
       </div>
-      ${simRows || '<div style="font-size:.82rem;color:rgba(255,255,255,.35)">No simulations to share yet.</div>'}
+      ${simRows || '<div style="font-size:.82rem;color:var(--mute)">No simulations to share yet.</div>'}
     </div>`;
   }).join('');
 }
@@ -3567,7 +3567,7 @@ async function togglePublish() {
   if (!res.ok) return;
   const sessions = await res.json();
   const container = document.getElementById('sessionList');
-  if (!sessions.length) { container.innerHTML = '<div style="font-size:.875rem;color:rgba(255,255,255,.4)">No active sessions found.</div>'; return; }
+  if (!sessions.length) { container.innerHTML = '<div style="font-size:.875rem;color:var(--mute)">No active sessions found.</div>'; return; }
   container.innerHTML = sessions.map(s => `
     <div class="session-row">
       <div>
@@ -3608,7 +3608,7 @@ function updatePwStrength(val) {
   const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
   const colors = ['', '#fca5a5', '#f5c842', '#86efac', '#86efac'];
   el.textContent = val ? `Strength: ${labels[score]}` : '';
-  el.style.color = colors[score] || 'rgba(255,255,255,.4)';
+  el.style.color = colors[score] || 'var(--mute)';
 }
 
 async function changePassword() {
@@ -3806,7 +3806,7 @@ function wzGoTo(screen) {
     document.getElementById('wzValidState').innerHTML = '';
     document.getElementById('wzFields').innerHTML = def.fields.map(f =>
       `<div style="margin-bottom:.65rem">
-        <div style="font-size:.75rem;color:rgba(255,255,255,.55);margin-bottom:.3rem">${f.label}</div>
+        <div style="font-size:.75rem;color:var(--ink-2);margin-bottom:.3rem">${f.label}</div>
         <input type="password" id="${f.id}" class="integ-cfg-input"
                style="width:100%;box-sizing:border-box;font-family:monospace;font-size:.83rem"
                placeholder="${f.placeholder}" autocomplete="off" oninput="wzOnInput()">
@@ -3828,7 +3828,7 @@ async function wzOnInput() {
   if (!allFilled) {
     stateEl.innerHTML = ''; connectBtn.disabled = true; _wz.validated = null; return;
   }
-  stateEl.innerHTML = '<span style="color:rgba(255,255,255,.45)">&#x231B; Checking your key…</span>';
+  stateEl.innerHTML = '<span style="color:var(--mute)">&#x231B; Checking your key…</span>';
   _wz.validated = null; connectBtn.disabled = true;
   _wzValidateTimer = setTimeout(async () => {
     try {
@@ -3842,16 +3842,16 @@ async function wzOnInput() {
         _wz.validated = {...body, ...d};
         if (def.extraSaveField) Object.assign(_wz.validated, def.extraSaveField(d));
         const metaLine = def.getMetaLine ? def.getMetaLine(d) : def.name;
-        stateEl.innerHTML = `<span style="color:#4ade80">&#x2713; ${metaLine}</span>`;
+        stateEl.innerHTML = `<span style="color:#15803D">&#x2713; ${metaLine}</span>`;
         const note = def.extraNote ? def.extraNote(d) : null;
         if (note) stateEl.innerHTML += `<div style="font-size:.72rem;color:rgba(245,200,66,.8);margin-top:.25rem">${note}</div>`;
         connectBtn.disabled = false; connectBtn.removeAttribute('title');
       } else {
-        stateEl.innerHTML = `<span style="color:#fca5a5">&#x2717; ${d.error || "This key doesn't appear to be valid."}</span>`;
+        stateEl.innerHTML = `<span style="color:#B91C1C">&#x2717; ${d.error || "This key doesn't appear to be valid."}</span>`;
         connectBtn.disabled = true;
       }
     } catch(err) {
-      document.getElementById('wzValidState').innerHTML = '<span style="color:#fca5a5">&#x2717; Validation failed — check your connection.</span>';
+      document.getElementById('wzValidState').innerHTML = '<span style="color:#B91C1C">&#x2717; Validation failed — check your connection.</span>';
     }
   }, 400);
 }
@@ -3923,7 +3923,7 @@ async function kjOnPaste(input) {
   _kjValidatedKey = null;
   connectBtn.disabled = true;
   if (key.length < 20) { stateEl.innerHTML = ''; return; }
-  stateEl.innerHTML = '<span style="color:rgba(255,255,255,.45)">&#x231B; Checking your key…</span>';
+  stateEl.innerHTML = '<span style="color:var(--mute)">&#x231B; Checking your key…</span>';
   _kjValidateTimer = setTimeout(async () => {
     try {
       const res = await fetch(ROOT2 + '/api/integrations/kajabi/validate', {
@@ -3935,15 +3935,15 @@ async function kjOnPaste(input) {
       if (d.status === 'valid') {
         _kjValidatedKey = key;
         _kjValidatedSub = d.subdomain || '';
-        stateEl.innerHTML = `<span style="color:#4ade80">&#x2713; Connected to ${d.subdomain || d.site_name || 'your Kajabi account'}</span>`;
+        stateEl.innerHTML = `<span style="color:#15803D">&#x2713; Connected to ${d.subdomain || d.site_name || 'your Kajabi account'}</span>`;
         connectBtn.disabled = false;
         connectBtn.removeAttribute('title');
       } else {
-        stateEl.innerHTML = `<span style="color:#fca5a5">&#x2717; ${d.error || 'This key doesn\'t appear to be valid. Make sure you copied the complete key from Kajabi.'}</span>`;
+        stateEl.innerHTML = `<span style="color:#B91C1C">&#x2717; ${d.error || 'This key doesn\'t appear to be valid. Make sure you copied the complete key from Kajabi.'}</span>`;
         connectBtn.disabled = true;
       }
     } catch(err) {
-      stateEl.innerHTML = '<span style="color:#fca5a5">&#x2717; Validation failed — check your connection and try again.</span>';
+      stateEl.innerHTML = '<span style="color:#B91C1C">&#x2717; Validation failed — check your connection and try again.</span>';
     }
   }, 400);
 }
@@ -4104,13 +4104,13 @@ async function toggleActivity(provider) {
   panel.classList.add('open');
   const listEl = document.getElementById('activity-' + provider + '-list');
   if (!listEl) return;
-  listEl.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.78rem">Loading…</div>';
+  listEl.innerHTML = '<div style="color:var(--mute);font-size:.78rem">Loading…</div>';
   try {
     const res = await fetch(ROOT2 + '/api/integrations/' + provider + '/activity');
-    if (!res.ok) { listEl.innerHTML = '<div style="color:#fca5a5;font-size:.78rem">Failed to load.</div>'; return; }
+    if (!res.ok) { listEl.innerHTML = '<div style="color:#B91C1C;font-size:.78rem">Failed to load.</div>'; return; }
     const data = await res.json();
     if (!data.entries || !data.entries.length) {
-      listEl.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.78rem">No activity yet.</div>';
+      listEl.innerHTML = '<div style="color:var(--mute);font-size:.78rem">No activity yet.</div>';
       return;
     }
     let html = '';
@@ -4125,7 +4125,7 @@ async function toggleActivity(provider) {
     });
     listEl.innerHTML = html;
   } catch(err) {
-    listEl.innerHTML = '<div style="color:#fca5a5;font-size:.78rem">Error loading activity.</div>';
+    listEl.innerHTML = '<div style="color:#B91C1C;font-size:.78rem">Error loading activity.</div>';
   }
 }
 
@@ -4350,11 +4350,11 @@ async function chatsOpenThread(sessionId, simId, simName) {
   document.getElementById('chatThreadSim').textContent = simName;
   document.getElementById('chatThreadContinue').href = ROOT2 + '/simulations/' + simId + '/gcc';
   tv.style.display = 'block';
-  msgs.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:.82rem;padding:.5rem">Loading…</div>';
+  msgs.innerHTML = '<div style="color:var(--mute);font-size:.82rem;padding:.5rem">Loading…</div>';
   tv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   const res = await fetch(ROOT2 + '/api/chats/' + sessionId);
-  if (!res.ok) { msgs.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:.82rem;padding:.5rem">Failed to load.</div>'; return; }
+  if (!res.ok) { msgs.innerHTML = '<div style="color:var(--mute);font-size:.82rem;padding:.5rem">Failed to load.</div>'; return; }
   const data = await res.json();
   msgs.innerHTML = '';
   data.messages.forEach(m => {
@@ -4399,10 +4399,10 @@ async function chatsDeleteSession(sessionId) {
 (async () => {
   const res = await fetch(ROOT2 + '/api/feedback/mine');
   const list = document.getElementById('myTestimonialsList');
-  if (!res.ok) { list.innerHTML = '<div style="color:rgba(255,255,255,.4)">Failed to load.</div>'; return; }
+  if (!res.ok) { list.innerHTML = '<div style="color:var(--mute)">Failed to load.</div>'; return; }
   const items = await res.json();
   if (!items.length) {
-    list.innerHTML = '<div style="font-size:.875rem;color:rgba(255,255,255,.4)">No submissions yet. Share your story to get started.</div>';
+    list.innerHTML = '<div style="font-size:.875rem;color:var(--mute)">No submissions yet. Share your story to get started.</div>';
     return;
   }
   const statusColors = {pending:'#f5c842',approved:'#86efac',rejected:'#fca5a5'};
@@ -4411,24 +4411,24 @@ async function chatsDeleteSession(sessionId) {
     const statusColor = statusColors[f.status] || '#9ca3af';
     const statusLabel = statusLabels[f.status] || f.status;
     const noteHtml = (f.status === 'rejected' && f.admin_note)
-      ? `<div style="font-size:.75rem;color:#fca5a5;margin-top:.3rem">Reason: ${esc(f.admin_note)}</div>` : '';
+      ? `<div style="font-size:.75rem;color:#B91C1C;margin-top:.3rem">Reason: ${esc(f.admin_note)}</div>` : '';
     const liveHtml = (f.status === 'approved')
-      ? `<a href="${ROOT2}/" style="font-size:.72rem;color:#86efac;margin-left:.5rem">Live on home page ↗</a>` : '';
+      ? `<a href="${ROOT2}/" style="font-size:.72rem;color:#15803D;margin-left:.5rem">Live on home page ↗</a>` : '';
     const editBtn = (f.status === 'pending')
       ? `<button class="btn btn-ghost btn-sm" onclick="editTestimonial('${f.id}')">Edit</button>` : '';
     const withdrawBtn = (f.status === 'approved' && !f.withdrawn_requested_at)
-      ? `<button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.4)" onclick="withdrawTestimonial('${f.id}',this)">Withdraw</button>` : '';
+      ? `<button class="btn btn-ghost btn-sm" style="color:var(--mute)" onclick="withdrawTestimonial('${f.id}',this)">Withdraw</button>` : '';
     const withdrawFlag = f.withdrawn_requested_at
-      ? `<span style="font-size:.72rem;color:#fca5a5">Withdrawal requested</span>` : '';
+      ? `<span style="font-size:.72rem;color:#B91C1C">Withdrawal requested</span>` : '';
     return `
-    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.85rem 1rem;margin-bottom:.6rem">
+    <div style="background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:8px;padding:.85rem 1rem;margin-bottom:.6rem">
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.35rem">
-        <span style="color:#f5c842">${'★'.repeat(f.star_rating)}${'☆'.repeat(5-f.star_rating)}</span>
+        <span style="color:#C9952A">${'★'.repeat(f.star_rating)}${'☆'.repeat(5-f.star_rating)}</span>
         <span style="font-size:.75rem;color:${statusColor};font-weight:700">${statusLabel}</span>
         ${liveHtml}
-        <span style="font-size:.72rem;color:rgba(255,255,255,.35);margin-left:auto">${(f.submitted_at||'').slice(0,10)}</span>
+        <span style="font-size:.72rem;color:var(--mute);margin-left:auto">${(f.submitted_at||'').slice(0,10)}</span>
       </div>
-      <div style="font-size:.875rem;color:rgba(255,255,255,.75);font-style:italic;margin-bottom:.25rem">"${esc((f.quote_text||'').slice(0,80))}${f.quote_text&&f.quote_text.length>80?'…':''}"</div>
+      <div style="font-size:.875rem;color:var(--ink);font-style:italic;margin-bottom:.25rem">"${esc((f.quote_text||'').slice(0,80))}${f.quote_text&&f.quote_text.length>80?'…':''}"</div>
       ${noteHtml}
       ${withdrawFlag}
       <div style="margin-top:.6rem;display:flex;gap:.4rem">${editBtn}${withdrawBtn}</div>
@@ -4519,7 +4519,7 @@ async function deleteVideo(videoId, btn) {
     if (card) card.remove();
     const grid = document.getElementById('videoCardGrid');
     if (grid && !grid.querySelector('.vid-card')) {
-      grid.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:.85rem">No videos remaining.</div>';
+      grid.innerHTML = '<div style="color:var(--mute);font-size:.85rem">No videos remaining.</div>';
     }
   } else {
     btn.textContent = 'Delete'; btn.disabled = false;
@@ -4755,7 +4755,7 @@ window.addEventListener('beforeunload', function(e) {
   function stat(label, val){
     return '<div style="background:#fff;border:1px solid rgba(13,27,62,.1);border-radius:10px;'
       + 'padding:.7rem .95rem;min-width:120px;"><div style="font-size:1.3rem;font-weight:700;color:#0D1B3E;">'
-      + esc(val) + '</div><div style="font-size:.72rem;color:#6B7B8D;text-transform:uppercase;letter-spacing:.04em;">'
+      + esc(val) + '</div><div style="font-size:.72rem;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;">'
       + esc(label) + '</div></div>';
   }
   function loadAnalytics(){
@@ -4772,7 +4772,7 @@ window.addEventListener('beforeunload', function(e) {
     fetch('/api/bio/access/requests').then(function(r){ return r.json(); }).then(function(d){
       var reqs = d.requests || [];
       if (!reqs.length){ document.getElementById('pm-requests').innerHTML =
-        '<div style="color:#6B7B8D;font-size:.88rem;">No requests yet. When someone requests access via LinkedIn, they\'ll appear here.</div>'; return; }
+        '<div style="color:var(--mute);font-size:.88rem;">No requests yet. When someone requests access via LinkedIn, they\'ll appear here.</div>'; return; }
       var html = reqs.map(function(r){
         var badge = {pending:'#f59e0b',approved:'#10b981',auto_approved:'#10b981',revoked:'#6b7280',expired:'#9ca3af',blocked:'#ef4444'}[r.status]||'#6b7280';
         var meta = [r.requester_company, r.requester_industry].filter(Boolean).join(' · ');
@@ -4781,7 +4781,7 @@ window.addEventListener('beforeunload', function(e) {
           actions = '<button class="btn btn-primary btn-sm" data-approve="'+r.id+'">Approve</button>'
                   + '<button class="btn btn-ghost btn-sm" data-ignore="'+r.id+'">Ignore</button>';
         } else if (r.grant_id){
-          actions = '<span style="font-size:.75rem;color:#6B7B8D;">'+ (r.view_count||0) +' view(s)</span>'
+          actions = '<span style="font-size:.75rem;color:var(--mute);">'+ (r.view_count||0) +' view(s)</span>'
                   + '<button class="btn btn-ghost btn-sm" data-revoke="'+r.grant_id+'">Revoke</button>';
         }
         var li = r.requester_email ? '<a href="mailto:'+esc(r.requester_email)+'" style="font-size:.78rem;">'+esc(r.requester_email)+'</a>' : '';
@@ -4790,7 +4790,7 @@ window.addEventListener('beforeunload', function(e) {
           + (r.requester_avatar ? '<img src="'+esc(r.requester_avatar)+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">' : '')
           + '<div style="flex:1;min-width:0;"><div style="font-weight:600;color:#0D1B3E;">'+esc(r.requester_name)
           + ' <span style="font-size:.68rem;font-weight:600;color:#fff;background:'+badge+';border-radius:6px;padding:.1rem .4rem;text-transform:capitalize;">'+esc(r.status.replace("_"," "))+'</span></div>'
-          + (meta ? '<div style="font-size:.78rem;color:#6B7B8D;">'+esc(meta)+'</div>' : '')
+          + (meta ? '<div style="font-size:.78rem;color:var(--mute);">'+esc(meta)+'</div>' : '')
           + (r.message ? '<div style="font-size:.8rem;color:#374151;margin-top:.2rem;font-style:italic;">“'+esc(r.message)+'”</div>' : '')
           + li + '</div>'
           + '<div style="display:flex;gap:.35rem;align-items:center;flex-shrink:0;">'+actions+'</div></div>';
@@ -4822,10 +4822,10 @@ window.addEventListener('beforeunload', function(e) {
         var c = x.rule_type === 'allow' ? '#10b981' : '#ef4444';
         return '<div style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;padding:.35rem 0;">'
           + '<span style="color:'+c+';font-weight:700;text-transform:capitalize;">'+esc(x.rule_type)+'</span>'
-          + '<span style="color:#6B7B8D;">'+esc(x.match_type)+'</span>'
+          + '<span style="color:var(--mute);">'+esc(x.match_type)+'</span>'
           + '<span style="color:#0D1B3E;font-weight:600;">'+esc(x.match_value)+'</span>'
           + '<button class="btn btn-ghost btn-sm" data-delrule="'+x.id+'" style="margin-left:auto;">Remove</button></div>';
-      }).join('') : '<div style="color:#6B7B8D;font-size:.82rem;">No rules yet.</div>';
+      }).join('') : '<div style="color:var(--mute);font-size:.82rem;">No rules yet.</div>';
     });
   }
   function addRule(){

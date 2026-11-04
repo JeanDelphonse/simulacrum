@@ -48,13 +48,13 @@
 .ob-lhead { display:flex; align-items:center; gap:.6rem; margin-bottom:.8rem; }
 .ob-badge { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:.8rem; }
 .ob-lname { font-size:.95rem; font-weight:700; color:#0f172a; }
-.ob-lmeta { font-size:.7rem; color:#9ca3af; }
+.ob-lmeta { font-size:.7rem; color:var(--mute); }
 .ob-lstats { display:flex; gap:1.1rem; margin:.4rem 0 .6rem; }
 .ob-lstats .k { font-size:.64rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
 .ob-lstats .v { font-size:1.1rem; font-weight:800; color:#0f172a; }
 .ob-lstats .v.err { color:#b91c1c; } .ob-lstats .v.flag { color:#a16207; } .ob-lstats .v.spend { color:#0f766e; }
 .ob-tags { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.5rem; }
-.ob-tags .lb { width:100%; font-size:.62rem; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
+.ob-tags .lb { width:100%; font-size:.62rem; color:var(--mute); text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
 .ob-tags span.t { background:#f3f4f6; border:1px solid #e5e7eb; border-radius:5px; padding:.1rem .4rem; font-size:.7rem; color:#4b5563; }
 
 /* tables */
@@ -64,7 +64,7 @@
 .ob-table tr.click { cursor:pointer; }
 .ob-table tr.click:hover td { background:#f8fafc; }
 .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.74rem; }
-.muted { color:#9ca3af; }
+.muted { color:var(--mute); }
 .right { text-align:right; }
 
 /* status — icon + label, never colour alone */
@@ -80,7 +80,7 @@
 .sev.critical { background:#fee2e2; color:#991b1b; }
 
 /* run detail */
-.ob-crumb { font-size:.8rem; color:#9ca3af; margin-bottom:.75rem; }
+.ob-crumb { font-size:.8rem; color:var(--mute); margin-bottom:.75rem; }
 .ob-crumb button { background:none; border:none; padding:0; font:inherit; color:#0d9488; cursor:pointer; }
 .ob-dhead { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem 1.1rem; margin-bottom:1rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
 .ob-dhead .kv { font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
@@ -95,22 +95,22 @@
 .trace .step::before { content:''; position:absolute; left:-5px; top:.25rem; width:8px; height:8px; border-radius:50%; background:#94a3b8; }
 .trace .step.decision::before { background:#0d9488; }
 .trace .step.warning::before { background:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.18); }
-.trace .t { font-size:.66rem; color:#9ca3af; font-family:ui-monospace,monospace; }
+.trace .t { font-size:.66rem; color:var(--mute); font-family:ui-monospace,monospace; }
 .trace .x { font-size:.8rem; color:#374151; margin-top:.1rem; }
 .trace .step.warning .x { color:#92400e; font-weight:600; }
-.trace .d { font-size:.7rem; color:#9ca3af; margin-top:.15rem; }
+.trace .d { font-size:.7rem; color:var(--mute); margin-top:.15rem; }
 .tool { border:1px solid #e5e7eb; border-radius:8px; padding:.55rem .65rem; margin-bottom:.5rem; }
 .tool.bad { border-color:#fca5a5; background:#fef2f2; }
 .tool.held { border-color:#fcd34d; background:#fffbeb; }
 .tool .tn { display:flex; justify-content:space-between; gap:.5rem; align-items:baseline; }
 .tool .tn code { font-size:.76rem; color:#0f172a; font-weight:700; font-family:ui-monospace,monospace; }
-.tool .tn span { font-size:.68rem; color:#9ca3af; }
+.tool .tn span { font-size:.68rem; color:var(--mute); }
 .tool .io { font-size:.7rem; color:#6b7280; margin-top:.25rem; word-break:break-word; }
 .art { border:1px solid #e5e7eb; border-radius:8px; padding:.65rem; margin-bottom:.55rem; }
 .art.held { border-color:#fcd34d; background:#fffbeb; }
 .art .ah { display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-bottom:.35rem; }
 .art .at { font-size:.85rem; font-weight:700; color:#0f172a; }
-.art .meta { font-size:.7rem; color:#9ca3af; }
+.art .meta { font-size:.7rem; color:var(--mute); }
 .art pre { background:#f8fafc; border:1px solid #e5e7eb; border-radius:6px; padding:.5rem; font-size:.7rem; max-height:320px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin-top:.4rem; }
 
 /* buttons */
@@ -119,7 +119,7 @@
 .btn-sec { background:#fff; color:#374151; border-color:#d1d5db; } .btn-sec:hover { background:#f3f4f6; }
 .btn-danger { background:#fff; color:#b91c1c; border-color:#fca5a5; } .btn-danger:hover { background:#fef2f2; }
 .btn-xs { padding:.22rem .5rem; font-size:.7rem; }
-.empty { text-align:center; color:#9ca3af; padding:2rem 1rem; font-size:.85rem; }
+.empty { text-align:center; color:var(--mute); padding:2rem 1rem; font-size:.85rem; }
 .warn-box { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:8px; padding:.7rem .9rem; font-size:.78rem; line-height:1.6; margin-bottom:1rem; }
 .err-box { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:8px; padding:.7rem .9rem; font-size:.78rem; margin-bottom:1rem; }
 .form-err { color:#b91c1c; font-size:.78rem; min-height:1rem; margin-top:.4rem; }
@@ -135,7 +135,7 @@
 .ob-drawer .d-sub { font-size:.8rem; color:#6b7280; margin-bottom:1.2rem; line-height:1.6; }
 .field { margin-bottom:.9rem; }
 .field label { display:block; font-size:.72rem; font-weight:700; color:#374151; margin-bottom:.3rem; }
-.field .sub { font-weight:400; color:#9ca3af; }
+.field .sub { font-weight:400; color:var(--mute); }
 .field input, .field select, .field textarea { width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:6px; padding:.45rem .6rem; font-size:.84rem; color:#111827; font-family:inherit; }
 .field textarea { font-family:ui-monospace,monospace; font-size:.78rem; min-height:60px; }
 .field-row { display:flex; gap:.7rem; } .field-row > * { flex:1; }
@@ -651,7 +651,7 @@
       '<pre style="margin:0; background:#f8fafc; border:1px solid #e5e7eb; border-radius:6px; ' +
       'padding:.6rem; font-size:.72rem; overflow:auto; max-height:260px;">' +
       esc(JSON.stringify(run.params || {}, null, 2)) + '</pre>' +
-      '<p style="margin-top:.5rem; font-size:.7rem; color:#9ca3af;">' +
+      '<p style="margin-top:.5rem; font-size:.7rem; color:var(--mute);">' +
       'Masked at capture — the shared header never holds raw PII.</p></div>';
 
     return head + '<div class="ob-panes">' +

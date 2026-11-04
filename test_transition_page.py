@@ -83,7 +83,7 @@ def main():
         check('mockup banner and fake-submit JS dropped', 'Concept mockup' not in html and 'mockup only' not in html)
         check('brand, contact address and legal links kept', 'simi@simulacrumai.io' in html
               and '/legal/privacy' in html and '/legal/terms' in html)
-        check('uses the site\'s base layout and the shared stylesheet', 'class="navbar"' in html
+        check('uses the site\'s base layout and the shared stylesheet', 'class="ss-nav' in html
               and 'css/marketing.css' in html and 'class="pf"' in html)
 
         print('\n2. Launch mode flag')
@@ -139,14 +139,15 @@ def main():
 
         print('\n4. Homepage Enterprise card')
         home = client.get('/').get_data(as_text=True)
-        card = home[home.index('price-card fade-up d3'):]
-        card = card[:card.index('</div>\n    </div>') if '</div>\n    </div>' in card else 4000]
-        check('the Enterprise card links to /transition-package', 'See the Transition Package →' in card
+        pricing = home.split('id="pricing"')[1].split('</section>')[0]
+        tiers = pricing.split('<div class="tier')[1:]
+        card = tiers[-1] if len(tiers) == 3 else ''
+        check('the Enterprise card links to /transition-package', 'See the Transition Package' in card
               and '/transition-package' in card)
         check('…and keeps its price text, features and Contact sales', all(s in card for s in (
-            'Custom', 'per seat · annual contract', 'Bulk seat licensing', 'Priority API access', 'Contact sales →')))
-        check('the other price cards don\'t get the link', home.count('See the Transition Package') == 1
-              and home.count('class="price-card') == 3)
+            'Custom', 'per seat', 'Annual contract', 'Bulk seat licensing', 'Priority API access', 'Contact sales')))
+        check('the other price cards don\'t get the link', len(tiers) == 3
+              and all('See the Transition Package' not in t for t in tiers[:2]))
 
         print('\n5. Sitemap and admin')
         check('the page is in the sitemap', 'https://simisi.io/transition-package' in client.get('/sitemap.xml').get_data(as_text=True))

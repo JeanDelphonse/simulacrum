@@ -2,12 +2,12 @@
 {% block title %}Your goals and conversations{% endblock %}
 {% block head %}
 <style>
-.gh { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.gh { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'Archivo', sans-serif; color: #0D1B3E; }
 .gh h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
 .gh h2 { font-size: 1.05rem; margin: 1.5rem 0 .6rem; }
-.gh-sub { color: #6B7B8D; font-size: .9rem; margin: 0 0 1rem; }
+.gh-sub { color: var(--mute); font-size: .9rem; margin: 0 0 1rem; }
 .gh-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: .85rem 1rem; margin-bottom: .6rem; background: #fff; }
-.gh-k { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: #6B7B8D; }
+.gh-k { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); }
 .gh-btn { padding: .35rem .75rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .8rem; cursor: pointer; }
 .gh-btn.danger { color: #b91c1c; border-color: #fca5a5; }
 .gh-turn { font-size: .86rem; margin: .35rem 0; }
@@ -33,7 +33,7 @@
 
   <h2>Skills you confirmed</h2>
   {% for s in state.skills %}
-  <div class="gh-card gh-row"><div><b>{{ s.skill }}</b><div style="font-size:.8rem;color:#6B7B8D">Evidence: {{ s.evidence or '—' }}</div></div>
+  <div class="gh-card gh-row"><div><b>{{ s.skill }}</b><div style="font-size:.8rem;color:var(--mute)">Evidence: {{ s.evidence or '—' }}</div></div>
     <button class="gh-btn danger" data-skill="{{ s.id }}">Remove</button></div>
   {% else %}<p class="gh-sub">None yet.</p>{% endfor %}
 

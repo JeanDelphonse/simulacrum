@@ -5,7 +5,7 @@
 <style>
 /* ── Contact Detail ───────────────────────────────────────── */
 .cd-page { max-width: 960px; margin: 0 auto; padding: 24px 20px 60px; }
-.cd-breadcrumb { font-size: 12px; color: #9ca3af; margin-bottom: 16px; }
+.cd-breadcrumb { font-size: 12px; color: var(--mute); margin-bottom: 16px; }
 .cd-breadcrumb a { color: #0D1B3E; text-decoration: none; }
 .cd-breadcrumb a:hover { text-decoration: underline; }
 
@@ -42,7 +42,7 @@
 .cd-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
 @media (max-width: 600px) { .cd-fields { grid-template-columns: 1fr; } }
 .cd-field { }
-.cd-field-label { font-size: 11px; font-weight: 500; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.cd-field-label { font-size: 11px; font-weight: 500; color: var(--mute); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
 .cd-field-val { font-size: 13px; color: #374151; }
 .cd-field-val.editable { cursor: text; padding: 5px 7px; border: 1px solid transparent; border-radius: 4px; transition: border .15s; }
 .cd-field-val.editable:hover { border-color: #d1d5db; background: #f9fafb; }
@@ -63,8 +63,8 @@
 .cd-score-circle { width: 48px; height: 48px; border-radius: 50%; border: 3px solid #d1d5db; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
 .cd-score-circle.high { border-color: #10b981; color: #059669; }
 .cd-score-circle.mid { border-color: #f59e0b; color: #d97706; }
-.cd-score-circle.low { border-color: #d1d5db; color: #9ca3af; }
-.cd-score-label { font-size: 11px; color: #9ca3af; }
+.cd-score-circle.low { border-color: #d1d5db; color: var(--mute); }
+.cd-score-label { font-size: 11px; color: var(--mute); }
 
 /* Activity timeline */
 .activity-list { list-style: none; margin: 0; padding: 0; }
@@ -77,7 +77,7 @@
 .activity-dot.note_added { background: #f59e0b; }
 .activity-body { flex: 1; min-width: 0; }
 .activity-type { font-size: 12px; font-weight: 500; color: #374151; }
-.activity-meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.activity-meta { font-size: 11px; color: var(--mute); margin-top: 2px; }
 .activity-notes { font-size: 12px; color: #6b7280; margin-top: 3px; font-style: italic; }
 
 /* Note input */
@@ -120,7 +120,7 @@
         <span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500">Do Not Contact</span>
         {% endif %}
         {% if contact.is_archived %}
-        <span style="background:#f9fafb;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px">Archived</span>
+        <span style="background:#f9fafb;color:var(--mute);padding:2px 8px;border-radius:10px;font-size:11px">Archived</span>
         {% endif %}
       </div>
     </div>
@@ -287,7 +287,7 @@
   <div class="cd-card">
     <div class="cd-card-header">
       Activity Timeline
-      <span style="font-size:11px;color:#9ca3af">{{ activities | length }} events</span>
+      <span style="font-size:11px;color:var(--mute)">{{ activities | length }} events</span>
     </div>
     <div class="cd-card-body">
       <div class="note-input-row">
@@ -301,7 +301,7 @@
           <div class="activity-body">
             <div class="activity-type">{{ a.activity_type | replace('_',' ') | title }}
               {% if a.pipeline_stage_from and a.pipeline_stage_to %}
-              <span style="color:#9ca3af">{{ a.pipeline_stage_from }} → {{ a.pipeline_stage_to }}</span>
+              <span style="color:var(--mute)">{{ a.pipeline_stage_from }} → {{ a.pipeline_stage_to }}</span>
               {% endif %}
             </div>
             <div class="activity-meta">
@@ -312,7 +312,7 @@
           </div>
         </li>
         {% else %}
-        <li style="padding:20px 0;text-align:center;color:#9ca3af;font-size:13px">No activity recorded yet</li>
+        <li style="padding:20px 0;text-align:center;color:var(--mute);font-size:13px">No activity recorded yet</li>
         {% endfor %}
       </ul>
     </div>
@@ -413,7 +413,7 @@ window.loadContactSources = function () {
         d.fields.forEach(f => {
           var tag = f.source === 'inferred' ? '<span style="background:#fef3c7;color:#92400e;border-radius:4px;padding:0 4px">Inferred</span>' : esc(SRC[f.source] || f.source);
           html += '<tr><td style="padding:3px 6px 3px 0;color:#6b7280;vertical-align:top">' + esc(f.label) + '</td>' +
-                  '<td style="padding:3px 0">' + esc(f.value || '—') + '<div style="color:#9ca3af">' + tag +
+                  '<td style="padding:3px 0">' + esc(f.value || '—') + '<div style="color:var(--mute)">' + tag +
                   (f.locked ? ' · locked' : ' · ' + Math.round(f.confidence * 100) + '% sure') + '</div></td></tr>';
         });
         html += '</table>';

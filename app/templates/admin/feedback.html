@@ -5,45 +5,45 @@
 <style>
 .fb-page { max-width: 1000px; margin: 2rem auto; padding: 0 1rem 4rem; }
 .fb-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.fb-stat { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: .6rem 1rem; font-size: .8rem; color: rgba(255,255,255,.5); }
-.fb-stat strong { display: block; font-size: 1.1rem; color: #e8eaf0; }
+.fb-stat { background: #F9FAFB; border: 1px solid rgba(13,27,62,.12); border-radius: 8px; padding: .6rem 1rem; font-size: .8rem; color: var(--mute); }
+.fb-stat strong { display: block; font-size: 1.1rem; color: var(--ink); }
 .fb-toolbar { display: flex; gap: .75rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; }
 .fb-tabs { display: flex; gap: .25rem; }
-.fb-tab { padding: .4rem .85rem; border-radius: 6px; font-size: .82rem; font-weight: 600; cursor: pointer; border: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.5); background: none; }
-.fb-tab.active { background: rgba(245,200,66,.12); color: #f5c842; border-color: rgba(245,200,66,.3); }
-.fb-tab .badge { font-size: .68rem; background: rgba(255,255,255,.12); border-radius: 20px; padding: .05rem .4rem; margin-left: .3rem; }
+.fb-tab { padding: .4rem .85rem; border-radius: 6px; font-size: .82rem; font-weight: 600; cursor: pointer; border: 1px solid rgba(13,27,62,.12); color: var(--mute); background: none; }
+.fb-tab.active { background: rgba(245,200,66,.12); color: #7A5410; border-color: rgba(245,200,66,.3); }
+.fb-tab .badge { font-size: .68rem; background: var(--alt); border-radius: 20px; padding: .05rem .4rem; margin-left: .3rem; }
 .fb-search { flex: 1; min-width: 180px; }
-.fb-search input { width: 100%; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: .45rem .75rem; color: #e8eaf0; font-size: .85rem; }
+.fb-search input { width: 100%; background: #F9FAFB; border: 1px solid rgba(13,27,62,.12); border-radius: 6px; padding: .45rem .75rem; color: var(--ink); font-size: .85rem; }
 .fb-bulk { display: flex; gap: .5rem; }
 .fb-list { display: flex; flex-direction: column; gap: .85rem; }
-.fb-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 1rem 1.25rem; }
+.fb-card { background: #F9FAFB; border: 1px solid rgba(13,27,62,.12); border-radius: 10px; padding: 1rem 1.25rem; }
 .fb-card-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: .75rem; }
 .fb-check { margin-top: .15rem; }
-.fb-stars { color: #f5c842; font-size: 1rem; letter-spacing: .1em; }
-.fb-meta { font-size: .75rem; color: rgba(255,255,255,.4); margin-top: .15rem; }
-.fb-quote { font-size: .95rem; color: #e8eaf0; font-style: italic; margin-bottom: .5rem; line-height: 1.6; }
+.fb-stars { color: #7A5410; font-size: 1rem; letter-spacing: .1em; }
+.fb-meta { font-size: .75rem; color: var(--mute); margin-top: .15rem; }
+.fb-quote { font-size: .95rem; color: var(--ink); font-style: italic; margin-bottom: .5rem; line-height: 1.6; }
 .fb-quote::before { content: '\201C'; }
 .fb-quote::after  { content: '\201D'; }
-.fb-outcome { font-size: .82rem; color: rgba(255,255,255,.6); margin-bottom: .6rem; border-left: 2px solid rgba(255,255,255,.1); padding-left: .6rem; }
+.fb-outcome { font-size: .82rem; color: var(--ink-2); margin-bottom: .6rem; border-left: 2px solid rgba(13,27,62,.12); padding-left: .6rem; }
 .fb-layers { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .6rem; }
 .layer-chip { font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 20px; }
-.lc-1,.lc-2 { background: rgba(13,148,136,.2); color: #5eead4; }
-.lc-3,.lc-4 { background: rgba(245,200,66,.15); color: #f5c842; }
-.lc-5       { background: rgba(26,74,107,.5); color: #93c5fd; }
-.lc-6       { background: rgba(124,58,237,.2); color: #c4b5fd; }
-.lc-0       { background: rgba(255,255,255,.08); color: rgba(255,255,255,.5); }
+.lc-1,.lc-2 { background: rgba(13,148,136,.2); color: var(--teal-ink); }
+.lc-3,.lc-4 { background: rgba(245,200,66,.15); color: #7A5410; }
+.lc-5       { background: rgba(26,74,107,.5); color: #1D4ED8; }
+.lc-6       { background: rgba(124,58,237,.2); color: #6D28D9; }
+.lc-0       { background: var(--alt); color: var(--mute); }
 .fb-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
-.fb-nameinfo { font-size: .78rem; color: rgba(255,255,255,.45); }
-.fb-zone { font-size: .78rem; color: rgba(255,255,255,.4); margin-bottom: .4rem; }
-.fb-admin-note { font-size: .78rem; color: #fca5a5; background: rgba(239,68,68,.08); border-radius: 6px; padding: .3rem .6rem; margin-top: .4rem; }
-.approved-meta { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; font-size: .75rem; color: rgba(255,255,255,.4); }
-.featured-chip { font-size: .68rem; background: rgba(245,200,66,.2); color: #f5c842; border-radius: 20px; padding: .1rem .5rem; font-weight: 700; }
-.order-input { width: 56px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: .25rem .4rem; color: #e8eaf0; font-size: .8rem; }
-.withdrawal-flag { font-size: .72rem; background: rgba(239,68,68,.1); color: #fca5a5; border-radius: 6px; padding: .2rem .5rem; }
-.empty-fb { text-align: center; color: rgba(255,255,255,.35); font-size: .9rem; padding: 2rem; }
+.fb-nameinfo { font-size: .78rem; color: var(--mute); }
+.fb-zone { font-size: .78rem; color: var(--mute); margin-bottom: .4rem; }
+.fb-admin-note { font-size: .78rem; color: #B91C1C; background: rgba(239,68,68,.08); border-radius: 6px; padding: .3rem .6rem; margin-top: .4rem; }
+.approved-meta { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; font-size: .75rem; color: var(--mute); }
+.featured-chip { font-size: .68rem; background: rgba(245,200,66,.2); color: #7A5410; border-radius: 20px; padding: .1rem .5rem; font-weight: 700; }
+.order-input { width: 56px; background: #F9FAFB; border: 1px solid rgba(13,27,62,.12); border-radius: 4px; padding: .25rem .4rem; color: var(--ink); font-size: .8rem; }
+.withdrawal-flag { font-size: .72rem; background: rgba(239,68,68,.1); color: #B91C1C; border-radius: 6px; padding: .2rem .5rem; }
+.empty-fb { text-align: center; color: var(--mute); font-size: .9rem; padding: 2rem; }
 #rejectModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9000; align-items: center; justify-content: center; }
 #rejectModal.open { display: flex; }
-.reject-card { background: #1a2235; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 420px; }
+.reject-card { background: #FFFFFF; border: 1px solid rgba(13,27,62,.12); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 420px; }
 .reject-card h3 { margin: 0 0 1rem; font-size: 1rem; }
 </style>
 {% endblock %}
@@ -81,7 +81,7 @@
     </div>
     <div class="fb-bulk" id="bulkActions" style="display:none">
       <button class="btn btn-ghost btn-sm" onclick="bulkApprove()">Bulk Approve</button>
-      <button class="btn btn-ghost btn-sm" style="color:#fca5a5" onclick="bulkReject()">Bulk Reject</button>
+      <button class="btn btn-ghost btn-sm" style="color:#B91C1C" onclick="bulkReject()">Bulk Reject</button>
     </div>
   </div>
 
@@ -167,12 +167,12 @@ function cardHtml(f) {
   if (_currentTab === 'pending') {
     actions = `
       <button class="btn btn-primary btn-sm" onclick="approve('${f.id}')">Approve</button>
-      <button class="btn btn-sm" style="background:rgba(245,200,66,.2);color:#f5c842" onclick="featureIt('${f.id}')">Feature</button>
-      <button class="btn btn-sm" style="color:#fca5a5;border-color:rgba(239,68,68,.3)" onclick="openReject('${f.id}')">Reject</button>`;
+      <button class="btn btn-sm" style="background:rgba(245,200,66,.2);color:#7A5410" onclick="featureIt('${f.id}')">Feature</button>
+      <button class="btn btn-sm" style="color:#B91C1C;border-color:rgba(239,68,68,.3)" onclick="openReject('${f.id}')">Reject</button>`;
   } else if (_currentTab === 'approved') {
     const featBtn = f.is_featured
       ? `<button class="btn btn-ghost btn-sm" onclick="featureIt('${f.id}')">Unfeature</button>`
-      : `<button class="btn btn-sm" style="background:rgba(245,200,66,.15);color:#f5c842" onclick="featureIt('${f.id}')">Feature</button>`;
+      : `<button class="btn btn-sm" style="background:rgba(245,200,66,.15);color:#7A5410" onclick="featureIt('${f.id}')">Feature</button>`;
     actions = `
       ${featBtn}
       <button class="btn btn-ghost btn-sm" onclick="unpublish('${f.id}')">Unpublish</button>

@@ -3,39 +3,39 @@
 
 {% block head %}
 <style>
-.advisor-banner { background: rgba(245,200,66,.08); border-bottom: 1px solid rgba(245,200,66,.15); padding: .6rem 1.5rem; display: flex; align-items: center; gap: 1rem; font-size: .82rem; color: rgba(255,255,255,.6); }
-.advisor-banner strong { color: #f5c842; }
-.advisor-banner a { color: rgba(255,255,255,.5); text-decoration: none; margin-left: auto; font-size: .78rem; }
-.advisor-banner a:hover { color: #e8eaf0; }
+.advisor-banner { background: rgba(245,200,66,.08); border-bottom: 1px solid rgba(245,200,66,.15); padding: .6rem 1.5rem; display: flex; align-items: center; gap: 1rem; font-size: .82rem; color: var(--ink-2); }
+.advisor-banner strong { color: #7A5410; }
+.advisor-banner a { color: var(--mute); text-decoration: none; margin-left: auto; font-size: .78rem; }
+.advisor-banner a:hover { color: var(--ink); }
 .integ-page { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; }
 .integ-page-header { margin-bottom: 1.75rem; }
-.integ-page-header h1 { font-size: 1.25rem; font-weight: 700; color: #e8eaf0; margin: 0 0 .3rem; }
-.integ-page-header p { font-size: .875rem; color: rgba(255,255,255,.45); margin: 0; }
-.integ-coverage { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1.75rem; display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+.integ-page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0 0 .3rem; }
+.integ-page-header p { font-size: .875rem; color: var(--mute); margin: 0; }
+.integ-coverage { background: #F9FAFB; border: 1px solid rgba(13,27,62,.12); border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1.75rem; display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
 .integ-coverage-stat { text-align: center; }
-.integ-coverage-stat .num { font-size: 1.75rem; font-weight: 800; color: #f5c842; line-height: 1; }
-.integ-coverage-stat .lbl { font-size: .72rem; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .05em; margin-top: .15rem; }
-.integ-blocked-note { flex: 1; font-size: .82rem; color: rgba(255,255,255,.5); line-height: 1.6; }
-.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.35); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(255,255,255,.07); }
+.integ-coverage-stat .num { font-size: 1.75rem; font-weight: 800; color: #7A5410; line-height: 1; }
+.integ-coverage-stat .lbl { font-size: .72rem; color: var(--mute); text-transform: uppercase; letter-spacing: .05em; margin-top: .15rem; }
+.integ-blocked-note { flex: 1; font-size: .82rem; color: var(--mute); line-height: 1.6; }
+.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--mute); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(13,27,62,.12); }
 .integ-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: .75rem; }
-.integ-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 1.25rem; min-height: 160px; display: flex; flex-direction: column; gap: .5rem; }
+.integ-card { background: #F9FAFB; border: 1px solid rgba(13,27,62,.12); border-radius: 12px; padding: 1.25rem; min-height: 160px; display: flex; flex-direction: column; gap: .5rem; }
 .integ-card-top { display: flex; align-items: flex-start; gap: .75rem; }
 .integ-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 800; flex-shrink: 0; }
 .integ-card-info { flex: 1; }
-.integ-card-name { font-weight: 700; font-size: .95rem; color: #e8eaf0; line-height: 1.2; }
-.integ-card-desc { font-size: .78rem; color: rgba(255,255,255,.4); margin-top: .1rem; }
+.integ-card-name { font-weight: 700; font-size: .95rem; color: var(--ink); line-height: 1.2; }
+.integ-card-desc { font-size: .78rem; color: var(--mute); margin-top: .1rem; }
 .integ-badge { font-size: .68rem; font-weight: 700; padding: .18rem .6rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
-.integ-badge.connected { background: rgba(134,239,172,.15); color: #86efac; }
-.integ-badge.not_connected { background: rgba(255,255,255,.07); color: rgba(255,255,255,.4); }
-.integ-badge.expired { background: rgba(245,200,66,.15); color: #f5c842; }
-.integ-badge.linked { background: rgba(134,239,172,.15); color: #86efac; }
-.integ-badge.legal { background: rgba(245,200,66,.08); color: #f5c842; }
+.integ-badge.connected { background: rgba(134,239,172,.15); color: #15803D; }
+.integ-badge.not_connected { background: var(--alt); color: var(--mute); }
+.integ-badge.expired { background: rgba(245,200,66,.15); color: #7A5410; }
+.integ-badge.linked { background: rgba(134,239,172,.15); color: #15803D; }
+.integ-badge.legal { background: rgba(245,200,66,.08); color: #7A5410; }
 .integ-health-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: .3rem; flex-shrink: 0; }
 .integ-health-dot.healthy { background: #86efac; }
 .integ-health-dot.intermittent { background: #f5c842; }
 .integ-health-dot.failing { background: #fca5a5; }
-.integ-details { font-size: .78rem; color: rgba(255,255,255,.4); margin-top: .1rem; line-height: 1.5; }
-.integ-agents { font-size: .72rem; color: rgba(255,255,255,.3); margin-top: auto; padding-top: .5rem; }
+.integ-details { font-size: .78rem; color: var(--mute); margin-top: .1rem; line-height: 1.5; }
+.integ-agents { font-size: .72rem; color: var(--mute); margin-top: auto; padding-top: .5rem; }
 .integ-reauth-btn { margin-top: auto; padding-top: .5rem; }
 .masked-email { font-style: italic; }
 @media (max-width: 640px) { .integ-grid { grid-template-columns: 1fr; } }
@@ -65,7 +65,7 @@
       {% if blocked == 0 %}
         All integrations are connected. Agent execution is fully enabled.
       {% else %}
-        <strong style="color:#e8eaf0">{{ blocked }} integration{{ 's' if blocked != 1 else '' }} not connected.</strong>
+        <strong style="color:var(--ink)">{{ blocked }} integration{{ 's' if blocked != 1 else '' }} not connected.</strong>
         Agents that rely on disconnected platforms will be escalated rather than executed automatically.
         Coach your client to connect these from their Settings &#x2192; Integrations page.
       {% endif %}
@@ -178,13 +178,13 @@
       </div>
       {% endif %}
 
-      <div class="integ-agents" style="font-size:.72rem;color:rgba(255,255,255,.3)">
+      <div class="integ-agents" style="font-size:.72rem;color:var(--mute)">
         Used by: {{ agent_map[provider] }}
       </div>
 
       {% if status == 'expired' %}
       <div class="integ-reauth-btn">
-        <button class="btn btn-ghost btn-sm" style="width:100%;font-size:.78rem;color:#f5c842;border-color:rgba(245,200,66,.3)"
+        <button class="btn btn-ghost btn-sm" style="width:100%;font-size:.78rem;color:#7A5410;border-color:rgba(245,200,66,.3)"
                 onclick="sendReauthLink('{{ client.id }}', '{{ provider }}', this)">
           Send re-authentication link
         </button>

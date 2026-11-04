@@ -19,6 +19,8 @@
   <meta property="og:image" content="{{ url_for('public.serve_avatar', filename=teaser.avatar_path, _external=True) }}">
   {% endif %}
   <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/u/{{ slug }}">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
   <style>
     :root{
       --accent:#0f7b72; --navy:#0D1B3E; --muted:#6B7B8D;
@@ -28,7 +30,7 @@
     /* A column, so the shared footer sits below the card rather than beside it.
        The card's auto top margin and the footer's own margin-top:auto split the
        free space, keeping the card centred in the area above the footer. */
-    body{margin:0;font-family:'DM Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+    body{margin:0;font-family:'Archivo',system-ui,-apple-system,Segoe UI,sans-serif;
       background:var(--bg);color:var(--navy);min-height:100vh;
       display:flex;flex-direction:column;align-items:center;padding:2rem 0 0;}
     .card{background:var(--card);max-width:480px;width:calc(100% - 2rem);border-radius:16px;

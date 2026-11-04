@@ -7,8 +7,9 @@
   <title>{% block full_title %}{% block title %}SimiSI{% endblock %} — AI Career Wealth Platform{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
   {% if advisor_mode is defined and advisor_mode %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/advisor_mode.css') }}">
   {% endif %}
@@ -16,46 +17,70 @@
 </head>
 <body class="{{ 'advisor-mode' if (advisor_mode is defined and advisor_mode) else '' }} {% block body_class %}{% endblock %}" aria-label="{{ ('You are viewing a client simulation in advisor mode. Client: ' + (client_profile.display_name if client_profile and client_profile.display_name else 'Client')) if (advisor_mode is defined and advisor_mode) else '' }}">
 
-<nav class="navbar">
-  <div class="nav-inner">
-    <a href="{{ url_for('pages.index') }}" class="nav-logo">
-      <span class="logo-mark">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="white"/>
-        </svg>
-      </span><span class="logo-text">SimiSI</span>
-    </a>
+{% import "partials/_logo.html" as logo_ui %}
+{% block announce %}{% endblock %}
+<nav class="ss-nav is-top" id="ssNav" aria-label="Main">
+  <div class="wrap">
+    {{ logo_ui.logo(url_for('pages.index')) }}
     {% if current_user.is_authenticated %}
-    <div class="nav-links">
-      <a href="{{ url_for('pages.dashboard') }}" class="nav-link">Dashboard</a>
-      {% if blog_nav_visible %}
-      <a href="{{ url_for('pages.blog_index') }}" class="nav-link">Journal</a>
-      {% endif %}
-      <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
-      {% if current_user.is_partner %}
-      <a href="{{ url_for('pages.partner_dashboard') }}" class="nav-link">Partner Dashboard</a>
-      {% endif %}
-      {% if current_user.is_admin %}
-      <a href="{{ url_for('pages.admin_view') }}" class="nav-link">Admin</a>
-      {% endif %}
-      {% if current_user_is_sme %}
-      <a href="{{ url_for('pages.sme_console') }}" class="nav-link">SME Console</a>
-      {% endif %}
-      <a href="{{ url_for('pages.settings_profile') }}" class="nav-link">Settings</a>
-      <span class="nav-user">{{ current_user.full_name }}</span>
-      <button class="btn btn-ghost" id="signOutBtn">Sign out</button>
+    <ul class="ss-nav-links">
+      <li><a href="{{ url_for('pages.dashboard') }}">Dashboard</a></li>
+      {% if blog_nav_visible %}<li><a href="{{ url_for('pages.blog_index') }}">Journal</a></li>{% endif %}
+      {% if current_user.is_partner %}<li><a href="{{ url_for('pages.partner_dashboard') }}">Partner dashboard</a></li>{% endif %}
+      {% if current_user_is_sme %}<li><a href="{{ url_for('pages.sme_console') }}">SME Console</a></li>{% endif %}
+      {% if current_user.is_admin %}<li><a href="{{ url_for('pages.admin_view') }}">Admin</a></li>{% endif %}
+      <li><a href="{{ url_for('pages.settings_profile') }}">Settings</a></li>
+      <li><button type="button" data-demo>Watch demo</button></li>
+    </ul>
+    <div class="ss-nav-right">
+      <span class="ss-nav-user">{{ current_user.full_name }}</span>
+      <button class="btn sm ss-hide-md" id="signOutBtn" type="button">Sign out</button>
+      <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
     </div>
     {% else %}
-    <div class="nav-links">
-      {% if blog_nav_visible %}
-      <a href="{{ url_for('pages.blog_index') }}" class="nav-link">Journal</a>
-      {% endif %}
-      <button class="nav-link btn-video-demo" id="videoDemoBtn" type="button">Watch Demo</button>
-      <a href="{{ url_for('pages.login_page') }}" class="nav-link">Sign in</a>
+    <ul class="ss-nav-links">
+      <li><a href="{{ url_for('pages.index') }}#model">The model</a></li>
+      <li><a href="{{ url_for('pages.index') }}#how">How it works</a></li>
+      <li><a href="{{ url_for('pages.index') }}#bio">Bio page</a></li>
+      <li><a href="{{ url_for('pages.index') }}#playbook">Playbook</a></li>
+      <li><a href="{{ url_for('pages.index') }}#pricing">Pricing</a></li>
+      <li><a href="{{ url_for('marketing.transition_package') }}">For employers</a></li>
+      {% if blog_nav_visible %}<li><a href="{{ url_for('pages.blog_index') }}">Journal</a></li>{% endif %}
+    </ul>
+    <div class="ss-nav-right">
+      <a class="ss-nav-login" href="{{ url_for('pages.login_page') }}">Log in</a>
+      <a class="btn primary sm" href="{{ url_for('pages.register_page') }}">Get started free</a>
+      <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
     </div>
     {% endif %}
   </div>
 </nav>
+<div class="ss-drawer" id="ssDrawer">
+  {% if current_user.is_authenticated %}
+  <a href="{{ url_for('pages.dashboard') }}">Dashboard</a>
+  {% if blog_nav_visible %}<a href="{{ url_for('pages.blog_index') }}">Journal</a>{% endif %}
+  {% if current_user.is_partner %}<a href="{{ url_for('pages.partner_dashboard') }}">Partner dashboard</a>{% endif %}
+  {% if current_user_is_sme %}<a href="{{ url_for('pages.sme_console') }}">SME Console</a>{% endif %}
+  {% if current_user.is_admin %}<a href="{{ url_for('pages.admin_view') }}">Admin</a>{% endif %}
+  <a href="{{ url_for('pages.settings_profile') }}">Settings</a>
+  <button type="button" data-demo>Watch demo</button>
+  <button type="button" data-signout>Sign out</button>
+  <div class="ss-drawer-note">Signed in as {{ current_user.full_name or current_user.email }}</div>
+  {% else %}
+  <a href="{{ url_for('pages.index') }}#model">The model</a>
+  <a href="{{ url_for('pages.index') }}#how">How it works</a>
+  <a href="{{ url_for('pages.index') }}#bio">Bio page</a>
+  <a href="{{ url_for('pages.index') }}#people">People on SimiSI</a>
+  <a href="{{ url_for('pages.index') }}#playbook">Playbook</a>
+  <a href="{{ url_for('pages.index') }}#pricing">Pricing</a>
+  <a href="{{ url_for('marketing.transition_package') }}">For employers</a>
+  {% if blog_nav_visible %}<a href="{{ url_for('pages.blog_index') }}">Journal</a>{% endif %}
+  <a href="{{ url_for('pages.index') }}#faq">Questions</a>
+  <button type="button" data-demo>Watch demo</button>
+  <a href="{{ url_for('pages.login_page') }}">Log in</a>
+  <a href="{{ url_for('pages.register_page') }}">Get started free</a>
+  {% endif %}
+</div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
@@ -94,17 +119,32 @@ window.DEMO_VIDEO_URL = '{% if current_user.is_authenticated %}{{ url_for("stati
 </script>
 {% block scripts %}{% endblock %}
 <script>
-const signOutBtn = document.getElementById('signOutBtn');
-if (signOutBtn) {
-  signOutBtn.addEventListener('click', () => {
+document.querySelectorAll('#signOutBtn, [data-signout]').forEach(function (b) {
+  b.addEventListener('click', function () {
     fetch(ROOT + '/api/auth/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}})
-      .finally(() => { window.location.href = '{{ url_for("pages.index") }}'; });
+      .finally(function () { window.location.href = '{{ url_for("pages.index") }}'; });
   });
-}
+});
 
 (function () {
-  const btn = document.getElementById('videoDemoBtn');
-  if (!btn) return;
+  var nav = document.getElementById('ssNav');
+  if (nav) {
+    var onScroll = function () { nav.classList.toggle('is-top', window.scrollY <= 8); };
+    addEventListener('scroll', onScroll, {passive: true}); onScroll();
+  }
+  var mb = document.getElementById('ssMenuBtn'), dr = document.getElementById('ssDrawer');
+  if (!mb || !dr) return;
+  var set = function (open) {
+    dr.classList.toggle('open', open); mb.setAttribute('aria-expanded', open); mb.textContent = open ? 'Close' : 'Menu';
+  };
+  mb.addEventListener('click', function () { set(!dr.classList.contains('open')); });
+  dr.querySelectorAll('a, button').forEach(function (a) { a.addEventListener('click', function () { set(false); }); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
+})();
+
+(function () {
+  const btns = document.querySelectorAll('[data-demo], #videoDemoBtn');
+  if (!btns.length) return;
 
   const overlay = document.createElement('div');
   overlay.id = 'videoModalOverlay';
@@ -122,7 +162,7 @@ if (signOutBtn) {
         '<span style="font-weight:700;font-size:0.9rem;color:#1e293b">Revenue Engine — Demo</span>' +
         '<button id="videoModalClose" type="button" aria-label="Close" ' +
         'style="background:none;border:none;cursor:pointer;font-size:1.4rem;' +
-        'line-height:1;color:#94a3b8;padding:0.2rem 0.4rem;border-radius:4px">&times;</button>' +
+        'line-height:1;color:var(--mute);padding:0.2rem 0.4rem;border-radius:4px">&times;</button>' +
       '</div>' +
       '<video id="demoVideo" controls muted playsinline ' +
       'style="width:100%;display:block;max-height:72vh;background:#000">' +
@@ -147,7 +187,7 @@ if (signOutBtn) {
     video.pause();
   }
 
-  btn.addEventListener('click', openModal);
+  btns.forEach(function (b) { b.addEventListener('click', openModal); });
   closeBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', function (e) {
     if (e.target === overlay) closeModal();
@@ -158,21 +198,6 @@ if (signOutBtn) {
 })();
 </script>
 
-<style>
-.btn-video-demo {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: inherit;
-  font-family: inherit;
-  padding: 0;
-  color: inherit;
-  text-decoration: none;
-}
-.btn-video-demo:hover {
-  text-decoration: underline;
-}
-</style>
 {% if current_user.is_authenticated %}
 <!-- Feedback Modal (SIM-PRD-FBK-001) -->
 <div id="feedbackModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;align-items:center;justify-content:center;padding:1rem">
@@ -187,7 +212,7 @@ if (signOutBtn) {
         <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#374151;margin-bottom:.5rem">Your rating *</div>
         <div id="starRow" style="display:flex;gap:.3rem;font-size:1.75rem;cursor:pointer">
           {% for i in [1,2,3,4,5] %}
-          <span data-val="{{ i }}" onclick="setRating({{ i }})" onmouseenter="hoverRating({{ i }})" onmouseleave="resetStarHover()" style="color:#d1d5db;transition:color .1s">★</span>
+          <span data-val="{{ i }}" onclick="setRating({{ i }})" onmouseenter="hoverRating({{ i }})" onmouseleave="resetStarHover()" style="color:#D3D8E1;transition:color .1s">★</span>
           {% endfor %}
         </div>
         <div id="ratingLabel" style="font-size:.78rem;color:#6b7280;margin-top:.25rem;min-height:1em"></div>
@@ -214,7 +239,7 @@ if (signOutBtn) {
           style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font-size:.9rem;font-family:inherit;resize:vertical;box-sizing:border-box"
           placeholder="e.g. I landed my first consulting client within 3 weeks of running my Layer 1 cold email campaign…"
           oninput="document.getElementById('outcomeCount').textContent=this.value.length+'/300'"></textarea>
-        <div style="font-size:.72rem;color:#9ca3af;text-align:right" id="outcomeCount">0/300</div>
+        <div style="font-size:.72rem;color:var(--mute);text-align:right" id="outcomeCount">0/300</div>
       </div>
 
       <div style="margin-bottom:1rem">
@@ -225,7 +250,7 @@ if (signOutBtn) {
           style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font-size:.9rem;font-family:inherit;resize:vertical;box-sizing:border-box"
           placeholder="e.g. SimiSI showed me I was sitting on 15 years of expertise I had never thought to sell…"
           oninput="document.getElementById('quoteCount').textContent=this.value.length+'/200'"></textarea>
-        <div style="font-size:.72rem;color:#9ca3af;text-align:right" id="quoteCount">0/200</div>
+        <div style="font-size:.72rem;color:var(--mute);text-align:right" id="quoteCount">0/200</div>
       </div>
 
       <div style="margin-bottom:1.5rem">
@@ -279,8 +304,8 @@ window.openFeedbackModal = function(prefill) {
   document.getElementById('fbEditId').value = (prefill && prefill.id) || '';
   if (_fbRating) setRating(_fbRating);
   const starEls = document.querySelectorAll('#starRow span');
-  if (_fbRating) { starEls.forEach((s,i) => s.style.color = i < _fbRating ? '#f5c842' : '#d1d5db'); }
-  else { starEls.forEach(s => s.style.color = '#d1d5db'); }
+  if (_fbRating) { starEls.forEach((s,i) => s.style.color = i < _fbRating ? '#C9952A' : '#D3D8E1'); }
+  else { starEls.forEach(s => s.style.color = '#D3D8E1'); }
   document.getElementById('ratingLabel').textContent = _fbRating ? _ratingLabels[_fbRating] : '';
   const layerChecks = document.querySelectorAll('#layerCheckboxes input[type=checkbox]');
   const preLayers = (prefill && prefill.layers_attributed) || [];
@@ -302,14 +327,14 @@ document.addEventListener('keydown', function(e) {
 
 function setRating(n) {
   _fbRating = n;
-  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < n ? '#f5c842' : '#d1d5db');
+  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < n ? '#C9952A' : '#D3D8E1');
   document.getElementById('ratingLabel').textContent = _ratingLabels[n] || '';
 }
 function hoverRating(n) {
-  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < n ? '#f5c842' : '#d1d5db');
+  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < n ? '#C9952A' : '#D3D8E1');
 }
 function resetStarHover() {
-  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < _fbRating ? '#f5c842' : '#d1d5db');
+  document.querySelectorAll('#starRow span').forEach((s,i) => s.style.color = i < _fbRating ? '#C9952A' : '#D3D8E1');
 }
 
 async function submitFeedback() {

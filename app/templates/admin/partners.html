@@ -7,9 +7,9 @@
   <h1>Referral Partner Program</h1>
 
   <section class="admin-section">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:1rem;">
       <h2>All Partners</h2>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-ghost btn-sm" onclick="filterPartners('')">All</button>
         <button class="btn btn-ghost btn-sm" onclick="filterPartners('pending')">Pending</button>
         <button class="btn btn-ghost btn-sm" onclick="filterPartners('active')">Active</button>
@@ -38,18 +38,18 @@
         <tr data-status="{{ p.status }}" data-id="{{ p.id }}">
           <td>
             {{ p.full_name }}
-            {% if p.business_name %}<br><small style="color:rgba(255,255,255,0.5);">{{ p.business_name }}</small>{% endif %}
+            {% if p.business_name %}<br><small style="color:var(--mute);">{{ p.business_name }}</small>{% endif %}
             {% if p.simulations_at_apply is not none %}
-            <br><small style="color:rgba(255,255,255,0.4);">{{ p.simulations_at_apply }} sim{{ 's' if p.simulations_at_apply != 1 }} at apply</small>
+            <br><small style="color:var(--mute);">{{ p.simulations_at_apply }} sim{{ 's' if p.simulations_at_apply != 1 }} at apply</small>
             {% endif %}
           </td>
           <td>{{ p.email }}</td>
           <td>{{ p.partner_type }}</td>
           <td>
             {% if p.application_source == 'in_app' %}
-            <span class="status-badge" style="background:rgba(124,58,237,.2);color:#c4b5fd;">Existing Client</span>
+            <span class="status-badge" style="background:rgba(124,58,237,.2);color:#6D28D9;">Existing Client</span>
             {% else %}
-            <span style="font-size:.75rem;color:rgba(255,255,255,.4);">Public</span>
+            <span style="font-size:.75rem;color:var(--mute);">Public</span>
             {% endif %}
           </td>
           <td><span class="status-badge status-{{ p.status }}">{{ p.status }}</span></td>
@@ -75,13 +75,13 @@
               <button class="btn btn-ghost btn-sm" onclick="rejectWithReason('{{ p.id }}')">Decline</button>
             {% elif p.status == 'inactive' %}
               {% if p.last_declined_at %}
-              <small style="color:rgba(255,255,255,.4);">Declined {{ p.last_declined_at.strftime('%Y-%m-%d') }}</small>
+              <small style="color:var(--mute);">Declined {{ p.last_declined_at.strftime('%Y-%m-%d') }}</small>
               {% endif %}
             {% endif %}
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="11" style="text-align:center;color:rgba(255,255,255,0.4);">No partners yet.</td></tr>
+        <tr><td colspan="11" style="text-align:center;color:var(--mute);">No partners yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

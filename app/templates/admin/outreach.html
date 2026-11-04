@@ -157,7 +157,7 @@
       <div class="out-table-wrap">
         <table class="out-table">
           <thead><tr><th>Recipient</th><th>Email</th><th>Scheduled</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
-          <tbody id="queueBody"><tr><td colspan="5" style="color:#9ca3af;">Loading…</td></tr></tbody>
+          <tbody id="queueBody"><tr><td colspan="5" style="color:var(--mute);">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -179,7 +179,7 @@
       <div class="out-table-wrap">
         <table class="out-table">
           <thead><tr><th>User</th><th>Step</th><th>Next send</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
-          <tbody id="enrBody"><tr><td colspan="5" style="color:#9ca3af;">Loading…</td></tr></tbody>
+          <tbody id="enrBody"><tr><td colspan="5" style="color:var(--mute);">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -421,7 +421,7 @@ async function loadQueue(){
   const d = await jget(OUT+'/queue');
   const rows = d.queue||[];
   const tb = document.getElementById('queueBody');
-  if(!rows.length){ tb.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;">No queued emails.</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML = '<tr><td colspan="5" style="color:var(--mute);">No queued emails.</td></tr>'; return; }
   tb.innerHTML = rows.map(r=>{
     const edited = r.was_edited?' <span style="color:#d97706;font-size:.68rem;">(edited)</span>':'';
     let actions = `<button class="btn btn-sec btn-xs" onclick="openEditModal('${r.id}')">Edit</button> `;
@@ -431,7 +431,7 @@ async function loadQueue(){
     actions += `<button class="btn btn-sec btn-xs" onclick="sendAction('${r.id}','send-now')">Send now</button> `;
     actions += `<button class="btn btn-danger btn-xs" onclick="sendAction('${r.id}','skip')">Skip</button>`;
     return `<tr>
-      <td>${esc(r.recipient_name)}<br><span style="color:#9ca3af;font-size:.72rem;">${esc(r.to_email)}</span></td>
+      <td>${esc(r.recipient_name)}<br><span style="color:var(--mute);font-size:.72rem;">${esc(r.to_email)}</span></td>
       <td>Email ${r.step_number||'?'}${edited}</td>
       <td>${fmtDate(r.scheduled_at)}</td>
       <td><span class="pill pill-${r.status}">${r.status.replace('_',' ')}</span></td>
@@ -474,11 +474,11 @@ async function loadEnrollments(){
   const d = await jget(OUT+'/enrollments?status='+status);
   const rows = d.enrollments||[];
   const tb = document.getElementById('enrBody');
-  if(!rows.length){ tb.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;">No enrollments.</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML = '<tr><td colspan="5" style="color:var(--mute);">No enrollments.</td></tr>'; return; }
   tb.innerHTML = rows.map(r=>{
     const rm = (r.status==='active') ? `<button class="btn btn-danger btn-xs" onclick="removeEnrollment('${r.id}')">Remove</button>` : '';
     return `<tr>
-      <td>${esc(r.full_name||'—')}<br><span style="color:#9ca3af;font-size:.72rem;">${esc(r.email||'')}</span></td>
+      <td>${esc(r.full_name||'—')}<br><span style="color:var(--mute);font-size:.72rem;">${esc(r.email||'')}</span></td>
       <td>${r.current_step}/3</td>
       <td>${fmtDate(r.next_send_at)}</td>
       <td><span class="pill pill-${r.status==='active'?'queued':(r.status==='graduated'||r.status==='completed'?'sent':'skipped')}">${r.status}</span></td>

@@ -3,7 +3,7 @@
 
 {% block head %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Syne:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
 .uc{
   --navy:#080F1E;--navy-mid:#111D38;--navy-card:#131F3A;
@@ -17,8 +17,8 @@
   --l4:#B86A10;--l4d:rgba(184,106,16,.15);
   --l5:#1B6AB5;--l5d:rgba(27,106,181,.15);
   --teal:#13A89E;
-  --font-display:'Playfair Display',serif;
-  --font-ui:'Syne',sans-serif;
+  --font-display:'Archivo', sans-serif;
+  --font-ui:'Archivo',sans-serif;
   --font-mono:'JetBrains Mono',monospace;
   --r:10px;--r-sm:6px;
   font-family:var(--font-ui);
@@ -26,8 +26,13 @@
   line-height:1.6;
 }
 
+/* A dark editorial page inside the light site: headings take the page colour
+   rather than the global ink heading colour from css/system.css. */
+.uc h1,.uc h2,.uc h3,.uc h4{color:inherit}
+.uc{background:var(--navy)}
+
 /* ── Hero ────────────────────────────────────────────────────────── */
-.uc .hero{padding:80px 24px 60px;text-align:center;position:relative;overflow:hidden}
+.uc .hero{display:block;min-height:0;max-width:none;margin:0;gap:0;padding:80px 24px 60px;text-align:center;position:relative;overflow:hidden}
 .uc .hero::before{
   content:'';position:absolute;inset:0;
   background:

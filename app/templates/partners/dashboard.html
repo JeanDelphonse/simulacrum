@@ -9,7 +9,7 @@
     </div>
     <div style="display:flex;gap:.75rem;align-items:center">
       {% if not partner.stripe_connect_id %}
-      <div style="padding:.5rem 1rem;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);border-radius:8px;font-size:.8rem;color:#f5c842">
+      <div style="padding:.5rem 1rem;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);border-radius:8px;font-size:.8rem;color:#7A5410">
         ⚠ Complete Payout Setup — connect your bank account to receive payouts
       </div>
       {% endif %}
@@ -36,7 +36,7 @@
         value="Loading…">
       <button class="btn btn-secondary" onclick="copyRefLink()">Copy link</button>
     </div>
-    <p style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.5rem">
+    <p style="font-size:.78rem;color:var(--mute);margin-top:.5rem">
       Share this link with clients. You earn commission on every Simulation they generate.
     </p>
   </section>
@@ -44,7 +44,7 @@
   {# Client Roster #}
   <section class="dashboard-section">
     <h2 class="section-title">My Clients</h2>
-    <div id="clientsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+    <div id="clientsContainer"><span style="font-size:.85rem;color:var(--mute)">Loading…</span></div>
   </section>
 
   {# Your Clients — SIM-PRD-PART-002 #}
@@ -53,14 +53,14 @@
       <h2 class="section-title" style="margin:0">Your Clients</h2>
       <span id="clientCountBadge" style="display:none;background:#C9952A;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:999px"></span>
     </div>
-    <p style="font-size:.8rem;color:rgba(255,255,255,.45);margin-bottom:.75rem">Clients who have shared their SimiSI plan with you.</p>
-    <div id="sharedClientsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+    <p style="font-size:.8rem;color:var(--mute);margin-bottom:.75rem">Clients who have shared their SimiSI plan with you.</p>
+    <div id="sharedClientsContainer"><span style="font-size:.85rem;color:var(--mute)">Loading…</span></div>
   </section>
 
   {# Payout History #}
   <section class="dashboard-section">
     <h2 class="section-title">Payout History</h2>
-    <div id="payoutsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+    <div id="payoutsContainer"><span style="font-size:.85rem;color:var(--mute)">Loading…</span></div>
   </section>
 
   {# Send Referral Invitation (FR-PAR-15) #}
@@ -86,7 +86,7 @@
 
     <div style="margin-top:1.5rem">
       <h3 class="section-title" style="font-size:.85rem">Invitation Log</h3>
-      <div id="invitationsContainer"><span style="font-size:.85rem;color:rgba(255,255,255,.4)">Loading…</span></div>
+      <div id="invitationsContainer"><span style="font-size:.85rem;color:var(--mute)">Loading…</span></div>
     </div>
   </section>
 </div>
@@ -108,7 +108,7 @@ async function loadClients() {
   const res = await fetch(ROOT + '/api/partners/clients');
   const clients = await res.json();
   const el = document.getElementById('clientsContainer');
-  if (!clients.length) { el.innerHTML = '<p style="font-size:.85rem;color:rgba(255,255,255,.35)">No referred clients have generated Simulations yet.</p>'; return; }
+  if (!clients.length) { el.innerHTML = '<p style="font-size:.85rem;color:var(--mute)">No referred clients have generated Simulations yet.</p>'; return; }
   el.innerHTML = `<table class="admin-table">
     <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Simulations</th><th>Commission Earned</th><th>Last Activity</th></tr></thead>
     <tbody>${clients.map(c => `<tr>
@@ -126,7 +126,7 @@ async function loadAdvisorClients() {
   const res = await fetch(ROOT + '/api/partners/advisor-clients');
   const items = await res.json();
   const el = document.getElementById('advisorClientsContainer');
-  if (!items.length) { el.innerHTML = '<p style="font-size:.85rem;color:rgba(255,255,255,.35)">No clients have shared Simulations with you yet.</p>'; return; }
+  if (!items.length) { el.innerHTML = '<p style="font-size:.85rem;color:var(--mute)">No clients have shared Simulations with you yet.</p>'; return; }
   el.innerHTML = `<table class="admin-table">
     <thead><tr><th>Client</th><th>Simulation</th><th>Expertise Zone</th><th>Access Granted</th><th>Last Viewed</th><th></th></tr></thead>
     <tbody>${items.map(a => `<tr>
@@ -147,7 +147,7 @@ async function loadSharedClients() {
   const el = document.getElementById('sharedClientsContainer');
   const badge = document.getElementById('clientCountBadge');
   if (!items.length) {
-    el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:rgba(255,255,255,.35);font-size:.85rem">
+    el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--mute);font-size:.85rem">
       <p>None of your referred clients have shared their plan with you yet.</p>
       <p style="margin-top:.5rem">Send your referral link to get started.</p>
     </div>`;
@@ -161,7 +161,7 @@ async function loadSharedClients() {
   el.innerHTML = items.map(a => {
     const layerDots = [1,2,3,4,5].map(n => {
       const active = a.active_layers && a.active_layers.includes(n);
-      return `<span title="Layer ${n}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${active ? LAYER_COLORS[n-1] : 'rgba(255,255,255,.2)'};margin-right:3px"></span>`;
+      return `<span title="Layer ${n}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${active ? LAYER_COLORS[n-1] : 'var(--rule)'};margin-right:3px"></span>`;
     }).join('');
     const lastCycle = a.last_cycle_at
       ? timeAgo(new Date(a.last_cycle_at))
@@ -169,17 +169,17 @@ async function loadSharedClients() {
     const sharedDate = new Date(a.granted_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
     const phase = a.phase ? `<span style="display:inline-block;padding:.1rem .45rem;border-radius:999px;font-size:.65rem;font-weight:700;background:${a.phase==='exploit'?'#dcfce7':'#fef9c3'};color:${a.phase==='exploit'?'#166534':'#854d0e'}">${a.phase.charAt(0).toUpperCase()+a.phase.slice(1)} · Cycle ${a.cycle_number||1}</span>` : '';
     const gcUrl = `${ROOT}/partners/clients/${esc(a.client_user_id)}/simulations/${esc(a.simulation_id)}/gcc`;
-    return `<div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border:1px solid rgba(255,255,255,.1);border-radius:8px;margin-bottom:.5rem;background:rgba(255,255,255,.04)">
+    return `<div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border:1px solid rgba(13,27,62,.12);border-radius:8px;margin-bottom:.5rem;background:#F9FAFB">
       <div style="flex:1;min-width:0">
         <a href="${gcUrl}" style="color:#C9952A;font-weight:600;font-size:.92rem;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(a.client_name||'Client')}</a>
-        <div style="font-size:.75rem;color:rgba(255,255,255,.45);margin-top:.15rem">${esc(a.expertise_zone||'—')}</div>
+        <div style="font-size:.75rem;color:var(--mute);margin-top:.15rem">${esc(a.expertise_zone||'—')}</div>
       </div>
       <div style="flex-shrink:0">${phase}</div>
       <div style="flex-shrink:0;text-align:center">
         <div style="margin-bottom:.2rem">${layerDots}</div>
-        <div style="font-size:.68rem;color:rgba(255,255,255,.3)">Layer activity</div>
+        <div style="font-size:.68rem;color:var(--mute)">Layer activity</div>
       </div>
-      <div style="flex-shrink:0;text-align:right;font-size:.75rem;color:rgba(255,255,255,.4)">
+      <div style="flex-shrink:0;text-align:right;font-size:.75rem;color:var(--mute)">
         <div>Last cycle: ${lastCycle}</div>
         <div style="margin-top:.1rem">Shared ${sharedDate}</div>
       </div>
@@ -205,7 +205,7 @@ async function loadPayouts() {
   const res = await fetch(ROOT + '/api/partners/payouts');
   const payouts = await res.json();
   const el = document.getElementById('payoutsContainer');
-  if (!payouts.length) { el.innerHTML = '<p style="font-size:.85rem;color:rgba(255,255,255,.35)">No payouts yet.</p>'; return; }
+  if (!payouts.length) { el.innerHTML = '<p style="font-size:.85rem;color:var(--mute)">No payouts yet.</p>'; return; }
   el.innerHTML = `<table class="admin-table">
     <thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>Stripe Transfer</th></tr></thead>
     <tbody>${payouts.map(p => `<tr>
@@ -268,7 +268,7 @@ async function loadInvitations() {
   const res = await fetch(ROOT + '/api/partners/referral-invitations');
   const items = await res.json();
   const el = document.getElementById('invitationsContainer');
-  if (!items.length) { el.innerHTML = '<p style="font-size:.85rem;color:rgba(255,255,255,.35)">No invitations sent yet.</p>'; return; }
+  if (!items.length) { el.innerHTML = '<p style="font-size:.85rem;color:var(--mute)">No invitations sent yet.</p>'; return; }
   el.innerHTML = `<table class="admin-table">
     <thead><tr><th>Email</th><th>Name</th><th>Sent</th><th>Opened</th><th>Status</th></tr></thead>
     <tbody>${items.map(i => `<tr>

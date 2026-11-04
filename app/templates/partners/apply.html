@@ -4,7 +4,7 @@
 <div class="page-container" style="max-width:640px;margin:0 auto">
   <div class="auth-card" style="margin-top:3rem">
     <h1 style="font-size:1.6rem;margin-bottom:0.4rem">Referral Partner Program</h1>
-    <p style="color:rgba(255,255,255,0.55);margin-bottom:1.75rem;font-size:0.9rem">
+    <p style="color:var(--ink-2);margin-bottom:1.75rem;font-size:15px">
       Earn {{ commission_rate }}% on every Simulation your clients generate. Share your unique referral link and get paid automatically.
     </p>
 
@@ -29,7 +29,7 @@
         <input type="text" id="full_name" class="input-text" required placeholder="Jane Smith">
       </div>
       <div class="form-group">
-        <label>Business name <span style="opacity:.5">(optional)</span></label>
+        <label>Business name <span style="color:var(--mute);font-weight:400">(optional)</span></label>
         <input type="text" id="business_name" class="input-text" placeholder="Smith Coaching LLC">
       </div>
       <div class="form-group">
@@ -46,21 +46,21 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Website or LinkedIn URL <span style="opacity:.5">(optional)</span></label>
+        <label>Website or LinkedIn URL <span style="color:var(--mute);font-weight:400">(optional)</span></label>
         <input type="url" id="website_url" class="input-text" placeholder="https://yoursite.com">
       </div>
       <div class="form-group">
-        <label>Brief description of your practice <span style="opacity:.5">(max 300 chars)</span></label>
+        <label>Brief description of your practice <span style="color:var(--mute);font-weight:400">(max 300 chars)</span></label>
         <textarea id="practice_description" class="input-text" rows="3" maxlength="300"
           placeholder="I help mid-career professionals transition into consulting and fractional executive roles."></textarea>
       </div>
       <div id="applyError" class="form-error hidden"></div>
-      <div id="applySuccess" class="hidden" style="padding:1rem;background:rgba(52,211,153,0.1);border-radius:8px;margin-bottom:1rem;color:#6ee7b7;font-size:0.9rem"></div>
-      <button type="submit" class="btn btn-primary" style="width:100%">Submit Application</button>
+      <div id="applySuccess" class="hidden" style="padding:1rem;background:#E1F5F2;border-radius:8px;margin-bottom:1rem;color:#0B4F49;font-size:15px"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Submit application</button>
     </form>
 
-    <p style="font-size:0.78rem;color:rgba(255,255,255,0.35);margin-top:1rem;text-align:center">
-      Already a partner? <a href="{{ url_for('pages.partner_dashboard') }}" style="color:rgba(255,255,255,0.55)">Sign in to your dashboard →</a>
+    <p style="font-size:14px;color:var(--mute);margin-top:1rem;text-align:center">
+      Already a partner? <a href="{{ url_for('pages.partner_dashboard') }}" class="link">Sign in to your dashboard</a>
     </p>
   </div>
 </div>
@@ -98,7 +98,7 @@ document.getElementById('applyForm').addEventListener('submit', async function(e
     errEl.textContent = data.error || 'Submission failed.';
     errEl.classList.remove('hidden');
   }
-  btn.disabled = false; btn.textContent = 'Submit Application';
+  btn.disabled = false; btn.textContent = 'Submit application';
 });
 </script>
 {% endblock %}

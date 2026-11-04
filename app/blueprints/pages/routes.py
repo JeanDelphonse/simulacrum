@@ -291,7 +291,19 @@ def index():
                            show_integrations=site_context.show_integrations(),
                            recent_bio_pages=_get_recent_bio_pages(),
                            hero_cards=_get_hero_cards(),
-                           playbook_url=current_app.config['PLAYBOOK_URL'])
+                           playbook_url=current_app.config['PLAYBOOK_URL'],
+                           guide_enabled=_guide_enabled_for_current_user())
+
+
+def _guide_enabled_for_current_user() -> bool:
+    """Whether the signed-in visitor may open the SME Console (beta gate)."""
+    if not current_user.is_authenticated:
+        return False
+    try:
+        from app.services import guide_service as _gs
+        return _gs.is_enabled(current_user)
+    except Exception:
+        return False
 
 
 @pages_bp.route('/dashboard')

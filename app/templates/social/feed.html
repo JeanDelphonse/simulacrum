@@ -1,80 +1,58 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% include 'partials/_favicon.html' %}
-  <title>Activity Feed — SimiSI</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f9fafb; color: #111827; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
-    a { text-decoration: none; color: inherit; }
-
-    .feed-nav {
-      background: #fff; border-bottom: 1px solid #e5e7eb;
-      padding: .875rem 2rem; display: flex; align-items: center; gap: 1.5rem;
-    }
-    .feed-nav .brand { font-weight: 800; font-size: 1.1rem; color: #111827; }
-    .feed-nav .brand span { color: #0e7490; }
-    .feed-nav a { font-size: .88rem; color: #6b7280; font-weight: 500; }
-    .feed-nav a:hover { color: #0e7490; }
-    .feed-nav .nav-right { margin-left: auto; display: flex; gap: 1rem; align-items: center; }
-
+{% extends 'base.html' %}
+{# Activity feed from a member's connections. Extends base.html for the shared nav,
+   type and tokens (docs/simisi_system_mockup.html). #}
+{% block full_title %}Activity Feed — SimiSI{% endblock %}
+{% block head %}
+<style>
     .feed-layout { max-width: 680px; margin: 2.5rem auto; padding: 0 1.5rem; }
     .feed-header { margin-bottom: 1.75rem; }
-    .feed-header h1 { font-size: 1.5rem; font-weight: 700; color: #111827; margin-bottom: .25rem; }
-    .feed-header p { color: #6b7280; font-size: .9rem; }
-
+    .feed-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--ink); margin-bottom: .25rem; }
+    .feed-header p { color: var(--ink-2); font-size: .9rem; }
     .event-card {
-      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+      background: #fff; border: 1px solid var(--rule); border-radius: 12px;
       padding: 1rem 1.25rem; margin-bottom: .75rem;
       display: flex; gap: 1rem; align-items: flex-start;
     }
     .event-avatar {
       width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
-      object-fit: cover; background: #f3f4f6;
+      object-fit: cover; background: var(--alt);
     }
     .event-avatar-placeholder {
       width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg, #0e7490, #059669);
+      background: linear-gradient(135deg, var(--ink), var(--l2));
       display: flex; align-items: center; justify-content: center;
       color: #fff; font-size: 16px; font-weight: 700;
     }
     .event-body { flex: 1; min-width: 0; }
-    .event-text { font-size: .9rem; color: #374151; line-height: 1.5; }
-    .event-text strong { color: #111827; }
-    .event-time { font-size: .78rem; color: #9ca3af; margin-top: .25rem; }
-    .event-link { color: #0e7490; font-weight: 600; }
+    .event-text { font-size: .9rem; color: var(--ink-2); line-height: 1.5; }
+    .event-text strong { color: var(--ink); }
+    .event-time { font-size: .78rem; color: var(--mute); margin-top: .25rem; }
+    .event-link { color: var(--ink); font-weight: 600; }
     .event-link:hover { text-decoration: underline; }
-
-    .empty-state { text-align: center; padding: 4rem 1.5rem; color: #9ca3af; }
-    .empty-state h2 { font-size: 1.1rem; margin-bottom: .5rem; color: #374151; }
+    .empty-state { text-align: center; padding: 4rem 1.5rem; color: var(--mute); }
+    .empty-state h2 { font-size: 1.1rem; margin-bottom: .5rem; color: var(--ink-2); }
     .empty-state p { font-size: .9rem; }
     .empty-state a {
       display: inline-block; margin-top: 1rem;
-      background: #0e7490; color: #fff; padding: .55rem 1.25rem;
+      background: var(--ink); color: #fff; padding: .55rem 1.25rem;
       border-radius: 8px; font-size: .88rem; font-weight: 600;
     }
-
     .load-more-btn {
       display: block; margin: 1.5rem auto 0; padding: .6rem 1.5rem;
-      border: 1px solid #e5e7eb; border-radius: 8px; background: #fff;
-      font-size: .88rem; color: #374151; cursor: pointer; font-weight: 500;
+      border: 1px solid var(--rule); border-radius: 8px; background: #fff;
+      font-size: .88rem; color: var(--ink-2); cursor: pointer; font-weight: 500;
     }
-    .load-more-btn:hover { border-color: #0e7490; color: #0e7490; }
-  </style>
-</head>
-<body>
+    .load-more-btn:hover { border-color: var(--ink); color: var(--ink); }
+  
+</style>
+{% endblock %}
 
-<nav class="feed-nav">
-  <a class="brand" href="/">SimiSI</a>
-  <a href="/explore">Explore</a>
-  <a href="/my-chats">My Chats</a>
-  <div class="nav-right">
-    <a href="/dashboard">Dashboard</a>
-  </div>
+{% block content %}
+<nav class="ss-subtabs" aria-label="Community">
+  <a href="{{ url_for('public.explore') }}">Explore</a>
+  <a href="{{ url_for('social.activity_feed') }}"{% if request.endpoint == 'social.activity_feed' %} aria-current="page"{% endif %}>Feed</a>
+  <a href="{{ url_for('social.my_chats') }}"{% if request.endpoint == 'social.my_chats' %} aria-current="page"{% endif %}>My chats</a>
 </nav>
-
 <div class="feed-layout">
   <div class="feed-header">
     <h1>Activity Feed</h1>
@@ -143,7 +121,9 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 (function () {
   var btn = document.getElementById('load-more-btn');
@@ -194,6 +174,4 @@
   });
 }());
 </script>
-
-</body>
-</html>
+{% endblock %}

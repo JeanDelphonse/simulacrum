@@ -79,7 +79,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
 
   <style>
     /* ── Reset & base ──────────────────────────────────────────────── */
@@ -103,16 +103,16 @@
       --bg: #fefce8; --bg2: #fef9c3; --text: #1c1917; --muted: #78716c;
       --accent: #0F7B72; --accent-hover: #0a6660; --border: #d6d3d1;
       --card-bg: #ffffff; --card-shadow: 0 1px 4px rgba(0,0,0,.06);
-      --heading-font: 'Playfair Display', Georgia, 'Times New Roman', serif;
+      --heading-font: 'Archivo', Georgia, 'Times New Roman', serif;
       --tag-bg: rgba(15,123,114,.1); --tag-color: #0F7B72;
     }
 
     body {
       background: var(--bg); color: var(--text);
-      font-family: 'DM Sans', var(--body-font, system-ui, -apple-system, sans-serif);
+      font-family: 'Archivo', var(--body-font, system-ui, -apple-system, sans-serif);
       line-height: 1.7; font-size: 16px;
     }
-    h1, h2, h3 { font-family: var(--heading-font, 'Playfair Display', Georgia, serif); line-height: 1.25; }
+    h1, h2, h3 { font-family: var(--heading-font, 'Archivo', sans-serif); line-height: 1.25; }
     a { color: var(--accent); text-decoration: none; }
     a:hover { color: var(--accent-hover); }
     img { max-width: 100%; height: auto; display: block; }
@@ -163,11 +163,11 @@
     .section-toggle:not(.open) { margin-bottom: 0; }
     .section-toggle-left { display: flex; align-items: center; gap: .5rem; flex: 1; min-width: 0; }
     .section-heading {
-      font-family: var(--heading-font, 'Playfair Display', Georgia, serif);
+      font-family: var(--heading-font, 'Archivo', sans-serif);
       font-size: 1.375rem; font-weight: 700; color: var(--text); margin: 0;
     }
     .count-badge {
-      font-size: .68rem; font-weight: 500; font-family: 'DM Sans', sans-serif;
+      font-size: .68rem; font-weight: 500; font-family: 'Archivo', sans-serif;
       color: var(--tag-color); background: var(--tag-bg);
       padding: .15rem .6rem; border-radius: 100px; white-space: nowrap; flex-shrink: 0;
     }
@@ -180,7 +180,7 @@
 
     /* Non-collapsible section headings (About, Contact) */
     .section-heading-static {
-      font-family: var(--heading-font, 'Playfair Display', Georgia, serif);
+      font-family: var(--heading-font, 'Archivo', sans-serif);
       font-size: 1.375rem; font-weight: 700; color: var(--text);
       margin-bottom: 1.25rem;
     }
@@ -197,7 +197,7 @@
       background: linear-gradient(135deg, #0D1B3E, #0F7B72);
       display: flex; align-items: center; justify-content: center;
       color: #fff;
-      font-family: 'Playfair Display', Georgia, serif;
+      font-family: 'Archivo', sans-serif;
       font-size: 2.25rem; font-weight: 700; letter-spacing: -.02em;
     }
     .hero-text { flex: 1; min-width: 0; }
@@ -243,7 +243,7 @@
       padding: .28rem .75rem; border-radius: 100px;
       background: var(--accent); color: #fff;
       font-size: .75rem; font-weight: 600; cursor: pointer;
-      border: none; font-family: 'DM Sans', sans-serif;
+      border: none; font-family: 'Archivo', sans-serif;
       box-shadow: 0 2px 8px rgba(15,123,114,.25);
       transition: background .15s, box-shadow .15s;
     }
@@ -328,7 +328,7 @@
       transition: transform .15s, box-shadow .15s;
     }
     .service-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.1); }
-    .service-card h3 { font-size: .9rem; font-weight: 700; margin-bottom: .35rem; color: var(--text); font-family: 'DM Sans', sans-serif; }
+    .service-card h3 { font-size: .9rem; font-weight: 700; margin-bottom: .35rem; color: var(--text); font-family: 'Archivo', sans-serif; }
     .service-card .svc-desc { font-size: .85rem; color: var(--muted); margin-bottom: .625rem; }
     .service-card .svc-price { font-size: .9rem; font-weight: 700; color: var(--accent); }
     .services-cta { margin-top: 1rem; font-size: .88rem; color: var(--muted); }
@@ -475,7 +475,7 @@
       background: #0D1B3E; color: #fff;
       padding: .875rem 1.25rem; display: flex; align-items: center; justify-content: space-between;
     }
-    .chat-panel-header h4 { font-size: .9rem; font-weight: 700; margin: 0; font-family: 'DM Sans', sans-serif; }
+    .chat-panel-header h4 { font-size: .9rem; font-weight: 700; margin: 0; font-family: 'Archivo', sans-serif; }
     .chat-panel-header .powered { font-size: .68rem; opacity: .6; }
     .chat-close-btn { background: none; border: none; color: rgba(255,255,255,.7); cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 0 .25rem; }
     .chat-close-btn:hover { color: #fff; }
@@ -522,7 +522,7 @@
     .plg-badge { margin-top: .75rem; }
     .plg-badge a {
       display: inline-flex; align-items: center; gap: .35rem;
-      font-size: 12px; font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 12px; font-family: 'Archivo', system-ui, sans-serif;
       color: var(--muted); text-decoration: none; transition: color .2s;
     }
     .plg-badge a:hover { color: #0F7B72; }
@@ -562,7 +562,7 @@
       box-shadow: var(--card-shadow); transition: border-left-color .15s, border-color .15s;
     }
     .notable-card:hover { border-color: var(--accent); border-left-color: var(--accent); }
-    .notable-title { font-size: .93rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; font-family: 'DM Sans', sans-serif; }
+    .notable-title { font-size: .93rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; font-family: 'Archivo', sans-serif; }
     .notable-title a { color: var(--text); }
     .notable-title a:hover { color: var(--accent); }
     .notable-desc { font-size: .86rem; color: var(--text); line-height: 1.65; margin-bottom: .4rem; }
@@ -650,7 +650,7 @@
       border-radius: 12px; padding: 1.375rem; margin-bottom: 1.25rem;
       box-shadow: var(--card-shadow);
     }
-    .pub-featured-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .35rem; font-family: 'DM Sans', sans-serif; }
+    .pub-featured-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .35rem; font-family: 'Archivo', sans-serif; }
     .pub-featured-title a { color: var(--text); }
     .pub-featured-title a:hover { color: var(--accent); }
     .pub-featured-meta { font-size: .8rem; color: var(--muted); margin-bottom: .5rem; }
@@ -685,7 +685,7 @@
     .project-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,.1); color: inherit; }
     .project-header { display: flex; align-items: center; gap: .4rem; }
     .project-favicon { width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; background: var(--bg2); object-fit: cover; }
-    .project-name { font-size: .88rem; font-weight: 700; color: var(--text); flex: 1; min-width: 0; font-family: 'DM Sans', sans-serif; }
+    .project-name { font-size: .88rem; font-weight: 700; color: var(--text); flex: 1; min-width: 0; font-family: 'Archivo', sans-serif; }
     .project-ext { color: var(--accent); flex-shrink: 0; }
     .project-desc { font-size: .8rem; color: var(--muted); line-height: 1.5; }
     .project-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .1rem; }

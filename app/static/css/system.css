@@ -1,0 +1,239 @@
+/* ============================================================
+   SimiSI design system (docs/simisi_system_mockup.html)
+
+   Loaded after main.css on every page, so it is the last word on tokens,
+   type, buttons, forms, the nav and the footer. Page templates keep their
+   own layout CSS; colours there should use these tokens.
+
+   Tokens
+     --ink    #0D1B3E  all text, headings        --alt   #F2F4F7  cool panel
+     --ink-2  #46526B  secondary text            --rule  #DCE1E9  borders
+     --mute   #68738C  captions                  --gold  #C9952A  primary button, fills
+     --teal   #13A89E  accents, focus (not text) --teal-ink #0F7B72 teal as text
+     --l1..--l5        the five layers, earned to deployed
+   Type: Archivo (variable width), scale 14 / 15 / 17 / 20 / 26 / 36 / 52.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+  --ink: #0D1B3E;
+  --ink-2: #46526B;
+  --mute: #68738C;
+  --rule: #DCE1E9;
+  --bg: #FFFFFF;
+  --alt: #F2F4F7;
+  --gold: #C9952A;
+  --gold-hi: #E4B855;
+  --teal-accent: #13A89E;
+  --teal-ink: #0F7B72;
+  --l1: #0D1B3E; --l2: #2C4F7C; --l3: #13A89E; --l4: #8ED2C6; --l5: #C9952A;
+  --sans: 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --wrap: 1180px;
+  --r-ui: 12px;
+  --r-btn: 8px;
+
+  /* Legacy names used across page templates, mapped onto the system. */
+  --navy: var(--ink);
+  --navy-mid: #1B2C57;
+  --dark: var(--ink);
+  --muted: var(--mute);
+  --off-white: var(--bg);
+  --border: var(--rule);
+  --card-bg: #FFFFFF;
+  --teal: var(--teal-ink);
+  --teal-light: var(--teal-accent);
+  --accent: var(--teal-ink);
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font-family: inherit; }
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--sans);
+  color: var(--ink);
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+h1 { font-weight: 750; font-stretch: 110%; letter-spacing: -.025em; line-height: 1.08; }
+h2 { font-weight: 720; font-stretch: 108%; letter-spacing: -.02em; line-height: 1.15; }
+h3, h4 { font-weight: 650; }
+a { color: var(--teal-ink); }
+a:hover { color: var(--ink); }
+:focus-visible { outline: 2px solid var(--teal-accent); outline-offset: 3px; border-radius: 4px; }
+::selection { background: rgba(201,149,42,.28); }
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 32px; }
+@media (max-width: 640px) { .wrap { padding: 0 16px; } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.link { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 4px;
+        text-decoration-thickness: 1.5px; text-decoration-color: var(--gold); }
+.link:hover { color: var(--ink); text-decoration-color: var(--ink); }
+
+/* ── Buttons: ink outline by default, gold for the one primary action ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; padding: 0 16px;
+  border-radius: var(--r-btn);
+  border: 1.5px solid var(--ink);
+  background: transparent; color: var(--ink);
+  font-family: var(--sans); font-size: 15px; font-weight: 600; line-height: 1.2;
+  text-decoration: none; white-space: nowrap; cursor: pointer;
+  box-shadow: none; transform: none;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.btn:hover:not(:disabled) { background: var(--ink); color: #fff; border-color: var(--ink); transform: none; box-shadow: none; }
+.btn:active { transform: none; }
+.btn:disabled, .btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn.primary, .btn-gold, .btn-secondary {
+  background: var(--gold); border-color: var(--gold); color: var(--ink);
+}
+.btn.primary:hover:not(:disabled), .btn-gold:hover:not(:disabled), .btn-secondary:hover:not(:disabled) {
+  background: var(--gold-hi); border-color: var(--gold-hi); color: var(--ink);
+}
+/* Teal-filled buttons are the app's "do it" action; they become solid ink. */
+.btn-primary, .btn-teal {
+  background: var(--ink); border-color: var(--ink); color: #fff;
+}
+.btn-primary:hover:not(:disabled), .btn-teal:hover:not(:disabled) {
+  background: #1B2C57; border-color: #1B2C57; color: #fff;
+}
+.btn-ghost, .btn-outline, .btn-ghost-dk {
+  background: #fff; border-color: var(--rule); color: var(--ink);
+}
+.btn-ghost:hover:not(:disabled), .btn-outline:hover:not(:disabled), .btn-ghost-dk:hover:not(:disabled) {
+  background: var(--alt); border-color: var(--ink-2); color: var(--ink);
+}
+.btn-danger { background: #fff; border-color: rgba(185,28,28,.45); color: #B91C1C; }
+.btn-danger:hover:not(:disabled) { background: #FEF2F2; border-color: #B91C1C; color: #991B1B; }
+.btn.sm, .btn-sm { min-height: 32px; padding: 0 12px; font-size: 13.5px; border-radius: 7px; }
+.btn-lg { min-height: 48px; padding: 0 22px; font-size: 16px; }
+.btn-full { width: 100%; }
+
+/* ── Forms ────────────────────────────────────────────────── */
+input[type=text], input[type=email], input[type=password], input[type=url], input[type=tel],
+input[type=number], input[type=search], input[type=date], input[type=datetime-local], input[type=time],
+select, textarea, .form-input, .form-control {
+  font-family: var(--sans);
+  color: var(--ink);
+  border-color: var(--rule);
+  border-radius: var(--r-btn);
+}
+input:focus, select:focus, textarea:focus, .form-input:focus, .form-control:focus {
+  outline: none; border-color: var(--teal-accent);
+  box-shadow: 0 0 0 3px rgba(19,168,158,.18);
+}
+::placeholder { color: #8A94A8; }
+label, .form-label { color: var(--ink); }
+.form-hint, .settings-hint { color: var(--mute); }
+
+/* ── Flash messages ───────────────────────────────────────── */
+.flash { border-radius: 10px; border: 1px solid var(--rule); border-left-width: 4px; font-size: 15px; }
+.flash-success { background: #E1F5F2; border-color: #13A89E; color: #0B4F49; }
+.flash-error, .flash-danger { background: #FEF2F2; border-color: #DC2626; color: #991B1B; }
+.flash-info { background: var(--alt); border-color: var(--l2); color: var(--ink); }
+.flash-warning { background: #FFF4DC; border-color: var(--gold); color: #7A5410; }
+
+/* ── Logo (mascot + wordmark) ─────────────────────────────── */
+.ss-logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--ink);
+           font-family: var(--sans); font-weight: 800; font-size: 21px; font-stretch: 110%; letter-spacing: -.02em; }
+.ss-logo:hover { color: var(--ink); }
+.ss-logo b { color: var(--gold); font-weight: 800; }
+.ss-logo .logo-mascot { width: 24px; height: auto; flex: none; overflow: visible; }
+.lm-eyes { animation: lmBlink 6s infinite; transform-box: fill-box; transform-origin: center; }
+.lm-arm { transform-box: fill-box; transform-origin: 15% 10%; }
+.ss-logo:hover .lm-arm { animation: lmWave 1.1s ease-in-out; }
+@keyframes lmBlink { 0%, 94%, 100% { transform: scaleY(1) } 97% { transform: scaleY(.1) } }
+@keyframes lmWave { 0%, 100% { transform: rotate(0) } 35% { transform: rotate(20deg) } 70% { transform: rotate(6deg) } }
+
+/* ── Announcement bar ─────────────────────────────────────── */
+.ss-announce { background: var(--ink); color: #fff; font-size: 14px; }
+.ss-announce .wrap { display: flex; gap: 12px; justify-content: center; align-items: center; min-height: 40px;
+                     text-align: center; flex-wrap: wrap; padding-top: 6px; padding-bottom: 6px; }
+.ss-announce a { color: var(--gold-hi); font-weight: 600; }
+.ss-announce a:hover { color: #fff; }
+@media (max-width: 640px) { .hide-sm { display: none; } }
+
+/* ── Nav ──────────────────────────────────────────────────── */
+.ss-nav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,.94);
+          -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px);
+          border-bottom: 1px solid var(--rule); }
+.ss-nav.is-top { border-bottom-color: transparent; }
+.ss-nav .wrap { display: flex; align-items: center; height: 64px; gap: 32px; }
+.ss-nav-links { list-style: none; display: flex; align-items: center; gap: 24px; margin: 0; padding: 0;
+                font-size: 15px; font-weight: 500; }
+.ss-nav-links a, .ss-nav-links button { color: var(--ink-2); text-decoration: none; background: none; border: 0;
+                                       font: inherit; cursor: pointer; padding: 0; }
+.ss-nav-links a:hover, .ss-nav-links button:hover { color: var(--ink); }
+.ss-nav-links a.is-current { color: var(--ink); font-weight: 600; }
+.ss-nav-right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+.ss-nav-login { font-size: 15px; font-weight: 600; color: var(--ink); text-decoration: none; }
+.ss-nav-login:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+.ss-nav-user { font-size: 14px; color: var(--mute); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-menu-btn { display: none; min-height: 38px; padding: 0 14px; border: 1.5px solid var(--ink); border-radius: var(--r-btn);
+               background: #fff; color: var(--ink); font: 600 15px var(--sans); cursor: pointer; align-items: center; }
+.ss-drawer { display: none; }
+@media (max-width: 1000px) {
+  .ss-nav-links, .ss-nav-login, .ss-nav-user, .ss-nav-right .ss-hide-md { display: none; }
+  .ss-menu-btn { display: inline-flex; }
+  .ss-drawer { display: block; position: fixed; inset: 64px 0 auto 0; background: #fff; border-bottom: 1px solid var(--rule);
+               padding: 8px 16px 20px; transform: translateY(-8px); opacity: 0; visibility: hidden;
+               transition: opacity .18s, transform .18s, visibility .18s; z-index: 99; max-height: calc(100vh - 64px); overflow-y: auto; }
+  .ss-drawer.open { opacity: 1; transform: none; visibility: visible; }
+  .ss-drawer a, .ss-drawer button { display: block; width: 100%; text-align: left; padding: 12px 0; border: 0;
+                                    border-bottom: 1px solid var(--rule); background: none; color: var(--ink);
+                                    text-decoration: none; font: 600 16px var(--sans); cursor: pointer; }
+  .ss-drawer .ss-drawer-note { padding: 12px 0 4px; font-size: 13px; color: var(--mute); }
+}
+@media (max-width: 520px) { .ss-nav-right .btn.primary { display: none; } }
+
+/* ── Compact app footer ───────────────────────────────────── */
+.footer { background: var(--ink); color: #C5CCDA; padding: 22px 0; margin-top: auto; border: 0; }
+.footer-inner { max-width: var(--wrap); padding: 0 32px; font-family: var(--sans); font-size: 14px; color: #C5CCDA;
+                flex-wrap: wrap; gap: 8px 22px; justify-content: flex-start; }
+.footer-inner > span:first-child { margin-right: auto; color: #94A0B8; }
+.footer a, .footer .footer-tagline { color: #C5CCDA !important; font-style: normal; }
+.footer a:hover { color: #fff !important; text-decoration: underline !important; text-underline-offset: 3px; }
+.footer-inner > span.footer-tagline { display: none; }
+@media (max-width: 640px) { .footer-inner { padding: 0 16px; } }
+
+/* ── Shared surfaces ──────────────────────────────────────── */
+.card, .settings-card, .admin-card, .panel-card { border-color: var(--rule); }
+.badge-pill, .ss-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px;
+                        font-size: 13px; font-weight: 600; background: var(--alt); color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-eyes, .ss-logo:hover .lm-arm { animation: none !important; }
+}
+
+/* ── Labels and table heads: sentence case, ink (the mockup has no
+      uppercase tracking labels) ── */
+.form-group label, .form-label, .card-field-row label {
+  text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 600; color: var(--ink);
+}
+.admin-table th { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 650; color: var(--ink-2);
+                  background: var(--alt); border-bottom: 1px solid var(--rule); }
+.admin-table td { border-bottom-color: var(--rule); }
+.stat-label { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--mute); }
+
+/* ── Tables scroll inside their own box on small screens instead of
+      widening the page ── */
+@media (max-width: 760px) {
+  .main-content table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* ── Page tabs (small secondary nav under the main nav) ── */
+.ss-subtabs { max-width: var(--wrap); margin: 0 auto; padding: 14px 32px 0; display: flex; gap: 22px;
+              border-bottom: 1px solid var(--rule); font-size: 15px; }
+.ss-subtabs a { color: var(--ink-2); text-decoration: none; padding: 8px 0 12px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.ss-subtabs a:hover { color: var(--ink); }
+.ss-subtabs a[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--gold); }
+@media (max-width: 640px) { .ss-subtabs { padding: 10px 16px 0; } }
+.main-content select, .main-content input, .main-content textarea { max-width: 100%; }

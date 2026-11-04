@@ -20,20 +20,20 @@
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .asel-header { margin-bottom: 2rem; }
 .asel-eyebrow { font-size: .75rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .08em; color: var(--teal); font-family: 'DM Sans', sans-serif;
+  letter-spacing: .08em; color: var(--teal); font-family: 'Archivo', sans-serif;
   margin-bottom: .5rem; }
-.asel-title { font-family: 'Playfair Display', serif; font-weight: 700;
+.asel-title { font-family: 'Archivo', sans-serif; font-weight: 700;
   font-size: 1.8rem; color: var(--navy); margin: 0 0 .5rem; }
 .asel-sub { font-size: .95rem; color: var(--muted); margin: 0;
-  font-family: 'DM Sans', sans-serif; max-width: 560px; }
+  font-family: 'Archivo', sans-serif; max-width: 560px; }
 
 /* ── Persona fallback bar ─────────────────────────────────────────────────── */
 .asel-persona-bar { display: flex; align-items: center; gap: .75rem;
   padding: .85rem 1.1rem; background: #f8f9fa; border-radius: 10px;
   border: 1px solid var(--border); margin-bottom: 1.5rem;
-  font-family: 'DM Sans', sans-serif; flex-wrap: wrap; }
+  font-family: 'Archivo', sans-serif; flex-wrap: wrap; }
 .asel-persona-label { font-size: .82rem; color: var(--muted); flex-shrink: 0; }
-.asel-persona-select { font-size: .82rem; font-family: 'DM Sans', sans-serif;
+.asel-persona-select { font-size: .82rem; font-family: 'Archivo', sans-serif;
   border: 1px solid rgba(0,0,0,.12); border-radius: 6px; padding: .3rem .55rem;
   color: var(--navy); background: #fff; cursor: pointer; }
 .asel-persona-btn { font-size: .8rem; font-weight: 600; color: var(--teal);
@@ -53,30 +53,30 @@
 .asel-layer.locked .asel-layer-header { border-left-color: #D1D5DB; cursor: default; }
 .asel-layer-header:hover { background: var(--surface); }
 
-.asel-layer-name { font-family: 'DM Sans', sans-serif; font-weight: 700;
+.asel-layer-name { font-family: 'Archivo', sans-serif; font-weight: 700;
   font-size: .95rem; color: var(--navy); flex: 1; }
 .asel-layer-count { font-size: .72rem; font-weight: 700; padding: .15rem .55rem;
   border-radius: 20px; background: var(--teal-bg); color: var(--teal);
-  font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
+  font-family: 'Archivo', sans-serif; flex-shrink: 0; }
 .asel-layer.locked .asel-layer-count { background: #F3F4F6; color: var(--muted); }
 .asel-layer-lock-badge { font-size: .68rem; font-weight: 700; padding: .15rem .5rem;
   border-radius: 6px; background: #F3F4F6; color: var(--muted);
-  font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: .25rem; }
+  font-family: 'Archivo', sans-serif; display: flex; align-items: center; gap: .25rem; }
 .asel-chevron { color: var(--muted); font-size: .8rem; transition: transform .2s; flex-shrink: 0; }
 .asel-chevron.open { transform: rotate(180deg); }
 
 .asel-layer-shortcuts { display: flex; gap: .75rem; padding: .3rem 1.1rem .65rem 1.1rem; }
 .asel-shortcut-link { font-size: .72rem; color: var(--teal); background: none; border: none;
-  cursor: pointer; padding: 0; font-family: 'DM Sans', sans-serif; }
+  cursor: pointer; padding: 0; font-family: 'Archivo', sans-serif; }
 .asel-shortcut-link:hover { text-decoration: underline; }
 
 .asel-layer-body { padding: 0 1.1rem .75rem; display: none; }
 .asel-layer-body.open { display: block; }
 
 .asel-layer-footer { font-size: .75rem; color: var(--muted); padding: .5rem 1.1rem .85rem;
-  font-family: 'DM Sans', sans-serif; border-top: 1px solid var(--border); margin-top: .5rem; }
+  font-family: 'Archivo', sans-serif; border-top: 1px solid var(--border); margin-top: .5rem; }
 .asel-layer-warning { color: #b45309; font-size: .75rem; padding: .4rem 1.1rem .7rem;
-  border-top: 1px solid var(--border); font-family: 'DM Sans', sans-serif;
+  border-top: 1px solid var(--border); font-family: 'Archivo', sans-serif;
   display: none; margin-top: .25rem; }
 .asel-layer-warning.show { display: block; }
 
@@ -99,21 +99,21 @@
 
 /* Lock icon replacing toggle */
 .asel-lock-icon { width: 38px; height: 22px; display: flex; align-items: center;
-  justify-content: center; color: #D1D5DB; font-size: 1rem; flex-shrink: 0; }
+  justify-content: center; color: var(--ink-2); font-size: 1rem; flex-shrink: 0; }
 
 /* Center: name + desc */
 .asel-tile-center { flex: 1; min-width: 0; }
 .asel-tile-name { font-size: .88rem; font-weight: 600; color: var(--navy);
-  font-family: 'DM Sans', sans-serif; margin-bottom: .1rem; }
-.asel-tile-desc { font-size: .78rem; color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-family: 'Archivo', sans-serif; margin-bottom: .1rem; }
+.asel-tile-desc { font-size: .78rem; color: var(--muted); font-family: 'Archivo', sans-serif;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .asel-tile.locked .asel-tile-name,
-.asel-tile.locked .asel-tile-desc { color: #9CA3AF; }
+.asel-tile.locked .asel-tile-desc { color: var(--mute); }
 
 /* Badges */
 .asel-badges { display: flex; gap: .3rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
 .asel-badge { font-size: .62rem; font-weight: 700; padding: .12rem .45rem; border-radius: 20px;
-  text-transform: uppercase; letter-spacing: .04em; font-family: 'DM Sans', sans-serif; }
+  text-transform: uppercase; letter-spacing: .04em; font-family: 'Archivo', sans-serif; }
 .asel-badge.recommended { background: var(--teal-bg); color: var(--teal); }
 .asel-badge.auto        { background: rgba(201,149,42,.12); color: #92400e; }
 .asel-badge.locked      { background: #F3F4F6; color: var(--muted); display: flex;
@@ -121,7 +121,7 @@
 
 /* Prereq warning */
 .asel-prereq-warn { font-size: .72rem; color: #b45309; margin-top: .2rem;
-  font-family: 'DM Sans', sans-serif; display: none; }
+  font-family: 'Archivo', sans-serif; display: none; }
 .asel-prereq-warn.show { display: block; }
 .asel-prereq-link { color: var(--teal); cursor: pointer; text-decoration: underline;
   background: none; border: none; padding: 0; font-size: .72rem; }
@@ -129,7 +129,7 @@
 /* ── Parameters expander + panel ──────────────────────────────────────────── */
 .asel-params-btn { font-size: .72rem; font-weight: 600; color: var(--teal);
   background: none; border: 1px solid var(--border); border-radius: 6px;
-  padding: .18rem .5rem; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  padding: .18rem .5rem; cursor: pointer; font-family: 'Archivo', sans-serif;
   display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
 .asel-params-btn:hover { background: var(--teal-bg); }
 .asel-params-btn .caret { transition: transform .2s; display: inline-block; }
@@ -142,52 +142,52 @@
 .asel-param-row { margin-bottom: .7rem; }
 .asel-param-row:last-of-type { margin-bottom: .5rem; }
 .asel-param-label { font-size: .74rem; font-weight: 600; color: var(--navy);
-  font-family: 'DM Sans', sans-serif; margin-bottom: .25rem; display: block; }
+  font-family: 'Archivo', sans-serif; margin-bottom: .25rem; display: block; }
 .asel-param-label .req { color: var(--coral); margin-left: .15rem; }
 .asel-param-input, .asel-param-select, .asel-param-textarea {
-  width: 100%; box-sizing: border-box; font-size: .82rem; font-family: 'DM Sans', sans-serif;
+  width: 100%; box-sizing: border-box; font-size: .82rem; font-family: 'Archivo', sans-serif;
   border: 1px solid rgba(0,0,0,.14); border-radius: 7px; padding: .45rem .6rem;
   color: var(--navy); background: #fff; outline: none; }
 .asel-param-input:focus, .asel-param-select:focus, .asel-param-textarea:focus { border-color: var(--teal); }
 .asel-param-input.suggested, .asel-param-select.suggested, .asel-param-textarea.suggested {
   background: rgba(15,123,114,.05); border-color: rgba(15,123,114,.35); }
-.asel-params-note { font-size: .72rem; color: var(--teal); font-family: 'DM Sans', sans-serif;
+.asel-params-note { font-size: .72rem; color: var(--teal); font-family: 'Archivo', sans-serif;
   margin-bottom: .7rem; display: none; }
 .asel-params-note.show { display: block; }
 .asel-param-textarea { min-height: 68px; resize: vertical; line-height: 1.5; }
 .asel-params-actions { display: flex; align-items: center; gap: .6rem; margin-top: .35rem; }
 .asel-params-save { background: var(--teal); color: #fff; border: none; border-radius: 7px;
   padding: .4rem .9rem; font-size: .78rem; font-weight: 700; cursor: pointer;
-  font-family: 'DM Sans', sans-serif; }
+  font-family: 'Archivo', sans-serif; }
 .asel-params-save:hover { opacity: .88; }
 .asel-params-save:disabled { opacity: .5; cursor: default; }
-.asel-params-msg { font-size: .74rem; font-family: 'DM Sans', sans-serif; }
+.asel-params-msg { font-size: .74rem; font-family: 'Archivo', sans-serif; }
 .asel-params-msg.ok { color: var(--teal); }
 .asel-params-msg.err { color: var(--coral); }
-.asel-params-empty { font-size: .76rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+.asel-params-empty { font-size: .76rem; color: var(--muted); font-family: 'Archivo', sans-serif; }
 
 /* ── Launch bar ───────────────────────────────────────────────────────────── */
 .asel-launch-bar { position: fixed; bottom: 0; left: 0; right: 0;
   background: #fff; border-top: 1px solid var(--border);
   padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;
   gap: 1rem; z-index: 100; flex-wrap: wrap; }
-.asel-launch-count { font-size: .9rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+.asel-launch-count { font-size: .9rem; color: var(--muted); font-family: 'Archivo', sans-serif; }
 .asel-launch-count strong { color: var(--navy); }
 .asel-launch-btn { background: var(--navy); color: #fff; border: none; border-radius: 10px;
   padding: .75rem 1.5rem; font-size: .95rem; font-weight: 700; cursor: pointer;
-  font-family: 'DM Sans', sans-serif; transition: opacity .15s; white-space: nowrap; }
+  font-family: 'Archivo', sans-serif; transition: opacity .15s; white-space: nowrap; }
 .asel-launch-btn:hover:not(:disabled) { opacity: .85; }
 .asel-launch-btn:disabled { opacity: .45; cursor: not-allowed; }
 .asel-save-btn { background: var(--teal); color: #fff; border: none; border-radius: 10px;
   padding: .75rem 1.5rem; font-size: .95rem; font-weight: 700; cursor: pointer;
-  font-family: 'DM Sans', sans-serif; transition: opacity .15s; }
+  font-family: 'Archivo', sans-serif; transition: opacity .15s; }
 .asel-save-btn:hover { opacity: .85; }
 
 /* ── Success banner ───────────────────────────────────────────────────────── */
 .asel-success-banner { display: none; position: fixed; top: 1rem; right: 1rem; z-index: 200;
   background: #fff; border: 1px solid var(--border); border-radius: 10px;
   padding: .75rem 1.1rem; box-shadow: 0 4px 20px rgba(0,0,0,.12);
-  font-family: 'DM Sans', sans-serif; font-size: .88rem; color: var(--navy); max-width: 320px; }
+  font-family: 'Archivo', sans-serif; font-size: .88rem; color: var(--navy); max-width: 320px; }
 .asel-success-banner.show { display: block; }
 .asel-success-title { font-weight: 700; margin-bottom: .2rem; }
 
@@ -203,7 +203,7 @@
 
   <!-- Back link -->
   <a href="/simulations/{{ selector.sim_id }}"
-     style="display:inline-flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--muted);font-family:'DM Sans',sans-serif;text-decoration:none;margin-bottom:1.25rem;">
+     style="display:inline-flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--muted);font-family:'Archivo',sans-serif;text-decoration:none;margin-bottom:1.25rem;">
     ← Back to simulation
   </a>
 

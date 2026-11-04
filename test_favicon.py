@@ -110,13 +110,23 @@ def main():
                 stale.append(os.path.relpath(os.path.join(root, f), 'app/templates'))
     check('no template still points at the old 55x57 JPEG', not stale, stale)
 
-    have = 0
+    # Pages that extend base.html inherit the partial; every template that
+    # still carries its own <head> must include it.
+    missing, have = [], 0
     for root, _dirs, files in os.walk('app/templates'):
         for f in files:
-            if f.endswith('.html') and 'partials/_favicon.html' in io.open(
-                    os.path.join(root, f), encoding='utf-8').read():
-                have += 1
-    check('every page with a <head> includes the partial', have >= 15, have)
+            if not f.endswith('.html'):
+                continue
+            body = io.open(os.path.join(root, f), encoding='utf-8').read()
+            if '<head>' not in body or f == '_favicon.html':
+                continue
+            have += 1
+            if 'partials/_favicon.html' not in body:
+                missing.append(os.path.relpath(os.path.join(root, f), 'app/templates'))
+    check('every page with a <head> includes the partial', have >= 5 and not missing,
+          missing or have)
+    check('the landing page inherits it from base.html',
+          "{% extends 'base.html' %}" in io.open('app/templates/landing.html', encoding='utf-8').read())
 
     # ── It reaches the rendered pages ───────────────────────────────────────
     section('Rendered pages')

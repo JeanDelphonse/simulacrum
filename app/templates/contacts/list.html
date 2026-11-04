@@ -50,7 +50,7 @@
 
 .contact-name-link { font-weight: 500; color: #0D1B3E; text-decoration: none; }
 .contact-name-link:hover { text-decoration: underline; }
-.contact-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.contact-sub { font-size: 11px; color: var(--mute); margin-top: 2px; }
 
 .stage-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
 .stage-badge.prospect { background: #eff6ff; color: #1d4ed8; }
@@ -74,16 +74,16 @@
 .kanban-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; transition: box-shadow .15s; }
 .kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
 .kanban-card-name { font-size: 13px; font-weight: 500; color: #0D1B3E; }
-.kanban-card-sub { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+.kanban-card-sub { font-size: 11px; color: var(--mute); margin-top: 3px; }
 
 /* Bulk action bar */
 .crm-bulk-bar { display: none; align-items: center; gap: 10px; padding: 8px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; margin-bottom: 12px; font-size: 13px; }
 .crm-bulk-bar.visible { display: flex; }
 .bulk-count { font-weight: 600; color: #1d4ed8; }
-.bulk-sep { color: #d1d5db; }
+.bulk-sep { color: var(--ink-2); }
 
 /* Empty state */
-.crm-empty { text-align: center; padding: 60px 20px; color: #9ca3af; }
+.crm-empty { text-align: center; padding: 60px 20px; color: var(--mute); }
 .crm-empty-icon { font-size: 40px; margin-bottom: 12px; }
 .crm-empty-title { font-size: 16px; font-weight: 500; color: #374151; margin-bottom: 6px; }
 
@@ -99,14 +99,14 @@
 .crm-modal { background: #fff; border-radius: 10px; width: min(560px, calc(100vw - 32px)); max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
 .crm-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px 14px; border-bottom: 1px solid #e5e7eb; }
 .crm-modal-title { font-size: 16px; font-weight: 600; color: #0D1B3E; }
-.crm-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #9ca3af; padding: 2px 6px; }
+.crm-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--mute); padding: 2px 6px; }
 .crm-modal-body { padding: 20px; }
 .crm-form-row { margin-bottom: 14px; }
 .crm-form-row label { display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 5px; }
 .crm-form-row input, .crm-form-row select, .crm-form-row textarea { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box; }
 .crm-form-row input:focus, .crm-form-row select:focus { outline: none; border-color: #0D1B3E; box-shadow: 0 0 0 2px rgba(13,27,62,.1); }
 .crm-form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.crm-form-section { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 10px; border-top: 1px solid #f3f4f6; padding-top: 14px; }
+.crm-form-section { font-size: 11px; font-weight: 600; color: var(--mute); text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 10px; border-top: 1px solid #f3f4f6; padding-top: 14px; }
 .crm-form-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid #e5e7eb; }
 .dup-warn { font-size: 12px; color: #dc2626; margin-top: 4px; display: none; }
 
@@ -130,7 +130,7 @@
   <div class="crm-header">
     <div>
       <h1>Contacts{% if sim %} — {{ sim.name or sim.expertise_zone }}{% endif %}</h1>
-      <div style="font-size:13px;color:#9ca3af;margin-top:2px;">{{ total }} contact{{ 's' if total != 1 else '' }} in your pipeline</div>
+      <div style="font-size:13px;color:var(--mute);margin-top:2px;">{{ total }} contact{{ 's' if total != 1 else '' }} in your pipeline</div>
     </div>
     <div class="crm-header-actions">
       <button class="crm-btn crm-btn-ghost" id="btnImport">Import CSV</button>
@@ -446,7 +446,7 @@ function loadContacts() {
       renderTable(data.contacts, data.total, data.pages);
     })
     .catch(() => {
-      document.getElementById('contactsTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af">Failed to load contacts</td></tr>';
+      document.getElementById('contactsTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--mute)">Failed to load contacts</td></tr>';
     });
 }
 
@@ -471,7 +471,7 @@ function renderTable(contacts, total, pages) {
       <td>${stageBadge(c.pipeline_stage)}</td>
       <td>${scoreHtml(c.qualifying_score)}</td>
       <td style="color:#6b7280">${sourceLabel(c.source)}</td>
-      <td style="color:#9ca3af">${timeAgo(c.last_contacted_at || c.updated_at)}</td>
+      <td style="color:var(--mute)">${timeAgo(c.last_contacted_at || c.updated_at)}</td>
     </tr>
   `).join('');
 
@@ -497,7 +497,7 @@ function renderPagination(pages) {
     if (i===1 || i===pages || Math.abs(i-_page)<=2) {
       html += `<button class="crm-page-btn ${i===_page?'active':''}" onclick="gotoPage(${i})">${i}</button>`;
     } else if (Math.abs(i-_page)===3) {
-      html += `<span style="padding:6px 4px;color:#9ca3af">…</span>`;
+      html += `<span style="padding:6px 4px;color:var(--mute)">…</span>`;
     }
   }
   html += `<button class="crm-page-btn" ${_page>=pages?'disabled':''} onclick="gotoPage(${_page+1})">&#8250;</button>`;
@@ -522,7 +522,7 @@ function loadKanban() {
             <div class="kanban-card-sub">${c.job_title || ''}${c.job_title && c.company_name ? ' · ' : ''}${c.company_name || ''}</div>
             ${scoreHtml(c.qualifying_score)}
           </div>
-        `).join('') || '<div style="font-size:12px;color:#9ca3af;padding:8px">No contacts</div>';
+        `).join('') || '<div style="font-size:12px;color:var(--mute);padding:8px">No contacts</div>';
       });
     });
 }

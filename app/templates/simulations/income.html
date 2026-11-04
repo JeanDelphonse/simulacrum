@@ -20,23 +20,23 @@
       <div class="inc-sum-value" id="incGrandTotal">—</div>
     </div>
     <div class="income-summary-card" id="inc-sum-l1">
-      <div class="inc-sum-label" style="color:#AFA9EC">L1 · Active</div>
+      <div class="inc-sum-label" style="color:var(--l1)">L1 · Active</div>
       <div class="inc-sum-value" id="incTotal1">—</div>
     </div>
     <div class="income-summary-card" id="inc-sum-l2">
-      <div class="inc-sum-label" style="color:#5DCAA5">L2 · Leveraged</div>
+      <div class="inc-sum-label" style="color:var(--l2)">L2 · Leveraged</div>
       <div class="inc-sum-value" id="incTotal2">—</div>
     </div>
     <div class="income-summary-card" id="inc-sum-l3">
-      <div class="inc-sum-label" style="color:#F0997B">L3 · Productized</div>
+      <div class="inc-sum-label" style="color:var(--teal-ink)">L3 · Productized</div>
       <div class="inc-sum-value" id="incTotal3">—</div>
     </div>
     <div class="income-summary-card" id="inc-sum-l4">
-      <div class="inc-sum-label" style="color:#EF9F27">L4 · Automated</div>
+      <div class="inc-sum-label" style="color:#2E7D72">L4 · Automated</div>
       <div class="inc-sum-value" id="incTotal4">—</div>
     </div>
     <div class="income-summary-card" id="inc-sum-l5">
-      <div class="inc-sum-label" style="color:#85B7EB">L5 · Wealth</div>
+      <div class="inc-sum-label" style="color:#7A5410">L5 · Wealth</div>
       <div class="inc-sum-value" id="incTotal5">—</div>
     </div>
   </div>
@@ -119,29 +119,29 @@
 
 .income-summary-row { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
 .income-summary-card { flex: 1; min-width: 110px; background: #F8F9FA; border: 1px solid #E8E8E8; border-radius: 8px; padding: 0.75rem 1rem; }
-.inc-sum-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin-bottom: 0.25rem; }
+.inc-sum-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute); margin-bottom: 0.25rem; }
 .inc-sum-value { font-size: 1.1rem; font-weight: 700; color: var(--navy, #0D1B3E); }
 
 .income-table-wrap { background: #fff; border: 1px solid #E8E8E8; border-radius: 8px; overflow: hidden; }
 .income-table-hdr { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #E8E8E8; font-size: 0.8rem; font-weight: 600; color: var(--navy, #0D1B3E); }
-.inc-void-toggle { display: flex; align-items: center; gap: 0.4rem; font-weight: 400; color: #888; cursor: pointer; }
+.inc-void-toggle { display: flex; align-items: center; gap: 0.4rem; font-weight: 400; color: var(--mute); cursor: pointer; }
 .income-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-.income-table th { padding: 0.6rem 1rem; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; background: #FAFAFA; border-bottom: 1px solid #E8E8E8; }
+.income-table th { padding: 0.6rem 1rem; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mute); background: #FAFAFA; border-bottom: 1px solid #E8E8E8; }
 .income-table td { padding: 0.7rem 1rem; border-bottom: 1px solid #F0F0F0; color: #333; vertical-align: middle; }
 .income-table tr:last-child td { border-bottom: none; }
 .income-table tr.is-void td { opacity: 0.4; }
-.inc-empty { text-align: center; color: #aaa; padding: 2rem !important; }
+.inc-empty { text-align: center; color: var(--mute); padding: 2rem !important; }
 .inc-layer-pill { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 10px; font-weight: 600; }
-.inc-void-btn { background: none; border: 1px solid #ddd; color: #999; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; }
+.inc-void-btn { background: none; border: 1px solid #ddd; color: var(--mute); font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; }
 .inc-void-btn:hover { border-color: #c00; color: #c00; }
-.inc-voided-badge { font-size: 0.68rem; color: #999; background: #F0F0F0; border-radius: 4px; padding: 0.1rem 0.4rem; }
+.inc-voided-badge { font-size: 0.68rem; color: var(--mute); background: #F0F0F0; border-radius: 4px; padding: 0.1rem 0.4rem; }
 
 /* Modal */
 .inc-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1400; }
 .inc-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; border-radius: 10px; width: 420px; max-width: calc(100vw - 2rem); z-index: 1401; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
 .inc-modal-hdr { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #E8E8E8; }
 .inc-modal-title { font-size: 1rem; font-weight: 700; color: var(--navy, #0D1B3E); }
-.inc-modal-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #888; padding: 0; line-height: 1; }
+.inc-modal-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--mute); padding: 0; line-height: 1; }
 .inc-modal-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.9rem; }
 .inc-field { display: flex; flex-direction: column; gap: 0.3rem; }
 .inc-label { font-size: 0.75rem; font-weight: 600; color: #444; }
@@ -202,8 +202,8 @@ async function loadRecords() {
         <td>${r.income_date || '—'}</td>
         <td>${pill}</td>
         <td style="font-weight:600">${fmt(r.amount)}</td>
-        <td>${r.description || '<span style="color:#aaa">—</span>'}</td>
-        <td style="color:#888">${r.source === 'manual_entry' ? 'Manual' : r.source}</td>
+        <td>${r.description || '<span style="color:var(--mute)">—</span>'}</td>
+        <td style="color:var(--mute)">${r.source === 'manual_entry' ? 'Manual' : r.source}</td>
         <td>${action}</td>
       </tr>`;
     }).join('');

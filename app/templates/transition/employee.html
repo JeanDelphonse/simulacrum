@@ -2,14 +2,14 @@
 {% block title %}My transition package{% endblock %}
 {% block head %}
 <style>
-.te { max-width: 900px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.te { max-width: 900px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'Archivo', sans-serif; color: #0D1B3E; }
 .te h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
 .te h2 { font-size: 1.02rem; margin: 0 0 .55rem; }
-.te-sub { color: #6B7B8D; margin: 0 0 1.2rem; font-size: .92rem; }
+.te-sub { color: var(--mute); margin: 0 0 1.2rem; font-size: .92rem; }
 .te-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .75rem; margin-bottom: 1.2rem; }
 .te-stat { border: 1px solid #e5e7eb; border-radius: 10px; padding: .75rem .9rem; background: #fff; }
 .te-stat b { display: block; font-size: 1.4rem; }
-.te-stat span { font-size: .78rem; color: #6B7B8D; }
+.te-stat span { font-size: .78rem; color: var(--mute); }
 .te-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.15rem; margin-bottom: 1rem; background: #fff; }
 .te-btn { padding: .4rem .85rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .84rem; cursor: pointer; }
 .te-btn.primary { background: #0F7B72; color: #fff; border-color: #0F7B72; }
@@ -18,7 +18,7 @@
 table.te-t { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .te-t td, .te-t th { padding: .4rem; border-bottom: 1px solid #f1f5f9; text-align: left; }
 .te-msg { font-size: .82rem; color: #b91c1c; min-height: 1.1em; margin-top: .3rem; }
-.te-note { font-size: .78rem; color: #6B7B8D; }
+.te-note { font-size: .78rem; color: var(--mute); }
 </style>
 {% endblock %}
 {% block content %}

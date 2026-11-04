@@ -7,33 +7,39 @@
 <title>{{ sim.name }} — ROI Report</title>
 <meta property="og:title" content="{{ sim.name }} — {{ roi_ratio }}x ROI">
 <meta property="og:description" content="Captured ${{ '{:,.0f}'.format(total_income) }} from a ${{ '{:,.0f}'.format(cost_usd) }} simulation.">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
 <style>
+  /* A public share card in the design system (css/system.css tokens). The body
+     is a column so the public footer sits under the card, full width. */
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0e1a; color: #e8eaf0; font-family: 'DM Sans', -apple-system, sans-serif;
-         min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-  .card { background: linear-gradient(135deg, #0f1b35 0%, #0a1628 100%);
-          border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 3rem;
-          max-width: 520px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
-  .badge { display: inline-block; background: rgba(15,123,114,.2); color: #4dd9c4;
-           border: 1px solid rgba(15,123,114,.4); border-radius: 20px; font-size: .75rem;
-           font-weight: 700; padding: .3rem .9rem; letter-spacing: .06em; margin-bottom: 1.5rem; }
-  .roi-num { font-size: 5rem; font-weight: 800; color: #4dd9c4; line-height: 1; margin-bottom: .5rem; }
-  .roi-label { font-size: 1rem; color: rgba(255,255,255,.5); margin-bottom: 2rem; }
+  body { background: var(--alt); color: var(--ink); font-family: var(--sans);
+         min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+  body > .pf { align-self: stretch; }
+  .roi-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 3rem 1.25rem; width: 100%; }
+  .card { background: #fff; border: 1px solid var(--rule); border-radius: var(--r-ui); padding: 3rem 2.5rem;
+          max-width: 520px; width: 100%; text-align: center; box-shadow: 0 30px 60px -30px rgba(13,27,62,.28); }
+  .badge { display: inline-block; background: #E1F5F2; color: #0B4F49; border-radius: 999px; font-size: 13px;
+           font-weight: 650; padding: 4px 12px; margin-bottom: 1.5rem; }
+  .roi-num { font-size: clamp(56px, 12vw, 80px); font-weight: 760; font-stretch: 112%; letter-spacing: -.03em;
+             color: var(--ink); line-height: 1; margin-bottom: .5rem; }
+  .roi-label { font-size: 17px; color: var(--ink-2); margin-bottom: 2rem; }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
-  .stat { background: rgba(255,255,255,.05); border-radius: 12px; padding: 1.25rem; }
-  .stat-val { font-size: 1.5rem; font-weight: 700; color: #e8eaf0; }
-  .stat-lbl { font-size: .75rem; color: rgba(255,255,255,.4); margin-top: .25rem; }
-  .sim-name { font-size: .9rem; color: rgba(255,255,255,.4); margin-bottom: 1.5rem; }
-  .cta { display: inline-block; background: #0f7b72; color: #fff; border-radius: 10px;
-         padding: .75rem 1.75rem; font-size: .9rem; font-weight: 600; text-decoration: none;
-         transition: background .2s; }
-  .cta:hover { background: #0a6460; }
-  .powered { margin-top: 1.5rem; font-size: .72rem; color: rgba(255,255,255,.25); }
+  .stat { background: var(--alt); border-radius: 10px; padding: 1.25rem; }
+  .stat-val { font-size: 26px; font-weight: 720; color: var(--ink); }
+  .stat-lbl { font-size: 14px; color: var(--mute); margin-top: .25rem; }
+  .sim-name { font-size: 15px; color: var(--mute); margin-bottom: 1.5rem; }
+  .cta { display: inline-flex; align-items: center; min-height: 48px; background: var(--gold); color: var(--ink);
+         border-radius: var(--r-btn); padding: 0 22px; font-size: 16px; font-weight: 600; text-decoration: none; }
+  .cta:hover { background: var(--gold-hi); color: var(--ink); }
+  .powered { margin-top: 1.5rem; font-size: 14px; color: var(--mute); }
+  @media (max-width: 480px) { .card { padding: 2rem 1.25rem; } .stats { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
+<div class="roi-wrap">
 <div class="card">
-  <div class="badge">SIMISI ROI REPORT</div>
+  <div class="badge">SimiSI ROI report</div>
 
   {% if roi_ratio >= 1 %}
   <div class="roi-num">{{ roi_ratio }}x</div>
@@ -56,8 +62,9 @@
     </div>
   </div>
 
-  <a href="https://simisi.io" class="cta">Start your own simulation →</a>
-  <div class="powered">Powered by SimiSI — AI-driven career wealth simulation</div>
+  <a href="https://simisi.io" class="cta">Start your own simulation</a>
+  <div class="powered">Powered by SimiSI, the career-to-wealth simulation</div>
+</div>
 </div>
 {% include 'partials/_footer_public.html' %}
 </body>

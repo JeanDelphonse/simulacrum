@@ -5,36 +5,36 @@
 <style>
 .admin-integ-page { max-width: 1040px; margin: 2rem auto; padding: 0 1.25rem; }
 .admin-integ-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
-.admin-integ-header h1 { font-size: 1.2rem; font-weight: 700; color: #e8eaf0; margin: 0; }
-.admin-integ-header p { font-size: .82rem; color: rgba(255,255,255,.4); margin: 0; }
-.admin-warn { background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: .75rem 1rem; font-size: .82rem; color: rgba(255,255,255,.6); margin-bottom: 1.5rem; }
-.admin-warn strong { color: #fca5a5; }
-.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.35); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(255,255,255,.07); }
+.admin-integ-header h1 { font-size: 1.2rem; font-weight: 700; color: var(--ink); margin: 0; }
+.admin-integ-header p { font-size: .82rem; color: var(--mute); margin: 0; }
+.admin-warn { background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: .75rem 1rem; font-size: .82rem; color: var(--ink-2); margin-bottom: 1.5rem; }
+.admin-warn strong { color: #B91C1C; }
+.integ-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--mute); margin: 1.5rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(13,27,62,.12); }
 .integ-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; margin-bottom: .75rem; }
-.integ-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: .5rem; }
+.integ-card { background: #F9FAFB; border: 1px solid rgba(13,27,62,.12); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: .5rem; }
 .integ-card-top { display: flex; align-items: flex-start; gap: .75rem; }
 .integ-logo { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 800; flex-shrink: 0; }
-.integ-card-name { font-weight: 700; font-size: .95rem; color: #e8eaf0; }
-.integ-card-desc { font-size: .78rem; color: rgba(255,255,255,.4); margin-top: .1rem; }
+.integ-card-name { font-weight: 700; font-size: .95rem; color: var(--ink); }
+.integ-card-desc { font-size: .78rem; color: var(--mute); margin-top: .1rem; }
 .integ-badge { font-size: .68rem; font-weight: 700; padding: .18rem .6rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
-.integ-badge.connected { background: rgba(134,239,172,.15); color: #86efac; }
-.integ-badge.not_connected { background: rgba(255,255,255,.07); color: rgba(255,255,255,.4); }
-.integ-badge.expired { background: rgba(245,200,66,.15); color: #f5c842; }
-.integ-badge.legal { background: rgba(245,200,66,.08); color: #f5c842; }
-.integ-details { font-size: .78rem; color: rgba(255,255,255,.4); line-height: 1.5; }
-.integ-token-info { font-size: .75rem; color: rgba(255,255,255,.3); background: rgba(255,255,255,.03); border-radius: 6px; padding: .4rem .65rem; margin-top: .3rem; }
+.integ-badge.connected { background: rgba(134,239,172,.15); color: #15803D; }
+.integ-badge.not_connected { background: var(--alt); color: var(--mute); }
+.integ-badge.expired { background: rgba(245,200,66,.15); color: #7A5410; }
+.integ-badge.legal { background: rgba(245,200,66,.08); color: #7A5410; }
+.integ-details { font-size: .78rem; color: var(--mute); line-height: 1.5; }
+.integ-token-info { font-size: .75rem; color: var(--mute); background: #F9FAFB; border-radius: 6px; padding: .4rem .65rem; margin-top: .3rem; }
 .integ-admin-actions { display: flex; gap: .5rem; margin-top: auto; padding-top: .75rem; flex-wrap: wrap; }
 .audit-section { margin-top: 2.5rem; }
-.audit-section h2 { font-size: 1rem; font-weight: 700; color: #e8eaf0; margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.audit-section h2 { font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(13,27,62,.12); }
 .audit-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
-.audit-table th { text-align: left; padding: .5rem .75rem; color: rgba(255,255,255,.4); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid rgba(255,255,255,.08); }
-.audit-table td { padding: .55rem .75rem; border-bottom: 1px solid rgba(255,255,255,.04); color: rgba(255,255,255,.7); vertical-align: top; }
+.audit-table th { text-align: left; padding: .5rem .75rem; color: var(--mute); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid rgba(13,27,62,.12); }
+.audit-table td { padding: .55rem .75rem; border-bottom: 1px solid rgba(13,27,62,.12); color: var(--ink-2); vertical-align: top; }
 .audit-table tr:last-child td { border-bottom: none; }
-.audit-action-pill { font-size: .68rem; padding: .1rem .5rem; border-radius: 20px; font-weight: 600; background: rgba(255,255,255,.06); color: rgba(255,255,255,.5); }
-.audit-action-pill.connected { background: rgba(134,239,172,.12); color: #86efac; }
-.audit-action-pill.disconnected { background: rgba(252,165,165,.1); color: #fca5a5; }
-.audit-action-pill.token_revoked { background: rgba(239,68,68,.12); color: #fca5a5; }
-.audit-action-pill.reauth_link_sent { background: rgba(245,200,66,.1); color: #f5c842; }
+.audit-action-pill { font-size: .68rem; padding: .1rem .5rem; border-radius: 20px; font-weight: 600; background: #F9FAFB; color: var(--mute); }
+.audit-action-pill.connected { background: rgba(134,239,172,.12); color: #15803D; }
+.audit-action-pill.disconnected { background: rgba(252,165,165,.1); color: #B91C1C; }
+.audit-action-pill.token_revoked { background: rgba(239,68,68,.12); color: #B91C1C; }
+.audit-action-pill.reauth_link_sent { background: rgba(245,200,66,.1); color: #7A5410; }
 @media (max-width: 640px) { .integ-grid { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
@@ -43,9 +43,9 @@
 <div class="admin-integ-page">
 
   <div style="margin-bottom:1rem">
-    <a href="{{ url_for('pages.admin_view') }}" style="font-size:.82rem;color:rgba(255,255,255,.4);text-decoration:none">&larr; Admin</a>
-    <span style="color:rgba(255,255,255,.2);margin:0 .4rem">/</span>
-    <a href="{{ url_for('pages.admin_audit_log') }}" style="font-size:.82rem;color:rgba(255,255,255,.4);text-decoration:none">Audit log</a>
+    <a href="{{ url_for('pages.admin_view') }}" style="font-size:.82rem;color:var(--mute);text-decoration:none">&larr; Admin</a>
+    <span style="color:var(--mute);margin:0 .4rem">/</span>
+    <a href="{{ url_for('pages.admin_audit_log') }}" style="font-size:.82rem;color:var(--mute);text-decoration:none">Audit log</a>
   </div>
 
   <div class="admin-integ-header">
@@ -140,7 +140,7 @@
         Status: {{ rec.connection_status }}
       </div>
       {% else %}
-      <div class="integ-details" style="color:rgba(255,255,255,.3)">No integration record.</div>
+      <div class="integ-details" style="color:var(--mute)">No integration record.</div>
       {% endif %}
 
       <div class="integ-admin-actions">
@@ -149,7 +149,7 @@
           Send re-auth link
         </button>
         {% if rec and rec.is_connected %}
-        <button class="btn btn-ghost btn-sm" style="font-size:.75rem;color:#fca5a5;border-color:rgba(252,165,165,.3)"
+        <button class="btn btn-ghost btn-sm" style="font-size:.75rem;color:#B91C1C;border-color:rgba(252,165,165,.3)"
                 onclick="adminRevokeToken('{{ target_user.id }}', '{{ provider }}', this)">
           Revoke token
         </button>
@@ -163,7 +163,7 @@
   {% if recent_audits %}
   <div class="audit-section">
     <h2>Audit log for this user
-      <a href="{{ url_for('pages.admin_audit_log') }}" style="font-size:.78rem;color:#f5c842;font-weight:400;margin-left:.75rem">View all &rarr;</a>
+      <a href="{{ url_for('pages.admin_audit_log') }}" style="font-size:.78rem;color:#7A5410;font-weight:400;margin-left:.75rem">View all &rarr;</a>
     </h2>
     <table class="audit-table">
       <thead>
@@ -178,11 +178,11 @@
       <tbody>
         {% for entry in recent_audits %}
         <tr>
-          <td style="color:rgba(255,255,255,.4);white-space:nowrap">{{ entry.created_at.strftime('%b %d %H:%M') }}</td>
+          <td style="color:var(--mute);white-space:nowrap">{{ entry.created_at.strftime('%b %d %H:%M') }}</td>
           <td>{{ entry.integration_type }}</td>
           <td><span class="audit-action-pill {{ entry.action }}">{{ entry.action | replace('_', ' ') }}</span></td>
-          <td style="color:rgba(255,255,255,.4)">{{ entry.admin_user_id }}</td>
-          <td style="color:rgba(255,255,255,.3)">{{ entry.ip_address or '—' }}</td>
+          <td style="color:var(--mute)">{{ entry.admin_user_id }}</td>
+          <td style="color:var(--mute)">{{ entry.ip_address or '—' }}</td>
         </tr>
         {% endfor %}
       </tbody>

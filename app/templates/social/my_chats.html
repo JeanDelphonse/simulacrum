@@ -1,69 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% include 'partials/_favicon.html' %}
-  <title>My Chats — SimiSI</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f9fafb; color: #111827; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; }
-    a { text-decoration: none; color: inherit; }
-
-    .chats-nav {
-      background: #fff; border-bottom: 1px solid #e5e7eb;
-      padding: .875rem 2rem; display: flex; align-items: center; gap: 1.5rem;
-    }
-    .chats-nav .brand { font-weight: 800; font-size: 1.1rem; color: #111827; }
-    .chats-nav .brand span { color: #0e7490; }
-    .chats-nav a { font-size: .88rem; color: #6b7280; font-weight: 500; }
-    .chats-nav a:hover { color: #0e7490; }
-    .chats-nav .nav-right { margin-left: auto; }
-
+{% extends 'base.html' %}
+{# A member's chats with visitors and other members. Extends base.html for the shared nav,
+   type and tokens (docs/simisi_system_mockup.html). #}
+{% block full_title %}My Chats — SimiSI{% endblock %}
+{% block head %}
+<style>
     .chats-layout {
       display: flex; max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; gap: 1.5rem;
     }
-
     /* ── Left: chat list ── */
     .chat-list { width: 320px; flex-shrink: 0; }
     .chat-list-header { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
     .chat-item {
-      background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+      background: #fff; border: 1px solid var(--rule); border-radius: 10px;
       padding: .875rem 1rem; margin-bottom: .625rem; cursor: pointer;
       display: flex; gap: .75rem; align-items: center;
       transition: border-color .12s, box-shadow .12s;
     }
     .chat-item:hover, .chat-item.active {
-      border-color: #0e7490; box-shadow: 0 2px 8px rgba(14,116,144,.12);
+      border-color: var(--ink); box-shadow: 0 2px 8px rgba(14,116,144,.12);
     }
     .chat-item-avatar {
       width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
-      object-fit: cover; background: #f3f4f6;
+      object-fit: cover; background: var(--alt);
     }
     .chat-item-avatar-placeholder {
       width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg, #0e7490, #059669);
+      background: linear-gradient(135deg, var(--ink), var(--l2));
       display: flex; align-items: center; justify-content: center;
       color: #fff; font-size: 16px; font-weight: 700;
     }
     .chat-item-body { flex: 1; min-width: 0; }
-    .chat-item-name { font-size: .9rem; font-weight: 600; color: #111827; margin-bottom: .125rem; }
+    .chat-item-name { font-size: .9rem; font-weight: 600; color: var(--ink); margin-bottom: .125rem; }
     .chat-item-preview {
-      font-size: .8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: .8rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .chat-item-time { font-size: .75rem; color: #9ca3af; margin-top: .125rem; }
-
+    .chat-item-time { font-size: .75rem; color: var(--mute); margin-top: .125rem; }
     /* ── Right: chat panel ── */
     .chat-panel {
-      flex: 1; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+      flex: 1; background: #fff; border: 1px solid var(--rule); border-radius: 14px;
       display: flex; flex-direction: column; min-height: 500px; overflow: hidden;
     }
     .panel-header {
-      padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb;
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--rule);
       display: flex; align-items: center; gap: .75rem;
     }
     .panel-header-name { font-weight: 700; font-size: 1rem; }
-    .panel-header a { font-size: .82rem; color: #0e7490; margin-left: auto; }
+    .panel-header a { font-size: .82rem; color: var(--ink); margin-left: auto; }
     .panel-messages {
       flex: 1; padding: 1.25rem; overflow-y: auto;
       display: flex; flex-direction: column; gap: .75rem;
@@ -74,13 +56,12 @@
     .msg-bubble {
       padding: .625rem .875rem; border-radius: 12px; font-size: .9rem; line-height: 1.55;
     }
-    .msg.user .msg-bubble { background: #0e7490; color: #fff; border-bottom-right-radius: 4px; }
-    .msg.assistant .msg-bubble { background: #f3f4f6; color: #111827; border-bottom-left-radius: 4px; }
-    .msg-time { font-size: .72rem; color: #9ca3af; margin-top: .2rem; text-align: right; }
+    .msg.user .msg-bubble { background: var(--ink); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.assistant .msg-bubble { background: var(--alt); color: var(--ink); border-bottom-left-radius: 4px; }
+    .msg-time { font-size: .72rem; color: var(--mute); margin-top: .2rem; text-align: right; }
     .msg.assistant .msg-time { text-align: left; }
-
     .panel-input {
-      padding: 1rem 1.25rem; border-top: 1px solid #e5e7eb;
+      padding: 1rem 1.25rem; border-top: 1px solid var(--rule);
       display: flex; gap: .625rem;
     }
     .panel-input textarea {
@@ -88,42 +69,38 @@
       font-size: .9rem; font-family: inherit; resize: none; line-height: 1.5;
       outline: none; transition: border-color .12s;
     }
-    .panel-input textarea:focus { border-color: #0e7490; }
+    .panel-input textarea:focus { border-color: var(--ink); }
     .panel-send {
-      background: #0e7490; color: #fff; border: none; border-radius: 8px;
+      background: var(--ink); color: #fff; border: none; border-radius: 8px;
       padding: .6rem 1.1rem; cursor: pointer; font-weight: 600; font-size: .88rem;
       transition: background .12s;
     }
-    .panel-send:hover { background: #0c6480; }
+    .panel-send:hover { background: #1B2C57; }
     .panel-send:disabled { opacity: .5; cursor: not-allowed; }
-
-    .empty-chats { text-align: center; padding: 4rem 1.5rem; color: #9ca3af; }
-    .empty-chats h2 { font-size: 1.1rem; color: #374151; margin-bottom: .5rem; }
+    .empty-chats { text-align: center; padding: 4rem 1.5rem; color: var(--mute); }
+    .empty-chats h2 { font-size: 1.1rem; color: var(--ink-2); margin-bottom: .5rem; }
     .empty-chats a {
-      display: inline-block; margin-top: 1rem; background: #0e7490;
+      display: inline-block; margin-top: 1rem; background: var(--ink);
       color: #fff; padding: .55rem 1.25rem; border-radius: 8px; font-size: .88rem; font-weight: 600;
     }
-
     .no-chat-selected {
       flex: 1; display: flex; align-items: center; justify-content: center;
-      color: #9ca3af; font-size: .95rem;
+      color: var(--mute); font-size: .95rem;
     }
-
     @media (max-width: 680px) {
       .chats-layout { flex-direction: column; }
       .chat-list { width: 100%; }
     }
-  </style>
-</head>
-<body>
+  
+</style>
+{% endblock %}
 
-<nav class="chats-nav">
-  <a class="brand" href="/">SimiSI</a>
-  <a href="/explore">Explore</a>
-  <a href="/feed">Feed</a>
-  <div class="nav-right"><a href="/dashboard">Dashboard</a></div>
+{% block content %}
+<nav class="ss-subtabs" aria-label="Community">
+  <a href="{{ url_for('public.explore') }}">Explore</a>
+  <a href="{{ url_for('social.activity_feed') }}"{% if request.endpoint == 'social.activity_feed' %} aria-current="page"{% endif %}>Feed</a>
+  <a href="{{ url_for('social.my_chats') }}"{% if request.endpoint == 'social.my_chats' %} aria-current="page"{% endif %}>My chats</a>
 </nav>
-
 <div class="chats-layout">
   {% if chats %}
   <div class="chat-list">
@@ -163,7 +140,9 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 (function () {
   var items = document.querySelectorAll('.chat-item');
@@ -275,6 +254,4 @@
   }
 }());
 </script>
-
-</body>
-</html>
+{% endblock %}

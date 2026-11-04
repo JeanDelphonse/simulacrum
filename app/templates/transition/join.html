@@ -2,9 +2,9 @@
 {% block title %}Your transition package{% endblock %}
 {% block head %}
 <style>
-.tj { max-width: 720px; margin: 2.5rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.tj { max-width: 720px; margin: 2.5rem auto; padding: 0 1.25rem; font-family: 'Archivo', sans-serif; color: #0D1B3E; }
 .tj h1 { font-size: 1.6rem; margin: 0 0 .4rem; }
-.tj-sub { color: #6B7B8D; margin: 0 0 1.4rem; }
+.tj-sub { color: var(--mute); margin: 0 0 1.4rem; }
 .tj-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1rem; background: #fff; }
 .tj-card h2 { font-size: 1rem; margin: 0 0 .5rem; }
 .tj-two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -15,7 +15,7 @@
 .tj-btn { background: #0F7B72; color: #fff; border: none; border-radius: 8px; padding: .65rem 1.3rem; font-size: .95rem; cursor: pointer; }
 .tj-btn:disabled { opacity: .5; cursor: not-allowed; }
 .tj-msg { color: #b91c1c; font-size: .88rem; margin-top: .6rem; min-height: 1.2em; }
-.tj-fine { color: #6B7B8D; font-size: .78rem; margin-top: 1rem; }
+.tj-fine { color: var(--mute); font-size: .78rem; margin-top: 1rem; }
 @media (max-width: 640px) { .tj-two { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}

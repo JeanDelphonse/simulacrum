@@ -35,10 +35,14 @@ LAYER_COUNT = len(LAYERS)
 
 def site_layers() -> dict:
     """{'layers': [...], 'count': 5, 'agent_total': 49}, each layer with its
-    agent count from agents.json."""
+    agent count and agent names (in agents.json order) from agents.json."""
     from app.services import agent_registry
     counts = Counter(a.get('layer') for a in agent_registry._agents_flat)
-    layers = [dict(layer, agents=counts.get(layer['n'], 0)) for layer in LAYERS]
+    names = {}
+    for a in agent_registry._agents_flat:
+        names.setdefault(a.get('layer'), []).append(a.get('label') or a.get('action_type', '').replace('_', ' ').title())
+    layers = [dict(layer, agents=counts.get(layer['n'], 0), agent_names=names.get(layer['n'], []))
+              for layer in LAYERS]
     return {'layers': layers, 'count': LAYER_COUNT,
             'agent_total': sum(layer['agents'] for layer in layers)}
 

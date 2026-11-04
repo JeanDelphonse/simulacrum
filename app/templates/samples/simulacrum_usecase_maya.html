@@ -3,7 +3,7 @@
 
 {% block head %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
 .uc{
   --navy:#0D1B3E;--navy-mid:#1B3A6B;--teal:#0F7B72;--teal-lt:#13A89E;
@@ -12,8 +12,8 @@
   --l1:#534AB7;--l1l:#EEEDFE;--l2:#0F6E56;--l2l:#E1F5EE;
   --l3:#D85A30;--l3l:#FAECE7;--l4:#BA7517;--l4l:#FAEEDA;
   --l5:#185FA5;--l5l:#E6F1FB;
-  --font-display:'DM Serif Display',serif;
-  --font-body:'DM Sans',sans-serif;
+  --font-display:'Archivo',sans-serif;
+  --font-body:'Archivo',sans-serif;
   --font-mono:'DM Mono',monospace;
   --radius:10px;--radius-sm:6px;
   font-family:var(--font-body);
@@ -25,8 +25,12 @@
 }
 .uc *{box-sizing:border-box;margin:0;padding:0}
 
+/* A dark editorial page inside the light site: headings take the page colour
+   rather than the global ink heading colour from css/system.css. */
+.uc h1,.uc h2,.uc h3,.uc h4{color:inherit}
+
 /* ── Hero ─────────────────────────────────────────────────────────── */
-.uc .hero{padding:72px 24px 56px;text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.08)}
+.uc .hero{display:block;min-height:0;max-width:none;margin:0;gap:0;padding:72px 24px 56px;text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.08)}
 .uc .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(201,149,42,.12) 0%,transparent 70%);pointer-events:none}
 .uc .hero-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;display:inline-flex;align-items:center;gap:8px}
 .uc .hero-eyebrow::before,.uc .hero-eyebrow::after{content:'';display:inline-block;width:28px;height:1px;background:var(--gold);opacity:.6}

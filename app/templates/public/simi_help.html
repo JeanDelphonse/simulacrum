@@ -1,57 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% include 'partials/_favicon.html' %}
-  <title>Meet Simi — SimiSI Co-pilot</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+{% extends 'base.html' %}
+{# Meet Simi: what the in-app co-pilot can do. Extends base.html for the shared
+   nav, type and tokens (docs/simisi_system_mockup.html). #}
+{% block full_title %}Meet Simi: the SimiSI co-pilot{% endblock %}
+{% block head %}
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --navy:   #e2e8f0;
-      --teal:   #14b8a6;
-      --teal-d: #0a7b72;
-      --gold:   #f59e0b;
-      --coral:  #E85D4A;
-      --bg:     #0a0e1a;
-      --card:   #111827;
-      --surface:#1a2332;
-      --border: rgba(255,255,255,0.09);
-      --muted:  #9CA3AF;
-      --text:   #e2e8f0;
+    .sh-scope {
+      --navy:   var(--ink);
+      --teal:   var(--teal-ink);
+      --teal-d: #0B5F58;
+      --gold:   #7A5410;
+      --coral:  #B3402F;
+      --bg:     #FFFFFF;
+      --card:   #FFFFFF;
+      --surface:var(--alt);
+      --border: var(--rule);
+      --muted:  var(--mute);
+      --text:   var(--ink);
     }
 
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-    }
-
-    /* ── Nav ── */
-    .sh-nav {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0.9rem 2rem; border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; background: var(--bg); z-index: 10;
-    }
-    .sh-nav-logo {
-      display: flex; align-items: center; gap: 0.5rem;
-      font-weight: 700; font-size: 0.9rem; color: var(--text);
-      text-decoration: none;
-    }
-    .sh-nav-logo-mark {
-      width: 28px; height: 28px; background: var(--teal); border-radius: 6px;
-      display: flex; align-items: center; justify-content: center; font-size: 0.85rem;
-    }
-    .sh-nav-back {
-      font-size: 0.82rem; color: var(--muted); text-decoration: none;
-      display: flex; align-items: center; gap: 0.3rem; transition: color 0.15s;
-    }
-    .sh-nav-back:hover { color: var(--teal); }
 
     /* ── Layout ── */
     .sh-page { max-width: 860px; margin: 0 auto; padding: 0 1.5rem 5rem; }
@@ -68,7 +34,7 @@
       box-shadow: 0 8px 32px rgba(20,184,166,0.3);
     }
     .sh-hero h1 {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Archivo', sans-serif;
       font-size: clamp(2rem, 5vw, 2.8rem);
       color: var(--text); margin-bottom: 1rem;
     }
@@ -84,7 +50,7 @@
       letter-spacing: 0.08em; color: var(--teal); margin-bottom: 0.5rem;
     }
     .sh-section-title {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Archivo', sans-serif;
       font-size: 1.5rem; color: var(--text); margin-bottom: 1.5rem;
     }
 
@@ -100,7 +66,7 @@
     }
     .sh-cap-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+      box-shadow: 0 10px 30px -12px rgba(13,27,62,.25);
     }
     .sh-cap-icon {
       font-size: 1.3rem; margin-bottom: 0.55rem; display: block;
@@ -145,7 +111,7 @@
       font-size: 0.8rem; color: var(--text); cursor: pointer;
       transition: background 0.15s, border-color 0.15s, color 0.15s;
       display: flex; align-items: center; gap: 0.35rem;
-      font-family: 'DM Sans', sans-serif;
+      font-family: 'Archivo', sans-serif;
     }
     .sh-chip:hover { background: rgba(20,184,166,0.1); border-color: var(--teal); color: var(--teal); }
     .sh-chip.copied { background: rgba(20,184,166,0.15); border-color: var(--teal); color: var(--teal); }
@@ -153,7 +119,7 @@
     /* Copy toast */
     .sh-toast {
       position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: var(--teal); color: #0a0e1a; font-size: 0.82rem; font-weight: 600;
+      background: var(--ink); color: #fff; font-size: 0.82rem; font-weight: 600;
       padding: 0.5rem 1.2rem; border-radius: 20px;
       opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none;
       z-index: 99;
@@ -168,15 +134,15 @@
       padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);
     }
     .sh-tips-table th.instead { color: var(--coral); }
-    .sh-tips-table th.try     { color: #34d399; }
+    .sh-tips-table th.try     { color: #0B6B63; }
     .sh-tips-table th.tip     { color: var(--muted); }
     .sh-tips-table td {
       font-size: 0.83rem; padding: 0.65rem 0.75rem;
       border-bottom: 1px solid var(--border); vertical-align: top;
       line-height: 1.5;
     }
-    .sh-tips-table td.instead { color: rgba(232,93,74,0.8); font-style: italic; }
-    .sh-tips-table td.try     { color: #34d399; }
+    .sh-tips-table td.instead { color: #B3402F; font-style: italic; }
+    .sh-tips-table td.try     { color: #0B6B63; }
     .sh-tips-table td.tip     { color: var(--muted); font-weight: 600; font-style: normal; font-size: 0.78rem; }
     .sh-tips-table tr:last-child td { border-bottom: none; }
     @media (max-width: 560px) {
@@ -199,19 +165,12 @@
 
     /* ── Divider ── */
     .sh-divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    .sh-scope { background: var(--bg); color: var(--text); }
   </style>
-</head>
-<body>
+{% endblock %}
 
-<!-- Nav -->
-<nav class="sh-nav">
-  <a href="/" class="sh-nav-logo">
-    <span class="sh-nav-logo-mark">✦</span>
-    SimiSI
-  </a>
-  <a href="javascript:history.back()" class="sh-nav-back">← Back</a>
-</nav>
-
+{% block content %}
+<div class="sh-scope">
 <div class="sh-page">
 
   <!-- ── 1. Hero ── -->
@@ -464,7 +423,16 @@
 
 <!-- Copy toast -->
 <div class="sh-toast" id="shToast">Copied!</div>
+</div>
+{% endblock %}
 
+{% block footer %}
+{# The .sh-footer above stays: it is the AI disclaimer for this page, not
+   site chrome. The public footer sits beneath it. #}
+{% include 'partials/_footer_public.html' %}
+{% endblock %}
+
+{% block scripts %}
 <script>
 function copyChip(btn) {
   const text = btn.textContent.trim();
@@ -487,9 +455,4 @@ function copyChip(btn) {
   });
 }
 </script>
-
-{# The .sh-footer above stays: it is the AI disclaimer for this page, not
-   site chrome. The public footer sits beneath it. #}
-{% include 'partials/_footer_public.html' %}
-</body>
-</html>
+{% endblock %}

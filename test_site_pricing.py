@@ -114,21 +114,23 @@ def main():
         check('no "6 layers" / "six layers" anywhere on the page',
               not re.search(r'\b(6|six)\s+(income\s+)?layers\b', text, re.I))
         check('FAQ says five income layers', 'across 5 income layers' in text)
-        check('the ladder renders five rows', page.count('class="layer-badge"') == 5)
+        check('the layer stack renders five rows', page.count('<details class="layer"') == 5)
         for name in ('Active Income', 'Leveraged Income', 'Productized Income',
                      'Automated Residual Income', 'Wealth Deployment'):
             check('ladder shows %s' % name, name in text)
 
         print('\n6. Positioning sections A-H')
-        check('A: hero says what the agents do', '10 emails to copy-paste' in text)
-        how = text_of(page.split('id="how-it-works"')[1].split('</section>')[0])
+        check('A: hero says what the agents do, honestly',
+              'build the path you choose and act on it, on the channels you allow' in text)
+        how_html = page.split('id="how"')[1].split('</section>')[0]
+        how = text_of(how_html)
         check('B: five how-it-works steps, generate then act',
-              all(t in how for t in ('Agents build the deliverables', 'Agents act on them',
-                                     'Decide with foresight')) and page.split('id="how-it-works"')[1]
-              .split('</section>')[0].count('class="n"') == 5)
-        check('C: "From plan to done." section with a 4-step loop',
-              'From plan to done.' in text and page.split('id="plan-to-done"')[1]
-              .split('</section>')[0].count('class="n"') == 4)
+              all(t in how for t in ('Agents build the work', 'Agents act on it',
+                                     'Decide with foresight')) and how_html.count('<li><h3>') == 5)
+        act_html = page.split('id="act"')[1].split('</section>')[0]
+        check('C: "Agents that do the work" section with a 4-step loop',
+              'Agents that do the work, with you in charge' in text
+              and act_html.split('id="loopList"')[1].split('</ol>')[0].count('<li') == 4)
         for card in ('Agents that act, not just advise', 'You decide what runs', 'Works through your tools'):
             check('E: card "%s"' % card, card in text)
         check('D: control pillar next to Calibrated / Validated',
