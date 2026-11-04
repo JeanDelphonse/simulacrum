@@ -2159,28 +2159,28 @@
     {% if active_tab == 'voice' %}
     <div id="voiceTab">
       <div class="settings-section-title" style="border:none;padding:0;margin-bottom:.5rem">Voice Training</div>
-      <p class="settings-hint" style="margin-bottom:1.5rem">Train a synthetic voice model from your own voice. Use it to narrate simulation overview videos.</p>
+      <p class="settings-hint" style="margin-bottom:1.5rem;color:#6B7280">Train a synthetic voice model from your own voice. Use it to narrate simulation overview videos.</p>
 
       {% if not voice_paid %}
       {# ── State 1: Not purchased ── #}
-      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.75rem;max-width:540px">
+      <div style="background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:1.75rem;max-width:540px">
         <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
           <div style="width:40px;height:40px;border-radius:50%;background:rgba(15,123,114,.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🎙️</div>
           <div>
             <div style="font-weight:700;font-size:.95rem">Train Your Voice</div>
-            <div style="font-size:.78rem;color:rgba(255,255,255,.45);margin-top:.1rem">One-time · $4.99 · Unlimited videos after</div>
+            <div style="font-size:.78rem;color:#6B7280;margin-top:.1rem">One-time · $4.99 · Unlimited videos after</div>
           </div>
         </div>
-        <p style="font-size:.83rem;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:1.25rem">Create narrated videos of your simulation results in your own voice. Read 8 short paragraphs — takes about 3 minutes. Generate unlimited videos from then on.</p>
+        <p style="font-size:.83rem;color:#374151;line-height:1.6;margin-bottom:1.25rem">Create narrated videos of your simulation results in your own voice. Read 8 short paragraphs — takes about 3 minutes. Generate unlimited videos from then on.</p>
         <div style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:1.5rem">
           {% for feat in ['60-90 second simulation overview videos', 'Your real voice — not a generic AI', 'Downloadable MP4 + LinkedIn share', 'Embed on your bio page'] %}
-          <div style="display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:rgba(255,255,255,.7)">
+          <div style="display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:#374151">
             <span style="color:#0f7b72;font-weight:700">✓</span> {{ feat }}
           </div>
           {% endfor %}
         </div>
         <button onclick="startVoiceCheckout(this)" class="btn btn-teal" style="width:100%;justify-content:center">Get started — $4.99</button>
-        <p style="font-size:.72rem;color:rgba(255,255,255,.3);margin-top:1rem;line-height:1.5">Your voice model is stored securely and never shared. It is used only for your simulation videos. You can delete it anytime.</p>
+        <p style="font-size:.72rem;color:#6B7280;margin-top:1rem;line-height:1.5">Your voice model is stored securely and never shared. It is used only for your simulation videos. You can delete it anytime.</p>
       </div>
 
       {% elif not voice_trained %}
@@ -2189,13 +2189,13 @@
 
         {# Step 1: Consent #}
         <div id="vStep1" class="voice-step">
-          <div class="settings-section" style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.5rem">
+          <div class="settings-section" style="border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:1.5rem">
             <div style="font-weight:700;margin-bottom:.75rem">Step 1 of 3 — Consent</div>
-            <p style="font-size:.83rem;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:1.25rem">Before creating your voice model, please read and accept the following:</p>
-            <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:1rem;font-size:.8rem;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:1.25rem">
+            <p style="font-size:.83rem;color:#374151;line-height:1.6;margin-bottom:1.25rem">Before creating your voice model, please read and accept the following:</p>
+            <div style="background:#F3F4F6;border-radius:8px;padding:1rem;font-size:.8rem;color:#374151;line-height:1.6;margin-bottom:1.25rem">
               I confirm this is my own voice and I authorize SimiSI to create a synthetic voice model for use in my simulation videos. My voice model is private and will never be shared with other users or used outside my own content.
             </div>
-            <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;font-size:.83rem;color:rgba(255,255,255,.8)">
+            <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;font-size:.83rem;color:#1F2937">
               <input type="checkbox" id="voiceConsentCheck" style="margin-top:.15rem;accent-color:#0f7b72">
               I agree to the above consent statement
             </label>
@@ -2205,18 +2205,18 @@
 
         {# Step 2: Choose method #}
         <div id="vStep2" class="voice-step" style="display:none">
-          <div class="settings-section" style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.5rem">
+          <div class="settings-section" style="border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:1.5rem">
             <div style="font-weight:700;margin-bottom:.75rem">Step 2 of 3 — Choose Recording Method</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-              <button onclick="chooseMethod('record')" style="border:1.5px solid rgba(255,255,255,.1);background:transparent;border-radius:10px;padding:1.1rem .75rem;cursor:pointer;color:inherit;text-align:center;transition:all .15s" id="methodRecord">
+              <button onclick="chooseMethod('record')" style="border:1.5px solid rgba(13,27,62,.12);background:transparent;border-radius:10px;padding:1.1rem .75rem;cursor:pointer;color:inherit;text-align:center;transition:all .15s" id="methodRecord">
                 <div style="font-size:1.4rem;margin-bottom:.4rem">🎙️</div>
                 <div style="font-weight:700;font-size:.84rem">Record Now</div>
-                <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.25rem">Read 8 paragraphs<br>~3 minutes</div>
+                <div style="font-size:.72rem;color:#6B7280;margin-top:.25rem">Read 8 paragraphs<br>~3 minutes</div>
               </button>
-              <button onclick="chooseMethod('upload')" style="border:1.5px solid rgba(255,255,255,.1);background:transparent;border-radius:10px;padding:1.1rem .75rem;cursor:pointer;color:inherit;text-align:center;transition:all .15s" id="methodUpload">
+              <button onclick="chooseMethod('upload')" style="border:1.5px solid rgba(13,27,62,.12);background:transparent;border-radius:10px;padding:1.1rem .75rem;cursor:pointer;color:inherit;text-align:center;transition:all .15s" id="methodUpload">
                 <div style="font-size:1.4rem;margin-bottom:.4rem">📁</div>
                 <div style="font-weight:700;font-size:.84rem">Upload Audio</div>
-                <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.25rem">MP3/WAV/M4A<br>min. 30 seconds</div>
+                <div style="font-size:.72rem;color:#6B7280;margin-top:.25rem">MP3/WAV/M4A<br>min. 30 seconds</div>
               </button>
             </div>
           </div>
@@ -2224,11 +2224,11 @@
 
         {# Step 3A: Browser recording #}
         <div id="vStep3Record" class="voice-step" style="display:none">
-          <div class="settings-section" style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.5rem">
+          <div class="settings-section" style="border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:1.5rem">
             <div style="font-weight:700;margin-bottom:.25rem">Step 3 of 3 — Record Your Voice</div>
-            <p style="font-size:.78rem;color:rgba(255,255,255,.45);margin-bottom:1.25rem">Read each paragraph aloud clearly. Click Start, read all 8 paragraphs, then click Stop.</p>
-            <div id="recordParagraphs" style="background:rgba(0,0,0,.2);border-radius:8px;padding:1.1rem;font-size:.84rem;color:rgba(255,255,255,.85);line-height:1.75;margin-bottom:1.25rem">
-              <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.3);margin-bottom:.75rem">Read these paragraphs aloud:</div>
+            <p style="font-size:.78rem;color:#6B7280;margin-bottom:1.25rem">Read each paragraph aloud clearly. Click Start, read all 8 paragraphs, then click Stop.</p>
+            <div id="recordParagraphs" style="background:#F3F4F6;border-radius:8px;padding:1.1rem;font-size:.84rem;color:#1F2937;line-height:1.75;margin-bottom:1.25rem">
+              <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;margin-bottom:.75rem">Read these paragraphs aloud:</div>
               {% set paras = [
                 'I help professionals turn their expertise into income. After 15 years in the industry, I have seen what works and what does not.',
                 'My simulation generated 46,000 dollars in confirmed income across 5 layers: consulting, workshops, courses, newsletter sponsorships, and automated investments.',
@@ -2243,7 +2243,7 @@
               <p style="margin:.5rem 0">{{ loop.index }}. {{ p }}</p>
               {% endfor %}
             </div>
-            <div id="recordStatus" style="font-size:.79rem;color:rgba(255,255,255,.45);margin-bottom:.75rem;min-height:1.2em"></div>
+            <div id="recordStatus" style="font-size:.79rem;color:#6B7280;margin-bottom:.75rem;min-height:1.2em"></div>
             <div style="display:flex;gap:.75rem">
               <button id="startRecordBtn" onclick="startRecording()" class="btn btn-teal" style="flex:1;justify-content:center">🎙 Start Recording</button>
               <button id="stopRecordBtn" onclick="stopRecording()" class="btn" style="flex:1;justify-content:center;display:none">⬛ Stop Recording</button>
@@ -2254,35 +2254,35 @@
 
         {# Step 3B: Upload audio #}
         <div id="vStep3Upload" class="voice-step" style="display:none">
-          <div class="settings-section" style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.5rem">
+          <div class="settings-section" style="border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:1.5rem">
             <div style="font-weight:700;margin-bottom:.25rem">Step 3 of 3 — Upload Audio</div>
-            <p style="font-size:.78rem;color:rgba(255,255,255,.45);margin-bottom:1.25rem">Upload a clear audio recording of your voice. MP3, WAV, or M4A. Minimum 30 seconds, recommended 3+ minutes.</p>
-            <input type="file" id="audioFileInput" accept=".mp3,.wav,.m4a" style="font-size:.82rem;color:rgba(255,255,255,.7);margin-bottom:1rem">
+            <p style="font-size:.78rem;color:#6B7280;margin-bottom:1.25rem">Upload a clear audio recording of your voice. MP3, WAV, or M4A. Minimum 30 seconds, recommended 3+ minutes.</p>
+            <input type="file" id="audioFileInput" accept=".mp3,.wav,.m4a" style="font-size:.82rem;color:#374151;margin-bottom:1rem">
             <button onclick="submitUpload(this)" class="btn btn-teal" style="width:100%;justify-content:center">Upload &amp; Train</button>
           </div>
         </div>
 
         {# Step 4: Processing #}
         <div id="vStep4" class="voice-step" style="display:none">
-          <div class="settings-section" style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:2rem;text-align:center">
+          <div class="settings-section" style="border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:2rem;text-align:center">
             <div style="font-size:2rem;margin-bottom:.75rem">⚙️</div>
             <div style="font-weight:700;margin-bottom:.5rem">Training your voice model…</div>
-            <p style="font-size:.8rem;color:rgba(255,255,255,.45)">This takes 1-5 minutes. Please don't close this page.</p>
-            <div id="trainingStatus" style="font-size:.78rem;color:rgba(255,255,255,.4);margin-top:.75rem"></div>
+            <p style="font-size:.8rem;color:#6B7280">This takes 1-5 minutes. Please don't close this page.</p>
+            <div id="trainingStatus" style="font-size:.78rem;color:#6B7280;margin-top:.75rem"></div>
           </div>
         </div>
 
         {# Step 5: Preview #}
         <div id="vStep5" class="voice-step" style="display:none">
-          <div class="settings-section" style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.5rem">
+          <div class="settings-section" style="border:1px solid rgba(13,27,62,.12);border-radius:14px;padding:1.5rem">
             <div style="font-weight:700;margin-bottom:.5rem">Your voice is ready! 🎉</div>
-            <p style="font-size:.82rem;color:rgba(255,255,255,.55);margin-bottom:1.25rem">Listen to a preview to confirm it sounds like you.</p>
+            <p style="font-size:.82rem;color:#6B7280;margin-bottom:1.25rem">Listen to a preview to confirm it sounds like you.</p>
             <audio id="previewAudio" controls style="width:100%;margin-bottom:1rem"></audio>
             <div style="display:flex;gap:.75rem">
               <button onclick="loadPreview()" class="btn" style="flex:1;justify-content:center">🔄 Regenerate preview</button>
               <button onclick="approveVoice()" class="btn btn-teal" style="flex:1;justify-content:center">Sounds like me ✓</button>
             </div>
-            <button onclick="retrainVoice()" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:.77rem;cursor:pointer;margin-top:.75rem;width:100%">Record again instead</button>
+            <button onclick="retrainVoice()" style="background:none;border:none;color:#6B7280;font-size:.77rem;cursor:pointer;margin-top:.75rem;width:100%">Record again instead</button>
           </div>
         </div>
 
@@ -2295,22 +2295,22 @@
           <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.9rem">
             <span style="font-size:1.2rem">🎙️</span>
             <div>
-              <div style="font-weight:700;font-size:.93rem;color:#4dd9c8">Voice trained ✓</div>
+              <div style="font-weight:700;font-size:.93rem;color:#0f7b72">Voice trained ✓</div>
               {% if voice_trained_at %}
-              <div style="font-size:.75rem;color:rgba(255,255,255,.4)">Since {{ voice_trained_at.strftime('%B %-d, %Y') }}</div>
+              <div style="font-size:.75rem;color:#6B7280">Since {{ voice_trained_at.strftime('%B') }} {{ voice_trained_at.day }}, {{ voice_trained_at.year }}</div>
               {% endif %}
             </div>
           </div>
-          <p style="font-size:.81rem;color:rgba(255,255,255,.55);margin-bottom:1.1rem">Your voice model is active. You can create narrated simulation videos in GCC → Visuals.</p>
+          <p style="font-size:.81rem;color:#6B7280;margin-bottom:1.1rem">Your voice model is active. You can create narrated simulation videos in GCC → Visuals.</p>
           <div style="display:flex;gap:.75rem;flex-wrap:wrap">
             <button onclick="playVoicePreview(this)" class="btn" style="font-size:.8rem">▶ Preview voice</button>
             <button onclick="retrainVoice()" class="btn" style="font-size:.8rem">↺ Retrain</button>
           </div>
           <audio id="previewAudioTrained" style="display:none"></audio>
         </div>
-        <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:1rem">
+        <div style="background:#F9FAFB;border:1px solid rgba(13,27,62,.12);border-radius:10px;padding:1rem">
           <div style="font-size:.8rem;font-weight:600;margin-bottom:.4rem">Privacy</div>
-          <p style="font-size:.77rem;color:rgba(255,255,255,.38);line-height:1.55;margin-bottom:.85rem">Your voice model is stored securely and never shared. Delete it anytime to remove it from ElevenLabs permanently.</p>
+          <p style="font-size:.77rem;color:#6B7280;line-height:1.55;margin-bottom:.85rem">Your voice model is stored securely and never shared. Delete it anytime to remove it from ElevenLabs permanently.</p>
           <button onclick="deleteVoice(this)" style="background:none;border:1px solid rgba(220,38,38,.4);color:rgba(220,38,38,.7);border-radius:7px;padding:.35rem .85rem;font-size:.77rem;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(220,38,38,.1)'" onmouseout="this.style.background='none'">Delete voice model</button>
         </div>
       </div>
@@ -4556,8 +4556,8 @@ function showStep(id) {
 }
 
 function chooseMethod(method) {
-  document.getElementById('methodRecord').style.borderColor = method==='record' ? 'rgba(15,123,114,.6)' : 'rgba(255,255,255,.1)';
-  document.getElementById('methodUpload').style.borderColor = method==='upload' ? 'rgba(15,123,114,.6)' : 'rgba(255,255,255,.1)';
+  document.getElementById('methodRecord').style.borderColor = method==='record' ? 'rgba(15,123,114,.6)' : 'rgba(13,27,62,.12)';
+  document.getElementById('methodUpload').style.borderColor = method==='upload' ? 'rgba(15,123,114,.6)' : 'rgba(13,27,62,.12)';
   setTimeout(function(){ showStep(method==='record' ? 'vStep3Record' : 'vStep3Upload'); }, 200);
 }
 
