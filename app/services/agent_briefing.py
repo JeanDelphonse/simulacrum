@@ -50,10 +50,13 @@ class Briefing:
     existing_contact_count: int = 0
     income: str = ''
     computed: str = ''
+    goal: str = ''           # the user's approved SME Console goal for this layer
 
     def sections(self) -> str:
         """The briefing as prompt text, in the order the agent should read it."""
         parts = []
+        if self.goal:
+            parts.append(self.goal)
         if self.profile:
             parts.append('PROFESSIONAL PROFILE:\n' + self.profile)
         if self.upstream:
@@ -330,6 +333,8 @@ def build_briefing(action_type: str, layer_number: int, simulation_id: str,
             simulation_id=simulation_id, action_type=action_type)))
     if layer_number == 5 and simulation is not None:
         steps.append(('income', lambda: _income_section(simulation, briefing)))
+    if user_id and layer_number in (1, 2, 3, 4, 5):
+        steps.append(('goal', lambda: _goal_section(user_id, layer_number, briefing)))
 
     for name, fn in steps:
         try:
@@ -337,6 +342,11 @@ def build_briefing(action_type: str, layer_number: int, simulation_id: str,
         except Exception as exc:
             logger.warning('briefing: %s section failed for %s: %s', name, action_type, exc)
     return briefing
+
+
+def _goal_section(user_id: str, layer_number: int, briefing: Briefing) -> None:
+    from app.services.guide_service import agent_briefing_section
+    briefing.goal = agent_briefing_section(user_id, layer_number)
 
 
 # ---------------------------------------------------------------------------

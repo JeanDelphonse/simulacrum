@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{# SME Console: a spoken AI guide for setting one goal per income layer.
+   Ported from docs/simisi_sme_console_mockup.html (layout, avatars, picker);
+   the scripted demo is replaced by the live conversation API. #}
+{% block full_title %}SME Console · Talk with your guide | SimiSI{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/guide.css') }}">
+{% endblock %}
+{% block content %}
+<div class="smc">
+<div class="top">
+  <div class="crumb">SME Console · <b>Goal setting with <span data-guide-name>Simi</span></b>
+    <a href="{{ url_for('guide.history_page') }}">Your conversations &amp; goals</a></div>
+  <div class="layers" id="layers" role="group" aria-label="Income layers">
+    <button type="button" class="lp on" data-l="1">L1 Active</button><button type="button" class="lp" data-l="2">L2 Leveraged</button><button type="button" class="lp" data-l="3">L3 Productized</button><button type="button" class="lp" data-l="4">L4 Residual</button><button type="button" class="lp" data-l="5">L5 Wealth</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- GUIDE -->
+  <section class="card stage" id="stage" aria-label="Your guide">
+    <div class="avwrap">
+      <div class="halo"></div>
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div id="avatarHolder">
+      <svg viewBox="0 0 300 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simi, your SimiSI guide">
+        <defs>
+          <linearGradient id="smcMb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F4F7FB"/><stop offset="1" stop-color="#D6DEEA"/></linearGradient>
+          <linearGradient id="smcSw" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#C9952A"/><stop offset="1" stop-color="#EBC46A"/></linearGradient>
+          <linearGradient id="smcVi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17294f"/><stop offset="1" stop-color="#0b1730"/></linearGradient>
+          <radialGradient id="smcEy" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#5fe6da"/><stop offset="55%" stop-color="#13A89E"/><stop offset="100%" stop-color="#0d8379"/></radialGradient>
+        </defs>
+        <g class="m-body">
+          <g class="m-armL"><line x1="102" y1="196" x2="70" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="70" cy="252" r="13" fill="#C9952A"/></g>
+          <g class="m-armR"><line x1="198" y1="196" x2="230" y2="250" stroke="#E4EAF2" stroke-width="17" stroke-linecap="round"/><circle cx="230" cy="252" r="13" fill="#C9952A"/></g>
+          <rect x="116" y="300" width="34" height="18" rx="9" fill="url(#smcMb)" stroke="#C9952A" stroke-width="1.4"/>
+          <rect x="150" y="300" width="34" height="18" rx="9" fill="url(#smcMb)" stroke="#C9952A" stroke-width="1.4"/>
+          <rect x="92" y="170" width="116" height="140" rx="46" fill="url(#smcMb)" stroke="#C9952A" stroke-width="1.6"/>
+          <rect x="118" y="206" width="64" height="52" rx="12" fill="url(#smcVi)" stroke="#C9952A" stroke-width="1.2"/>
+          <rect class="m-bar m-b1" x="126" y="240" width="6.5" height="10" rx="2" fill="#0B4A46"/>
+          <rect class="m-bar m-b2" x="137" y="236" width="6.5" height="15" rx="2" fill="#0F7B72"/>
+          <rect class="m-bar m-b3" x="148" y="231" width="6.5" height="20" rx="2" fill="#139488"/>
+          <rect class="m-bar m-b4" x="159" y="226" width="6.5" height="26" rx="2" fill="#13A89E"/>
+          <rect class="m-bar m-b5" x="170" y="220" width="6.5" height="32" rx="2" fill="#C9952A"/>
+          <rect x="78" y="44" width="144" height="118" rx="48" fill="url(#smcMb)" stroke="#C9952A" stroke-width="1.6"/>
+          <ellipse cx="112" cy="72" rx="24" ry="11" fill="#FFFFFF" opacity="0.35" transform="rotate(-18 112 72)"/>
+          <path class="m-swoosh" d="M146,46 C150,16 174,8 194,4 C178,24 172,34 166,46 Z" fill="url(#smcSw)"/>
+          <rect x="98" y="70" width="104" height="74" rx="30" fill="url(#smcVi)"/>
+          <path d="M112,88 Q124,81 136,86" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M164,86 Q176,81 188,88" stroke="#C9952A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <g class="m-eyes">
+            <ellipse cx="128" cy="106" rx="15" ry="17" fill="url(#smcEy)"/><ellipse cx="172" cy="106" rx="15" ry="17" fill="url(#smcEy)"/>
+            <circle cx="123" cy="100" r="5" fill="#EAFFFB"/><circle cx="167" cy="100" r="5" fill="#EAFFFB"/>
+          </g>
+          <path class="smile" d="M134,130 Q150,141 166,130" stroke="#2FB6A9" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <ellipse class="mouth-open" cx="150" cy="133" rx="11" ry="6" fill="#2FB6A9"/>
+        </g>
+      </svg>
+      </div>
+    </div>
+    <div class="guidebar"><b id="guideName">Simi</b><span class="aibadge">AI guide</span><button class="changeg" id="changeGuide" type="button">Change guide</button></div>
+    <div class="state" id="state" aria-live="polite">Ready</div>
+    <div class="caption" id="caption" aria-live="polite"><span class="who">Simi</span>Press the mic, or type below, to start talking.</div>
+    <div class="controls">
+      <button class="cbtn" id="restart" type="button" title="Start a new conversation">↺ Restart</button>
+      <button class="mic" id="mic" type="button" title="Push to talk" aria-label="Push to talk">🎙</button>
+    </div>
+    <button class="cbtn voicebtn" id="voiceBtn" type="button">🔊 Voice on</button>
+    <div class="privacy">Your guide is an AI and speaks aloud. Voice input uses your browser's speech recognition
+      (in Chrome, Google processes the audio); SimiSI never receives or stores audio, only the transcript.
+      Guides only use your profile and simulations.</div>
+  </section>
+
+  <!-- CONVERSATION -->
+  <section class="card convo" aria-label="Conversation">
+    <div class="hd"><h2 id="layerTitle">Layer 1 · Active income</h2><span>Nothing changes until you approve</span></div>
+    <div class="stepper" id="stepper">
+      <span class="gs" data-g="G">1 · Goal</span><span class="gs" data-g="R">2 · Reality</span><span class="gs" data-g="O">3 · Options</span><span class="gs" data-g="W">4 · Will (commit)</span>
+    </div>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+    <div class="err" id="err" role="alert"></div>
+    <div class="inbar"><label class="sr" for="inp">Type instead of talking</label><input placeholder="Type instead of talking…" id="inp" maxlength="2000" autocomplete="off"/><button id="send" type="button">Send</button></div>
+  </section>
+
+  <!-- GROUNDING + GOAL -->
+  <aside class="right">
+    <div class="card">
+      <h3>What <span data-guide-name>Simi</span> is using</h3>
+      <div class="sub">Your profile and simulations only. Items light up when <span data-guide-name>Simi</span> refers to them.</div>
+      <div id="facts"></div>
+    </div>
+    <div class="card goal">
+      <h3 id="cardTitle">L1 goal card</h3>
+      <div class="sub">Builds as you talk. Nothing changes until you approve.</div>
+      <div class="gc" id="gc">
+        <div class="gf"><div class="k">Goal</div><div class="v empty" id="f-goal">Waiting for the conversation…</div></div>
+        <div class="gf"><div class="k">How we'll measure it</div><div class="v empty" id="f-measure">—</div></div>
+        <div class="gf"><div class="k">Evidence</div><div class="v empty" id="f-evidence">—</div></div>
+        <div class="gf"><div class="k">Agent changes (applied once goal-driven agent settings are switched on)</div><div class="v empty" id="f-agents">—</div></div>
+        <div class="acts"><button id="edit" type="button" disabled>Edit</button><button class="ok" id="approve" type="button" disabled>Approve goal</button></div>
+        <div class="saved-msg">✓ Saved. This layer's agents now plan with your goal. Every send still needs your approval.</div>
+      </div>
+      <div class="goal-list" id="goalList"></div>
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<div class="modal" id="picker" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+  <div class="mbox">
+    <h2 id="pickTitle">Choose who you'd like to talk with</h2>
+    <div class="msub">Every guide is the same SimiSI AI underneath, with the same knowledge of your profile and simulations. Only the look and voice change. You can switch at any time.</div>
+    <div class="ggrid" id="ggrid" role="radiogroup"></div>
+    <div class="mnote">Every guide is an AI, not a real person, and is labeled that way on screen.</div>
+    <div class="mfoot"><button class="cancel" id="pickCancel" type="button">Cancel</button><button class="go" id="pickGo" type="button">Talk with <span id="pickName">Simi</span></button></div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.GUIDE_BOOT = {{ boot | tojson }};</script>
+<script src="{{ url_for('static', filename='js/guide_console.js') }}"></script>
+{% endblock %}

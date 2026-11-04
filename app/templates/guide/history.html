@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Your goals and conversations{% endblock %}
+{% block head %}
+<style>
+.gh { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; font-family: 'DM Sans', sans-serif; color: #0D1B3E; }
+.gh h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
+.gh h2 { font-size: 1.05rem; margin: 1.5rem 0 .6rem; }
+.gh-sub { color: #6B7B8D; font-size: .9rem; margin: 0 0 1rem; }
+.gh-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: .85rem 1rem; margin-bottom: .6rem; background: #fff; }
+.gh-k { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: #6B7B8D; }
+.gh-btn { padding: .35rem .75rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .8rem; cursor: pointer; }
+.gh-btn.danger { color: #b91c1c; border-color: #fca5a5; }
+.gh-turn { font-size: .86rem; margin: .35rem 0; }
+.gh-turn b { color: #0F7B72; }
+.gh-row { display: flex; justify-content: space-between; gap: .6rem; flex-wrap: wrap; align-items: center; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="gh">
+  <h1>Your goals and conversations</h1>
+  <p class="gh-sub">Approved goals and the skills you confirmed are part of your profile. Deleting a conversation doesn't remove
+    them; remove a skill below if you no longer want it. Your employer (if you're on a transition package) never sees any of this.
+    <a href="{{ url_for('guide.console_page') }}">Open the SME Console →</a></p>
+
+  <h2>Approved goals</h2>
+  {% set any_goal = namespace(v=False) %}
+  {% for l in range(1, 6) %}{% set c = state.cards[l] %}{% if c.approved %}{% set any_goal.v = True %}
+  <div class="gh-card"><div class="gh-k">L{{ l }} · {{ layers[l] }} · review by {{ c.approved.review_at or '—' }}</div>
+    <div style="font-weight:600;margin-top:.2rem">{{ c.approved.goal }}</div>
+    <div style="font-size:.84rem;color:#475569">{{ c.approved.measure }}{% if c.approved.deadline %} · by {{ c.approved.deadline }}{% endif %}</div></div>
+  {% endif %}{% endfor %}
+  {% if not any_goal.v %}<p class="gh-sub">No approved goals yet.</p>{% endif %}
+
+  <h2>Skills you confirmed</h2>
+  {% for s in state.skills %}
+  <div class="gh-card gh-row"><div><b>{{ s.skill }}</b><div style="font-size:.8rem;color:#6B7B8D">Evidence: {{ s.evidence or '—' }}</div></div>
+    <button class="gh-btn danger" data-skill="{{ s.id }}">Remove</button></div>
+  {% else %}<p class="gh-sub">None yet.</p>{% endfor %}
+
+  <div class="gh-row"><h2>Conversations</h2>{% if sessions %}<button class="gh-btn danger" id="delAll">Delete all conversations</button>{% endif %}</div>
+  {% for s in sessions %}
+  <div class="gh-card" data-session="{{ s.id }}">
+    <div class="gh-row"><div><div class="gh-k">{{ s.started_at[:16].replace('T', ' ') }} · {{ s.turns }} turns · layers {{ s.layers | join(', ') or '—' }}</div>
+      <div style="font-size:.86rem;margin-top:.2rem">{{ s.summary or '' }}</div></div>
+      <div><button class="gh-btn" data-view>Transcript</button> <button class="gh-btn danger" data-del>Delete</button></div></div>
+    <div data-transcript style="display:none;margin-top:.5rem"></div>
+  </div>
+  {% else %}<p class="gh-sub">No conversations yet.</p>{% endfor %}
+</div>
+<script>
+(function () {
+  var ROOT = (window.ROOT || '').replace(/\/+$/, '');
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function call(url, method) { return fetch(ROOT + url, { method: method, credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+  document.querySelector('.gh').addEventListener('click', function (ev) {
+    var card = ev.target.closest('[data-session]');
+    if (ev.target.hasAttribute('data-view') && card) {
+      var box = card.querySelector('[data-transcript]'); box.style.display = box.style.display === 'none' ? '' : 'none';
+      if (box.dataset.loaded) return;
+      call('/api/guide/history/' + card.dataset.session, 'GET').then(function (d) { box.dataset.loaded = 1;
+        box.innerHTML = (d.turns || []).map(function (t) { return '<div class="gh-turn"><b>' + (t.speaker === 'guide' ? 'Guide' : 'You') + ':</b> ' + esc(t.text) + '</div>'; }).join(''); });
+    }
+    if (ev.target.hasAttribute('data-del') && card && confirm('Delete this conversation? Your approved goals and skills stay.')) {
+      call('/api/guide/history/' + card.dataset.session, 'DELETE').then(function () { card.remove(); });
+    }
+    var sk = ev.target.getAttribute('data-skill');
+    if (sk && confirm('Remove this skill from your profile?')) call('/api/guide/my-skills/' + sk, 'DELETE').then(function () { location.reload(); });
+  });
+  var all = document.getElementById('delAll');
+  if (all) all.onclick = function () { if (confirm('Delete ALL conversations? Your approved goals and skills stay.')) call('/api/guide/history', 'DELETE').then(function () { location.reload(); }); };
+})();
+</script>
+{% endblock %}

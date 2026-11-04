@@ -42,7 +42,9 @@ GLOBAL = {'admin_stage_rules', 'calibration_audit', 'calibration_configs', 'disc
           'guardrail_policies', 'outreach_templates', 'simulation_discounts', 'feature_flags',
           'job_applications', 'org_invoices', 'org_sme_pod', 'admin_prospects', 'admin_prospect_touches',
           'corporate_accounts', 'referral_invitations', 'simi_smes',
-          'transition_cohorts'}   # employer-level records
+          'transition_cohorts',   # employer-level records
+          'enterprise_inquiries',  # inbound sales inquiries, not tied to a user account
+          'sme_guides'}            # the guide catalogue
 
 # Columns that hold THE user's id: rows matching are the user's data -> delete.
 USER_COLS = {'user_id', 'owner_user_id', 'author_user_id', 'profile_user_id', 'client_user_id',
@@ -80,6 +82,8 @@ SETS = [
     ('d_resumes', "SELECT id FROM resumes WHERE user_id = @uid"),
     ('d_seats', "SELECT id FROM transition_seats WHERE user_id = @uid"),
     ('d_csess', "SELECT id FROM coaching_sessions WHERE seat_id IN (SELECT id FROM d_seats)"),
+    ('d_smesess', "SELECT id FROM sme_sessions WHERE user_id = @uid"),
+    ('d_goals', "SELECT id FROM goal_cards WHERE user_id = @uid"),
 ]
 # Column name -> parent set(s) whose ids mean "this row belongs to the user".
 PARENT_COLS = {
@@ -112,6 +116,9 @@ SKIP_COLS = {
     ('contact_activities', 'created_by'),   # 'agent' | 'user', not a user id
     ('coaching_notes', 'session_id'),       # a coaching session, not a bio-chat session
     ('coaching_sessions', 'coach_id'), ('transition_seats', 'coach_id'),
+    # SME Console guide tables: session_id is a guide session, not a bio-chat one
+    ('sme_turns', 'session_id'), ('sme_briefings', 'session_id'), ('skill_suggestions', 'session_id'),
+    ('goal_cards', 'session_id'), ('user_guide_prefs', 'guide_id'), ('sme_sessions', 'guide_id'),
 }
 # action_approvals.target_id can point at a plan step or a send batch; tie it to the user's plans.
 EXTRA_WHERE = {
@@ -122,6 +129,9 @@ EXTRA_WHERE = {
     'artifact_units': ["artifact_id IN (SELECT id FROM d_actions)"],
     'suppression_list': [],
     'coaching_notes': ["session_id IN (SELECT id FROM d_csess)"],
+    'sme_turns': ["session_id IN (SELECT id FROM d_smesess)"],
+    'sme_briefings': ["session_id IN (SELECT id FROM d_smesess)"],
+    'goal_card_agent_changes': ["goal_card_id IN (SELECT id FROM d_goals)"],
 }
 
 deletes, nulls, unknown = {}, [], []

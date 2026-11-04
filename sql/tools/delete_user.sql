@@ -1,5 +1,5 @@
 -- delete_user.sql — permanently delete ONE user and everything that is theirs.
--- Generated from the models (all 149 tables reviewed). MySQL 5.7+/MariaDB.
+-- Generated from the models (all 158 tables reviewed). MySQL 5.7+/MariaDB.
 --
 -- BEFORE RUNNING
 --   1. Back up the database (cPanel > Backup, or mysqldump). This cannot be undone.
@@ -63,6 +63,8 @@ DROP TABLE IF EXISTS zz_del_enroll;
 DROP TABLE IF EXISTS zz_del_resumes;
 DROP TABLE IF EXISTS zz_del_seats;
 DROP TABLE IF EXISTS zz_del_csess;
+DROP TABLE IF EXISTS zz_del_smesess;
+DROP TABLE IF EXISTS zz_del_goals;
 DROP TABLE IF EXISTS zz_del_preview;
 CREATE TABLE zz_del_sims (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_actions (id CHAR(9) PRIMARY KEY);
@@ -89,6 +91,8 @@ CREATE TABLE zz_del_enroll (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_resumes (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_seats (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_csess (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_smesess (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_goals (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_preview (tbl VARCHAR(64) PRIMARY KEY, rows_to_delete INT);
 
 START TRANSACTION;
@@ -118,6 +122,8 @@ INSERT INTO zz_del_enroll SELECT id FROM outreach_enrollments WHERE user_id = @u
 INSERT INTO zz_del_resumes SELECT id FROM resumes WHERE user_id = @uid;
 INSERT INTO zz_del_seats SELECT id FROM transition_seats WHERE user_id = @uid;
 INSERT INTO zz_del_csess SELECT id FROM coaching_sessions WHERE seat_id IN (SELECT id FROM zz_del_seats);
+INSERT INTO zz_del_smesess SELECT id FROM sme_sessions WHERE user_id = @uid;
+INSERT INTO zz_del_goals SELECT id FROM goal_cards WHERE user_id = @uid;
 
 -- Preview: rows that will be deleted, per table.
 INSERT INTO zz_del_preview SELECT 'email_logs', COUNT(*) FROM email_logs WHERE action_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts) OR simulation_id IN (SELECT id FROM zz_del_sims) OR step_id IN (SELECT id FROM zz_del_steps);
@@ -162,6 +168,7 @@ INSERT INTO zz_del_preview SELECT 'profile_inquiries', COUNT(*) FROM profile_inq
 INSERT INTO zz_del_preview SELECT 'blog_reports', COUNT(*) FROM blog_reports WHERE reporter_user_id = @uid OR target_id IN (SELECT id FROM zz_del_comments) OR target_id IN (SELECT id FROM zz_del_posts);
 INSERT INTO zz_del_preview SELECT 'blog_posts', COUNT(*) FROM blog_posts WHERE author_user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'user_integrations', COUNT(*) FROM user_integrations WHERE user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'user_guide_prefs', COUNT(*) FROM user_guide_prefs WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'user_feature_overrides', COUNT(*) FROM user_feature_overrides WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'user_events', COUNT(*) FROM user_events WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'user_discounts', COUNT(*) FROM user_discounts WHERE user_id = @uid;
@@ -173,7 +180,11 @@ INSERT INTO zz_del_preview SELECT 'sync_runs', COUNT(*) FROM sync_runs WHERE acc
 INSERT INTO zz_del_preview SELECT 'suppression_list', COUNT(*) FROM suppression_list WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'suggestion_blends', COUNT(*) FROM suggestion_blends WHERE share_id IN (SELECT id FROM zz_del_shares);
 INSERT INTO zz_del_preview SELECT 'social_post_queue', COUNT(*) FROM social_post_queue WHERE artifact_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'sme_turns', COUNT(*) FROM sme_turns WHERE session_id IN (SELECT id FROM zz_del_smesess);
+INSERT INTO zz_del_preview SELECT 'sme_sessions', COUNT(*) FROM sme_sessions WHERE user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'sme_briefings', COUNT(*) FROM sme_briefings WHERE session_id IN (SELECT id FROM zz_del_smesess);
 INSERT INTO zz_del_preview SELECT 'sme_access_log', COUNT(*) FROM sme_access_log WHERE user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'skill_suggestions', COUNT(*) FROM skill_suggestions WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'simulation_chat_messages', COUNT(*) FROM simulation_chat_messages WHERE session_id IN (SELECT id FROM zz_del_chatsess) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'simi_conversations', COUNT(*) FROM simi_conversations WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'signing_documents', COUNT(*) FROM signing_documents WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
@@ -198,6 +209,8 @@ INSERT INTO zz_del_preview SELECT 'layer_income_records', COUNT(*) FROM layer_in
 INSERT INTO zz_del_preview SELECT 'kajabi_products', COUNT(*) FROM kajabi_products WHERE action_id IN (SELECT id FROM zz_del_actions) OR artifact_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'integration_signals', COUNT(*) FROM integration_signals WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'integration_activity_log', COUNT(*) FROM integration_activity_log WHERE action_id IN (SELECT id FROM zz_del_actions) OR user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'goal_cards', COUNT(*) FROM goal_cards WHERE user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'goal_card_agent_changes', COUNT(*) FROM goal_card_agent_changes WHERE goal_card_id IN (SELECT id FROM zz_del_goals);
 INSERT INTO zz_del_preview SELECT 'execution_runs', COUNT(*) FROM execution_runs WHERE obs_run_id IN (SELECT id FROM zz_del_runs) OR plan_id IN (SELECT id FROM zz_del_plans) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'email_campaigns', COUNT(*) FROM email_campaigns WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'email_accounts', COUNT(*) FROM email_accounts WHERE user_id = @uid;
@@ -313,6 +326,7 @@ DELETE FROM blog_reports WHERE reporter_user_id = @uid
     OR target_id IN (SELECT id FROM zz_del_posts);
 DELETE FROM blog_posts WHERE author_user_id = @uid;
 DELETE FROM user_integrations WHERE user_id = @uid;
+DELETE FROM user_guide_prefs WHERE user_id = @uid;
 DELETE FROM user_feature_overrides WHERE user_id = @uid;
 DELETE FROM user_events WHERE user_id = @uid;
 DELETE FROM user_discounts WHERE user_id = @uid;
@@ -328,7 +342,11 @@ DELETE FROM suggestion_blends WHERE share_id IN (SELECT id FROM zz_del_shares);
 DELETE FROM social_post_queue WHERE artifact_id IN (SELECT id FROM zz_del_actions)
     OR simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
+DELETE FROM sme_turns WHERE session_id IN (SELECT id FROM zz_del_smesess);
+DELETE FROM sme_sessions WHERE user_id = @uid;
+DELETE FROM sme_briefings WHERE session_id IN (SELECT id FROM zz_del_smesess);
 DELETE FROM sme_access_log WHERE user_id = @uid;
+DELETE FROM skill_suggestions WHERE user_id = @uid;
 DELETE FROM simulation_chat_messages WHERE session_id IN (SELECT id FROM zz_del_chatsess)
     OR simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
@@ -380,6 +398,8 @@ DELETE FROM integration_signals WHERE simulation_id IN (SELECT id FROM zz_del_si
     OR user_id = @uid;
 DELETE FROM integration_activity_log WHERE action_id IN (SELECT id FROM zz_del_actions)
     OR user_id = @uid;
+DELETE FROM goal_cards WHERE user_id = @uid;
+DELETE FROM goal_card_agent_changes WHERE goal_card_id IN (SELECT id FROM zz_del_goals);
 DELETE FROM execution_runs WHERE obs_run_id IN (SELECT id FROM zz_del_runs)
     OR plan_id IN (SELECT id FROM zz_del_plans)
     OR user_id = @uid;
@@ -503,4 +523,6 @@ DROP TABLE IF EXISTS zz_del_enroll;
 DROP TABLE IF EXISTS zz_del_resumes;
 DROP TABLE IF EXISTS zz_del_seats;
 DROP TABLE IF EXISTS zz_del_csess;
+DROP TABLE IF EXISTS zz_del_smesess;
+DROP TABLE IF EXISTS zz_del_goals;
 DROP TABLE IF EXISTS zz_del_preview;

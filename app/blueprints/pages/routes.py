@@ -370,7 +370,15 @@ def dashboard():
     except Exception:
         pass
 
+    guide_enabled = False
+    try:
+        from app.services import guide_service as _gs
+        guide_enabled = _gs.is_enabled(current_user)
+    except Exception:
+        pass
+
     return render_template('dashboard/index.html',
+                           guide_enabled=guide_enabled,
                            transition_banner=transition_banner,
                            simulations=simulations,
                            last_cycle_map=last_cycle_map,

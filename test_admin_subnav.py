@@ -36,6 +36,7 @@ PAGES = {
     '/admin/experts': ('People', 'Experts'),
     '/admin/careers': ('People', 'Careers'),
     '/admin/feedback': ('People', 'Feedback'),
+    '/admin/guide': ('People', 'SME Console'),
     '/admin/blog': ('Content', 'Blog'),
     '/admin/bio-review': ('Content', 'Bio Review'),
     '/admin/calibration': ('Platform', 'Calibration'),

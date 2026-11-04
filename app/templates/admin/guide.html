@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}SME Console — Admin{% endblock %}
+{% block head %}
+<style>
+.ga { max-width: 1240px; margin: 0 auto; padding: 1.5rem 1rem 3rem; font-family: 'DM Sans', sans-serif; color: #0f172a; }
+.ga h1 { font-size: 1.4rem; margin: 0 0 .35rem; }
+.ga h2 { font-size: 1rem; margin: 0 0 .5rem; }
+.ga-sub { font-size: .85rem; color: #6b7280; margin: 0 0 1rem; max-width: 90ch; }
+.ga-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.ga-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .7rem; }
+.ga-stat b { display: block; font-size: 1.4rem; } .ga-stat span { font-size: .74rem; color: #6b7280; }
+.ga input, .ga select, .ga textarea { border: 1px solid #d1d5db; border-radius: 6px; padding: .35rem .5rem; font-size: .82rem; font-family: inherit; }
+.ga-btn { padding: .38rem .8rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; font-size: .8rem; cursor: pointer; }
+.ga-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: .3rem 0; }
+.ga-row label { min-width: 17rem; font-size: .8rem; color: #374151; }
+table.ga-t { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.ga-t th { text-align: left; font-size: .66rem; text-transform: uppercase; color: #6b7280; padding: .4rem; border-bottom: 1px solid #e5e7eb; }
+.ga-t td { padding: .4rem; border-bottom: 1px solid #f3f4f6; }
+.ga-msg { font-size: .8rem; color: #166534; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ga">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('guide') }}
+  <h1>SME Console (AI guide)</h1>
+  <p class="ga-sub">Users talk with an AI guide that sets one goal per income layer. This page shows usage metadata only —
+    conversations are encrypted and never shown to staff. Not the human-SME console (People → Experts).</p>
+
+  <div class="ga-card">
+    <h2>Last 30 days</h2>
+    <div class="ga-grid">
+      <div class="ga-stat"><b>{{ metrics.sessions }}</b><span>conversations</span></div>
+      <div class="ga-stat"><b>{{ metrics.users }}</b><span>users</span></div>
+      <div class="ga-stat"><b>{{ metrics.approval_rate_pct }}%</b><span>approved at least one goal (target 60%)</span></div>
+      <div class="ga-stat"><b>{{ metrics.goals_approved }}</b><span>goals approved</span></div>
+      <div class="ga-stat"><b>{{ metrics.skills_accepted }}</b><span>skills confirmed</span></div>
+      <div class="ga-stat"><b>{{ metrics.avg_cost_cents }}¢</b><span>avg model cost per conversation</span></div>
+      <div class="ga-stat"><b>{{ metrics.crisis_sessions }}</b><span>conversations that showed crisis resources</span></div>
+    </div>
+  </div>
+
+  <div class="ga-card">
+    <h2>Access</h2>
+    <div class="ga-row"><label for="gMode">SME Console is on for</label>
+      <select id="gMode">{% for m, label in [('off', 'Off for everyone'), ('allowlist', 'Allowlisted users only (beta)'), ('on', 'Everyone')] %}
+        <option value="{{ m }}" {{ 'selected' if mode == m }}>{{ label }}</option>{% endfor %}</select>
+      <button class="ga-btn" id="gModeSave">Save</button> <span class="ga-msg" id="gModeMsg"></span></div>
+    <div class="ga-row"><label for="gEmails">Allow or block users (emails)</label>
+      <input id="gEmails" placeholder="a@x.com, b@y.com" style="min-width:20rem">
+      <select id="gState"><option value="allowed">Allowed</option><option value="blocked">Blocked</option><option value="follow_global">Follow the setting above</option></select>
+      <button class="ga-btn" id="gUsers">Apply</button> <span class="ga-msg" id="gUsersMsg"></span></div>
+    {% if overrides %}<div class="ga-sub" style="margin-top:.4rem">{% for o in overrides %}{{ o.email }} ({{ o.state }}){{ ', ' if not loop.last }}{% endfor %}</div>{% endif %}
+  </div>
+
+  <div class="ga-card">
+    <h2>Guides</h2>
+    <p class="ga-sub">Every guide is the same AI; only look and voice differ. Voices currently use the browser's speech
+      engine (gender hint, voice index, pitch, rate). "Neural voice id" is for the speech provider once chosen.</p>
+    <table class="ga-t"><tr><th>Guide</th><th>Style</th><th>Voice</th><th>Neural voice id</th><th>Pitch</th><th>Rate</th><th>Order</th><th>On</th><th></th></tr>
+      {% for g in guides %}
+      <tr data-guide="{{ g.id }}"><td><b>{{ g.name }}</b></td><td>{{ g.tone }}</td>
+        <td><input data-k="voice_label" value="{{ g.voice or '' }}" style="width:9rem"></td>
+        <td><input data-k="voice_ref" value="" placeholder="—" style="width:8rem"></td>
+        <td><input data-k="pitch" value="{{ g.pitch }}" style="width:4rem"></td>
+        <td><input data-k="rate" value="{{ g.rate }}" style="width:4rem"></td>
+        <td><input data-k="sort_order" value="{{ g.sort_order }}" style="width:3.5rem"></td>
+        <td><input type="checkbox" data-k="enabled" {{ 'checked' if g.enabled }}></td>
+        <td><button class="ga-btn" data-save>Save</button></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="ga-card">
+    <h2>Limits and settings</h2>
+    {% for k, v in settings.items() %}
+    <div class="ga-row"><label>{{ k[6:].replace('_', ' ') }}</label><input data-setting="{{ k }}" value="{{ v }}" style="width:9rem"></div>
+    {% endfor %}
+    <p class="ga-sub">Token prices (cents per million tokens) drive the cost meter and caps; check them against current Anthropic pricing.
+      "goals in agent briefing" lets approved goals reach that layer's agents as context (on/off). "video avatars" is the photoreal
+      pilot switch and stays off until a vendor is contracted.</p>
+    <div class="ga-row"><button class="ga-btn" id="sSave">Save settings</button> <span class="ga-msg" id="sMsg"></span></div>
+  </div>
+</div>
+<script>
+(function () {
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  function post(url, body, method) { return fetch(ROOT + url, { method: method || 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+    .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message || d.error || 'Failed'); return d; }); }); }
+  document.getElementById('gModeSave').onclick = function () { post('/api/admin/guide/mode', { mode: document.getElementById('gMode').value })
+    .then(function (d) { document.getElementById('gModeMsg').textContent = 'Saved: ' + d.mode; }).catch(function (e) { alert(e.message); }); };
+  document.getElementById('gUsers').onclick = function () {
+    post('/api/admin/guide/users', { emails: document.getElementById('gEmails').value.split(/[\s,;]+/).filter(Boolean), state: document.getElementById('gState').value })
+      .then(function (d) { document.getElementById('gUsersMsg').textContent = 'Updated ' + d.updated + ' user(s).'; }).catch(function (e) { alert(e.message); }); };
+  document.querySelectorAll('[data-save]').forEach(function (b) { b.onclick = function () {
+    var tr = b.closest('[data-guide]'), body = {};
+    tr.querySelectorAll('[data-k]').forEach(function (i) { var v = i.type === 'checkbox' ? i.checked : i.value; if (i.dataset.k === 'voice_ref' && !v) return; body[i.dataset.k] = v; });
+    post('/api/admin/guide/guides/' + tr.dataset.guide, body).then(function () { b.textContent = 'Saved'; setTimeout(function () { b.textContent = 'Save'; }, 1500); })
+      .catch(function (e) { alert(e.message); }); }; });
+  document.getElementById('sSave').onclick = function () {
+    var els = document.querySelectorAll('[data-setting]'), n = 0;
+    Promise.all(Array.prototype.map.call(els, function (el) { return fetch(ROOT + '/api/admin/settings/' + el.dataset.setting, { method: 'PUT',
+      credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: el.value.trim() }) })
+      .then(function (r) { if (r.ok) n++; }); })).then(function () { document.getElementById('sMsg').textContent = 'Saved ' + n + ' setting(s).'; });
+  };
+})();
+</script>
+{% endblock %}

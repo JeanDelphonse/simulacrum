@@ -30,6 +30,7 @@ MODELS = {
 _ROUTING: dict[str, ModelTier] = {
     # ── HAIKU — extraction, classification, structured output ─────────────
     'expertise_zone_extraction':   ModelTier.HAIKU,
+    'sme_guide_summary':           ModelTier.HAIKU,   # SME Console: end-of-session summary
     # L1
     'role_search':                 ModelTier.HAIKU,
     'booking_page':                ModelTier.HAIKU,

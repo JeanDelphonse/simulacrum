@@ -84,6 +84,10 @@ from app.models.mail_crm import (
     ContactDncFlag, FeatureChange,
 )
 from app.models.enterprise_inquiry import EnterpriseInquiry
+from app.models.sme_guide import (
+    SmeGuide, UserGuidePref, SmeSession, SmeTurn, SmeBriefing, SkillSuggestion, GoalCard,
+    GoalCardAgentChange,
+)
 from app.models.transition import (
     TransitionCohort, TransitionSeat, CoachingSession, CoachingNote, TransitionOutcome,
 )
