@@ -53,9 +53,12 @@ def main():
 
     section('The hero lift-off (docs/marketing/simisi_mascot_liftoff.html)')
     home_css = io.open('app/static/css/home.css', encoding='utf-8').read()
-    check('a 5 s loop', 'animation:mbLift 5s' in home_css and 'animation:mbShadow 5s' in home_css)
+    check('a 10 s loop (owner, 2026-11-04; the demo ran 5 s)',
+          'animation:mbLift 10s' in home_css and 'animation:mbShadow 10s' in home_css)
+    check('the lift itself keeps the demo timing (stops halved to 5/15/22%)',
+          '  5%  {opacity:.22;' in home_css and '  15% {opacity:.22;' in home_css and '  22% {opacity:0;' in home_css)
     check('the lifted copy peaks at .22 and the print sits at .07',
-          'opacity:.22;transform:translateY(-14px)' in home_css and '.mascot-bg .print{opacity:.07;' in home_css)
+          '{opacity:.22;transform:translateY(-14px)' in home_css and '.mascot-bg .print{opacity:.07;' in home_css)
     check('never blocks clicks', '.mascot-bg{position:absolute;z-index:5;pointer-events:none;' in home_css)
     check('reduced motion shows only the print',
           '@media(prefers-reduced-motion:reduce){.mascot-bg .lift,.mascot-bg .shadow{animation:none;opacity:0;}}' in home_css)

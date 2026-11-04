@@ -363,24 +363,25 @@
 /* 1. the flat print: always there, part of the background */
 .mascot-bg .print{opacity:.07;filter:grayscale(1) brightness(.4);}
 /* 2. the copy that peels up off the print */
-.mascot-bg .lift{opacity:0;transform-origin:50% 100%;animation:mbLift 5s cubic-bezier(.3,.6,.2,1) infinite;}
+.mascot-bg .lift{opacity:0;transform-origin:50% 100%;animation:mbLift 10s cubic-bezier(.3,.6,.2,1) infinite;}
 /* 3. its shadow on the page */
 .mascot-bg .shadow{position:absolute;left:18%;right:18%;bottom:-6px;height:18px;border-radius:50%;
   background:radial-gradient(closest-side,rgba(13,27,62,.35),rgba(13,27,62,0));opacity:0;
-  animation:mbShadow 5s cubic-bezier(.3,.6,.2,1) infinite;}
-/* 5s loop: rise 0.5s, hold ~1s, lift away and vanish 0.7s, rest 2.8s */
+  animation:mbShadow 10s cubic-bezier(.3,.6,.2,1) infinite;}
+/* 10s loop (owner, 2026-11-04; the demo ran 5s): same motion as the demo, rise 0.5s,
+   hold ~1s, lift away and vanish 0.7s, then rest 7.8s. Keyframe stops halved to match. */
 @keyframes mbLift{
   0%  {opacity:0;transform:translateY(0) scale(1);filter:drop-shadow(0 0 0 rgba(13,27,62,0));}
-  10% {opacity:.22;transform:translateY(-14px) scale(1.04);filter:drop-shadow(0 14px 14px rgba(13,27,62,.12));}
-  30% {opacity:.22;transform:translateY(-20px) scale(1.06);filter:drop-shadow(0 22px 20px rgba(13,27,62,.14));}
-  44% {opacity:0;transform:translateY(-56px) scale(1.08);filter:drop-shadow(0 34px 28px rgba(13,27,62,0));}
+  5%  {opacity:.22;transform:translateY(-14px) scale(1.04);filter:drop-shadow(0 14px 14px rgba(13,27,62,.12));}
+  15% {opacity:.22;transform:translateY(-20px) scale(1.06);filter:drop-shadow(0 22px 20px rgba(13,27,62,.14));}
+  22% {opacity:0;transform:translateY(-56px) scale(1.08);filter:drop-shadow(0 34px 28px rgba(13,27,62,0));}
   100%{opacity:0;transform:translateY(0) scale(1);}
 }
 @keyframes mbShadow{
   0%  {opacity:0;transform:scaleX(.9);}
-  10% {opacity:.25;transform:scaleX(1);}
-  30% {opacity:.2;transform:scaleX(.95);}
-  44% {opacity:0;transform:scaleX(.7);}
+  5%  {opacity:.25;transform:scaleX(1);}
+  15% {opacity:.2;transform:scaleX(.95);}
+  22% {opacity:0;transform:scaleX(.7);}
   100%{opacity:0;}
 }
 @media(prefers-reduced-motion:reduce){.mascot-bg .lift,.mascot-bg .shadow{animation:none;opacity:0;}}
