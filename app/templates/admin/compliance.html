@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Compliance — Admin{% endblock %}
+{% block head %}
+<style>
+.cp { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.cp h1 { font-size: 1.5rem; margin: 0 0 .35rem; }
+.cp h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
+.cp-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 1.25rem; max-width: 80ch; }
+.cp-card { background: #fff; border: 1px solid var(--rule); border-radius: var(--r-ui); padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.cp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .7rem; }
+.cp-stat b { display: block; font-size: 1.4rem; } .cp-stat span { font-size: 13px; color: var(--mute); }
+.cp-row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
+.cp-row input[type=text] { flex: 1 1 18rem; }
+.cp-msg { font-size: 13px; color: var(--mute); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="cp">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('compliance') }}
+  <h1>Compliance</h1>
+  <p class="cp-sub">Layer 5 controls, the education-only output filter's events, and outcome check-in counts.
+    Wording lives in <a class="link" href="{{ url_for('compliance.admin_legal_text') }}">Legal text</a>.</p>
+
+  {% if l5 %}
+  <div class="cp-card" id="l5Card">
+    <h2>Layer 5 (wealth planning) agents</h2>
+    <p class="cp-sub" style="margin:0">Currently <b>{{ 'on' if l5.mode == 'on' else 'off' }}</b>{% if l5.reason %}: {{ l5.reason }}{% endif %}.
+      Off stops every Layer 5 agent from being run or dispatched; existing documents stay viewable.</p>
+    <div class="cp-row">
+      <input type="text" id="l5Reason" placeholder="Reason (recorded in the audit log)" aria-label="Reason">
+      {% if l5.mode == 'on' %}
+      <button class="btn sm btn-danger" type="button" data-mode="off">Switch Layer 5 off</button>
+      {% else %}
+      <button class="btn sm" type="button" data-mode="on">Switch Layer 5 on</button>
+      {% endif %}
+      <span class="cp-msg" role="status"></span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="cp-card">
+    <h2>Layer 5 output filter events</h2>
+    {% if events %}
+    <table class="admin-table">
+      <thead><tr><th>When (UTC)</th><th>Agent</th><th>Rule</th><th>Outcome</th><th>Excerpt</th></tr></thead>
+      <tbody>
+      {% for e in events %}
+        <tr><td>{{ e.created_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ e.agent }}</td><td>{{ e.rule }}</td>
+            <td>{{ e.outcome or '' }}</td><td>{{ e.excerpt or '' }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="cp-msg">No events yet.</p>{% endif %}
+  </div>
+
+  <div class="cp-card">
+    <h2>Outcome check-ins (aggregate only)</h2>
+    <p class="cp-sub" style="margin:0 0 .6rem">Internal measurement. Not for public claims until counsel approves how it may be presented.</p>
+    <div class="cp-grid">
+      <div class="cp-stat"><b>{{ outcomes.answered }}</b><span>answered</span></div>
+      <div class="cp-stat"><b>{{ outcomes.dismissed }}</b><span>dismissed</span></div>
+      {% for d, row in outcomes.by_day.items() %}
+      <div class="cp-stat"><b>{{ row.answered }}</b><span>day {{ d }}: {{ row.first_client }} first client, {{ row.job_landed }} job landed</span></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('#l5Card [data-mode]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var mode = b.dataset.mode, reason = document.getElementById('l5Reason').value.trim();
+    if (mode === 'off' && !confirm('Switch every Layer 5 agent off?')) return;
+    fetch(ROOT + '/api/admin/compliance/l5', {method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({mode: mode, reason: reason})})
+      .then(function (r) { return r.json().then(function (d) { return [r.ok, d]; }); })
+      .then(function (res) { if (res[0]) location.reload(); else document.querySelector('#l5Card .cp-msg').textContent = res[1].error || 'Could not change it.'; });
+  });
+});
+</script>
+{% endblock %}

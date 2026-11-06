@@ -56,8 +56,10 @@ def main():
         client = app.test_client()
 
         def login(u):
+            from sqlalchemy import inspect as _insp
+            uid = _insp(u).identity[0]          # works on a detached instance too
             with client.session_transaction() as s:
-                s['_user_id'] = u.id
+                s['_user_id'] = uid
                 s['_fresh'] = True
             g.pop('_login_user', None)
 
@@ -364,6 +366,71 @@ def main():
         page1 = client.get('/simulations/%s/layers/1' % l5sim.id, follow_redirects=True).get_data(as_text=True)
         check('Layer 5 pages carry the education-only banner, others do not',
               legal_text.get('l5_banner') in page5 and legal_text.get('l5_banner') not in page1)
+
+        # ── 8. Layer 5 output filter ────────────────────────────────────────
+        print('\n8. Layer 5 output filter')
+        from types import SimpleNamespace
+        from app.services import claude, compliance_filter
+        from app.models.compliance import ComplianceEvent
+        check('a seeded ticker is caught', any(r == 'ticker' for r, _ in compliance_filter.check_l5(
+            'A broad fund such as VTI keeps costs low.')))
+        check('…and a cash-tag, a fund family and a trade instruction',
+              {r for r, _ in compliance_filter.check_l5('Look at $ARKK. Vanguard is cheap.\n- Buy 20 shares of it.\n'
+                                                         'You should allocate $500 a month.')}
+              >= {'cashtag', 'named_product', 'trade_instruction'})
+        clean = ('A common approach is to keep three to six months of expenses in cash. In a scenario where '
+                 'income varies, some people set aside a share of each payment for taxes. Questions for an adviser: '
+                 'how much risk fits my timeline?')
+        check('education passes untouched', compliance_filter.check_l5(clean) == [])
+
+        class Fake:
+            def __init__(self, texts):
+                self.texts, self.calls = list(texts), []
+                self.messages = self
+
+            def create(self, **kw):
+                self.calls.append(kw)
+                return SimpleNamespace(content=[SimpleNamespace(text=self.texts.pop(0) if self.texts else clean)],
+                                       usage=SimpleNamespace(input_tokens=5, output_tokens=5), stop_reason='end_turn')
+
+        real_client, real_log = claude._client, claude._log_interaction
+        claude._log_interaction = lambda *a, **k: None     # disposes the engine; the test DB is in memory
+        plan = '{"objective": "explain", "key_inputs": [], "gaps": [], "outline": []}'
+
+        def run(texts, agent='fund_recommendations', ask='Which stock should I buy with my severance?'):
+            fake = Fake([plan] + texts)
+            claude._client = lambda: fake
+            out = claude._execute_agent_action_body(
+                action_type=agent, layer_number=5, expertise_zone='Ops', parsed_text='',
+                user_inputs={'question': ask}, user_id=owner.id, simulation_id=sim.id, model='m')
+            return out, fake
+        try:
+            out, fake = run(['Buy VTI and $QQQ now. You should put $5,000 into Vanguard.', clean])
+            check('"which stock should I buy": the reply with tickers is regenerated, the clean one kept',
+                  out.startswith('A common approach') and 'VTI' not in out and len(fake.calls) == 3)
+            check('…the regeneration used the stricter rules',
+                  legal_text.get('l5_agent_rules_strict') in fake.calls[-1]['system'])
+            check('…and it ends with the referral line', legal_text.get('l5_referral_adviser') in out)
+            ev = ComplianceEvent.query.filter_by(agent='fund_recommendations', outcome='regenerated').all()
+            check('…with a compliance event per rule broken', {e.rule for e in ev} >= {'ticker', 'cashtag'}
+                  and all(re.fullmatch(r'[A-Z0-9]{9}', e.id) for e in ev) and ev[0].user_id == owner.id)
+            out2, _ = run(['Buy SPY.', 'Still: buy 10 shares of AAPL.'], agent='tax_optimization')
+            check('twice in a row: the safe fallback is saved instead',
+                  out2.startswith(legal_text.get('l5_fallback')) and 'AAPL' not in out2
+                  and legal_text.get('l5_referral_cpa') in out2)
+            check('…and logged as a fallback', ComplianceEvent.query.filter_by(agent='tax_optimization',
+                                                                              outcome='fallback').count() >= 1)
+            out3, fake3 = run([clean], agent='estate_planning')
+            check('a clean output costs no extra call and gets its referral line',
+                  len(fake3.calls) == 2 and legal_text.get('l5_referral_attorney') in out3)
+        finally:
+            claude._client, claude._log_interaction = real_client, real_log
+        login(admin)
+        cpage = client.get('/admin/compliance').get_data(as_text=True)
+        check('Admin → Compliance lists the events', 'fund_recommendations' in cpage and 'ticker' in cpage
+              and 'regenerated' in cpage and 'aggregate only' in cpage)
+        login(member)
+        check('…members cannot open it', client.get('/admin/compliance').status_code == 403)
 
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))

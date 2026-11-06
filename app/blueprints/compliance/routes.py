@@ -48,3 +48,23 @@ def outcome_record():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     return jsonify({'ok': True, 'id': row.id})
+
+
+@compliance_bp.route('/admin/compliance')
+@login_required
+def admin_compliance():
+    """Layer 5 switch, compliance events and outcome check-in counts."""
+    _admin()
+    from app.models.compliance import ComplianceEvent
+    from app.services import outcome_service
+    events = ComplianceEvent.query.order_by(ComplianceEvent.created_at.desc()).limit(200).all()
+    return render_template('admin/compliance.html', events=events, outcomes=outcome_service.admin_summary(),
+                           l5=_l5_state())
+
+
+def _l5_state():
+    try:
+        from app.services import l5_feature
+        return l5_feature.state()
+    except ImportError:
+        return None

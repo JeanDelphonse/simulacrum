@@ -42,6 +42,8 @@ PAGES = {
     '/admin/calibration': ('Platform', 'Calibration'),
     '/admin/observability': ('Platform', 'Observability'),
     '/admin/email-crm': ('Platform', 'Email Import'),
+    '/admin/compliance': ('Platform', 'Compliance'),
+    '/admin/legal-text': ('Platform', 'Legal Text'),
 }
 
 

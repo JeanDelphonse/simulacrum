@@ -964,6 +964,32 @@ LARGE_MAX_TOKENS = 16384
 ACTION_MAX_TOKENS: dict = {}
 
 
+def _l5_compliant(text, agent_meta, action_type, prompt, model, max_tokens, user_id, simulation_id):
+    """Apply the Layer 5 output filter (see compliance_filter)."""
+    from app.services import agent_briefing as _brief
+    from app.services import compliance_filter as _cf
+    from app.services import legal_text as _legal
+    meta = dict(agent_meta or {}, action_type=(agent_meta or {}).get('action_type') or action_type)
+    referral = _brief.l5_referral(meta)
+    hits = _cf.check_l5(text)
+    if hits:
+        try:
+            strict = _brief.system_prompt(meta) + '\n- ' + _legal.get('l5_agent_rules_strict')
+            again = _client().messages.create(model=model, max_tokens=max_tokens, system=strict,
+                                              messages=[{'role': 'user', 'content': prompt}])
+            retry = again.content[0].text.strip()
+        except Exception:
+            current_app.logger.exception('Layer 5 strict regeneration failed for %s', action_type)
+            retry = ''
+        second = _cf.check_l5(retry) if retry else [('regeneration_failed', '')]
+        if second:
+            _cf.log_event(user_id, action_type, hits + second, 'fallback')
+            return _cf.ensure_referral(_legal.get('l5_fallback'), referral)
+        _cf.log_event(user_id, action_type, hits, 'regenerated')
+        text = retry
+    return _cf.ensure_referral(text, referral)
+
+
 def execute_agent_action(
     action_type: str,
     layer_number: int,
@@ -1328,6 +1354,14 @@ def _execute_agent_action_body(
         # Say so rather than let the artifact end mid-sentence.
         raw_artifact += ('\n\n---\n*This artifact reached its length limit and may be '
                          'incomplete. Re-run the agent to regenerate it.*')
+
+    # COMPLIANCE_PLAN B3 — Layer 5 is education and planning only. Before the
+    # artifact is saved: a named security, product or trade instruction gets one
+    # stricter regeneration, then the safe fallback; every hit is a
+    # compliance_events row; the output always ends with its referral line.
+    if layer_number == 5 or _brief.is_layer5(agent_meta):
+        raw_artifact = _l5_compliant(raw_artifact, agent_meta, action_type, prompt, model, max_tokens,
+                                     user_id, simulation_id)
 
     # SIM-PRD-CAL-001 — strip the METRICS block and calibrate, before any of the
     # per-agent return paths below. Wrapped whole: a calibration failure must
