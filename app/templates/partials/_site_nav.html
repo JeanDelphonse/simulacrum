@@ -61,7 +61,7 @@
 
 {# Phone drawer (after the nav). Titles only; the first group starts open. #}
 {% macro drawer(nav) %}
-<div class="ss-drawer ss-drawer-aud" id="ssDrawer" aria-label="Menu">
+<nav class="ss-drawer ss-drawer-aud" id="ssDrawer" aria-label="Menu">
   {% for g in nav.groups %}
   <div class="ss-dsec">
     <button type="button" class="ss-dsec-btn" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="ssDsec-{{ g.id }}">{{ g.label }}{{ _chevron() }}</button>
@@ -81,5 +81,5 @@
     <a class="btn {{ 'primary' if it.id == 'get_started' else '' }} btn-full" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>
     {% endfor %}
   </div>
-</div>
+</nav>
 {% endmacro %}

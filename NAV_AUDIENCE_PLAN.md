@@ -166,3 +166,12 @@ The other `<nav>` elements on base pages are on-page tabs, not site menus, and a
 | 7 | Full suite, axe compared with the baseline, site render and contrast audit, screenshots to `docs/screenshots/nav-audience/` (1440: each panel open; 390: drawer open), hero layout-shift check | — | — | Report |
 
 **Not touched:** homepage content, layer names, pricing, legal copy, the footer, the signed-in nav, the pages in §4, the brand, the mascot logo and simi@simulacrumai.io. The nav contains no prices.
+
+---
+
+## 7. Results (2026-11-06)
+
+- **Tests:** `test_site_nav.py` 36/36; `test_site_nav_browser.py` 76/76 (1440 and 390 px, keyboard only, every nav link returns 200 and every `#anchor` exists, no JS fallback, no console errors, no hero shift). Full suite 43/43 files.
+- **axe** on `/` and `/transition-package`, each panel open (1440), drawer open (390) and closed: **no violations beyond the pre-change baseline** (taken at 74e293c). The first run flagged the open drawer as outside a landmark; the visitor drawer is now `<nav aria-label="Menu">`. Pre-existing findings are unchanged: the gold "SI" in the logo (brand colour), a few homepage text contrasts, heading order, and an empty table header on /transition-package.
+- **Site render and contrast audit** across 73 pages: same flags as before the change; no horizontal overflow at 390 px.
+- **Screenshots:** `docs/screenshots/nav-audience/1440-professionals-open.png`, `1440-employers-open.png`, `390-drawer-open.png` (local only; `docs/` is not committed).
