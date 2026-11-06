@@ -833,6 +833,31 @@ def main():
         step = type('S', (), {'step_type': 'linkedin_post', 'payload': {}, 'id': 'x'})()
         check('a stray linkedin_post step does not execute', _ass.execute_step(step, poster.id, 'f@x.com', 'F') is False)
 
+        print('\n17. Every outreach send or skip leaves an audit record')
+        from app.services import sender_identity as _si17
+
+        def trails(**flt):
+            rows = AuditLog.query.filter_by(action='outreach_send').order_by(AuditLog.created_at.asc()).all()
+            return [r.extra for r in rows if all((r.extra or {}).get(k) == v for k, v in flt.items())]
+
+        n_sent = len(trails(status='sent'))
+        check('sends so far were recorded with path, unsubscribe version and checks', n_sent >= 1 and all(
+            t['unsub_version'] == _si17.UNSUB_VERSION and t['suppression'] == 'clear'
+            and t['cap_check'] == 'ok' and t['postal_address_set'] is True
+            for t in trails(status='sent')), trails(status='sent')[:1])
+        sup = trails(status='skipped', path='agent')
+        check('a suppressed skip is recorded with the suppression result', any(
+            (t.get('suppression') or 'clear') != 'clear' and t['reason'].startswith('suppressed:') for t in sup))
+        check('a missing postal address is recorded', any(
+            t['reason'] == 'no_postal_address' and t['postal_address_set'] is False for t in trails()))
+        check("SimiSI's own campaign hold is recorded on the campaign path", any(
+            t['path'].startswith('campaign_') and t['reason'] == 'no_business_address'
+            and t['postal_address_set'] is False for t in trails()))
+        check('a deferred (capped) send is recorded', any(
+            t['status'] == 'deferred' and t['cap_check'].startswith('over_') for t in trails()), trails(status='deferred')[:1])
+        check('an audit failure never breaks a send', _si17.record_send('agent', {'status': 'sent'}, {},
+                                                                       user_id=object()) is None)
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

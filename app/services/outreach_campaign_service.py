@@ -562,6 +562,16 @@ def _ensure_pending_sends(cfg: dict) -> int:
 # ── Sending ──────────────────────────────────────────────────────────────────
 
 def _dispatch_send(send) -> dict:
+    """Deliver an OutreachSend and record the attempt (COMPLIANCE_PLAN C7)."""
+    from app.services import sender_identity as _sender
+    trail = {}
+    result = _dispatch_send_body(send, trail)
+    _sender.record_send('campaign_' + (getattr(send, 'kind', None) or 'send'), result, trail,
+                        user_id=send.user_id, resource_id=send.id)
+    return result
+
+
+def _dispatch_send_body(send, trail: dict) -> dict:
     """Actually deliver an OutreachSend via SendGrid. Updates status + timestamps.
 
     Enforces suppression + 24h frequency cap. Returns {'status': ...}.
@@ -577,17 +587,22 @@ def _dispatch_send(send) -> dict:
         db.session.commit()
         return {'status': 'skipped', 'reason': 'no_email'}
 
-    if is_suppressed(to_email):
+    _suppressed = is_suppressed(to_email)
+    trail['suppression'] = 'global' if _suppressed else 'clear'
+    if _suppressed:
         send.status = OutreachSend.STATUS_SUPPRESSED
         db.session.commit()
         return {'status': 'suppressed'}
 
     # CAN-SPAM: no postal address, no campaign email (Admin -> Outreach settings).
-    if not _business_address():
+    trail['postal_address_set'] = bool(_business_address())
+    if not trail['postal_address_set']:
         logger.warning('Outreach send %s held: set outreach_business_address in Admin first', send.id)
         return {'status': 'held', 'reason': 'no_business_address'}
 
-    if _recently_sent(send.user_id, within_hours=24):
+    _capped = _recently_sent(send.user_id, within_hours=24)
+    trail['cap_check'] = 'frequency_cap' if _capped else 'ok'
+    if _capped:
         # Frequency cap (max one outreach email per user per 24h across all sources) —
         # reschedule 24h out rather than dropping. Re-queue into the status the
         # relevant scheduler picks up: drips via process_drip_queue (queued),

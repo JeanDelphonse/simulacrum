@@ -23,6 +23,18 @@ def send_outreach_email(
     unsubscribe: bool = True,
     transactional: bool = False,
 ) -> dict:
+    """Send one outreach email and record the attempt (COMPLIANCE_PLAN C7)."""
+    from app.services import sender_identity as _sender
+    trail = {'unsubscribe': unsubscribe and not transactional}
+    result = _send_outreach_email(simulation_id, contact_id, subject, html_body, from_email, from_name,
+                                  step_id, action_id, api_key, unsubscribe, transactional, trail)
+    _sender.record_send('step' if step_id else 'agent', result, trail,
+                        user_id=trail.get('owner_id'), resource_id=action_id or contact_id)
+    return result
+
+
+def _send_outreach_email(simulation_id, contact_id, subject, html_body, from_email, from_name,
+                         step_id, action_id, api_key, unsubscribe, transactional, trail) -> dict:
     """
     Send a single outreach email via SendGrid.
 
@@ -82,6 +94,7 @@ def send_outreach_email(
     _owner_sim = _SimS.query.get(simulation_id) if simulation_id else None
     _owner_id = _owner_sim.user_id if _owner_sim else contact.user_id
     _suppressed = _suppression.check(_owner_id, to_email, contact)
+    trail.update(owner_id=_owner_id, suppression=_suppressed or 'clear')
     if _suppressed:
         return {'status': 'skipped', 'reason': 'suppressed:' + _suppressed}
 
@@ -89,6 +102,7 @@ def send_outreach_email(
     # daily or warm-up cap the send is deferred by the caller, not dropped.
     from app.services import send_limits as _limits
     _limit = _limits.check_send(_owner_id, action_id)
+    trail['cap_check'] = _limit or 'ok'
     if _limit:
         return {'status': 'deferred' if _limit.startswith('over_') else 'skipped', 'reason': _limit}
 
@@ -105,6 +119,7 @@ def send_outreach_email(
         from app.models.user import User as _UserS
         _owner = _UserS.query.get(_owner_id) if _owner_id else None
         _postal = _sender.postal_address(_owner) if _owner else None
+        trail['postal_address_set'] = bool(_postal)
         if not _postal:
             _sender.ask_for_address(_owner_id, simulation_id)
             return {'status': 'skipped', 'reason': 'no_postal_address'}

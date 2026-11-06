@@ -83,3 +83,29 @@ def ask_for_address(user_id: str, simulation_id: str | None) -> None:
                            description=legal_text.get('postal_address_required'))
     except Exception:
         logger.warning('could not raise the postal-address action item', exc_info=True)
+
+
+def record_send(path: str, result: dict, trail: dict, user_id=None, resource_id=None) -> None:
+    """One AuditLog 'outreach_send' row per send attempt, sent or not
+    (COMPLIANCE_PLAN C7): which path, which unsubscribe version, and what the
+    suppression, cap and postal-address checks said. Never breaks a send."""
+    try:
+        from app.extensions import db
+        from app.models.audit_log import AuditLog
+        AuditLog.log('outreach_send', user_id=user_id, resource_id=resource_id, metadata={
+            'path': path,
+            'status': (result or {}).get('status'),
+            'reason': (result or {}).get('reason'),
+            'unsub_version': UNSUB_VERSION if trail.get('unsubscribe', True) else None,
+            'suppression': trail.get('suppression'),
+            'cap_check': trail.get('cap_check'),
+            'postal_address_set': trail.get('postal_address_set'),
+        })
+        db.session.commit()
+    except Exception:
+        logger.exception('outreach_send audit failed')
+        try:
+            from app.extensions import db
+            db.session.rollback()
+        except Exception:
+            pass
