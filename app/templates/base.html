@@ -19,11 +19,12 @@
 <body class="{{ 'advisor-mode' if (advisor_mode is defined and advisor_mode) else '' }} {% block body_class %}{% endblock %}" aria-label="{{ ('You are viewing a client simulation in advisor mode. Client: ' + (client_profile.display_name if client_profile and client_profile.display_name else 'Client')) if (advisor_mode is defined and advisor_mode) else '' }}">
 
 {% import "partials/_logo.html" as logo_ui %}
+{% import "partials/_site_nav.html" as site_nav_ui %}
 {% block announce %}{% endblock %}
+{% if current_user.is_authenticated %}
 <nav class="ss-nav is-top" id="ssNav" aria-label="Main">
   <div class="wrap">
     {{ logo_ui.logo(url_for('pages.index')) }}
-    {% if current_user.is_authenticated %}
     <ul class="ss-nav-links">
       <li><a href="{{ url_for('pages.dashboard') }}">Dashboard</a></li>
       {% if blog_nav_visible %}<li><a href="{{ url_for('pages.blog_index') }}">Journal</a></li>{% endif %}
@@ -38,26 +39,9 @@
       <button class="btn sm ss-hide-md" id="signOutBtn" type="button">Sign out</button>
       <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
     </div>
-    {% else %}
-    <ul class="ss-nav-links">
-      <li><a href="{{ url_for('pages.index') }}#model">The model</a></li>
-      <li><a href="{{ url_for('pages.index') }}#how">How it works</a></li>
-      <li><a href="{{ url_for('pages.index') }}#bio">Bio page</a></li>
-      <li><a href="{{ url_for('pages.index') }}#playbook">Playbook</a></li>
-      <li><a href="{{ url_for('pages.index') }}#pricing">Pricing</a></li>
-      <li><a href="{{ url_for('marketing.transition_package') }}">For employers</a></li>
-      {% if blog_nav_visible %}<li><a href="{{ url_for('pages.blog_index') }}">Journal</a></li>{% endif %}
-    </ul>
-    <div class="ss-nav-right">
-      <a class="ss-nav-login" href="{{ url_for('pages.login_page') }}">Log in</a>
-      <a class="btn primary sm" href="{{ url_for('pages.register_page') }}">Get started free</a>
-      <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
-    </div>
-    {% endif %}
   </div>
 </nav>
 <div class="ss-drawer" id="ssDrawer">
-  {% if current_user.is_authenticated %}
   <a href="{{ url_for('pages.dashboard') }}">Dashboard</a>
   {% if blog_nav_visible %}<a href="{{ url_for('pages.blog_index') }}">Journal</a>{% endif %}
   {% if current_user.is_partner %}<a href="{{ url_for('pages.partner_dashboard') }}">Partner dashboard</a>{% endif %}
@@ -67,21 +51,20 @@
   <button type="button" data-demo>Watch demo</button>
   <button type="button" data-signout>Sign out</button>
   <div class="ss-drawer-note">Signed in as {{ current_user.full_name or current_user.email }}</div>
-  {% else %}
-  <a href="{{ url_for('pages.index') }}#model">The model</a>
-  <a href="{{ url_for('pages.index') }}#how">How it works</a>
-  <a href="{{ url_for('pages.index') }}#bio">Bio page</a>
-  <a href="{{ url_for('pages.index') }}#people">People on SimiSI</a>
-  <a href="{{ url_for('pages.index') }}#playbook">Playbook</a>
-  <a href="{{ url_for('pages.index') }}#pricing">Pricing</a>
-  <a href="{{ url_for('marketing.transition_package') }}">For employers</a>
-  {% if blog_nav_visible %}<a href="{{ url_for('pages.blog_index') }}">Journal</a>{% endif %}
-  <a href="{{ url_for('pages.index') }}#faq">Questions</a>
-  <button type="button" data-demo>Watch demo</button>
-  <a href="{{ url_for('pages.login_page') }}">Log in</a>
-  <a href="{{ url_for('pages.register_page') }}">Get started free</a>
-  {% endif %}
 </div>
+{% else %}
+{# Visitors: the audience nav, rendered from app/services/site_nav.py. #}
+{% set _nav = site_nav() %}
+<nav class="ss-nav ss-nav-aud is-top" id="ssNav" aria-label="Main">
+  <div class="wrap">
+    {{ logo_ui.logo(url_for('pages.index')) }}
+    {{ site_nav_ui.bar(_nav) }}
+  </div>
+  {{ site_nav_ui.panels(_nav) }}
+</nav>
+<div class="ss-scrim" id="ssScrim" hidden></div>
+{{ site_nav_ui.drawer(_nav) }}
+{% endif %}
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}

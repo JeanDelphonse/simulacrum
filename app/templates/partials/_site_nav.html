@@ -1,0 +1,86 @@
+{# The visitor nav (NAV_AUDIENCE_PLAN.md). Every group, item and link comes from
+   app/services/site_nav.py via site_nav(); no item is written in a template.
+   Styles: css/system.css (Nav: audience menus). Behaviour: js/site_nav.js.
+   Without JS the two triggers are plain links (to /#how and /transition-package). #}
+
+{% macro _chevron() -%}
+<svg class="ss-chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+
+{% macro _target(it) -%}
+{% if it.external %} target="_blank" rel="noopener"{% endif %}
+{%- endmacro %}
+
+{# Bar links and right-hand actions (inside .ss-nav .wrap, after the logo). #}
+{% macro bar(nav) %}
+<ul class="ss-nav-links ss-aud-links">
+  {% for g in nav.groups %}
+  <li><a class="ss-trigger" id="ssTrig-{{ g.id }}" href="{{ g.nojs_href }}" data-panel="{{ g.id }}">{{ g.label }}{{ _chevron() }}</a></li>
+  {% endfor %}
+  {% for it in nav.links %}
+  <li><a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a></li>
+  {% endfor %}
+</ul>
+<div class="ss-nav-right">
+  {% for it in nav.actions %}
+  {% if it.id == 'get_started' %}<a class="btn primary sm" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>
+  {% else %}<a class="ss-nav-login" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>{% endif %}
+  {% endfor %}
+  <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
+</div>
+{% endmacro %}
+
+{# Mega panels (inside .ss-nav, after .wrap, so they overlay the page). #}
+{% macro panels(nav) %}
+{% for g in nav.groups %}
+<div class="ss-mega" id="ssPanel-{{ g.id }}" role="region" aria-labelledby="ssTrig-{{ g.id }}" hidden>
+  <div class="ss-mega-inner cols-{{ g.columns|length + 1 }}">
+    {% for c in g.columns %}
+    <div class="ss-mcol">
+      <p class="ss-mcol-label" id="ssCol-{{ g.id }}-{{ loop.index }}">{{ c.label }}</p>
+      <ul aria-labelledby="ssCol-{{ g.id }}-{{ loop.index }}">
+        {% for it in c['items'] %}
+        <li>
+          {% if it.action == 'demo' %}<button type="button" class="ss-mi" data-demo data-nav-item="{{ it.id }}">
+          {% else %}<a class="ss-mi" href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{% endif %}
+            <span class="ss-mi-title">{{ it.title }}</span><span class="ss-mi-desc">{{ it.desc }}</span>
+          {% if it.action == 'demo' %}</button>{% else %}</a>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+    <div class="ss-promo">
+      <p class="ss-promo-title">{{ g.promo.title }}</p>
+      <p class="ss-promo-desc">{{ g.promo.desc }}</p>
+      <a href="{{ g.promo.href }}"{{ _target(g.promo) }} data-nav-item="{{ g.promo.id }}">{{ g.promo.link_label }} <span aria-hidden="true">→</span></a>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endmacro %}
+
+{# Phone drawer (after the nav). Titles only; the first group starts open. #}
+{% macro drawer(nav) %}
+<div class="ss-drawer ss-drawer-aud" id="ssDrawer" aria-label="Menu">
+  {% for g in nav.groups %}
+  <div class="ss-dsec">
+    <button type="button" class="ss-dsec-btn" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="ssDsec-{{ g.id }}">{{ g.label }}{{ _chevron() }}</button>
+    <ul id="ssDsec-{{ g.id }}"{% if not loop.first %} hidden{% endif %}>
+      {% for c in g.columns %}{% for it in c['items'] %}
+      <li>{% if it.action == 'demo' %}<button type="button" data-demo data-nav-item="{{ it.id }}">{{ it.title }}</button>
+      {% else %}<a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a>{% endif %}</li>
+      {% endfor %}{% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+  {% for it in nav.links %}
+  <a class="ss-dlink" href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a>
+  {% endfor %}
+  <div class="ss-dctas">
+    {% for it in nav.actions|reverse %}
+    <a class="btn {{ 'primary' if it.id == 'get_started' else '' }} btn-full" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}
