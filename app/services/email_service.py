@@ -191,7 +191,7 @@ def send_password_reset_email(user_email: str, user_name: str, token: str):
         logger.error('Failed to send reset email to %s: %s', user_email, e, exc_info=True)
 
 
-def send_invoice_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int = 69500):
+def send_invoice_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int):
     from datetime import datetime
     first = (user_name or '').strip().split()[0] or 'there'
     amount_str = f'${amount_cents / 100:.2f}'
@@ -223,7 +223,7 @@ def send_invoice_email(user_email: str, user_name: str, sim_name: str, sim_id: s
         logger.error('Failed to send invoice email to %s: %s', user_email, e, exc_info=True)
 
 
-def send_simulation_failed_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int = 1000):
+def send_simulation_failed_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int):
     first = (user_name or '').strip().split()[0] or 'there'
     amount_str = f'${amount_cents / 100:.2f}'
     try:

@@ -51,7 +51,7 @@ def create_org_invoice(org, inv) -> str | None:
 def create_payment_intent(
     user_id: str,
     simulation_id: str,
-    amount_cents: int = 69500,
+    amount_cents: int,
     base_price_cents: int = None,
     discount_percentage: int = 0,
 ) -> dict:

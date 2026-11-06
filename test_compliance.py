@@ -858,6 +858,15 @@ def main():
         check('an audit failure never breaks a send', _si17.record_send('agent', {'status': 'sent'}, {},
                                                                        user_id=object()) is None)
 
+        print('\n18. No hardcoded prices in charge or receipt code')
+        import inspect as _insp18
+        from app.services import email_service as _es, stripe_service as _ss
+        from app.tasks import email as _te
+        for fn in (_es.send_invoice_email, _es.send_simulation_failed_email, _te.send_invoice_email_task,
+                   _te.send_simulation_failed_task, _ss.create_payment_intent):
+            p18 = _insp18.signature(getattr(fn, '__wrapped__', fn)).parameters['amount_cents']
+            check('%s needs the real amount (no default price)' % fn.__name__, p18.default is _insp18.Parameter.empty)
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:
