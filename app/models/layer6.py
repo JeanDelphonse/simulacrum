@@ -387,6 +387,7 @@ class ActionItem(db.Model):
         'waitlist_threshold', 'contact_promote',
         'bio_chat_started', 'bio_page_review', 'social_post_approval',
         'proactive_alert', 'layer_unlocked',
+        'postal_address_required', 'campaign_paused',   # COMPLIANCE_PLAN C1, C3
     ]
 
     id               = db.Column(db.String(9), primary_key=True, default=generate_id)

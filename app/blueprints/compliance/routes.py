@@ -81,3 +81,56 @@ def admin_l5_switch():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     return jsonify({'ok': True, 'mode': l5_feature.state()['mode']})
+
+
+# ── The member's mailing address for commercial email (C1, D7) ──────────────
+@compliance_bp.route('/api/settings/postal-address', methods=['PUT'])
+@login_required
+def postal_address_update():
+    from app.models.audit_log import AuditLog
+    from app.extensions import db
+    from app.services import sender_identity
+    try:
+        value = sender_identity.set_postal_address(current_user, (request.get_json(silent=True) or {}).get('address'))
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    AuditLog.log('postal_address_set', user_id=current_user.id)
+    db.session.commit()
+    # Clear the GCC reminder now that sends can go out.
+    try:
+        from app.models.layer6 import ActionItem
+        from utils.action_items import resolve_action_item
+        for item in ActionItem.query.filter_by(user_id=current_user.id, item_type='postal_address_required',
+                                               status=ActionItem.STATUS_ACTIVE).all():
+            resolve_action_item(item.id, emit_sse=False)
+    except Exception:
+        pass
+    return jsonify({'ok': True, 'address': value})
+
+
+@compliance_bp.route('/api/admin/compliance/settings', methods=['PUT'])
+@login_required
+def admin_compliance_settings():
+    """SimiSI's postal address and the send limits (Admin settings, safe defaults)."""
+    _admin()
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.models.platform_settings import PlatformSetting
+    from app.services import send_limits
+    data = request.get_json(silent=True) or {}
+    allowed = {'outreach_business_address'} | set(send_limits.DEFAULTS)
+    changed = {}
+    for key, value in data.items():
+        if key not in allowed:
+            return jsonify({'error': 'Unknown setting %s.' % key}), 400
+        value = str(value).strip()
+        if key in send_limits.DEFAULTS:
+            try:
+                send_limits.parse(key, value)
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 400
+        PlatformSetting.set(key, value)
+        changed[key] = value
+    AuditLog.log('compliance_settings_updated', user_id=current_user.id, metadata=changed)
+    db.session.commit()
+    return jsonify({'ok': True})

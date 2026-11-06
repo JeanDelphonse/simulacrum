@@ -37,6 +37,8 @@ def main():
     app = create_app('testing')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['SENDGRID_API_KEY'] = None      # guard runs first; nothing is sent
+    from cryptography.fernet import Fernet
+    app.config['ENCRYPTION_KEY'] = Fernet.generate_key().decode()
 
     with app.app_context():
         db.create_all()
@@ -62,6 +64,9 @@ def main():
                          expertise_zone='Operations Consulting', status='complete')
         db.session.add_all([user, sim])
         db.session.flush()
+        # Commercial email needs the sender's postal address (COMPLIANCE_PLAN C1).
+        from app.services import sender_identity
+        sender_identity.set_postal_address(user, '1 Market St, San Francisco, CA 94105')
         config = Layer6Config(id=generate_id(), simulation_id=sim.id)
         db.session.add(config)
 
@@ -148,7 +153,7 @@ def main():
                                   action_id=r2.id)
         check('a later run cannot email someone an earlier run claimed',
               res.get('reason') == 'already_targeted_by_agent', res)
-        res = send_outreach_email(sim.id, a.id, 'Re: Hi', '<p>x</p>', 'me@x.com', 'Me',
+        res = send_outreach_email(sim.id, a.id, 'Following up: Hi', '<p>x</p>', 'me@x.com', 'Me',
                                   action_id=r1.id)
         check('the claiming run can still send its follow-ups',
               res.get('reason') == 'no_api_key', res)

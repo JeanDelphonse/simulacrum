@@ -17,6 +17,7 @@ Responsibilities:
     one-email-per-user-per-24h frequency cap
 """
 import hashlib
+import html as _html
 import logging
 from datetime import datetime, timedelta
 
@@ -24,7 +25,8 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = 'https://simisi.io'
 BUSINESS_NAME = 'Bay Area Experiences Ventures'
-BUSINESS_ADDRESS = 'Santa Clara, CA'
+# The postal address is the Admin setting outreach_business_address (COMPLIANCE_PLAN
+# D7); 'Santa Clara, CA' alone was a city, not a postal address. No address, no send.
 
 # ── Config defaults ──────────────────────────────────────────────────────────
 
@@ -250,6 +252,11 @@ def _paragraphs_to_html(body_text: str) -> str:
     return ''.join(html_parts)
 
 
+def _business_address():
+    from app.services import sender_identity
+    return sender_identity.business_address()
+
+
 def render_email_html(body_text: str, unsubscribe_url: str, preheader: str = '') -> str:
     """Wrap the outreach body in the branded HTML shell + CAN-SPAM footer."""
     pre = (f'<span style="display:none;max-height:0;overflow:hidden;mso-hide:all;">'
@@ -278,7 +285,7 @@ def render_email_html(body_text: str, unsubscribe_url: str, preheader: str = '')
       </td></tr>
       <tr><td align="center" style="padding-top:24px;font-size:12px;color:#9ca3af;line-height:1.6;">
         SimiSI &middot; {BUSINESS_NAME}<br>
-        {BUSINESS_ADDRESS}<br>
+        {_html.escape(_business_address() or '')}<br>
         <a href="{unsubscribe_url}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
         from SimiSI outreach emails.
       </td></tr>
@@ -574,6 +581,11 @@ def _dispatch_send(send) -> dict:
         send.status = OutreachSend.STATUS_SUPPRESSED
         db.session.commit()
         return {'status': 'suppressed'}
+
+    # CAN-SPAM: no postal address, no campaign email (Admin -> Outreach settings).
+    if not _business_address():
+        logger.warning('Outreach send %s held: set outreach_business_address in Admin first', send.id)
+        return {'status': 'held', 'reason': 'no_business_address'}
 
     if _recently_sent(send.user_id, within_hours=24):
         # Frequency cap (max one outreach email per user per 24h across all sources) —

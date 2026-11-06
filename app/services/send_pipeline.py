@@ -222,6 +222,9 @@ def send_batch(action, user, batch_id: str, confirm_hash: str, confirmed: bool,
     refusal = artifact_actions.send_refusal(action)
     if refusal:
         raise SendRefused(refusal)
+    from app.services import legal_text, sender_identity
+    if not sender_identity.postal_address(user):
+        raise SendRefused(legal_text.get('postal_address_required'))
     if agent_plans.effective_level(user.id, action.action_type) == 'L0':
         raise SendRefused('This agent is generate-only; it cannot send.')
 

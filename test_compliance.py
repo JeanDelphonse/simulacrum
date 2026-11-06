@@ -549,6 +549,8 @@ def main():
         r = send_outreach_email(simulation_id=ssim.id, contact_id=c_ok.id, subject='Hi', html_body='<p>x</p>',
                                 from_email='simi@simulacrumai.io', from_name='Pat')
         app.config['SENDGRID_API_KEY'] = 'test-key'
+        from app.services import sender_identity as _si
+        _si.set_postal_address(User.query.get(sender.id), '1 Market St, San Francisco, CA 94105')
         r = send_outreach_email(simulation_id=ssim.id, contact_id=c_ok.id, subject='Hi', html_body='<p>x</p>',
                                 from_email='simi@simulacrumai.io', from_name='Pat')
         check('a clear contact is sent (to the fake SendGrid only)', r['status'] == 'sent' and SENT, r)
@@ -558,6 +560,79 @@ def main():
         check('the send-to-contacts picker uses the same check',
               not picks['gone@x.com']['eligible'] and not picks['mine@x.com']['eligible'] and picks['ok@x.com']['eligible'])
         check('partner referrals respect the global list', suppression_service.check(None, 'gone@x.com') == 'global')
+
+        # ── 12. Opt-out, postal address, honest subjects ────────────────────
+        print('\n12. Opt-out by default, postal address, reply STOP, honest subjects')
+        from app.models.layer6 import ActionItem
+        from app.services import sender_identity
+        mailer = user()
+        msim = Simulation(id=generate_id(), user_id=mailer.id, name='Mail', expertise_zone='Ops', status='complete')
+        db.session.add(msim)
+        db.session.commit()
+        to = Contact(id=generate_id(), user_id=mailer.id, first_name='Kim', last_name='Ray', email='kim@x.com',
+                     source='manual_entry', pipeline_stage='prospect')
+        db.session.add(to)
+        db.session.commit()
+        sent_before = len(SENT)
+        r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Quick idea', html_body='<p>Hi</p>',
+                                from_email='simi@simulacrumai.io', from_name='Mo Lee')
+        check('no mailing address: the send is refused', r == {'status': 'skipped', 'reason': 'no_postal_address'}
+              and len(SENT) == sent_before)
+        check('…and the GCC asks for it once', ActionItem.query.filter_by(
+            simulation_id=msim.id, item_type='postal_address_required').count() == 1)
+        send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Quick idea', html_body='<p>Hi</p>',
+                            from_email='simi@simulacrumai.io', from_name='Mo Lee')
+        check('…not twice', ActionItem.query.filter_by(simulation_id=msim.id,
+                                                      item_type='postal_address_required').count() == 1)
+        login(mailer)
+        check('a vague address is refused', client.put('/api/settings/postal-address',
+                                                       json={'address': 'Somewhere'}).status_code == 400)
+        r = client.put('/api/settings/postal-address', json={'address': 'PO Box 123, Santa Clara, CA 95050'})
+        check('a PO box is accepted, stored encrypted, and the reminder clears', r.status_code == 200
+              and 'Santa Clara' not in (User.query.get(mailer.id).postal_address_enc or '')
+              and ActionItem.query.filter_by(simulation_id=msim.id, item_type='postal_address_required',
+                                             status=ActionItem.STATUS_ACTIVE).count() == 0)
+        check('Settings shows the address', 'PO Box 123' in client.get('/settings/notifications').get_data(as_text=True))
+        r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Re: our call', html_body='<p>Hi</p>',
+                                from_email='simi@simulacrumai.io', from_name='Mo Lee')
+        check('a first email may not pretend to be a reply', r['reason'] == 'deceptive_subject')
+        r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Quick idea', html_body='<p>Hi</p>',
+                                from_email='simi@simulacrumai.io', from_name='Mo Lee')
+        msg = SENT[-1]
+        body = str(msg.get('content'))
+        heads = msg.get('headers') or {}
+        check('it sends with the legal footer: sender, postal address, unsubscribe link, reply STOP',
+              r['status'] == 'sent' and 'Sent by Mo Lee via SimiSI' in body and 'PO Box 123' in body
+              and 'Unsubscribe</a>' in body and 'reply STOP' in body)
+        check('…and the RFC 8058 one-click headers', 'List-Unsubscribe' in heads
+              and heads.get('List-Unsubscribe-Post') == 'List-Unsubscribe=One-Click')
+        r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Re: Quick idea', html_body='<p>x</p>',
+                                from_email='simi@simulacrumai.io', from_name='Mo Lee')
+        check('a real follow-up may say Re:', r['status'] == 'sent')
+        res = client.post('/webhooks/sendgrid/inbound', data={
+            'to': 'reply-%s@mail.simulacrumai.io' % to.id, 'from': 'kim@x.com',
+            'text': 'STOP\n\nOn Tue, Mo Lee wrote:\n> Quick idea'})
+        if res.status_code == 404:
+            from app.blueprints.integrations import routes as _ir
+            rule = [r_ for r_ in app.url_map.iter_rules() if r_.endpoint.endswith('sendgrid_inbound_parse')][0]
+            res = client.post(rule.rule, data={'to': 'reply-%s@mail.simulacrumai.io' % to.id, 'from': 'kim@x.com',
+                                               'text': 'STOP\n\nOn Tue, Mo Lee wrote:\n> Quick idea'})
+        to_after = Contact.query.get(to.id)
+        check('a reply of STOP opts the person out at once', res.status_code == 200
+              and EmailSuppression.query.filter_by(email='kim@x.com').first() is not None and to_after.do_not_contact)
+        check('…and nothing more goes to them', send_outreach_email(
+            simulation_id=msim.id, contact_id=to.id, subject='Again', html_body='<p>x</p>',
+            from_email='simi@simulacrumai.io', from_name='Mo Lee')['status'] == 'skipped')
+        from app.blueprints.integrations.routes import _is_stop_reply
+        check('a reply that merely quotes STOP is not an opt-out', not _is_stop_reply(
+            'Thanks, interested!\n> Reply STOP to stop receiving emails'))
+        from app.services import outreach_campaign_service as ocs2
+        held = ocs2._dispatch_send(SimpleNamespace(id='X', to_email='new@x.com', user_id=mailer.id, status='queued'))
+        check("SimiSI's own campaigns hold until Admin sets SimiSI's postal address",
+              held.get('reason') == 'no_business_address')
+        src = open('app/services/send_pipeline.py', encoding='utf-8').read()
+        check('confirmed batches refuse without a mailing address',
+              "sender_identity.postal_address(user)" in src and "legal_text.get('postal_address_required')" in src)
 
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))

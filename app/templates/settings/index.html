@@ -1887,6 +1887,30 @@
 
     {# ── Notifications tab ─────────────────────────────────────────── #}
     {% if active_tab == 'notifications' %}
+    <div class="settings-section" id="sending">
+      <div class="settings-section-title">Sending email</div>
+      <p class="settings-hint" style="margin-bottom:.75rem">Outreach your agents send under your name is commercial email.
+        The law requires a valid postal address in it (a street address, PO box or registered private mailbox).
+        It appears in the footer of every email, next to the unsubscribe link. Until it is set, no outreach sends.</p>
+      <div class="settings-row">
+        <label class="settings-label" for="postalAddress">Mailing address</label>
+        <textarea id="postalAddress" class="input-text" rows="2" maxlength="300"
+                  placeholder="123 Main St, Suite 4, Springfield, IL 62701">{{ postal_address or '' }}</textarea>
+      </div>
+      <div style="display:flex;gap:.6rem;align-items:center">
+        <button type="button" class="btn btn-primary btn-sm" id="postalSave">Save address</button>
+        <span id="postalMsg" class="settings-hint" role="status">{% if not postal_address %}Not set: outreach is paused.{% endif %}</span>
+      </div>
+    </div>
+    <script>
+    document.getElementById('postalSave').addEventListener('click', function () {
+      var msg = document.getElementById('postalMsg');
+      fetch((window.ROOT || '') + '/api/settings/postal-address', {method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({address: document.getElementById('postalAddress').value})})
+        .then(function (r) { return r.json().then(function (d) { return [r.ok, d]; }); })
+        .then(function (res) { msg.textContent = res[0] ? 'Saved. Outreach can send.' : (res[1].error || 'Could not save.'); });
+    });
+    </script>
     <div id="notificationsTab">
       <div class="settings-section">
         <div class="settings-section-title">Email Notification Preferences</div>

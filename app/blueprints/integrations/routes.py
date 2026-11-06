@@ -2011,7 +2011,7 @@ def sendgrid_event_webhook():
 # ── SendGrid Inbound Parse — reply detection (SIM-PRD-STEPS-001 B.5) ─────────
 
 @integrations_bp.route('/api/webhooks/sendgrid/inbound', methods=['POST'])
-def sendgrid_inbound_parse():
+def sendgrid_inbound_parse():  # noqa: C901 (see _is_stop_reply / _opt_out_by_reply)
     """
     Inbound email replies via SendGrid Inbound Parse.
     Reply-to format: reply-{contact_id}@mail.simulacrumai.io.
@@ -2030,6 +2030,13 @@ def sendgrid_inbound_parse():
         return '', 200
 
     contact_id = match.group(1)
+
+    # Reply STOP (COMPLIANCE_PLAN C1): honoured at once, recorded on the global
+    # suppression list, the contact is Do Not Contact and pending follow-ups stop.
+    _reply = (request.form.get('text') or request.form.get('html') or '')
+    if _is_stop_reply(_reply):
+        _opt_out_by_reply(contact_id)
+        return '', 200
 
     log = EmailLog.query.filter(
         EmailLog.contact_id == contact_id,
@@ -2052,3 +2059,52 @@ def sendgrid_inbound_parse():
             logger.error('sendgrid_inbound_parse commit failed: %s', exc)
 
     return '', 200
+
+
+
+_STOP_WORDS = {'stop', 'unsubscribe', 'remove', 'remove me', 'opt out', 'optout', 'stop please', 'please stop',
+               'unsubscribe me', 'stop emailing me', 'do not contact'}
+
+
+def _is_stop_reply(body: str) -> bool:
+    """True when the reply's own first line (above any quoted text) is an opt-out word."""
+    import re as _re
+    text = _re.sub(r'<[^>]+>', ' ', body or '')
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith('>') or _re.match(r'on .+ wrote:$', line, _re.I):
+            return False
+        word = _re.sub(r'[^a-z ]', '', line.lower()).strip()
+        return word in _STOP_WORDS
+    return False
+
+
+def _opt_out_by_reply(contact_id: str) -> None:
+    from app.models.contact import Contact
+    from app.models.outreach_email import EmailSuppression
+    from app.models.mail_crm import ContactDncFlag
+    from app.models.action_step import ActionStep
+    from app.models.audit_log import AuditLog
+    contact = Contact.query.get(contact_id)
+    if not contact or not contact.email:
+        return
+    email = contact.email.lower().strip()
+    try:
+        if not EmailSuppression.query.filter_by(email=email).first():
+            db.session.add(EmailSuppression(id=generate_id(), email=email, reason='unsubscribe',
+                                            detail='Replied STOP'))
+        contact.do_not_contact = True
+        db.session.add(ContactDncFlag(contact_id=contact.id, reason='unsubscribe'))
+        ActionStep.query.filter(ActionStep.condition_ref == contact.id,
+                                ActionStep.status.in_([ActionStep.STATUS_SCHEDULED, ActionStep.STATUS_SUSPENDED])).update(
+            {'status': ActionStep.STATUS_CANCELLED, 'skip_reason': 'Recipient replied STOP'},
+            synchronize_session=False)
+        AuditLog.log('outreach_opt_out', user_id=contact.user_id, resource_id=contact.id,
+                     metadata={'via': 'reply_stop'})
+        db.session.commit()
+        logger.info('Reply STOP: contact %s opted out', contact.id)
+    except Exception:
+        db.session.rollback()
+        logger.exception('Reply STOP opt-out failed for contact %s', contact_id)

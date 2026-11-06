@@ -79,6 +79,9 @@ def main():
                      email_verified=True, onboarding_completed_at=datetime.utcnow())
         db.session.add_all([owner, other])
         db.session.flush()
+        # Commercial email needs the sender's postal address (COMPLIANCE_PLAN C1).
+        from app.services import sender_identity
+        sender_identity.set_postal_address(owner, '1 Market St, San Francisco, CA 94105')
         sim = Simulation(id=generate_id(), user_id=owner.id, name='S', expertise_zone='Ops', status='complete')
         db.session.add(sim)
         db.session.flush()

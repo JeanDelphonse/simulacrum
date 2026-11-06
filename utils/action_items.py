@@ -18,6 +18,17 @@ _ESCALATION_EMAIL_TYPES = {
 # Maps every item_type to its urgency tier, action label, and dismissability.
 # title/description are caller-supplied (already plain-English formatted).
 ACTION_ITEM_TEMPLATES = {
+    # COMPLIANCE_PLAN C1 / C3
+    'postal_address_required': {
+        'urgency_tier': 2,
+        'action_label': 'Add mailing address',
+        'is_dismissable': False,
+    },
+    'campaign_paused': {
+        'urgency_tier': 2,
+        'action_label': 'Review the campaign',
+        'is_dismissable': True,
+    },
     'agent_complete': {
         'urgency_tier': 3,
         'action_label': 'View artifact',

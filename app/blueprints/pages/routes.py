@@ -704,11 +704,13 @@ def settings_notifications():
     from app.services.notification_service import get_preferences
     profile = UserProfile.query.filter_by(user_id=current_user.id).first()
     prefs = get_preferences(current_user.id)
+    from app.services import sender_identity
     return render_template(
         'settings/index.html',
         active_tab='notifications',
         profile=profile,
         notif_prefs=prefs,
+        postal_address=sender_identity.postal_address(current_user),
     )
 
 

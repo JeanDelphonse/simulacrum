@@ -20,14 +20,21 @@ def send_outreach_email(
     step_id: str = None,
     action_id: str = None,
     api_key: str = None,
-    unsubscribe: bool = False,
+    unsubscribe: bool = True,
+    transactional: bool = False,
 ) -> dict:
     """
     Send a single outreach email via SendGrid.
 
-    Checks suppression list, logs the send, and updates CRM contact fields.
+    Every agent and campaign email is commercial (COMPLIANCE_PLAN C1): it carries
+    the unsubscribe link, the RFC 8058 one-click headers, a reply-STOP line and
+    the sender's postal address, and it is refused until the member has set
+    that address. Only an explicit transactional=True skips the footer.
+    Checks the one suppression list, logs the send, and updates CRM contact fields.
     Returns {'status': 'sent'|'skipped', ...}.
     """
+    if transactional:
+        unsubscribe = False
     from flask import current_app
     from app.extensions import db
     from app.models.contact import Contact
@@ -78,6 +85,23 @@ def send_outreach_email(
     if _suppressed:
         return {'status': 'skipped', 'reason': 'suppressed:' + _suppressed}
 
+    # Honest subject lines: a first email may not pretend to be a reply or forward.
+    import re as _re
+    if _re.match(r'\s*(re|fwd?|fw)\s*:', subject or '', _re.I) and not EmailLog.query.filter_by(
+            contact_id=contact_id).first():
+        return {'status': 'skipped', 'reason': 'deceptive_subject'}
+
+    # The sender's postal address is required in every commercial email.
+    from app.services import sender_identity as _sender
+    _postal = None
+    if unsubscribe:
+        from app.models.user import User as _UserS
+        _owner = _UserS.query.get(_owner_id) if _owner_id else None
+        _postal = _sender.postal_address(_owner) if _owner else None
+        if not _postal:
+            _sender.ask_for_address(_owner_id, simulation_id)
+            return {'status': 'skipped', 'reason': 'no_postal_address'}
+
     # Sandbox routing: redirect to the simulation owner's email instead of the real contact
     try:
         from app.models.layer6 import Layer6Config as _L6Cfg
@@ -112,14 +136,9 @@ def send_outreach_email(
             # One-click unsubscribe (CAN-SPAM / RFC 8058): footer link plus
             # List-Unsubscribe headers; the link adds the address to the
             # suppression list every send checks.
-            from app.services.outreach_campaign_service import (
-                unsubscribe_url_for, BUSINESS_NAME, BUSINESS_ADDRESS)
+            from app.services.outreach_campaign_service import unsubscribe_url_for
             unsub_url = unsubscribe_url_for(to_email)
-            html_body = (html_body or '') + (
-                '<p style="font-size:12px;color:#888;margin-top:24px;">'
-                'Sent by %s via SimiSI · %s, %s · '
-                '<a href="%s" style="color:#888;">Unsubscribe</a></p>'
-                % (from_name or 'SimiSI', BUSINESS_NAME, BUSINESS_ADDRESS, unsub_url))
+            html_body = (html_body or '') + _sender.footer_html(from_name, _postal, unsub_url)
 
         message = Mail(
             from_email=From(from_email, from_name),
