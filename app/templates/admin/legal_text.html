@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Legal text — Admin{% endblock %}
+{% block head %}
+<style>
+.lt { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.lt h1 { font-size: 1.5rem; margin: 0 0 .35rem; }
+.lt-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 1.25rem; max-width: 80ch; }
+.lt-card { background: #fff; border: 1px solid var(--rule); border-radius: var(--r-ui); padding: 1rem 1.1rem; margin-bottom: .9rem; }
+.lt-head { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-bottom: .35rem; }
+.lt-key { font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--ink); font-weight: 600; }
+.lt-label { font-size: 14px; color: var(--mute); }
+.lt-pill { font-size: 12px; font-weight: 650; padding: 2px 9px; border-radius: 999px; }
+.lt-pill.draft { background: #FFF4DC; color: #7A5410; }
+.lt-pill.counsel_approved { background: #E1F5F2; color: #0B4F49; }
+.lt textarea { width: 100%; min-height: 72px; font: inherit; font-size: 14px; padding: .5rem .6rem; border: 1px solid var(--rule); border-radius: 8px; }
+.lt-acts { display: flex; gap: .5rem; align-items: center; margin-top: .45rem; flex-wrap: wrap; }
+.lt-msg { font-size: 13px; color: var(--mute); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="lt">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('legal_text') }}
+  <h1>Legal text</h1>
+  <p class="lt-sub">The one source for disclaimers, disclosures and claims wording used across the site, emails and
+    agent prompts. Every text is a <b>draft for counsel</b> (see COUNSEL_REVIEW.md). Mark one counsel-approved only
+    after your attorney signs off; editing an approved text makes it a draft again. Placeholders in braces, such as
+    <code>{sender_name}</code>, are filled in by the app.</p>
+  {% for r in rows %}
+  <div class="lt-card" data-key="{{ r.key }}">
+    <div class="lt-head">
+      <span class="lt-key">{{ r.key }}</span>
+      <span class="lt-pill {{ r.status }}">{{ 'Counsel approved' if r.status == 'counsel_approved' else 'Draft for counsel' }}</span>
+      <span class="lt-label">{{ r.label }} · v{{ r.version }}</span>
+    </div>
+    <textarea aria-label="Text for {{ r.key }}">{{ r.body }}</textarea>
+    <div class="lt-acts">
+      <button class="btn sm" type="button" data-act="save">Save as draft</button>
+      {% if r.status == 'counsel_approved' %}
+      <button class="btn sm" type="button" data-act="unapprove">Withdraw approval</button>
+      {% else %}
+      <button class="btn sm" type="button" data-act="approve">Mark counsel approved</button>
+      {% endif %}
+      <span class="lt-msg" role="status"></span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.lt-card').forEach(function (card) {
+  var key = card.dataset.key, msg = card.querySelector('.lt-msg');
+  card.querySelectorAll('button[data-act]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var act = b.dataset.act, body = {};
+      if (act === 'save') body.body = card.querySelector('textarea').value;
+      if (act === 'approve') {
+        if (!confirm('Mark "' + key + '" as approved by counsel? Only do this after your attorney signed off on this exact wording.')) return;
+        body.approved = true;
+      }
+      if (act === 'unapprove') body.approved = false;
+      fetch(ROOT + '/api/admin/legal-text/' + encodeURIComponent(key), {
+        method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+      }).then(function (r) { return r.json().then(function (d) { return [r.ok, d]; }); })
+        .then(function (res) {
+          if (!res[0]) { msg.textContent = res[1].error || 'Could not save.'; return; }
+          location.reload();
+        });
+    });
+  });
+});
+</script>
+{% endblock %}

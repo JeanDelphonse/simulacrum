@@ -84,6 +84,7 @@ from app.models.mail_crm import (
     ContactDncFlag, FeatureChange,
 )
 from app.models.enterprise_inquiry import EnterpriseInquiry
+from app.models.compliance import LegalText, OutcomeCheckin, ComplianceEvent
 from app.models.sme_guide import (
     SmeGuide, UserGuidePref, SmeSession, SmeTurn, SmeBriefing, SkillSuggestion, GoalCard,
     GoalCardAgentChange,

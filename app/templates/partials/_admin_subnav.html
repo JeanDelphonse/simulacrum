@@ -23,7 +23,8 @@
                ('bio_review', 'Bio Review', 'pages.admin_bio_review_view')]),
   ('Platform', [('calibration', 'Calibration', 'pages.admin_calibration_view'),
                 ('observability', 'Observability', 'pages.admin_observability_view'),
-                ('email_import', 'Email Import', 'mail.admin_page')]),
+                ('email_import', 'Email Import', 'mail.admin_page'),
+                ('legal_text', 'Legal Text', 'compliance.admin_legal_text')]),
 ] %}
 {% set ns = namespace(current=None) %}
 {% for title, items in groups %}{% for key, label, ep in items %}{% if key == active %}{% set ns.current = title %}{% endif %}{% endfor %}{% endfor %}

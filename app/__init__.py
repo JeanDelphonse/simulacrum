@@ -190,6 +190,11 @@ def create_app(config_name=None):
 
     from app.blueprints.guide import guide_bp
     app.register_blueprint(guide_bp)
+    from app.blueprints.compliance import compliance_bp
+    app.register_blueprint(compliance_bp)
+    # One source for legal and claims wording (COMPLIANCE_PLAN): {{ legal('key') }}.
+    from app.services import legal_text as _legal_text
+    app.jinja_env.globals['legal'] = _legal_text.get
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 

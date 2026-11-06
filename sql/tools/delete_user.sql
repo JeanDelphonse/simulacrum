@@ -1,5 +1,5 @@
 -- delete_user.sql — permanently delete ONE user and everything that is theirs.
--- Generated from the models (all 158 tables reviewed). MySQL 5.7+/MariaDB.
+-- Generated from the models (all 161 tables reviewed). MySQL 5.7+/MariaDB.
 --
 -- BEFORE RUNNING
 --   1. Back up the database (cPanel > Backup, or mysqldump). This cannot be undone.
@@ -202,6 +202,7 @@ INSERT INTO zz_del_preview SELECT 'page_views', COUNT(*) FROM page_views WHERE s
 INSERT INTO zz_del_preview SELECT 'outreach_sends', COUNT(*) FROM outreach_sends WHERE enrollment_id IN (SELECT id FROM zz_del_enroll) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'outreach_enrollments', COUNT(*) FROM outreach_enrollments WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'outcome_reports', COUNT(*) FROM outcome_reports WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'outcome_checkins', COUNT(*) FROM outcome_checkins WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'observability_flags', COUNT(*) FROM observability_flags WHERE run_id IN (SELECT id FROM zz_del_runs) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'notifications', COUNT(*) FROM notifications WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'notification_preferences', COUNT(*) FROM notification_preferences WHERE user_id = @uid;
@@ -220,6 +221,7 @@ INSERT INTO zz_del_preview SELECT 'contact_field_sources', COUNT(*) FROM contact
 INSERT INTO zz_del_preview SELECT 'contact_dnc_flags', COUNT(*) FROM contact_dnc_flags WHERE contact_id IN (SELECT id FROM zz_del_contacts);
 INSERT INTO zz_del_preview SELECT 'contact_activities', COUNT(*) FROM contact_activities WHERE action_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts) OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'contact_account_links', COUNT(*) FROM contact_account_links WHERE account_id IN (SELECT id FROM zz_del_mail) OR contact_id IN (SELECT id FROM zz_del_contacts);
+INSERT INTO zz_del_preview SELECT 'compliance_events', COUNT(*) FROM compliance_events WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'coaching_sessions', COUNT(*) FROM coaching_sessions WHERE seat_id IN (SELECT id FROM zz_del_seats);
 INSERT INTO zz_del_preview SELECT 'coaching_notes', COUNT(*) FROM coaching_notes WHERE session_id IN (SELECT id FROM zz_del_csess);
 INSERT INTO zz_del_preview SELECT 'calibration_runs', COUNT(*) FROM calibration_runs WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims);
@@ -383,6 +385,8 @@ DELETE FROM outreach_sends WHERE enrollment_id IN (SELECT id FROM zz_del_enroll)
 DELETE FROM outreach_enrollments WHERE user_id = @uid;
 DELETE FROM outcome_reports WHERE simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
+DELETE FROM outcome_checkins WHERE simulation_id IN (SELECT id FROM zz_del_sims)
+    OR user_id = @uid;
 DELETE FROM observability_flags WHERE run_id IN (SELECT id FROM zz_del_runs)
     OR user_id = @uid;
 DELETE FROM notifications WHERE simulation_id IN (SELECT id FROM zz_del_sims)
@@ -419,6 +423,7 @@ DELETE FROM contact_activities WHERE action_id IN (SELECT id FROM zz_del_actions
     OR simulation_id IN (SELECT id FROM zz_del_sims);
 DELETE FROM contact_account_links WHERE account_id IN (SELECT id FROM zz_del_mail)
     OR contact_id IN (SELECT id FROM zz_del_contacts);
+DELETE FROM compliance_events WHERE user_id = @uid;
 DELETE FROM coaching_sessions WHERE seat_id IN (SELECT id FROM zz_del_seats);
 DELETE FROM coaching_notes WHERE session_id IN (SELECT id FROM zz_del_csess);
 DELETE FROM calibration_runs WHERE action_id IN (SELECT id FROM zz_del_actions)
@@ -477,6 +482,7 @@ UPDATE feature_flags SET updated_by = NULL WHERE updated_by = @uid;
 UPDATE guardrail_policies SET created_by = NULL WHERE created_by = @uid;
 UPDATE guardrail_rules SET created_by = NULL WHERE created_by = @uid;
 UPDATE layer_income_records SET voided_by_id = NULL WHERE voided_by_id = @uid;
+UPDATE legal_texts SET updated_by = NULL WHERE updated_by = @uid;
 UPDATE outreach_templates SET updated_by = NULL WHERE updated_by = @uid;
 UPDATE transition_cohorts SET created_by = NULL WHERE created_by = @uid;
 UPDATE user_discounts SET granted_by = NULL WHERE granted_by = @uid;

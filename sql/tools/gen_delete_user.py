@@ -44,7 +44,8 @@ GLOBAL = {'admin_stage_rules', 'calibration_audit', 'calibration_configs', 'disc
           'corporate_accounts', 'referral_invitations', 'simi_smes',
           'transition_cohorts',   # employer-level records
           'enterprise_inquiries',  # inbound sales inquiries, not tied to a user account
-          'sme_guides'}            # the guide catalogue
+          'sme_guides',            # the guide catalogue
+          'legal_texts'}           # site-wide legal wording
 
 # Columns that hold THE user's id: rows matching are the user's data -> delete.
 USER_COLS = {'user_id', 'owner_user_id', 'author_user_id', 'profile_user_id', 'client_user_id',

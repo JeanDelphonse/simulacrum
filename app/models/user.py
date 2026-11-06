@@ -42,6 +42,9 @@ class User(UserMixin, db.Model):
     voice_trained_at          = db.Column(db.DateTime,    nullable=True)
     voice_consent_accepted_at = db.Column(db.DateTime,    nullable=True)
     voice_training_paid_at    = db.Column(db.DateTime,    nullable=True)
+    # CAN-SPAM: the sender's physical postal address, shown in every commercial
+    # email footer; campaigns are blocked until it is set (COMPLIANCE_PLAN C1).
+    postal_address_enc        = db.Column(db.Text,        nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
