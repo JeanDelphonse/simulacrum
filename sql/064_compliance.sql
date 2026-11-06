@@ -62,3 +62,8 @@ UPDATE simulation_layers SET layer_name = 'Wealth Planning — Education and Pla
 
 -- The public share-ROI card is off until the owner shares it (COMPLIANCE_PLAN D6).
 ALTER TABLE simulations ADD COLUMN roi_share_enabled TINYINT(1) NOT NULL DEFAULT 0;
+
+-- The brokerage connection is read-only (COMPLIANCE_PLAN B4): the order tool is
+-- gone from the registry, and the old admin 'fintech' switch is retired.
+DELETE FROM tool_registry WHERE tool_key = 'alpaca_order';
+DELETE FROM platform_settings WHERE `key` = 'fintech_toggle';

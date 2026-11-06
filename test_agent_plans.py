@@ -79,8 +79,9 @@ def main():
         print('\n1. Tool registry')
         tools = agent_plans.ensure_tools()
         check('registry seeded with every tool', set(tools) == set(agent_plans.TOOL_SEED), len(tools))
-        check('money movement, LinkedIn and Kajabi ship disabled',
-              not tools['alpaca_order'].enabled and not tools['linkedin_post'].enabled
+        # COMPLIANCE_PLAN B4: there is no money-movement tool at all any more.
+        check('no money-movement tool; LinkedIn and Kajabi ship disabled',
+              'alpaca_order' not in tools and not tools['linkedin_post'].enabled
               and not tools['kajabi_publish'].enabled)
         tools['stripe_payment_link'].cost_cents = 25
         db.session.commit()
@@ -147,8 +148,10 @@ def main():
               and all(s['approval_status'] == ('pending' if s['executable'] else 'not_required')
                       for s in b['steps'] if s['tool_key']), b['steps'])
         d = client.get('/api/artifacts/%s/plan' % ids['dca']).get_json()
-        check('dca_schedule plan is plan-only and generate-only',
-              d['autonomy_level'] == 'L0' and [s['method'] for s in d['steps']] == ['plan', 'review'])
+        # COMPLIANCE_PLAN D4: an education document now; locked at L0, nothing executes.
+        check('dca_schedule plan is generate-only and nothing in it can execute',
+              d['autonomy_level'] == 'L0' and [s['method'] for s in d['steps']] == ['generate', 'refine', 'export']
+              and not any(s.get('executable') for s in d['steps']))
 
         print('\n4. Decisions record, never execute')
         res = client.post('/api/plan-steps/%s/decision' % send['id'], json={'decision': 'approve'})

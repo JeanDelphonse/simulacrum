@@ -1044,6 +1044,13 @@ def execute_agent_action(
     notice rather than an exception, because the caller's job is to store an
     artifact, not to handle a governance outcome.
     """
+    # COMPLIANCE_PLAN B5: the last line of defence for the Layer 5 switch; the
+    # run endpoints and the orchestrator refuse earlier, so this rarely fires.
+    from app.services import l5_feature as _l5
+    if _l5.blocks(layer_number):
+        from app.services import legal_text as _legal
+        return _legal.get('l5_unavailable')
+
     # Resolve legacy aliases up front so model routing, token budgets, custom
     # execution paths, and contact-agent sets all key off the canonical name —
     # otherwise the same logical agent gets a different model/budget depending

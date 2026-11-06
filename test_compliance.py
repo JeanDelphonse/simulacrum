@@ -432,6 +432,68 @@ def main():
         login(member)
         check('…members cannot open it', client.get('/admin/compliance').status_code == 403)
 
+        # ── 10. Layer 5 kill switch ─────────────────────────────────────────
+        print('\n10. Layer 5 kill switch')
+        from app.services import l5_feature
+        from app.models.layer6 import Layer6ActionQueue
+        from app.services import layer6 as layer6_service
+
+        def db_ok(where):
+            try:
+                User.query.count()
+                return True
+            except Exception as e:
+                print('   db broken after %s: %s' % (where, str(e)[:160]))
+                db.session.rollback()
+                return False
+
+        check('on by default', l5_feature.enabled())
+        login(member)
+        check('members cannot flip it', client.put('/api/admin/compliance/l5', json={'mode': 'off'}).status_code == 403)
+        login(admin)
+        r = client.put('/api/admin/compliance/l5', json={'mode': 'off', 'reason': 'counsel review'})
+        check('an admin switches it off, with a reason, audit-logged', r.status_code == 200 and not l5_feature.enabled()
+              and AuditLog.query.filter_by(action='layer5_switch_off').count() == 1)
+        check('…and the Compliance page shows it off',
+              'Switch Layer 5 on' in client.get('/admin/compliance').get_data(as_text=True))
+        routes_src = open('app/blueprints/simulations/routes.py', encoding='utf-8').read()
+        check('every run endpoint refuses Layer 5 while it is off', routes_src.count('_l5.blocks(') == 3)
+        q = Layer6ActionQueue(id=generate_id(), simulation_id=sim.id, action_type='income_allocation', source_layer=5)
+        cols = {c.name for c in Layer6ActionQueue.__table__.columns}
+        for col, val in (('cycle_id', generate_id()), ('priority', 1), ('bayesian_score', 0.5)):
+            if col in cols and getattr(q, col, None) is None:
+                setattr(q, col, val)
+        db.session.add(q)
+        db.session.commit()
+        layer6_service._execute_action_sync(q)
+        check('the orchestrator skips Layer 5 dispatches', q.status == Layer6ActionQueue.STATUS_REJECTED
+              and q.agent_action_id is None and db_ok('orchestrator'))
+        fake_calls = []
+        real_dispose = db.engine.dispose
+        claude._client = lambda: fake_calls.append(1)
+        db.engine.dispose = lambda *a, **k: None      # the test DB lives in memory
+        try:
+            out = claude.execute_agent_action(action_type='income_allocation', layer_number=5, expertise_zone='Ops',
+                                              parsed_text='', user_inputs={}, user_id=owner.id, simulation_id=sim.id)
+        finally:
+            claude._client, db.engine.dispose = real_client, real_dispose
+        check('…and the agent entry point makes no model call',
+              out == legal_text.get('l5_unavailable') and not fake_calls and db_ok('entry point'))
+        check('other layers still run (the switch is Layer 5 only)', not l5_feature.blocks(1))
+        login(owner)
+        # The setup page asks Claude to score agents; offline here, and the real
+        # _log_interaction would dispose the in-memory engine.
+        claude._client = lambda: (_ for _ in ()).throw(RuntimeError('offline'))
+        claude._log_interaction = lambda *a, **k: None
+        try:
+            sel = client.get('/simulations/%s/setup' % sim.id).get_data(as_text=True)
+        finally:
+            claude._client, claude._log_interaction = real_client, real_log
+        check('the agent selector says Layer 5 is unavailable', legal_text.get('l5_unavailable') in sel)
+        login(admin)
+        client.put('/api/admin/compliance/l5', json={'mode': 'on'})
+        check('switching it back on restores Layer 5', l5_feature.enabled())
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

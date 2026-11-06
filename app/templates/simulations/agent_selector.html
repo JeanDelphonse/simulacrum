@@ -200,6 +200,11 @@
 
 {% block content %}
 <div class="asel-page">
+  {# COMPLIANCE_PLAN B5: Admin can switch Layer 5 agents off for everyone. #}
+  {% set _l5_off = l5_switch_off() %}
+  {% if _l5_off %}
+  <div role="note" style="margin:0 0 1rem;padding:.65rem .9rem;border-radius:10px;background:#FFF4DC;color:#5C3F0C;font-size:14px">{{ legal('l5_unavailable') }}</div>
+  {% endif %}
 
   <!-- Back link -->
   <a href="/simulations/{{ selector.sim_id }}"

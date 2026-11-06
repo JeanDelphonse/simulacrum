@@ -68,3 +68,16 @@ def _l5_state():
         return l5_feature.state()
     except ImportError:
         return None
+
+
+@compliance_bp.route('/api/admin/compliance/l5', methods=['PUT'])
+@login_required
+def admin_l5_switch():
+    _admin()
+    from app.services import l5_feature
+    data = request.get_json(silent=True) or {}
+    try:
+        l5_feature.set_mode(data.get('mode'), current_user.id, data.get('reason') or '')
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    return jsonify({'ok': True, 'mode': l5_feature.state()['mode']})

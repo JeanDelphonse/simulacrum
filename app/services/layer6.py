@@ -1298,6 +1298,14 @@ def _execute_action_sync(entry) -> None:
     from app.models.resume import Resume
     from app.services.claude import execute_agent_action
 
+    # COMPLIANCE_PLAN B5: no Layer 5 agent is dispatched while the switch is off.
+    from app.services import l5_feature as _l5
+    if _l5.blocks(entry.source_layer):
+        entry.status = Layer6ActionQueue.STATUS_REJECTED
+        db.session.commit()
+        logger.info('Layer 5 switched off: skipped %s for sim=%s', entry.action_type, entry.simulation_id)
+        return
+
     sim = Simulation.query.get(entry.simulation_id)
     resume = Resume.query.get(sim.resume_id) if sim and sim.resume_id else None
     parsed_text = resume.parsed_text if resume else ''

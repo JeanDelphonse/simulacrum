@@ -197,6 +197,8 @@ def create_app(config_name=None):
     app.jinja_env.globals['legal'] = _legal_text.get
     from app.services.claims import mentions_results as _mentions_results
     app.jinja_env.tests['mentions_results'] = _mentions_results
+    from app.services import l5_feature as _l5_feature
+    app.jinja_env.globals['l5_switch_off'] = lambda: not _l5_feature.enabled()
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 

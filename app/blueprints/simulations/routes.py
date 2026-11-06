@@ -858,6 +858,9 @@ def create_agent_action(sim_id, layer_num):
     if missing_required:
         return jsonify({'error': f'Missing required fields: {", ".join(missing_required)}'}), 400
 
+    from app.services import l5_feature as _l5
+    if _l5.blocks(layer_num):
+        return _l5.refusal()
     action = AgentAction(
         id=generate_id(),
         simulation_id=sim_id,
@@ -1279,6 +1282,9 @@ def run_agent(sim_id, action_type):
 
     # Create action record
     params = (request.get_json(silent=True) or {}).get('params', {})
+    from app.services import l5_feature as _l5
+    if _l5.blocks(layer_number):
+        return _l5.refusal()
     action = AgentAction(
         id=generate_id(),
         simulation_id=sim_id,
@@ -1377,6 +1383,9 @@ def restart_agent(sim_id, action_id):
     layer_number, defn = _get_action_layer(saved_action_type)
     if layer_number is None:
         return jsonify({'error': 'Unknown agent type'}), 400
+    from app.services import l5_feature as _l5
+    if _l5.blocks(layer_number):
+        return _l5.refusal()
 
     new_action = AgentAction(
         id=generate_id(),
