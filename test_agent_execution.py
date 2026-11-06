@@ -174,7 +174,7 @@ def main():
         check('picker answers', res.status_code == 200, res.status_code)
         check('eligible contacts are selectable', by[ids['ok1']]['eligible'] and by[ids['ok2']]['eligible'])
         check('archived contacts are left out', ids['arc'] not in by)
-        for key, reason in (('dnc', 'Do not contact'), ('sup', 'Unsubscribed or bounced'),
+        for key, reason in (('dnc', 'Do not contact'), ('sup', 'Unsubscribed, bounced or complained'),
                             ('ph', 'Placeholder, not a real person'), ('used', 'Already contacted by this agent')):
             check('%s shown but not selectable (%s)' % (key, reason),
                   not by[ids[key]]['eligible'] and by[ids[key]]['reason'] == reason, by[ids[key]])

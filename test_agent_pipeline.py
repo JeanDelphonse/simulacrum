@@ -186,6 +186,10 @@ def main():
         step = ActionStep(id=generate_id(), agent_action_id=rate_card.id, simulation_id=sim.id,
                           step_number=2, total_steps=3, action_type='cold_email_campaign',
                           step_type='email_followup', scheduled_for=datetime.utcnow() - timedelta(hours=1))
+        from app.models.contact import Contact as _C
+        if not _C.query.get('c1'):
+            db.session.add(_C(id='c1', user_id=user.id, first_name='Cy', last_name='One', email='c1@x.com',
+                              source='manual_entry', pipeline_stage='prospect'))
         step.payload = {'contact_id': 'c1'}
         db.session.add(step)
         db.session.commit()
