@@ -58,8 +58,12 @@ def admin_compliance():
     from app.models.compliance import ComplianceEvent
     from app.services import outcome_service
     events = ComplianceEvent.query.order_by(ComplianceEvent.created_at.desc()).limit(200).all()
+    from app.models.platform_settings import PlatformSetting
+    from app.services import send_limits
+    limits = [(k, PlatformSetting.get(k, d) or d) for k, d in send_limits.DEFAULTS.items()]
     return render_template('admin/compliance.html', events=events, outcomes=outcome_service.admin_summary(),
-                           l5=_l5_state())
+                           l5=_l5_state(), limits=limits,
+                           business_address=PlatformSetting.get('outreach_business_address', '') or '')
 
 
 def _l5_state():
@@ -134,3 +138,18 @@ def admin_compliance_settings():
     AuditLog.log('compliance_settings_updated', user_id=current_user.id, metadata=changed)
     db.session.commit()
     return jsonify({'ok': True})
+
+
+
+@compliance_bp.route('/api/campaigns/<action_id>/resume', methods=['POST'])
+@login_required
+def campaign_resume(action_id):
+    """The owner resumes a campaign the bounce/complaint guard paused."""
+    from app.models.agent_action import AgentAction
+    from app.models.simulation import Simulation
+    from app.services import send_limits
+    action = AgentAction.query.get_or_404(action_id)
+    sim = Simulation.query.get(action.simulation_id)
+    if not sim or sim.user_id != current_user.id:
+        return jsonify({'error': 'Not your campaign.'}), 403
+    return jsonify({'ok': True, 'resumed_steps': send_limits.resume_campaign(action_id, current_user.id)})

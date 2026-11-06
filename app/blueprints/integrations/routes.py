@@ -1990,6 +1990,17 @@ def sendgrid_event_webhook():
                             reason='complaint',
                             detail='spam report',
                         ))
+                if log:
+                    log.status = 'complaint'
+
+        # Auto-pause a campaign whose bounce or complaint rate is too high (C3).
+        if log and log.action_id and event_type in ('bounce', 'dropped', 'spamreport'):
+            try:
+                db.session.flush()
+                from app.services import send_limits as _limits
+                _limits.review_campaign(log.action_id)
+            except Exception:
+                logger.exception('campaign review failed for %s', log.action_id)
 
         if sim_id and event_type in ('open', 'click', 'bounce', 'dropped', 'delivered'):
             db.session.add(IntegrationSignal(

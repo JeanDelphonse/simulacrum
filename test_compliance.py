@@ -634,6 +634,93 @@ def main():
         check('confirmed batches refuse without a mailing address',
               "sender_identity.postal_address(user)" in src and "legal_text.get('postal_address_required')" in src)
 
+        # ── 13. Caps, warm-up, auto-pause ───────────────────────────────────
+        print('\n13. Send caps, warm-up and auto-pause')
+        from app.models.outreach_email import EmailLog
+        from app.models.agent_action import AgentAction
+        from app.models.action_step import ActionStep
+        from app.services import send_limits
+        from app.models.platform_settings import PlatformSetting
+        heavy = user()
+        sender_identity.set_postal_address(User.query.get(heavy.id), '9 Elm St, Austin, TX 78701')
+        hsim = Simulation(id=generate_id(), user_id=heavy.id, name='H', expertise_zone='Ops', status='complete')
+        db.session.add(hsim)
+        act = AgentAction(id=generate_id(), simulation_id=hsim.id, layer_number=1, action_type='cold_email_campaign',
+                          status='complete')
+        db.session.add(act)
+        db.session.commit()
+        check('a new sender starts on the warm-up schedule', send_limits.daily_cap(heavy.id) == 10)
+
+        filler = Contact(id=generate_id(), user_id=heavy.id, first_name='Fill', last_name='Er', email='fill@x.com',
+                         source='manual_entry', pipeline_stage='prospect')
+        db.session.add(filler)
+        db.session.commit()
+
+        def log_sent(n, action_id=None, days_ago=0, **kw):
+            for i in range(n):
+                db.session.add(EmailLog(id=generate_id(), simulation_id=hsim.id, contact_id=filler.id, action_id=action_id,
+                                        subject='s', from_email='f@x.com', from_name='F', to_email='t%d@x.com' % i,
+                                        status=kw.get('status', 'sent'),
+                                        sent_at=datetime.utcnow() - timedelta(days=days_ago, minutes=i),
+                                        bounced_at=kw.get('bounced_at')))
+            db.session.commit()
+        log_sent(10)
+        kc = Contact(id=generate_id(), user_id=heavy.id, first_name='Lee', last_name='Moss', email='lee@x.com',
+                     source='manual_entry', pipeline_stage='prospect')
+        db.session.add(kc)
+        db.session.commit()
+        r = send_outreach_email(simulation_id=hsim.id, contact_id=kc.id, subject='Hello', html_body='<p>x</p>',
+                                from_email='simi@simulacrumai.io', from_name='Hal')
+        check('day 1: the 11th email is deferred, not dropped', r == {'status': 'deferred', 'reason': 'over_daily_cap'})
+        EmailLog.query.filter(EmailLog.simulation_id == hsim.id).update(
+            {'sent_at': datetime.utcnow() - timedelta(days=30)}, synchronize_session=False)
+        db.session.commit()
+        check('after warm-up the Admin cap applies (50 by default)', send_limits.daily_cap(heavy.id) == 50)
+        PlatformSetting.set('send_cap_per_campaign_day', '3')
+        db.session.commit()
+        log_sent(3, action_id=act.id)
+        r = send_outreach_email(simulation_id=hsim.id, contact_id=kc.id, subject='Hello', html_body='<p>x</p>',
+                                from_email='simi@simulacrumai.io', from_name='Hal', action_id=act.id)
+        check('a campaign over its own daily cap is deferred', r['reason'] == 'over_campaign_cap')
+        PlatformSetting.set('send_cap_per_campaign_day', '25')
+        db.session.commit()
+
+        step = ActionStep(id=generate_id(), agent_action_id=act.id, simulation_id=hsim.id, step_number=2, total_steps=3,
+                          action_type='cold_email_campaign', step_type='email_followup', subject='Hello again',
+                          scheduled_for=datetime.utcnow(), condition_type='no_reply', condition_ref=kc.id)
+        db.session.add(step)
+        db.session.commit()
+        log_sent(20, action_id=act.id, bounced_at=datetime.utcnow())       # 20 of 23 bounced
+        paused = send_limits.review_campaign(act.id)
+        item = ActionItem.query.filter_by(item_type='campaign_paused', source_action_id=act.id).first()
+        check('a high bounce rate pauses the campaign', paused and send_limits.is_paused(act.id)
+              and ActionStep.query.get(step.id).status == ActionStep.STATUS_SUSPENDED)
+        check('…and tells the member why, with the numbers', item is not None and '%' in (item.description or '')
+              and 'bounced' in item.description)
+        r = send_outreach_email(simulation_id=hsim.id, contact_id=kc.id, subject='Hello', html_body='<p>x</p>',
+                                from_email='simi@simulacrumai.io', from_name='Hal', action_id=act.id)
+        check('a paused campaign sends nothing', r['reason'] == 'campaign_paused')
+        login(intruder)
+        check('only the owner can resume it', client.post('/api/campaigns/%s/resume' % act.id).status_code == 403)
+        login(heavy)
+        res = client.post('/api/campaigns/%s/resume' % act.id)
+        check('the owner resumes it: follow-ups are scheduled again', res.status_code == 200
+              and not send_limits.is_paused(act.id) and ActionStep.query.get(step.id).status == ActionStep.STATUS_SCHEDULED)
+        small = AgentAction(id=generate_id(), simulation_id=hsim.id, layer_number=1, action_type='cold_email_campaign',
+                            status='complete')
+        db.session.add(small)
+        db.session.commit()
+        log_sent(5, action_id=small.id, bounced_at=datetime.utcnow())
+        check('too few sends to judge: no pause', not send_limits.review_campaign(small.id))
+        login(admin)
+        r = client.put('/api/admin/compliance/settings', json={'warmup_schedule': 'ten'})
+        check('Admin limits are validated', r.status_code == 400)
+        r = client.put('/api/admin/compliance/settings', json={'outreach_business_address': '1 Infinite Loop, Cupertino, CA 95014',
+                                                               'send_cap_per_user_day': '40'})
+        check('…and saved', r.status_code == 200 and send_limits.setting('send_cap_per_user_day') == 40
+              and sender_identity.business_address().startswith('1 Infinite Loop'))
+        check('…from Admin → Compliance', 'outreach_business_address' in client.get('/admin/compliance').get_data(as_text=True))
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

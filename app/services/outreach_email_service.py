@@ -85,6 +85,13 @@ def send_outreach_email(
     if _suppressed:
         return {'status': 'skipped', 'reason': 'suppressed:' + _suppressed}
 
+    # Send limits (COMPLIANCE_PLAN C3): a paused campaign never sends; over a
+    # daily or warm-up cap the send is deferred by the caller, not dropped.
+    from app.services import send_limits as _limits
+    _limit = _limits.check_send(_owner_id, action_id)
+    if _limit:
+        return {'status': 'deferred' if _limit.startswith('over_') else 'skipped', 'reason': _limit}
+
     # Honest subject lines: a first email may not pretend to be a reply or forward.
     import re as _re
     if _re.match(r'\s*(re|fwd?|fw)\s*:', subject or '', _re.I) and not EmailLog.query.filter_by(

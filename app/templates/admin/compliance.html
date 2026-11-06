@@ -39,6 +39,20 @@
   </div>
   {% endif %}
 
+  <div class="cp-card" id="sendCard">
+    <h2>Commercial email</h2>
+    <p class="cp-sub" style="margin:0 0 .6rem">SimiSI's postal address for its own campaigns (they hold until it is set),
+      and the limits every member's outreach is held to. Over a daily or warm-up cap, sends move to the next day.</p>
+    <div class="cp-row"><label for="bizAddr" style="min-width:16rem;font-size:14px">SimiSI postal address</label>
+      <input type="text" id="bizAddr" data-key="outreach_business_address" value="{{ business_address }}"
+             placeholder="Street or PO box, city, postal code"></div>
+    {% for k, v in limits %}
+    <div class="cp-row"><label for="lim-{{ k }}" style="min-width:16rem;font-size:14px">{{ k }}</label>
+      <input type="text" id="lim-{{ k }}" data-key="{{ k }}" value="{{ v }}" style="max-width:16rem"></div>
+    {% endfor %}
+    <div class="cp-row"><button class="btn sm" type="button" id="sendSave">Save</button><span class="cp-msg" role="status"></span></div>
+  </div>
+
   <div class="cp-card">
     <h2>Layer 5 output filter events</h2>
     {% if events %}
@@ -69,6 +83,13 @@
 {% endblock %}
 {% block scripts %}
 <script>
+document.getElementById('sendSave').addEventListener('click', function () {
+  var body = {}, msg = document.querySelector('#sendCard .cp-msg');
+  document.querySelectorAll('#sendCard [data-key]').forEach(function (i) { body[i.dataset.key] = i.value; });
+  fetch(ROOT + '/api/admin/compliance/settings', {method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)}).then(function (r) { return r.json().then(function (d) { return [r.ok, d]; }); })
+    .then(function (res) { msg.textContent = res[0] ? 'Saved.' : (res[1].error || 'Could not save.'); });
+});
 document.querySelectorAll('#l5Card [data-mode]').forEach(function (b) {
   b.addEventListener('click', function () {
     var mode = b.dataset.mode, reason = document.getElementById('l5Reason').value.trim();

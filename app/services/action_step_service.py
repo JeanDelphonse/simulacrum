@@ -451,6 +451,11 @@ def _execute_email_step(step, payload: dict, from_email: str, from_name: str) ->
         step_id=step.id,
         action_id=step.agent_action_id,
     )
+    if result.get('status') == 'deferred':
+        # Over a daily or warm-up cap (COMPLIANCE_PLAN C3): try again tomorrow.
+        from datetime import timedelta as _td
+        step.scheduled_for = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) + _td(days=1, hours=1)
+        return None
     return result.get('status') == 'sent'
 
 
@@ -606,6 +611,9 @@ def process_due_steps(simulation_id: str, user_id: str) -> dict:
                 continue
             if evaluate_condition(step):
                 success = execute_step(step, user_id, from_email, from_name)
+                if success is None:          # deferred by a send cap; stays scheduled
+                    held += 1
+                    continue
                 if success:
                     step.status = ActionStep.STATUS_EXECUTED
                     step.executed_at = datetime.utcnow()
