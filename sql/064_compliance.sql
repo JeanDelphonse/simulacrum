@@ -67,3 +67,6 @@ ALTER TABLE simulations ADD COLUMN roi_share_enabled TINYINT(1) NOT NULL DEFAULT
 -- gone from the registry, and the old admin 'fintech' switch is retired.
 DELETE FROM tool_registry WHERE tool_key = 'alpaca_order';
 DELETE FROM platform_settings WHERE `key` = 'fintech_toggle';
+
+-- SimiSI never posts or messages on LinkedIn for a member (COMPLIANCE_PLAN C6).
+DELETE FROM tool_registry WHERE tool_key = 'linkedin_post';

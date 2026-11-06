@@ -51,6 +51,7 @@ def main():
     with app.app_context():
         from flask import g
         from app import models as _models  # noqa: F401
+        from app.models import social_queue as _sq  # noqa: F401
         db.create_all()
         from app.models.user import User
         from app.models.audit_log import AuditLog
@@ -805,6 +806,32 @@ def main():
         st = followup(opt, None)
         check('after an opt-out, even an unconditional follow-up stops', not evaluate_condition(st)
               and 'unsubscribed' in st.skip_reason.lower())
+
+        print('\n16. LinkedIn: SimiSI never posts or messages for a member')
+        from app.models.social_queue import SocialPostQueue
+        from app.services import linkedin as _li, agent_plans as _ap, action_step_service as _ass
+        check('no Share-on-LinkedIn permission requested', 'w_member_social' not in _li.LINKEDIN_SCOPE
+              and _li.LINKEDIN_SCOPE == _li.LINKEDIN_IDENTITY_SCOPE)
+        check('no LinkedIn posting client', not hasattr(_li, 'post_ugc'))
+        check('no linkedin_post tool or step channel', 'linkedin_post' not in _ap.TOOL_SEED
+              and 'linkedin_post' not in _ass.STEP_CHANNEL)
+        poster = user()
+        q = SocialPostQueue(user_id=poster.id, platform='linkedin', post_text='Draft about my new service.')
+        db.session.add(q)
+        db.session.commit()
+        login(poster)
+        before = len(network)
+        r = client.post('/api/integrations/social-queue/%s/approve' % q.id)
+        d = r.get_json() or {}
+        check('approve returns the draft to copy, not a published post', r.status_code == 200
+              and d.get('ready_to_post') and d.get('text') == 'Draft about my new service.'
+              and d.get('note') == legal_text.get('linkedin_manual'), d)
+        check('approve makes no call to LinkedIn', len(network) == before)
+        q = SocialPostQueue.query.get(q.id)
+        check('the draft is marked approved with no LinkedIn post id', q.status == 'approved'
+              and not q.platform_post_id)
+        step = type('S', (), {'step_type': 'linkedin_post', 'payload': {}, 'id': 'x'})()
+        check('a stray linkedin_post step does not execute', _ass.execute_step(step, poster.id, 'f@x.com', 'F') is False)
 
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))

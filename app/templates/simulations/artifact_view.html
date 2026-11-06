@@ -513,7 +513,7 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
     <button type="button" class="av-btn" id="avArchiveBtn">Archive</button>
     {% endif %}
     {% if linkedin_connected and not is_co %}
-    <button type="button" class="av-btn" id="avLinkedInBtn">Post to LinkedIn</button>
+    <button type="button" class="av-btn" id="avLinkedInBtn">Draft a LinkedIn post</button>
     {% endif %}
     {% if not is_co %}
     <button type="button" class="av-btn primary" id="avSaveBtn" disabled>Save as new version</button>
@@ -523,8 +523,8 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
   {% if linkedin_connected and not is_co %}
   <div id="liModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:520px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);">
-      <h3 style="margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a;">Post to LinkedIn</h3>
-      <p style="font-size:13px;color:#64748b;margin:0 0 14px;">Customize before publishing to your LinkedIn feed.</p>
+      <h3 style="margin:0 0 8px;font-size:17px;font-weight:700;color:#0f172a;">Draft a LinkedIn post</h3>
+      <p style="font-size:13px;color:#64748b;margin:0 0 14px;">Customize it, then approve it in your Action Queue. {{ legal('linkedin_manual') }}</p>
       <textarea id="liPostText" style="width:100%;box-sizing:border-box;min-height:160px;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:14px;font-family:inherit;line-height:1.6;resize:vertical;outline:none;" maxlength="3000" placeholder="Write your LinkedIn post…"></textarea>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
         <span id="liCharCount" style="font-size:12px;color:var(--mute);">0 / 3000</span>

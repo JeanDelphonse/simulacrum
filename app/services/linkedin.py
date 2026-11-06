@@ -10,12 +10,10 @@ logger = logging.getLogger(__name__)
 LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization'
 LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken'
 LINKEDIN_USERINFO_URL = 'https://api.linkedin.com/v2/userinfo'
-LINKEDIN_SCOPE = 'openid profile email w_member_social'
-# Identity-only scope for flows that never post (e.g. bio-page access requests).
-# Avoids 'unauthorized_scope_error' when the app lacks the "Share on LinkedIn"
-# (w_member_social) product.
+# Identity only. SimiSI never posts or messages on LinkedIn (COMPLIANCE_PLAN C6),
+# so the "Share on LinkedIn" permission is not requested.
 LINKEDIN_IDENTITY_SCOPE = 'openid profile email'
-LINKEDIN_UGC_POSTS_URL = 'https://api.linkedin.com/v2/ugcPosts'
+LINKEDIN_SCOPE = LINKEDIN_IDENTITY_SCOPE
 
 
 def get_auth_url(state: str, redirect_uri: str | None = None,
@@ -60,39 +58,6 @@ def get_user_info(access_token: str) -> dict:
     resp = requests.get(LINKEDIN_USERINFO_URL, headers={'Authorization': f'Bearer {access_token}'})
     resp.raise_for_status()
     return resp.json()
-
-
-def post_ugc(access_token: str, author_sub: str, text: str) -> dict:
-    """Publish a text post to the member's LinkedIn feed.
-
-    author_sub  — the 'sub' field from the OpenID userinfo response
-                  (used as urn:li:person:{sub})
-    text        — plain text of the post (max ~3000 chars for best results)
-    Returns the response JSON from LinkedIn (contains 'id' of the new post).
-    """
-    import requests
-    author_urn = f'urn:li:person:{author_sub}'
-    payload = {
-        'author': author_urn,
-        'lifecycleState': 'PUBLISHED',
-        'specificContent': {
-            'com.linkedin.ugc.ShareContent': {
-                'shareCommentary': {'text': text},
-                'shareMediaCategory': 'NONE',
-            }
-        },
-        'visibility': {
-            'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
-        },
-    }
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json',
-        'X-Restli-Protocol-Version': '2.0.0',
-    }
-    resp = requests.post(LINKEDIN_UGC_POSTS_URL, json=payload, headers=headers)
-    resp.raise_for_status()
-    return resp.json() if resp.text else {'id': resp.headers.get('x-restli-id', '')}
 
 
 def crawl_profile(access_token: str) -> str:

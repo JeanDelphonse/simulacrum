@@ -1375,8 +1375,11 @@ def _queue_social_post(platform: str):
 @integrations_bp.route('/api/integrations/social-queue/<queue_id>/approve', methods=['POST'])
 @login_required
 def social_queue_approve(queue_id):
-    """Approve a queued social post and publish it immediately."""
+    """Approve a queued social post as ready to post. SimiSI never publishes or
+    messages on LinkedIn for a member (COMPLIANCE_PLAN C6): the member copies
+    the text and posts it themselves."""
     from app.models.social_queue import SocialPostQueue
+    from app.services import legal_text
     entry = SocialPostQueue.query.filter_by(
         id=queue_id, user_id=current_user.id
     ).first_or_404()
@@ -1384,47 +1387,18 @@ def social_queue_approve(queue_id):
     if entry.status != SocialPostQueue.STATUS_PENDING:
         return jsonify({'error': 'Post is no longer pending'}), 409
 
-    platform = entry.platform
-    rec = UserIntegration.query.filter_by(
-        user_id=current_user.id, provider=platform
-    ).first()
-    if not rec or not rec.is_connected:
-        return jsonify({'error': f'{platform} integration not connected'}), 403
-
-    try:
-        access_token = rec.decrypt_access_token()
-        platform_post_id = ''
-
-        if platform == 'linkedin':
-            from app.services.linkedin import post_ugc
-            result = post_ugc(access_token, rec.provider_account_id or '', entry.post_text)
-            platform_post_id = result.get('id', '')
-        else:
-            return jsonify({'error': f'Publishing for {platform} is not yet implemented'}), 501
-
-        entry.status = SocialPostQueue.STATUS_APPROVED
-        entry.platform_post_id = platform_post_id
-        entry.reviewed_at = datetime.utcnow()
-        entry.reviewed_by = current_user.id
-
-        if entry.action_item_id:
-            from utils.action_items import resolve_action_item
-            resolve_action_item(entry.action_item_id)
-
-        db.session.commit()
-        _log_activity(current_user.id, platform, 'post_published', 'outbound', 'success',
-                      f'Approved and published: {entry.post_text[:100]}')
-
-        return jsonify({'ok': True, 'platform_post_id': platform_post_id}), 200
-
-    except Exception as exc:
-        logger.error('Social post publish failed user=%s platform=%s: %s',
-                     current_user.id, platform, exc)
-        resp = getattr(exc, 'response', None)
-        if resp is not None and getattr(resp, 'status_code', None) == 401:
-            return jsonify({'error': 'token_expired',
-                            'message': f'{platform.title()} token expired — please reconnect.'}), 401
-        return jsonify({'error': str(exc)}), 500
+    entry.status = SocialPostQueue.STATUS_APPROVED
+    entry.reviewed_at = datetime.utcnow()
+    entry.reviewed_by = current_user.id
+    if entry.action_item_id:
+        from utils.action_items import resolve_action_item
+        resolve_action_item(entry.action_item_id)
+    db.session.commit()
+    _log_activity(current_user.id, entry.platform, 'post_ready', 'outbound', 'success',
+                  f'Approved, ready to post manually: {entry.post_text[:100]}')
+    return jsonify({'ok': True, 'ready_to_post': True, 'text': entry.post_text,
+                    'open_url': 'https://www.linkedin.com/feed/',
+                    'note': legal_text.get('linkedin_manual')}), 200
 
 
 @integrations_bp.route('/api/integrations/social-queue/<queue_id>/reject', methods=['POST'])

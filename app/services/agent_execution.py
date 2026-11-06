@@ -72,7 +72,6 @@ INTEGRATION_TOOLS = {
     'kajabi': 'kajabi_publish',
     'stripe': 'stripe_payment_link',
     'pandadoc': 'pandadoc_send_for_signature',
-    'linkedin': 'linkedin_post',
 }
 
 _METHODS = {

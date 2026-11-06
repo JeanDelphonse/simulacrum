@@ -437,10 +437,6 @@ def execute_step(step, user_id: str, from_email: str, from_name: str) -> bool:
     if step_type == 'proposal_followup':
         return _execute_email_step(step, payload, from_email, from_name)
 
-    if step_type == 'linkedin_post':
-        logger.info('linkedin_post step %s — LinkedIn API dispatch not yet implemented', step.id)
-        return True  # Mark executed; actual LinkedIn wiring is future work
-
     if step_type == 'convertkit_broadcast':
         return _execute_convertkit_step(step, payload, user_id)
 
@@ -604,7 +600,6 @@ STEP_CHANNEL = {
     'proposal_followup':    'email',
     'convertkit_broadcast': 'email_funnels',
     'drip_release':         'email_funnels',
-    'linkedin_post':        'linkedin',
 }
 
 

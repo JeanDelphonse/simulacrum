@@ -44,7 +44,6 @@ TOOL_SEED = {
     'kajabi_publish':             ('kajabi', 'reversible', 3, 0, True, False),   # no client yet
     'stripe_payment_link':        ('stripe', 'money_link', 1, 0, True, True),
     'pandadoc_send_for_signature': ('pandadoc', 'contractual', 1, 0, False, True),
-    'linkedin_post':              ('linkedin', 'public_post', 3, 0, False, False),  # attorney review
 }
 
 _HARD_GATE = frozenset({'send_blast', 'contractual', 'public_post', 'money_move'})
@@ -61,7 +60,7 @@ _STEP_TOOLS = {
     'send':                (('send_email', 'convertkit_broadcast'), 'Email delivered to the approved recipients'),
     'follow_up':           (('send_email', 'convertkit_broadcast'), 'Follow-ups to people who have not replied'),
     'send_for_signature':  (('pandadoc_send_for_signature',), 'A document sent for e-signature'),
-    'publish':             (('linkedin_post', 'kajabi_publish', 'calcom_booking_link'), 'The content published'),
+    'publish':             (('kajabi_publish', 'calcom_booking_link'), 'The content published'),
     'publish_assets':      (('kajabi_publish', 'calcom_booking_link', 'stripe_payment_link'), 'Assets live on your accounts'),
     'create_payment_link': (('stripe_payment_link',), 'A Stripe payment link on your account'),
     'get_link':            ((), 'A shareable link'),

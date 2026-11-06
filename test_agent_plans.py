@@ -80,8 +80,8 @@ def main():
         tools = agent_plans.ensure_tools()
         check('registry seeded with every tool', set(tools) == set(agent_plans.TOOL_SEED), len(tools))
         # COMPLIANCE_PLAN B4: there is no money-movement tool at all any more.
-        check('no money-movement tool; LinkedIn and Kajabi ship disabled',
-              'alpaca_order' not in tools and not tools['linkedin_post'].enabled
+        check('no money-movement or LinkedIn-posting tool; Kajabi ships disabled',
+              'alpaca_order' not in tools and 'linkedin_post' not in tools
               and not tools['kajabi_publish'].enabled)
         tools['stripe_payment_link'].cost_cents = 25
         db.session.commit()

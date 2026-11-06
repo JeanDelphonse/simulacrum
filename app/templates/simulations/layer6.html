@@ -1387,7 +1387,7 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
               <div class="aq-card-actions">
                 {% if item.item_type == 'social_post_approval' %}
                   <button class="aq-dismiss-btn" onclick="rejectSocialPost('{{ item.id }}', '{{ item.source_action_id }}')">Reject</button>
-                  <button class="aq-action-btn" onclick="approveSocialPost('{{ item.id }}', '{{ item.source_action_id }}')">Approve &amp; Publish</button>
+                  <button class="aq-action-btn" onclick="approveSocialPost('{{ item.id }}', '{{ item.source_action_id }}')">Approve</button>
                 {% else %}
                   {% if item.is_dismissable %}
                     <button class="aq-dismiss-btn" onclick="dismissItem('{{ item.id }}')">Dismiss</button>
@@ -2521,22 +2521,33 @@ function dismissRec(recId) {
 }
 
 // ── Social post approval ─────────────────────────────────────────────────────
+// SimiSI never posts on LinkedIn for a member (COMPLIANCE_PLAN C6): approving
+// marks the draft ready, and the member copies it and posts it themselves.
 async function approveSocialPost(itemId, queueId) {
-  if (!confirm('Approve and publish this post now?')) return;
   const card = document.getElementById('aq-' + itemId);
   try {
     const r = await fetch(ROOT + '/api/integrations/social-queue/' + queueId + '/approve', {
       method: 'POST', credentials: 'same-origin',
     });
     const d = await r.json();
-    if (!r.ok) { alert('Publish failed: ' + (d.message || d.error || 'Unknown error')); return; }
-    if (card) {
-      card.style.maxHeight = card.offsetHeight + 'px';
-      card.offsetHeight;
-      card.classList.add('resolving');
-      setTimeout(() => { card.remove(); updateQueueCount(); }, 350);
-    }
-  } catch (e) { alert('Publish failed: ' + e.message); }
+    if (!r.ok) { alert('Could not approve: ' + (d.message || d.error || 'Unknown error')); return; }
+    if (!card) return;
+    const actions = card.querySelector('.aq-card-actions');
+    const note = document.createElement('div');
+    note.className = 'aq-desc';
+    note.textContent = 'Ready to post. ' + (d.note || '');
+    card.querySelector('.aq-card-bottom').before(note);
+    actions.innerHTML = '';
+    const copy = document.createElement('button');
+    copy.className = 'aq-dismiss-btn';
+    copy.textContent = 'Copy text';
+    copy.onclick = () => navigator.clipboard.writeText(d.text || '').then(() => { copy.textContent = 'Copied'; });
+    const open = document.createElement('a');
+    open.className = 'aq-action-btn';
+    open.href = d.open_url; open.target = '_blank'; open.rel = 'noopener';
+    open.textContent = 'Open LinkedIn';
+    actions.append(copy, open);
+  } catch (e) { alert('Could not approve: ' + e.message); }
 }
 
 async function rejectSocialPost(itemId, queueId) {
