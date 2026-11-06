@@ -2013,7 +2013,7 @@ def get_network(sim_id):
         Layer6Momentum.snapshot_date.desc()).first()
 
     from app.models.platform_settings import PlatformSetting
-    fintech_on = PlatformSetting.get('fintech_toggle', 'off') == 'on'
+    fintech_on = False   # brokerage execution removed (COMPLIANCE_PLAN B4)
 
     nstates = _node_states_for_cycle(cycle, actions, log_entries, momentum, config, fintech_on)
     estats = _edge_states_for_cycle(cycle, actions, log_entries, momentum, fintech_on)
@@ -2051,7 +2051,7 @@ def get_network_node(sim_id, node_id):
 
     config = Layer6Config.query.filter_by(simulation_id=sim_id).first()
     from app.models.platform_settings import PlatformSetting
-    fintech_on = PlatformSetting.get('fintech_toggle', 'off') == 'on'
+    fintech_on = False   # brokerage execution removed (COMPLIANCE_PLAN B4)
 
     if not cycle:
         return jsonify({'node': node_def, 'cycle': None, 'overview': {},
@@ -2119,7 +2119,7 @@ def get_network_edge(sim_id, edge_id):
 
     config = Layer6Config.query.filter_by(simulation_id=sim_id).first()
     from app.models.platform_settings import PlatformSetting
-    fintech_on = PlatformSetting.get('fintech_toggle', 'off') == 'on'
+    fintech_on = False   # brokerage execution removed (COMPLIANCE_PLAN B4)
 
     if not cycle:
         return jsonify({'edge': edge_def, 'cycle': None, 'payload': [], 'history': []}), 200
@@ -2589,7 +2589,7 @@ def share_get_network(token):
         Layer6Momentum.snapshot_date.desc()).first()
 
     from app.models.platform_settings import PlatformSetting
-    fintech_on = PlatformSetting.get('fintech_toggle', 'off') == 'on'
+    fintech_on = False   # brokerage execution removed (COMPLIANCE_PLAN B4)
 
     nstates = _node_states_for_cycle(cycle, actions, log_entries, momentum, config, fintech_on)
     estats = _edge_states_for_cycle(cycle, actions, log_entries, momentum, fintech_on)
@@ -2627,7 +2627,7 @@ def share_get_network_node(token, node_id):
 
     config = Layer6Config.query.filter_by(simulation_id=sim_id).first()
     from app.models.platform_settings import PlatformSetting
-    fintech_on = PlatformSetting.get('fintech_toggle', 'off') == 'on'
+    fintech_on = False   # brokerage execution removed (COMPLIANCE_PLAN B4)
 
     if not cycle:
         return jsonify({'node': node_def, 'cycle': None, 'overview': {},
@@ -2694,7 +2694,7 @@ def share_get_network_edge(token, edge_id):
 
     config = Layer6Config.query.filter_by(simulation_id=sim_id).first()
     from app.models.platform_settings import PlatformSetting
-    fintech_on = PlatformSetting.get('fintech_toggle', 'off') == 'on'
+    fintech_on = False   # brokerage execution removed (COMPLIANCE_PLAN B4)
 
     if not cycle:
         return jsonify({'edge': edge_def, 'cycle': None, 'payload': [], 'history': []}), 200

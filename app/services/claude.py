@@ -236,11 +236,12 @@ def generate_simulation_layer(
     """Generate a single layer for a simulation. Returns layer dict with income_streams."""
     layer_name, income_type, layer_desc = LAYER_DEFINITIONS[layer_number]
 
+    # Layer 5 is education and planning only, always (COMPLIANCE_PLAN B2/B4). The
+    # old admin 'fintech' switch, which asked for tickers and brokerages, is gone.
     fintech_note = ''
-    if layer_number == 5 and fintech_enabled:
-        fintech_note = 'Live fintech API integration is enabled. Include specific fund tickers, brokerage platform names (e.g. Fidelity, Vanguard, Alpaca), and estimated yields where relevant.'
-    elif layer_number == 5:
-        fintech_note = 'Provide general wealth strategy guidance only. Do not reference specific live fund tickers or brokerage APIs.'
+    if layer_number == 5:
+        from app.services import legal_text as _legal
+        fintech_note = _legal.get('l5_agent_rules', referral=_legal.get('l5_referral_adviser'))
 
     prompt = f"""You are a career wealth strategist. Generate Layer {layer_number} of a 5-layer wealth simulation for a professional.
 
@@ -293,7 +294,35 @@ Generate 3-5 income streams. Be specific — reference actual job titles, compan
         cut = raw.rfind('},')
         if cut != -1:
             raw = raw[:cut + 1] + ']}'
+    if layer_number == 5:
+        raw = _l5_layer_compliant(raw, prompt, user_id)
     return json.loads(raw)
+
+
+def _l5_layer_compliant(raw: str, prompt: str, user_id: str) -> str:
+    """The Layer 5 output filter for the simulation's own Layer 5 layer
+    (COMPLIANCE_PLAN B3). Structured output can't take a fallback message, so a
+    second hit blanks the offending names instead; both are logged."""
+    from app.services import compliance_filter as _cf
+    from app.services import legal_text as _legal
+    hits = _cf.check_l5(raw)
+    if not hits:
+        return raw
+    try:
+        again = _client().messages.create(
+            model=_model(), max_tokens=8000,
+            messages=[{'role': 'user', 'content': prompt + '\n\n' + _legal.get('l5_agent_rules_strict')}])
+        retry = again.content[0].text.strip()
+        if retry.startswith('```'):
+            retry = retry.split('\n', 1)[1].rsplit('```', 1)[0]
+        json.loads(retry)
+    except Exception:
+        retry = ''
+    if retry and not _cf.check_l5(retry):
+        _cf.log_event(user_id, 'simulation_layer_5', hits, 'regenerated')
+        return retry
+    _cf.log_event(user_id, 'simulation_layer_5', hits, 'redacted')
+    return _cf.redact(retry or raw)
 
 
 # DEPRECATED — retained for reference only; NOT used at runtime.  The live

@@ -48,7 +48,6 @@ def integrations_status():
             d = rec.to_dict()
             if prov == 'alpaca':
                 meta = rec.get_meta()
-                d['fintech_toggle'] = meta.get('fintech_toggle', False)
                 d['paper'] = meta.get('paper', True)
         else:
             d = {'provider': prov, 'status': 'not_connected'}
@@ -1650,7 +1649,7 @@ def alpaca_connect():
     integration.provider_account_id = data.get('account_id') or None
     meta = integration.get_meta()
     meta['paper'] = is_paper
-    meta['fintech_toggle'] = meta.get('fintech_toggle', False) if not is_paper else False
+    meta.pop('fintech_toggle', None)       # read-only: no trading (COMPLIANCE_PLAN B4)
     integration.set_meta(meta)
     env_label = 'paper' if is_paper else 'live'
     _mark_connected(integration, f'Alpaca API key saved via wizard ({env_label})')
@@ -1673,128 +1672,10 @@ def alpaca_clear():
     return jsonify({'ok': True})
 
 
-@integrations_bp.route('/api/integrations/alpaca/fintech-toggle', methods=['POST'])
-@login_required
-def alpaca_fintech_toggle():
-    """
-    Enable or disable automated trade execution (FR-ALPACA-01).
-    Requires explicit user consent. fintech_toggle defaults to False.
-    Body: {enabled: bool, consent_text: str}
-    """
-    data    = request.get_json(silent=True) or {}
-    enabled = bool(data.get('enabled'))
-    consent = (data.get('consent_text') or '').strip()
-
-    expected_consent = (
-        'I understand that SimiSI will place trades in my brokerage account '
-        'based on my investment plan.'
-    )
-    if enabled and consent != expected_consent:
-        return jsonify({
-            'error': 'Consent text does not match. You must acknowledge the risk statement exactly.',
-        }), 400
-
-    integration = UserIntegration.query.filter_by(
-        user_id=current_user.id, provider='alpaca'
-    ).first()
-    if not integration:
-        return jsonify({'error': 'Alpaca not connected'}), 404
-
-    meta = integration.get_meta()
-    meta['fintech_toggle'] = enabled
-    integration.set_meta(meta)
-    db.session.commit()
-    return jsonify({'ok': True, 'fintech_toggle': enabled})
 
 
-# ── Alpaca trade webhook ──────────────────────────────────────────────────────
-
-@integrations_bp.route('/webhooks/alpaca/<user_id>', methods=['POST'])
-def alpaca_webhook(user_id):
-    """
-    Handles Alpaca trade_update events (FR-ALPACA-02 through FR-ALPACA-07).
-    All trades require tier 2 GCC action item confirmation — FR-ALPACA-06 is non-negotiable.
-    """
-    payload = request.get_json(silent=True) or {}
-    event_data = payload.get('data') or {}
-    trade_event = event_data.get('event') or payload.get('event')
-    order = event_data.get('order') or payload.get('order') or {}
-    sim_id = _find_user_simulation(user_id)
-
-    if not trade_event:
-        return '', 200
-
-    try:
-        _handle_alpaca_event(trade_event, user_id, sim_id, order, payload)
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        logger.error('Alpaca webhook error user=%s event=%s: %s',
-                     user_id, trade_event, exc, exc_info=True)
-    return '', 200
-
-
-def _handle_alpaca_event(trade_event: str, user_id: str, sim_id: str,
-                         order: dict, payload: dict):
-    from app.services.bayesian_service import dispatch_signal
-    from app.models.layer6 import ActionItem
-
-    symbol      = order.get('symbol', '')
-    order_id    = order.get('id', '')
-    qty         = order.get('qty') or order.get('filled_qty') or '0'
-    filled_avg  = order.get('filled_avg_price') or '0'
-    client_id   = order.get('client_order_id') or ''
-    reject_msg  = order.get('failed_at') or payload.get('message') or 'Unknown reason'
-
-    if trade_event == 'fill':
-        dispatch_signal(sim_id, 'dca_execution_rate', 1.0, 0.7, '+')
-        dispatch_signal(sim_id, f'position_return:{symbol}', 0.5, 0.4, '+')
-        logger.info('Alpaca fill: user=%s symbol=%s qty=%s avg=%s',
-                    user_id, symbol, qty, filled_avg)
-
-    elif trade_event == 'partial_fill':
-        dispatch_signal(sim_id, 'dca_execution_rate', 0.5, 0.7, '+')
-
-    elif trade_event == 'rejected':
-        dispatch_signal(sim_id, 'order_rejection_rate', 1.0, 0.5, '-')
-        # FR-ALPACA-07: tier 1 (Critical) action item on rejection
-        if sim_id:
-            _create_alpaca_action_item(
-                user_id, sim_id,
-                urgency_tier=1,
-                title=f'Investment order rejected — {symbol}',
-                description=(
-                    f'Your trade order for {symbol} was rejected. Reason: {reject_msg}. '
-                    f'Check your account balance and order parameters.'
-                ),
-                action_url='/settings/integrations#alpaca',
-            )
-
-    elif trade_event == 'canceled':
-        dispatch_signal(sim_id, 'order_cancel_rate', 1.0, 0.2, '-')
-
-
-def _create_alpaca_action_item(user_id: str, sim_id: str, urgency_tier: int,
-                               title: str, description: str, action_url: str):
-    from app.models.layer6 import ActionItem
-    try:
-        item = ActionItem(
-            id=generate_id(),
-            simulation_id=sim_id,
-            user_id=user_id,
-            item_type='trade_rejected',
-            urgency_tier=urgency_tier,
-            title=title,
-            description=description,
-            action_label='Review',
-            action_url=action_url,
-            is_dismissable=True,
-        )
-        db.session.add(item)
-    except Exception as exc:
-        logger.warning('Could not create Alpaca action item: %s', exc)
-
-
+# Alpaca is read-only (COMPLIANCE_PLAN B4): the trade webhook and the
+# automated-trading toggle were removed; nothing here can place an order.
 # ── Per-platform config (SIM-PRD-SETTINGS-001 Section 3.1) ───────────────────
 
 @integrations_bp.route('/api/integrations/<provider>/config', methods=['PUT'])
@@ -2005,7 +1886,6 @@ def integrations_status_all():
             d = rec.to_dict()
             if prov == 'alpaca':
                 meta = rec.get_meta()
-                d['fintech_toggle'] = meta.get('fintech_toggle', False)
                 d['paper'] = meta.get('paper', True)
             result[prov] = d
         else:

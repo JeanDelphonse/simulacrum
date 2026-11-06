@@ -678,7 +678,6 @@ def settings_integrations():
         kajabi_int=kajabi_int,
         plaid_int=plaid_int,
         alpaca_int=alpaca_int,
-        alpaca_fintech_toggle=alpaca_meta.get('fintech_toggle', False),
         alpaca_paper=alpaca_meta.get('paper', True),
         sg_connected=sg_connected,
         apollo_connected=request.args.get('apollo_connected') == '1',

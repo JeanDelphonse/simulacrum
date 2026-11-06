@@ -89,3 +89,17 @@ def ensure_referral(text: str, referral: str) -> str:
     if referral and referral not in (text or ''):
         return (text or '').rstrip() + '\n\n---\n*' + referral + '*'
     return text
+
+
+def redact(text: str) -> str:
+    """Blank out named securities and products (for structured output, where a
+    fallback message can't replace the whole document)."""
+    text = _CASHTAG.sub('[a fund]', text or '')
+    tickers = _cfg().get('l5_tickers', [])
+    if tickers:
+        text = re.sub(r'(?<![\w.$])(' + '|'.join(re.escape(t) for t in tickers) + r')(?![\w])', '[a fund]', text)
+    names = _cfg().get('l5_products', [])
+    if names:
+        text = re.sub(r'(?<![\w])(' + '|'.join(re.escape(n) for n in names) + r')(?![\w])', '[a provider]', text,
+                      flags=re.I)
+    return text

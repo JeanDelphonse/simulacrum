@@ -62,12 +62,11 @@ def start_generation_if_needed(simulation_id: str, app_obj):
 
         try:
             from app.services.claude import generate_simulation_layer
-            from app.services.fintech import is_fintech_enabled
             import threading as _threading
 
             resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
             parsed_text     = resume.parsed_text if resume else ''
-            fintech_enabled = is_fintech_enabled()
+            fintech_enabled = False   # removed (COMPLIANCE_PLAN B4)
             _expertise_zone = sim.expertise_zone
             _focus_hint     = sim.focus_hint or ''
             _user_id        = sim.user_id

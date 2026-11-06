@@ -45,7 +45,6 @@ TOOL_SEED = {
     'stripe_payment_link':        ('stripe', 'money_link', 1, 0, True, True),
     'pandadoc_send_for_signature': ('pandadoc', 'contractual', 1, 0, False, True),
     'linkedin_post':              ('linkedin', 'public_post', 3, 0, False, False),  # attorney review
-    'alpaca_order':               ('alpaca', 'money_move', 1, 0, False, False),    # never in v1
 }
 
 _HARD_GATE = frozenset({'send_blast', 'contractual', 'public_post', 'money_move'})

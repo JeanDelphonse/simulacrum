@@ -73,7 +73,6 @@ INTEGRATION_TOOLS = {
     'stripe': 'stripe_payment_link',
     'pandadoc': 'pandadoc_send_for_signature',
     'linkedin': 'linkedin_post',
-    'alpaca': 'alpaca_order',
 }
 
 _METHODS = {

@@ -18,18 +18,6 @@
     <div class="settings-grid">
       <div class="setting-card">
         <div class="setting-info">
-          <h3>Fintech API Integration (Layer 5)</h3>
-          <p>Enable live Plaid/Alpaca integration for Layer 5 wealth recommendations</p>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="fintechToggle"
-            {% if settings.get('fintech_toggle') == 'on' %}checked{% endif %}
-            onchange="updateSetting('fintech_toggle', this.checked ? 'on' : 'off')">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="setting-card">
-        <div class="setting-info">
           <h3>LinkedIn Integration</h3>
           <p>Enable LinkedIn OAuth import for resume sources. Requires LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET to be set in environment variables.</p>
         </div>

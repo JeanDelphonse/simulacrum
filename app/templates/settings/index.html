@@ -1632,7 +1632,7 @@
             <button class="integ-secondary-link" onclick="toggleActivity('plaid')">Activity log</button>
           </div>
           {% endif %}
-          <div class="integ-agents">Used by: dca_schedule · income_allocation · compound_projections</div>
+          <div class="integ-agents">{{ legal('l5_note_short') }}</div>
           {% if plaid_status == 'connected' %}
           <div class="integ-manage-panel" id="manage-plaid">
             <div class="integ-manage-title">Plaid settings <button class="integ-secondary-link" onclick="toggleManage('plaid')" style="font-size:.68rem">&#x2715; close</button></div>
@@ -1665,7 +1665,7 @@
             <div class="integ-logo" style="background:#d9770620;color:#d97706">ALC</div>
             <div class="integ-card-info">
               <div class="integ-card-name">Alpaca</div>
-              <div class="integ-card-desc">Brokerage trade execution</div>
+              <div class="integ-card-desc">Read-only account balances</div>
             </div>
           </div>
           {% if alpaca_int and alpaca_int.is_connected %}
@@ -1673,10 +1673,7 @@
             <span class="integ-health"><span class="integ-health-dot {{ alpaca_int.health_status or 'healthy' }}"></span>
               {% if alpaca_paper %}Paper trading{% else %}Live account{% endif %}</span>
             {% if alpaca_int.provider_account_id %} &bull; {{ alpaca_int.provider_account_id | truncate(14) }}{% endif %}
-            <br>Auto trading:
-            <strong style="color:{% if alpaca_fintech_toggle %}#86efac{% else %}#fca5a5{% endif %}">
-              {% if alpaca_fintech_toggle %}Enabled{% else %}Disabled{% endif %}
-            </strong>
+            <br>Read-only: SimiSI never places trades.
           </div>
           {% endif %}
           <button onclick="openGenericWizard('alpaca')"
@@ -1685,44 +1682,12 @@
           </button>
           {% if alpaca_status == 'connected' %}
           <div class="integ-secondary-links">
-            <button class="integ-secondary-link danger" onclick="showDisconnect('alpaca','Alpaca','dca_schedule (trade execution) · income_allocation (ACH) · compound_projections')">Disconnect</button>
-            <button class="integ-secondary-link" onclick="toggleManage('alpaca')">Settings</button>
+            <button class="integ-secondary-link danger" onclick="showDisconnect('alpaca','Alpaca','account balance comparison (read-only)')">Disconnect</button>
             <button class="integ-secondary-link" onclick="toggleActivity('alpaca')">Activity log</button>
           </div>
           {% endif %}
-          <div class="integ-agents">Used by: dca_schedule · income_allocation · compound_projections</div>
+          <div class="integ-agents">{{ legal('l5_note_short') }}</div>
           {% if alpaca_status == 'connected' %}
-          <div class="integ-manage-panel" id="manage-alpaca">
-            <div class="integ-manage-title">Alpaca settings <button class="integ-secondary-link" onclick="toggleManage('alpaca')" style="font-size:.68rem">&#x2715; close</button></div>
-            <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:.75rem;margin-bottom:.75rem">
-              <div style="font-size:.75rem;font-weight:600;color:#B91C1C;margin-bottom:.4rem">Automated trade execution</div>
-              <div style="font-size:.72rem;color:var(--mute);margin-bottom:.5rem;font-style:italic">&#8220;I understand that SimiSI will place trades in my brokerage account based on my investment plan.&#8221;</div>
-              <div style="display:flex;align-items:center;gap:.5rem">
-                <label class="toggle-switch" style="width:36px;height:20px">
-                  <input type="checkbox" id="fintechToggle" {% if alpaca_fintech_toggle %}checked{% endif %} onchange="alpacaFintechToggle(this.checked)">
-                  <span class="toggle-slider"></span>
-                </label>
-                <span style="font-size:.78rem;color:var(--ink-2)">Enable automated trading</span>
-              </div>
-              <div id="fintechToggleErr" style="font-size:.72rem;color:#B91C1C;margin-top:.35rem;display:none"></div>
-            </div>
-            <div class="integ-cfg-row">
-              <div class="integ-cfg-label">DCA amount (USD)</div>
-              <input type="number" class="integ-cfg-input" id="alpacaCfgAmount" placeholder="500" min="1" style="width:90px">
-            </div>
-            <div class="integ-cfg-row">
-              <div class="integ-cfg-label">DCA frequency</div>
-              <select class="integ-cfg-input" id="alpacaCfgFreq" style="width:auto">
-                <option value="monthly">Monthly</option>
-                <option value="bi_weekly">Bi-weekly</option>
-              </select>
-            </div>
-            <div class="integ-cfg-row">
-              <div class="integ-cfg-label">Target ETF symbols</div>
-              <input type="text" class="integ-cfg-input" id="alpacaCfgSymbols" placeholder="VTI,VXUS" style="width:160px">
-            </div>
-            <button class="btn btn-ghost btn-sm integ-cfg-save-btn" style="font-size:.75rem" onclick="saveCfg('alpaca',{dca_amount:+document.getElementById('alpacaCfgAmount').value||0,dca_frequency:document.getElementById('alpacaCfgFreq').value,dca_symbols:document.getElementById('alpacaCfgSymbols').value})">Save</button>
-          </div>
           <div class="integ-activity-panel" id="activity-alpaca">
             <div class="integ-manage-title" style="margin-bottom:.5rem">Activity log <button class="integ-secondary-link" onclick="toggleActivity('alpaca')" style="font-size:.68rem">&#x2715; close</button></div>
             <div id="activity-alpaca-list" style="font-size:.75rem;color:var(--mute)">Loading…</div>
@@ -4077,7 +4042,7 @@ async function plaidDisconnect(btn) {
 }
 
 async function alpacaClear(btn) {
-  if (!confirm('Disconnect Alpaca? Automated trading will stop and no further trades will be placed.')) return;
+  if (!confirm('Disconnect Alpaca? SimiSI will stop reading your account balances.')) return;
   btn.disabled = true;
   const res = await fetch(ROOT2 + '/api/integrations/alpaca/clear', { method: 'POST' });
   if (res.ok) { toast('Alpaca disconnected'); location.reload(); }
@@ -4226,36 +4191,6 @@ async function saveApolloConfig() {
   setTimeout(() => { card.style.outline = ''; }, 2200);
 })();
 
-async function alpacaFintechToggle(enabled) {
-  const errEl = document.getElementById('fintechToggleErr');
-  errEl.style.display = 'none';
-  const consentText = 'I understand that SimiSI will place trades in my brokerage account based on my investment plan.';
-  if (enabled) {
-    const confirmed = confirm(
-      'By enabling automated trading, you acknowledge:\n\n' +
-      '"' + consentText + '"\n\n' +
-      'All trades will still require your explicit approval in the GCC Action Queue. Continue?'
-    );
-    if (!confirmed) {
-      document.getElementById('fintechToggle').checked = false;
-      return;
-    }
-  }
-  const res = await fetch(ROOT2 + '/api/integrations/alpaca/fintech-toggle', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ enabled, consent_text: enabled ? consentText : '' }),
-  });
-  const data = await res.json();
-  if (res.ok) {
-    toast(enabled ? 'Automated trading enabled — trades will appear in your Action Queue' : 'Automated trading disabled');
-    location.reload();
-  } else {
-    errEl.textContent = data.error || 'Toggle failed';
-    errEl.style.display = 'block';
-    document.getElementById('fintechToggle').checked = !enabled;
-  }
-}
 {% endif %}
 
 // ── My Chats ──────────────────────────────────────────────────────────────────

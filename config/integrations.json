@@ -90,8 +90,8 @@
       "display_name": "Alpaca",
       "runtime_provider": "alpaca",
       "min_layer": 5,
-      "benefit_copy": "Automate dollar-cost-averaging through your own brokerage.",
-      "advanced_note": "Brokerage for DCA automation. Opt-in only, after Layer 5 activates."
+      "benefit_copy": "Read-only: compare your plan with your account balances. SimiSI never places trades.",
+      "advanced_note": "Read-only brokerage connection. Opt-in only, after Layer 5 activates; nothing can trade."
     }
   ]
 }

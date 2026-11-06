@@ -16,7 +16,6 @@ def generate_simulation_task(self, simulation_id: str):
     from app.models.simulation import Simulation, SimulationLayer, IncomeStream
     from app.models.resume import Resume
     from app.services.claude import generate_simulation_layer
-    from app.services.fintech import is_fintech_enabled
 
     try:
         sim = Simulation.query.get(simulation_id)
@@ -49,7 +48,7 @@ def generate_simulation_task(self, simulation_id: str):
 
         resume = Resume.query.get(sim.resume_id) if sim.resume_id else None
         parsed_text = resume.parsed_text if resume else ''
-        fintech_enabled = is_fintech_enabled()
+        fintech_enabled = False   # removed (COMPLIANCE_PLAN B4)
 
         # Phase 1: call Claude for all 5 layers concurrently (pure I/O — no shared DB state).
         # Each thread gets its own app context for config/logging but the API calls overlap.
