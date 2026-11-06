@@ -618,17 +618,13 @@ _FIELD_RULES: dict[str, tuple] = {
         lambda e: 'no', CONFIDENCE_LOW, 'platform_default',
         'Agent estimate — no outside investment assumed. Adjust if you plan to raise.',
     ),
-    'brokerage': (
-        lambda e: 'Fidelity', CONFIDENCE_LOW, 'platform_default',
-        'Agent estimate — Fidelity has the lowest friction for DCA automation.',
-    ),
     'contribution_amount': (
         lambda e: None, CONFIDENCE_LOW, 'platform_default',
-        'Personal — enter the fixed amount you will contribute each cycle.',
+        'Personal — enter an example amount; the agent uses it only to illustrate how regular contributions work.',
     ),
     'contribution_frequency': (
         lambda e: 'monthly', CONFIDENCE_LOW, 'platform_default',
-        'Agent estimate — monthly DCA aligns with income payment cycles.',
+        'Agent estimate — monthly is a common example; it matches many payment cycles.',
     ),
     'current_coverage': (
         lambda e: None, CONFIDENCE_LOW, 'platform_default',
