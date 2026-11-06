@@ -1719,18 +1719,20 @@ def gcc_view(sim_id):
 
 @pages_bp.route('/simulations/<sim_id>/share-roi')
 def share_roi_view(sim_id):
-    """Public shareable ROI card — no auth required if token matches."""
+    """The shareable ROI card. The owner always sees it; anyone else only after
+    the owner has turned sharing on (COMPLIANCE_PLAN D6). The income figure is
+    the member's own recorded income, labelled self-reported, with the
+    typical-results disclosure from the legal-text source."""
     from app.models.simulation import Simulation
     from app.models.layer6 import Layer6Outcome
     from app.extensions import db as _db
     from sqlalchemy import func
+    from flask import abort
 
     sim = Simulation.query.get_or_404(sim_id)
-    # Allow public access only if no token is required (share is open), OR if user is logged in
-    from flask_login import current_user
-    if not sim or (not current_user.is_authenticated and sim.user_id != getattr(current_user, 'id', None)):
-        # Public access — show read-only card
-        pass
+    is_owner = current_user.is_authenticated and current_user.id == sim.user_id
+    if not is_owner and not sim.roi_share_enabled:
+        abort(404)
 
     total_income = float(
         _db.session.query(func.sum(Layer6Outcome.actual_income))
@@ -1745,7 +1747,24 @@ def share_roi_view(sim_id):
         total_income=total_income,
         cost_usd=cost_usd,
         roi_ratio=roi_ratio,
+        is_owner=is_owner,
     )
+
+
+@pages_bp.route('/api/simulations/<sim_id>/share-roi', methods=['POST'])
+@login_required
+def share_roi_toggle(sim_id):
+    """Owner turns the public share card on or off."""
+    from app.models.simulation import Simulation
+    from app.models.audit_log import AuditLog
+    sim = Simulation.query.get_or_404(sim_id)
+    if sim.user_id != current_user.id:
+        return jsonify({'error': 'Not your simulation.'}), 403
+    sim.roi_share_enabled = bool((request.get_json(silent=True) or {}).get('enabled'))
+    AuditLog.log('roi_share_' + ('on' if sim.roi_share_enabled else 'off'), user_id=current_user.id,
+                 resource_id=sim.id)
+    db.session.commit()
+    return jsonify({'ok': True, 'enabled': sim.roi_share_enabled})
 
 
 @pages_bp.route('/simulations/<sim_id>/layers/<int:layer_number>')

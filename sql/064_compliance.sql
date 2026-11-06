@@ -59,3 +59,6 @@ UPDATE simulation_layers SET layer_name = 'Recurring Income — After the Initia
  WHERE layer_number = 4 AND layer_name LIKE 'Automated Residual%';
 UPDATE simulation_layers SET layer_name = 'Wealth Planning — Education and Planning'
  WHERE layer_number = 5 AND layer_name LIKE 'Wealth Deployment%Money Working%';
+
+-- The public share-ROI card is off until the owner shares it (COMPLIANCE_PLAN D6).
+ALTER TABLE simulations ADD COLUMN roi_share_enabled TINYINT(1) NOT NULL DEFAULT 0;

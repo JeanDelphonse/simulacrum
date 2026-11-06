@@ -195,6 +195,8 @@ def create_app(config_name=None):
     # One source for legal and claims wording (COMPLIANCE_PLAN): {{ legal('key') }}.
     from app.services import legal_text as _legal_text
     app.jinja_env.globals['legal'] = _legal_text.get
+    from app.services.claims import mentions_results as _mentions_results
+    app.jinja_env.tests['mentions_results'] = _mentions_results
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 

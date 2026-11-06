@@ -6,7 +6,7 @@
   {% include 'partials/_favicon.html' %}
 <title>{{ sim.name }} — ROI Report</title>
 <meta property="og:title" content="{{ sim.name }} — {{ roi_ratio }}x ROI">
-<meta property="og:description" content="Captured ${{ '{:,.0f}'.format(total_income) }} from a ${{ '{:,.0f}'.format(cost_usd) }} simulation.">
+<meta property="og:description" content="Self-reported: ${{ '{:,.0f}'.format(total_income) }} recorded after a ${{ '{:,.0f}'.format(cost_usd) }} simulation. {{ legal('share_roi_disclosure') }}">
   <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
 <style>
@@ -33,6 +33,10 @@
          border-radius: var(--r-btn); padding: 0 22px; font-size: 16px; font-weight: 600; text-decoration: none; }
   .cta:hover { background: var(--gold-hi); color: var(--ink); }
   .powered { margin-top: 1.5rem; font-size: 14px; color: var(--mute); }
+  .self-rep { font-size: 13px; color: var(--mute); margin: -1.25rem 0 1.5rem; }
+  .disclose { font-size: 13px; line-height: 1.5; color: var(--mute); margin-top: 1.25rem; }
+  .owner-bar { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); display: flex; gap: 10px;
+               align-items: center; justify-content: center; flex-wrap: wrap; font-size: 14px; color: var(--ink-2); }
   @media (max-width: 480px) { .card { padding: 2rem 1.25rem; } .stats { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -49,6 +53,7 @@
   <div class="roi-label">Income captured so far</div>
   {% endif %}
 
+  <div class="self-rep">{{ legal('self_reported_label') }}</div>
   <div class="sim-name">{{ sim.name }}</div>
 
   <div class="stats">
@@ -63,9 +68,34 @@
   </div>
 
   <a href="https://simisi.io" class="cta">Start your own simulation</a>
+  <p class="disclose">{{ legal('share_roi_disclosure') }}</p>
+  {% if is_owner %}
+  <div class="owner-bar">
+    {% if sim.roi_share_enabled %}
+    <span>Shared: anyone with this link can see the card.</span>
+    <button type="button" class="btn sm" data-share="0">Stop sharing</button>
+    {% else %}
+    <span>Only you can see this card until you share it.</span>
+    <button type="button" class="btn primary sm" data-share="1">Share publicly</button>
+    {% endif %}
+  </div>
+  {% endif %}
   <div class="powered">Powered by SimiSI, the career-to-wealth simulation</div>
 </div>
 </div>
 {% include 'partials/_footer_public.html' %}
+{% if is_owner %}
+<script>
+document.querySelectorAll('[data-share]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var on = b.dataset.share === '1';
+    if (on && !confirm('Share this card publicly? Anyone with the link will see your recorded income.')) return;
+    fetch('{{ url_for("pages.share_roi_toggle", sim_id=sim.id) }}', {method: 'POST',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify({enabled: on})})
+      .then(function () { location.reload(); });
+  });
+});
+</script>
+{% endif %}
 </body>
 </html>

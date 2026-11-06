@@ -391,3 +391,6 @@
 /* The mascot artwork is the logo SVG (partials/_mascot_svg.html); its blink and
    wave hooks from css/system.css stay off here, so only the lift-off moves. */
 .mascot-bg .lm-eyes,.mascot-bg .lm-arm{animation:none;}
+
+/* Claims disclosures (COMPLIANCE_PLAN A5); wording from the legal-text source. */
+.home .disclose{font-size:13px;line-height:1.5;color:var(--mute);margin-top:12px;max-width:52em;}

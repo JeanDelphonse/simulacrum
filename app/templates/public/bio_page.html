@@ -1640,6 +1640,7 @@
           {% if t.title or t.company %}
           <div class="testimonial-role">{{ t.title }}{% if t.title and t.company %}, {% endif %}{{ t.company }}</div>
           {% endif %}
+          {% if t.quote is mentions_results %}<div class="testimonial-role" style="margin-top:.45rem">{{ legal('typical_results_member') }}</div>{% endif %}
         </div>
         {% endfor %}
       </div>

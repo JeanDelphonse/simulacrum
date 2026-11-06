@@ -29,6 +29,7 @@
    rather than the global ink heading colour from css/system.css. */
 .uc h1,.uc h2,.uc h3,.uc h4{color:inherit}
 
+.uc .uc-illustrative{background:#FFF4DC;color:#5C3F0C;font-size:14px;font-weight:600;text-align:center;padding:10px 16px}
 /* ── Hero ─────────────────────────────────────────────────────────── */
 .uc .hero{display:block;min-height:0;max-width:none;margin:0;gap:0;padding:72px 24px 56px;text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.08)}
 .uc .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(201,149,42,.12) 0%,transparent 70%);pointer-events:none}
@@ -149,6 +150,7 @@
 {% block content %}
 <div class="uc">
 
+<div class="uc-illustrative" role="note">{{ legal('illustrative_label') }}</div>
 <header class="hero">
   <div class="hero-eyebrow">SimiSI use case</div>
   <h1 class="hero-title">From <span>one salary</span><br>to five income layers</h1>

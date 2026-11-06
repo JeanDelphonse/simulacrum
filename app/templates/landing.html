@@ -255,7 +255,7 @@
     <div class="score"><strong>{{ trust_stats.avg_rating }}</strong><span class="stars" aria-label="{{ trust_stats.avg_rating }} out of 5 stars">★★★★★</span><span>Average rating from {{ trust_stats.approved_count }} approved {{ 'review' if trust_stats.approved_count == 1 else 'reviews' }}</span></div>
     {% else %}<div></div>{% endif %}
     {% for t in testimonials[:2] %}
-    <figure><blockquote>“{{ t.quote_text }}”</blockquote><figcaption>{{ t.display_name }}{% if t.expertise_zone %}, {{ t.expertise_zone }}{% endif %}</figcaption></figure>
+    <figure><blockquote>“{{ t.quote_text }}”</blockquote><figcaption>{{ t.display_name }}{% if t.expertise_zone %}, {{ t.expertise_zone }}{% endif %}</figcaption>{% if t.quote_text is mentions_results %}<p class="disclose">{{ legal('typical_results') }}</p>{% endif %}</figure>
     {% endfor %}
   </div>
   {% endif %}
@@ -269,6 +269,7 @@
     <p>Sample runs on the same scale, so you can compare them. The profiles are illustrative, and every outcome is a range.</p>
   </div>
   <div class="sims" id="simGrid"></div>
+  <p class="disclose">{{ legal('illustrative_label') }}</p>
 </div></section>
 
 <!-- PLAYBOOK -->
@@ -288,6 +289,7 @@
       <p class="lede" style="margin-top:14px;font-size:18px;">The five-layer framework and every agent, written up as case studies. Each part applies one decision lens from <i>Algorithms to Live By</i>.</p>
       <div class="parts" id="parts" style="margin-top:28px;"></div>
       <div class="tpl">Every case study follows the same seven steps:<ol id="tpl"></ol></div>
+      <p class="disclose">{{ legal('illustrative_label') }}</p>
       {% if playbook_url %}<div class="ctas"><a class="btn primary" href="{{ playbook_url }}" target="_blank" rel="noopener">Get it on Amazon</a></div>{% endif %}
     </div>
   </div>

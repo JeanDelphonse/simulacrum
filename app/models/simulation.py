@@ -39,6 +39,8 @@ class Simulation(db.Model):
     _selected_agents = db.Column('selected_agents', db.Text, nullable=True)       # JSON list of action_types
     _agent_relevance_scores = db.Column('agent_relevance_scores', db.Text, nullable=True)  # JSON dict
     _agent_personalized_descriptions = db.Column('agent_personalized_descriptions', db.Text, nullable=True)  # JSON dict
+    # Public share-ROI card (COMPLIANCE_PLAN D6): off until the owner shares it.
+    roi_share_enabled = db.Column(db.Boolean, nullable=False, default=False)
     agent_selection_confirmed_at = db.Column(db.DateTime, nullable=True)
     # Calibration Layer (SIM-PRD-CAL-001) — resolved cohort keys, cached here so
     # one classification serves every calibrated field in the simulation.

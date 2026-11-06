@@ -33,7 +33,7 @@ def main():
     from utils.id_gen import generate_id, generate_pk
     from cryptography.fernet import Fernet
     app = create_app('testing')
-    app.config.update(SQLALCHEMY_DATABASE_URI='sqlite:///:memory:', WTF_CSRF_ENABLED=False,
+    app.config.update(SQLALCHEMY_DATABASE_URI='sqlite:///:memory:', WTF_CSRF_ENABLED=False, PROPAGATE_EXCEPTIONS=True,
                       ENCRYPTION_KEY=Fernet.generate_key().decode())
 
     with app.app_context():
@@ -215,6 +215,62 @@ def main():
         check('agent prompts ask for ranges, never single numbers',
               'low–high range' in agent_briefing.agent_rules({}) if hasattr(agent_briefing, 'agent_rules')
               else 'low–high range' in open('app/services/agent_briefing.py', encoding='utf-8').read())
+
+        # ── 5. Testimonials, case studies, share card ───────────────────────
+        print('\n5. Testimonials, illustrative labels and the share-ROI card')
+        from app.services.claims import mentions_results
+        check('results talk is spotted', all(mentions_results(t) for t in (
+            'I landed 3 clients in a month', 'Made $4,000', 'Saves me from writing 50 emails',
+            'my revenue doubled', 'great ROI')) and not mentions_results('Lovely to work with and very kind.'))
+        from app.models.feedback import UserFeedback
+        fb_cols = {c.name for c in UserFeedback.__table__.columns}
+        base = dict(id=generate_id(), user_id=owner.id, star_rating=5, outcome_text='o', name_display='full')
+        base = {k: v for k, v in base.items() if k in fb_cols}
+        db.session.add(UserFeedback(**dict(base, id=generate_id(), quote_text='It booked me two new clients.',
+                                           status='approved')))
+        db.session.add(UserFeedback(**dict(base, id=generate_id(), quote_text='PENDING REVIEW TEXT', status='pending')))
+        db.session.commit()
+        import app.blueprints.pages.routes as _pr
+        if hasattr(_pr, '_landing_cache'):
+            _pr._landing_cache['ts'] = 0  # expire the 5-minute landing cache
+        home = client.get('/').get_data(as_text=True)
+        check('a results testimonial carries the typical-results disclosure',
+              'It booked me two new clients.' in home and legal_text.get('typical_results') in home)
+        check('a review that is not approved never shows', 'PENDING REVIEW TEXT' not in home)
+        check('sample runs and Playbook case studies are labelled illustrative',
+              home.count(legal_text.get('illustrative_label').replace("'", '&#39;')) >= 2)
+        for s_url in ('/samples/maya', '/samples/marcus'):
+            body = client.get(s_url).get_data(as_text=True)
+            check('%s is labelled an illustrative case study' % s_url,
+                  'uc-illustrative' in body and 'composite example' in body)
+
+        sim.amount_charged_cents = 2450
+        db.session.commit()
+        login(owner)
+        card = client.get('/simulations/%s/share-roi' % sim.id)
+        check('the owner sees an unshared card, with the share control', card.status_code == 200
+              and 'Share publicly' in card.get_data(as_text=True))
+        check('…labelled self-reported, with the disclosure',
+              legal_text.get('self_reported_label') in card.get_data(as_text=True)
+              and legal_text.get('share_roi_disclosure') in card.get_data(as_text=True))
+        with client.session_transaction() as s:
+            s.clear()
+        g.pop('_login_user', None)
+        check('a stranger gets nothing until it is shared', client.get('/simulations/%s/share-roi' % sim.id).status_code == 404)
+        intruder = user()
+        login(intruder)
+        check('only the owner can share it', client.post('/api/simulations/%s/share-roi' % sim.id,
+                                                         json={'enabled': True}).status_code == 403)
+        login(owner)
+        client.post('/api/simulations/%s/share-roi' % sim.id, json={'enabled': True})
+        with client.session_transaction() as s:
+            s.clear()
+        g.pop('_login_user', None)
+        shared = client.get('/simulations/%s/share-roi' % sim.id)
+        check('once shared, it is public, still with the disclosure and no owner controls',
+              shared.status_code == 200 and legal_text.get('share_roi_disclosure') in shared.get_data(as_text=True)
+              and 'Stop sharing' not in shared.get_data(as_text=True))
+        check('sharing is audit-logged', AuditLog.query.filter_by(action='roi_share_on').count() == 1)
 
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))

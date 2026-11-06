@@ -59,7 +59,7 @@ def main():
         db.session.add(BioPage(id=generate_id(), user_id=u.id, slug='ada',
                                status=BioPage.STATUS_PUBLISHED, theme='light'))
         sim = Simulation(id=generate_id(), user_id=u.id, name='S',
-                         expertise_zone='Consulting', status='complete')
+                         expertise_zone='Consulting', status='complete', roi_share_enabled=True)
         db.session.add(sim)
         db.session.commit()
         sim_id = sim.id
