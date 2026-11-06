@@ -721,6 +721,41 @@ def main():
               and sender_identity.business_address().startswith('1 Infinite Loop'))
         check('…from Admin → Compliance', 'outreach_business_address' in client.get('/admin/compliance').get_data(as_text=True))
 
+        # ── 14. Import source ───────────────────────────────────────────────
+        print('\n14. Imports declare where the list came from')
+        import io as _io
+        csv_text = 'first_name,last_name,email\nAna,Diaz,ana@d.com\nBen,Ko,ben@k.com\n'
+
+        def upload(source=None, url='/api/contacts/import/csv'):
+            data = {'file': (_io.BytesIO(csv_text.encode()), 'list.csv')}
+            if source is not None:
+                data['list_source'] = source
+            return client.post(url, data=data, content_type='multipart/form-data')
+        importer = user()
+        login(importer)
+        r = upload()
+        check('an import with no declared source is refused', r.status_code == 400
+              and r.get_json().get('code') == 'list_source')
+        r = upload('purchased')
+        check('a purchased list is blocked, with the legal-text reason', r.status_code == 400
+              and r.get_json()['error'] == legal_text.get('import_source_blocked'))
+        check('…so is a scraped one', upload('scraped').status_code == 400)
+        check('nothing was imported by the refused attempts', Contact.query.filter_by(user_id=importer.id).count() == 0)
+        r = upload('own_contacts')
+        rows = Contact.query.filter_by(user_id=importer.id).all()
+        check('an own-contacts list imports, and each contact keeps its declared source',
+              r.status_code == 200 and len(rows) == 2 and all(c.source == 'csv_import'
+              and c.source_notes == 'List source: My own contacts or clients' for c in rows))
+        login(admin)
+        r = client.post('/api/admin/prospects/import', json={'csv': 'firm_name,website\nAcme,acme.com\n',
+                                                             'list_source': 'purchased'})
+        check('the admin prospects import refuses bought lists too', r.status_code == 400)
+        login(importer)
+        page = client.get('/contacts').get_data(as_text=True)
+        check('the import form asks where the list came from', 'id="importListSource"' in page
+              and "can't be imported" in page)
+        check('Apollo-sourced contacts keep their source field', Contact.query.filter_by(source='apollo').count() >= 1)
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

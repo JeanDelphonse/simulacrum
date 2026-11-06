@@ -330,6 +330,17 @@
         <div class="import-file-name" id="importFileName"></div>
       </div>
       <input type="file" id="csvFileInput" accept=".csv,.tsv" style="display:none" onchange="handleFileSelect(this)">
+      <label for="importListSource" style="display:block;font-size:13px;font-weight:600;margin:14px 0 6px">Where did this list come from?</label>
+      <select id="importListSource" style="width:100%;padding:8px;border:1px solid var(--rule);border-radius:8px;font:inherit">
+        <option value="">Choose…</option>
+        <option value="own_contacts">My own contacts or clients</option>
+        <option value="event_optin">Event or meetup attendees who agreed to be contacted</option>
+        <option value="referrals">Referrals or introductions</option>
+        <option value="subscribers">People who subscribed or asked to hear from me</option>
+        <option value="purchased">Purchased or rented list</option>
+        <option value="scraped">Scraped from websites or directories</option>
+      </select>
+      <p style="font-size:12px;color:var(--mute);margin:6px 0 0">Purchased, rented and scraped lists can't be imported.</p>
       <div class="import-result" id="importResult"></div>
     </div>
     <div class="crm-form-actions">
@@ -628,6 +639,7 @@ function doImport() {
   btn.disabled = true; btn.textContent = 'Importing…';
   const fd = new FormData();
   fd.append('file', _importFile);
+  fd.append('list_source', document.getElementById('importListSource').value);
   fetch(`${CROOT}/api/contacts/import/csv`, { method: 'POST', body: fd })
     .then(r => r.json())
     .then(d => {

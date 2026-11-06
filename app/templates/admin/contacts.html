@@ -266,6 +266,13 @@
       Rows already in the pipeline are skipped — matched on firm name + website.
     </p>
     <div class="ap-form">
+      <div><label>Where did this list come from?</label><select id="apListSource">
+        <option value="">Choose…</option><option value="own_contacts">Our own contacts</option>
+        <option value="event_optin">Event attendees who agreed to be contacted</option>
+        <option value="referrals">Referrals or introductions</option>
+        <option value="subscribers">People who asked to hear from us</option>
+        <option value="purchased">Purchased or rented list</option><option value="scraped">Scraped from websites</option>
+      </select></div>
       <div><label>CSV file</label><input type="file" id="apCsvFile" accept=".csv,text/csv"></div>
       <div><label>…or paste CSV</label><textarea id="apCsvText" rows="6"
            placeholder="firm_name,lead_name,website,category"></textarea></div>
@@ -666,11 +673,13 @@ async function apImport(btn) {
     let result;
     if (file) {
       const fd = new FormData(); fd.append('file', file);
+      fd.append('list_source', document.getElementById('apListSource').value);
       const r = await fetch(AP_API + '/import', {method: 'POST', body: fd});
       result = await r.json();
       if (!r.ok) throw new Error(result.error || 'Import failed');
     } else {
-      result = await api('/import', {method: 'POST', body: JSON.stringify({csv: text})});
+      result = await api('/import', {method: 'POST', body: JSON.stringify({csv: text,
+        list_source: document.getElementById('apListSource').value})});
     }
     out.innerHTML = 'Imported <strong>' + result.created + '</strong>, skipped ' +
       result.skipped + ' (already in the pipeline or missing a firm name).' +

@@ -390,6 +390,12 @@ def import_csv():
     f = request.files['file']
     if not f.filename.endswith(('.csv', '.tsv')):
         return jsonify({'error': 'Only CSV/TSV files accepted'}), 400
+    from app.services import import_sources
+    list_source = request.form.get('list_source')
+    try:
+        import_sources.validate(list_source)
+    except ValueError as e:
+        return jsonify({'error': str(e), 'code': 'list_source'}), 400
 
     content = f.read().decode('utf-8-sig')
     reader = csv.DictReader(io.StringIO(content))
@@ -443,6 +449,7 @@ def import_csv():
             city=(row.get('city') or row.get('City') or '').strip() or None,
             country=(row.get('country') or 'United States').strip(),
             source='csv_import',
+            source_notes=import_sources.note(list_source),
             pipeline_stage='prospect',
         )
         db.session.add(contact)

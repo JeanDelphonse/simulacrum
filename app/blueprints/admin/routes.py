@@ -2358,15 +2358,24 @@ def prospects_import():
     from app.services import admin_crm_service as crm
     text = ''
     upload = request.files.get('file')
+    body = request.get_json(silent=True) or {}
     if upload:
         text = upload.read().decode('utf-8-sig', errors='replace')
     else:
-        text = (request.get_json(silent=True) or {}).get('csv', '')
+        text = body.get('csv', '')
     if not text.strip():
         return jsonify({'error': 'No CSV content supplied'}), 400
+    # COMPLIANCE_PLAN C4: declare where the list came from; no bought or scraped lists.
+    from app.services import import_sources
+    list_source = request.form.get('list_source') or body.get('list_source')
+    try:
+        import_sources.validate(list_source)
+    except ValueError as e:
+        return jsonify({'error': str(e), 'code': 'list_source'}), 400
     result = crm.import_csv(text)
     AuditLog.log('admin_prospects_imported', user_id=current_user.id,
-                 metadata={'created': result['created'], 'skipped': result['skipped']})
+                 metadata={'created': result['created'], 'skipped': result['skipped'],
+                           'list_source': list_source})
     db.session.commit()
     return jsonify(result), 200
 
