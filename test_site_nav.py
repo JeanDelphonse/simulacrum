@@ -25,6 +25,8 @@ def main():
     app.config.update(SQLALCHEMY_DATABASE_URI='sqlite:///:memory:', WTF_CSRF_ENABLED=False, PROPAGATE_EXCEPTIONS=True)
 
     with app.app_context():
+        from app import models as _models  # noqa: F401
+        from app.models import user_event as _ue  # noqa: F401
         db.create_all()
         from app.services import site_nav
         from app.models.platform_settings import PlatformSetting
@@ -105,12 +107,16 @@ def main():
                   and head.count('class="ss-trigger"') == 2 and head.count('class="ss-mega"') == 2)
             check('%-20s bar, both panels and the drawer from the one config' % url, ok, r.status_code)
         home = client.get('/').get_data(as_text=True)
-        bar = home.split('<ul class="ss-nav-links ss-aud-links">')[1].split('</ul>')[0]
+        navhtml = home.split('id="ssNav"')[1].split('</nav>')[0]
+        top = re.findall(r'<li><a [^>]*>([^<]+)<', navhtml)     # bar items only; panel items start on a new line
         check('bar order: For professionals, For employers, Playbook, Pricing',
-              [m for m in re.findall(r'>([A-Z][A-Za-z ]+)<', bar)] == ['For professionals', 'For employers', 'Playbook', 'Pricing'],
-              re.findall(r'>([A-Z][A-Za-z ]+)<', bar))
-        check('removed from the bar: The model, Bio page, Questions, Watch demo, the flat employer link',
-              not any(x in bar for x in ('The model', 'Bio page', 'Questions', 'Watch demo', '>Journal<')))
+              top == ['For professionals', 'For employers', 'Playbook', 'Pricing'], top)
+        check('removed from the bar: The model, Bio page, People, Journal, Questions, Watch demo, flat employer link',
+              not set(top) & {'The model', 'Bio page', 'People on SimiSI', 'Journal', 'Questions', 'Watch demo'})
+        check('each panel sits right after its trigger (Tab moves into it)',
+              navhtml.index('id="ssTrig-professionals"') < navhtml.index('id="ssPanel-professionals"')
+              < navhtml.index('id="ssTrig-employers"') < navhtml.index('id="ssPanel-employers"')
+              < navhtml.index('data-nav-item="playbook"'))
         check('panels start hidden; triggers are links until JS upgrades them',
               home.count('class="ss-mega" id="ssPanel-') == 2 and 'role="region" aria-labelledby="ssTrig-professionals" hidden' in home
               and '<a class="ss-trigger" id="ssTrig-professionals" href="/#how"' in home
@@ -152,6 +158,29 @@ def main():
         signed = client.get('/careers').get_data(as_text=True)
         check('signed-in pages keep the app nav (D2)', 'ss-nav-aud' not in signed and '>Dashboard<' in signed
               and '>Settings<' in signed and 'id="signOutBtn"' in signed and 'ss-mega' not in signed)
+
+        print('\n4. nav_open / nav_click events')
+        from app.models.user_event import UserEvent
+        anon = app.test_client()
+        before = UserEvent.query.count()
+        r1 = anon.post('/api/nav-event', json={'event': 'nav_open', 'panel': 'employers'})
+        r2 = anon.post('/api/nav-event', json={'event': 'nav_click', 'item': 'tp_privacy'},
+                       headers={'Referer': 'https://simisi.io/?email=a@b.com'})
+        rows = UserEvent.query.order_by(UserEvent.id.desc()).limit(2).all()
+        check('a known panel and item are stored', r1.status_code == 204 and r2.status_code == 204
+              and UserEvent.query.count() == before + 2
+              and {(x.event_type, tuple(sorted(x.event_data.items()))) for x in rows}
+              == {('nav_open', (('panel', 'employers'),)), ('nav_click', (('item', 'tp_privacy'),))})
+        check('no user, IP or referrer on the rows', all(x.user_id is None and x.ip_address is None
+                                                         and set(x.event_data) <= {'panel', 'item'} for x in rows))
+        bad = [anon.post('/api/nav-event', json=b).status_code for b in (
+            {'event': 'nav_click', 'item': 'someone@example.com'}, {'event': 'nav_open', 'panel': 'admin'},
+            {'event': 'signup', 'item': 'pricing'}, {})]
+        check('unknown ids and events are rejected and not stored', bad == [400] * 4
+              and UserEvent.query.count() == before + 2, bad)
+        js = open('app/static/js/site_nav.js', encoding='utf-8').read()
+        check('the browser sends only the event and the id', "data[key] = value" in js
+              and 'location' not in js and 'cookie' not in js)
 
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     for label in FAIL:

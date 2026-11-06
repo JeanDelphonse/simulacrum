@@ -2005,6 +2005,27 @@ def referral_redirect(code):
 # talks to /api/blog/... from the templates.
 # ---------------------------------------------------------------------------
 
+@pages_bp.route('/api/nav-event', methods=['POST'])
+def nav_event():
+    """nav_open / nav_click from the visitor nav (NAV_AUDIENCE_PLAN.md D6).
+
+    Only panel names and item ids that exist in app/services/site_nav.py are
+    stored. No user id, IP address or referrer is kept: the row says which
+    menu was used, not who used it.
+    """
+    from app.models.user_event import UserEvent
+    from app.services import site_nav
+    data = request.get_json(force=True, silent=True) or {}
+    event = data.get('event')
+    if event == 'nav_open' and data.get('panel') in site_nav.PANEL_IDS:
+        UserEvent.track(None, 'nav_open', {'panel': data['panel']})
+    elif event == 'nav_click' and data.get('item') in site_nav.ITEM_IDS:
+        UserEvent.track(None, 'nav_click', {'item': data['item']})
+    else:
+        return jsonify({'error': 'unknown nav event'}), 400
+    return ('', 204)
+
+
 @pages_bp.route('/blog')
 def blog_index():
     from app.services import blog_service as svc
