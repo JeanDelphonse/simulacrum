@@ -67,6 +67,17 @@ def send_outreach_email(
 
     to_email = contact.email.lower().strip()
 
+    # One suppression check (COMPLIANCE_PLAN C2): global opt-outs, bounces and
+    # complaints; the member's own list; Do Not Contact; Email-to-CRM flags.
+    # Checked on the real address, before any sandbox redirect.
+    from app.services import suppression_service as _suppression
+    from app.models.simulation import Simulation as _SimS
+    _owner_sim = _SimS.query.get(simulation_id) if simulation_id else None
+    _owner_id = _owner_sim.user_id if _owner_sim else contact.user_id
+    _suppressed = _suppression.check(_owner_id, to_email, contact)
+    if _suppressed:
+        return {'status': 'skipped', 'reason': 'suppressed:' + _suppressed}
+
     # Sandbox routing: redirect to the simulation owner's email instead of the real contact
     try:
         from app.models.layer6 import Layer6Config as _L6Cfg
@@ -81,9 +92,6 @@ def send_outreach_email(
             to_email = _sandbox_addr
     except Exception as _se:
         logger.warning('Sandbox routing check failed: %s', _se)
-
-    if EmailSuppression.is_suppressed(to_email):
-        return {'status': 'skipped', 'reason': 'suppressed'}
 
     # api_key: the user's own SendGrid key when the platform send provider is
     # 'own_sendgrid' (EXEC_PLAN P5); otherwise SimiSI's account.

@@ -199,6 +199,9 @@ def create_app(config_name=None):
     app.jinja_env.tests['mentions_results'] = _mentions_results
     from app.services import l5_feature as _l5_feature
     app.jinja_env.globals['l5_switch_off'] = lambda: not _l5_feature.enabled()
+    # New contacts whose address is suppressed are Do Not Contact (COMPLIANCE_PLAN C2).
+    from app.services import suppression_service as _suppression
+    _suppression.install(app)
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 

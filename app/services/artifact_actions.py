@@ -325,11 +325,8 @@ def contact_candidates(action, user_id: str, query: str = '', limit: int = 200) 
         q = q.filter((Contact.first_name.ilike(like)) | (Contact.last_name.ilike(like)) |
                      (Contact.email.ilike(like)) | (Contact.company_name.ilike(like)))
     contacts = q.order_by(Contact.first_name.asc()).limit(limit).all()
-    emails = [c.email.lower() for c in contacts if c.email]
-    suppressed = set()
-    for i in range(0, len(emails), 500):
-        suppressed |= {r.email.lower() for r in EmailSuppression.query.filter(
-            EmailSuppression.email.in_(emails[i:i + 500])).all()}
+    from app.services import suppression_service
+    suppressed = suppression_service.bulk(user_id, [c.email for c in contacts if c.email])
     used = recipient_ledger.used_keys(action.simulation_id, action.action_type)
 
     out = []
@@ -340,7 +337,7 @@ def contact_candidates(action, user_id: str, query: str = '', limit: int = 200) 
         elif c.do_not_contact:
             reason = 'Do not contact'
         elif c.email.lower() in suppressed:
-            reason = 'Unsubscribed or bounced'
+            reason = suppression_service.REASON_LABELS[suppressed[c.email.lower()]]
         elif is_placeholder_contact(c.first_name, c.last_name, c.company_name, c.email):
             reason = 'Placeholder, not a real person'
         elif recipient_ledger.recipient_key(c.email) in used:

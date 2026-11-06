@@ -451,7 +451,8 @@ def _filter_uncontacted(user_id, prospects, simulation_id=None):
         email = (getattr(p, 'email', '') or '').strip().lower()
         if not email:
             continue
-        if EmailSuppression.is_suppressed(email):
+        from app.services import suppression_service as _suppression
+        if _suppression.check(user_id, email):
             continue
         c = (Contact.query
              .filter(Contact.user_id == user_id, _func.lower(Contact.email) == email)

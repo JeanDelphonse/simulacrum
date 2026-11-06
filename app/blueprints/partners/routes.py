@@ -472,6 +472,9 @@ def send_referral(partner):
 
     if not recipient_email:
         return jsonify({'error': 'recipient_email is required'}), 400
+    from app.services import suppression_service as _suppression
+    if _suppression.check(None, recipient_email):
+        return jsonify({'error': 'That address has opted out of email from SimiSI.'}), 409
 
     existing = ReferralInvitation.query.filter_by(
         partner_id=partner.id, recipient_email=recipient_email

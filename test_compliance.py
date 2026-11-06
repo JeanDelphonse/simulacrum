@@ -28,6 +28,18 @@ def main():
     network = []
     requests.post = requests.get = (lambda *a, **k: network.append(a[0] if a else k)
                                     or (_ for _ in ()).throw(AssertionError('network')))
+    # SendGrid has its own HTTP client: fake it, recording what would be sent.
+    import sendgrid
+    SENT = []
+
+    class _FakeSG:
+        def __init__(self, api_key=None, *a, **k):
+            self.api_key = api_key
+
+        def send(self, message):
+            SENT.append(message.get() if hasattr(message, 'get') else message)
+            return type('R', (), {'status_code': 202, 'headers': {'X-Message-Id': 'm%d' % len(SENT)}, 'body': ''})()
+    sendgrid.SendGridAPIClient = _FakeSG
     from app import create_app
     from app.extensions import db
     from utils.id_gen import generate_id, generate_pk
@@ -493,6 +505,59 @@ def main():
         login(admin)
         client.put('/api/admin/compliance/l5', json={'mode': 'on'})
         check('switching it back on restores Layer 5', l5_feature.enabled())
+
+        # ── 11. One suppression list ────────────────────────────────────────
+        print('\n11. One suppression check on every send and import')
+        from app.models.contact import Contact
+        from app.models.outreach_email import EmailSuppression
+        from app.models.mail_crm import UserSuppression, ContactDncFlag, email_hash
+        from app.services import suppression_service
+        from app.services.outreach_email_service import send_outreach_email
+        sender = user()
+        ssim = Simulation(id=generate_id(), user_id=sender.id, name='Out', expertise_zone='Ops', status='complete')
+        db.session.add(ssim)
+        db.session.add(EmailSuppression(email='gone@x.com', reason='unsubscribe'))
+        db.session.add(UserSuppression(user_id=sender.id, email_hash=email_hash('Mine@X.com'), reason='unsubscribe'))
+        db.session.commit()
+
+        def contact(email, **kw):
+            c = Contact(id=generate_id(), user_id=sender.id, first_name='Dana', last_name='Lee', email=email,
+                        source=kw.pop('source', 'manual_entry'), pipeline_stage='prospect', **kw)
+            db.session.add(c)
+            db.session.commit()
+            return c
+        c_ok, c_dnc = contact('ok@x.com'), contact('dnc@x.com', do_not_contact=True)
+        c_flag = contact('flag@x.com')
+        db.session.add(ContactDncFlag(contact_id=c_flag.id, reason='integration_disabled'))
+        db.session.commit()
+        check('global, member, Do-Not-Contact and Email-to-CRM flags all suppress',
+              suppression_service.check(sender.id, 'gone@x.com') == 'global'
+              and suppression_service.check(sender.id, 'mine@x.com') == 'member'
+              and suppression_service.check(sender.id, 'dnc@x.com') == 'do_not_contact'
+              and suppression_service.check(sender.id, 'flag@x.com') == 'dnc_flag'
+              and suppression_service.check(sender.id, 'ok@x.com') is None)
+        check("a member's own list doesn't silence another member", suppression_service.check(owner.id, 'mine@x.com') is None)
+        late = contact('GONE@x.com', source='apollo')
+        mine = contact('mine@x.com', source='csv_import')
+        check('a suppressed address imported later (Apollo, CSV) arrives as Do Not Contact',
+              late.do_not_contact and mine.do_not_contact and not c_ok.do_not_contact)
+        for c in (late, c_dnc, c_flag):
+            r = send_outreach_email(simulation_id=ssim.id, contact_id=c.id, subject='Hi', html_body='<p>x</p>',
+                                    from_email='simi@simulacrumai.io', from_name='Pat')
+            check('send to %s is refused (%s)' % (c.email, r.get('reason')), r['status'] == 'skipped'
+                  and (r['reason'].startswith('suppressed:') or r['reason'] == 'do_not_contact'))
+        r = send_outreach_email(simulation_id=ssim.id, contact_id=c_ok.id, subject='Hi', html_body='<p>x</p>',
+                                from_email='simi@simulacrumai.io', from_name='Pat')
+        app.config['SENDGRID_API_KEY'] = 'test-key'
+        r = send_outreach_email(simulation_id=ssim.id, contact_id=c_ok.id, subject='Hi', html_body='<p>x</p>',
+                                from_email='simi@simulacrumai.io', from_name='Pat')
+        check('a clear contact is sent (to the fake SendGrid only)', r['status'] == 'sent' and SENT, r)
+        from app.services import artifact_actions
+        fake_action = SimpleNamespace(simulation_id=ssim.id, action_type='consulting_outreach')
+        picks = {p['email'].lower(): p for p in artifact_actions.contact_candidates(fake_action, sender.id)}
+        check('the send-to-contacts picker uses the same check',
+              not picks['gone@x.com']['eligible'] and not picks['mine@x.com']['eligible'] and picks['ok@x.com']['eligible'])
+        check('partner referrals respect the global list', suppression_service.check(None, 'gone@x.com') == 'global')
 
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
