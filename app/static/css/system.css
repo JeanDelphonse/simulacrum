@@ -167,13 +167,15 @@ label, .form-label { color: var(--ink); }
           border-bottom: 1px solid var(--rule); }
 .ss-nav.is-top { border-bottom-color: transparent; }
 .ss-nav .wrap { display: flex; align-items: center; height: 64px; gap: 32px; }
+/* Logo on the left; menu links and the account/sign-in group sit together on the right. */
+.ss-nav .wrap > .ss-logo { margin-right: auto; }
 .ss-nav-links { list-style: none; display: flex; align-items: center; gap: 24px; margin: 0; padding: 0;
                 font-size: 15px; font-weight: 500; }
 .ss-nav-links a, .ss-nav-links button { color: var(--ink-2); text-decoration: none; background: none; border: 0;
                                        font: inherit; cursor: pointer; padding: 0; }
 .ss-nav-links a:hover, .ss-nav-links button:hover { color: var(--ink); }
 .ss-nav-links a.is-current { color: var(--ink); font-weight: 600; }
-.ss-nav-right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+.ss-nav-right { display: flex; align-items: center; gap: 18px; }
 .ss-nav-login { font-size: 15px; font-weight: 600; color: var(--ink); text-decoration: none; }
 .ss-nav-login:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
 .ss-nav-user { font-size: 14px; color: var(--mute); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
