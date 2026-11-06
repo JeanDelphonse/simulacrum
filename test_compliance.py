@@ -166,6 +166,56 @@ def main():
         check("the home page's Layer 5 note comes from the legal-text source",
               legal_text.get('l5_note_short') in home and 'Advisory only' not in home)
 
+        # ── 4. Estimates ────────────────────────────────────────────────────
+        print('\n4. Every projected income figure through the estimate component')
+        offenders = []
+        for base in ('app/templates', 'app/static/js'):
+            for root, _d, files in os.walk(base):
+                for f in files:
+                    path = os.path.join(root, f).replace(os.sep, '/')
+                    if not f.endswith(('.html', '.js')) or path.endswith(('_estimate.html', 'estimate.js')):
+                        continue
+                    for n, line in enumerate(open(path, encoding='utf-8'), 1):
+                        if re.search(r'est_monthly_(low|high)', line) and not re.search(
+                                r'estimate\(|SimiEstimate|tojson|totLo|totHi', line):
+                            offenders.append('%s:%d' % (path, n))
+        check('no template or script formats a projected range itself', not offenders, offenders[:6])
+
+        from app.models.simulation import Simulation, SimulationLayer, IncomeStream
+        owner = user()
+        sim = Simulation(id=generate_id(), user_id=owner.id, name='S', expertise_zone='Ops', status='complete',
+                         agent_selection_confirmed_at=datetime.utcnow())
+        db.session.add(sim)
+        db.session.flush()
+        for n in (1, 3):
+            lay = SimulationLayer(id=generate_id(), simulation_id=sim.id, layer_number=n,
+                                  layer_name=SimulationLayer.LAYER_NAMES[n], ai_narrative='N')
+            db.session.add(lay)
+            db.session.flush()
+            db.session.add(IncomeStream(id=generate_id(), layer_id=lay.id, name='Stream %d' % n,
+                                        est_monthly_low=1000 * n, est_monthly_high=2500 * n,
+                                        ai_reasoning='Assumes two clients a month at market rates.'))
+        db.session.commit()
+        login(owner)
+        page = client.get('/simulations/%s' % sim.id).get_data(as_text=True)
+        check('the results page shows ranges through the component', page.count('class="est"') == 2
+              and '$1,000–$2,500/mo' in page and '$3,000–$7,500/mo' in page)
+        check('…each labelled and with its basis one click away',
+              page.count(legal_text.get('estimate_label')) >= 2 and page.count('How we estimated this') == 2
+              and 'Assumes two clients a month at market rates.' in page)
+        check('…and the base-rate note on Layer 3 only', page.count('class="est-p est-base"') == 1)
+        tpl = app.jinja_env.from_string("{% import 'partials/_estimate.html' as e %}{{ e.estimate(None, 4000) }}|"
+                                        "{{ e.estimate(None, None) }}")
+        out = tpl.render()
+        check('one-sided figures read as a ceiling; nothing at all renders nothing',
+              'up to $4,000/mo' in out and out.endswith('|'))
+        check('every page carries the JS twin with the same wording',
+              'js/estimate.js' in page and '"label": "%s"' % legal_text.get('estimate_label') in page)
+        from app.services import agent_briefing
+        check('agent prompts ask for ranges, never single numbers',
+              'low–high range' in agent_briefing.agent_rules({}) if hasattr(agent_briefing, 'agent_rules')
+              else 'low–high range' in open('app/services/agent_briefing.py', encoding='utf-8').read())
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

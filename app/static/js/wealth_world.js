@@ -609,13 +609,14 @@
     html += '<div class="wew-kv"><span>Status</span><b class="' + (n.active ? 'on' : 'off') + '">'
       + (n.active ? 'Active' : 'Inactive')
       + (n.configured ? ' · configured' : ' · not configured') + '</b></div>';
-    html += '<div class="wew-kv"><span>Per-cycle value</span><b>' + esc(valueDetail(n)) + '</b></div>';
+    html += '<div class="wew-kv"><span>Per-cycle value (estimate)</span><b>' + esc(valueDetail(n)) + '</b></div>';
 
     if (n.value_source === 'calibration') {
       html += '<div class="wew-src">' + esc(n.value_source_label || 'Calibrated')
         + (n.value_tier ? ' · ' + esc(n.value_tier) + ' confidence' : '')
         + (n.value_low && n.value_high
-          ? ' · ' + money(n.value_low) + '–' + money(n.value_high) : '')
+          ? ' · ' + money(n.value_low) + '–' + money(n.value_high) + ' · '
+            + (window.SimiEstimate ? SimiEstimate.label : 'Estimate, not a promise') : '')
         + '</div>';
     } else if (n.value_source === 'income_streams') {
       html += '<div class="wew-src">' + esc(n.value_source_label) + '</div>';

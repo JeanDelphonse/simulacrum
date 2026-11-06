@@ -60,6 +60,7 @@
   color: var(--offw); letter-spacing: .5px;
 }
 .cal-range-mid { font-size: 13px; color: var(--mute); }
+.cal-est-label { font-size: 12px; color: #C5CCDA; }
 .cal-range-mid strong { color: var(--gold-l); font-weight: bold; }
 
 /* Confidence band (§12.3) */
@@ -356,6 +357,7 @@
         '<div class="cal-label">' + esc(f.field_label) + '</div>' +
         '<div class="cal-range">' +
           '<span class="cal-range-val">' + esc(d.low) + ' – ' + esc(d.high) + '</span>' +
+          '<span class="cal-est-label">' + esc(window.SimiEstimate ? SimiEstimate.label : 'Estimate, not a promise') + '</span>' +
           '<span class="cal-range-mid">midpoint <strong>' + esc(d.mid) + '</strong></span>' +
         '</div>' +
         bandHtml(f) +

@@ -1,3 +1,4 @@
+{% import 'partials/_estimate.html' as est %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -16,6 +17,7 @@
   .range { color: #2d7a2d; font-weight: bold; }
   .footer { margin-top: 40px; font-size: 11px; color: var(--mute); border-top: 1px solid #eee; padding-top: 12px; }
 </style>
+  {% include 'partials/_estimate_assets.html' %}
 </head>
 <body>
 <h1>{{ simulation.name }}</h1>
@@ -29,7 +31,7 @@
   {% for stream in layer.income_streams %}
   <div class="stream">
     <h3>{{ stream.name }}</h3>
-    {% if stream.est_monthly_low %}<p class="range">${{ "{:,}".format(stream.est_monthly_low) }}–${{ "{:,}".format(stream.est_monthly_high) }}/month</p>{% endif %}
+    <p class="range">{{ est.estimate(stream.est_monthly_low, stream.est_monthly_high, unit='month', layer=layer.layer_number, basis=stream.ai_reasoning, print=True) }}</p>
     {% if stream.description %}<p>{{ stream.description }}</p>{% endif %}
     <p class="reasoning"><em>Why this for you: {{ stream.ai_reasoning }}</em></p>
   </div>

@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Advisor View — {{ simulation.name }}{% endblock %}
 {% block content %}
+{% import 'partials/_estimate.html' as est %}
 <div class="sim-detail">
   <div class="sim-detail-header">
     <div>
@@ -44,9 +45,7 @@
               <div class="stream-header" onclick="toggleReasoning(this)">
                 <div class="stream-title-row">
                   <h4 class="stream-name">{{ stream.name }}</h4>
-                  {% if stream.est_monthly_low and stream.est_monthly_high %}
-                  <span class="stream-range">${{ "{:,}".format(stream.est_monthly_low) }}–${{ "{:,}".format(stream.est_monthly_high) }}/mo</span>
-                  {% endif %}
+                  {{ est.estimate(stream.est_monthly_low, stream.est_monthly_high, layer=layer.layer_number, basis=stream.ai_reasoning) }}
                 </div>
                 <p class="stream-desc">{{ stream.description }}</p>
               </div>

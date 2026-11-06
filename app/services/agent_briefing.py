@@ -365,6 +365,8 @@ def system_prompt(meta: dict) -> str:
         'recipient list: those list only real people supplied to you, or are left empty.',
         'When a required input is missing, make a reasonable assumption and state it in a '
         'short "Assumptions" note at the end of the artifact (at most 3 bullets).',
+        'Present every income or revenue figure as a low–high range with the assumption it '
+        'rests on, never as a single number, and never promise or imply that the user will earn it.',
         'Be concise and skimmable: cover every required section, but do not pad — prefer '
         'tables and bullets over long prose, and do not restate the inputs or the plan.',
         'No meta-commentary, no preamble about what you are going to do — only the artifact.',

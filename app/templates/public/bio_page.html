@@ -989,6 +989,7 @@
       .facts-grid { grid-template-columns: 1fr; }
     }
   </style>
+  {% include 'partials/_estimate_assets.html' %}
 </head>
 
 <body class="theme-{{ bio_page.theme }}">
@@ -2702,11 +2703,10 @@ async function publishNow(ack) {
       var streamsHtml = '';
       if (streams.length) {
         streamsHtml = '<div class="slide-streams">' + streams.map(function(s) {
-          var lo = s.est_monthly_low, hi = s.est_monthly_high;
-          var range = (lo != null || hi != null) ? fmt(lo) + ' – ' + fmt(hi) + '/mo' : '';
+          var range = SimiEstimate.html(s.est_monthly_low, s.est_monthly_high, {layer: layer.layer_number, compact: true});
           return '<div class="slide-stream-card">'
             + '<div class="slide-stream-name">' + esc(s.name) + '</div>'
-            + (range ? '<div class="slide-stream-range">' + esc(range) + '</div>' : '')
+            + (range ? '<div class="slide-stream-range">' + range + '</div>' : '')
             + (s.platform ? '<div class="slide-stream-meta">' + esc(trunc(s.platform, 34)) + '</div>' : '')
             + '</div>';
         }).join('') + '</div>';
@@ -2736,12 +2736,11 @@ async function publishNow(ack) {
       allStreams.forEach(function(r) { totLo += (r.s.est_monthly_low||0); totHi += (r.s.est_monthly_high||0); });
       var rows = allStreams.slice(0,12).map(function(r) {
         var s = r.s;
-        var lo = s.est_monthly_low, hi = s.est_monthly_high;
-        var range = (lo != null || hi != null) ? fmt(lo) + ' – ' + fmt(hi) : '—';
+        var range = SimiEstimate.html(s.est_monthly_low, s.est_monthly_high, {compact: true}) || '—';
         var auto = {low:'Low',medium:'Med',high:'High',full:'Full'}[s.automation_level] || '';
         return '<tr>'
           + '<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+r.color+';margin-right:6px;vertical-align:middle"></span>'+esc(trunc(s.name,30))+'</td>'
-          + '<td class="range-cell">'+esc(range)+'/mo</td>'
+          + '<td class="range-cell">'+range+'</td>'
           + '<td style="color:var(--muted)">'+esc(auto)+'</td>'
           + '</tr>';
       }).join('');
@@ -2749,7 +2748,8 @@ async function publishNow(ack) {
         '<div class="slide-header">'
         + '<div class="slide-header-label">Income Potential</div>'
         + '<div class="slide-header-title">Monthly Revenue Landscape</div>'
-        + '<div class="slide-header-sub" style="color:var(--accent);font-size:.93rem;font-weight:700;margin-top:.28rem">'+fmt(totLo)+' – '+fmt(totHi)+' / month</div>'
+        + '<div class="slide-header-sub" style="color:var(--accent);font-size:.93rem;font-weight:700;margin-top:.28rem">'+SimiEstimate.html(totLo, totHi, {unit: 'month', compact: true})+'</div>'
+        + '<div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">'+esc(SimiEstimate.baseNote)+'</div>'
         + '</div>'
         + '<div class="slide-body" style="overflow:auto">'
         + '<table class="slide-income-table"><thead><tr><th>Income Stream</th><th>Est. Monthly</th><th>Automation</th></tr></thead>'

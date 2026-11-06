@@ -93,7 +93,7 @@ function buildLayerHTML(layer) {
       <div class="stream-header" onclick="toggleReasoning(this)">
         <div class="stream-title-row">
           <h4 class="stream-name">${escapeHtml(s.name)}</h4>
-          ${s.est_monthly_low ? `<span class="stream-range">$${s.est_monthly_low.toLocaleString()}–$${s.est_monthly_high.toLocaleString()}/mo</span>` : ''}
+          ${window.SimiEstimate ? SimiEstimate.html(s.est_monthly_low, s.est_monthly_high, {layer: layer.layer_number, basis: s.ai_reasoning}) : ''}
         </div>
         <p class="stream-desc">${escapeHtml(s.description || '')}</p>
         ${s.platform ? `<span class="stream-platform">${escapeHtml(s.platform)}</span>` : ''}

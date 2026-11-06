@@ -13,6 +13,7 @@
   {% if advisor_mode is defined and advisor_mode %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/advisor_mode.css') }}">
   {% endif %}
+  {% include 'partials/_estimate_assets.html' %}
   {% block head %}{% endblock %}
 </head>
 <body class="{{ 'advisor-mode' if (advisor_mode is defined and advisor_mode) else '' }} {% block body_class %}{% endblock %}" aria-label="{{ ('You are viewing a client simulation in advisor mode. Client: ' + (client_profile.display_name if client_profile and client_profile.display_name else 'Client')) if (advisor_mode is defined and advisor_mode) else '' }}">

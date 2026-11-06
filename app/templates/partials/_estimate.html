@@ -1,0 +1,40 @@
+{# Projected income, everywhere it is shown (COMPLIANCE_PLAN A4).
+
+   Always a low–high range, never a single headline number; always labelled
+   "Estimate, not a promise"; the assumptions and source are one click away;
+   Layers 3 and 4 add the base-rate note. All wording comes from the legal-text
+   source. static/js/estimate.js renders the same markup for pages that build
+   ranges in the browser; partials/_estimate_assets.html carries the styles.
+
+   Usage:
+     {% import 'partials/_estimate.html' as est %}
+     {{ est.estimate(stream.est_monthly_low, stream.est_monthly_high, layer=n, basis=stream.ai_reasoning) }}
+   print=True renders the basis open (exports and PDFs). #}
+
+{% macro money(v) -%}${{ '{:,.0f}'.format(v) }}{%- endmacro %}
+
+{% macro range_text(low, high, unit='mo') -%}
+{%- if low is not none and high is not none and low != high -%}{{ money(low) }}–{{ money(high) }}
+{%- elif low is not none and high is not none -%}up to {{ money(high) }}
+{%- elif high is not none -%}up to {{ money(high) }}
+{%- elif low is not none -%}from {{ money(low) }}
+{%- endif -%}{% if unit %}/{{ unit }}{% endif %}
+{%- endmacro %}
+
+{% macro estimate(low, high, unit='mo', layer=None, basis=None, source=None, print=False) -%}
+{%- if low is not none or high is not none -%}
+<span class="est"{% if layer %} data-layer="{{ layer }}"{% endif %}>
+  <span class="est-range">{{ range_text(low, high, unit) }}</span>
+  <span class="est-label">{{ legal('estimate_label') }}</span>
+  <details class="est-basis"{% if print %} open{% endif %} onclick="event.stopPropagation()">
+    <summary>How we estimated this</summary>
+    <span class="est-body">
+      <span class="est-p">{{ legal('estimate_basis_intro') }}</span>
+      {% if basis %}<span class="est-p"><b>Assumptions:</b> {{ basis }}</span>{% endif %}
+      {% if source %}<span class="est-p"><b>Source:</b> {{ source }}</span>{% endif %}
+      {% if layer in (3, 4) %}<span class="est-p est-base">{{ legal('base_rate_l3_l4') }}</span>{% endif %}
+    </span>
+  </details>
+</span>
+{%- endif -%}
+{%- endmacro %}

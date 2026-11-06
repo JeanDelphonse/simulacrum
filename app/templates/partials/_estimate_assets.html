@@ -1,0 +1,23 @@
+{# Styles, wording and script for the estimate component (partials/_estimate.html,
+   static/js/estimate.js). Self-contained so standalone pages (the bio page) can
+   include it without loading css/system.css. base.html includes it once. #}
+<style>
+.est { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; vertical-align: baseline; }
+.est-range { font-weight: 650; white-space: nowrap; }
+.est-label { font-size: 12px; font-weight: 500; color: #68738C; white-space: nowrap; }
+.est-basis { font-size: 12px; color: #46526B; }
+.est-basis > summary { cursor: pointer; color: #46526B; text-decoration: underline; text-underline-offset: 2px; list-style: none; display: inline; }
+.est-basis > summary::-webkit-details-marker { display: none; }
+.est-basis[open] { flex-basis: 100%; }
+.est-body { display: block; margin-top: 6px; padding: 8px 10px; background: #F2F4F7; border-radius: 8px; max-width: 46em;
+            font-weight: 400; line-height: 1.5; white-space: normal; text-align: left; }
+.est-p { display: block; }
+.est-p + .est-p { margin-top: 4px; }
+.est-base { color: #7A5410; }
+@media print { .est-basis > summary { display: none; } .est-body { background: none; padding: 0; } }
+</style>
+<script>
+window.SIMI_EST = {{ {'label': legal('estimate_label'), 'intro': legal('estimate_basis_intro'),
+                       'base': legal('base_rate_l3_l4')} | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/estimate.js') }}"></script>
