@@ -322,6 +322,49 @@ def main():
                         readers.append(os.path.join(root, f))
         check('nothing public reads the check-ins', not readers, readers)
 
+        # ── 7. Layer 5 prompt rules ─────────────────────────────────────────
+        print('\n7. Layer 5: education and planning only (prompts)')
+        from app.services import agent_registry
+        l5 = [a for a in agent_registry.get_all_agents() if a.get('layer') == 5]
+        rules_core = legal_text.get('l5_agent_rules').split('End with this exact line')[0].strip()
+        check('every Layer 5 agent gets the education-only rules',
+              len(l5) == 10 and all(rules_core in agent_briefing.system_prompt(a) for a in l5))
+        tax = agent_briefing.system_prompt(agent_registry.get_agent_meta('tax_optimization'))
+        estate = agent_briefing.system_prompt(agent_registry.get_agent_meta('estate_planning'))
+        alloc = agent_briefing.system_prompt(agent_registry.get_agent_meta('income_allocation'))
+        check('…ending with the right referral line (CPA, attorney, fiduciary adviser)',
+              legal_text.get('l5_referral_cpa') in tax and legal_text.get('l5_referral_attorney') in estate
+              and legal_text.get('l5_referral_adviser') in alloc)
+        check('legacy alias action types resolve to the same rules',
+              rules_core in agent_briefing.system_prompt(agent_registry.get_agent_meta('portfolio_analysis') or {}))
+        check('other layers get none of it', rules_core not in agent_briefing.system_prompt(
+            agent_registry.get_agent_meta('rate_card')))
+        brief_src = open('app/services/agent_briefing.py', encoding='utf-8').read()
+        check('no disclaimer wording is pasted into the prompt code',
+              'licensed professional (CFP, CPA or attorney' not in brief_src and "legal_text.get('l5_agent_rules'" in brief_src)
+        fr = agent_registry.get_agent_meta('fund_recommendations')
+        dca = agent_registry.get_agent_meta('dca_schedule')
+        spec = ' '.join(fr['output_spec'] + fr.get('external_facts', [])).lower()
+        check('the fund agent explains fund types and names no funds',
+              fr['label'] == 'Fund Types Explained' and 'curate' not in fr['description'].lower()
+              and 'no named funds or tickers' in spec and 'tickers and expense' not in spec)
+        check('the contribution agent has no brokerage picker or brokerage integration',
+              dca['label'] == 'Regular Contribution Concepts' and dca['integrations'] == []
+              and all(f['key'] != 'brokerage' for f in dca['prompt_form'])
+              and not any('brokerage' in x.lower() for x in dca['output_spec']))
+        check('no Layer 5 spec asks for a recommendation, carriers or a plain disclaimer',
+              not any(x in ('Disclaimer', 'Recommended coverage parameters', 'Recommendation at the stated revenue')
+                      for a in l5 for x in a['output_spec'])
+              and not any('carrier' in x for a in l5 for x in a.get('external_facts', [])))
+        l5sim = Simulation(id=generate_id(), user_id=owner.id, name='L5', expertise_zone='Ops', status='complete')
+        db.session.add(l5sim)
+        db.session.commit()
+        login(owner)
+        page5 = client.get('/simulations/%s/layers/5' % l5sim.id, follow_redirects=True).get_data(as_text=True)
+        page1 = client.get('/simulations/%s/layers/1' % l5sim.id, follow_redirects=True).get_data(as_text=True)
+        check('Layer 5 pages carry the education-only banner, others do not',
+              legal_text.get('l5_banner') in page5 and legal_text.get('l5_banner') not in page1)
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

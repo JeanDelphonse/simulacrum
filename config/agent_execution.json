@@ -1337,28 +1337,26 @@
       }
     },
     "dca_schedule": {
-      "shape": "schedule",
-      "side_effect_class": "money_move",
-      "hard_gate": true,
+      "shape": "document",
+      "side_effect_class": "none",
+      "hard_gate": false,
       "default_autonomy": "L0",
       "supported_actions": [
         "edit",
         "preview",
         "export",
-        "copy",
-        "entry_publish",
-        "entry_schedule"
+        "copy"
       ],
       "suggested_tools": [
-        "alpaca_order",
         "ai_refine",
         "export_pdf"
       ],
       "methods": {
-        "name": "plan_only",
+        "name": "generate_only",
         "steps": [
-          "plan",
-          "review"
+          "generate",
+          "refine",
+          "export"
         ]
       }
     },

@@ -384,6 +384,10 @@ textarea.av-param-input { resize: vertical; min-height: 60px; }
       {% if action.archived_at %}Archived{% else %}Draft{% endif %}
     </span>
   </header>
+  {% if action.layer_number == 5 %}
+  <div class="av-l5" role="note">{{ legal('l5_banner') }}</div>
+  <style>.av-l5{margin:.75rem 0 0;padding:.65rem .9rem;border-radius:10px;background:#FFF4DC;color:#5C3F0C;font-size:14px;line-height:1.5}</style>
+  {% endif %}
 
   {% if prompt_form %}
   <div class="av-params-bar" id="avParamsBar">

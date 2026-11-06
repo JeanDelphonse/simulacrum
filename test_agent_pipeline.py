@@ -287,7 +287,8 @@ def main():
             parsed_text='', user_inputs={}, user_id=user.id, simulation_id=sim.id, model='m')
         gen = fake.calls[-1]
         check('unparseable plan does not block the run', len(fake.calls) == 2)
-        check('L5 system prompt requires a disclaimer', 'disclaimer' in gen['system'].lower())
+        check('L5 system prompt carries the education-only rules and a referral line',
+              'not personalised advice' in gen['system'] and 'fiduciary' in gen['system'])
         check('unverifiable facts flagged illustrative',
               'illustrative' in gen['messages'][0]['content'])
 

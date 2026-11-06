@@ -371,12 +371,31 @@ def system_prompt(meta: dict) -> str:
         'tables and bullets over long prose, and do not restate the inputs or the plan.',
         'No meta-commentary, no preamble about what you are going to do — only the artifact.',
     ]
-    if meta.get('disclaimer'):
-        rules.append(
-            'This is educational financial, tax or legal information, not individualised '
-            'advice. End the artifact with a one-paragraph disclaimer recommending review by a '
-            'licensed professional (CFP, CPA or attorney as relevant). Do not promise returns.')
+    if is_layer5(meta):
+        # COMPLIANCE_PLAN B2: education and planning only. The wording is the
+        # legal-text source's, never pasted here.
+        from app.services import legal_text
+        rules.append(legal_text.get('l5_agent_rules', referral=l5_referral(meta)))
     return '\n'.join('- ' + r for r in rules)
+
+
+# Which professional a Layer 5 output refers the user to (legal-text keys).
+_L5_REFERRAL = {
+    'tax_optimization': ('l5_referral_cpa',),
+    'entity_structure': ('l5_referral_cpa', 'l5_referral_attorney'),
+    'estate_planning': ('l5_referral_attorney',),
+}
+
+
+def is_layer5(meta: dict) -> bool:
+    return bool(meta) and (meta.get('layer') == 5 or bool(meta.get('disclaimer')))
+
+
+def l5_referral(meta: dict) -> str:
+    """The closing referral line for a Layer 5 agent's output."""
+    from app.services import legal_text
+    keys = _L5_REFERRAL.get((meta or {}).get('action_type'), ('l5_referral_adviser',))
+    return ' '.join(legal_text.get(k) for k in keys)
 
 
 def grounding_rules(meta: dict) -> str:

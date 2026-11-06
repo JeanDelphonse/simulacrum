@@ -3590,10 +3590,10 @@
       "autonomy_channel": null,
       "output_spec": [
         "Monthly income summary by layer",
-        "Allocation table (tax, emergency fund, operating, investing, lifestyle)",
+        "Illustrative allocation scenario (tax, emergency fund, operating, investing, lifestyle), framed as a common approach, not an instruction",
         "Rationale tied to risk tolerance and horizon",
         "Rebalance triggers",
-        "Disclaimer"
+        "Referral line"
       ],
       "external_facts": []
     },
@@ -3676,15 +3676,15 @@
         "Assumptions table",
         "Projection table using the supplied computed figures exactly",
         "Interpretation of the three scenarios",
-        "Disclaimer"
+        "Referral line"
       ],
       "external_facts": []
     },
     {
       "action_type": "fund_recommendations",
       "layer": 5,
-      "label": "Index Fund & ETF Recommendations",
-      "description": "Curate 8–12 recommended funds with a model portfolio allocation.",
+      "label": "Fund Types Explained",
+      "description": "Explain index fund and ETF categories, costs and account types, with questions for an adviser.",
       "model": "sonnet",
       "cold_start_chain": false,
       "cold_start_prior": 0.1,
@@ -3763,19 +3763,20 @@
         "legal": 0.83,
         "real_estate": 0.85
       },
-      "description_template": "Index fund and ETF portfolio for {primary_expertise} professionals",
+      "description_template": "Index fund and ETF basics for {primary_expertise} professionals",
       "produces_contacts": false,
       "contacts_mode": null,
       "research_enabled": false,
       "autonomy_channel": null,
       "output_spec": [
-        "Model portfolio allocation",
-        "Fund list by asset class (tickers and expense ratios flagged to verify)",
-        "Account placement guidance",
-        "Disclaimer"
+        "Fund categories explained (broad index, bond, international, target-date), with no named funds or tickers",
+        "What expense ratios and fees mean",
+        "Account types and placement concepts",
+        "Questions to ask a fee-only fiduciary adviser",
+        "Referral line"
       ],
       "external_facts": [
-        "fund tickers, expense ratios and historical returns"
+        "typical expense ratio ranges by fund category"
       ]
     },
     {
@@ -3849,10 +3850,10 @@
       "autonomy_channel": null,
       "output_spec": [
         "Objectives and constraints",
-        "Target allocation with ranges",
+        "Illustrative allocation ranges, framed as general education",
         "Rebalancing triggers",
         "Review cadence",
-        "Disclaimer"
+        "Referral line"
       ],
       "external_facts": []
     },
@@ -3942,7 +3943,7 @@
         "Vehicle comparison",
         "Market comparison (marked illustrative)",
         "Acquisition checklist",
-        "Disclaimer"
+        "Referral line"
       ],
       "external_facts": [
         "market prices, rents, cap rates and interest rates"
@@ -4032,10 +4033,10 @@
       "autonomy_channel": null,
       "output_spec": [
         "Comparison table: sole prop, LLC, S-Corp, C-Corp",
-        "Recommendation at the stated revenue",
+        "Considerations at the stated revenue",
         "Transition checklist",
         "Questions for a CPA/attorney",
-        "Disclaimer"
+        "Referral line"
       ],
       "external_facts": [
         "state filing fees and payroll tax thresholds"
@@ -4131,8 +4132,8 @@
         "Current-entity tax picture",
         "Retirement account options",
         "Deduction checklist",
-        "Quarterly estimated tax plan",
-        "Disclaimer"
+        "Estimated-tax concepts and questions for a CPA",
+        "Referral line"
       ],
       "external_facts": [
         "current-year contribution limits, brackets and thresholds"
@@ -4141,8 +4142,8 @@
     {
       "action_type": "dca_schedule",
       "layer": 5,
-      "label": "Dollar-Cost Averaging Schedule & Contribution Plan",
-      "description": "Build a DCA schedule table and brokerage-specific setup guide.",
+      "label": "Regular Contribution Concepts",
+      "description": "Explain how regular investing works, with an illustrative schedule using your own example number.",
       "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.05,
@@ -4157,9 +4158,7 @@
         }
       ],
       "triggered_by": [],
-      "integrations": [
-        "alpaca"
-      ],
+      "integrations": [],
       "data_dependencies": [
         "artifact:fund_recommendations",
         "artifact:allocation_plan"
@@ -4170,22 +4169,8 @@
       "large_output": false,
       "prompt_form": [
         {
-          "key": "brokerage",
-          "label": "Brokerage account",
-          "type": "select",
-          "options": [
-            "Fidelity",
-            "Schwab",
-            "Vanguard",
-            "Robinhood",
-            "Alpaca",
-            "other"
-          ],
-          "required": true
-        },
-        {
           "key": "contribution_amount",
-          "label": "Monthly contribution amount (USD)",
+          "label": "Example contribution amount for the illustration (USD)",
           "type": "text",
           "required": true
         },
@@ -4224,16 +4209,16 @@
         "legal": 0.83,
         "real_estate": 0.88
       },
-      "description_template": "Dollar-cost averaging schedule for {primary_expertise} professionals",
+      "description_template": "Regular contribution concepts for {primary_expertise} professionals",
       "produces_contacts": false,
       "contacts_mode": null,
       "research_enabled": false,
       "autonomy_channel": null,
       "output_spec": [
-        "Contribution schedule table",
-        "Per-fund amounts drawn from the fund recommendations",
-        "Brokerage setup steps",
-        "Disclaimer"
+        "How dollar-cost averaging works, and its trade-offs",
+        "An illustrative schedule using the member's example amount, labelled as an example",
+        "Questions to ask before automating contributions",
+        "Referral line"
       ],
       "external_facts": []
     },
@@ -4241,7 +4226,7 @@
       "action_type": "insurance_review",
       "layer": 5,
       "label": "Insurance Gap Analysis & Coverage Recommendation",
-      "description": "Identify coverage gaps and recommend E&O, disability, life, and health policy parameters.",
+      "description": "Explain common coverage gaps (E&O, disability, life, health) and the questions to ask a licensed agent.",
       "model": "haiku",
       "cold_start_chain": false,
       "cold_start_prior": 0.12,
@@ -4310,11 +4295,11 @@
       "output_spec": [
         "Current coverage summary",
         "Gap analysis per policy type",
-        "Recommended coverage parameters",
-        "Disclaimer"
+        "Coverage questions to ask a licensed insurance professional",
+        "Referral line"
       ],
       "external_facts": [
-        "policy premiums and carrier names"
+        "typical coverage types and how premiums are set"
       ]
     },
     {
@@ -4410,7 +4395,7 @@
         "Beneficiary audit",
         "Business succession brief",
         "Questions for an estate attorney",
-        "Disclaimer"
+        "Referral line"
       ],
       "external_facts": []
     }

@@ -87,6 +87,9 @@
   </div>
   {% endif %}
 
+  {% if layer_number == 5 %}
+  <div role="note" style="margin:0 0 1rem;padding:.65rem .9rem;border-radius:10px;background:#FFF4DC;color:#5C3F0C;font-size:14px;line-height:1.5">{{ legal('l5_banner') }}</div>
+  {% endif %}
   <div class="ld-section-title">Artifacts &amp; completed actions</div>
 
   {% if artifacts %}

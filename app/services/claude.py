@@ -825,8 +825,8 @@ _LEGACY_HARDCODED_AGENTS = {
             ],
         },
         'fund_recommendations': {
-            'label': 'Index Fund & ETF Recommendations',
-            'description': 'Curate 8–12 recommended funds with a model portfolio allocation.',
+            'label': 'Fund Types Explained',
+            'description': 'Explain index fund and ETF categories, costs and account types, with questions for an adviser.',
             'disclaimer': True,
             'prompt_form': [
                 {'key': 'diversification', 'label': 'Diversification preference', 'type': 'select',
@@ -890,13 +890,11 @@ _LEGACY_HARDCODED_AGENTS = {
             ],
         },
         'dca_schedule': {
-            'label': 'Dollar-Cost Averaging Schedule & Contribution Plan',
-            'description': 'Build a DCA schedule table and brokerage-specific setup guide.',
+            'label': 'Regular Contribution Concepts',
+            'description': 'Explain how regular investing works, with an illustrative schedule using your own example number.',
             'disclaimer': True,
             'prompt_form': [
-                {'key': 'brokerage', 'label': 'Brokerage or investment platform', 'type': 'select',
-                 'options': ['Fidelity', 'Schwab', 'Vanguard', 'Robinhood', 'Alpaca', 'other'], 'required': True},
-                {'key': 'contribution_amount', 'label': 'Fixed contribution amount per cycle (USD)',
+                {'key': 'contribution_amount', 'label': 'Example contribution amount for the illustration (USD)',
                  'type': 'text', 'required': True},
                 {'key': 'contribution_frequency', 'label': 'Contribution frequency', 'type': 'select',
                  'options': ['weekly', 'bi-weekly', 'monthly'], 'required': True},
@@ -904,7 +902,7 @@ _LEGACY_HARDCODED_AGENTS = {
         },
         'insurance_gap_analysis': {
             'label': 'Insurance Gap Analysis & Coverage Recommendation',
-            'description': 'Identify coverage gaps and recommend E&O, disability, life, and health policy parameters.',
+            'description': 'Explain common coverage gaps (E&O, disability, life, health) and the questions to ask a licensed agent.',
             'disclaimer': True,
             'prompt_form': [
                 {'key': 'current_coverage', 'label': 'Current coverage (check all that apply)',

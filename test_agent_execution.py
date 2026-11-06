@@ -54,8 +54,10 @@ def config_checks():
     check('owner decision: newsletter and group_coaching are send_blast',
           cls['newsletter'] == cls['group_coaching'] == 'send_blast')
     check('owner decision: waitlist_landing_page stays send_blast', cls['waitlist_landing_page'] == 'send_blast')
-    check('dca_schedule is money_move and hard-gated',
-          cls['dca_schedule'] == 'money_move' and agents['dca_schedule']['hard_gate'])
+    # COMPLIANCE_PLAN D4/B4: the contribution agent explains concepts only; it has
+    # no brokerage integration, so nothing in it can move money.
+    check('dca_schedule is education only: no brokerage, no money movement',
+          cls['dca_schedule'] == 'none' and 'alpaca_order' not in str(agents['dca_schedule']))
     check('contractual agents (PandaDoc) are hard-gated',
           all(agents[a]['hard_gate'] for a in ('consulting_proposal', 'agreement_template', 'ip_licensing')))
     check('hard_gate is exactly the four dangerous classes',
