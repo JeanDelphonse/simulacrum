@@ -365,6 +365,11 @@ def create_app(config_name=None):
     def _inject_playbook_url():
         return {'playbook_url': app.config.get('PLAYBOOK_URL')}
 
+    # The visitor nav (NAV_AUDIENCE_PLAN.md): one config, resolved only by the
+    # templates that call it, so signed-in pages don't pay for it.
+    from app.services import site_nav as _site_nav
+    app.jinja_env.globals['site_nav'] = _site_nav.resolve
+
     # Shell context
     @app.shell_context_processor
     def make_shell_context():
