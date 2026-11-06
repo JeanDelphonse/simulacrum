@@ -756,6 +756,56 @@ def main():
               and "can't be imported" in page)
         check('Apollo-sourced contacts keep their source field', Contact.query.filter_by(source='apollo').count() >= 1)
 
+        # ── 15. Follow-ups stop ─────────────────────────────────────────────
+        print('\n15. Follow-ups stop on reply, bounce or opt-out (in code)')
+        from app.services.action_step_service import evaluate_condition
+
+        def followup(contact_obj, condition, created=None):
+            own = AgentAction(id=generate_id(), simulation_id=hsim.id, layer_number=1,
+                              action_type='cold_email_campaign', status='complete')
+            db.session.add(own)
+            db.session.flush()
+            st = ActionStep(id=generate_id(), agent_action_id=own.id, simulation_id=hsim.id, step_number=2,
+                            total_steps=3, action_type='cold_email_campaign', step_type='email_followup',
+                            subject='Following up', scheduled_for=datetime.utcnow(), condition_type=condition,
+                            condition_ref=contact_obj.id if condition != 'no_signature' else own.id,
+                            created_at=created or datetime.utcnow() - timedelta(days=3))
+            st.payload = {'contact_id': contact_obj.id}
+            db.session.add(st)
+            db.session.commit()
+            return st
+
+        def person(email):
+            c = Contact(id=generate_id(), user_id=heavy.id, first_name='P', last_name='Q', email=email,
+                        source='manual_entry', pipeline_stage='prospect')
+            db.session.add(c)
+            db.session.commit()
+            return c
+        fresh_c = person('fresh@x.com')
+        check('a follow-up to someone who has not answered goes ahead', evaluate_condition(followup(fresh_c, 'no_reply')))
+        rep = person('rep@x.com')
+        db.session.add(EmailLog(id=generate_id(), simulation_id=hsim.id, contact_id=rep.id, action_id=act.id,
+                                subject='s', from_email='f@x.com', from_name='F', to_email='rep@x.com', status='sent',
+                                sent_at=datetime.utcnow() - timedelta(days=2), replied_at=datetime.utcnow()))
+        db.session.commit()
+        for cond in ('no_reply', 'no_purchase', 'no_signature', 'no_booking'):
+            st = followup(rep, cond)
+            check('after a reply, a %s follow-up stops' % cond, not evaluate_condition(st)
+                  and 'replied' in (st.skip_reason or ''))
+        bnc = person('bnc@x.com')
+        db.session.add(EmailLog(id=generate_id(), simulation_id=hsim.id, contact_id=bnc.id, action_id=act.id,
+                                subject='s', from_email='f@x.com', from_name='F', to_email='bnc@x.com', status='bounced',
+                                sent_at=datetime.utcnow() - timedelta(days=2), bounced_at=datetime.utcnow()))
+        db.session.commit()
+        st = followup(bnc, 'no_purchase')
+        check('after a bounce, follow-ups stop', not evaluate_condition(st) and 'bounced' in st.skip_reason)
+        opt = person('opt@x.com')
+        db.session.add(EmailSuppression(email='opt@x.com', reason='unsubscribe'))
+        db.session.commit()
+        st = followup(opt, None)
+        check('after an opt-out, even an unconditional follow-up stops', not evaluate_condition(st)
+              and 'unsubscribed' in st.skip_reason.lower())
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

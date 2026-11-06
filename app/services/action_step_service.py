@@ -310,11 +310,59 @@ def _build_payload(step_def: dict, data: dict, contact_data: dict) -> dict:
 # Condition evaluation (A.4, FR-STEP-05)
 # ---------------------------------------------------------------------------
 
+_EMAIL_STEPS = ('email_send', 'email_followup', 'proposal_followup')
+
+
+def _step_contact_id(step):
+    try:
+        cid = (step.payload or {}).get('contact_id')
+    except Exception:
+        cid = None
+    if not cid and step.condition_type in ('no_reply', 'no_purchase', 'no_booking'):
+        cid = step.condition_ref
+    return cid
+
+
+def _contact_stop_reason(step):
+    """Why an email step must not go to its contact any more, or None."""
+    if step.step_type not in _EMAIL_STEPS:
+        return None
+    contact_id = _step_contact_id(step)
+    if not contact_id:
+        return None
+    from app.models.contact import Contact
+    from app.models.outreach_email import EmailLog
+    from app.models.simulation import Simulation
+    from app.services import suppression_service
+    replied = EmailLog.query.filter(EmailLog.contact_id == contact_id, EmailLog.replied_at.isnot(None),
+                                    EmailLog.replied_at > step.created_at).first()
+    if replied:
+        return 'Prospect replied on %s' % replied.replied_at.date()
+    if EmailLog.query.filter(EmailLog.contact_id == contact_id, EmailLog.bounced_at.isnot(None)).first():
+        return 'An earlier email to this person bounced'
+    contact = Contact.query.get(contact_id)
+    if not contact:
+        return 'Contact no longer exists'
+    sim = Simulation.query.get(step.simulation_id)
+    reason = suppression_service.check(sim.user_id if sim else contact.user_id, contact.email, contact)
+    if reason:
+        return 'Stopped: ' + suppression_service.REASON_LABELS[reason].lower()
+    return None
+
+
 def evaluate_condition(step) -> bool:
     """
     Return True if the step should execute, False if it should be skipped.
     Sets step.skip_reason when returning False.
     """
+    # COMPLIANCE_PLAN C5: any email step to a person stops once that person has
+    # replied, bounced, opted out or been marked Do Not Contact, whatever the
+    # step's own condition (no_purchase and no_signature follow-ups used to
+    # keep going after a reply).
+    stop = _contact_stop_reason(step)
+    if stop:
+        step.skip_reason = stop
+        return False
     if step.condition_type is None:
         return True
 
