@@ -2,6 +2,67 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <div class="dashboard">
+  {# Outcome check-in at day 30/90/180 (COMPLIANCE_PLAN A6). Internal only: the
+     answers are never shown publicly until counsel approves how. #}
+  {% if outcome_due %}
+  <form class="oc-card" id="outcomeCard" data-sim="{{ outcome_due.simulation_id }}" data-day="{{ outcome_due.day }}">
+    <div class="oc-head">
+      <div><b>How is it going, {{ outcome_due.day }} days in?</b>
+        <span>A few questions about {{ outcome_due.simulation_name }}. Your answers are private: they help us
+          measure how SimiSI works for people and are never shown on your page or used in marketing.</span></div>
+      <button type="button" class="oc-x" data-act="later" aria-label="Ask me later">Later</button>
+    </div>
+    <div class="oc-row">
+      <label>Income from what you built since your simulation
+        <select name="income_gained_range">
+          <option value="">Choose…</option>
+          {% for k, v in [('0','Nothing yet'),('under_1k','Under $1,000'),('1k_5k','$1,000–$5,000'),('5k_20k','$5,000–$20,000'),('20k_plus','Over $20,000'),('prefer_not',"I'd rather not say")] %}
+          <option value="{{ k }}">{{ v }}</option>{% endfor %}
+        </select></label>
+      <label class="oc-yn">First paying client? <select name="first_client"><option value="">–</option><option value="1">Yes</option><option value="0">Not yet</option></select></label>
+      <label class="oc-yn">Landed a job? <select name="job_landed"><option value="">–</option><option value="1">Yes</option><option value="0">No</option></select></label>
+    </div>
+    <label class="oc-notes">Anything else? <span>(optional)</span><textarea name="notes" maxlength="1000" rows="2"></textarea></label>
+    <div class="oc-acts">
+      <button type="submit" class="btn btn-sm btn-primary">Send</button>
+      <button type="button" class="btn btn-sm" data-act="dismiss">Don't ask again</button>
+      <span class="oc-msg" role="status"></span>
+    </div>
+  </form>
+  <style>
+    .oc-card { background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1.25rem; }
+    .oc-head { display: flex; gap: 1rem; align-items: flex-start; }
+    .oc-head > div { flex: 1; } .oc-head b { display: block; } .oc-head span { font-size: 14px; color: var(--ink-2); }
+    .oc-x { background: none; border: 0; color: var(--mute); cursor: pointer; font: inherit; font-size: 14px; text-decoration: underline; }
+    .oc-row { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin-top: .85rem; }
+    .oc-row label, .oc-notes { display: flex; flex-direction: column; gap: .25rem; font-size: 14px; font-weight: 600; color: var(--ink); }
+    .oc-notes { margin-top: .75rem; } .oc-notes span { font-weight: 400; color: var(--mute); }
+    .oc-row select, .oc-notes textarea { font: inherit; font-weight: 400; padding: .4rem .5rem; border: 1px solid var(--rule); border-radius: 8px; }
+    .oc-acts { display: flex; gap: .5rem; align-items: center; margin-top: .85rem; flex-wrap: wrap; }
+    .oc-msg { font-size: 14px; color: var(--mute); }
+  </style>
+  <script>
+  (function () {
+    var f = document.getElementById('outcomeCard'); if (!f) return;
+    var key = 'oc-later-' + f.dataset.sim + '-' + f.dataset.day;
+    if (sessionStorage.getItem(key)) { f.remove(); return; }
+    var send = function (body) {
+      body.simulation_id = f.dataset.sim; body.day = +f.dataset.day;
+      return fetch(ROOT + '/api/outcome-checkins', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+        .then(function (r) { if (!r.ok) throw r; f.innerHTML = '<p style="margin:0;font-size:15px">Thank you. That helps.</p>'; })
+        .catch(function () { f.querySelector('.oc-msg').textContent = 'Could not save. Try again later.'; });
+    };
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = function (n) { return f.elements[n].value; };
+      send({income_gained_range: v('income_gained_range'), first_client: v('first_client') === '' ? null : v('first_client') === '1',
+            job_landed: v('job_landed') === '' ? null : v('job_landed') === '1', notes: v('notes')});
+    });
+    f.querySelector('[data-act="dismiss"]').addEventListener('click', function () { send({dismiss: true}); });
+    f.querySelector('[data-act="later"]').addEventListener('click', function () { sessionStorage.setItem(key, '1'); f.remove(); });
+  })();
+  </script>
+  {% endif %}
   {# SME Console: the AI guide for setting one goal per income layer (beta) #}
   {% if guide_enabled %}
   <div style="display:flex;align-items:center;gap:.75rem;background:rgba(201,149,42,.08);border:1px solid rgba(201,149,42,.35);border-radius:12px;padding:.85rem 1.1rem;margin-bottom:1.25rem">

@@ -389,8 +389,16 @@ def dashboard():
     except Exception:
         pass
 
+    outcome_due = None
+    try:
+        from app.services import outcome_service as _os
+        outcome_due = _os.due(current_user.id)
+    except Exception:
+        logger.warning('outcome check-in lookup failed', exc_info=True)
+
     return render_template('dashboard/index.html',
                            guide_enabled=guide_enabled,
+                           outcome_due=outcome_due,
                            transition_banner=transition_banner,
                            simulations=simulations,
                            last_cycle_map=last_cycle_map,

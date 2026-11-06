@@ -272,6 +272,56 @@ def main():
               and 'Stop sharing' not in shared.get_data(as_text=True))
         check('sharing is audit-logged', AuditLog.query.filter_by(action='roi_share_on').count() == 1)
 
+        # ── 6. Outcome check-ins ────────────────────────────────────────────
+        print('\n6. Outcome check-ins')
+        from app.models.compliance import OutcomeCheckin
+        from app.services import outcome_service
+        checker = user()
+        s30 = Simulation(id=generate_id(), user_id=checker.id, name='Ops run', expertise_zone='Ops', status='complete',
+                         created_at=datetime.utcnow() - timedelta(days=31))
+        db.session.add(s30)
+        db.session.commit()
+        login(checker)
+        dash = client.get('/dashboard').get_data(as_text=True)
+        check('a simulation 31 days old asks for the day-30 check-in',
+              'id="outcomeCard"' in dash and 'data-day="30"' in dash and '30 days in' in dash)
+        fresh = user()
+        db.session.add(Simulation(id=generate_id(), user_id=fresh.id, name='New', expertise_zone='Ops', status='complete'))
+        db.session.commit()
+        check('…a new one asks for nothing', outcome_service.due(fresh.id) is None)
+        r = client.post('/api/outcome-checkins', json={'simulation_id': s30.id, 'day': 30, 'income_gained_range': 'under_1k',
+                                              'first_client': True, 'job_landed': None, 'notes': 'Two calls booked.'})
+        row = OutcomeCheckin.query.filter_by(simulation_id=s30.id, checkin_day=30).first()
+        check('an answer is recorded', r.status_code == 200 and row and row.income_gained_range == 'under_1k'
+              and row.first_client is True and row.job_landed is None and re.fullmatch(r'[A-Z0-9]{9}', row.id))
+        check('…and the prompt goes away', 'id="outcomeCard"' not in client.get('/dashboard').get_data(as_text=True))
+        check('a bad income band is refused', client.post('/api/outcome-checkins', json={
+            'simulation_id': s30.id, 'day': 30, 'income_gained_range': 'a million'}).status_code == 400)
+        login(intruder)
+        check("nobody can answer for someone else's simulation", client.post('/api/outcome-checkins', json={
+            'simulation_id': s30.id, 'day': 90, 'dismiss': True}).status_code == 400)
+        s200 = Simulation(id=generate_id(), user_id=checker.id, name='Old run', expertise_zone='Ops', status='complete',
+                          created_at=datetime.utcnow() - timedelta(days=200))
+        db.session.add(s200)
+        db.session.commit()
+        check('a long-missed simulation jumps to its latest due day', outcome_service.due(checker.id)['day'] == 180)
+        outcome_service.record(checker.id, {'simulation_id': s200.id, 'day': 180, 'dismiss': True})
+        check("…and 'don't ask again' closes it and the days it skipped",
+              outcome_service.due(checker.id) is None
+              and OutcomeCheckin.query.filter_by(simulation_id=s200.id, dismissed=True).count() == 3)
+        summary = outcome_service.admin_summary()
+        check('Admin sees aggregate counts only', summary['answered'] == 1 and summary['by_day'][30]['first_client'] == 1
+              and 'notes' not in str(summary))
+        readers = []
+        for root, _d, files in os.walk('app'):
+            for f in files:
+                if f.endswith(('.py', '.html')) and 'outcome_service' not in f and 'compliance' not in f \
+                        and f != '__init__.py':
+                    txt = open(os.path.join(root, f), encoding='utf-8').read()
+                    if 'OutcomeCheckin' in txt or 'outcome_checkins' in txt:
+                        readers.append(os.path.join(root, f))
+        check('nothing public reads the check-ins', not readers, readers)
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

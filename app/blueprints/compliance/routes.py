@@ -36,3 +36,15 @@ def admin_legal_text_update(key):
         return jsonify({'error': str(e)}), 400
     row = next(r for r in legal_text.all_rows() if r['key'] == key)
     return jsonify({'ok': True, 'status': row['status'], 'version': row['version']})
+
+
+# ── Outcome check-ins (A6): the member's own answers; internal only ─────────
+@compliance_bp.route('/api/outcome-checkins', methods=['POST'])
+@login_required
+def outcome_record():
+    from app.services import outcome_service
+    try:
+        row = outcome_service.record(current_user.id, request.get_json(silent=True) or {})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    return jsonify({'ok': True, 'id': row.id})
