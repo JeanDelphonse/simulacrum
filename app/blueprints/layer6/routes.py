@@ -1409,7 +1409,7 @@ _NODE_CATALOG = [
     {'id':'L1','label':'Active Income','tier':1,'color':'#0D1B3E','hub':False,'sub':False,'parent':None,'conditional':False},
     {'id':'L2','label':'Leveraged Income','tier':1,'color':'#1B3A6B','hub':False,'sub':False,'parent':None,'conditional':False},
     {'id':'L3','label':'Productized Income','tier':1,'color':'#0F7B72','hub':False,'sub':False,'parent':None,'conditional':False},
-    {'id':'L4','label':'Automated Residual','tier':1,'color':'#0F7B72','hub':False,'sub':False,'parent':None,'conditional':False},
+    {'id':'L4','label':'Recurring Income','tier':1,'color':'#0F7B72','hub':False,'sub':False,'parent':None,'conditional':False},
     {'id':'L5','label':'Wealth Deployment','tier':1,'color':'#C9952A','hub':False,'sub':False,'parent':None,'conditional':False},
     {'id':'ORC','label':'L6 Orchestrator','tier':2,'color':'#FFFFFF','hub':True,'sub':False,'parent':None,'conditional':False},
     {'id':'DAG','label':'Dependency Graph','tier':3,'color':'#BA7517','hub':False,'sub':False,'parent':None,'conditional':False},

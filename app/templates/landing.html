@@ -119,7 +119,7 @@
       <summary><span class="sw"></span><span class="num">Layer {{ layer.n }}</span><span class="nm">{{ layer.name }}<small>Decision lens: {{ layer.lens }}</small></span><span class="man">{{ layer.tag }}.</span><span class="ct">{{ layer.agents }} agents</span><span class="tg" aria-hidden="true"></span></summary>
       <div class="agents">
         <ul>{% for a in layer.agent_names[:7] %}<li>{{ a }}</li>{% endfor %}{% if layer.agents > 7 %}<li class="more">and {{ layer.agents - 7 }} more</li>{% endif %}</ul>
-        {% if layer.n == 5 %}<p class="adv">Advisory only. These agents plan; they never trade or move money.</p>{% endif %}
+        {% if layer.n == 5 %}<p class="adv">{{ legal('l5_note_short') }}</p>{% endif %}
       </div>
     </details>
     {% endfor %}

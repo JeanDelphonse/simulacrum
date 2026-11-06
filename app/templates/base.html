@@ -223,7 +223,7 @@ document.querySelectorAll('#signOutBtn, [data-signout]').forEach(function (b) {
           Which layer(s) drove this result?
         </label>
         <div id="layerCheckboxes" style="display:flex;flex-wrap:wrap;gap:.4rem">
-          {% for n,label in [(1,'L1: Active Income'),(2,'L2: Leveraged Income'),(3,'L3: Productized'),(4,'L4: Automated Residual'),(5,'L5: Wealth Deployment'),(6,'L6: Growth Orchestrator'),(0,'General / Overall')] %}
+          {% for n,label in [(1,'L1: Active Income'),(2,'L2: Leveraged Income'),(3,'L3: Productized'),(4,'L4: Recurring Income'),(5,'L5: Wealth Deployment'),(6,'L6: Growth Orchestrator'),(0,'General / Overall')] %}
           <label style="display:flex;align-items:center;gap:.3rem;font-size:.8rem;color:#374151;background:#f3f4f6;border-radius:6px;padding:.25rem .6rem;cursor:pointer">
             <input type="checkbox" value="{{ n }}" style="margin:0"> {{ label }}
           </label>

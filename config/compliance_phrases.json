@@ -1,0 +1,36 @@
+{
+  "_doc": "Earnings-claims phrase list (COMPLIANCE_PLAN A3). 'banned' fails test_compliance_phrases.py when found in a rendered page, an email template or an agent prompt (case-insensitive, word boundaries). 'review' only warns. 'allowed_contexts' are disclaimer phrases removed before matching, so 'not a guarantee' does not trip 'guarantee'. /legal/* pages are excluded: they are counsel's text and are not rewritten here.",
+  "banned": [
+    "passive income",
+    "while you sleep",
+    "on autopilot",
+    "guaranteed",
+    "guarantee",
+    "guarantees",
+    "effortless",
+    "automated wealth",
+    "get rich",
+    "replace your salary",
+    "quit your job",
+    "financial freedom",
+    "money working for you",
+    "money that makes money",
+    "running without you",
+    "passive assets"
+  ],
+  "review": [
+    "residual",
+    "advisory"
+  ],
+  "allowed_contexts": [
+    "not a guarantee",
+    "no guarantee",
+    "no guarantees",
+    "does not guarantee",
+    "do not guarantee",
+    "not guaranteed",
+    "cannot guarantee",
+    "can't guarantee",
+    "never guarantee"
+  ]
+}

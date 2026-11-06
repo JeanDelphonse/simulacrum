@@ -23,9 +23,9 @@ def _agent_action_types():
 _LAYER_META: dict = {
     1: {'label': 'Active Income',       'subtitle': '1:1 Time-for-Money',          'color': '#0F7B72'},
     2: {'label': 'Leveraged Delivery',  'subtitle': '1:Many Teaching & Speaking',  'color': '#7c3aed'},
-    3: {'label': 'Digital Products',    'subtitle': 'Earn While You Sleep',        'color': '#1d4ed8'},
+    3: {'label': 'Digital Products',    'subtitle': 'Built once, sold repeatedly',  'color': '#1d4ed8'},
     4: {'label': 'Automation & IP',     'subtitle': 'Systems That Scale',          'color': '#b45309'},
-    5: {'label': 'Wealth Deployment',   'subtitle': 'Money That Makes Money',      'color': '#15803d'},
+    5: {'label': 'Wealth Deployment',   'subtitle': 'Planning what you earn',      'color': '#15803d'},
 }
 
 

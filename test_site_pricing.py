@@ -116,7 +116,7 @@ def main():
         check('FAQ says five income layers', 'across 5 income layers' in text)
         check('the layer stack renders five rows', page.count('<details class="layer"') == 5)
         for name in ('Active Income', 'Leveraged Income', 'Productized Income',
-                     'Automated Residual Income', 'Wealth Deployment'):
+                     'Recurring Income', 'Wealth Deployment'):
             check('ladder shows %s' % name, name in text)
 
         print('\n6. Positioning sections A-H')

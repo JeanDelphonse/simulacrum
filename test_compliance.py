@@ -122,6 +122,50 @@ def main():
         r = client.put('/api/admin/legal-text/l5_banner', json={'body': '  '})
         check('an empty text is refused', r.status_code == 400)
 
+        # ── 3. Copy ─────────────────────────────────────────────────────────
+        print('\n3. Earnings-claims copy')
+        from app.models.outreach_campaign import OutreachTemplate
+        from app.services import outreach_campaign_service as ocs
+        import ast
+        import subprocess
+        old_src = subprocess.run(['git', 'show', '387cbcd:app/services/outreach_campaign_service.py'],
+                                 capture_output=True, text=True, encoding='utf-8').stdout
+        i = old_src.index('DEFAULT_TEMPLATES = {')
+        old = ast.literal_eval(old_src[i + len('DEFAULT_TEMPLATES = '):old_src.index('\n}\n', i) + 2])
+        db.session.add(OutreachTemplate(template_key='drip_3', name='d3', subject=old['drip_3']['subject'],
+                                        preview_text='p', body=old['drip_3']['body'], is_drip=True))
+        db.session.add(OutreachTemplate(template_key='drip_2', name='d2', subject='Our own subject',
+                                        preview_text='p', body='An admin wrote this.', is_drip=True))
+        db.session.commit()
+        check('an unedited old drip is served as the new default',
+              ocs.get_template('drip_3')['subject'] == ocs.DEFAULT_TEMPLATES['drip_3']['subject']
+              and 'while you sleep' not in ocs.get_template('drip_3')['subject'].lower())
+        check('…an admin-edited drip is left alone', ocs.get_template('drip_2')['body'] == 'An admin wrote this.')
+        ocs.seed_default_templates()
+        check('seeding upgrades only the unedited row',
+              OutreachTemplate.query.filter_by(template_key='drip_3').first().subject
+              == ocs.DEFAULT_TEMPLATES['drip_3']['subject']
+              and OutreachTemplate.query.filter_by(template_key='drip_2').first().body == 'An admin wrote this.')
+
+        paid = user()
+        paid.voice_training_paid_at = datetime.utcnow()
+        db.session.commit()
+        login(paid)
+        voice = client.get('/settings/voice').get_data(as_text=True)
+        check('the voice-training script makes no income or results claims',
+              'Read these paragraphs aloud' in voice and '46,000' not in voice and 'autopilot' not in voice
+              and 'first client' not in voice)
+        from app.models.simulation import SimulationLayer
+        check('stored layer names no longer promise passive income',
+              SimulationLayer.LAYER_NAMES[4] == 'Recurring Income — After the Initial Build'
+              and 'Money Working' not in SimulationLayer.LAYER_NAMES[5])
+        mig = open('sql/064_compliance.sql', encoding='utf-8').read()
+        check('…and the migration renames existing simulations', "LIKE 'Automated Residual%'" in mig)
+        login(admin)
+        home = client.get('/').get_data(as_text=True)
+        check("the home page's Layer 5 note comes from the legal-text source",
+              legal_text.get('l5_note_short') in home and 'Advisory only' not in home)
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

@@ -2,7 +2,7 @@
    The hero chart and sample runs are illustrative; the page labels them so. */
 (function () {
   'use strict';
-  var NAMES = (window.HOME_LAYERS && window.HOME_LAYERS.length === 5) ? window.HOME_LAYERS : ['Active income', 'Leveraged income', 'Productized income', 'Automated residual', 'Wealth deployment'];
+  var NAMES = (window.HOME_LAYERS && window.HOME_LAYERS.length === 5) ? window.HOME_LAYERS : ['Active income', 'Leveraged income', 'Productized income', 'Recurring income', 'Wealth deployment'];
   var COLORS = ['var(--l1)', 'var(--l2)', 'var(--l3)', 'var(--l4)', 'var(--l5)'];
   var root = getComputedStyle(document.documentElement);
   var fill = function (i) { return root.getPropertyValue('--l' + (i + 1)).trim(); };
@@ -143,7 +143,7 @@
       ['II', 'Layer 1: Active income', 'Optimal stopping', 'The floor, not the ceiling. One case study per Layer 1 agent: Rate Card, Consulting Outreach, Cold Email Campaign, Role Search and more.'],
       ['III', 'Layer 2: Leveraged income', 'Explore vs. exploit', 'Breaking the link between hours and dollars. Workshop Curriculum, Group Coaching, Speaking Proposals and more.'],
       ['IV', 'Layer 3: Productized income', 'Caching', 'From services to products. Course Curriculum, Pricing Research, Sales Page, Launch Sequence and more.'],
-      ['V', 'Layer 4: Automated residual', 'Scheduling', 'The automation threshold. Newsletter, Lead Magnet Funnel, SEO Content Calendar and more.'],
+      ['V', 'Layer 4: Recurring income', 'Scheduling', 'The automation threshold. Newsletter, Lead Magnet Funnel, SEO Content Calendar and more.'],
       ['VI', 'Layer 5: Wealth deployment', 'Overfitting', 'When money changes jobs. Income Allocation, Projections, Investment Policy and more. Planning only.'],
       ['VII', 'All together now', 'Relaxation', 'One life running all five layers at once, and what to do when the simulation disagrees with your gut.'],
       ['VIII', 'Running your own simulation', 'All seven, applied', 'Your first 90 days, failure modes, honest limits and the road ahead.']];

@@ -16,6 +16,7 @@ Responsibilities:
   - CAN-SPAM compliance: one-click unsubscribe, physical address, suppression respect,
     one-email-per-user-per-24h frequency cap
 """
+import hashlib
 import logging
 from datetime import datetime, timedelta
 
@@ -96,27 +97,27 @@ DEFAULT_TEMPLATES = {
             "Layer 2 — Leveraged Income. Agents design workshops, pitch speaking engagements, "
             "and structure group coaching — ways to earn more without trading more hours.\n\n"
             "To begin, create a simulation from your dashboard and select the agents that match "
-            "your expertise. The system recommends the right mix for you automatically. Most "
-            "users see their first opportunities within the first few cycles.\n\n"
+            "your expertise. The system recommends the right mix for you automatically. "
+            "Results depend on your field, effort and market.\n\n"
             "Start your simulation: {{dashboard_url}}\n\n"
             "Best regards,\nThe SimiSI Team"
         ),
     },
     'drip_3': {
         'name': 'Drip 3 — The Full System (Layers 3-5 + Orchestrator)',
-        'subject': 'How SimiSI builds income while you sleep',
-        'preview_text': 'Layers 3 to 5, and the engine that runs them automatically.',
+        'subject': 'How the deeper layers work, and what they take to build',
+        'preview_text': 'Layers 3 to 5, what they take to build, and the engine that coordinates them.',
         'body': (
             "Hi {{first_name}},\n\n"
-            "Layers 1 and 2 build income you actively deliver. The deeper layers build income "
-            "that compounds on its own.\n\n"
+            "Layers 1 and 2 build income you actively deliver. The deeper layers take more work "
+            "up front: a course, a newsletter, a licensing offer. Once built, they can keep "
+            "selling without your time on every sale. Results vary widely.\n\n"
             "Layer 3 — Productized Income. Your expertise becomes courses, ebooks, and "
             "memberships — built once, sold repeatedly.\n\n"
-            "Layer 4 — Automated Income. SEO content, newsletters, and licensing create revenue "
-            "streams that run without your daily involvement.\n\n"
-            "Layer 5 — Wealth Deployment. The system helps you allocate what you earn — "
-            "investment strategy, tax structure, and entity planning — so your income builds "
-            "lasting wealth.\n\n"
+            "Layer 4 — Recurring Income. SEO content, newsletters, and licensing can keep "
+            "working without your daily involvement once they are built and maintained.\n\n"
+            "Layer 5 — Wealth Planning. Educational planning on saving, tax structure and "
+            "entities, with questions to take to a licensed professional.\n\n"
             "Tying it all together is the orchestrator: a reasoning engine that runs every 24 "
             "hours. It reviews what's working, prioritizes the highest-value actions, and "
             "dispatches the right agents automatically. You review and approve; it does the work.\n\n"
@@ -130,6 +131,24 @@ DEFAULT_TEMPLATES = {
 STEP_TEMPLATE_KEY = {1: 'drip_1', 2: 'drip_2', 3: 'drip_3'}
 
 
+# sha256(subject + NUL + body) of earlier shipped defaults. A stored drip that
+# still matches one was never edited by an admin, so seeding replaces it with
+# the current default (COMPLIANCE_PLAN step 3); an edited drip is left alone.
+_PREVIOUS_DEFAULT_HASHES = {
+    'drip_1': {'4ea9026e239df34a96b995622ef2ea3967552f60ce723278397730134eb39be4'},
+    'drip_2': {'c1fc4d9deb7e2a9ab4314f693340d9cb19deb2206a9c7f21a788562232a32130'},
+    'drip_3': {'04a575ef1d5b37561ffb6944f1561ba5b9f5467f44fa85d5fdf7ac423d32fe8a'},
+}
+
+
+def _default_hash(subject, body):
+    return hashlib.sha256(((subject or '') + '\x00' + (body or '')).encode('utf-8')).hexdigest()
+
+
+def _is_previous_default(key, row) -> bool:
+    return _default_hash(row.subject, row.body) in _PREVIOUS_DEFAULT_HASHES.get(key, set())
+
+
 def seed_default_templates(force: bool = False):
     """Insert the 3 default drip templates into the DB if missing. Idempotent."""
     from app.extensions import db
@@ -137,7 +156,8 @@ def seed_default_templates(force: bool = False):
     changed = False
     for key, tpl in DEFAULT_TEMPLATES.items():
         existing = OutreachTemplate.query.filter_by(template_key=key).first()
-        if existing and not force:
+        unedited_old = existing is not None and _is_previous_default(key, existing)
+        if existing and not force and not unedited_old:
             continue
         if existing:
             existing.name = tpl['name']
@@ -161,7 +181,8 @@ def get_template(template_key: str):
     """
     from app.models.outreach_campaign import OutreachTemplate
     row = OutreachTemplate.query.filter_by(template_key=template_key).first()
-    if row:
+    # An unedited copy of an earlier default is served as the current default.
+    if row and not _is_previous_default(template_key, row):
         return {
             'template_key': row.template_key, 'name': row.name,
             'subject': row.subject, 'preview_text': row.preview_text,

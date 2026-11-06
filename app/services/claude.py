@@ -219,8 +219,8 @@ LAYER_DEFINITIONS = {
     1: ('Active Income — 1:1 Time-for-Money', 'active', 'Consulting, freelance engagements, speaking, fractional CXO roles. Immediately actionable, directly validated by resume Deliverables.'),
     2: ('Leveraged Income — One-to-Many', 'leveraged', 'Same expertise delivered to multiple people simultaneously: group coaching cohorts, workshops, corporate training, bootcamps.'),
     3: ('Productized Income — Sell Once, Deliver Many', 'productized', 'IP packaged into products delivered without the person present: online courses, e-books, templates, membership communities.'),
-    4: ('Automated Residual Systems — Running Without You', 'automated', 'Automated funnels, SEO content engines, SaaS tools, licensing: SaaS product, IP licensing, affiliate revenue, email funnels.'),
-    5: ('Wealth Deployment — Money Working for You', 'passive_wealth', 'Revenue from Layers 1-4 deployed into compounding wealth vehicles: index funds/ETFs, real estate equity, angel investing, dividend portfolios.'),
+    4: ('Recurring Income — After the Initial Build', 'automated', 'Offers that can keep selling after the initial build, with ongoing upkeep: SEO content engines, email funnels, newsletters, SaaS tools, IP licensing, affiliate revenue. Results vary widely; most people earn less than the upper range.'),
+    5: ('Wealth Planning — Education and Planning', 'passive_wealth', 'General education about saving, allocation concepts, tax structure, entities, insurance and estate topics, with questions to bring to a licensed professional. Never names specific securities, funds or products and never tells the user to buy, sell or allocate a specific amount.'),
 }
 
 

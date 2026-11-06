@@ -575,7 +575,7 @@
       1: 'Active Income Agent',
       2: 'Leveraged Income Agent',
       3: 'Productized Agent',
-      4: 'Automated Residual Agent',
+      4: 'Recurring Income Agent',
       5: 'Wealth Deployment Agent',
     };
     for (let i = 1; i <= layerCount; i++) {

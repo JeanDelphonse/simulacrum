@@ -115,8 +115,8 @@ class SimulationLayer(db.Model):
         1: 'Active Income — 1:1 Time-for-Money',
         2: 'Leveraged Income — One-to-Many',
         3: 'Productized Income — Sell Once, Deliver Many',
-        4: 'Automated Residual Systems — Running Without You',
-        5: 'Wealth Deployment — Money Working for You',
+        4: 'Recurring Income — After the Initial Build',
+        5: 'Wealth Planning — Education and Planning',
     }
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)

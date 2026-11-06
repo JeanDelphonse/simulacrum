@@ -51,3 +51,11 @@ CREATE INDEX ix_compliance_events_user_id ON compliance_events (user_id);
 CREATE INDEX ix_compliance_events_created_at ON compliance_events (created_at);
 
 ALTER TABLE users ADD COLUMN postal_address_enc TEXT NULL;
+
+-- Layer display names without earnings promises (COMPLIANCE_PLAN A1, D5; drafts
+-- for counsel). Simulations store the layer name, so existing rows are renamed
+-- to match what new simulations get. Internal codes (L4, L5) are unchanged.
+UPDATE simulation_layers SET layer_name = 'Recurring Income — After the Initial Build'
+ WHERE layer_number = 4 AND layer_name LIKE 'Automated Residual%';
+UPDATE simulation_layers SET layer_name = 'Wealth Planning — Education and Planning'
+ WHERE layer_number = 5 AND layer_name LIKE 'Wealth Deployment%Money Working%';

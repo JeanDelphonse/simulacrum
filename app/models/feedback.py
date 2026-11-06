@@ -6,7 +6,7 @@ _LAYER_NAMES = {
     1: 'Active Income',
     2: 'Leveraged Income',
     3: 'Productized Income',
-    4: 'Automated Residual',
+    4: 'Recurring Income',
     5: 'Wealth Deployment',
     6: 'Growth Orchestrator',
 }

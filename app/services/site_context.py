@@ -25,9 +25,9 @@ LAYERS = (
      'lens': 'Explore vs. Exploit', 'badge': '#0F7B72', 'badge_text': '#fff', 'bg': 'rgba(15,123,114,.10)'},
     {'n': 3, 'code': 'L3', 'name': 'Productized Income', 'tag': 'Expertise that sells without you in the room',
      'lens': 'Caching', 'badge': '#139488', 'badge_text': '#fff', 'bg': 'rgba(19,148,136,.10)'},
-    {'n': 4, 'code': 'L4', 'name': 'Automated Residual Income', 'tag': 'Systems that run while you sleep',
+    {'n': 4, 'code': 'L4', 'name': 'Recurring Income', 'tag': 'Income that keeps working after the initial build',
      'lens': 'Scheduling', 'badge': '#13A89E', 'badge_text': '#fff', 'bg': 'rgba(19,168,158,.10)'},
-    {'n': 5, 'code': 'L5', 'name': 'Wealth Deployment', 'tag': 'Turn income into compounding capital',
+    {'n': 5, 'code': 'L5', 'name': 'Wealth Deployment', 'tag': 'Plan what to do with what you earn',
      'lens': 'Overfitting & Relaxation', 'badge': '#C9952A', 'badge_text': '#241a05', 'bg': 'rgba(201,149,42,.12)'},
 )
 LAYER_COUNT = len(LAYERS)
@@ -89,7 +89,7 @@ _UNLOCKS = (
     ('linkedin', 'Profile', 'LinkedIn',
      'Imports your profile to build your bio page. Posting for you is rolling out.', None),
     ('alpaca', 'Wealth', 'Alpaca',
-     'Compares your allocation plan with your brokerage — advisory only; SimiSI never places trades.', 'rolling out'),
+     'Read-only: compares your plan with your account balances. SimiSI never places trades.', 'rolling out'),
 )
 
 

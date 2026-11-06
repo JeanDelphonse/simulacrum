@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 FEATURE_KEY = 'sme_console'
 LAYER_NAMES = {1: 'Active income', 2: 'Leveraged income', 3: 'Productized income',
-               4: 'Automated residual income', 5: 'Wealth deployment'}
+               4: 'Recurring income', 5: 'Wealth deployment'}
 # Agents a layer's goal card can update (PRD table).
 LAYER_AGENTS = {
     1: ['rate_card', 'consulting_outreach', 'cold_email_campaign', 'role_search', 'booking_page',
@@ -415,7 +415,7 @@ def _system_prompt(guide_name: str, briefing_text: str) -> list:
     next_year = now.replace(year=now.year + 1, day=1).strftime('%B %Y')
     rules = f"""You are {guide_name}, an AI guide inside SimiSI's SME Console. You are an AI, not a person, and you
 say so if asked. You help ONE user set one clear, measurable goal per income layer (L1 Active, L2 Leveraged,
-L3 Productized, L4 Automated residual, L5 Wealth deployment) and name their skills in their own words.
+L3 Productized, L4 Recurring income, L5 Wealth deployment) and name their skills in their own words.
 
 CONVERSATION
 - Follow GROW for the layer in focus: G (what would success look like in 6-12 months), R (where they stand

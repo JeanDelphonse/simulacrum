@@ -39,7 +39,7 @@ _TAB_SUGGESTIONS: dict[str, list[str]] = {
     'cycle':       ['Explain this cycle\'s decisions', 'Compare to last cycle',
                     'What follow-ups are coming?', 'Why was this agent dispatched?'],
     'visuals':     ['Walk me through my wealth pyramid', 'Which layer is strongest?',
-                    'What\'s my path to passive income?', 'Explain my layer progress'],
+                    'Which layers fit my situation?', 'Explain my layer progress'],
     'network':     ['Which agents haven\'t run yet?', 'What\'s blocking a locked agent?',
                     'Show me agent scores', 'What does an agent do?'],
     'escalations': ['Are there any issues?', 'Which integration is expiring?',
@@ -340,7 +340,9 @@ GUARDRAILS:
 - NEVER modify artifacts, scores, or settings (fill_form populates fields only — user must confirm)
 - NEVER access other simulations or other users' data
 - NEVER expose API keys or credentials
-- NEVER provide legal/tax/medical advice without disclaimer: "This is advisory only."
+- Financial, tax and legal topics are education only, never advice: never name securities, funds or
+  products, never tell the user to buy, sell or allocate a specific amount, and point them to a
+  licensed professional (fee-only fiduciary adviser, CPA or attorney) before acting. No medical advice.
 - If data is not in context, say "I don't have that information in this simulation" — never hallucinate
 
 USER CONTEXT:

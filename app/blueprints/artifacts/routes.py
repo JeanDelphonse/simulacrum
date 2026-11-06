@@ -496,7 +496,7 @@ def _default_bundle_name(sim, bundle_type: str, layer_number: Optional[int]) -> 
     zone = sim.expertise_zone or 'Simulation'
     date_str = datetime.utcnow().strftime('%b %Y')
     layer_names = {1: 'Active Income', 2: 'Leveraged Income', 3: 'Productized Income',
-                   4: 'Automated Residual', 5: 'Wealth Deployment'}
+                   4: 'Recurring Income', 5: 'Wealth Deployment'}
     type_labels = {
         'layer_portfolio': f'Layer {layer_number} — {layer_names.get(layer_number, "Portfolio")} ({date_str})',
         'full_simulation': f'Full Simulation Package — {zone} ({date_str})',

@@ -74,7 +74,7 @@ LAYER_NAMES = {
     'L1': 'Active Income',
     'L2': 'Leveraged Income',
     'L3': 'Productized Income',
-    'L4': 'Automated Residual',
+    'L4': 'Recurring Income',
     'L5': 'Wealth Deployment',
     'L6': 'Orchestration',
 }

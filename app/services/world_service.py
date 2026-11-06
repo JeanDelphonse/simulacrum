@@ -205,7 +205,7 @@ _COMPOUND_AGENTS = frozenset([
 
 LAYER_NAMES = {
     1: 'Active Income', 2: 'Leveraged Income', 3: 'Productized Income',
-    4: 'Automated Residual', 5: 'Wealth Deployment',
+    4: 'Recurring Income', 5: 'Wealth Deployment',
 }
 LAYER_COLORS = {
     1: '#0B4A46', 2: '#0F7B72', 3: '#139488', 4: '#13A89E', 5: '#C9952A',
