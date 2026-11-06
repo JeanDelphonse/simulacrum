@@ -322,10 +322,24 @@ The output specs for `fund_recommendations` and `dca_schedule` are rewritten per
 | 19 | The D1 approval default | `models/layer6.py`, `layer6/routes.py`, GCC settings copy | **High (behaviour change)** | New simulations: nothing sends until opted in |
 | 20 | Full suite, site render and contrast audit at 390 and 1280 px, zip | — | — | — |
 
+### Where the build differs from this plan
+- **Admin page.** The Layer 5 switch, commercial-email limits, compliance events and outcome aggregates live on a new **Admin → Compliance** page (`/admin/compliance`), not in the observability console. Legal text is edited at **Admin → Legal Text**.
+- **Layer 5 simulation narrative.** Besides agent outputs (step 8), the simulation's own Layer 5 layer is filtered too. It is regenerated once with the strict rules; if it still names a ticker or product, the offending sentences are **redacted** (not replaced wholesale with the fallback), so the rest of the planning narrative survives. Each catch is a `compliance_events` row.
+- **Caps defer, they don't drop.** Over a daily or warm-up cap the core sender returns `status: 'deferred'`; the step runner reschedules the step for 01:00 UTC the next day and counts it as held. A paused campaign returns `skipped`.
+- **Old drip defaults.** Unedited copies of the previous drip templates are recognised by hash and served as the new defaults; edited ones are left alone.
+- **API path.** Outcome check-ins post to `/api/outcome-checkins` (`/api/outcomes` was already taken by calibration).
+- **Suppression labels.** The single check returns `global` / `member` / `do_not_contact` / `dnc_flag`; `global` shows as "Unsubscribed, bounced or complained".
+- **Follow-up stops.** A step whose contact no longer exists is skipped ("Contact no longer exists") rather than sent.
+- **LinkedIn (step 16).** Removed: `post_ugc`, the `w_member_social` scope, the `linkedin_post` step type, tool and integration mapping (sql/064 deletes the registry row), and the GCC "LinkedIn messaging" toggle. Approving a queued post now marks it ready and shows **Copy text** and **Open LinkedIn**. LinkedIn's own share-offsite buttons (bio editor, onboarding) stay; the member posts from LinkedIn's dialog.
+- **Audit (step 17).** One `outreach_send` AuditLog row per attempt on the agent/step sender and on SimiSI's own drip/broadcast sender; admin test sends are not included.
+- **Prices (step 18).** `stripe_service.create_payment_intent` also had a 69500 default; all three call paths now need the real amount.
+- **D1 (step 19).** New configs default to `review_all` with email and email funnels off, and AI-suggested settings can no longer pre-tick them. sql/064 writes the old defaults onto existing configs that had none stored, so live simulations keep sending as before.
+
 **Testing:** all through the Flask test client with fakes for SendGrid, Anthropic and Alpaca, and Playwright on pages rendered by the test client. No local server.
 
 **Deploy (later):**
 - run `sql/064_compliance.sql`;
-- set the SimiSI postal address in Admin;
-- set the Layer 5 switch to on;
+- set the SimiSI postal address in Admin → Compliance (SimiSI's own drips and broadcasts hold until it is set);
+- the Layer 5 switch defaults to on; check it in Admin → Compliance;
+- LinkedIn: the app no longer requests `w_member_social`; members reconnecting get the identity scope only;
 - users must add a postal address before campaigns send again. That is a visible behaviour change; GCC shows an action item.

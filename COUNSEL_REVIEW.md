@@ -135,6 +135,22 @@ Also removed for accuracy: a Settings toggle labelled **"Enable automated tradin
 
 **Q10.** Outreach goes out "From: {Member Name} <simi@simulacrumai.io>" with replies routed back to the member. Is that sufficiently non-deceptive for the From line, or should it read "{Member Name} via SimiSI"?
 
+### 7b. Automatic sending is opt-in (product copy, not legal text)
+New simulations start with email auto-send off and the autonomy level on "Review All". The member turns automatic sending on in GCC → Settings. These lines are interface copy, so they live in the template rather than the legal-text table, but they describe a compliance control and are drafts:
+
+| Where | Proposed text |
+|---|---|
+| Channel approvals intro | **"Off means agents draft and you approve each send. Turn a channel on only if you want its emails sent without asking you each time. Every email still carries an unsubscribe link and your mailing address."** |
+| Email toggle | **"Send outreach emails without asking me"** |
+| Email-funnel toggle | **"Send email-funnel steps without asking me"** |
+| Review All | **"Every action needs your approval. The default."** |
+| Balanced | **"You pre-approve email; bookings and publishing still ask you"** |
+| Full Auto | **"You pre-approve every channel"** |
+
+The "LinkedIn messaging" toggle was removed: SimiSI no longer posts or messages on LinkedIn at all.
+
+**Q12.** Is a member's one-time "send without asking me" switch a sufficient record of their authorisation for agent-drafted emails sent under their name, or should each campaign need its own confirmation?
+
 ---
 
 ## 8. Not changed in this task

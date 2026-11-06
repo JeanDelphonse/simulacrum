@@ -129,7 +129,7 @@ def build_simi_context(sim_id: str, user_id: str) -> dict:
         ctx['sim_status']  = sim.status if sim else 'active'
         ctx['cycle_num']   = cycle.cycle_number if cycle else 0
         ctx['phase']       = cycle.phase if cycle else 'explore'
-        ctx['trust_level'] = getattr(config, 'trust_level', 'balanced') or 'balanced' if config else 'balanced'
+        ctx['trust_level'] = getattr(config, 'trust_level', 'review_all') or 'review_all' if config else 'review_all'
         ctx['prospect_tier'] = getattr(sim, 'prospect_tier', 1) or 1 if sim else 1
 
         # Next cycle
@@ -152,7 +152,7 @@ def build_simi_context(sim_id: str, user_id: str) -> dict:
         ctx.setdefault('sim_name', '')
         ctx.setdefault('cycle_num', 0)
         ctx.setdefault('phase', 'explore')
-        ctx.setdefault('trust_level', 'balanced')
+        ctx.setdefault('trust_level', 'review_all')
         ctx.setdefault('prospect_tier', 1)
         ctx.setdefault('next_cycle_at', 'Not scheduled')
         ctx.setdefault('last_cycle_reasoning', '')

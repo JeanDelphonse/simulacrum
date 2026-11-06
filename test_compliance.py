@@ -867,6 +867,34 @@ def main():
             p18 = _insp18.signature(getattr(fn, '__wrapped__', fn)).parameters['amount_cents']
             check('%s needs the real amount (no default price)' % fn.__name__, p18.default is _insp18.Parameter.empty)
 
+        print('\n19. New simulations start with email auto-send off')
+        from app.models.layer6 import Layer6Config
+        from app.models.simulation import Simulation
+        fresh = Layer6Config()
+        check('a new config does not send email without asking', not fresh.channel_approvals['email']
+              and not fresh.channel_approvals['email_funnels'], fresh.channel_approvals)
+        check('a new config defaults to review-everything',
+              Layer6Config.__table__.c.trust_level.default.arg == 'review_all')
+        kept = Layer6Config()
+        kept.channel_approvals = {'email': True, 'email_funnels': True}
+        check('a simulation that already opted in keeps email on', kept.channel_approvals['email'] is True)
+        mig = open('sql/064_compliance.sql', encoding='utf-8').read()
+        check('the migration keeps existing simulations on their old defaults',
+              'UPDATE layer6_configs' in mig and 'WHERE channel_approvals IS NULL' in mig)
+        o19 = user()
+        s19 = Simulation(id=generate_id(), user_id=o19.id, name='D1', status='completed')
+        db.session.add(s19)
+        db.session.commit()
+        login(o19)
+        r = client.post('/api/simulations/%s/layer6/setup' % s19.id, json={'cadence': 'weekly'})
+        cfg19 = Layer6Config.query.filter_by(simulation_id=s19.id).first()
+        check('setting up autonomy without opting in leaves email off', r.status_code in (200, 201) and cfg19
+              and not cfg19.channel_approvals['email'] and cfg19.trust_level == 'review_all',
+              (r.status_code, r.get_data(as_text=True)[:200]))
+        src = open('app/blueprints/layer6/routes.py', encoding='utf-8').read()
+        check('AI-suggested settings never pre-tick automatic email', "'email':         False," in src
+              and "trust = 'review_all'" in src)
+
     check('no network calls', not network, network)
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     if FAIL:

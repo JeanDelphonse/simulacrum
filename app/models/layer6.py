@@ -35,7 +35,8 @@ class Layer6Config(db.Model):
     explore_phase_end_month = db.Column(db.Integer, nullable=False, default=3)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     sandbox_email_routing = db.Column(db.Boolean, nullable=False, default=False)
-    trust_level = db.Column(db.String(20), nullable=False, default='balanced')
+    # New simulations review everything (COMPLIANCE_PLAN D1); the member opts in.
+    trust_level = db.Column(db.String(20), nullable=False, default='review_all')
     # SIM-REQ-LIFECYCLE-001 — stored at creation from PlatformSettings defaults
     active_cycle_limit = db.Column(db.Integer, nullable=False, default=30)
     maintenance_frequency_hours = db.Column(db.Integer, nullable=False, default=168)
@@ -52,9 +53,12 @@ class Layer6Config(db.Model):
 
     @property
     def channel_approvals(self):
+        # Email sends without asking only after the member turns it on
+        # (COMPLIANCE_PLAN D1). Rows saved before that keep their explicit
+        # values; sql/064 wrote the old defaults onto rows that had none.
         defaults = {
-            'email': True,
-            'email_funnels': True,
+            'email': False,
+            'email_funnels': False,
             'linkedin': False,
             'calendar': False,
             'content_publishing': False,

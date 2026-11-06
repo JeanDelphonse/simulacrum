@@ -1,5 +1,8 @@
 -- Compliance risk reduction (COMPLIANCE_PLAN.md): earnings claims, Layer 5
--- education-only rules, outreach rules. Run once on deploy. Additive.
+-- education-only rules, outreach rules. Run once on deploy. Additive apart from
+-- the row deletions and data updates at the end (layer names, the retired
+-- alpaca_order / linkedin_post tools and fintech_toggle, and freezing existing
+-- layer6_configs on their old email defaults before new ones default to off).
 --
 -- legal_texts        the one source for disclaimer / disclosure / claims wording.
 --                    Seeded by the app on first use, every row status 'draft';
@@ -67,6 +70,13 @@ ALTER TABLE simulations ADD COLUMN roi_share_enabled TINYINT(1) NOT NULL DEFAULT
 -- gone from the registry, and the old admin 'fintech' switch is retired.
 DELETE FROM tool_registry WHERE tool_key = 'alpaca_order';
 DELETE FROM platform_settings WHERE `key` = 'fintech_toggle';
+
+-- New simulations start with email auto-send off (COMPLIANCE_PLAN D1). Existing
+-- simulations keep what they had: rows with no stored approvals used the old
+-- defaults (email on), so write those defaults onto them before the code flips.
+UPDATE layer6_configs
+   SET channel_approvals = '{"email": true, "email_funnels": true, "linkedin": false, "calendar": false, "content_publishing": false}'
+ WHERE channel_approvals IS NULL;
 
 -- SimiSI never posts or messages on LinkedIn for a member (COMPLIANCE_PLAN C6).
 DELETE FROM tool_registry WHERE tool_key = 'linkedin_post';

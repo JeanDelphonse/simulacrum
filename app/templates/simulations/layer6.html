@@ -1996,12 +1996,12 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
       {# Trust Controls — 3-level preset (ENH-09) #}
       <div class="l6s-section">
         <div class="l6s-section-label">Autonomy level</div>
-        {% set tl = cfg.trust_level if cfg and cfg.trust_level else 'balanced' %}
+        {% set tl = cfg.trust_level if cfg and cfg.trust_level else 'review_all' %}
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-top:.5rem">
           {% for level, label, desc in [
-            ('review_all', 'Review All', 'Every action needs your approval'),
-            ('balanced', 'Balanced', 'Email runs freely; LinkedIn and bookings need approval'),
-            ('full_auto', 'Full Auto', 'All channels run autonomously'),
+            ('review_all', 'Review All', 'Every action needs your approval. The default.'),
+            ('balanced', 'Balanced', 'You pre-approve email; bookings and publishing still ask you'),
+            ('full_auto', 'Full Auto', 'You pre-approve every channel'),
           ] %}
           <label style="cursor:pointer;display:block">
             <input type="radio" name="l6sTrustLevel" value="{{ level }}" {% if tl == level %}checked{% endif %} style="display:none" onchange="previewTrust('{{ level }}')">
@@ -2017,18 +2017,15 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
       {# Channel approvals #}
       <div class="l6s-section">
         <div class="l6s-section-label">Channel approvals</div>
+        <div style="font-size:.75rem;opacity:.7;line-height:1.45;margin:.2rem 0 .5rem">Off means agents draft and you approve each send. Turn a channel on only if you want its emails sent without asking you each time. Every email still carries an unsubscribe link and your mailing address.</div>
         {% set ch = cfg.channel_approvals if cfg and cfg.channel_approvals else {} %}
         <div class="l6s-toggle-row">
-          <label for="l6sChEmail">Email outreach</label>
-          <input type="checkbox" id="l6sChEmail" {% if ch.get('email', True) %}checked{% endif %}>
+          <label for="l6sChEmail">Send outreach emails without asking me</label>
+          <input type="checkbox" id="l6sChEmail" {% if ch.get('email', False) %}checked{% endif %}>
         </div>
         <div class="l6s-toggle-row">
-          <label for="l6sChFunnel">Email funnels</label>
-          <input type="checkbox" id="l6sChFunnel" {% if ch.get('email_funnels', True) %}checked{% endif %}>
-        </div>
-        <div class="l6s-toggle-row">
-          <label for="l6sChLinkedin">LinkedIn messaging</label>
-          <input type="checkbox" id="l6sChLinkedin" {% if ch.get('linkedin', False) %}checked{% endif %}>
+          <label for="l6sChFunnel">Send email-funnel steps without asking me</label>
+          <input type="checkbox" id="l6sChFunnel" {% if ch.get('email_funnels', False) %}checked{% endif %}>
         </div>
         <div class="l6s-toggle-row">
           <label for="l6sChCalendar">Calendar booking</label>
@@ -2960,7 +2957,6 @@ async function _loadL6Suggestions() {
     var ch = s.channel_approvals || {};
     _l6SetCheck('l6sChEmail',    ch.email);
     _l6SetCheck('l6sChFunnel',   ch.email_funnels);
-    _l6SetCheck('l6sChLinkedin', ch.linkedin);
     _l6SetCheck('l6sChCalendar', ch.calendar);
     _l6SetCheck('l6sChContent',  ch.content);
 
@@ -2994,7 +2990,6 @@ function previewTrust(level) {
   if (!preset) return;
   document.getElementById('l6sChEmail').checked    = preset.email;
   document.getElementById('l6sChFunnel').checked   = preset.email_funnels;
-  document.getElementById('l6sChLinkedin').checked = preset.linkedin;
   document.getElementById('l6sChCalendar').checked = preset.calendar;
   document.getElementById('l6sChContent').checked  = preset.content_publishing;
   document.querySelectorAll('.l6s-trust-card').forEach(el => {
@@ -3015,11 +3010,11 @@ function _l6sPayload() {
     actions_per_cycle: parseInt(document.getElementById('l6sActionsPerCycle').value) || 3,
     spend_ceiling:    parseFloat(document.getElementById('l6sSpendCeiling').value) || 0,
     contact_scope:    document.getElementById('l6sContactScope').value,
-    trust_level:      trustRadio ? trustRadio.value : 'balanced',
+    trust_level:      trustRadio ? trustRadio.value : 'review_all',
     channel_approvals: {
       email:          document.getElementById('l6sChEmail').checked,
       email_funnels:  document.getElementById('l6sChFunnel').checked,
-      linkedin:       document.getElementById('l6sChLinkedin').checked,
+      linkedin:       false,     // SimiSI never posts or messages on LinkedIn (C6)
       calendar:       document.getElementById('l6sChCalendar').checked,
       content:        document.getElementById('l6sChContent').checked,
     },

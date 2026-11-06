@@ -189,7 +189,7 @@ def suggest_config(sim_id):
         "- actions_per_cycle: 2–3 for simple setups, 4–5 for multi-stream setups\n"
         "- spend_ceiling: 0 if no paid integrations, 10–25 if apollo connected\n"
         "- contact_scope: 'any_researched' if apollo connected, 'linkedin_connections' if only linkedin, else 'uploaded_only'\n"
-        "- trust_level: 'review_all' safest for first-timers; 'balanced' if clear outreach/consulting streams exist\n"
+        "- trust_level: always 'review_all'; the member opts in to more autonomy themselves\n"
         "- channel_approvals.linkedin: true ONLY if linkedin is in connected integrations\n"
         "- channel_approvals.calendar: true if coaching/consulting streams present\n"
         "- channel_approvals.content: true if course/content/digital-product streams present\n"
@@ -197,7 +197,7 @@ def suggest_config(sim_id):
         "- reason: one short sentence explaining the key settings choice (max 120 chars)\n\n"
         "Return ONLY a JSON object, no markdown:\n"
         '{"cadence":"every_3_days","actions_per_cycle":3,"spend_ceiling":0,"contact_scope":"uploaded_only",'
-        '"trust_level":"balanced","channel_approvals":{"email":true,"email_funnels":true,"linkedin":false,'
+        '"trust_level":"review_all","channel_approvals":{"email":false,"email_funnels":false,"linkedin":false,'
         '"calendar":false,"content":false},"blocked_actions":["tax","invest"],"reason":"..."}'
     )
 
@@ -224,7 +224,6 @@ def suggest_config(sim_id):
     # Validate and sanitise
     valid_cadences = {'daily', 'every_3_days', 'weekly'}
     valid_scopes   = {'uploaded_only', 'linkedin_connections', 'any_researched'}
-    valid_trust    = {'review_all', 'balanced', 'full_auto'}
     valid_blocked  = {'tax', 'invest', 'social', 'cold_email'}
 
     cadence = suggestion.get('cadence', 'every_3_days')
@@ -235,16 +234,15 @@ def suggest_config(sim_id):
     if scope not in valid_scopes:
         scope = 'uploaded_only'
 
-    trust = suggestion.get('trust_level', 'balanced')
-    if trust not in valid_trust:
-        trust = 'balanced'
+    # Never suggest more autonomy than review-everything: sending email without
+    # asking is the member's explicit opt-in (COMPLIANCE_PLAN D1).
+    trust = 'review_all'
 
     ch = suggestion.get('channel_approvals') or {}
-    linkedin_ok = 'linkedin' in connected
     channel_approvals = {
-        'email':         bool(ch.get('email', True)),
-        'email_funnels': bool(ch.get('email_funnels', True)),
-        'linkedin':      bool(ch.get('linkedin', False)) and linkedin_ok,
+        'email':         False,
+        'email_funnels': False,
+        'linkedin':      False,
         'calendar':      bool(ch.get('calendar', False)),
         'content':       bool(ch.get('content', False)),
     }
