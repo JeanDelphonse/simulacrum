@@ -11,28 +11,9 @@
 {% if it.external %} target="_blank" rel="noopener"{% endif %}
 {%- endmacro %}
 
-{# Bar links and right-hand actions (inside .ss-nav .wrap, after the logo). #}
-{% macro bar(nav) %}
-<ul class="ss-nav-links ss-aud-links">
-  {% for g in nav.groups %}
-  <li><a class="ss-trigger" id="ssTrig-{{ g.id }}" href="{{ g.nojs_href }}" data-panel="{{ g.id }}">{{ g.label }}{{ _chevron() }}</a></li>
-  {% endfor %}
-  {% for it in nav.links %}
-  <li><a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a></li>
-  {% endfor %}
-</ul>
-<div class="ss-nav-right">
-  {% for it in nav.actions %}
-  {% if it.id == 'get_started' %}<a class="btn primary sm" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>
-  {% else %}<a class="ss-nav-login" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>{% endif %}
-  {% endfor %}
-  <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
-</div>
-{% endmacro %}
-
-{# Mega panels (inside .ss-nav, after .wrap, so they overlay the page). #}
-{% macro panels(nav) %}
-{% for g in nav.groups %}
+{# A mega panel, placed right after its trigger so Tab moves into it. It is
+   positioned against the sticky .ss-nav, so it overlays the page. #}
+{% macro _panel(g) %}
 <div class="ss-mega" id="ssPanel-{{ g.id }}" role="region" aria-labelledby="ssTrig-{{ g.id }}" hidden>
   <div class="ss-mega-inner cols-{{ g.columns|length + 1 }}">
     {% for c in g.columns %}
@@ -57,7 +38,25 @@
     </div>
   </div>
 </div>
-{% endfor %}
+{% endmacro %}
+
+{# Bar links and right-hand actions (inside .ss-nav .wrap, after the logo). #}
+{% macro bar(nav) %}
+<ul class="ss-nav-links ss-aud-links">
+  {% for g in nav.groups %}
+  <li><a class="ss-trigger" id="ssTrig-{{ g.id }}" href="{{ g.nojs_href }}" data-panel="{{ g.id }}">{{ g.label }}{{ _chevron() }}</a>{{ _panel(g) }}</li>
+  {% endfor %}
+  {% for it in nav.links %}
+  <li><a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a></li>
+  {% endfor %}
+</ul>
+<div class="ss-nav-right">
+  {% for it in nav.actions %}
+  {% if it.id == 'get_started' %}<a class="btn primary sm" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>
+  {% else %}<a class="ss-nav-login" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>{% endif %}
+  {% endfor %}
+  <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
+</div>
 {% endmacro %}
 
 {# Phone drawer (after the nav). Titles only; the first group starts open. #}

@@ -60,7 +60,6 @@
     {{ logo_ui.logo(url_for('pages.index')) }}
     {{ site_nav_ui.bar(_nav) }}
   </div>
-  {{ site_nav_ui.panels(_nav) }}
 </nav>
 <div class="ss-scrim" id="ssScrim" hidden></div>
 {{ site_nav_ui.drawer(_nav) }}
@@ -101,6 +100,7 @@
 window.ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
 window.DEMO_VIDEO_URL = '{% if current_user.is_authenticated %}{{ url_for("static", filename="media/Simulacrum_Career_as_Asset.mp4") }}{% else %}{{ url_for("static", filename="media/Simulacrum_Revenue_Engine.mp4") }}{% endif %}';
 </script>
+{% if not current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/site_nav.js') }}" defer></script>{% endif %}
 {% block scripts %}{% endblock %}
 <script>
 document.querySelectorAll('#signOutBtn, [data-signout]').forEach(function (b) {
@@ -117,7 +117,7 @@ document.querySelectorAll('#signOutBtn, [data-signout]').forEach(function (b) {
     addEventListener('scroll', onScroll, {passive: true}); onScroll();
   }
   var mb = document.getElementById('ssMenuBtn'), dr = document.getElementById('ssDrawer');
-  if (!mb || !dr) return;
+  if (!mb || !dr || dr.classList.contains('ss-drawer-aud')) return;   // visitors: js/site_nav.js
   var set = function (open) {
     dr.classList.toggle('open', open); mb.setAttribute('aria-expanded', open); mb.textContent = open ? 'Close' : 'Menu';
   };
