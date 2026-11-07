@@ -22,36 +22,16 @@
 {% import "partials/_site_nav.html" as site_nav_ui %}
 {% block announce %}{% endblock %}
 {% if current_user.is_authenticated %}
-<nav class="ss-nav is-top" id="ssNav" aria-label="Main">
+{# Members: grouped menus, rendered from app/services/site_nav.py. #}
+{% set _mnav = member_nav(current_user, current_user_is_sme) %}
+<nav class="ss-nav ss-nav-member is-top" id="ssNav" aria-label="Main">
   <div class="wrap">
     {{ logo_ui.logo(url_for('pages.index')) }}
-    <ul class="ss-nav-links">
-      <li><a href="{{ url_for('pages.dashboard') }}">Dashboard</a></li>
-      {% if blog_nav_visible %}<li><a href="{{ url_for('pages.blog_index') }}">Journal</a></li>{% endif %}
-      {% if current_user.is_partner %}<li><a href="{{ url_for('pages.partner_dashboard') }}">Partner dashboard</a></li>{% endif %}
-      {% if current_user_is_sme %}<li><a href="{{ url_for('pages.sme_console') }}">SME Console</a></li>{% endif %}
-      {% if current_user.is_admin %}<li><a href="{{ url_for('pages.admin_view') }}">Admin</a></li>{% endif %}
-      <li><a href="{{ url_for('pages.settings_profile') }}">Settings</a></li>
-      <li><button type="button" data-demo>Watch demo</button></li>
-    </ul>
-    <div class="ss-nav-right">
-      <span class="ss-nav-user">{{ current_user.full_name }}</span>
-      <button class="btn sm ss-hide-md" id="signOutBtn" type="button">Sign out</button>
-      <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
-    </div>
+    {{ site_nav_ui.member_bar(_mnav, request.endpoint) }}
   </div>
 </nav>
-<div class="ss-drawer" id="ssDrawer">
-  <a href="{{ url_for('pages.dashboard') }}">Dashboard</a>
-  {% if blog_nav_visible %}<a href="{{ url_for('pages.blog_index') }}">Journal</a>{% endif %}
-  {% if current_user.is_partner %}<a href="{{ url_for('pages.partner_dashboard') }}">Partner dashboard</a>{% endif %}
-  {% if current_user_is_sme %}<a href="{{ url_for('pages.sme_console') }}">SME Console</a>{% endif %}
-  {% if current_user.is_admin %}<a href="{{ url_for('pages.admin_view') }}">Admin</a>{% endif %}
-  <a href="{{ url_for('pages.settings_profile') }}">Settings</a>
-  <button type="button" data-demo>Watch demo</button>
-  <button type="button" data-signout>Sign out</button>
-  <div class="ss-drawer-note">Signed in as {{ current_user.full_name or current_user.email }}</div>
-</div>
+<div class="ss-scrim" id="ssScrim" hidden></div>
+{{ site_nav_ui.member_drawer(_mnav) }}
 {% else %}
 {# Visitors: the audience nav, rendered from app/services/site_nav.py. #}
 {% set _nav = site_nav() %}
@@ -100,7 +80,7 @@
 window.ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
 window.DEMO_VIDEO_URL = '{% if current_user.is_authenticated %}{{ url_for("static", filename="media/Simulacrum_Career_as_Asset.mp4") }}{% else %}{{ url_for("static", filename="media/Simulacrum_Revenue_Engine.mp4") }}{% endif %}';
 </script>
-{% if not current_user.is_authenticated %}<script src="{{ url_for('static', filename='js/site_nav.js') }}" defer></script>{% endif %}
+<script src="{{ url_for('static', filename='js/site_nav.js') }}" defer></script>
 {% block scripts %}{% endblock %}
 <script>
 document.querySelectorAll('#signOutBtn, [data-signout]').forEach(function (b) {
@@ -116,14 +96,6 @@ document.querySelectorAll('#signOutBtn, [data-signout]').forEach(function (b) {
     var onScroll = function () { nav.classList.toggle('is-top', window.scrollY <= 8); };
     addEventListener('scroll', onScroll, {passive: true}); onScroll();
   }
-  var mb = document.getElementById('ssMenuBtn'), dr = document.getElementById('ssDrawer');
-  if (!mb || !dr || dr.classList.contains('ss-drawer-aud')) return;   // visitors: js/site_nav.js
-  var set = function (open) {
-    dr.classList.toggle('open', open); mb.setAttribute('aria-expanded', open); mb.textContent = open ? 'Close' : 'Menu';
-  };
-  mb.addEventListener('click', function () { set(!dr.classList.contains('open')); });
-  dr.querySelectorAll('a, button').forEach(function (a) { a.addEventListener('click', function () { set(false); }); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
 })();
 
 (function () {

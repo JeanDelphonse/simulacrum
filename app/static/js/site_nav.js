@@ -1,14 +1,15 @@
-/* The visitor nav (NAV_AUDIENCE_PLAN.md): audience mega panels and the phone
-   drawer. Markup comes from partials/_site_nav.html; without this file the two
-   triggers stay plain links. No framework. */
+/* The site nav (NAV_AUDIENCE_PLAN.md): visitor mega panels, member menus and
+   the phone drawer. Markup comes from partials/_site_nav.html; without this
+   file the triggers stay plain links. No framework. */
 (function () {
   'use strict';
   var nav = document.getElementById('ssNav');
-  if (!nav || !nav.classList.contains('ss-nav-aud')) return;
+  if (!nav || !(nav.classList.contains('ss-nav-aud') || nav.classList.contains('ss-nav-member'))) return;
   var scrim = document.getElementById('ssScrim');
   var drawer = document.getElementById('ssDrawer');
   var menuBtn = document.getElementById('ssMenuBtn');
-  var phone = window.matchMedia('(max-width: 899px)');
+  // Visitors collapse below 900px; the longer member bar below 1001px.
+  var phone = window.matchMedia(nav.classList.contains('ss-nav-member') ? '(max-width: 1000px)' : '(max-width: 899px)');
   var root = window.ROOT || '';
 
   // nav_open / nav_click: panel name or item id only, never personal data.

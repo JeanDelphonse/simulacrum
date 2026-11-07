@@ -61,7 +61,7 @@
 
 {# Phone drawer (after the nav). Titles only; the first group starts open. #}
 {% macro drawer(nav) %}
-<nav class="ss-drawer ss-drawer-aud" id="ssDrawer" aria-label="Menu">
+<nav class="ss-drawer ss-drawer-aud ss-drawer-menus" id="ssDrawer" aria-label="Menu">
   {% for g in nav.groups %}
   <div class="ss-dsec">
     <button type="button" class="ss-dsec-btn" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="ssDsec-{{ g.id }}">{{ g.label }}{{ _chevron() }}</button>
@@ -81,5 +81,74 @@
     <a class="btn {{ 'primary' if it.id == 'get_started' else '' }} btn-full" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>
     {% endfor %}
   </div>
+</nav>
+{% endmacro %}
+
+{# ── Signed-in members (member_nav() in app/services/site_nav.py) ─────────── #}
+
+{% macro _drop_item(it, extra='') -%}
+{% if it.action == 'demo' %}<button type="button" class="ss-mi{{ extra }}" data-demo data-nav-item="{{ it.id }}">
+{% elif it.action == 'signout' %}<button type="button" class="ss-mi{{ extra }}" data-signout data-nav-item="{{ it.id }}">
+{% else %}<a class="ss-mi{{ extra }}" href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{% endif %}
+  <span class="ss-mi-title">{{ it.title }}</span>{% if it.desc %}<span class="ss-mi-desc">{{ it.desc }}</span>{% endif %}
+{% if it.action %}</button>{% else %}</a>{% endif %}
+{%- endmacro %}
+
+{% macro _drop(g) %}
+<div class="ss-mega ss-drop" id="ssPanel-{{ g.id }}" role="region" aria-labelledby="ssTrig-{{ g.id }}" hidden>
+  <div class="ss-drop-inner">
+    <ul>
+      {% for it in g['items'] %}
+      <li{% if it.action == 'signout' %} class="ss-sep"{% endif %}>{{ _drop_item(it) }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro member_bar(nav, endpoint) %}
+<ul class="ss-nav-links">
+  <li><a href="{{ nav.dashboard.href }}" data-nav-item="{{ nav.dashboard.id }}"{% if endpoint == 'pages.dashboard' %} class="is-current" aria-current="page"{% endif %}>{{ nav.dashboard.title }}</a></li>
+  {% for g in nav.groups %}
+  <li class="ss-has-drop"><a class="ss-trigger" id="ssTrig-{{ g.id }}" href="{{ g.nojs_href }}" data-panel="{{ g.id }}">{{ g.label }}{{ _chevron() }}</a>{{ _drop(g) }}</li>
+  {% endfor %}
+  {% for it in nav.role_links %}
+  <li><a href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a></li>
+  {% endfor %}
+</ul>
+<div class="ss-nav-right">
+  <div class="ss-acct"><a class="ss-trigger" id="ssTrig-{{ nav.account.id }}" href="{{ nav.account.nojs_href }}" data-panel="{{ nav.account.id }}"><span class="ss-acct-name">{{ nav.account.label }}</span>{{ _chevron() }}</a>{{ _drop(nav.account) }}</div>
+  <button class="ss-menu-btn" id="ssMenuBtn" type="button" aria-expanded="false" aria-controls="ssDrawer">Menu</button>
+</div>
+{% endmacro %}
+
+{# Phone drawer for members: titles only; My work starts open. #}
+{% macro member_drawer(nav) %}
+<nav class="ss-drawer ss-drawer-menus" id="ssDrawer" aria-label="Menu">
+  <a class="ss-dlink" href="{{ nav.dashboard.href }}" data-nav-item="{{ nav.dashboard.id }}">{{ nav.dashboard.title }}</a>
+  {% for g in nav.groups %}
+  <div class="ss-dsec">
+    <button type="button" class="ss-dsec-btn" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="ssDsec-{{ g.id }}">{{ g.label }}{{ _chevron() }}</button>
+    <ul id="ssDsec-{{ g.id }}"{% if not loop.first %} hidden{% endif %}>
+      {% for it in g['items'] %}<li><a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a></li>{% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+  {% for it in nav.role_links %}
+  <a class="ss-dlink" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>
+  {% endfor %}
+  <div class="ss-dsec">
+    <button type="button" class="ss-dsec-btn" aria-expanded="false" aria-controls="ssDsec-account">Account{{ _chevron() }}</button>
+    <ul id="ssDsec-account" hidden>
+      {% for it in nav.account['items'] if it.action != 'signout' %}
+      <li>{% if it.action == 'demo' %}<button type="button" data-demo data-nav-item="{{ it.id }}">{{ it.title }}</button>
+      {% else %}<a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a>{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="ss-dctas">
+    <button type="button" class="btn btn-full" data-signout data-nav-item="m_signout">Sign out</button>
+  </div>
+  <div class="ss-drawer-note">Signed in as {{ nav.account.label }}</div>
 </nav>
 {% endmacro %}

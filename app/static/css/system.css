@@ -230,7 +230,8 @@ label, .form-label { color: var(--ink); }
 .ss-promo a:focus-visible { outline-color: var(--gold-hi); }
 .ss-scrim { position: fixed; inset: 0; z-index: 99; background: rgba(13, 27, 62, .08); }
 @media (prefers-reduced-motion: no-preference) {
-  .ss-mega:not([hidden]) .ss-mega-inner, .ss-scrim:not([hidden]), .ss-drawer-aud.open { animation: ss-fade .12s ease-out; }
+  .ss-mega:not([hidden]) .ss-mega-inner, .ss-mega:not([hidden]) .ss-drop-inner, .ss-scrim:not([hidden]),
+  .ss-drawer-menus.open { animation: ss-fade .12s ease-out; }
 }
 @media (prefers-reduced-motion: reduce) { .ss-chev { transition: none; } }
 @keyframes ss-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -243,20 +244,42 @@ label, .form-label { color: var(--ink); }
 }
 @media (max-width: 899px) {
   .ss-nav-aud .ss-nav-right .btn.primary { display: none; }
-  .ss-mega, .ss-scrim { display: none !important; }
-  /* No sliding under the drawer: a short fade only (above), none when reduced. */
-  .ss-drawer.ss-drawer-aud { transform: none; transition: opacity .12s, visibility .12s; }
-  .ss-drawer.ss-drawer-aud.open { transition: opacity .12s, visibility 0s; }   /* visible at once, so focus can move in */
-  .ss-drawer-aud .ss-dsec-btn { display: flex; align-items: center; justify-content: space-between; }
-  .ss-drawer-aud .ss-dsec ul { list-style: none; margin: 0; padding: 4px 0 8px 14px; border-bottom: 1px solid var(--rule); }
-  .ss-drawer-aud .ss-dsec ul[hidden] { display: none; }
-  .ss-drawer-aud .ss-dsec li a, .ss-drawer-aud .ss-dsec li button { padding: 9px 0; border-bottom: 0; font-weight: 500; color: var(--ink-2); }
-  .ss-drawer-aud .ss-dctas { display: grid; gap: 10px; padding-top: 18px; }
-  .ss-drawer-aud .ss-dctas .btn { display: flex; justify-content: center; min-height: 46px; padding: 0 16px; text-align: center;
-                                  border: 1.5px solid var(--ink); border-radius: var(--r-btn); }
-  .ss-drawer-aud .ss-dctas .btn.primary { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+  .ss-nav-aud .ss-mega, .ss-nav-aud ~ .ss-scrim { display: none !important; }
 }
-@media (prefers-reduced-motion: reduce) { .ss-drawer.ss-drawer-aud { transition: none; } }
+
+/* Both drawers (visitor and member), shown only below their breakpoint.
+   No sliding: a short fade only, none when reduced. */
+.ss-drawer.ss-drawer-menus { transform: none; transition: opacity .12s, visibility .12s; }
+.ss-drawer.ss-drawer-menus.open { transition: opacity .12s, visibility 0s; }   /* visible at once, so focus can move in */
+.ss-drawer-menus .ss-dsec-btn { display: flex; align-items: center; justify-content: space-between; }
+.ss-drawer-menus .ss-dsec ul { list-style: none; margin: 0; padding: 4px 0 8px 14px; border-bottom: 1px solid var(--rule); }
+.ss-drawer-menus .ss-dsec ul[hidden] { display: none; }
+.ss-drawer-menus .ss-dsec li a, .ss-drawer-menus .ss-dsec li button { padding: 9px 0; border-bottom: 0; font-weight: 500; color: var(--ink-2); }
+.ss-drawer-menus .ss-dctas { display: grid; gap: 10px; padding-top: 18px; }
+.ss-drawer-menus .ss-dctas .btn { display: flex; justify-content: center; min-height: 46px; padding: 0 16px; text-align: center;
+                                  border: 1.5px solid var(--ink); border-radius: var(--r-btn); }
+.ss-drawer-menus .ss-dctas .btn.primary { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .ss-drawer.ss-drawer-menus { transition: none; } }
+
+/* ── Nav: member menus (signed in) ────────────────────────────
+   Compact panels in the same style, opening under their trigger. The bar
+   collapses to the drawer at 1000px, as before. */
+.ss-nav-member { --r-panel: 14px; }
+.ss-nav-links > li.ss-has-drop, .ss-acct { position: relative; }
+.ss-mega.ss-drop { left: -14px; right: auto; top: calc(100% + 15px); width: 340px; padding: 0; }
+.ss-acct .ss-mega.ss-drop { left: auto; right: 0; }
+.ss-drop-inner { padding: 10px; background: #fff; border: 1px solid var(--rule); border-radius: var(--r-panel);
+                 box-shadow: 0 18px 48px rgba(13, 27, 62, .12), 0 2px 6px rgba(13, 27, 62, .06); }
+.ss-drop-inner ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ss-drop .ss-mi { width: 100%; margin: 0; }
+.ss-drop li.ss-sep { border-top: 1px solid var(--rule); margin-top: 6px; padding-top: 6px; }
+.ss-acct .ss-trigger { display: inline-flex; align-items: center; gap: 6px; position: relative; padding: 6px 0; border: 0;
+                       background: none; font: 500 15px var(--sans); color: var(--ink-2); cursor: pointer; text-decoration: none; }
+.ss-acct .ss-trigger .ss-acct-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-acct .ss-trigger:hover { color: var(--ink); }
+@media (max-width: 1000px) {
+  .ss-nav-member .ss-acct, .ss-nav-member .ss-mega, .ss-nav-member ~ .ss-scrim { display: none !important; }
+}
 html.ss-lock, html.ss-lock body { overflow: hidden; }
 
 /* ── Compact app footer ───────────────────────────────────── */
