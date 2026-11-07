@@ -369,6 +369,7 @@ def create_app(config_name=None):
     # templates that call it, so signed-in pages don't pay for it.
     from app.services import site_nav as _site_nav
     app.jinja_env.globals['site_nav'] = _site_nav.resolve
+    app.jinja_env.globals['member_nav'] = _site_nav.resolve_member
 
     # Shell context
     @app.shell_context_processor

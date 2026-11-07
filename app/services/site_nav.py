@@ -105,6 +105,72 @@ ACTIONS = [
     {'id': 'get_started', 'title': 'Get started free', 'endpoint': 'pages.register_page'},
 ]
 
+# ── Signed-in members ────────────────────────────────────────────────────────
+# Same panel style, compact (one column under its trigger). Role links show only
+# to that role. The account menu is labelled with the member's name.
+# 'target': 'bio_editor' resolves to the member's own editor (or Settings →
+# Profile while they have no username yet). 'action': 'signout' is the sign-out
+# button. Gates: 'blog', 'blog_post', 'guide'.
+
+MEMBER_GROUPS = [
+    {
+        'id': 'my_work',
+        'label': 'My work',
+        'nojs': {'endpoint': 'pages.dashboard'},
+        'items': [
+            {'id': 'm_simulations', 'title': 'Simulations',
+             'desc': 'Your runs and what the agents are doing', 'endpoint': 'pages.dashboard'},
+            {'id': 'm_bio_page', 'title': 'My bio page',
+             'desc': 'Edit the page that captures leads for you', 'target': 'bio_editor'},
+            {'id': 'm_resumes', 'title': 'Resumes',
+             'desc': 'The source data behind your plans', 'endpoint': 'pages.resumes_view'},
+            {'id': 'm_contacts', 'title': 'Contacts',
+             'desc': 'Everyone your agents work with', 'endpoint': 'pages.contacts_list'},
+            {'id': 'm_guide', 'title': 'SME guide',
+             'desc': 'Ask an expert-trained guide (beta)', 'endpoint': 'guide.console_page', 'gate': 'guide'},
+        ],
+    },
+    {
+        'id': 'community',
+        'label': 'Community',
+        'nojs': {'endpoint': 'social.activity_feed'},
+        'items': [
+            {'id': 'm_feed', 'title': 'Feed',
+             'desc': 'Updates from your connections', 'endpoint': 'social.activity_feed'},
+            {'id': 'm_people', 'title': 'People on SimiSI',
+             'desc': 'Browse live bio pages', 'endpoint': 'public.explore'},
+            {'id': 'm_chats', 'title': 'My chats',
+             'desc': 'Conversations with other members', 'endpoint': 'social.my_chats'},
+            {'id': 'm_journal', 'title': 'The Journal',
+             'desc': 'Notes on careers and income', 'endpoint': 'pages.blog_index', 'gate': 'blog'},
+            {'id': 'm_write', 'title': 'Write a post',
+             'desc': "Share what you're learning", 'endpoint': 'pages.blog_new', 'gate': 'blog_post'},
+        ],
+    },
+]
+
+MEMBER_ROLE_LINKS = [
+    {'id': 'm_partner', 'title': 'Partner dashboard', 'endpoint': 'pages.partner_dashboard', 'role': 'partner'},
+    {'id': 'm_sme', 'title': 'SME Console', 'endpoint': 'pages.sme_console', 'role': 'sme'},
+    {'id': 'm_admin', 'title': 'Admin', 'endpoint': 'pages.admin_view', 'role': 'admin'},
+]
+
+MEMBER_ACCOUNT = {
+    'id': 'account',
+    'nojs': {'endpoint': 'pages.settings_profile'},
+    'items': [
+        {'id': 'm_settings', 'title': 'Settings',
+         'desc': 'Profile, visibility and security', 'endpoint': 'pages.settings_profile'},
+        {'id': 'm_integrations', 'title': 'Integrations',
+         'desc': 'Connect the tools your agents use', 'endpoint': 'pages.settings_integrations'},
+        {'id': 'm_notifications', 'title': 'Notifications',
+         'desc': 'Email, sending and alerts', 'endpoint': 'pages.settings_notifications'},
+        {'id': 'm_demo', 'title': 'Watch the demo', 'desc': 'See SimiSI in action', 'action': 'demo'},
+        {'id': 'm_help', 'title': 'About Simi', 'desc': 'How your assistant works', 'endpoint': 'public.simi_help'},
+        {'id': 'm_signout', 'title': 'Sign out', 'action': 'signout'},
+    ],
+}
+
 
 def _ids(include_promos: bool = True):
     for g in GROUPS:
@@ -115,9 +181,15 @@ def _ids(include_promos: bool = True):
             yield g['promo']['id']
     for it in LINKS + ACTIONS:
         yield it['id']
+    yield 'm_dashboard'
+    for g in MEMBER_GROUPS + [MEMBER_ACCOUNT]:
+        for it in g['items']:
+            yield it['id']
+    for it in MEMBER_ROLE_LINKS:
+        yield it['id']
 
 
-PANEL_IDS = frozenset(g['id'] for g in GROUPS)
+PANEL_IDS = frozenset([g['id'] for g in GROUPS] + [g['id'] for g in MEMBER_GROUPS] + [MEMBER_ACCOUNT['id']])
 ITEM_IDS = frozenset(_ids())
 
 
@@ -181,3 +253,59 @@ def resolve() -> dict:
                       'link_label': text['link_label'], 'href': href, 'external': external},
         })
     return {'groups': groups, 'links': [_item(x) for x in LINKS], 'actions': [_item(x) for x in ACTIONS]}
+
+
+def _member_gates(user) -> dict:
+    gates = _gates()
+    try:
+        from app.services import blog_service
+        gates['blog_post'] = gates['blog'] and bool(blog_service.can_publish(user)[0])
+    except Exception:
+        gates['blog_post'] = False
+    try:
+        from app.services import guide_service
+        gates['guide'] = bool(guide_service.is_enabled(user))
+    except Exception:
+        gates['guide'] = False
+    return gates
+
+
+def _member_href(spec: dict, user) -> tuple:
+    from flask import url_for
+    if spec.get('target') == 'bio_editor':
+        try:
+            from app.models.profile import UserProfile
+            profile = UserProfile.query.filter_by(user_id=user.id).first()
+            if profile and profile.username:
+                return url_for('pages.bio_editor', slug=profile.username), False
+        except Exception:
+            pass
+        return url_for('pages.settings_profile'), False
+    return _href(spec)
+
+
+def _member_item(spec: dict, user) -> dict:
+    out = {'id': spec['id'], 'title': spec['title'], 'desc': spec.get('desc', '')}
+    if spec.get('action'):
+        out.update(action=spec['action'], href=None, external=False)
+    else:
+        out['href'], out['external'] = _member_href(spec, user)
+    return out
+
+
+def resolve_member(user, is_sme: bool = False) -> dict:
+    """The signed-in nav for this member: gates and roles applied."""
+    from flask import url_for
+    gates = _member_gates(user)
+    groups = []
+    for g in MEMBER_GROUPS:
+        items = [_member_item(it, user) for it in g['items'] if gates.get(it.get('gate', ''), True)]
+        groups.append({'id': g['id'], 'label': g['label'], 'nojs_href': _href(g['nojs'])[0], 'items': items})
+    roles = {'partner': bool(getattr(user, 'is_partner', False)), 'sme': bool(is_sme),
+             'admin': bool(getattr(user, 'is_admin', False))}
+    role_links = [_member_item(it, user) for it in MEMBER_ROLE_LINKS if roles[it['role']]]
+    name = (getattr(user, 'full_name', None) or getattr(user, 'email', None) or 'Account').strip()
+    account = {'id': MEMBER_ACCOUNT['id'], 'label': name, 'nojs_href': _href(MEMBER_ACCOUNT['nojs'])[0],
+               'items': [_member_item(it, user) for it in MEMBER_ACCOUNT['items']]}
+    return {'dashboard': {'id': 'm_dashboard', 'title': 'Dashboard', 'href': url_for('pages.dashboard')},
+            'groups': groups, 'role_links': role_links, 'account': account}
