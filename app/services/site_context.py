@@ -103,9 +103,13 @@ def integration_unlocks() -> list:
             for k, g, n, u, r in _UNLOCKS if known is None or k in known]
 
 
-def show_integrations() -> bool:
-    """The home-page integrations section is hidden unless the platform setting
-    ``site_integrations_section`` is 'on' (owner decision 2026-10-29)."""
+def show_integrations(user=None) -> bool:
+    """The home-page integrations section shows only to signed-in members, and
+    only while the platform setting ``site_integrations_section`` is 'on'
+    (Admin -> Platform Settings). Visitors never see it (owner decisions
+    2026-10-29 and 2026-11-07)."""
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return False
     try:
         from app.models.platform_settings import PlatformSetting
         return str(PlatformSetting.get('site_integrations_section', 'off')).lower() == 'on'

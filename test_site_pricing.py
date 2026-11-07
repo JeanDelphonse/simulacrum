@@ -140,9 +140,19 @@ def main():
               'id="integrations"' not in page and 'href="#integrations"' not in page)
         PlatformSetting.set('site_integrations_section', 'on')
         db.session.commit()
-        shown = client.get('/').get_data(as_text=True)
-        intg = shown.split('id="integrations"')[1].split('</section>')[0]
-        check('F: setting site_integrations_section=on shows it, listing what each unlocks',
+        anon_on = client.get('/').get_data(as_text=True)
+        check('F: visitors never see it, even with the setting on',
+              'id="integrations"' not in anon_on and 'href="#integrations"' not in anon_on)
+        member = app.test_client()
+        with member.session_transaction() as sess:
+            sess['_user_id'] = admin.id
+            sess['_fresh'] = True
+        from flask import g as _g
+        _g.pop('_login_user', None)
+        shown = member.get('/').get_data(as_text=True)
+        _g.pop('_login_user', None)
+        intg = shown.split('id="integrations"')[1].split('</section>')[0] if 'id="integrations"' in shown else ''
+        check('F: setting site_integrations_section=on shows it to signed-in members, listing what each unlocks',
               'Connect your tools; your agents work through them.' in text_of(shown)
               and all(n in intg for n in ('Apollo', 'ConvertKit', 'Cal.com', 'Stripe', 'Kajabi', 'PandaDoc'))
               and 'href="#integrations"' in shown)
