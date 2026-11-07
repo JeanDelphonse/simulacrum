@@ -50,14 +50,15 @@ def main():
     client = app.test_client()
     events = []
 
-    def serve(route, request):
+    def serve(route, request, c=None):
+        c = c or client                      # each request gets its own app context (and login state)
         parts = urlsplit(request.url)
         if parts.netloc != 'simisi.test':
             return route.abort()
         path = parts.path + ('?' + parts.query if parts.query else '')
         if parts.path == '/api/nav-event':
             events.append(request.post_data)
-        r = client.open(path, method=request.method, data=request.post_data_buffer,
+        r = c.open(path, method=request.method, data=request.post_data_buffer,
                         headers={'Content-Type': request.headers.get('content-type', '')})
         headers = {k: v for k, v in r.headers.items() if k.lower() not in ('content-length', 'transfer-encoding')}
         return route.fulfill(status=r.status_code, headers=headers, body=r.get_data())
@@ -65,14 +66,14 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
 
-        def page(width, height=900):
+        def page(width, height=900, c=None):
             pg = browser.new_page(viewport={'width': width, 'height': height})
             errors = []
             pg.on('pageerror', lambda e: errors.append(str(e)))
             pg.on('console', lambda m: m.type == 'error' and not (
                 m.text.startswith('Failed to load resource') and 'simisi.test' not in (m.location or {}).get('url', ''))
                 and errors.append(m.text))
-            pg.route('**/*', serve)
+            pg.route('**/*', (lambda route, req: serve(route, req, c)) if c else serve)
             pg.errors = errors
             return pg
 
@@ -242,6 +243,110 @@ def main():
             check('a drawer link navigates', pg.url.endswith('/explore'), pg.url)
             check('no console errors', not pg.errors, pg.errors)
             pg.close()
+
+        print('\nMember nav (signed in)')
+        from datetime import datetime as _dt
+        from app.models.user import User
+        from app.models.profile import UserProfile
+        m = User(id='NAVMEMB01', email='member@t.local', full_name='Morgan Member', password_hash='x',
+                 email_verified=True, onboarding_completed_at=_dt.utcnow(), is_admin=True)
+        db.session.add(m)
+        db.session.add(UserProfile(user_id='NAVMEMB01', username='morgan'))
+        db.session.commit()
+        mc = app.test_client()
+        with mc.session_transaction() as sess:
+            sess['_user_id'] = 'NAVMEMB01'
+            sess['_fresh'] = True
+        mstate = lambda pg: pg.evaluate("""() => {
+          const vis = id => { const e = document.getElementById(id); return !!e && !e.hidden && getComputedStyle(e).display !== 'none'; };
+          const a = document.activeElement;
+          return {work: vis('ssPanel-my_work'), comm: vis('ssPanel-community'), acct: vis('ssPanel-account'),
+                  active: a && (a.id || a.getAttribute('data-nav-item'))}; }""")
+        for path in ('/dashboard', '/careers'):
+            pg = page(1440, c=mc)
+            pg.goto(ORIGIN + path, wait_until='load')
+            pg.wait_for_timeout(200)
+            top = pg.evaluate("() => [...document.querySelectorAll('#ssNav .ss-nav-links > li > a, #ssNav .ss-nav-links > li > button')].map(e => e.textContent.trim())")
+            check('%s bar: Dashboard, My work, Community, Admin' % path, top == ['Dashboard', 'My work', 'Community', 'Admin'], top)
+            pg.click('#ssTrig-my_work')
+            geo = pg.evaluate("""() => { const t = document.getElementById('ssTrig-my_work').getBoundingClientRect();
+              const p = document.querySelector('#ssPanel-my_work .ss-drop-inner').getBoundingClientRect();
+              const n = document.getElementById('ssNav').getBoundingClientRect();
+              return {dx: Math.round(p.left - t.left), below: Math.round(p.top - n.bottom), w: Math.round(p.width)}; }""")
+            check('My work opens under its trigger, below the bar', mstate(pg)['work'] and -20 <= geo['dx'] <= 0
+                  and 0 <= geo['below'] <= 12, geo)
+            pg.click('#ssTrig-community')
+            st = mstate(pg)
+            check('Community replaces it (one at a time)', st['comm'] and not st['work'], st)
+            pg.click('#ssTrig-account')
+            box = pg.evaluate("""() => { const p = document.querySelector('#ssPanel-account .ss-drop-inner').getBoundingClientRect();
+              const r = document.querySelector('#ssNav .ss-nav-right').getBoundingClientRect();
+              return {right: Math.round(p.right - r.right), inView: p.right <= innerWidth}; }""")
+            check('the account menu opens right-aligned, inside the window', mstate(pg)['acct'] and abs(box['right']) <= 1
+                  and box['inView'], box)
+            labels = pg.evaluate("() => [...document.querySelectorAll('#ssPanel-account .ss-mi-title')].map(e => e.textContent)")
+            check('account menu: Settings, Integrations, Notifications, Watch the demo, About Simi, Sign out',
+                  labels == ['Settings', 'Integrations', 'Notifications', 'Watch the demo', 'About Simi', 'Sign out'], labels)
+            pg.keyboard.press('Escape')
+            st = mstate(pg)
+            check('Escape closes it and returns focus to the name', not st['acct'] and st['active'] == 'ssTrig-account', st)
+            pg.click('#ssTrig-my_work')
+            pg.mouse.click(700, 860)
+            check('a click outside closes', not mstate(pg)['work'])
+            pg.focus('#ssTrig-community')
+            pg.keyboard.press('Enter')
+            pg.keyboard.press('Tab')
+            check('keyboard: Enter opens, Tab moves into the panel', mstate(pg)['comm'] and mstate(pg)['active'] == 'm_feed',
+                  mstate(pg))
+            pg.keyboard.press('Escape')
+            if SHOTS and path == '/dashboard':
+                d = os.path.join('docs', 'screenshots', 'nav-member')
+                os.makedirs(d, exist_ok=True)
+                for gid in ('my_work', 'community', 'account'):
+                    pg.click('#ssTrig-' + gid)
+                    pg.wait_for_timeout(250)
+                    pg.screenshot(path=os.path.join(d, '1440-%s-open.png' % gid), clip={'x': 0, 'y': 0, 'width': 1440, 'height': 520})
+                    pg.keyboard.press('Escape')
+            check('no console errors', not pg.errors, pg.errors)
+            pg.click('#ssTrig-my_work')
+            with pg.expect_navigation():
+                pg.click('#ssPanel-my_work [data-nav-item="m_bio_page"]')
+            check('My bio page opens the member\'s editor', pg.url.endswith('/u/morgan/edit'), pg.url)
+            pg.close()
+
+        pg = page(1100, c=mc)
+        pg.goto(ORIGIN + '/careers', wait_until='load')
+        wide = pg.evaluate("() => ({links: getComputedStyle(document.querySelector('#ssNav .ss-nav-links')).display, over: document.documentElement.scrollWidth - innerWidth})")
+        check('1100 px: the full member bar fits', wide['links'] != 'none' and wide['over'] <= 0, wide)
+        pg.close()
+
+        pg = page(390, 800, c=mc)
+        pg.goto(ORIGIN + '/careers', wait_until='load')
+        pg.wait_for_timeout(150)
+        pg.click('#ssMenuBtn')
+        pg.wait_for_timeout(200)
+        if SHOTS:
+            d = os.path.join('docs', 'screenshots', 'nav-member')
+            os.makedirs(d, exist_ok=True)
+            pg.screenshot(path=os.path.join(d, '390-drawer-open.png'))
+        dd = pg.evaluate("""() => { const dr = document.getElementById('ssDrawer');
+          return {open: dr.classList.contains('open') && getComputedStyle(dr).visibility === 'visible',
+                  focusIn: dr.contains(document.activeElement), lock: getComputedStyle(document.documentElement).overflow,
+                  order: [...dr.querySelectorAll('.ss-dlink, .ss-dsec-btn, .ss-dctas button')].map(e => e.textContent.trim()),
+                  over: document.documentElement.scrollWidth - innerWidth}; }""")
+        check('390 px: Menu opens the member drawer, focus inside, page locked', dd['open'] and dd['focusIn']
+              and dd['lock'] == 'hidden' and dd['over'] <= 0, dd)
+        check('drawer: Dashboard, My work, Community, Admin, Account, Sign out',
+              dd['order'] == ['Dashboard', 'My work', 'Community', 'Admin', 'Account', 'Sign out'], dd['order'])
+        pg.click('[aria-controls="ssDsec-account"]')
+        acct = pg.evaluate("() => [...document.querySelectorAll('#ssDsec-account a, #ssDsec-account button')].map(e => e.textContent.trim())")
+        check('the Account section expands: Settings, Integrations, Notifications, Watch the demo, About Simi',
+              acct == ['Settings', 'Integrations', 'Notifications', 'Watch the demo', 'About Simi'], acct)
+        pg.keyboard.press('Escape')
+        check('Escape closes the drawer and returns focus to Menu', pg.evaluate(
+            "() => !document.getElementById('ssDrawer').classList.contains('open') && document.activeElement.id === 'ssMenuBtn'"))
+        check('no console errors', not pg.errors, pg.errors)
+        pg.close()
 
         print('\nEvery nav link resolves')
         pg = page(1440)

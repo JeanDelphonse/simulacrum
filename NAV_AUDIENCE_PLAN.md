@@ -175,3 +175,20 @@ The other `<nav>` elements on base pages are on-page tabs, not site menus, and a
 - **axe** on `/` and `/transition-package`, each panel open (1440), drawer open (390) and closed: **no violations beyond the pre-change baseline** (taken at 74e293c). The first run flagged the open drawer as outside a landmark; the visitor drawer is now `<nav aria-label="Menu">`. Pre-existing findings are unchanged: the gold "SI" in the logo (brand colour), a few homepage text contrasts, heading order, and an empty table header on /transition-package.
 - **Site render and contrast audit** across 73 pages: same flags as before the change; no horizontal overflow at 390 px.
 - **Screenshots:** `docs/screenshots/nav-audience/1440-professionals-open.png`, `1440-employers-open.png`, `390-drawer-open.png` (local only; `docs/` is not committed).
+
+---
+
+## 8. Signed-in members: grouped menus (2026-11-06, branch `feat/nav-member`)
+
+Chosen option: grouped menus in the same panel style. Config: `MEMBER_GROUPS`, `MEMBER_ROLE_LINKS` and `MEMBER_ACCOUNT` in `app/services/site_nav.py`; `resolve_member()` is exposed to templates as `member_nav()`.
+
+- **Bar:** Dashboard · My work ▾ · Community ▾ · role links (Partner dashboard, SME Console, Admin, each only for that role) … the member's name ▾.
+- **My work:** Simulations, My bio page (the member's own editor, or Settings → Profile until they have a username), Resumes, Contacts, SME guide (only when the guide beta is on for them).
+- **Community:** Feed, People on SimiSI, My chats, The Journal (blog nav gate), Write a post (only when they're allowed to post).
+- **Account (name ▾):** Settings, Integrations, Notifications, Watch the demo, About Simi, then Sign out below a divider.
+- **Phone (≤1000px, unchanged breakpoint):** Dashboard, My work (open), Community, role links, Account (collapsed), a full-width Sign out, "Signed in as …".
+- Compact panels open under their trigger; the account panel is right-aligned. Same behaviour as the visitor nav (click/Enter/Space, one at a time, Escape returns focus, outside click closes). Member panel and item ids join the `nav-event` allowlist.
+- The old inline drawer script in `base.html` is gone; both navs use `js/site_nav.js`.
+- Descriptions on member items are draft copy.
+
+**Results:** `test_site_nav.py` 53/53, `test_site_nav_browser.py` 102/102 (member checks at 1440, 1100 and 390 px). axe on the dashboard and admin pages, closed and with each menu or the drawer open: no violations beyond the baseline at 0321448. Screenshots in `docs/screenshots/nav-member/` (local only).
