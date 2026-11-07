@@ -164,8 +164,17 @@ def main():
         mnav_html = signed.split('id="ssNav"')[1].split('</nav>')[0]
         mdrawer = signed.split('id="ssDrawer"')[1].split('<main')[0]
         top = re.findall(r'<li(?: class="ss-has-drop")?><a (?![^>]*ss-mi)[^>]*>([^<]+)<', mnav_html)
-        check('bar: Dashboard, My work, Community (no role links for a plain member)',
-              top == ['Dashboard', 'My work', 'Community'], top)
+        check('bar: Dashboard, My work, Community, Explore SimiSI (no role links for a plain member)',
+              top == ['Dashboard', 'My work', 'Community', 'Explore SimiSI'], top)
+        xpanel = mnav_html.split('id="ssPanel-explore"')[1].split('id="ssTrig-account"')[0]
+        public_ids = [it['id'] for g in nav['groups'] for c in g['columns'] for it in c['items']] + ['playbook', 'pricing']
+        check('Explore SimiSI carries every public menu item once, plus Playbook and Pricing',
+              all(xpanel.count('data-nav-item="%s"' % i) == 1 for i in public_ids)
+              and 'For professionals' in xpanel and 'For employers' in xpanel, [i for i in public_ids if xpanel.count('data-nav-item="%s"' % i) != 1])
+        check('it has no promo cards and no Log in / Get started', 'ss-promo' not in xpanel
+              and 'data-nav-item="log_in"' not in signed and 'data-nav-item="get_started"' not in signed)
+        check('without JS, Explore SimiSI links to the home page',
+              '<a class="ss-trigger" id="ssTrig-explore" href="/"' in mnav_html)
         check('the account menu is labelled with the name',
               '<span class="ss-acct-name">Nav Tester</span>' in mnav_html and 'id="ssPanel-account"' in mnav_html)
         for pid, ids in (('my_work', ['m_simulations', 'm_bio_page', 'm_resumes', 'm_contacts']),
@@ -183,8 +192,11 @@ def main():
               'm_guide' not in mnav_html and 'm_write' not in mnav_html)
         dorder = re.findall(r'class="ss-dlink"[^>]*>([^<]+)<|class="ss-dsec-btn"[^>]*>([^<]+)<', mdrawer)
         dorder = [x or y for x, y in dorder]
-        check('drawer: Dashboard, My work (open), Community, Account, then Sign out',
-              dorder == ['Dashboard', 'My work', 'Community', 'Account'] and 'aria-controls="ssDsec-my_work"' in mdrawer
+        check('drawer: Dashboard, My work (open), Community, Explore SimiSI, Account, then Sign out',
+              dorder == ['Dashboard', 'My work', 'Community', 'Explore SimiSI', 'Account']
+              and '<ul id="ssDsec-explore" hidden>' in mdrawer
+              and all(mdrawer.count('data-nav-item="%s"' % i) == 1 for i in public_ids)
+              and 'aria-controls="ssDsec-my_work"' in mdrawer
               and '<ul id="ssDsec-community" hidden>' in mdrawer and '<ul id="ssDsec-account" hidden>' in mdrawer
               and mdrawer.count('data-signout') == 1 and 'ss-mi-desc' not in mdrawer, dorder)
         check('every member item renders once in the bar and once in the drawer',
@@ -202,14 +214,14 @@ def main():
         mh = dash.split('id="ssNav"')[1].split('</nav>')[0]
         top = re.findall(r'<li(?: class="ss-has-drop")?><a (?![^>]*ss-mi)[^>]*>([^<]+)<', mh)
         check('roles add their links: Partner dashboard, Admin', top == ['Dashboard', 'My work', 'Community',
-                                                                      'Partner dashboard', 'Admin'], top)
+                                                                      'Explore SimiSI', 'Partner dashboard', 'Admin'], top)
         check('with a username, My bio page opens the editor', 'href="/u/navtester/edit" data-nav-item="m_bio_page"' in mh)
         check('Dashboard is marked current on /dashboard', 'class="is-current" aria-current="page">Dashboard<' in mh)
         check('admins can always post, so Write a post shows', 'data-nav-item="m_write"' in mh)
         with app.test_request_context('/'):
             sme = site_nav.resolve_member(u, is_sme=True)
         check('an SME sees the SME Console link', [x['id'] for x in sme['role_links']] == ['m_partner', 'm_sme', 'm_admin'])
-        check('member ids are in the event allowlist', {'my_work', 'community', 'account'} <= site_nav.PANEL_IDS
+        check('member ids are in the event allowlist', {'my_work', 'community', 'account', 'explore'} <= site_nav.PANEL_IDS
               and {'m_bio_page', 'm_signout', 'm_dashboard'} <= site_nav.ITEM_IDS)
         u.is_admin = False
         u.is_partner = False

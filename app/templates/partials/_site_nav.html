@@ -106,12 +106,47 @@
 </div>
 {% endmacro %}
 
+{# Explore SimiSI: the public menu inside the member bar, one full-width panel.
+   Professionals' columns, then employers' items in one column, then Playbook and Pricing. #}
+{% macro _explore_panel(x) %}
+<div class="ss-mega ss-explore" id="ssPanel-{{ x.id }}" role="region" aria-labelledby="ssTrig-{{ x.id }}" hidden>
+  <div class="ss-mega-inner">
+    {% for g in x.groups %}
+    <section class="ss-xgroup ss-xgroup-{{ g.id }}" aria-labelledby="ssX-{{ g.id }}">
+      <p class="ss-xgroup-label" id="ssX-{{ g.id }}">{{ g.label }}</p>
+      <div class="ss-xcols">
+        {% for c in g.columns %}
+        <div class="ss-mcol">
+          {% if g.columns|length > 1 or c.label != g.label %}<p class="ss-mcol-label" id="ssXc-{{ g.id }}-{{ loop.index }}">{{ c.label }}</p>{% endif %}
+          <ul{% if g.columns|length > 1 or c.label != g.label %} aria-labelledby="ssXc-{{ g.id }}-{{ loop.index }}"{% endif %}>
+            {% for it in c['items'] %}
+            <li>
+              {% if it.action == 'demo' %}<button type="button" class="ss-mi" data-demo data-nav-item="{{ it.id }}">
+              {% else %}<a class="ss-mi" href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{% endif %}
+                <span class="ss-mi-title">{{ it.title }}</span><span class="ss-mi-desc">{{ it.desc }}</span>
+              {% if it.action == 'demo' %}</button>{% else %}</a>{% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+    <div class="ss-xlinks">
+      {% for it in x.links %}<a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }} <span aria-hidden="true">→</span></a>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
 {% macro member_bar(nav, endpoint) %}
 <ul class="ss-nav-links">
   <li><a href="{{ nav.dashboard.href }}" data-nav-item="{{ nav.dashboard.id }}"{% if endpoint == 'pages.dashboard' %} class="is-current" aria-current="page"{% endif %}>{{ nav.dashboard.title }}</a></li>
   {% for g in nav.groups %}
   <li class="ss-has-drop"><a class="ss-trigger" id="ssTrig-{{ g.id }}" href="{{ g.nojs_href }}" data-panel="{{ g.id }}">{{ g.label }}{{ _chevron() }}</a>{{ _drop(g) }}</li>
   {% endfor %}
+  <li><a class="ss-trigger" id="ssTrig-{{ nav.explore.id }}" href="{{ nav.explore.nojs_href }}" data-panel="{{ nav.explore.id }}">{{ nav.explore.label }}{{ _chevron() }}</a>{{ _explore_panel(nav.explore) }}</li>
   {% for it in nav.role_links %}
   <li><a href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a></li>
   {% endfor %}
@@ -134,6 +169,16 @@
     </ul>
   </div>
   {% endfor %}
+  <div class="ss-dsec">
+    <button type="button" class="ss-dsec-btn" aria-expanded="false" aria-controls="ssDsec-{{ nav.explore.id }}">{{ nav.explore.label }}{{ _chevron() }}</button>
+    <ul id="ssDsec-{{ nav.explore.id }}" hidden>
+      {% for g in nav.explore.groups %}{% for c in g.columns %}{% for it in c['items'] %}
+      <li>{% if it.action == 'demo' %}<button type="button" data-demo data-nav-item="{{ it.id }}">{{ it.title }}</button>
+      {% else %}<a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a>{% endif %}</li>
+      {% endfor %}{% endfor %}{% endfor %}
+      {% for it in nav.explore.links %}<li><a href="{{ it.href }}"{{ _target(it) }} data-nav-item="{{ it.id }}">{{ it.title }}</a></li>{% endfor %}
+    </ul>
+  </div>
   {% for it in nav.role_links %}
   <a class="ss-dlink" href="{{ it.href }}" data-nav-item="{{ it.id }}">{{ it.title }}</a>
   {% endfor %}

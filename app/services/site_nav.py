@@ -149,6 +149,10 @@ MEMBER_GROUPS = [
     },
 ]
 
+# Members also get the public menu, as one 'Explore SimiSI' panel built from
+# GROUPS and LINKS above (same items and ids; promo cards left out).
+MEMBER_EXPLORE = {'id': 'explore', 'label': 'Explore SimiSI', 'nojs': {'endpoint': 'pages.index'}}
+
 MEMBER_ROLE_LINKS = [
     {'id': 'm_partner', 'title': 'Partner dashboard', 'endpoint': 'pages.partner_dashboard', 'role': 'partner'},
     {'id': 'm_sme', 'title': 'SME Console', 'endpoint': 'pages.sme_console', 'role': 'sme'},
@@ -189,7 +193,8 @@ def _ids(include_promos: bool = True):
         yield it['id']
 
 
-PANEL_IDS = frozenset([g['id'] for g in GROUPS] + [g['id'] for g in MEMBER_GROUPS] + [MEMBER_ACCOUNT['id']])
+PANEL_IDS = frozenset([g['id'] for g in GROUPS] + [g['id'] for g in MEMBER_GROUPS]
+                      + [MEMBER_ACCOUNT['id'], MEMBER_EXPLORE['id']])
 ITEM_IDS = frozenset(_ids())
 
 
@@ -307,5 +312,10 @@ def resolve_member(user, is_sme: bool = False) -> dict:
     name = (getattr(user, 'full_name', None) or getattr(user, 'email', None) or 'Account').strip()
     account = {'id': MEMBER_ACCOUNT['id'], 'label': name, 'nojs_href': _href(MEMBER_ACCOUNT['nojs'])[0],
                'items': [_member_item(it, user) for it in MEMBER_ACCOUNT['items']]}
+    public = resolve()
+    explore = {'id': MEMBER_EXPLORE['id'], 'label': MEMBER_EXPLORE['label'],
+               'nojs_href': _href(MEMBER_EXPLORE['nojs'])[0],
+               'groups': [{'id': g['id'], 'label': g['label'], 'columns': g['columns']} for g in public['groups']],
+               'links': public['links']}
     return {'dashboard': {'id': 'm_dashboard', 'title': 'Dashboard', 'href': url_for('pages.dashboard')},
-            'groups': groups, 'role_links': role_links, 'account': account}
+            'groups': groups, 'explore': explore, 'role_links': role_links, 'account': account}

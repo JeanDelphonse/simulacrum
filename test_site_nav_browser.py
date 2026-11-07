@@ -267,7 +267,8 @@ def main():
             pg.goto(ORIGIN + path, wait_until='load')
             pg.wait_for_timeout(200)
             top = pg.evaluate("() => [...document.querySelectorAll('#ssNav .ss-nav-links > li > a, #ssNav .ss-nav-links > li > button')].map(e => e.textContent.trim())")
-            check('%s bar: Dashboard, My work, Community, Admin' % path, top == ['Dashboard', 'My work', 'Community', 'Admin'], top)
+            check('%s bar: Dashboard, My work, Community, Explore SimiSI, Admin' % path,
+                  top == ['Dashboard', 'My work', 'Community', 'Explore SimiSI', 'Admin'], top)
             pg.click('#ssTrig-my_work')
             geo = pg.evaluate("""() => { const t = document.getElementById('ssTrig-my_work').getBoundingClientRect();
               const p = document.querySelector('#ssPanel-my_work .ss-drop-inner').getBoundingClientRect();
@@ -299,13 +300,29 @@ def main():
             check('keyboard: Enter opens, Tab moves into the panel', mstate(pg)['comm'] and mstate(pg)['active'] == 'm_feed',
                   mstate(pg))
             pg.keyboard.press('Escape')
+            pg.click('#ssTrig-explore')
+            xg = pg.evaluate("""() => { const p = document.querySelector('#ssPanel-explore .ss-mega-inner').getBoundingClientRect();
+              const logo = document.querySelector('#ssNav .ss-logo').getBoundingClientRect();
+              const right = document.querySelector('#ssNav .ss-nav-right').getBoundingClientRect();
+              const vis = !document.getElementById('ssPanel-explore').hidden;
+              return {vis, left: Math.round(p.left - logo.left), right: Math.round(p.right - right.right),
+                      bottom: Math.round(p.bottom), groups: [...document.querySelectorAll('#ssPanel-explore .ss-xgroup-label')].map(e => e.textContent),
+                      links: [...document.querySelectorAll('#ssPanel-explore .ss-xlinks a')].map(e => e.textContent.replace('→', '').trim())}; }""")
+            check('Explore SimiSI opens the public menu full width, both audiences, Playbook and Pricing',
+                  xg['vis'] and abs(xg['left']) <= 1 and abs(xg['right']) <= 1 and xg['bottom'] <= 900
+                  and xg['groups'] == ['For professionals', 'For employers'] and xg['links'] == ['Playbook', 'Pricing'], xg)
+            st = mstate(pg)
+            check('opening it closes the other menus', not (st['work'] or st['comm'] or st['acct']), st)
+            pg.keyboard.press('Escape')
+            check('Escape returns focus to Explore SimiSI', mstate(pg)['active'] == 'ssTrig-explore', mstate(pg))
             if SHOTS and path == '/dashboard':
                 d = os.path.join('docs', 'screenshots', 'nav-member')
                 os.makedirs(d, exist_ok=True)
-                for gid in ('my_work', 'community', 'account'):
+                for gid in ('my_work', 'community', 'explore', 'account'):
                     pg.click('#ssTrig-' + gid)
                     pg.wait_for_timeout(250)
-                    pg.screenshot(path=os.path.join(d, '1440-%s-open.png' % gid), clip={'x': 0, 'y': 0, 'width': 1440, 'height': 520})
+                    pg.screenshot(path=os.path.join(d, '1440-%s-open.png' % gid),
+                                  clip={'x': 0, 'y': 0, 'width': 1440, 'height': 720 if gid == 'explore' else 520})
                     pg.keyboard.press('Escape')
             check('no console errors', not pg.errors, pg.errors)
             pg.click('#ssTrig-my_work')
@@ -314,11 +331,33 @@ def main():
             check('My bio page opens the member\'s editor', pg.url.endswith('/u/morgan/edit'), pg.url)
             pg.close()
 
-        pg = page(1100, c=mc)
-        pg.goto(ORIGIN + '/careers', wait_until='load')
-        wide = pg.evaluate("() => ({links: getComputedStyle(document.querySelector('#ssNav .ss-nav-links')).display, over: document.documentElement.scrollWidth - innerWidth})")
-        check('1100 px: the full member bar fits', wide['links'] != 'none' and wide['over'] <= 0, wide)
-        pg.close()
+        # Widest bar: every role link. It must fit, without overlap, from the breakpoint up.
+        m.is_partner = True
+        db.session.commit()
+        from app.models.sme import SimiSME
+        try:
+            db.session.add(SimiSME(auth_user_id='NAVMEMB01', status=SimiSME.STATUS_ACTIVE, first_name='Morgan', last_name='Member',
+                                   email='member@t.local'))
+            db.session.commit()
+        except Exception as exc:  # pragma: no cover - model fields differ
+            db.session.rollback()
+            print('  (SME row not created: %s)' % exc)
+        for width in (1001, 1100, 1280):
+            pg = page(width, c=mc)
+            pg.goto(ORIGIN + '/careers', wait_until='load')
+            wide = pg.evaluate("""() => { const links = document.querySelector('#ssNav .ss-nav-links').getBoundingClientRect();
+              const right = document.querySelector('#ssNav .ss-nav-right').getBoundingClientRect();
+              const logo = document.querySelector('#ssNav .ss-logo').getBoundingClientRect();
+              return {shown: getComputedStyle(document.querySelector('#ssNav .ss-nav-links')).display !== 'none',
+                      items: document.querySelectorAll('#ssNav .ss-nav-links > li').length,
+                      gapRight: Math.round(right.left - links.right), gapLeft: Math.round(links.left - logo.right),
+                      over: document.documentElement.scrollWidth - innerWidth}; }""")
+            check('%d px: the widest member bar (all roles) fits' % width, wide['shown'] and wide['gapRight'] >= 16
+                  and wide['gapLeft'] >= 16 and wide['over'] <= 0, wide)
+            pg.close()
+        m.is_partner = False
+        SimiSME.query.filter_by(auth_user_id='NAVMEMB01').delete()
+        db.session.commit()
 
         pg = page(390, 800, c=mc)
         pg.goto(ORIGIN + '/careers', wait_until='load')
@@ -336,8 +375,14 @@ def main():
                   over: document.documentElement.scrollWidth - innerWidth}; }""")
         check('390 px: Menu opens the member drawer, focus inside, page locked', dd['open'] and dd['focusIn']
               and dd['lock'] == 'hidden' and dd['over'] <= 0, dd)
-        check('drawer: Dashboard, My work, Community, Admin, Account, Sign out',
-              dd['order'] == ['Dashboard', 'My work', 'Community', 'Admin', 'Account', 'Sign out'], dd['order'])
+        check('drawer: Dashboard, My work, Community, Explore SimiSI, Admin, Account, Sign out',
+              dd['order'] == ['Dashboard', 'My work', 'Community', 'Explore SimiSI', 'Admin', 'Account', 'Sign out'], dd['order'])
+        pg.click('[aria-controls="ssDsec-explore"]')
+        xs = pg.evaluate("() => [...document.querySelectorAll('#ssDsec-explore a, #ssDsec-explore button')].map(e => e.textContent.trim())")
+        check('the Explore SimiSI section lists the public items, titles only',
+              xs[:3] == ['Run a simulation', 'How it works', 'Sample simulations'] and xs[-2:] == ['Playbook', 'Pricing']
+              and 'What people get' in xs, xs)
+        pg.click('[aria-controls="ssDsec-explore"]')
         pg.click('[aria-controls="ssDsec-account"]')
         acct = pg.evaluate("() => [...document.querySelectorAll('#ssDsec-account a, #ssDsec-account button')].map(e => e.textContent.trim())")
         check('the Account section expands: Settings, Integrations, Notifications, Watch the demo, About Simi',
