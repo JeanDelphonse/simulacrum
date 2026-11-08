@@ -28,7 +28,16 @@
 .sig-pill { display:inline-block; background:#eff6ff; color:#1d4ed8; border-radius:999px; padding:.15rem .55rem; font-size:.72rem; font-weight:600; margin:.15rem .2rem .15rem 0; }
 .artifact { border:1px solid #e5e7eb; border-radius:8px; padding:.55rem .7rem; margin-bottom:.5rem; font-size:.8rem; }
 .artifact-hd { display:flex; justify-content:space-between; font-weight:600; color:#0f172a; }
-.artifact-body { margin-top:.35rem; color:#4b5563; white-space:pre-wrap; max-height:180px; overflow:auto; font-size:.76rem; }
+.artifact-body { margin-top:.35rem; color:#374151; max-height:320px; overflow:auto; font-size:.8rem; line-height:1.5; }
+.artifact-body h1, .artifact-body h2, .artifact-body h3, .artifact-body h4 { color:#0f172a; line-height:1.3; margin:.7rem 0 .3rem; }
+.artifact-body h1 { font-size:1rem; } .artifact-body h2 { font-size:.92rem; } .artifact-body h3 { font-size:.86rem; } .artifact-body h4 { font-size:.82rem; }
+.artifact-body > :first-child { margin-top:0; }
+.artifact-body p { margin:.3rem 0; } .artifact-body ul, .artifact-body ol { margin:.3rem 0; padding-left:1.2rem; }
+.artifact-body table { border-collapse:collapse; margin:.4rem 0; font-size:.76rem; }
+.artifact-body th, .artifact-body td { border:1px solid #e5e7eb; padding:.2rem .4rem; text-align:left; vertical-align:top; }
+.artifact-body th { background:#f9fafb; }
+.artifact-body blockquote { margin:.3rem 0; padding-left:.6rem; border-left:3px solid #e5e7eb; color:#6b7280; }
+.artifact-body pre, .artifact-body code { font-size:.74rem; white-space:pre-wrap; }
 .gated { color:#a16207; font-style:italic; }
 .field { margin-bottom:.75rem; }
 .field label { display:block; font-size:.74rem; font-weight:600; color:#374151; margin-bottom:.3rem; }
@@ -203,7 +212,7 @@ function renderArtifacts(arts){
   if(!arts.length){ el.innerHTML = '<div class="empty">No completed artifacts.</div>'; return; }
   el.innerHTML = arts.map(a => `<div class="artifact">
     <div class="artifact-hd"><span>${esc(a.action_type.replace(/_/g,' '))}</span><span class="muted">L${a.layer_number}</span></div>
-    <div class="artifact-body ${a.gated?'gated':''}">${esc((a.artifact||'').slice(0,1200))}</div>
+    <div class="artifact-body ${a.gated?'gated':''}">${a.artifact_html || ''}</div>
   </div>`).join('');
 }
 

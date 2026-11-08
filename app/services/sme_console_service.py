@@ -318,15 +318,19 @@ def artifacts_for_sim(sim, sme):
         AgentAction.query.filter_by(simulation_id=sim.id, status=AgentAction.STATUS_COMPLETE)
         .order_by(AgentAction.completed_at.desc()).all()
     )
+    from app.services import artifact_actions
     out = []
     for r in rows:
         gated = (r.layer_number == L5_LAYER) and not can_l5
+        text = L5_PLACEHOLDER if gated else artifact_actions.to_markdown(r.artifact or '')
         out.append({
             'id': r.id,
             'action_type': r.action_type,
             'layer_number': r.layer_number,
             'completed_at': r.completed_at.isoformat() if r.completed_at else None,
-            'artifact': L5_PLACEHOLDER if gated else r.artifact,
+            # Markdown, never raw JSON; and the same text as safe HTML for display.
+            'artifact': text,
+            'artifact_html': artifact_actions._markdown_html(text),
             'gated': gated,
         })
     return out

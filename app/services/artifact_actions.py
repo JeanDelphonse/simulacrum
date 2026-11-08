@@ -145,6 +145,120 @@ def _campaign_html(data: dict) -> str:
     return '\n'.join(parts)
 
 
+# ---------------------------------------------------------------------------
+# Structured (JSON) artifacts as Markdown, for read-only views (SME console)
+# ---------------------------------------------------------------------------
+
+_SKIP_KEYS = {'version', 'agent', 'crm_contact_id', 'send_status', 'pipeline_stage',
+              'personalization_context', 'signals_found'}
+
+
+def _label(key: str) -> str:
+    return str(key).replace('_', ' ').strip().capitalize()
+
+
+def _scalar(v) -> str:
+    if isinstance(v, bool):
+        return 'Yes' if v else 'No'
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
+    return str(v).strip()
+
+
+def _item_title(d: dict) -> str:
+    name = ('%s %s' % (d.get('first_name') or '', d.get('last_name') or '')).strip()
+    for k in ('title', 'name', 'company_name', 'company', 'subject', 'heading'):
+        if not name and d.get(k):
+            name = str(d[k]).strip()
+    return name
+
+
+def _skip(key) -> bool:
+    # Internal fields (ids, send state, timings) aren't part of the deliverable.
+    return key in _SKIP_KEYS or str(key).endswith('_seconds') or str(key).endswith('_per_prospect')
+
+
+def _md_value(key, value, depth: int) -> list:
+    """Markdown lines for one key/value at heading depth (2 = ##)."""
+    h = '#' * min(depth, 6)
+    if _skip(key) or value in (None, '', [], {}):
+        return []
+    if isinstance(value, dict):
+        lines = ['%s %s' % (h, _label(key)), '']
+        body = []
+        for k, v in value.items():
+            body += _md_value(k, v, depth + 1)
+        return lines + body if body else []
+    if isinstance(value, list):
+        lines = ['%s %s' % (h, _label(key)), '']
+        if all(not isinstance(x, (dict, list)) for x in value):
+            return lines + ['- ' + _scalar(x) for x in value] + ['']
+        for n, x in enumerate(value, 1):
+            if isinstance(x, dict):
+                lines += _md_dict_item(x, depth + 1, n)
+            else:
+                lines += ['- ' + _scalar(x), '']
+        return lines
+    text = _scalar(value)
+    if '\n' in text:                       # long text (e.g. an agreement) keeps its own Markdown
+        return ['%s %s' % (h, _label(key)), '', text, '']
+    return ['**%s:** %s' % (_label(key), text), '']
+
+
+def _md_dict_item(d: dict, depth: int, n: int) -> list:
+    h = '#' * min(depth, 6)
+    title = _item_title(d) or 'Item %d' % n
+    meta = ' · '.join(str(d[k]).strip() for k in ('job_title', 'company_name') if d.get(k) and str(d[k]).strip() != title)
+    lines = ['%s %s' % (h, title), '']
+    if meta:
+        lines += ['*%s*' % meta, '']
+    steps = d.get('sequence') or ([d['email_draft']] if isinstance(d.get('email_draft'), dict) else [])
+    for k, v in d.items():
+        if k in _SKIP_KEYS or k in ('first_name', 'last_name', 'job_title', 'company_name', 'sequence', 'email_draft'):
+            continue
+        if k in ('title', 'name', 'company', 'subject', 'heading') and str(v).strip() == title:
+            continue
+        lines += _md_value(k, v, depth + 1)
+    for i, step in enumerate(steps, 1):
+        if not isinstance(step, dict):
+            continue
+        lines += ['**Email %d: %s**' % (step.get('step') or i, (step.get('subject') or '').strip()), '',
+                  (step.get('body') or '').strip(), '']
+    return lines
+
+
+def to_markdown(content: str) -> str:
+    """An artifact as Markdown. Markdown artifacts are returned as they are;
+    structured (JSON) ones, such as outreach campaigns, become headings, fields
+    and email drafts. Anything that isn't valid JSON is shown as written."""
+    if not is_structured(content):
+        return content or ''
+    try:
+        data, _ = json.JSONDecoder().raw_decode(content.strip())
+    except Exception:
+        return content
+    if not isinstance(data, dict):
+        return content
+    lines = []
+    prospects = data.get('prospects')
+    if isinstance(prospects, list) and not prospects:
+        summary = data.get('research_summary') if isinstance(data.get('research_summary'), dict) else {}
+        reason = summary.get('empty_reason') or data.get('empty_reason')
+        lines += [reason or 'No prospects in this campaign.', '']
+        data = dict(data, research_summary={k: v for k, v in summary.items() if k != 'empty_reason'},
+                    empty_reason=None)
+    for k, v in data.items():
+        if k in _SKIP_KEYS or (k == 'prospects' and not v):
+            continue
+        lines += _md_value(k, v, 2)
+    return '\n'.join(lines).strip() + '\n'
+
+
+def markdown_html(content: str) -> str:
+    """Safe HTML for any artifact (escape-first renderer, tables included)."""
+    return _markdown_html(to_markdown(content))
+
+
 def render_html(content: str) -> str:
     if is_structured(content):
         try:
