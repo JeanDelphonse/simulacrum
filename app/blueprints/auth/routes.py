@@ -126,6 +126,10 @@ def register():
         except Exception:
             pass  # referral attribution failure must never block registration
 
+    # Contact invites from /contacts: this person was invited, now they've joined.
+    from app.services import contact_invite_service as _cis
+    _cis.mark_joined(user, session.pop(_cis.SESSION_KEY, None))
+
     # SIM-PRD-ORG-001: email-domain auto-join. If this address matches an org's
     # registered domain, link the new user into that org's population so they
     # can draw from its credit pool. Failure must never block registration.
@@ -403,6 +407,9 @@ def google_oauth_callback():
             db.session.add(user)
             db.session.flush()  # write user row before audit_log FK reference
             AuditLog.log('user_registered', user_id=user.id, resource_id=user.id)
+            from flask import session as _session
+            from app.services import contact_invite_service as _cis
+            _cis.mark_joined(user, _session.pop(_cis.SESSION_KEY, None))
 
     login_user(user, remember=True)
     _, jti = _make_jwt(user.id)

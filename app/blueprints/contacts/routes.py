@@ -82,12 +82,32 @@ def list_contacts():
     per_page = min(request.args.get('per_page', 50, type=int), 200)
     paginated = q.paginate(page=page, per_page=per_page, error_out=False)
 
+    from app.services import contact_invite_service
+    invites = contact_invite_service.statuses(current_user.id, paginated.items)
+    contacts = []
+    for c in paginated.items:
+        d = c.to_dict()
+        d['simisi_invite'] = invites.get(c.id, {'status': 'not_invited'})
+        contacts.append(d)
     return jsonify({
-        'contacts': [c.to_dict() for c in paginated.items],
+        'contacts': contacts,
         'total': paginated.total,
         'page': page,
         'pages': paginated.pages,
     })
+
+
+@contacts_bp.route('/<contact_id>/invite', methods=['POST'])
+@login_required
+def invite_contact(contact_id):
+    """Email this contact a short invitation to try SimiSI, from the member."""
+    from app.services import contact_invite_service as cis
+    contact = Contact.query.filter_by(id=contact_id, user_id=current_user.id).first()
+    try:
+        invite = cis.send_invite(current_user, contact)
+    except cis.InviteError as exc:
+        return jsonify({'error': str(exc)}), exc.status
+    return jsonify({'ok': True, 'simisi_invite': invite.to_dict()}), 201
 
 
 @contacts_bp.route('', methods=['POST'])

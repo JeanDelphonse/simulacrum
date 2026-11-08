@@ -47,6 +47,16 @@
 .crm-table .stage-col { width: 90px; }
 .crm-table .source-col { width: 80px; }
 .crm-table .activity-col { width: 110px; }
+.crm-table .invite-col { width: 110px; white-space: nowrap; }
+.inv-btn { min-height: 30px; padding: 0 12px; border: 1.5px solid var(--ink); border-radius: var(--r-btn); background: #fff;
+           color: var(--ink); font: 600 13px var(--sans); cursor: pointer; }
+.inv-btn:hover:not(:disabled) { background: var(--ink); color: #fff; }
+.inv-btn:disabled { opacity: .6; cursor: default; }
+.inv-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.inv-invited { background: #FDF6E7; color: #7A5410; }
+.inv-joined { background: #E6F5F3; color: #0F7B72; }
+.inv-member { background: var(--alt); color: var(--ink-2); }
+.inv-muted { font-size: 12px; color: var(--mute); }
 
 .contact-name-link { font-weight: 500; color: #0D1B3E; text-decoration: none; }
 .contact-name-link:hover { text-decoration: underline; }
@@ -193,10 +203,11 @@
             <th class="score-col">Score</th>
             <th class="source-col">Source</th>
             <th class="activity-col">Last Activity</th>
+            <th class="invite-col">SimiSI invite</th>
           </tr>
         </thead>
         <tbody id="contactsTableBody">
-          <tr><td colspan="7" class="crm-empty"><div class="crm-empty-icon">&#128100;</div><div class="crm-empty-title">Loading…</div></td></tr>
+          <tr><td colspan="8" class="crm-empty"><div class="crm-empty-icon">&#128100;</div><div class="crm-empty-title">Loading…</div></td></tr>
         </tbody>
       </table>
     </div>
@@ -457,14 +468,14 @@ function loadContacts() {
       renderTable(data.contacts, data.total, data.pages);
     })
     .catch(() => {
-      document.getElementById('contactsTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--mute)">Failed to load contacts</td></tr>';
+      document.getElementById('contactsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--mute)">Failed to load contacts</td></tr>';
     });
 }
 
 function renderTable(contacts, total, pages) {
   const tbody = document.getElementById('contactsTableBody');
   if (!contacts.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="crm-empty"><div class="crm-empty-icon">&#128100;</div><div class="crm-empty-title">No contacts found</div><div>Add your first contact or import a CSV</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="crm-empty"><div class="crm-empty-icon">&#128100;</div><div class="crm-empty-title">No contacts found</div><div>Add your first contact or import a CSV</div></div></td></tr>`;
     document.getElementById('tablePagination').innerHTML = '';
     return;
   }
@@ -483,6 +494,7 @@ function renderTable(contacts, total, pages) {
       <td>${scoreHtml(c.qualifying_score)}</td>
       <td style="color:#6b7280">${sourceLabel(c.source)}</td>
       <td style="color:var(--mute)">${timeAgo(c.last_contacted_at || c.updated_at)}</td>
+      <td class="invite-col" id="inv-${c.id}">${inviteCell(c)}</td>
     </tr>
   `).join('');
 
@@ -492,6 +504,32 @@ function renderTable(contacts, total, pages) {
   });
 
   renderPagination(pages);
+}
+
+// SimiSI invite: a button until sent, then the status (Invited / Joined).
+function _invEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function inviteCell(c) {
+  const inv = c.simisi_invite || {status: 'not_invited'};
+  const when = d => d ? ' · ' + new Date(d).toLocaleDateString() : '';
+  if (inv.status === 'joined') return `<span class="inv-pill inv-joined" title="Created a SimiSI account${when(inv.joined_at)}">Joined</span>`;
+  if (inv.status === 'invited') return `<span class="inv-pill inv-invited" title="Invited${when(inv.sent_at)}">Invited</span>`;
+  if (inv.status === 'member') return '<span class="inv-pill inv-member" title="Already has a SimiSI account">On SimiSI</span>';
+  if (inv.status === 'blocked') return `<span class="inv-muted" title="${_invEsc(inv.reason || '')}">Can't invite</span>`;
+  return `<button type="button" class="inv-btn" onclick="inviteContact('${c.id}', this)" data-name="${_invEsc(c.display_name)}">Invite</button>`;
+}
+async function inviteContact(id, btn) {
+  const name = btn.dataset.name || 'this contact';
+  if (!confirm(`Send ${name} a short email from you, inviting them to try SimiSI?`)) return;
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(`${CROOT}/api/contacts/${id}/invite`, {method: 'POST', credentials: 'same-origin'});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'The invite could not be sent.');
+    document.getElementById('inv-' + id).innerHTML = inviteCell({simisi_invite: d.simisi_invite});
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Invite';
+    alert(e.message);
+  }
 }
 
 function toggleRow(cb) {

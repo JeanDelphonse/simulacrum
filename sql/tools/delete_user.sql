@@ -1,5 +1,5 @@
 -- delete_user.sql — permanently delete ONE user and everything that is theirs.
--- Generated from the models (all 161 tables reviewed). MySQL 5.7+/MariaDB.
+-- Generated from the models (all 162 tables reviewed). MySQL 5.7+/MariaDB.
 --
 -- BEFORE RUNNING
 --   1. Back up the database (cPanel > Backup, or mysqldump). This cannot be undone.
@@ -217,6 +217,7 @@ INSERT INTO zz_del_preview SELECT 'email_campaigns', COUNT(*) FROM email_campaig
 INSERT INTO zz_del_preview SELECT 'email_accounts', COUNT(*) FROM email_accounts WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'credit_redemptions', COUNT(*) FROM credit_redemptions WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'contacts', COUNT(*) FROM contacts WHERE source_action_id IN (SELECT id FROM zz_del_actions) OR source_cycle_id IN (SELECT id FROM zz_del_cycles) OR user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'contact_invites', COUNT(*) FROM contact_invites WHERE contact_id IN (SELECT id FROM zz_del_contacts) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'contact_field_sources', COUNT(*) FROM contact_field_sources WHERE account_id IN (SELECT id FROM zz_del_mail) OR contact_id IN (SELECT id FROM zz_del_contacts);
 INSERT INTO zz_del_preview SELECT 'contact_dnc_flags', COUNT(*) FROM contact_dnc_flags WHERE contact_id IN (SELECT id FROM zz_del_contacts);
 INSERT INTO zz_del_preview SELECT 'contact_activities', COUNT(*) FROM contact_activities WHERE action_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts) OR simulation_id IN (SELECT id FROM zz_del_sims);
@@ -415,6 +416,8 @@ DELETE FROM credit_redemptions WHERE simulation_id IN (SELECT id FROM zz_del_sim
 DELETE FROM contacts WHERE source_action_id IN (SELECT id FROM zz_del_actions)
     OR source_cycle_id IN (SELECT id FROM zz_del_cycles)
     OR user_id = @uid;
+DELETE FROM contact_invites WHERE contact_id IN (SELECT id FROM zz_del_contacts)
+    OR user_id = @uid;
 DELETE FROM contact_field_sources WHERE account_id IN (SELECT id FROM zz_del_mail)
     OR contact_id IN (SELECT id FROM zz_del_contacts);
 DELETE FROM contact_dnc_flags WHERE contact_id IN (SELECT id FROM zz_del_contacts);
@@ -478,6 +481,7 @@ UPDATE artifact_actions SET actor_id = NULL WHERE actor_id = @uid;
 UPDATE bio_chat_sessions SET takeover_by = NULL WHERE takeover_by = @uid;
 UPDATE contact_dnc_flags SET set_by = NULL WHERE set_by = @uid;
 UPDATE contact_dnc_flags SET lifted_by = NULL WHERE lifted_by = @uid;
+UPDATE contact_invites SET joined_user_id = NULL WHERE joined_user_id = @uid;
 UPDATE feature_flags SET updated_by = NULL WHERE updated_by = @uid;
 UPDATE guardrail_policies SET created_by = NULL WHERE created_by = @uid;
 UPDATE guardrail_rules SET created_by = NULL WHERE created_by = @uid;

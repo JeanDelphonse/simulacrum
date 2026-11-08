@@ -85,6 +85,7 @@ from app.models.mail_crm import (
 )
 from app.models.enterprise_inquiry import EnterpriseInquiry
 from app.models.compliance import LegalText, OutcomeCheckin, ComplianceEvent
+from app.models.contact_invite import ContactInvite
 from app.models.sme_guide import (
     SmeGuide, UserGuidePref, SmeSession, SmeTurn, SmeBriefing, SkillSuggestion, GoalCard,
     GoalCardAgentChange,

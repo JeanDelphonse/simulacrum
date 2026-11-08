@@ -9,8 +9,14 @@ logger = logging.getLogger(__name__)
 # HTML email wrapper
 # ---------------------------------------------------------------------------
 
-def _html_wrap(body_html: str, preheader: str = '') -> str:
-    """Wrap a body snippet in a full, deliverable HTML email shell."""
+def _html_wrap(body_html: str, preheader: str = '', footer_html: Optional[str] = None) -> str:
+    """Wrap a body snippet in a full, deliverable HTML email shell.
+
+    footer_html replaces the account-holder footer line, for emails to people
+    without an account (contact invites carry the legal footer instead)."""
+    footer = footer_html if footer_html is not None else (
+        'SimiSI · Bay Area Experiences Ventures<br>\n'
+        '        You received this email because you have an account with SimiSI.')
     pre = f'<span style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{preheader}&nbsp;</span>' if preheader else ''
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -40,8 +46,7 @@ def _html_wrap(body_html: str, preheader: str = '') -> str:
 
       <!-- Footer -->
       <tr><td align="center" style="padding-top:24px;font-size:12px;color:#9ca3af;line-height:1.6;">
-        SimiSI · Bay Area Experiences Ventures<br>
-        You received this email because you have an account with SimiSI.
+        {footer}
       </td></tr>
 
     </table>

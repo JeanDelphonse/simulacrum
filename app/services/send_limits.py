@@ -13,6 +13,7 @@ DEFAULTS = {
     'pause_bounce_rate_pct': '5',           # 7-day bounce rate that pauses a campaign
     'pause_complaint_rate_pct': '0.3',      # 7-day spam-complaint rate that pauses it
     'pause_min_sample': '20',               # sends needed before the rates are judged
+    'contact_invite_daily_cap': '20',       # SimiSI invites a member can send to contacts per UTC day
 }
 
 

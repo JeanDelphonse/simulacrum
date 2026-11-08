@@ -153,6 +153,17 @@ The "LinkedIn messaging" toggle was removed: SimiSI no longer posts or messages 
 
 ---
 
+### 7c. Contact invite (a member invites a contact to try SimiSI, from /contacts)
+One email per contact, only when the member clicks Invite and confirms. SimiSI is treated as the sender (it promotes SimiSI), so the footer carries **SimiSI's** postal address (Admin → Compliance), with the standard `email_footer`, unsubscribe link and one-click headers. Replies, including STOP, go through the inbound parse address. Suppressed and Do Not Contact addresses are refused. There's a daily cap per member (`contact_invite_daily_cap`, default 20).
+
+| Part | Proposed text |
+|---|---|
+| From | **"{Member name} via SimiSI" <simi@simulacrumai.io>** |
+| Subject | **"{Member first name} thinks you might like SimiSI"** |
+| Body | **"Hi {first name}, {Member name} uses SimiSI and thought you might find it useful too. SimiSI turns your experience into a 24-month career plan, with AI agents that draft the work and wait for your approval. Setting up a bio page is free. [Take a look] {Member first name}"** |
+
+**Q13.** Is SimiSI correctly treated as the sender here (the member chooses the recipient, SimiSI writes and sends the message)? Is the member's name in the From line acceptable under the "initiator" rules?
+
 ## 8. Not changed in this task
 - `/legal/privacy` and `/legal/terms` are linked to, not rewritten. Terms §7.2 "No Guarantees" already exists.
 - The brand and the contact address simi@simulacrumai.io are unchanged.

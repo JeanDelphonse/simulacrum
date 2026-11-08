@@ -54,7 +54,7 @@ USER_COLS = {'user_id', 'owner_user_id', 'author_user_id', 'profile_user_id', 'c
 # Columns that only record who acted on someone else's row -> set NULL.
 ACTOR_COLS = {'created_by', 'updated_by', 'set_by', 'lifted_by', 'decided_by', 'granted_by', 'changed_by',
               'actor_id', 'takeover_by', 'voided_by_id', 'admin_user_id',
-              'subject_user_id', 'target_user_id', 'auth_user_id'}
+              'subject_user_id', 'target_user_id', 'auth_user_id', 'joined_user_id'}
 
 # Parent id sets, as temporary tables. Order matters (later ones use earlier ones).
 SETS = [

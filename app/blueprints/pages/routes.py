@@ -868,6 +868,17 @@ def register_page():
     return render_template('auth/register.html')
 
 
+@pages_bp.route('/join/<token>')
+def contact_invite_join(token):
+    """A contact opened their SimiSI invite: remember it for sign-up."""
+    if current_user.is_authenticated:
+        return redirect(url_for('pages.dashboard'))
+    from flask import session
+    from app.services import contact_invite_service
+    contact_invite_service.remember_token(session, token)
+    return redirect(url_for('pages.register_page'))
+
+
 @pages_bp.route('/verify-sent')
 def verify_sent_page():
     return render_template('auth/verify_sent.html')
