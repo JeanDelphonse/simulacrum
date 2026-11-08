@@ -98,3 +98,48 @@ def install(app) -> None:
             return
         if hit:
             target.do_not_contact = True
+
+
+# ── Opting out ───────────────────────────────────────────────────────────────
+
+_VIA_LABELS = {'unsubscribe_link': 'Unsubscribed (email link)', 'reply_stop': 'Replied STOP',
+               'spam_report': 'Marked an email as spam'}
+
+
+def opt_out(email: str, via: str, reason: str = 'unsubscribe', detail: str = '', commit: bool = True) -> int:
+    """Someone asked not to be emailed again (unsubscribe link, reply STOP, spam
+    report). Puts the address on the global list and marks every contact with
+    that address Do Not Contact, for every member: the flag the CRM shows, the
+    flag row Email-to-CRM uses, follow-ups cancelled and an audit row. Returns
+    the number of contacts newly marked. Safe to call twice.
+    """
+    from app.extensions import db
+    from app.models.action_step import ActionStep
+    from app.models.audit_log import AuditLog
+    from app.models.contact import Contact, ContactActivity
+    from app.models.mail_crm import ContactDncFlag
+    from app.models.outreach_email import EmailSuppression
+    from utils.id_gen import generate_id
+    e = _norm(email)
+    if not e:
+        return 0
+    if not EmailSuppression.query.filter_by(email=e).first():
+        db.session.add(EmailSuppression(id=generate_id(), email=e, reason=reason, detail=(detail or '')[:500]))
+    marked = 0
+    label = _VIA_LABELS.get(via, 'Opted out')
+    for c in Contact.query.filter(db.func.lower(Contact.email) == e).all():
+        if not ContactDncFlag.query.filter_by(contact_id=c.id, reason=reason).first():
+            db.session.add(ContactDncFlag(contact_id=c.id, reason=reason, prior_dnc=bool(c.do_not_contact)))
+        ActionStep.query.filter(ActionStep.condition_ref == c.id,
+                                ActionStep.status.in_([ActionStep.STATUS_SCHEDULED, ActionStep.STATUS_SUSPENDED])).update(
+            {'status': ActionStep.STATUS_CANCELLED, 'skip_reason': 'Recipient opted out: %s' % label.lower()},
+            synchronize_session=False)
+        if c.do_not_contact:
+            continue
+        c.do_not_contact = True
+        marked += 1
+        db.session.add(ContactActivity(contact_id=c.id, activity_type='opted_out', notes=label))
+        AuditLog.log('outreach_opt_out', user_id=c.user_id, resource_id=c.id, metadata={'via': via})
+    if commit:
+        db.session.commit()
+    return marked

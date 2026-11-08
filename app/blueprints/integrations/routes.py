@@ -1913,6 +1913,13 @@ def sendgrid_event_webhook():
         if sg_message_id:
             log = EmailLog.query.filter_by(provider_message_id=sg_message_id.split('.')[0]).first()
 
+        # A spam report is an opt-out, whichever email it was about (agent send,
+        # SimiSI campaign, contact invite): global list plus Do Not Contact.
+        if event_type == 'spamreport' and (event.get('email') or (log and log.to_email)):
+            from app.services import suppression_service
+            suppression_service.opt_out(event.get('email') or log.to_email, via='spam_report', reason='complaint',
+                                        detail='spam report', commit=False)
+
         if log:
             if event_type == 'delivered':
                 log.delivered_at = log.delivered_at or datetime.utcnow()
@@ -1952,20 +1959,7 @@ def sendgrid_event_webhook():
                 if not contact_id:
                     contact_id = log.contact_id
             elif event_type == 'spamreport':
-                to_suppress = event.get('email')
-                if to_suppress:
-                    existing = EmailSuppression.query.filter_by(
-                        email=to_suppress.lower().strip()
-                    ).first()
-                    if not existing:
-                        db.session.add(EmailSuppression(
-                            id=generate_id(),
-                            email=to_suppress.lower().strip(),
-                            reason='complaint',
-                            detail='spam report',
-                        ))
-                if log:
-                    log.status = 'complaint'
+                log.status = 'complaint'
 
         # Auto-pause a campaign whose bounce or complaint rate is too high (C3).
         if log and log.action_id and event_type in ('bounce', 'dropped', 'spamreport'):
@@ -2068,27 +2062,12 @@ def _is_stop_reply(body: str) -> bool:
 
 def _opt_out_by_reply(contact_id: str) -> None:
     from app.models.contact import Contact
-    from app.models.outreach_email import EmailSuppression
-    from app.models.mail_crm import ContactDncFlag
-    from app.models.action_step import ActionStep
-    from app.models.audit_log import AuditLog
     contact = Contact.query.get(contact_id)
     if not contact or not contact.email:
         return
-    email = contact.email.lower().strip()
     try:
-        if not EmailSuppression.query.filter_by(email=email).first():
-            db.session.add(EmailSuppression(id=generate_id(), email=email, reason='unsubscribe',
-                                            detail='Replied STOP'))
-        contact.do_not_contact = True
-        db.session.add(ContactDncFlag(contact_id=contact.id, reason='unsubscribe'))
-        ActionStep.query.filter(ActionStep.condition_ref == contact.id,
-                                ActionStep.status.in_([ActionStep.STATUS_SCHEDULED, ActionStep.STATUS_SUSPENDED])).update(
-            {'status': ActionStep.STATUS_CANCELLED, 'skip_reason': 'Recipient replied STOP'},
-            synchronize_session=False)
-        AuditLog.log('outreach_opt_out', user_id=contact.user_id, resource_id=contact.id,
-                     metadata={'via': 'reply_stop'})
-        db.session.commit()
+        from app.services import suppression_service
+        suppression_service.opt_out(contact.email, via='reply_stop', detail='Replied STOP')
         logger.info('Reply STOP: contact %s opted out', contact.id)
     except Exception:
         db.session.rollback()

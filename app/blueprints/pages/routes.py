@@ -1003,24 +1003,15 @@ def outreach_unsubscribe(token):
     Public — no login required. Adds the address to the suppression list, which all
     outreach sends check first. Transactional emails are unaffected.
     """
-    from app.extensions import db
     from app.services.outreach_campaign_service import parse_unsubscribe_token
-    from app.models.outreach_email import EmailSuppression
-    from utils.id_gen import generate_id
+    from app.services import suppression_service
 
     email = parse_unsubscribe_token(token)
     if not email:
         return render_template('public/unsubscribe.html', ok=False, email=None), 400
 
-    existing = EmailSuppression.query.filter_by(email=email.lower().strip()).first()
-    if not existing:
-        db.session.add(EmailSuppression(
-            id=generate_id(),
-            email=email.lower().strip(),
-            reason='unsubscribe',
-            detail='outreach one-click unsubscribe',
-        ))
-        db.session.commit()
+    # Global opt-out plus Do Not Contact on every contact with this address.
+    suppression_service.opt_out(email, via='unsubscribe_link', detail='outreach one-click unsubscribe')
     return render_template('public/unsubscribe.html', ok=True, email=email)
 
 
