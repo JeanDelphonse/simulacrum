@@ -137,7 +137,14 @@ def main():
         check('the message is brief (under 80 words before the footer)', words < 80, words)
         check('greets the contact and names the member', 'Hi Ana,' in plain and 'Jean Delphonse uses SimiSI' in plain)
         inv = ContactInvite.query.filter_by(user_id=owner.id, email='ana@example.com').first()
-        check('the link is the personal join link', inv is not None and ('/join/%s' % inv.token) in html and ('/join/%s' % inv.token) in plain)
+        import re as _re
+        visible = _re.sub(r'<[^>]+>', ' ', html)
+        check('the body shows the address as SimiSI.io', 'Take a look at SimiSI.io' in ' '.join(visible.split())
+              and 'Visit SimiSI.io' in visible and 'Take a look at https://SimiSI.io' in plain, plain)
+        check('no long invite link is shown, in either part', inv is not None and ('/join/%s' % inv.token) not in visible
+              and '/join/' not in plain)
+        check('the HTML links still go through the personal invite link (for Joined)',
+              inv is not None and html.count('href="http://localhost/join/%s"' % inv.token) == 2, html.count('/join/'))
         check("unsubscribe link, one-click headers and SimiSI's address in the footer",
               'Unsubscribe' in html and m.get('headers', {}).get('List-Unsubscribe-Post') == 'List-Unsubscribe=One-Click'
               and '1 Market St, Suite 100' in html and '1 Market St, Suite 100' in plain, m.get('headers'))

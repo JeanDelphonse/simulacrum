@@ -17,6 +17,8 @@ from html import escape
 logger = logging.getLogger(__name__)
 
 SESSION_KEY = 'contact_invite_token'
+SITE_LABEL = 'SimiSI.io'                 # how the address reads in the email body
+SITE_URL = 'https://SimiSI.io'
 
 
 class InviteError(Exception):
@@ -76,17 +78,22 @@ def _content(inviter_name: str, first_name: str, join_url: str) -> tuple:
         '%s uses SimiSI and thought you might find it useful too.\n\n'
         'SimiSI turns your experience into a 24-month career plan, with AI agents that draft the work '
         'and wait for your approval. Setting up a bio page is free.\n\n'
-        'Take a look: %s\n\n'
+        'Take a look at %s\n\n'
         '%s'
-    ) % (hi, who, join_url, _first(who))
-    from app.services.email_service import _btn, _fallback_link, _p
+    ) % (hi, who, SITE_URL, _first(who))
+    # The visible address is always SimiSI.io. In HTML it links through the
+    # personal invite link, so signing up from it marks the invite Joined; the
+    # plain-text part shows the address itself (signing up with the invited
+    # email address still marks it Joined).
+    from app.services.email_service import _btn, _p
+    link = '<a href="%s" style="color:#0F7B72;font-weight:600;">%s</a>' % (escape(join_url, quote=True), SITE_LABEL)
     inner = (
         _p('Hi %s,' % escape(hi))
         + _p('%s uses SimiSI and thought you might find it useful too.' % escape(who))
         + _p('SimiSI turns your experience into a 24-month career plan, with AI agents that draft the work '
              'and wait for your approval. Setting up a bio page is free.')
-        + _btn(join_url, 'Take a look')
-        + _fallback_link(join_url)
+        + _p('Take a look at %s' % link)
+        + _btn(join_url, 'Visit %s' % SITE_LABEL)
         + _p(escape(_first(who)), muted=True)
     )
     return subject, plain, inner
