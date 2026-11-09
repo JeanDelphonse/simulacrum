@@ -103,3 +103,13 @@ def redact(text: str) -> str:
         text = re.sub(r'(?<![\w])(' + '|'.join(re.escape(n) for n in names) + r')(?![\w])', '[a provider]', text,
                       flags=re.I)
     return text
+
+
+def banned_phrases(text: str) -> list:
+    """Earnings-claim phrases from config/compliance_phrases.json 'banned' found
+    in text (case-insensitive, whole words; disclaimers such as 'not a
+    guarantee' are ignored). Used to refuse admin-edited email copy."""
+    low = ' '.join((text or '').lower().split())
+    for ok in _cfg().get('allowed_contexts', []):
+        low = low.replace(ok.lower(), ' ')
+    return [p for p in _cfg().get('banned', []) if re.search(r'(?<![\w])' + re.escape(p.lower()) + r'(?![\w])', low)]

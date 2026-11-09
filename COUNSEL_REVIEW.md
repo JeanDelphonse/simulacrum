@@ -162,6 +162,8 @@ One email per contact, only when the member clicks Invite and confirms. SimiSI i
 | Subject | **"{Member first name} thinks you might like SimiSI"** |
 | Body | **"Hi {first name}, {Member name} uses SimiSI and thought you might find it useful too. SimiSI turns your experience into a 24-month career plan, with AI agents that draft the work and wait for your approval. Setting up a bio page is free. Take a look at SimiSI.io [Visit SimiSI.io] {Member first name}"** |
 
+The subject, preview and body are editable in **Admin → Outreach → Contact invite**; the table above is the default. Saves are refused if they use a banned earnings phrase from `config/compliance_phrases.json`, contain HTML or drop the SimiSI.io link; the footer stays the legal-text `email_footer` and cannot be edited there.
+
 **Q13.** Is SimiSI correctly treated as the sender here (the member chooses the recipient, SimiSI writes and sends the message)? Is the member's name in the From line acceptable under the "initiator" rules?
 
 ## 8. Not changed in this task

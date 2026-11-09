@@ -68,35 +68,92 @@ def _first(name: str) -> str:
     return (name or '').strip().split(' ')[0] or 'A friend'
 
 
-def _content(inviter_name: str, first_name: str, join_url: str) -> tuple:
-    """(subject, plain, inner_html). Brief and friendly; no income promises."""
-    who = inviter_name.strip() or 'A friend'
-    hi = (first_name or '').strip() or 'there'
-    subject = '%s thinks you might like SimiSI' % _first(who)
-    plain = (
-        'Hi %s,\n\n'
-        '%s uses SimiSI and thought you might find it useful too.\n\n'
-        'SimiSI turns your experience into a 24-month career plan, with AI agents that draft the work '
-        'and wait for your approval. Setting up a bio page is free.\n\n'
-        'Take a look at %s\n\n'
-        '%s'
-    ) % (hi, who, SITE_URL, _first(who))
-    # The visible address is always SimiSI.io. In HTML it links through the
-    # personal invite link, so signing up from it marks the invite Joined; the
-    # plain-text part shows the address itself (signing up with the invited
-    # email address still marks it Joined).
+# ── The email copy (Admin -> Outreach -> Contact invite) ─────────────────────
+# Stored as the outreach_templates row TEMPLATE_KEY; these are the defaults until
+# an admin saves an edit. Plain text: paragraphs separated by a blank line.
+TEMPLATE_KEY = 'contact_invite'
+TOKENS = ('first_name', 'member_name', 'member_first_name', 'site')
+DEFAULT_TEMPLATE = {
+    'name': 'Contact invite',
+    'subject': '{{member_first_name}} thinks you might like SimiSI',
+    'preview_text': '{{member_first_name}} invited you to try SimiSI.',
+    'body': ('Hi {{first_name}},\n\n'
+             '{{member_name}} uses SimiSI and thought you might find it useful too.\n\n'
+             'SimiSI turns your experience into a 24-month career plan, with AI agents that draft the work '
+             'and wait for your approval. Setting up a bio page is free.\n\n'
+             'Take a look at {{site}}\n\n'
+             '{{member_first_name}}'),
+}
+MAX_SUBJECT, MAX_PREVIEW, MAX_BODY = 150, 150, 1500
+
+
+def get_template() -> dict:
+    """The copy in use: the admin's saved edit, else the default."""
+    try:
+        from app.models.outreach_campaign import OutreachTemplate
+        row = OutreachTemplate.query.filter_by(template_key=TEMPLATE_KEY).first()
+        if row:
+            return {'subject': row.subject, 'preview_text': row.preview_text or '', 'body': row.body,
+                    'updated_at': row.updated_at.isoformat() if row.updated_at else None, 'is_default': False}
+    except Exception:
+        logger.exception('contact invite template read failed; using the default')
+    return dict(DEFAULT_TEMPLATE, updated_at=None, is_default=True)
+
+
+def validate_template(subject: str, preview_text: str, body: str) -> list:
+    """Problems that stop a save (empty list = fine)."""
+    import re
+    from app.services import compliance_filter
+    errors = []
+    subject, preview_text, body = (subject or '').strip(), (preview_text or '').strip(), (body or '').strip()
+    if not subject or not body:
+        errors.append('Subject and body are required.')
+    if len(subject) > MAX_SUBJECT or len(preview_text) > MAX_PREVIEW or len(body) > MAX_BODY:
+        errors.append('Keep it brief: subject and preview up to %d characters, body up to %d.' % (MAX_SUBJECT, MAX_BODY))
+    if '{{site}}' not in body:
+        errors.append('The body must include {{site}}, the SimiSI.io link.')
+    unknown = sorted({t for t in re.findall(r'{{\s*([^}]*?)\s*}}', subject + preview_text + body)} - set(TOKENS))
+    if unknown:
+        errors.append('Unknown token%s: %s. Use %s.' % ('s' if len(unknown) > 1 else '',
+                      ', '.join('{{%s}}' % u for u in unknown), ', '.join('{{%s}}' % t for t in TOKENS)))
+    found = compliance_filter.banned_phrases(' '.join((subject, preview_text, body)))
+    if found:
+        errors.append('Remove earnings-claim wording: %s.' % ', '.join('"%s"' % f for f in found))
+    if re.search(r'<[a-z!/]', body, re.I):
+        errors.append('Plain text only: no HTML tags.')
+    return errors
+
+
+def render(template: dict, member_name: str, first_name: str, join_url: str) -> tuple:
+    """(subject, preview, plain, inner_html) for one recipient.
+
+    {{site}} reads SimiSI.io: a link through the personal invite link in HTML,
+    https://SimiSI.io in plain text. The button follows the paragraph with {{site}}.
+    """
     from app.services.email_service import _btn, _p
+    who = (member_name or '').strip() or 'A friend'
+    values = {'first_name': (first_name or '').strip() or 'there', 'member_name': who,
+              'member_first_name': _first(who)}
+
+    def fill(text, site):
+        out = text or ''
+        for k, v in dict(values, site=site).items():
+            out = out.replace('{{%s}}' % k, v)
+        return out.strip()
+
+    subject = ' '.join(fill(template['subject'], SITE_LABEL).split())
+    preview = ' '.join(fill(template.get('preview_text') or '', SITE_LABEL).split())
+    plain = fill(template['body'], SITE_URL)
+    marker = '\x00SITE\x00'
     link = '<a href="%s" style="color:#0F7B72;font-weight:600;">%s</a>' % (escape(join_url, quote=True), SITE_LABEL)
-    inner = (
-        _p('Hi %s,' % escape(hi))
-        + _p('%s uses SimiSI and thought you might find it useful too.' % escape(who))
-        + _p('SimiSI turns your experience into a 24-month career plan, with AI agents that draft the work '
-             'and wait for your approval. Setting up a bio page is free.')
-        + _p('Take a look at %s' % link)
-        + _btn(join_url, 'Visit %s' % SITE_LABEL)
-        + _p(escape(_first(who)), muted=True)
-    )
-    return subject, plain, inner
+    parts, button_done = [], False
+    for block in [b.strip() for b in fill(template['body'], marker).split('\n\n') if b.strip()]:
+        has_site = marker in block
+        parts.append(_p(escape(block).replace('\n', '<br>').replace(escape(marker), link)))
+        if has_site and not button_done:
+            parts.append(_btn(join_url, 'Visit %s' % SITE_LABEL))
+            button_done = True
+    return subject, preview, plain, ''.join(parts)
 
 
 def send_invite(user, contact) -> 'ContactInvite':
@@ -153,12 +210,11 @@ def send_invite(user, contact) -> 'ContactInvite':
     token = secrets.token_urlsafe(24)
     join_url = url_for('pages.contact_invite_join', token=token, _external=True)
     unsub_url = unsubscribe_url_for(email)
-    subject, plain, inner = _content(user.full_name or '', contact.first_name, join_url)
+    subject, preview, plain, inner = render(get_template(), user.full_name or '', contact.first_name, join_url)
     footer = sender_identity.footer_html(user.full_name or 'A SimiSI member', address, unsub_url)
     plain += '\n\n' + _plain_footer(user.full_name, address, unsub_url)
     from app.services.email_service import _html_wrap
-    html = _html_wrap(inner, preheader='%s invited you to try SimiSI.' % escape(_first(user.full_name or '')),
-                      footer_html=footer)
+    html = _html_wrap(inner, preheader=escape(preview), footer_html=footer)
 
     from utils.id_gen import generate_pk
     invite = ContactInvite(id=generate_pk(), user_id=user.id, contact_id=contact.id, email=email, token=token,
@@ -232,3 +288,49 @@ def mark_joined(new_user, token: str | None = None) -> int:
     except Exception:
         logger.exception('contact invite join marking failed')
         return 0
+
+
+
+# ── Admin preview and test send ──────────────────────────────────────────────
+
+SAMPLE = {'member_name': 'Jordan Rivera', 'first_name': 'Alex'}
+
+
+def preview_html(template: dict) -> dict:
+    """The email as a contact would see it, with sample names (no send)."""
+    from app.services import sender_identity
+    from app.services.email_service import _html_wrap
+    subject, preview, plain, inner = render(template, SAMPLE['member_name'], SAMPLE['first_name'], SITE_URL)
+    address = sender_identity.business_address() or "[SimiSI's postal address, Admin -> Compliance]"
+    footer = sender_identity.footer_html(SAMPLE['member_name'], address, SITE_URL + '/outreach/unsubscribe/sample')
+    return {'subject': subject, 'preview_text': preview, 'plain': plain,
+            'html': _html_wrap(inner, preheader=escape(preview), footer_html=footer)}
+
+
+def send_test(admin_user, template: dict) -> None:
+    """Send the edited copy to the admin's own address. No invite row is written;
+    links point at SimiSI.io without a token. Raises InviteError."""
+    from flask import current_app
+    from app.services import sender_identity
+    api_key = current_app.config.get('SENDGRID_API_KEY')
+    if not api_key:
+        raise InviteError("Email isn't set up yet (no SendGrid key).", 503)
+    p = preview_html(template)
+    try:
+        import sendgrid as sg_module
+        from sendgrid.helpers.mail import From, Mail
+        msg = Mail(from_email=From(current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io'),
+                                   '%s via SimiSI' % SAMPLE['member_name']),
+                   to_emails=admin_user.email, subject='[Test] ' + p['subject'],
+                   plain_text_content=p['plain'] + '\n\n' + _plain_footer(
+                       SAMPLE['member_name'], sender_identity.business_address() or '[postal address]',
+                       SITE_URL + '/outreach/unsubscribe/sample'),
+                   html_content=p['html'])
+        r = sg_module.SendGridAPIClient(api_key).send(msg)
+        if getattr(r, 'status_code', 202) >= 400:
+            raise RuntimeError('SendGrid returned %s' % r.status_code)
+    except InviteError:
+        raise
+    except Exception as exc:
+        logger.error('contact invite test send failed: %s', exc, exc_info=True)
+        raise InviteError("The test email couldn't be sent: %s" % str(exc)[:120], 502)

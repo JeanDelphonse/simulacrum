@@ -1323,8 +1323,10 @@ def outreach_list_templates():
             'is_drip': True,
             'updated_at': row.updated_at.isoformat() if row and row.updated_at else None,
         })
-    # Named (non-drip) broadcast templates
-    for t in OutreachTemplate.query.filter_by(is_drip=False).all():
+    # Named (non-drip) broadcast templates. The contact invite has its own editor.
+    from app.services.contact_invite_service import TEMPLATE_KEY as _INVITE_KEY
+    for t in OutreachTemplate.query.filter(OutreachTemplate.is_drip == False,  # noqa: E712
+                                           OutreachTemplate.template_key != _INVITE_KEY).all():
         out.append(t.to_dict())
     return jsonify({
         'templates': out,
@@ -1370,6 +1372,85 @@ def outreach_update_template(template_key):
                  metadata={'template_key': template_key})
     db.session.commit()
     return jsonify(row.to_dict()), 200
+
+
+@admin_bp.route('/outreach/invite-template', methods=['GET'])
+@login_required
+@admin_required
+def outreach_invite_template_get():
+    """The contact-invite email copy members send from /contacts."""
+    from app.services import contact_invite_service as cis
+    return jsonify({'template': cis.get_template(), 'default': cis.DEFAULT_TEMPLATE, 'tokens': list(cis.TOKENS)}), 200
+
+
+def _invite_template_body():
+    data = request.get_json(silent=True) or {}
+    return {'subject': (data.get('subject') or '').strip(), 'preview_text': (data.get('preview_text') or '').strip(),
+            'body': (data.get('body') or '').replace('\r\n', '\n').strip()}
+
+
+@admin_bp.route('/outreach/invite-template', methods=['PUT'])
+@login_required
+@admin_required
+def outreach_invite_template_save():
+    """Save the contact-invite copy. Refused if it breaks the rules (validate_template)."""
+    from app.models.outreach_campaign import OutreachTemplate
+    from app.services import contact_invite_service as cis
+    t = _invite_template_body()
+    errors = cis.validate_template(t['subject'], t['preview_text'], t['body'])
+    if errors:
+        return jsonify({'error': ' '.join(errors), 'errors': errors}), 400
+    row = OutreachTemplate.query.filter_by(template_key=cis.TEMPLATE_KEY).first()
+    if not row:
+        row = OutreachTemplate(template_key=cis.TEMPLATE_KEY, is_drip=False, name=cis.DEFAULT_TEMPLATE['name'],
+                               subject=t['subject'], body=t['body'])
+        db.session.add(row)
+    row.subject, row.preview_text, row.body = t['subject'], t['preview_text'] or None, t['body']
+    row.updated_by = current_user.id
+    AuditLog.log('outreach_template_updated', user_id=current_user.id, metadata={'template_key': cis.TEMPLATE_KEY})
+    db.session.commit()
+    return jsonify({'template': cis.get_template()}), 200
+
+
+@admin_bp.route('/outreach/invite-template', methods=['DELETE'])
+@login_required
+@admin_required
+def outreach_invite_template_reset():
+    """Back to the default copy."""
+    from app.models.outreach_campaign import OutreachTemplate
+    from app.services import contact_invite_service as cis
+    OutreachTemplate.query.filter_by(template_key=cis.TEMPLATE_KEY).delete()
+    AuditLog.log('outreach_template_reset', user_id=current_user.id, metadata={'template_key': cis.TEMPLATE_KEY})
+    db.session.commit()
+    return jsonify({'template': cis.get_template()}), 200
+
+
+@admin_bp.route('/outreach/invite-template/preview', methods=['POST'])
+@login_required
+@admin_required
+def outreach_invite_template_preview():
+    from app.services import contact_invite_service as cis
+    t = _invite_template_body()
+    return jsonify(dict(cis.preview_html(t), errors=cis.validate_template(t['subject'], t['preview_text'], t['body']))), 200
+
+
+@admin_bp.route('/outreach/invite-template/test', methods=['POST'])
+@login_required
+@admin_required
+def outreach_invite_template_test():
+    """Send the copy as shown to the admin's own address."""
+    from app.services import contact_invite_service as cis
+    t = _invite_template_body()
+    errors = cis.validate_template(t['subject'], t['preview_text'], t['body'])
+    if errors:
+        return jsonify({'error': ' '.join(errors), 'errors': errors}), 400
+    try:
+        cis.send_test(current_user, t)
+    except cis.InviteError as exc:
+        return jsonify({'error': str(exc)}), exc.status
+    AuditLog.log('outreach_template_test_sent', user_id=current_user.id, metadata={'template_key': cis.TEMPLATE_KEY})
+    db.session.commit()
+    return jsonify({'ok': True, 'to': current_user.email}), 200
 
 
 @admin_bp.route('/outreach/templates/preview', methods=['POST'])

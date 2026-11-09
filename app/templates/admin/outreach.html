@@ -74,6 +74,7 @@
     <button class="out-tab" data-tab="queue" onclick="switchTab('queue')">Queue</button>
     <button class="out-tab" data-tab="enrollments" onclick="switchTab('enrollments')">Enrollments</button>
     <button class="out-tab" data-tab="broadcasts" onclick="switchTab('broadcasts')">Broadcasts</button>
+    <button class="out-tab" data-tab="invite" onclick="switchTab('invite')">Contact invite</button>
   </div>
 
   <!-- ── Automated Drip ─────────────────────────────────────────────────── -->
@@ -186,6 +187,54 @@
   </div>
 
   <!-- ── Broadcasts ─────────────────────────────────────────────────────── -->
+  <!-- ── Contact invite ───────────────────────────────────────────────── -->
+  <div class="out-panel" id="panel-invite">
+    <div class="out-card">
+      <h2>Contact invite email</h2>
+      <p style="font-size:.82rem;color:#6b7280;margin:-.25rem 0 1rem;line-height:1.5">
+        What members send when they click <b>Invite</b> on /contacts. Plain text: separate paragraphs with a blank line.
+        <code>{{ '{{site}}' }}</code> shows as <b>SimiSI.io</b> and links to that person's invite; the button follows that paragraph.
+        The footer (sender, SimiSI's postal address, unsubscribe, reply STOP) is added automatically from Admin → Legal Text.
+        <span id="invState"></span>
+      </p>
+      <div class="out-editor-grid">
+        <div>
+          <div class="out-field">
+            <label for="invSubject">Subject</label>
+            <input type="text" id="invSubject" maxlength="150" oninput="renderInvitePreview()">
+          </div>
+          <div class="out-field">
+            <label for="invPreview">Preview text</label>
+            <input type="text" id="invPreview" maxlength="150" oninput="renderInvitePreview()">
+          </div>
+          <div class="out-field">
+            <label for="invBody">Body</label>
+            <textarea id="invBody" maxlength="1500" oninput="renderInvitePreview()"></textarea>
+            <div class="out-tokens">
+              Tokens (click to insert):
+              <code onclick="insertToken('invBody','first_name');renderInvitePreview()">{{ '{{first_name}}' }}</code> contact's first name ·
+              <code onclick="insertToken('invBody','member_name');renderInvitePreview()">{{ '{{member_name}}' }}</code> ·
+              <code onclick="insertToken('invBody','member_first_name');renderInvitePreview()">{{ '{{member_first_name}}' }}</code> ·
+              <code onclick="insertToken('invBody','site');renderInvitePreview()">{{ '{{site}}' }}</code> SimiSI.io link (required)
+            </div>
+          </div>
+          <div id="invErrors" class="out-msg err" style="display:block;margin-bottom:.6rem"></div>
+          <button class="btn btn-primary" onclick="saveInviteTemplate()">Save</button>
+          <button class="btn btn-sec" onclick="testInviteTemplate()">Send a test to me</button>
+          <button class="btn btn-sec" onclick="resetInviteTemplate()">Reset to default</button>
+          <span class="out-msg" id="invMsg"></span>
+        </div>
+        <div>
+          <label class="out-field" style="display:block;font-size:.78rem;font-weight:600;color:#374151;">Live preview (sample names)</label>
+          <div class="out-preview">
+            <div class="out-preview-subj" id="invPrevSubj"></div>
+            <iframe id="invPrevFrame" title="Contact invite preview"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="out-panel" id="panel-broadcasts">
     <div class="out-card">
       <h2>Compose Broadcast</h2>
@@ -324,6 +373,7 @@ function switchTab(name){
   document.getElementById('panel-'+name).classList.add('active');
   if(name==='queue') loadQueue();
   if(name==='enrollments') loadEnrollments();
+  if(name==='invite') loadInviteTemplate();
 }
 
 function insertToken(fieldId, token){
@@ -567,6 +617,47 @@ function finishBroadcast(r){
   if(r.ok){ m.textContent = `Done — ${r.data.recipient_count} recipients, ${r.data.sent||0} sent${r.data.created&&!r.data.sent?', '+r.data.created+' scheduled':''}.`;
     m.className='out-msg ok'; loadOverview(); }
   else { m.textContent='Error: '+(r.data.error||r.status); m.className='out-msg err'; }
+}
+
+// ── Contact invite ──
+function _invBody(){ return {subject:document.getElementById('invSubject').value,
+  preview_text:document.getElementById('invPreview').value, body:document.getElementById('invBody').value}; }
+function _invShow(t){
+  document.getElementById('invSubject').value = t.subject||'';
+  document.getElementById('invPreview').value = t.preview_text||'';
+  document.getElementById('invBody').value = t.body||'';
+  document.getElementById('invState').textContent = t.is_default ? '(Using the default copy.)'
+    : ('(Edited ' + fmtDate(t.updated_at) + '.)');
+  renderInvitePreview();
+}
+async function loadInviteTemplate(){ const d = await jget(OUT+'/invite-template'); _invShow(d.template||{}); }
+let _invTimer=null;
+function renderInvitePreview(){
+  clearTimeout(_invTimer);
+  _invTimer = setTimeout(async ()=>{
+    const r = await jsend(OUT+'/invite-template/preview','POST',_invBody());
+    if(!r.ok) return;
+    document.getElementById('invPrevSubj').textContent = 'Subject: '+r.data.subject;
+    document.getElementById('invPrevFrame').srcdoc = r.data.html;
+    document.getElementById('invErrors').textContent = (r.data.errors||[]).join(' ');
+  }, 350);
+}
+function _invMsg(ok, text){ const m=document.getElementById('invMsg'); m.textContent=text; m.className='out-msg '+(ok?'ok':'err'); }
+async function saveInviteTemplate(){
+  const r = await jsend(OUT+'/invite-template','PUT',_invBody());
+  if(r.ok){ _invShow(r.data.template); _invMsg(true,'Saved. New invites use this copy.'); }
+  else _invMsg(false,'Not saved: '+(r.data.error||r.status));
+}
+async function testInviteTemplate(){
+  _invMsg(true,'Sending…');
+  const r = await jsend(OUT+'/invite-template/test','POST',_invBody());
+  _invMsg(r.ok, r.ok ? ('Test sent to '+r.data.to+'.') : ('Not sent: '+(r.data.error||r.status)));
+}
+async function resetInviteTemplate(){
+  if(!confirm('Go back to the default invite copy? Your edits will be lost.')) return;
+  const r = await jsend(OUT+'/invite-template','DELETE');
+  if(r.ok){ _invShow(r.data.template); _invMsg(true,'Back to the default copy.'); }
+  else _invMsg(false,'Error: '+(r.data.error||r.status));
 }
 
 // init

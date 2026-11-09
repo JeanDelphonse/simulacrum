@@ -202,6 +202,73 @@ def main():
         check('/contacts has the SimiSI invite column, button and statuses',
               '<th class="invite-col">SimiSI invite</th>' in tpl and 'inviteContact(' in tpl
               and '>Invited</span>' in tpl and '>Joined</span>' in tpl and tpl.count('colspan="8"') == 3)
+
+        print('\n7. Admin edits the invite copy (Admin -> Outreach -> Contact invite)')
+        from app.services import contact_invite_service as cis
+        admin = user('ADMINCI01', 'admin@x.com', 'Ada Admin')
+        admin.is_admin = True
+        db.session.commit()
+        adm = app.test_client()
+        with adm.session_transaction() as s:
+            s['_user_id'] = admin.id
+            s['_fresh'] = True
+        api = '/api/admin/outreach/invite-template'
+
+        def call(method, path='', **kw):
+            g.pop('_login_user', None)
+            r = adm.open(api + path, method=method, **kw)
+            return r.status_code, (r.get_json() or {})
+
+        code, d = call('GET')
+        check('the editor starts with the default copy', code == 200 and d['template']['is_default']
+              and d['template']['body'] == cis.DEFAULT_TEMPLATE['body'] and 'site' in d['tokens'], code)
+        page = adm.get('/admin/outreach').get_data(as_text=True)
+        check('Admin -> Outreach has a Contact invite tab', 'data-tab="invite"' in page and 'id="panel-invite"' in page)
+        good = {'subject': '{{member_first_name}} has an invite for you',
+                'preview_text': 'A quick note from {{member_first_name}}.',
+                'body': 'Hello {{first_name}},\n\n{{member_name}} thinks SimiSI could help you plan your next move.\n\n'
+                        'Have a look at {{site}}\n\nCheers, {{member_first_name}}'}
+        for label, bad, needle in (
+                ('without {{site}}', dict(good, body='Hello {{first_name}}'), 'must include {{site}}'),
+                ('an unknown token', dict(good, body=good['body'] + ' {{salary}}'), 'Unknown token'),
+                ('earnings-claim wording', dict(good, body=good['body'] + ' Guaranteed results.'), 'earnings-claim'),
+                ('HTML', dict(good, body=good['body'] + ' <script>x</script>'), 'Plain text only'),
+                ('an empty subject', dict(good, subject=' '), 'required'),
+                ('a body that is too long', dict(good, body=good['body'] + ' word' * 400), 'Keep it brief')):
+            code, d = call('PUT', json=bad)
+            check('refused: %s' % label, code == 400 and needle in d.get('error', ''), (code, d.get('error')))
+        check('nothing was saved by the refused edits', cis.get_template()['is_default'])
+        code, d = call('POST', '/preview', json=good)
+        check('the live preview renders the draft with sample names', code == 200 and d['subject'] == 'Jordan has an invite for you'
+              and 'Hello Alex,' in d['html'] and 'Visit SimiSI.io' in d['html'] and not d['errors'], d.get('errors'))
+        code, d = call('PUT', json=good)
+        check('a valid edit is saved', code == 200 and not d['template']['is_default'])
+        check('...and recorded in the audit log', AuditLog.query.filter_by(action='outreach_template_updated').count() >= 1)
+        g.pop('_login_user', None)
+        tlist = adm.get('/api/admin/outreach/templates').get_json()['templates']
+        check('it does not appear as a broadcast template', all(t['template_key'] != cis.TEMPLATE_KEY for t in tlist))
+        n = len(SENT)
+        as_user(owner.id)
+        cara = contact(owner, 'Cara', 'cara@example.com')
+        code, d = invite(cara.id)
+        m = SENT[-1] if len(SENT) > n else {}
+        plain = next((c['value'] for c in m.get('content', []) if c['type'] == 'text/plain'), '')
+        check("members' invites now use the edited copy", code == 201 and m.get('subject') == 'Jean has an invite for you'
+              and 'Hello Cara,' in plain and 'Have a look at https://SimiSI.io' in plain
+              and 'Unsubscribe' in next((c['value'] for c in m.get('content', []) if c['type'] == 'text/html'), ''), (code, m.get('subject')))
+        code, d = call('POST', '/test', json=good)
+        t = SENT[-1] if SENT else {}
+        check('Send a test goes to the admin only, marked [Test]', code == 200 and d.get('to') == 'admin@x.com'
+              and t.get('personalizations', [{}])[0].get('to', [{}])[0].get('email') == 'admin@x.com'
+              and t.get('subject', '').startswith('[Test] '), (code, d))
+        check('a test send creates no invite', ContactInvite.query.filter_by(email='admin@x.com').count() == 0)
+        code, d = call('DELETE')
+        check('Reset to default brings the default copy back', code == 200 and d['template']['is_default']
+              and cis.get_template()['subject'] == cis.DEFAULT_TEMPLATE['subject'])
+        as_user(owner.id)
+        g.pop('_login_user', None)
+        r = client.put(api, json=good)
+        check('members cannot edit it', r.status_code in (401, 403) and cis.get_template()['is_default'], r.status_code)
         check('no network calls', not network, network)
 
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
