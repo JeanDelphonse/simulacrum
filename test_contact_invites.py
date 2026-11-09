@@ -262,6 +262,50 @@ def main():
               and t.get('personalizations', [{}])[0].get('to', [{}])[0].get('email') == 'admin@x.com'
               and t.get('subject', '').startswith('[Test] '), (code, d))
         check('a test send creates no invite', ContactInvite.query.filter_by(email='admin@x.com').count() == 0)
+        print('\n8. {{bio_page}}: link to the member\'s bio page')
+        from app.models.bio_page import BioPage
+        from app.models.profile import UserProfile
+        with_bio = dict(good, body='Hello {{first_name}},\n\nHere is my page: {{bio_page}}\n\n'
+                                   'Have a look at {{site}}\n\n{{member_first_name}}')
+        code, d = call('PUT', json=dict(good, subject='See {{bio_page}}'))
+        check('refused in the subject (body only)', code == 400 and 'body only' in d.get('error', ''), d.get('error'))
+        code, d = call('POST', '/preview', json=with_bio)
+        check('the preview shows a sample bio link', code == 200 and 'SimiSI.io/u/jordan-rivera' in d['html']
+              and not d['errors'], d.get('errors'))
+        code, d = call('PUT', json=with_bio)
+        check('a body with {{bio_page}} saves', code == 200, d)
+        as_user(owner.id)
+        dan = contact(owner, 'Dan', 'dan@example.com')
+        n = len(SENT)
+        invite(dan.id)
+        m = SENT[-1] if len(SENT) > n else {}
+        plain = next((c['value'] for c in m.get('content', []) if c['type'] == 'text/plain'), '')
+        html = next((c['value'] for c in m.get('content', []) if c['type'] == 'text/html'), '')
+        check('no published bio page: that paragraph is left out, the rest is sent',
+              'Here is my page' not in plain and 'Here is my page' not in html and 'Have a look at https://SimiSI.io' in plain,
+              plain)
+        db.session.add(UserProfile(user_id=owner.id, username='jeand'))
+        db.session.add(BioPage(user_id=owner.id, slug='jeand', status=BioPage.STATUS_PUBLISHED))
+        db.session.commit()
+        eve = contact(owner, 'Eve', 'eve@example.com')
+        n = len(SENT)
+        invite(eve.id)
+        m = SENT[-1] if len(SENT) > n else {}
+        plain = next((c['value'] for c in m.get('content', []) if c['type'] == 'text/plain'), '')
+        html = next((c['value'] for c in m.get('content', []) if c['type'] == 'text/html'), '')
+        check('with a published bio page: SimiSI.io/u/<username>, linked to it',
+              'Here is my page: https://SimiSI.io/u/jeand' in plain
+              and 'href="https://SimiSI.io/u/jeand"' in html and '>SimiSI.io/u/jeand</a>' in html, plain)
+        page = BioPage.query.filter_by(user_id=owner.id).first()
+        page.status = BioPage.STATUS_UNPUBLISHED
+        db.session.commit()
+        fay = contact(owner, 'Fay', 'fay@example.com')
+        n = len(SENT)
+        invite(fay.id)
+        m = SENT[-1] if len(SENT) > n else {}
+        plain = next((c['value'] for c in m.get('content', []) if c['type'] == 'text/plain'), '')
+        check('an unpublished bio page is not linked', 'Here is my page' not in plain and '/u/jeand' not in plain, plain)
+
         code, d = call('DELETE')
         check('Reset to default brings the default copy back', code == 200 and d['template']['is_default']
               and cis.get_template()['subject'] == cis.DEFAULT_TEMPLATE['subject'])

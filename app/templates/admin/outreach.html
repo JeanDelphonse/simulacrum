@@ -215,7 +215,9 @@
               <code onclick="insertToken('invBody','first_name');renderInvitePreview()">{{ '{{first_name}}' }}</code> contact's first name ·
               <code onclick="insertToken('invBody','member_name');renderInvitePreview()">{{ '{{member_name}}' }}</code> ·
               <code onclick="insertToken('invBody','member_first_name');renderInvitePreview()">{{ '{{member_first_name}}' }}</code> ·
-              <code onclick="insertToken('invBody','site');renderInvitePreview()">{{ '{{site}}' }}</code> SimiSI.io link (required)
+              <code onclick="insertToken('invBody','site');renderInvitePreview()">{{ '{{site}}' }}</code> SimiSI.io link (required) ·
+              <code onclick="insertToken('invBody','bio_page');renderInvitePreview()">{{ '{{bio_page}}' }}</code> the member's bio page
+              <div style="margin-top:.25rem">If a member has no published bio page, the paragraph with {{ '{{bio_page}}' }} is left out of their invites.</div>
             </div>
           </div>
           <div id="invErrors" class="out-msg err" style="display:block;margin-bottom:.6rem"></div>

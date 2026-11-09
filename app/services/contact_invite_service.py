@@ -72,7 +72,7 @@ def _first(name: str) -> str:
 # Stored as the outreach_templates row TEMPLATE_KEY; these are the defaults until
 # an admin saves an edit. Plain text: paragraphs separated by a blank line.
 TEMPLATE_KEY = 'contact_invite'
-TOKENS = ('first_name', 'member_name', 'member_first_name', 'site')
+TOKENS = ('first_name', 'member_name', 'member_first_name', 'site', 'bio_page')
 DEFAULT_TEMPLATE = {
     'name': 'Contact invite',
     'subject': '{{member_first_name}} thinks you might like SimiSI',
@@ -112,6 +112,8 @@ def validate_template(subject: str, preview_text: str, body: str) -> list:
         errors.append('Keep it brief: subject and preview up to %d characters, body up to %d.' % (MAX_SUBJECT, MAX_BODY))
     if '{{site}}' not in body:
         errors.append('The body must include {{site}}, the SimiSI.io link.')
+    if '{{bio_page}}' in subject + preview_text:
+        errors.append('Use {{bio_page}} in the body only (it is left out when a member has no published bio page).')
     unknown = sorted({t for t in re.findall(r'{{\s*([^}]*?)\s*}}', subject + preview_text + body)} - set(TOKENS))
     if unknown:
         errors.append('Unknown token%s: %s. Use %s.' % ('s' if len(unknown) > 1 else '',
@@ -124,32 +126,65 @@ def validate_template(subject: str, preview_text: str, body: str) -> list:
     return errors
 
 
-def render(template: dict, member_name: str, first_name: str, join_url: str) -> tuple:
+def member_bio(user):
+    """(label, url) for the member's published bio page, else None.
+    The label reads SimiSI.io/u/<username>; private-mode pages still link
+    (strangers see the teaser and can ask for access)."""
+    try:
+        from flask import url_for
+        from app.models.bio_page import BioPage
+        from app.models.profile import UserProfile
+        profile = UserProfile.query.filter_by(user_id=user.id).first()
+        page = BioPage.query.filter_by(user_id=user.id).first()
+        if not profile or not profile.username or not page or page.status != BioPage.STATUS_PUBLISHED:
+            return None
+        path = url_for('public.profile_page', username=profile.username)
+        return '%s%s' % (SITE_LABEL, path), '%s%s' % (SITE_URL, path)
+    except Exception:
+        logger.exception('bio link lookup failed for %s', getattr(user, 'id', None))
+        return None
+
+
+def render(template: dict, member_name: str, first_name: str, join_url: str, bio=None) -> tuple:
     """(subject, preview, plain, inner_html) for one recipient.
 
     {{site}} reads SimiSI.io: a link through the personal invite link in HTML,
     https://SimiSI.io in plain text. The button follows the paragraph with {{site}}.
+    {{bio_page}} reads SimiSI.io/u/<username> and links to the member's bio page
+    (bio = member_bio(user)). Without a published bio page, the paragraph that
+    holds {{bio_page}} is left out, so no empty or broken line is sent.
     """
     from app.services.email_service import _btn, _p
     who = (member_name or '').strip() or 'A friend'
     values = {'first_name': (first_name or '').strip() or 'there', 'member_name': who,
               'member_first_name': _first(who)}
 
-    def fill(text, site):
-        out = text or ''
-        for k, v in dict(values, site=site).items():
+    bio_label, bio_url = bio if bio else ('', '')
+
+    def without_bio(text):
+        # No published bio page: drop each paragraph (or line, in one-line fields) that uses it.
+        if bio or '{{bio_page}}' not in (text or ''):
+            return text or ''
+        return '\n\n'.join(b for b in (text or '').split('\n\n') if '{{bio_page}}' not in b)
+
+    def fill(text, site, bio_value):
+        out = without_bio(text)
+        for k, v in dict(values, site=site, bio_page=bio_value).items():
             out = out.replace('{{%s}}' % k, v)
         return out.strip()
 
-    subject = ' '.join(fill(template['subject'], SITE_LABEL).split())
-    preview = ' '.join(fill(template.get('preview_text') or '', SITE_LABEL).split())
-    plain = fill(template['body'], SITE_URL)
-    marker = '\x00SITE\x00'
-    link = '<a href="%s" style="color:#0F7B72;font-weight:600;">%s</a>' % (escape(join_url, quote=True), SITE_LABEL)
+    subject = ' '.join(fill(template['subject'], SITE_LABEL, bio_label).split())
+    preview = ' '.join(fill(template.get('preview_text') or '', SITE_LABEL, bio_label).split())
+    plain = fill(template['body'], SITE_URL, bio_url)
+    site_mark, bio_mark = '\x00SITE\x00', '\x00BIO\x00'
+    link = '<a href="%s" style="color:#0F7B72;font-weight:600;">%s</a>'
+    site_link = link % (escape(join_url, quote=True), SITE_LABEL)
+    bio_link = link % (escape(bio_url, quote=True), escape(bio_label)) if bio else ''
     parts, button_done = [], False
-    for block in [b.strip() for b in fill(template['body'], marker).split('\n\n') if b.strip()]:
-        has_site = marker in block
-        parts.append(_p(escape(block).replace('\n', '<br>').replace(escape(marker), link)))
+    for block in [b.strip() for b in fill(template['body'], site_mark, bio_mark).split('\n\n') if b.strip()]:
+        has_site = site_mark in block
+        html = escape(block).replace('\n', '<br>').replace(escape(site_mark), site_link).replace(escape(bio_mark), bio_link)
+        parts.append(_p(html))
         if has_site and not button_done:
             parts.append(_btn(join_url, 'Visit %s' % SITE_LABEL))
             button_done = True
@@ -210,7 +245,8 @@ def send_invite(user, contact) -> 'ContactInvite':
     token = secrets.token_urlsafe(24)
     join_url = url_for('pages.contact_invite_join', token=token, _external=True)
     unsub_url = unsubscribe_url_for(email)
-    subject, preview, plain, inner = render(get_template(), user.full_name or '', contact.first_name, join_url)
+    subject, preview, plain, inner = render(get_template(), user.full_name or '', contact.first_name, join_url,
+                                            bio=member_bio(user))
     footer = sender_identity.footer_html(user.full_name or 'A SimiSI member', address, unsub_url)
     plain += '\n\n' + _plain_footer(user.full_name, address, unsub_url)
     from app.services.email_service import _html_wrap
@@ -294,13 +330,15 @@ def mark_joined(new_user, token: str | None = None) -> int:
 # ── Admin preview and test send ──────────────────────────────────────────────
 
 SAMPLE = {'member_name': 'Jordan Rivera', 'first_name': 'Alex'}
+SAMPLE_BIO = ('%s/u/jordan-rivera' % SITE_LABEL, '%s/u/jordan-rivera' % SITE_URL)
 
 
 def preview_html(template: dict) -> dict:
     """The email as a contact would see it, with sample names (no send)."""
     from app.services import sender_identity
     from app.services.email_service import _html_wrap
-    subject, preview, plain, inner = render(template, SAMPLE['member_name'], SAMPLE['first_name'], SITE_URL)
+    subject, preview, plain, inner = render(template, SAMPLE['member_name'], SAMPLE['first_name'], SITE_URL,
+                                            bio=SAMPLE_BIO)
     address = sender_identity.business_address() or "[SimiSI's postal address, Admin -> Compliance]"
     footer = sender_identity.footer_html(SAMPLE['member_name'], address, SITE_URL + '/outreach/unsubscribe/sample')
     return {'subject': subject, 'preview_text': preview, 'plain': plain,
