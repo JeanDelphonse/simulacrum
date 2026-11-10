@@ -14,7 +14,8 @@
     <span style="color:var(--mute)">({{ boot.simulation.created }})</span>{% endif %}
     <a href="{{ url_for('guide.history_page') }}">Your conversations &amp; goals</a></div>
   <div class="layers" id="layers" role="group" aria-label="Income layers">
-    <button type="button" class="lp on" data-l="1">L1 Active</button><button type="button" class="lp" data-l="2">L2 Leveraged</button><button type="button" class="lp" data-l="3">L3 Productized</button><button type="button" class="lp" data-l="4">L4 Residual</button><button type="button" class="lp" data-l="5">L5 Wealth</button>
+    {# Short labels from guide_service.LAYER_NAMES (L4 "Recurring", not the retired "Residual"). #}
+    {% for n in range(1, 6) %}<button type="button" class="lp{{ ' on' if n == 1 }}" data-l="{{ n }}">L{{ n }} {{ (boot.layers[n] or '').split(' ')[0] }}</button>{% endfor %}
   </div>
 </div>
 

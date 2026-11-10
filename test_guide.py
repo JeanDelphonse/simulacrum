@@ -370,6 +370,11 @@ def main():
         _goal_section(E, 1, b2, sim.id)
         check('agent briefings are built per simulation', 'Launch one product line' in b1.goal and 'Win 3 clients' in b2.goal)
 
+        layer_btns = re.findall(r'class="lp(?: on)?" data-l="\d">([^<]+)<', page)
+        check('the layer buttons use the current layer names (L4 Recurring)',
+              layer_btns == ['L1 Active', 'L2 Leveraged', 'L3 Productized', 'L4 Recurring', 'L5 Wealth']
+              and 'Residual' not in page, layer_btns)
+
         print('\n9c. Where the SME Console opens')
         dash = client.get('/dashboard').get_data(as_text=True)
         check('the dashboard no longer has the SME Console banner', 'Open SME Console' not in dash
