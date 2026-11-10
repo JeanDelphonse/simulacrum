@@ -10,6 +10,8 @@
 <div class="smc">
 <div class="top">
   <div class="crumb">SME Console · <b>Goal setting with <span data-guide-name>Simi</span></b>
+    {% if boot.simulation %}· for <a href="{{ url_for('pages.simulation_view', sim_id=boot.simulation.id) }}" title="Back to this simulation">{{ boot.simulation.name }}</a>
+    <span style="color:var(--mute)">({{ boot.simulation.created }})</span>{% endif %}
     <a href="{{ url_for('guide.history_page') }}">Your conversations &amp; goals</a></div>
   <div class="layers" id="layers" role="group" aria-label="Income layers">
     <button type="button" class="lp on" data-l="1">L1 Active</button><button type="button" class="lp" data-l="2">L2 Leveraged</button><button type="button" class="lp" data-l="3">L3 Productized</button><button type="button" class="lp" data-l="4">L4 Residual</button><button type="button" class="lp" data-l="5">L5 Wealth</button>

@@ -334,7 +334,7 @@ def build_briefing(action_type: str, layer_number: int, simulation_id: str,
     if layer_number == 5 and simulation is not None:
         steps.append(('income', lambda: _income_section(simulation, briefing)))
     if user_id and layer_number in (1, 2, 3, 4, 5):
-        steps.append(('goal', lambda: _goal_section(user_id, layer_number, briefing)))
+        steps.append(('goal', lambda: _goal_section(user_id, layer_number, briefing, simulation_id)))
 
     for name, fn in steps:
         try:
@@ -344,9 +344,9 @@ def build_briefing(action_type: str, layer_number: int, simulation_id: str,
     return briefing
 
 
-def _goal_section(user_id: str, layer_number: int, briefing: Briefing) -> None:
+def _goal_section(user_id: str, layer_number: int, briefing: Briefing, simulation_id=None) -> None:
     from app.services.guide_service import agent_briefing_section
-    briefing.goal = agent_briefing_section(user_id, layer_number)
+    briefing.goal = agent_briefing_section(user_id, layer_number, simulation_id)
 
 
 # ---------------------------------------------------------------------------

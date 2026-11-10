@@ -82,6 +82,7 @@ class SmeSession(db.Model):
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     user_id = db.Column(db.String(9), nullable=False)
     guide_id = db.Column(db.String(9), nullable=True)
+    simulation_id = db.Column(db.String(9), nullable=True, index=True)       # the simulation this session is about
     mode = db.Column(db.String(10), nullable=False, default='animated')      # animated | video | text
     layer = db.Column(db.Integer, nullable=False, default=1)                 # layer in focus now
     grow_step = db.Column(db.String(1), nullable=True)                       # G | R | O | W
@@ -178,6 +179,7 @@ class GoalCard(db.Model):
 
     id = db.Column(db.String(9), primary_key=True, default=generate_id)
     user_id = db.Column(db.String(9), nullable=False)
+    simulation_id = db.Column(db.String(9), nullable=True, index=True)       # NULL: set before goals were per simulation
     session_id = db.Column(db.String(9), nullable=True)
     layer = db.Column(db.Integer, nullable=False)
     goal_text = db.Column(db.String(400), nullable=True)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import wraps
 
-from flask import abort, jsonify, render_template, request
+from flask import abort, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.blueprints.guide import guide_bp
@@ -42,23 +42,39 @@ def admin_required(f):
 
 # ── User: console ─────────────────────────────────────────────────────────────
 
-def _boot() -> dict:
+def _sim():
+    """The simulation this console is about (?sim=<id>), if it's the member's own."""
+    return gs.simulation_for(current_user.id, request.args.get('sim'))
+
+
+def _boot(sim=None) -> dict:
     p = gs.prefs(current_user.id)
     g = gs.current_guide(current_user.id)
+    sim = sim or _sim()
     return {'guides': [x.to_dict() for x in gs.guides()], 'guide_id': g.id, 'has_chosen': bool(p.guide_id),
             'voice_enabled': p.voice_enabled,
             'speech_in': str(gs.setting('guide_browser_speech_in')).lower() == 'on',
             'first_audio_timeout_s': gs.setting('guide_first_audio_timeout_s'),
-            'layers': gs.LAYER_NAMES, 'state': gs.console_state(current_user.id),
+            'layers': gs.LAYER_NAMES, 'state': gs.console_state(current_user.id, sim.id if sim else None),
+            'simulation': ({'id': sim.id, 'name': sim.name or 'Simulation',
+                            'created': sim.created_at.strftime('%b %d, %Y') if sim.created_at else ''} if sim else None),
             'first_name': (current_user.full_name or '').split(' ')[0]}
 
 
 @guide_bp.route('/guide')
 @login_required
 def console_page():
+    """The SME Console for one simulation: /guide?sim=<id>. Without one, the
+    member picks a simulation (or goes straight in when they have only one)."""
     if not gs.is_enabled(current_user):
         return render_template('guide/unavailable.html'), 403
-    return render_template('guide/console.html', boot=_boot())
+    sim = _sim()
+    if sim is None:
+        sims = gs.completed_simulations(current_user.id)
+        if len(sims) == 1:
+            return redirect(url_for('guide.console_page', sim=sims[0].id))
+        return render_template('guide/choose_simulation.html', sims=sims)
+    return render_template('guide/console.html', boot=_boot(sim))
 
 
 @guide_bp.route('/api/guide/state')
@@ -89,11 +105,11 @@ def api_start():
     b = request.get_json(silent=True) or {}
     try:
         layer = int(b['layer']) if str(b.get('layer') or '') in ('1', '2', '3', '4', '5') else None
-        s, facts, turn = gs.start_session(current_user, layer)
+        s, facts, turn = gs.start_session(current_user, layer, request.args.get('sim') or b.get('simulation_id'))
     except gs.GuideError as exc:
         return _err(exc, _status_for(exc))
     return jsonify({'session_id': s.id, 'layer': s.layer, 'facts': facts, 'turn': turn,
-                    'state': gs.console_state(current_user.id)})
+                    'state': gs.console_state(current_user.id, s.simulation_id)})
 
 
 @guide_bp.route('/api/guide/sessions/<session_id>/turn', methods=['POST'])
@@ -104,7 +120,8 @@ def api_turn(session_id):
         turn = gs.turn(current_user, session_id, b.get('text'), b.get('input_mode') or 'typed', b.get('event'))
     except gs.GuideError as exc:
         return _err(exc, _status_for(exc))
-    return jsonify({'turn': turn, 'state': gs.console_state(current_user.id)})
+    sess = gs.owned_session(current_user.id, session_id)
+    return jsonify({'turn': turn, 'state': gs.console_state(current_user.id, getattr(sess, 'simulation_id', None))})
 
 
 @guide_bp.route('/api/guide/sessions/<session_id>/end', methods=['POST'])
@@ -127,17 +144,18 @@ def api_skill(suggestion_id):
             gs.decide_skill(current_user.id, suggestion_id, bool((request.get_json(silent=True) or {}).get('accept')))
     except gs.GuideError as exc:
         return _err(exc)
-    return jsonify(gs.console_state(current_user.id))
+    sim = _sim()
+    return jsonify(gs.console_state(current_user.id, sim.id if sim else None))
 
 
 @guide_bp.route('/api/guide/goals/<card_id>', methods=['PUT'])
 @gated
 def api_edit_goal(card_id):
     try:
-        gs.edit_goal(current_user.id, card_id, request.get_json(silent=True) or {})
+        card = gs.edit_goal(current_user.id, card_id, request.get_json(silent=True) or {})
     except gs.GuideError as exc:
         return _err(exc)
-    return jsonify(gs.console_state(current_user.id))
+    return jsonify(gs.console_state(current_user.id, getattr(card, 'simulation_id', None)))
 
 
 @guide_bp.route('/api/guide/goals/<card_id>/approve', methods=['POST'])
@@ -147,7 +165,7 @@ def api_approve_goal(card_id):
         card = gs.approve_goal(current_user.id, card_id)
     except gs.GuideError as exc:
         return _err(exc)
-    return jsonify({'card': card.to_dict(), 'state': gs.console_state(current_user.id)})
+    return jsonify({'card': card.to_dict(), 'state': gs.console_state(current_user.id, card.simulation_id)})
 
 
 # ── User: history (always reachable, even if the beta gate closes) ───────────

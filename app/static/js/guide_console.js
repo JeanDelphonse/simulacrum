@@ -16,6 +16,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function api(url, body, method) {
+    if (BOOT.simulation) url += (url.indexOf('?') < 0 ? '?' : '&') + 'sim=' + encodeURIComponent(BOOT.simulation.id);
     return fetch(ROOT + url, { method: method || 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {

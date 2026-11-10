@@ -63,16 +63,8 @@
   })();
   </script>
   {% endif %}
-  {# SME Console: the AI guide for setting one goal per income layer (beta) #}
-  {% if guide_enabled %}
-  <div style="display:flex;align-items:center;gap:.75rem;background:rgba(201,149,42,.08);border:1px solid rgba(201,149,42,.35);border-radius:12px;padding:.85rem 1.1rem;margin-bottom:1.25rem">
-    <div style="flex:1">
-      <div style="font-weight:600;font-size:.9rem">Set your goals with an AI guide</div>
-      <div style="font-size:.75rem;color:var(--muted)">Talk through each income layer with Simi or another guide. Nothing changes until you approve.</div>
-    </div>
-    <a href="{{ url_for('guide.console_page') }}" class="btn btn-secondary btn-sm">Open SME Console →</a>
-  </div>
-  {% endif %}
+  {# The SME Console (goal setting with Simi) now opens from each simulation:
+     /simulations/<id> and its Growth Command Center Journey tab. #}
   {# PRD-SIM-TRANS-001: transition package (employer-paid) #}
   {% if transition_banner %}
   <div style="display:flex;align-items:center;gap:.75rem;background:rgba(15,123,114,.08);border:1px solid rgba(15,123,114,.3);border-radius:12px;padding:.85rem 1.1rem;margin-bottom:1.25rem">

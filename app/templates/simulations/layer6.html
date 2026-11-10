@@ -1436,6 +1436,10 @@ const API      = ROOT + '/api/simulations/' + SIM_ID + '/layer6';
             <span class="jrn-next-run" id="jrnNextRun" data-next-run-class="jrn-next-run"></span>
           </div>
           <button class="jrn-btn-simi" onclick="openCopilot()">&#10022; Ask Simi</button>
+          {% if sim.status == 'complete' and guide_available() %}
+          <a class="jrn-btn-simi" href="{{ url_for('guide.console_page', sim=sim.id) }}" style="text-decoration:none"
+             title="Set one goal per income layer for this simulation with Simi. Nothing changes until you approve.">Open SME Console</a>
+          {% endif %}
         </div>
       </div>
 

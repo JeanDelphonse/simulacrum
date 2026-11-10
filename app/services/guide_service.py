@@ -281,7 +281,31 @@ def _money(v) -> str:
     return '${:,.0f}'.format(v) if v is not None else '?'
 
 
-def build_facts(user_id: str) -> list:
+def simulation_for(user_id: str, simulation_id: str | None):
+    """The member's completed simulation with this id, or None."""
+    from app.models.simulation import Simulation
+    if not simulation_id:
+        return None
+    return Simulation.query.filter_by(id=simulation_id, user_id=user_id, status='complete').first()
+
+
+def completed_simulations(user_id: str) -> list:
+    from app.models.simulation import Simulation
+    return (Simulation.query.filter_by(user_id=user_id, status='complete')
+            .order_by(Simulation.created_at.desc()).all())
+
+
+def _goal_scope(q, simulation_id):
+    """Goal cards for this simulation, plus ones approved before goals were per
+    simulation (simulation_id NULL), which still apply to every simulation."""
+    from app.extensions import db
+    from app.models.sme_guide import GoalCard
+    if not simulation_id:
+        return q
+    return q.filter(db.or_(GoalCard.simulation_id == simulation_id, GoalCard.simulation_id.is_(None)))
+
+
+def build_facts(user_id: str, simulation_id: str | None = None) -> list:
     """[{'id', 'kind', 'label', 'text', 'layer'}] from the user's own records.
     Contacts (including anything imported from email) are deliberately absent."""
     from app.models.agent_action import AgentAction
@@ -315,8 +339,8 @@ def build_facts(user_id: str) -> list:
     skills = SkillSuggestion.query.filter_by(user_id=user_id, status=SkillSuggestion.ACCEPTED).all()
     if skills:
         add('skills', 'skills', 'Skills you confirmed', ' · '.join(s.skill_name for s in skills))
-    sim = (Simulation.query.filter_by(user_id=user_id, status='complete')
-           .order_by(Simulation.created_at.desc()).first())
+    sim = simulation_for(user_id, simulation_id) or (
+        Simulation.query.filter_by(user_id=user_id, status='complete').order_by(Simulation.created_at.desc()).first())
     if sim:
         add('sim', 'simulation', 'Simulation · %s' % sim.created_at.strftime('%b %d, %Y'),
             '%s · expertise zone: %s' % (sim.name or 'Simulation', sim.expertise_zone or 'n/a'))
@@ -344,20 +368,24 @@ def build_facts(user_id: str) -> list:
             ran = [a for a in agents if a in done]
             if ran:
                 add('agents:L%d' % layer, 'agent', 'L%d agents with results' % layer, ', '.join(ran), layer=layer)
-    for g in GoalCard.query.filter(GoalCard.user_id == user_id,
-                                   GoalCard.status.in_([GoalCard.APPROVED, GoalCard.EDITED])).all():
+    for g in _goal_scope(GoalCard.query.filter(GoalCard.user_id == user_id,
+                                               GoalCard.status.in_([GoalCard.APPROVED, GoalCard.EDITED])),
+                         sim.id if sim else None).all():
         add('goal:L%d' % g.layer, 'goal', 'Approved L%d goal' % g.layer,
             '%s (measure: %s; deadline %s)' % (g.goal_text, g.measure or '—', g.deadline or '—'), layer=g.layer)
-    last = last_summary(user_id)
+    last = last_summary(user_id, sim.id if sim else None)
     if last:
         add('lastsession', 'session', 'Last conversation', last)
     return facts
 
 
-def last_summary(user_id: str) -> str:
+def last_summary(user_id: str, simulation_id: str | None = None) -> str:
+    from app.extensions import db
     from app.models.sme_guide import SmeSession
-    s = (SmeSession.query.filter(SmeSession.user_id == user_id, SmeSession.summary_enc.isnot(None))
-         .order_by(SmeSession.started_at.desc()).first())
+    q = SmeSession.query.filter(SmeSession.user_id == user_id, SmeSession.summary_enc.isnot(None))
+    if simulation_id:
+        q = q.filter(db.or_(SmeSession.simulation_id == simulation_id, SmeSession.simulation_id.is_(None)))
+    s = q.order_by(SmeSession.started_at.desc()).first()
     return _decrypt(s.summary_enc) if s else ''
 
 
@@ -559,17 +587,22 @@ def _facts_for(session) -> list:
         return []
 
 
-def start_session(user, layer: int | None = None):
-    """Build the briefing, open a session and produce the guide's first turn."""
+def start_session(user, layer: int | None = None, simulation_id: str | None = None):
+    """Build the briefing for one simulation, open a session and produce the
+    guide's first turn."""
     from app.extensions import db
     from app.models.sme_guide import SmeBriefing, SmeSession
     if not is_enabled(user):
         raise GuideError('The SME Console is not available on your account yet.')
+    sim = simulation_for(user.id, simulation_id)
+    if sim is None:
+        raise GuideError('Open the SME Console from one of your completed simulations.')
     _check_limits(user.id)
-    facts = build_facts(user.id)
+    facts = build_facts(user.id, sim.id)
     g = current_guide(user.id)
     p = prefs(user.id)
-    s = SmeSession(user_id=user.id, guide_id=g.id, layer=layer or suggest_layer(user.id, facts),
+    s = SmeSession(user_id=user.id, guide_id=g.id, simulation_id=sim.id,
+                   layer=layer or suggest_layer(user.id, facts),
                    mode='animated' if p.voice_enabled else 'text')
     db.session.add(s)
     db.session.flush()
@@ -700,10 +733,12 @@ def _record_guide(session, turn: dict) -> None:
 def _upsert_draft(session, facts: list, layer: int, gc: dict):
     from app.extensions import db
     from app.models.sme_guide import GoalCard, GoalCardAgentChange
-    card = (GoalCard.query.filter_by(user_id=session.user_id, layer=layer, status=GoalCard.DRAFT)
+    card = (GoalCard.query.filter_by(user_id=session.user_id, layer=layer, status=GoalCard.DRAFT,
+                                     simulation_id=session.simulation_id)
             .order_by(GoalCard.created_at.desc()).first())
     if card is None:
-        card = GoalCard(user_id=session.user_id, layer=layer, session_id=session.id)
+        card = GoalCard(user_id=session.user_id, layer=layer, session_id=session.id,
+                        simulation_id=session.simulation_id)
         db.session.add(card)
         db.session.flush()
     label = {f['id']: f['label'] for f in facts}
@@ -830,8 +865,11 @@ def approve_goal(user_id: str, card_id: str):
         raise GuideError('Goal not found.')
     if not (card.goal_text or '').strip():
         raise GuideError('The goal is empty.')
+    # Retire this simulation's previous goal for the layer. A goal set before goals
+    # were per simulation (NULL) is left alone: it may still guide other simulations.
     for old in GoalCard.query.filter(GoalCard.user_id == user_id, GoalCard.layer == card.layer,
-                                     GoalCard.id != card.id,
+                                     GoalCard.id != card.id, GoalCard.simulation_id == card.simulation_id,
+                                     GoalCard.simulation_id.isnot(None),
                                      GoalCard.status.in_([GoalCard.APPROVED, GoalCard.EDITED])).all():
         old.status = GoalCard.RETIRED
     now = datetime.utcnow()
@@ -842,19 +880,23 @@ def approve_goal(user_id: str, card_id: str):
     return card
 
 
-def approved_goal(user_id: str, layer: int):
+def approved_goal(user_id: str, layer: int, simulation_id: str | None = None):
+    """The approved goal for this layer of this simulation; one set before goals
+    were per simulation is used when the simulation has none of its own."""
+    from app.extensions import db
     from app.models.sme_guide import GoalCard
-    return (GoalCard.query.filter(GoalCard.user_id == user_id, GoalCard.layer == layer,
-                                  GoalCard.status.in_([GoalCard.APPROVED, GoalCard.EDITED]))
-            .order_by(GoalCard.approved_at.desc()).first())
+    q = _goal_scope(GoalCard.query.filter(GoalCard.user_id == user_id, GoalCard.layer == layer,
+                                          GoalCard.status.in_([GoalCard.APPROVED, GoalCard.EDITED])), simulation_id)
+    own_first = db.case((GoalCard.simulation_id.is_(None), 1), else_=0)
+    return q.order_by(own_first, GoalCard.approved_at.desc()).first()
 
 
-def agent_briefing_section(user_id: str, layer_number: int) -> str:
-    """For agent_briefing: the user's approved goal for this layer, so the
-    layer's agents plan toward it. Prompt context only; nothing executes."""
+def agent_briefing_section(user_id: str, layer_number: int, simulation_id: str | None = None) -> str:
+    """For agent_briefing: the user's approved goal for this layer of this
+    simulation, so the layer's agents plan toward it. Prompt context only."""
     if str(setting('guide_goals_in_agent_briefing')).lower() != 'on' or not user_id:
         return ''
-    card = approved_goal(user_id, layer_number)
+    card = approved_goal(user_id, layer_number, simulation_id)
     if card is None:
         return ''
     return ("USER'S APPROVED GOAL FOR THIS LAYER (set with their SME Console guide; work toward it, and say so "
@@ -862,13 +904,15 @@ def agent_briefing_section(user_id: str, layer_number: int) -> str:
             % (card.goal_text, card.measure or '—', card.target or '—', card.deadline or '—'))
 
 
-def console_state(user_id: str) -> dict:
+def console_state(user_id: str, simulation_id: str | None = None) -> dict:
     from app.models.sme_guide import GoalCard
     cards = {}
     for layer in range(1, 6):
-        c = approved_goal(user_id, layer)
-        d = (GoalCard.query.filter_by(user_id=user_id, layer=layer, status=GoalCard.DRAFT)
-             .order_by(GoalCard.created_at.desc()).first())
+        c = approved_goal(user_id, layer, simulation_id)
+        dq = GoalCard.query.filter_by(user_id=user_id, layer=layer, status=GoalCard.DRAFT)
+        if simulation_id:
+            dq = dq.filter(GoalCard.simulation_id == simulation_id)
+        d = dq.order_by(GoalCard.created_at.desc()).first()
         cards[layer] = {'approved': c.to_dict() if c else None, 'draft': d.to_dict() if d else None}
     return {'cards': cards, 'skills': accepted_skills(user_id)}
 

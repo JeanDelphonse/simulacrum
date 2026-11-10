@@ -371,6 +371,15 @@ def create_app(config_name=None):
     app.jinja_env.globals['site_nav'] = _site_nav.resolve
     app.jinja_env.globals['member_nav'] = _site_nav.resolve_member
 
+    def _guide_available():
+        try:
+            from flask_login import current_user as _cu
+            from app.services import guide_service
+            return bool(_cu.is_authenticated and guide_service.is_enabled(_cu))
+        except Exception:
+            return False
+    app.jinja_env.globals['guide_available'] = _guide_available
+
     # Shell context
     @app.shell_context_processor
     def make_shell_context():

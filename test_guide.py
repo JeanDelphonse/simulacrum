@@ -97,6 +97,7 @@ def main():
         sim = Simulation(id=generate_id(), user_id=E, name='Ops path', expertise_zone='Operations', status='complete')
         db.session.add(sim)
         db.session.flush()
+        GUIDE, SESS = '/guide?sim=%s' % sim.id, '/api/guide/sessions?sim=%s' % sim.id
         L1 = SimulationLayer(id=generate_id(), simulation_id=sim.id, layer_number=1, layer_name='Active income',
                              ai_narrative='Fractional operations consulting is the fastest path.')
         db.session.add(L1)
@@ -122,11 +123,11 @@ def main():
         print('\n1. Beta gate')
         login(E)
         check('default is allowlist: a regular user is not in', gs.mode() == 'allowlist'
-              and client.get('/guide').status_code == 403 and client.post('/api/guide/sessions', json={}).status_code == 403)
+              and client.get(GUIDE).status_code == 403 and client.post(SESS, json={}).status_code == 403)
         gs.set_user_access([E], 'allowed', A)
-        check('an allowlisted user is in', client.get('/guide').status_code == 200)
+        check('an allowlisted user is in', client.get(GUIDE).status_code == 200)
         gs.set_mode('off', A)
-        check('off wins over the allowlist', client.get('/guide').status_code == 403)
+        check('off wins over the allowlist', client.get(GUIDE).status_code == 403)
         gs.set_mode('allowlist', A)
         import app.models.mail_crm as mc
         real = mc.FeatureFlag.query
@@ -147,7 +148,7 @@ def main():
         james = SmeGuide.query.filter_by(slug='james').first()
         client.post('/api/guide/prefs', json={'guide_id': james.id})
         check('the choice is saved to the profile', client.get('/api/guide/state').get_json()['guide_id'] == james.id)
-        page = client.get('/guide').get_data(as_text=True)
+        page = client.get(GUIDE).get_data(as_text=True)
         check('the console labels the guide an AI and loads the ported assets', 'AI guide' in page
               and 'css/guide.css' in page and 'js/guide_console.js' in page and 'Concept mockup' not in page)
 
@@ -163,7 +164,7 @@ def main():
         print('\n4. A conversation')
         ai.queue.append({'say': "Hi Elena, I'm James. Let's set your Layer 1 goal. What would success look like?",
                          'about_user': True, 'sources': ['profile', 'sim'], 'layer': 1, 'grow_step': 'G'})
-        res = client.post('/api/guide/sessions', json={})
+        res = client.post(SESS, json={})
         d = res.get_json()
         sid = d['session_id']
         check('a session starts with an opening turn and the facts panel', res.status_code == 200
@@ -268,11 +269,11 @@ def main():
 
         print('\n8. Same advice whichever guide')
         ai.queue.append({'say': 'Hi.', 'about_user': False, 'sources': [], 'layer': 1, 'grow_step': 'G'})
-        client.post('/api/guide/sessions', json={'layer': 1})
+        client.post(SESS, json={'layer': 1})
         s_james = ai.calls[-1]['system']
         client.post('/api/guide/prefs', json={'guide_id': SmeGuide.query.filter_by(slug='aisha').first().id})
         ai.queue.append({'say': 'Hi.', 'about_user': False, 'sources': [], 'layer': 1, 'grow_step': 'G'})
-        client.post('/api/guide/sessions', json={'layer': 1})
+        client.post(SESS, json={'layer': 1})
         s_aisha = ai.calls[-1]['system']
         check('the model gets only the guide\'s name; everything else is identical',
               s_james[0]['text'].replace('James', 'X') == s_aisha[0]['text'].replace('Aisha', 'X')
@@ -288,13 +289,13 @@ def main():
         check('model cost is metered', s.model_cost_cents > 0 and s.input_tokens > 0)
         PlatformSetting.set('guide_sessions_per_day', '3')
         db.session.commit()
-        res = client.post('/api/guide/sessions', json={})
+        res = client.post(SESS, json={})
         check('sessions per day are capped', res.status_code == 429, res.status_code)
         PlatformSetting.set('guide_sessions_per_day', '50')
         PlatformSetting.set('guide_turns_per_session', '1')
         db.session.commit()
         ai.queue.append({'say': 'Hi.', 'about_user': False, 'sources': [], 'layer': 1, 'grow_step': 'G'})
-        s2 = client.post('/api/guide/sessions', json={}).get_json()['session_id']
+        s2 = client.post(SESS, json={}).get_json()['session_id']
         res = client.post('/api/guide/sessions/%s/turn' % s2, json={'text': 'hi'})
         check('turns per session are capped', res.status_code == 429)
         PlatformSetting.set('guide_turns_per_session', '60')
@@ -315,9 +316,72 @@ def main():
         check('history page shows approved goals and confirmed skills', 'Win 3 clients' in page and 'Cross-functional' in page)
 
         ai.queue.append({'say': 'Hi.', 'about_user': False, 'sources': [], 'layer': 1, 'grow_step': 'G'})
-        s3 = client.post('/api/guide/sessions', json={}).get_json()['session_id']
+        s3 = client.post(SESS, json={}).get_json()['session_id']
         ai.queue.append({'say': 'Noted.', 'about_user': False, 'sources': [], 'layer': 1, 'grow_step': 'G'})
         client.post('/api/guide/sessions/%s/turn' % s3, json={'text': 'Getting union, finance and engineering aligned.'})
+
+        print('\n9b. One simulation at a time')
+        from app.models.sme_guide import GoalCard, SmeSession
+        sim_b = Simulation(id=generate_id(), user_id=E, name='Product path', status='complete')
+        db.session.add(sim_b)
+        db.session.commit()
+        r = client.get('/guide')
+        check('/guide with two simulations asks which one', r.status_code == 200
+              and 'Which simulation are your goals for?' in r.get_data(as_text=True)
+              and ('/guide?sim=%s' % sim.id) in r.get_data(as_text=True) and ('/guide?sim=%s' % sim_b.id) in r.get_data(as_text=True))
+        page = client.get('/guide?sim=%s' % sim_b.id).get_data(as_text=True)
+        check("the console is told which simulation it's for", '"simulation": {' in page and 'Product path' in page)
+        check('a session needs one of your completed simulations',
+              client.post('/api/guide/sessions', json={}).status_code >= 400
+              and client.post('/api/guide/sessions?sim=NOTMINE01', json={}).status_code >= 400)
+        ai.queue.append({'say': 'Hi.', 'about_user': False, 'sources': [], 'layer': 1, 'grow_step': 'G'})
+        sb = client.post('/api/guide/sessions?sim=%s' % sim_b.id, json={'layer': 1}).get_json()
+        check('the session records its simulation and the briefing uses it',
+              db.session.get(SmeSession, sb['session_id']).simulation_id == sim_b.id
+              and any(f['id'] == 'sim' and 'Product path' in f['text'] for f in sb['facts']), [f['id'] for f in sb['facts']][:6])
+        first = gs.approved_goal(E, 1, sim.id)
+        check('the goal approved earlier belongs to the simulation it was set for',
+              first is not None and first.simulation_id == sim.id and 'Win 3 clients' in first.goal_text)
+        check("...so the new simulation doesn't inherit it", gs.approved_goal(E, 1, sim_b.id) is None
+              and gs.agent_briefing_section(E, 1, sim_b.id) == '')
+        legacy = GoalCard(user_id=E, layer=2, simulation_id=None, goal_text='Run two workshops',
+                          status=GoalCard.APPROVED, approved_at=datetime.utcnow() - timedelta(days=30))
+        db.session.add(legacy)
+        db.session.commit()
+        check('a goal approved before goals were per simulation still applies to every simulation',
+              gs.approved_goal(E, 2, sim.id).id == legacy.id and gs.approved_goal(E, 2, sim_b.id).id == legacy.id)
+        own = GoalCard(user_id=E, layer=2, simulation_id=sim_b.id, goal_text='Launch one product line',
+                       status=GoalCard.DRAFT)
+        db.session.add(own)
+        db.session.commit()
+        st = client.post('/api/guide/goals/%s/approve?sim=%s' % (own.id, sim_b.id), json={}).get_json()
+        check("approving this simulation's own goal takes precedence there, and leaves the shared goal alone",
+              gs.approved_goal(E, 2, sim_b.id).id == own.id and db.session.get(GoalCard, legacy.id).status == GoalCard.APPROVED
+              and st['state']['cards']['2']['approved']['id'] == own.id, st.get('state', {}).get('cards', {}).get('2'))
+        check("...and doesn't retire the other simulation's goal", db.session.get(GoalCard, first.id).status != GoalCard.RETIRED)
+        check("this simulation's agents get its own goal", 'Launch one product line' in gs.agent_briefing_section(E, 2, sim_b.id))
+        check("the other simulation's agents keep theirs", 'Run two workshops' in gs.agent_briefing_section(E, 2, sim.id)
+              and 'Launch one product line' not in gs.agent_briefing_section(E, 2, sim.id)
+              and 'Win 3 clients' in gs.agent_briefing_section(E, 1, sim.id))
+        from app.services.agent_briefing import _goal_section
+        class _B: goal = ''
+        b1, b2 = _B(), _B()
+        _goal_section(E, 2, b1, sim_b.id)
+        _goal_section(E, 1, b2, sim.id)
+        check('agent briefings are built per simulation', 'Launch one product line' in b1.goal and 'Win 3 clients' in b2.goal)
+
+        print('\n9c. Where the SME Console opens')
+        dash = client.get('/dashboard').get_data(as_text=True)
+        check('the dashboard no longer has the SME Console banner', 'Open SME Console' not in dash
+              and 'Set your goals with an AI guide' not in dash)
+        sim_b.agent_selection_confirmed_at = datetime.utcnow()
+        db.session.commit()
+        det = client.get('/simulations/%s' % sim_b.id).get_data(as_text=True)
+        check('the simulation page opens it for that simulation', ('/guide?sim=%s' % sim_b.id) in det and 'Open SME Console' in det, det[:0])
+        gcc = client.get('/simulations/%s/gcc?tab=journey' % sim_b.id)
+        gtxt = gcc.get_data(as_text=True)
+        check("the GCC Journey tab opens it for that simulation", gcc.status_code == 200
+              and ('/guide?sim=%s' % sim_b.id) in gtxt and 'Open SME Console' in gtxt, gcc.status_code)
 
         print('\n10. Admin')
         login(O)
