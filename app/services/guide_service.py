@@ -55,6 +55,7 @@ DEFAULTS = {
     'guide_history_turns': 24,
     'guide_review_days': 90,
     'guide_goals_in_agent_briefing': 'on',
+    'guide_crm_access': 'on',          # the guide can answer questions about the member's CRM (see guide_crm.py)
     'guide_browser_speech_in': 'on',
     'guide_video_avatars': 'off',
     'guide_first_audio_timeout_s': 6,
@@ -307,7 +308,8 @@ def _goal_scope(q, simulation_id):
 
 def build_facts(user_id: str, simulation_id: str | None = None) -> list:
     """[{'id', 'kind', 'label', 'text', 'layer'}] from the user's own records.
-    Contacts (including anything imported from email) are deliberately absent."""
+    CRM contacts come from guide_crm (no emails, phones or notes; nothing that
+    came from the member's email account, under Gmail Limited Use)."""
     from app.models.agent_action import AgentAction
     from app.models.profile import UserProfile
     from app.models.resume import Resume
@@ -373,6 +375,11 @@ def build_facts(user_id: str, simulation_id: str | None = None) -> list:
                          sim.id if sim else None).all():
         add('goal:L%d' % g.layer, 'goal', 'Approved L%d goal' % g.layer,
             '%s (measure: %s; deadline %s)' % (g.goal_text, g.measure or '—', g.deadline or '—'), layer=g.layer)
+    try:
+        from app.services import guide_crm
+        facts.extend(guide_crm.briefing_facts(user_id))
+    except Exception as exc:
+        logger.warning('guide CRM facts skipped for %s: %s', user_id, exc)
     last = last_summary(user_id, sim.id if sim else None)
     if last:
         add('lastsession', 'session', 'Last conversation', last)
@@ -470,8 +477,15 @@ GROUNDING (mandatory)
   in `sources`, and set about_user true. Never invent facts, numbers, employers or results.
 - Present simulation results as ranges. Never promise an income or outcome.
 
+CONTACTS (CRM)
+- You may answer questions about the user's own contacts using only the CRM facts in the BRIEFING ([crm...] and
+  [contact:...] ids), and cite them in `sources`. If someone isn't there, say you don't see them in the CRM.
+- You never have contact email addresses, phone numbers or notes; never guess them. You can't send messages or
+  change the CRM: suggest what the user could do in SimiSI instead.
+- Never suggest contacting anyone marked DO NOT CONTACT.
+
 LIMITS
-- Only the user's career, skills and income plan. Politely redirect anything else.
+- Only the user's career, skills, income plan and their CRM contacts. Politely redirect anything else.
 - No financial, legal or tax advice. For L5 stay at saving and allocation intentions; nothing ever executes.
 - Never infer personality, health or protected characteristics, and never use them.
 - If the user sounds overwhelmed, slow down, acknowledge it, and offer to pause or talk to a human coach
@@ -771,7 +785,13 @@ def turn(user, session_id: str, text: str, input_mode: str = 'typed', event: str
     if not text:
         raise GuideError('Say or type something first.')
     _check_limits(user.id, s)
-    return _guide_reply(s, _facts_for(s), text, input_mode=input_mode, event=event)
+    facts = _facts_for(s)
+    try:
+        from app.services import guide_crm
+        facts = facts + guide_crm.lookup_facts(user.id, text, {f['id'] for f in facts})
+    except Exception as exc:
+        logger.warning('guide CRM lookup skipped for session %s: %s', s.id, exc)
+    return _guide_reply(s, facts, text, input_mode=input_mode, event=event)
 
 
 def end_session(user, session_id: str) -> None:

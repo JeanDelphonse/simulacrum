@@ -159,7 +159,7 @@ def main():
               {'profile', 'career:0', 'resume:0', 'resume:1', 'sim', 'sim:L1'} <= ids, sorted(ids))
         check('résumé lines without an achievement are left out', not any('Hobbies' in f['text'] for f in facts))
         check('simulation ranges are in the briefing', any('$6,000–$12,000/mo' in f['text'] for f in facts))
-        check('contacts (incl. email-imported) are never in the briefing', not any('gina' in f['text'].lower() for f in facts))
+        check('contacts imported from email are never in the briefing (Gmail Limited Use)', not any('gina' in f['text'].lower() for f in facts))
 
         print('\n4. A conversation')
         ai.queue.append({'say': "Hi Elena, I'm James. Let's set your Layer 1 goal. What would success look like?",

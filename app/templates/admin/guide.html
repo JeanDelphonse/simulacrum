@@ -77,7 +77,8 @@ table.ga-t { width: 100%; border-collapse: collapse; font-size: .8rem; }
     <div class="ga-row"><label>{{ k[6:].replace('_', ' ') }}</label><input data-setting="{{ k }}" value="{{ v }}" style="width:9rem"></div>
     {% endfor %}
     <p class="ga-sub">Token prices (cents per million tokens) drive the cost meter and caps; check them against current Anthropic pricing.
-      "goals in agent briefing" lets approved goals reach that layer's agents as context (on/off). "video avatars" is the photoreal
+      "goals in agent briefing" lets approved goals reach that layer's agents as context (on/off). "crm access" lets the
+      guide answer questions about a member's own contacts (on/off; no emails, phones or notes, and never contacts imported from email). "video avatars" is the photoreal
       pilot switch and stays off until a vendor is contracted.</p>
     <div class="ga-row"><button class="ga-btn" id="sSave">Save settings</button> <span class="ga-msg" id="sMsg"></span></div>
   </div>
