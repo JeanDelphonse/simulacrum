@@ -132,7 +132,7 @@ def _send_email(notif) -> None:
     )
 
     message = Mail(
-        from_email=From('simi@simulacrumai.io', 'SimiSI'),
+        from_email=From('simi@simisi.io', 'SimiSI'),
         to_emails=To(user.email),
         subject=Subject(notif.title),
         plain_text_content=PlainTextContent(notif.body),

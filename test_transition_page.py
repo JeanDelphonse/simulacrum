@@ -81,7 +81,7 @@ def main():
         check('honesty wording kept', 'sent only on their approval' in t and "never moves anyone's money" in t
               and 'Illustrative data' in t)
         check('mockup banner and fake-submit JS dropped', 'Concept mockup' not in html and 'mockup only' not in html)
-        check('brand, contact address and legal links kept', 'simi@simulacrumai.io' in html
+        check('brand, contact address and legal links kept', 'simi@simisi.io' in html
               and '/legal/privacy' in html and '/legal/terms' in html)
         check('uses the site\'s base layout and the shared stylesheet', 'class="ss-nav' in html
               and 'css/marketing.css' in html and 'class="pf"' in html)

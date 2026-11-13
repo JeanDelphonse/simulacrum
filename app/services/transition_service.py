@@ -735,7 +735,7 @@ def change_coach(user_id: str):
         raise TransitionError('You can ask for a different coach once.')
     new = match_coach(s, exclude=s.coach_id)
     if new is None:
-        raise TransitionError('No other coach is available right now; contact simi@simulacrumai.io.')
+        raise TransitionError('No other coach is available right now; contact simi@simisi.io.')
     s.coach_changes += 1
     s.coach_access = False                        # access was granted to the previous coach
     db.session.commit()

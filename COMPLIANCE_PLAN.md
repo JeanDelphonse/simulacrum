@@ -212,7 +212,7 @@ The output specs for `fund_recommendations` and `dca_schedule` are rewritten per
 - **C1, opt-out and the honest From line.**
   - `send_outreach_email` becomes `unsubscribe=True` by default for every agent and commercial send (an explicit `transactional=True` is needed to skip it).
   - The footer adds "Reply STOP to opt out". Inbound parse treats a reply that is just "stop", "unsubscribe" or "remove" as an opt-out: suppression plus DNC.
-  - The From line stays honest: "<User Name> <simi@simulacrumai.io>", with the footer "Sent by <name> via SimiSI".
+  - The From line stays honest: "<User Name> <simi@simisi.io>", with the footer "Sent by <name> via SimiSI".
   - A subject check rejects "RE:" or "FWD:" on a first-touch email (deceptive subjects).
 - **C1, postal address (D7).**
   - `users.postal_address` (encrypted) is set in Settings, then Notifications or Sending.

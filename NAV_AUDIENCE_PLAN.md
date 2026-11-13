@@ -66,7 +66,7 @@ It has no focus management, no scroll lock and no `hidden` handling. The video m
 | Watch the demo (D4) | `[data-demo]` video modal | ✅ |
 | Free bio page | `/#bio` | ✅ `id="bio"` |
 | Agents | `/#act` | ✅ `id="act"` |
-| SME Console ("In development") | `/#more`. **⚠ No waitlist route exists.** The `#more` card has "Ask for beta access" (mailto simi@simulacrumai.io) or "Open the SME Console" when the beta is on. | ⚠ flagged |
+| SME Console ("In development") | `/#more`. **⚠ No waitlist route exists.** The `#more` card has "Ask for beta access" (mailto simi@simisi.io) or "Open the SME Console" when the beta is on. | ⚠ flagged |
 | People on SimiSI | `/explore` (`public.explore`) | ✅ |
 | The Journal | `/blog` (`pages.blog_index`), gated by `blog_nav_visible` (D5) | ✅ |
 | Questions | `/#faq` | ✅ `id="faq"` |
@@ -165,7 +165,7 @@ The other `<nav>` elements on base pages are on-page tabs, not site menus, and a
 | 6 | Browser test committed as `test_site_nav_browser.py` (renders through the test client to files and drives Playwright; skips if Playwright is missing) plus a link check that every href returns 200 and every `#anchor` exists on its page | test files | Low | Green |
 | 7 | Full suite, axe compared with the baseline, site render and contrast audit, screenshots to `docs/screenshots/nav-audience/` (1440: each panel open; 390: drawer open), hero layout-shift check | — | — | Report |
 
-**Not touched:** homepage content, layer names, pricing, legal copy, the footer, the signed-in nav, the pages in §4, the brand, the mascot logo and simi@simulacrumai.io. The nav contains no prices.
+**Not touched:** homepage content, layer names, pricing, legal copy, the footer, the signed-in nav, the pages in §4, the brand, the mascot logo and simi@simisi.io. The nav contains no prices.
 
 ---
 

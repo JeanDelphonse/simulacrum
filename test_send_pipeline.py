@@ -54,7 +54,7 @@ def main():
     app = create_app('testing')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['SENDGRID_API_KEY'] = 'SG.platform-key'
-    app.config['MAIL_DEFAULT_SENDER'] = 'simi@simulacrumai.io'
+    app.config['MAIL_DEFAULT_SENDER'] = 'simi@simisi.io'
     from cryptography.fernet import Fernet
     app.config['ENCRYPTION_KEY'] = Fernet.generate_key().decode()
 
@@ -143,7 +143,7 @@ def main():
               b['count'] == 4 and len(b['hash']) == 64 and listing['sender']['ready']
               and listing['sender']['provider'] == 'simisi_sendgrid', listing['sender'])
         check('default sender is SimiSI with the user\'s name',
-              listing['sender']['from_email'] == 'simi@simulacrumai.io'
+              listing['sender']['from_email'] == 'simi@simisi.io'
               and listing['sender']['from_name'] == 'Dana Owner')
         res = send(d['batch_id'], b['hash'], confirm=False)
         check('no send without confirm=true', res.status_code == 400 and not sent)
@@ -181,7 +181,7 @@ def main():
         ann_key, ann_msg = msgs.get('ann@a.com', (None, {}))
         check('sent through SimiSI\'s SendGrid', ann_key == 'SG.platform-key' and len(sent) == 2)
         check('from the platform sender with the user\'s name',
-              ann_msg.get('from') == {'email': 'simi@simulacrumai.io', 'name': 'Dana Owner'}, ann_msg.get('from'))
+              ann_msg.get('from') == {'email': 'simi@simisi.io', 'name': 'Dana Owner'}, ann_msg.get('from'))
         html = ann_msg.get('content', [{}])[0].get('value', '')
         check('body is the merged draft', 'Hi Ann' in html and 'at Alpha' in html, html[:120])
         check('every email carries an unsubscribe link', 'Unsubscribe' in html and '/unsubscribe' in html, html[-300:])

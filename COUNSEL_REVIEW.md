@@ -133,7 +133,7 @@ Also removed for accuracy: a Settings toggle labelled **"Enable automated tradin
 
 **Q9.** Opt-outs take effect immediately (well inside the 10-business-day window). Should the footer state the timing?
 
-**Q10.** Outreach goes out "From: {Member Name} <simi@simulacrumai.io>" with replies routed back to the member. Is that sufficiently non-deceptive for the From line, or should it read "{Member Name} via SimiSI"?
+**Q10.** Outreach goes out "From: {Member Name} <simi@simisi.io>" with replies routed back to the member. Is that sufficiently non-deceptive for the From line, or should it read "{Member Name} via SimiSI"?
 
 ### 7b. Automatic sending is opt-in (product copy, not legal text)
 New simulations start with email auto-send off and the autonomy level on "Review All". The member turns automatic sending on in GCC → Settings. These lines are interface copy, so they live in the template rather than the legal-text table, but they describe a compliance control and are drafts:
@@ -158,7 +158,7 @@ One email per contact, only when the member clicks Invite and confirms. SimiSI i
 
 | Part | Proposed text |
 |---|---|
-| From | **"{Member name} via SimiSI" <simi@simulacrumai.io>** |
+| From | **"{Member name} via SimiSI" <simi@simisi.io>** |
 | Subject | **"{Member first name} thinks you might like SimiSI"** |
 | Body | **"Hi {first name}, {Member name} uses SimiSI and thought you might find it useful too. SimiSI turns your experience into a 24-month career plan, with AI agents that draft the work and wait for your approval. Setting up a bio page is free. Take a look at SimiSI.io [Visit SimiSI.io] {Member first name}"** |
 
@@ -168,5 +168,5 @@ The subject, preview and body are editable in **Admin → Outreach → Contact i
 
 ## 8. Not changed in this task
 - `/legal/privacy` and `/legal/terms` are linked to, not rewritten. Terms §7.2 "No Guarantees" already exists.
-- The brand and the contact address simi@simulacrumai.io are unchanged.
+- The brand and the contact address simi@simisi.io are unchanged.
 - Transactional emails (verification, password, receipts, invites) are left as they are. **Q11:** please confirm they fall outside the commercial-email rules.

@@ -133,7 +133,7 @@ def _send_outreach_email(simulation_id, contact_id, subject, html_body, from_ema
         if _cfg and _cfg.sandbox_email_routing:
             _sim = _Sim.query.get(simulation_id)
             _owner = _User.query.get(_sim.user_id) if _sim else None
-            _sandbox_addr = (_owner.email if _owner and _owner.email else 'simi@simulacrumai.io')
+            _sandbox_addr = (_owner.email if _owner and _owner.email else 'simi@simisi.io')
             logger.info('Sandbox routing: redirecting outreach for contact %s to %s', contact_id, _sandbox_addr)
             to_email = _sandbox_addr
     except Exception as _se:

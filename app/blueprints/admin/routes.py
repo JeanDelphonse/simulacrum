@@ -568,7 +568,7 @@ def test_outreach_email():
     if not api_key:
         return jsonify({'error': 'SENDGRID_API_KEY is not configured on this server'}), 500
 
-    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
+    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simisi.io')
     sender_name  = current_app.config.get('MAIL_DEFAULT_SENDER_NAME', 'SimiSI')
 
     try:

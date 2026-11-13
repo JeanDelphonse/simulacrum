@@ -500,7 +500,7 @@ def _try_apollo_send(prospect_dict, user_id, action):
         _user = _User.query.get(user_id)
         # Use the platform-verified sender address — personal email addresses cannot
         # be verified as SendGrid senders and will be rejected with 403.
-        _from_email = _ca.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io')
+        _from_email = _ca.config.get('MAIL_DEFAULT_SENDER', 'simi@simisi.io')
         _from_name = (_user.full_name or '') if _user else 'SimiSI'
         body_text = email_draft.get('body', '')
         html_body = '<br>'.join(body_text.split('\n')) if body_text else ''

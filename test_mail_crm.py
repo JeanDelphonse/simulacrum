@@ -450,7 +450,7 @@ def main():
         check('the change is logged with admin, reason, scope and count', ch['changed_by'] == A
               and ch['reason'] == 'Incident review' and ch['scope'] == 'global' and ch['accounts_affected'] == 2)
         check('no batch runs while it is off', mail_sync.run_due(budget_seconds=5)['batches'] == 0)
-        r = send_outreach_email(sim.id, sam.id, 'Hi', '<p>x</p>', 'simi@simulacrumai.io', 'Dana', action_id=act.id)
+        r = send_outreach_email(sim.id, sam.id, 'Hi', '<p>x</p>', 'simi@simisi.io', 'Dana', action_id=act.id)
         check('the send pipeline refuses DNC contacts at send time', r == {'status': 'skipped', 'reason': 'do_not_contact'})
         login(D)
         res = client.put('/api/contacts/%s' % sam.id, json={'do_not_contact': False})

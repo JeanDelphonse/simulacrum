@@ -135,7 +135,7 @@ def sender_for(user) -> dict:
     if not current_app.config.get('SENDGRID_API_KEY'):
         raise SendRefused('Sending is not configured on this server.')
     return {'api_key': None,
-            'from_email': current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io'),
+            'from_email': current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simisi.io'),
             'from_name': name, 'provider': PROVIDER_SIMISI}
 
 

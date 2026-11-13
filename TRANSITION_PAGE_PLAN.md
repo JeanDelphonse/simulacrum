@@ -16,7 +16,7 @@ The Enterprise card is at `landing.html:1248-1264`. In summary:
   <div class="price-amount" style="color:#fff;">Custom</div>
   <div class="price-per" …>per seat · annual contract</div>
   <div class="price-features"> … 7 feature rows … </div>
-  <a href="mailto:simi@simulacrumai.io?subject=Corporate%20Licensing%20Enquiry" class="btn" …>Contact sales →</a>
+  <a href="mailto:simi@simisi.io?subject=Corporate%20Licensing%20Enquiry" class="btn" …>Contact sales →</a>
 </div>
 ```
 **Plan:** add one small text link, "See the Transition Package →", to `/transition-package`, directly under the "Contact sales →" button, styled to the card's muted white.
@@ -50,7 +50,7 @@ The Enterprise card is at `landing.html:1248-1264`. In summary:
 | Key | Default |
 |---|---|
 | `transition_package_mode` | `design_partner` \| `general` (default `design_partner`) |
-| `enterprise_inquiry_notify_email` | `simi@simulacrumai.io` |
+| `enterprise_inquiry_notify_email` | `simi@simisi.io` |
 | `enterprise_inquiry_rate_limit` | `5` per IP per hour |
 
 ## 5. Gaps and decisions (my proposals)
@@ -73,7 +73,7 @@ The Enterprise card is at `landing.html:1248-1264`. In summary:
 | 7 | Admin: inquiries list, status controls, "Add to prospects"; settings card for mode, notify email and rate limit | new `templates/admin/inquiries.html`, `partials/_admin_subnav.html`, admin routes | Low | Admin render test; status update test |
 | 8 | Tests: 200 on the page; invalid email rejected; honeypot not stored and not emailed; a valid post creates exactly one row and one notification; the rate limit holds; a bad CSRF token is rejected; the mode flag swaps the badge and CTAs and removes the perks | `test_transition_page.py` | (none) | Full suite |
 
-**Copy honesty, kept as the rules require:** "sent only on their approval", "never moves anyone's money", "Illustrative data" on the sample HR report, no invented logos or testimonials, the brand, simi@simulacrumai.io, and `/legal/privacy` and `/legal/terms`. Submitted data is emailed only to the admin-set notify address.
+**Copy honesty, kept as the rules require:** "sent only on their approval", "never moves anyone's money", "Illustrative data" on the sample HR report, no invented logos or testimonials, the brand, simi@simisi.io, and `/legal/privacy` and `/legal/terms`. Submitted data is emailed only to the admin-set notify address.
 
 ## 7. Needed from you
 1. **Add `docs/marketing/simisi_transition_package_page.html`** (the blocker).

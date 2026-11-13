@@ -258,7 +258,7 @@ def send_invite(user, contact) -> 'ContactInvite':
     try:
         import sendgrid as sg_module
         from sendgrid.helpers.mail import CustomArg, From, Header, Mail
-        message = Mail(from_email=From(current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io'),
+        message = Mail(from_email=From(current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simisi.io'),
                                        '%s via SimiSI' % (user.full_name or 'A SimiSI member')),
                        to_emails=email, subject=subject, plain_text_content=plain, html_content=html)
         message.header = [Header('List-Unsubscribe', '<%s>' % unsub_url),
@@ -357,7 +357,7 @@ def send_test(admin_user, template: dict) -> None:
     try:
         import sendgrid as sg_module
         from sendgrid.helpers.mail import From, Mail
-        msg = Mail(from_email=From(current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simulacrumai.io'),
+        msg = Mail(from_email=From(current_app.config.get('MAIL_DEFAULT_SENDER', 'simi@simisi.io'),
                                    '%s via SimiSI' % SAMPLE['member_name']),
                    to_emails=admin_user.email, subject='[Test] ' + p['subject'],
                    plain_text_content=p['plain'] + '\n\n' + _plain_footer(

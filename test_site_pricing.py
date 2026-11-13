@@ -171,7 +171,7 @@ def main():
         for claim in ('never ours', 'nothing goes out without your okay', 'books the calls',
                       'approval at every step', 'from your own account'):
             check('does not claim "%s"' % claim, claim.lower() not in text.lower())
-        check('brand email preserved', 'simi@simulacrumai.io' in page)
+        check('brand email preserved', 'simi@simisi.io' in page)
         check('checkout entry points still linked', page.count('Run your simulation') >= 1
               and '/register' in page)
 

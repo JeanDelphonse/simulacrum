@@ -78,7 +78,7 @@ Rule 4 says copy must match current capability. Several lines in sections A, C a
 
 | Spec copy | Reality in the code | Verdict |
 |---|---|---|
-| A: "prepares them to send **from your own account**"<br>D: "Runs on your own accounts — agents use your email and your tools, **never ours**" | By default, email goes out through **SimiSI's SendGrid**: from simi@simulacrumai.io with the user's name, and replies route through SimiSI (`exec_send_provider = simisi_sendgrid`). Apollo and PandaDoc are brokered on SimiSI's keys. Stripe, Cal.com and ConvertKit are the user's own accounts. | **False by default** |
+| A: "prepares them to send **from your own account**"<br>D: "Runs on your own accounts — agents use your email and your tools, **never ours**" | By default, email goes out through **SimiSI's SendGrid**: from simi@simisi.io with the user's name, and replies route through SimiSI (`exec_send_provider = simisi_sendgrid`). Apollo and PandaDoc are brokered on SimiSI's keys. Stripe, Cal.com and ConvertKit are the user's own accounts. | **False by default** |
 | A: "with your approval **at every step**"<br>D: "You approve every send — **nothing goes out without your okay**"<br>H: "Will SimiSI email people without my permission? — No" | Only the **new** Send-to-contacts path (P5) needs a per-batch confirmation. The **orchestrator's existing auto-send** (cold email, consulting outreach, scheduled follow-ups) goes out when the simulation's `email` channel approval is on, and it is **on by default** (`Layer6Config.channel_approvals`, `email: True`). You confirmed this in EXEC_PLAN §8a-2. | **False by default** |
 | A: "**books the calls**" | Agents create a Cal.com booking page (P4, after approval). Prospects book the calls themselves. | Overstated |
 | C: "it follows up until someone replies" | True: scheduled follow-ups with a `no_reply` condition. But this runs on the existing auto-send path, not on the approval path. | True, but it's the ungated path |
@@ -131,7 +131,7 @@ There's no existing feature-card section. I propose putting the three cards insi
 | 9 | H(3) | FAQ | 4 control and safety Q&As, worded per 3.1 | Low | Render test |
 | 10 | (none) | | Run the full suite and `test_footer.py` (the public-page allowlist); build the zip | | |
 
-**Not changed:** checkout and backend pricing logic, the brand, simi@simulacrumai.io, in-app "Layer 6" orchestrator labels, use-case sample figures, and the Free and Enterprise tiers.
+**Not changed:** checkout and backend pricing logic, the brand, simi@simisi.io, in-app "Layer 6" orchestrator labels, use-case sample figures, and the Free and Enterprise tiers.
 
 **Testing:** all checks are render tests through the Flask test client. Per standing practice, no local server is started. Visual layout is checked on the deployed site.
 

@@ -190,7 +190,7 @@
       }
       if (t.note) { var n = document.createElement('div'); n.className = 'note-l5'; n.textContent = t.note; b.appendChild(n); }
       if (t.resources) { var r = document.createElement('div'); r.className = 'resources'; r.innerHTML = 'Support is available now:' + t.resources.map(function (x) { return '<a href="' + esc(x.href) + '">' + esc(x.label) + '</a>'; }).join(''); b.appendChild(r); }
-      if (t.offer_coach && !t.resources) { var o = document.createElement('div'); o.className = 'coach-offer'; o.innerHTML = 'Want to talk to a person? <a href="' + ROOT + '/transition">Your human coach</a> (if your package includes one) · <a href="mailto:simi@simulacrumai.io">simi@simulacrumai.io</a>'; b.appendChild(o); }
+      if (t.offer_coach && !t.resources) { var o = document.createElement('div'); o.className = 'coach-offer'; o.innerHTML = 'Want to talk to a person? <a href="' + ROOT + '/transition">Your human coach</a> (if your package includes one) · <a href="mailto:simi@simisi.io">simi@simisi.io</a>'; b.appendChild(o); }
       if (t.fallback) { var fb = document.createElement('div'); fb.className = 'fallback-tag'; fb.textContent = 'Simi only says what it can point to in your records, so it asked a question instead.'; b.appendChild(fb); }
       if (t.skill && t.skill.id) {
         var sp = document.createElement('div'); sp.className = 'skillprop';

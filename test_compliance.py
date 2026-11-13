@@ -544,16 +544,16 @@ def main():
               late.do_not_contact and mine.do_not_contact and not c_ok.do_not_contact)
         for c in (late, c_dnc, c_flag):
             r = send_outreach_email(simulation_id=ssim.id, contact_id=c.id, subject='Hi', html_body='<p>x</p>',
-                                    from_email='simi@simulacrumai.io', from_name='Pat')
+                                    from_email='simi@simisi.io', from_name='Pat')
             check('send to %s is refused (%s)' % (c.email, r.get('reason')), r['status'] == 'skipped'
                   and (r['reason'].startswith('suppressed:') or r['reason'] == 'do_not_contact'))
         r = send_outreach_email(simulation_id=ssim.id, contact_id=c_ok.id, subject='Hi', html_body='<p>x</p>',
-                                from_email='simi@simulacrumai.io', from_name='Pat')
+                                from_email='simi@simisi.io', from_name='Pat')
         app.config['SENDGRID_API_KEY'] = 'test-key'
         from app.services import sender_identity as _si
         _si.set_postal_address(User.query.get(sender.id), '1 Market St, San Francisco, CA 94105')
         r = send_outreach_email(simulation_id=ssim.id, contact_id=c_ok.id, subject='Hi', html_body='<p>x</p>',
-                                from_email='simi@simulacrumai.io', from_name='Pat')
+                                from_email='simi@simisi.io', from_name='Pat')
         check('a clear contact is sent (to the fake SendGrid only)', r['status'] == 'sent' and SENT, r)
         from app.services import artifact_actions
         fake_action = SimpleNamespace(simulation_id=ssim.id, action_type='consulting_outreach')
@@ -576,13 +576,13 @@ def main():
         db.session.commit()
         sent_before = len(SENT)
         r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Quick idea', html_body='<p>Hi</p>',
-                                from_email='simi@simulacrumai.io', from_name='Mo Lee')
+                                from_email='simi@simisi.io', from_name='Mo Lee')
         check('no mailing address: the send is refused', r == {'status': 'skipped', 'reason': 'no_postal_address'}
               and len(SENT) == sent_before)
         check('…and the GCC asks for it once', ActionItem.query.filter_by(
             simulation_id=msim.id, item_type='postal_address_required').count() == 1)
         send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Quick idea', html_body='<p>Hi</p>',
-                            from_email='simi@simulacrumai.io', from_name='Mo Lee')
+                            from_email='simi@simisi.io', from_name='Mo Lee')
         check('…not twice', ActionItem.query.filter_by(simulation_id=msim.id,
                                                       item_type='postal_address_required').count() == 1)
         login(mailer)
@@ -595,10 +595,10 @@ def main():
                                              status=ActionItem.STATUS_ACTIVE).count() == 0)
         check('Settings shows the address', 'PO Box 123' in client.get('/settings/notifications').get_data(as_text=True))
         r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Re: our call', html_body='<p>Hi</p>',
-                                from_email='simi@simulacrumai.io', from_name='Mo Lee')
+                                from_email='simi@simisi.io', from_name='Mo Lee')
         check('a first email may not pretend to be a reply', r['reason'] == 'deceptive_subject')
         r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Quick idea', html_body='<p>Hi</p>',
-                                from_email='simi@simulacrumai.io', from_name='Mo Lee')
+                                from_email='simi@simisi.io', from_name='Mo Lee')
         msg = SENT[-1]
         body = str(msg.get('content'))
         heads = msg.get('headers') or {}
@@ -608,7 +608,7 @@ def main():
         check('…and the RFC 8058 one-click headers', 'List-Unsubscribe' in heads
               and heads.get('List-Unsubscribe-Post') == 'List-Unsubscribe=One-Click')
         r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Re: Quick idea', html_body='<p>x</p>',
-                                from_email='simi@simulacrumai.io', from_name='Mo Lee')
+                                from_email='simi@simisi.io', from_name='Mo Lee')
         check('a real follow-up may say Re:', r['status'] == 'sent')
         res = client.post('/webhooks/sendgrid/inbound', data={
             'to': 'reply-%s@mail.simulacrumai.io' % to.id, 'from': 'kim@x.com',
@@ -623,7 +623,7 @@ def main():
               and EmailSuppression.query.filter_by(email='kim@x.com').first() is not None and to_after.do_not_contact)
         check('…and nothing more goes to them', send_outreach_email(
             simulation_id=msim.id, contact_id=to.id, subject='Again', html_body='<p>x</p>',
-            from_email='simi@simulacrumai.io', from_name='Mo Lee')['status'] == 'skipped')
+            from_email='simi@simisi.io', from_name='Mo Lee')['status'] == 'skipped')
         from app.blueprints.integrations.routes import _is_stop_reply
         check('a reply that merely quotes STOP is not an opt-out', not _is_stop_reply(
             'Thanks, interested!\n> Reply STOP to stop receiving emails'))
@@ -671,7 +671,7 @@ def main():
         db.session.add(kc)
         db.session.commit()
         r = send_outreach_email(simulation_id=hsim.id, contact_id=kc.id, subject='Hello', html_body='<p>x</p>',
-                                from_email='simi@simulacrumai.io', from_name='Hal')
+                                from_email='simi@simisi.io', from_name='Hal')
         check('day 1: the 11th email is deferred, not dropped', r == {'status': 'deferred', 'reason': 'over_daily_cap'})
         EmailLog.query.filter(EmailLog.simulation_id == hsim.id).update(
             {'sent_at': datetime.utcnow() - timedelta(days=30)}, synchronize_session=False)
@@ -681,7 +681,7 @@ def main():
         db.session.commit()
         log_sent(3, action_id=act.id)
         r = send_outreach_email(simulation_id=hsim.id, contact_id=kc.id, subject='Hello', html_body='<p>x</p>',
-                                from_email='simi@simulacrumai.io', from_name='Hal', action_id=act.id)
+                                from_email='simi@simisi.io', from_name='Hal', action_id=act.id)
         check('a campaign over its own daily cap is deferred', r['reason'] == 'over_campaign_cap')
         PlatformSetting.set('send_cap_per_campaign_day', '25')
         db.session.commit()
@@ -699,7 +699,7 @@ def main():
         check('…and tells the member why, with the numbers', item is not None and '%' in (item.description or '')
               and 'bounced' in item.description)
         r = send_outreach_email(simulation_id=hsim.id, contact_id=kc.id, subject='Hello', html_body='<p>x</p>',
-                                from_email='simi@simulacrumai.io', from_name='Hal', action_id=act.id)
+                                from_email='simi@simisi.io', from_name='Hal', action_id=act.id)
         check('a paused campaign sends nothing', r['reason'] == 'campaign_paused')
         login(intruder)
         check('only the owner can resume it', client.post('/api/campaigns/%s/resume' % act.id).status_code == 403)

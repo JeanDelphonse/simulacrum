@@ -21,7 +21,7 @@ HEADCOUNT_BANDS = ('Under 25', '25–100', '100–500', '500+')
 TIMINGS = ('Within 30 days', '1–3 months', 'Planning ahead')
 MODES = ('design_partner', 'general')
 DEFAULTS = {'transition_package_mode': 'design_partner',
-            'enterprise_inquiry_notify_email': 'simi@simulacrumai.io',
+            'enterprise_inquiry_notify_email': 'simi@simisi.io',
             'enterprise_inquiry_rate_limit': 5}           # per IP per hour
 HONEYPOT_FIELD = 'website'
 CSRF_SESSION_KEY = 'enterprise_inquiry_csrf'
@@ -121,7 +121,7 @@ def submit(form: dict, session, ip: str) -> dict:
         return {'ok': True, 'dropped': True}
     if rate_limited(ip):
         raise InquiryRejected('Too many requests from your network. Please try again later or email '
-                              'simi@simulacrumai.io.')
+                              'simi@simisi.io.')
     data = validate(form)
     mode = page_mode()
     inq = EnterpriseInquiry(mode=mode, ip_hash=ip_hash(ip), **data)

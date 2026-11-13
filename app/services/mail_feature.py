@@ -247,7 +247,7 @@ def _notify_users(user_ids: set, change) -> None:
                 title='Email import is turned off',
                 body=('Email import has been turned off for your account. Contacts it imported are now '
                       'marked Do Not Contact, so no campaign or agent will email them. Questions? '
-                      'Contact simi@simulacrumai.io.'),
+                      'Contact simi@simisi.io.'),
                 cta_url='/settings/email-import', cta_label='See details', priority='high')
         except Exception as exc:
             logger.warning('email-import off notice failed for %s: %s', uid, exc)

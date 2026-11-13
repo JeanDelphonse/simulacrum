@@ -663,7 +663,7 @@ def send_data_retention_warning_email(user_email: str, user_name: str, deletion_
             f'is scheduled for permanent deletion on {deletion_date}.\n\n'
             f'To keep your account active, simply sign in before {deletion_date}:\n'
             f'{login_url}\n\n'
-            f'If you would prefer to delete your data now, email simi@simulacrumai.io.\n\n'
+            f'If you would prefer to delete your data now, email simi@simisi.io.\n\n'
             f'— SimiSI'
         )
         html = _html_wrap(
@@ -673,7 +673,7 @@ def send_data_retention_warning_email(user_email: str, user_name: str, deletion_
             _p('To keep your account active, sign in before that date.') +
             _btn(login_url, 'Sign in to keep my account') +
             _divider() +
-            _p('If you would prefer to delete your data now, email simi@simulacrumai.io.', muted=True),
+            _p('If you would prefer to delete your data now, email simi@simisi.io.', muted=True),
             preheader=f'Action required: your data is scheduled for deletion on {deletion_date}.',
         )
         _send(subject='Your SimiSI data is scheduled for deletion', recipients=[user_email], body=plain, html=html)
@@ -974,7 +974,7 @@ def send_bcc_signup_notification(user_email: str, user_name: str):
     try:
         _send(
             subject=f'New sign-up: {user_name} <{user_email}>',
-            recipients=['simi@simulacrumai.io'],
+            recipients=['simi@simisi.io'],
             body=f'New user registered.\n\nName: {user_name}\nEmail: {user_email}',
         )
     except Exception as e:
@@ -985,7 +985,7 @@ def send_bcc_simulation_notification(user_email: str, user_name: str, sim_name: 
     try:
         _send(
             subject=f'New simulation: {sim_name} — {user_name}',
-            recipients=['simi@simulacrumai.io'],
+            recipients=['simi@simisi.io'],
             body=f'New simulation created.\n\nUser: {user_name} <{user_email}>\nSimulation: {sim_name}\nID: {sim_id}',
         )
     except Exception as e:
