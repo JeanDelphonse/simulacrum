@@ -107,7 +107,9 @@
     api('GET', '/api/founder/outputs/' + id).then(function (res) {
       if (!res.ok) { say(res.d.error || 'Could not open the output.', true); return; }
       document.getElementById('fw-output-h').textContent = (res.d.step_title || 'Agent output') + ' · v' + res.d.output.version;
-      document.getElementById('fw-output-body').textContent = res.d.output.content || '';
+      var outBody = document.getElementById('fw-output-body');
+      if (res.d.content_html) outBody.innerHTML = res.d.content_html;   // escape-first server render
+      else outBody.textContent = res.d.output.content || '';
       opener = document.activeElement;
       if (box && typeof box.showModal === 'function') box.showModal(); else window.alert(res.d.output.content);
     });

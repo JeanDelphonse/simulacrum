@@ -347,6 +347,15 @@ def step_run(step_id):
                     'message': 'The agent is working. The plan updates when it finishes.'}), 202
 
 
+@founder_bp.app_template_filter('founder_md')
+def founder_md(text):
+    """Agent output and drafts as Markdown, through the escape-first renderer
+    the SME console and artifact exports use (raw HTML is never passed through)."""
+    from markupsafe import Markup
+    from app.services import artifact_actions
+    return Markup(artifact_actions.markdown_html(text or ''))
+
+
 @founder_bp.route('/api/founder/outputs/<output_id>')
 @founder_required
 def output_view(output_id):
@@ -360,7 +369,8 @@ def output_view(output_id):
     if locked:
         return locked
     s = db.session.get(VenturePlanStep, o.plan_step_id)
-    return jsonify({'ok': True, 'output': o.to_dict(), 'step_title': s.title if s else ''})
+    return jsonify({'ok': True, 'output': o.to_dict(), 'content_html': str(founder_md(o.content)),
+                    'step_title': s.title if s else ''})
 
 
 def _decide(action_id: str, approve: bool):

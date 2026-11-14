@@ -12,7 +12,7 @@
       <span class="fw-chip layer" data-layer="{{ s.layer }}">L{{ s.layer }} · {{ s.agent_label or s.title }}</span>
     </div>
     {% if a.target_ref %}<p class="fw-note" style="margin:.3rem 0 0">For: {{ a.target_ref }}</p>{% endif %}
-    <pre>{{ a.body }}</pre>
+    <div class="fw-md fw-draft-body">{{ a.body|founder_md }}</div>
     {% if a.approver_user_id == me %}
     <div class="fw-actions">
       <button type="button" class="btn primary sm" data-act="approve" data-action="{{ a.id }}">Approve draft</button>

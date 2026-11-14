@@ -726,6 +726,28 @@ def main():
         login(O_ID)
         check('a non-member cannot read outputs', client.get('/api/founder/outputs/%s' % o.id).status_code == 403)
         login(F_ID)
+        o.content = ('# Customer interview plan\n\n**Goal:** confirm the pain.\n\n- Ask about last week\n'
+                     '- Ask what it cost\n\n| Who | When |\n|---|---|\n| Ops lead | Monday |\n\n'
+                     '<script>alert(1)</script>')
+        db.session.commit()
+        d = client.get('/api/founder/outputs/%s' % o.id).get_json() or {}
+        html = d.get('content_html') or ''
+        check('agent output comes back rendered from Markdown',
+              'Customer interview plan</h2>' in html and '<strong>Goal:</strong>' in html
+              and '<li>Ask about last week</li>' in html and '<th>Who</th>' in html, html[:300])
+        check('... with raw HTML escaped, never executed', '<script>' not in html and '&lt;script&gt;' in html)
+        check('... and the raw Markdown still in output.content', d.get('output', {}).get('content', '').startswith('# Customer'))
+        draft = VentureOutreachAction(venture_id=V_ID, plan_step_id=inc.id, action_type='research',
+                                      status='awaiting_approval', body='x')
+        db.session.add(draft)
+        db.session.commit()
+        if True:
+            draft.body = '**Hi Sam,**\n\n- point one\n- point two\n\n<img src=x onerror=alert(1)>'
+            db.session.commit()
+            page = client.get('/founder/v/%s' % V_ID).get_data(as_text=True)
+            check('drafts awaiting approval render as Markdown', '<strong>Hi Sam,</strong>' in page
+                  and '<li>point one</li>' in page and 'fw-draft-body' in page)
+            check('... with raw HTML escaped', '<img src=x' not in page)
 
         print('\n17. Copy and prompts carry no banned phrases')
         import test_compliance_phrases as tcp

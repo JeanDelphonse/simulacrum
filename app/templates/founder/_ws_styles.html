@@ -61,11 +61,27 @@
   .fw-msg:empty { min-height: 0; margin: 0; }
   .fw-empty { color: var(--ink-2); line-height: 1.6; }
   .fw-link { background: none; border: 0; padding: 0; color: var(--teal-ink); font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; text-decoration: underline; }
-  .fw-dialog { border: 0; border-radius: var(--r-ui); padding: 0; width: min(640px, 94vw); box-shadow: 0 20px 60px rgba(13,27,62,.3); }
+  .fw-dialog { border: 0; border-radius: var(--r-ui); padding: 0; margin: auto; width: min(720px, 94vw); max-height: 90vh; box-shadow: 0 20px 60px rgba(13,27,62,.3); }
   .fw-dialog::backdrop { background: rgba(13,27,62,.45); }
   .fw-dialog form, .fw-dialog .in { padding: 1.25rem; }
   .fw-dialog textarea { width: 100%; min-height: 110px; border: 1px solid var(--rule); border-radius: 8px; padding: .6rem; font: inherit; }
-  .fw-dialog .out { white-space: pre-wrap; line-height: 1.55; max-height: 60vh; overflow: auto; font-size: .92rem; }
+  .fw-dialog .out { line-height: 1.55; max-height: 60vh; overflow: auto; font-size: .92rem; }
+  /* Agent output and drafts rendered from Markdown */
+  .fw-md { color: var(--ink); line-height: 1.55; overflow-wrap: anywhere; }
+  .fw-md > :first-child { margin-top: 0; }
+  .fw-md > :last-child { margin-bottom: 0; }
+  .fw-md h1, .fw-md h2, .fw-md h3, .fw-md h4 { color: var(--ink); line-height: 1.3; margin: 1rem 0 .4rem; }
+  .fw-md h1 { font-size: 1.15rem; } .fw-md h2 { font-size: 1.05rem; } .fw-md h3 { font-size: .98rem; } .fw-md h4 { font-size: .92rem; }
+  .fw-md p { margin: .45rem 0; }
+  .fw-md ul, .fw-md ol { margin: .45rem 0; padding-left: 1.3rem; }
+  .fw-md li { margin: .15rem 0; }
+  .fw-md blockquote { margin: .5rem 0; padding-left: .75rem; border-left: 3px solid var(--rule); color: var(--ink-2); }
+  .fw-md table { border-collapse: collapse; margin: .6rem 0; font-size: .86rem; display: block; overflow-x: auto; max-width: 100%; }
+  .fw-md th, .fw-md td { border: 1px solid var(--rule); padding: .3rem .5rem; text-align: left; vertical-align: top; }
+  .fw-md th { background: #F7F8FB; }
+  .fw-md pre, .fw-md code { font-size: .84rem; white-space: pre-wrap; }
+  .fw-md a { color: var(--ink); text-underline-offset: 3px; }
+  .fw-draft-body { font-size: .92rem; margin: .4rem 0 .6rem; max-height: 320px; overflow: auto; }
   .fw-lock { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; border: 1.5px dashed var(--ink-2); }
   .fw-steps { list-style: none; margin: 0; padding: 0; }
   .fw-steps > li { border: 1px solid var(--rule); border-radius: var(--r-ui); padding: .85rem 1rem; margin: 0 0 .6rem; background: #fff; }
