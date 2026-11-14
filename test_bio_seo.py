@@ -292,6 +292,64 @@ def main():
         check('the signed-in app is excluded: {}'.format(path),
               'Disallow: ' + path in txt)
 
+    # ── Every public page is in the sitemap, and nothing else ───────────────
+    section('Sitemap coverage')
+    from app.services import careers_service
+    with app.app_context():
+        from app.models.blog import BlogPost
+        owner = User.query.first()
+        live = BlogPost(id=generate_id(), author_user_id=owner.id, title='Live post', slug='live-post',
+                        body='Hello', status=BlogPost.STATUS_PUBLISHED, published_at=datetime.utcnow())
+        draft_post = BlogPost(id=generate_id(), author_user_id=owner.id, title='Draft post', slug='draft-post',
+                              body='Hello', status='draft')
+        db.session.add_all([live, draft_post])
+        db.session.commit()
+    smap = client.get('/sitemap.xml').get_data(as_text=True)
+    for path in ('/', '/login', '/register', '/samples/maya', '/samples/marcus', '/legal/terms',
+                 '/legal/privacy', '/transition-package', '/partners/apply', '/blog', '/careers',
+                 '/help/simi', '/explore'):
+        check('static public page listed: {}'.format(path), '<loc>%s%s</loc>' % (ORIGIN, path) in smap)
+    roles = [j['slug'] for j in careers_service.list_jobs()]
+    check('every role in config/jobs.json is listed', roles and all(
+        '<loc>%s/careers/%s</loc>' % (ORIGIN, r) in smap for r in roles), roles)
+    check('a published Journal post is listed', '<loc>%s/blog/live-post</loc>' % ORIGIN in smap)
+    check('a draft post is not', '/blog/draft-post' not in smap)
+    check('/forgot-password is not listed (robots.txt disallows it)', '/forgot-password' not in smap)
+    check('/founder is not listed while the Founder Track is off', '<loc>%s/founder</loc>' % ORIGIN not in smap)
+    with app.app_context():
+        from app.models.mail_crm import FeatureFlag
+        db.session.add(FeatureFlag(feature_key='founder_track', mode='on'))
+        db.session.commit()
+    smap_on = client.get('/sitemap.xml').get_data(as_text=True)
+    check('/founder is listed once the track is fully on', '<loc>%s/founder</loc>' % ORIGIN in smap_on)
+    try:
+        _parse_xml(smap_on)
+        check('the extended sitemap is still well-formed XML', True)
+    except Exception as exc:
+        check('the extended sitemap is still well-formed XML', False, str(exc))
+
+    # What the sitemap lists must open for a visitor, not be blocked by
+    # robots.txt and not serve noindex.
+    disallow = [l.split(':', 1)[1].strip() for l in txt.splitlines() if l.startswith('Disallow:')]
+
+    def blocked(path):
+        for rule in disallow:
+            pat = '^' + re.escape(rule).replace(r'\*', '.*')
+            if re.match(pat, path):
+                return rule
+        return None
+    bad = []
+    with client.session_transaction() as sess:
+        sess.pop('_user_id', None)
+    for loc in re.findall(r'<loc>([^<]+)</loc>', smap_on):
+        path = loc[len(ORIGIN):] or '/'
+        rule = blocked(path)
+        res = client.get(path)
+        body = res.get_data(as_text=True)
+        if rule or res.status_code != 200 or 'content="noindex' in body:
+            bad.append((path, res.status_code, rule, 'noindex' if 'content="noindex' in body else ''))
+    check('every sitemap URL answers 200, is crawlable and indexable', not bad, bad)
+
     print('\n{} passed, {} failed'.format(len(PASS), len(FAIL)))
     if FAIL:
         for label in FAIL:

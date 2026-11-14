@@ -660,6 +660,8 @@ def main():
         login(F_ID)
         html = client.get('/careers').get_data(as_text=True)
         check('the rendered nav has no Founder Track item while off', 'm_founder' not in html)
+        dash = client.get('/dashboard').get_data(as_text=True)
+        check('the dashboard shows no Founder Track card while off', 'partner-shortcut-label">Founder Track<' not in dash)
         founder_feature.set_mode('founder_track', 'allowlist', A_ID)
         items = my_work(F_ID)
         fi = [i for i in items if i['id'] == 'm_founder']
@@ -671,6 +673,17 @@ def main():
         login(F_ID)
         html = client.get('/careers').get_data(as_text=True)
         check('the rendered nav shows it when on', 'data-nav-item="m_founder"' in html)
+        res = client.get('/dashboard')
+        dash = res.get_data(as_text=True)
+        check('the dashboard shows a Founder Track card linking to /founder', res.status_code == 200
+              and 'partner-shortcut-label">Founder Track<' in dash and 'href="/founder"' in dash, res.status_code)
+        from app.services import founder_ventures as _fv
+        names = [v.name for v in _fv.ventures_for_user(F_ID)]
+        check('... naming the member ventures', not names or names[0] in dash, names)
+        login(blocked.id)
+        check('a member not on the allowlist gets no card',
+              'partner-shortcut-label">Founder Track<' not in client.get('/dashboard').get_data(as_text=True))
+        login(F_ID)
         founder_feature.set_mode('founder_track', 'off', A_ID)
 
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))

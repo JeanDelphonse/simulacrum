@@ -110,6 +110,25 @@
     <a href="{{ url_for('pages.resumes_view') }}" class="btn btn-primary">+ New Simulation</a>
   </div>
 
+  {# Founder Track shortcut (shown only when the track is enabled for this member) #}
+  {% if founder_card %}
+  <section class="dashboard-section">
+    <div class="partner-shortcut-card">
+      <div class="partner-shortcut-info">
+        <span class="partner-shortcut-label">Founder Track</span>
+        <div class="partner-shortcut-stats">
+          {% if founder_card.ventures %}
+          {% for v in founder_card.ventures[:3] %}{% if not loop.first %}<span>·</span>{% endif %}<span>{{ v.name }}</span>{% endfor %}
+          {% else %}
+          <span>Turn your startup plan into evidence, one step at a time</span>
+          {% endif %}
+        </div>
+      </div>
+      <a href="{{ url_for('founder.intro') }}" class="btn btn-secondary btn-sm">{{ 'Open' if founder_card.ventures else 'Start' }} →</a>
+    </div>
+  </section>
+  {% endif %}
+
   {# FR-CTP-10: Partner shortcut card #}
   {% if partner %}
   <section class="dashboard-section">

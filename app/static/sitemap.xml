@@ -22,12 +22,6 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
-  <url>
-    <loc>https://simisi.io/forgot-password</loc>
-    <lastmod>2026-05-29</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
-  </url>
 
   <!-- Sample use cases -->
   <url>
@@ -73,9 +67,8 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- The SimiSI Journal (PRD-SIM-BLOG-001). Only the index is listed:
-       posts are member-authored and appear continuously, and the feed links
-       every one of them, so a crawler reaches them from here. -->
+  <!-- The SimiSI Journal (PRD-SIM-BLOG-001). Published posts are appended
+       on request (pages.sitemap), newest first. -->
   <url>
     <loc>https://simisi.io/blog</loc>
     <lastmod>2026-09-05</lastmod>
@@ -83,35 +76,19 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- Careers -->
+  <!-- Careers (each role is appended from config/jobs.json on request) -->
   <url>
     <loc>https://simisi.io/careers</loc>
     <lastmod>2026-09-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
+
+  <!-- About Simi, the assistant -->
   <url>
-    <loc>https://simisi.io/careers/growth-marketing-lead</loc>
-    <lastmod>2026-09-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://simisi.io/careers/partnerships-corporate-sales-lead</loc>
-    <lastmod>2026-09-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://simisi.io/careers/onboarding-workshop-lead</loc>
-    <lastmod>2026-09-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://simisi.io/careers/coaching-agent-enablement-lead</loc>
-    <lastmod>2026-09-01</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://simisi.io/help/simi</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
 

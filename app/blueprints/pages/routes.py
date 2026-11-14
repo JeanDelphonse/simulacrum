@@ -104,6 +104,47 @@ def sitemap():
     except Exception:
         logger.warning('sitemap: could not append bio pages', exc_info=True)
 
+    # Careers: every open role in config/jobs.json, so the sitemap follows the postings.
+    try:
+        from app.services import bio_seo, careers_service
+        root = bio_seo.canonical_origin(request.url_root)
+        rows = ['  <url>\n    <loc>%s</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.6</priority>\n  </url>'
+                % _xesc('%s/careers/%s' % (root, j['slug'])) for j in careers_service.list_jobs() if j.get('slug')]
+        if rows:
+            base = base.replace('</urlset>', '\n  <!-- Open roles -->\n' + '\n'.join(rows) + '\n</urlset>')
+    except Exception:
+        logger.warning('sitemap: could not append careers', exc_info=True)
+
+    # The Journal: published posts only (drafts and removed posts serve noindex).
+    try:
+        from app.models.blog import BlogPost
+        from app.services import bio_seo
+        root = bio_seo.canonical_origin(request.url_root)
+        rows = []
+        for post in (BlogPost.query.filter(BlogPost.status == BlogPost.STATUS_PUBLISHED)
+                     .order_by(BlogPost.published_at.desc()).limit(5000).all()):
+            parts = ['  <url>', '    <loc>' + _xesc('%s/blog/%s' % (root, post.slug)) + '</loc>']
+            stamp = post.updated_at or post.published_at
+            if stamp:
+                parts.append('    <lastmod>' + stamp.strftime('%Y-%m-%d') + '</lastmod>')
+            parts += ['    <changefreq>monthly</changefreq>', '    <priority>0.6</priority>', '  </url>']
+            rows.append('\n'.join(parts))
+        if rows:
+            base = base.replace('</urlset>', '\n  <!-- Journal posts -->\n' + '\n'.join(rows) + '\n</urlset>')
+    except Exception:
+        logger.warning('sitemap: could not append journal posts', exc_info=True)
+
+    # Founder Track intro: public only while the track is fully on (/founder 404s otherwise).
+    try:
+        from app.services import bio_seo, founder_feature
+        if founder_feature.mode() == 'on':
+            root = bio_seo.canonical_origin(request.url_root)
+            base = base.replace('</urlset>', '\n  <!-- Founder Track -->\n  <url>\n    <loc>%s/founder</loc>\n'
+                                '    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>\n</urlset>'
+                                % _xesc(root))
+    except Exception:
+        logger.warning('sitemap: could not append the founder intro', exc_info=True)
+
     # Founder Track: published public startup pages (none while the switch is off).
     try:
         from app.services import founder_feature
@@ -415,6 +456,16 @@ def dashboard():
     except Exception:
         pass
 
+    # Founder Track shortcut: only for members the track is enabled for.
+    founder_card = None
+    try:
+        from app.services import founder_feature as _ff
+        if _ff.is_enabled(current_user):
+            from app.services import founder_ventures as _fv
+            founder_card = {'ventures': _fv.ventures_for_user(current_user.id)}
+    except Exception:
+        logger.warning('founder shortcut lookup failed', exc_info=True)
+
     outcome_due = None
     try:
         from app.services import outcome_service as _os
@@ -424,6 +475,7 @@ def dashboard():
 
     return render_template('dashboard/index.html',
                            guide_enabled=guide_enabled,
+                           founder_card=founder_card,
                            outcome_due=outcome_due,
                            transition_banner=transition_banner,
                            simulations=simulations,
