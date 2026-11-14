@@ -1,0 +1,273 @@
+{#- Founder Track startup page (FOUNDER_PLAN.md WP6). Standalone light layout
+    under .st-root (static/css/startup.css).
+
+    Context: p (startup_page_service.public_context or investor_context), seo,
+    preview (founders' preview banner), investor_view (False in the public view).
+
+    Extension points for WP8 (investor view): extend this template and fill
+      st_head_extra       extra <head> tags
+      st_banner           a bar under the top bar (e.g. "Investor view")
+      st_ask              the ask (round, amount, use of funds); empty in the public view
+      st_investor_extra   more investor-only sections (traction detail, data room)
+      st_contact          the contact panel
+      st_scripts          extra scripts
+    The public view never renders the ask: public_context() does not carry it. -#}
+{% import 'partials/_logo.html' as logo_ui %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ seo.title }}</title>
+  {% include 'partials/_favicon.html' %}
+  <meta name="description" content="{{ seo.description }}">
+  {% if seo.indexable %}<meta name="robots" content="index, follow">{% else %}<meta name="robots" content="noindex, nofollow">{% endif %}
+  <link rel="canonical" href="{{ seo.canonical }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SimiSI">
+  <meta property="og:title" content="{{ p.name }}{% if p.one_liner %} - {{ p.one_liner }}{% endif %}">
+  <meta property="og:description" content="{{ seo.description }}">
+  <meta property="og:url" content="{{ seo.canonical }}">
+  {% if seo.image %}<meta property="og:image" content="{{ seo.image }}">{% endif %}
+  <meta name="twitter:card" content="summary">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/startup.css') }}">
+  {% block st_head_extra %}{% endblock %}
+</head>
+{%- macro fs(on) -%}{% if on %} <span class="st-fs" title="Stated by the founders; not checked against evidence">founder-stated</span>{% endif %}{%- endmacro -%}
+{%- macro body(field, empty='Not provided yet.') -%}
+  {%- set s = p.sections[field] -%}
+  {% if s.text %}<p>{{ s.text }}</p>{% else %}<p class="st-empty">{{ empty }}</p>{% endif %}
+{%- endmacro -%}
+<body class="st-root">
+<a class="sr" href="#st-main">Skip to the page content</a>
+<header class="st-top">
+  <div class="st-wrap">
+    {{ logo_ui.logo('/', 'SimiSI home') }}
+    <p class="st-crumb"><span class="hide-sm">Startup page · </span><a href="/startup/{{ p.slug }}" aria-current="page">{{ p.name }}</a></p>
+  </div>
+</header>
+{% if preview %}
+<div class="st-preview" role="status">
+  <div class="st-wrap">
+    <span><b>Preview.</b> This is how visitors will see the page{% if not is_live %} once it is published{% endif %}. Visits from founders are not counted.</span>
+    {% if p.editor_url %}<a href="{{ p.editor_url }}">Back to the editor</a>{% else %}<span>Close this tab to return to the editor.</span>{% endif %}
+  </div>
+</div>
+{% endif %}
+{% block st_banner %}{% endblock %}
+
+<main id="st-main">
+  <section class="st-hero" aria-labelledby="st-name">
+    <div class="st-wrap">
+      <p class="st-memo">
+        <span>Company profile</span>
+        {% if p.stage_label %}<span>Stage <b>{{ p.stage_label }}</b></span>{% endif %}
+        <span>As of <b><time datetime="{{ p.as_of.strftime('%Y-%m-%d') }}">{{ p.as_of.strftime('%d %b %Y') }}</time></b></span>
+        <span>Evidence <b>rung {{ p.rung }} of 5</b></span>
+      </p>
+      <div class="st-id">
+        {% if p.logo %}<img class="st-logo" src="/startup/{{ p.slug }}/logo" alt="{{ p.name }} logo" width="76" height="76">
+        {% else %}<span class="st-mono" aria-hidden="true">{{ (p.name or '?')[:1]|upper }}</span>{% endif %}
+        <div>
+          <h1 id="st-name">{{ p.name }}</h1>
+          {% if p.one_liner %}<p class="st-lede">{{ p.one_liner }}{{ fs(p.one_liner_founder_stated) }}</p>{% endif %}
+        </div>
+      </div>
+      <div class="st-hero-actions">
+        <a class="btn primary" href="#contact">Request an introduction</a>
+        {% if p.demo %}<a class="btn" href="#solution">Watch the demo</a>{% endif %}
+      </div>
+      {% if p.metrics %}
+      <div class="st-strip">
+        <h2 class="sr">Key metrics</h2>
+        <ul class="st-metrics">
+          {% for m in p.metrics[:4] %}
+          <li><span class="v">{{ m.value }}</span><span class="l">{{ m.label }}</span>
+            <span class="m">{% if m.as_of %}<span>as of {{ m.as_of }}</span>{% endif %}<span class="st-fs">founder-stated</span></span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="st-wrap">
+    <div class="st-grid">
+      <div>
+        <p class="st-note">{{ legal('startup_claims_note') }}</p>
+
+        <section class="st-sec" id="problem" aria-labelledby="h-problem">
+          <span class="st-num">01</span>
+          <h2 id="h-problem">Problem and customer</h2>
+          <h3>The problem{{ fs(p.sections.problem.founder_stated) }}</h3>
+          {{ body('problem') }}
+          <h3>Who has it{{ fs(p.sections.customer.founder_stated) }}</h3>
+          {{ body('customer') }}
+        </section>
+
+        <section class="st-sec" id="solution" aria-labelledby="h-solution">
+          <span class="st-num">02</span>
+          <h2 id="h-solution">Solution{{ fs(p.sections.solution.founder_stated) }}</h2>
+          {{ body('solution') }}
+          {% if p.demo %}
+          <div class="st-video">
+            <iframe src="{{ p.demo.embed_url }}" title="{{ p.name }} demo video ({{ p.demo.provider }})" loading="lazy"
+                    allow="fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          </div>
+          {% endif %}
+        </section>
+
+        <section class="st-sec" id="proof" aria-labelledby="h-proof">
+          <span class="st-num">03</span>
+          <h2 id="h-proof">Proof</h2>
+          <p>Where the company stands on the five-rung evidence ladder: each rung needs stronger proof from customers than the one before.</p>
+          <ol class="st-ladder" aria-label="Evidence ladder, rung {{ p.rung }} of 5 reached">
+            {% for r in p.ladder %}
+            <li class="st-rung{{ ' reached' if r.reached }}{{ ' current' if r.current }}"{% if r.current %} aria-current="step"{% endif %}>
+              <span class="bar" aria-hidden="true"></span>
+              <span class="n">Rung {{ r.n }}</span>
+              <span class="t">{{ r.title }}</span>
+              {% if r.current %}<span class="s">Current rung</span>{% elif r.reached %}<span class="s">Reached</span>{% else %}<span class="s">Not yet</span>{% endif %}
+            </li>
+            {% endfor %}
+          </ol>
+          {% set cur = p.ladder[p.rung - 1] if p.ladder|length >= p.rung else None %}
+          {% if cur and cur.text %}<p><b>Rung {{ cur.n }}, {{ cur.title|lower }}:</b> {{ cur.text }}.</p>{% endif %}
+          {% if p.proof.benefits %}
+          <h3>Benefits case <span class="st-ev">measured against agreed criteria</span></h3>
+          <p>{{ p.proof.benefits }}</p>
+          {% endif %}
+          {% for q in p.proof.quotes %}
+          <blockquote class="st-quote">"{{ q }}"<footer>A customer, quoted with permission</footer></blockquote>
+          {% endfor %}
+        </section>
+
+        <section class="st-sec" id="traction" aria-labelledby="h-traction">
+          <span class="st-num">04</span>
+          <h2 id="h-traction">Traction</h2>
+          {% if p.metrics %}
+          <ul class="st-metrics">
+            {% for m in p.metrics %}
+            <li><span class="v">{{ m.value }}</span><span class="l">{{ m.label }}</span>
+              <span class="m">{% if m.as_of %}<span>as of {{ m.as_of }}</span>{% endif %}<span class="st-fs">founder-stated</span></span>
+              {% if investor_view and m.note %}<span class="m">{{ m.note }}</span>{% endif %}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="st-empty">The founders have not shared traction metrics yet.</p>
+          {% endif %}
+        </section>
+
+        <section class="st-sec" id="market" aria-labelledby="h-market">
+          <span class="st-num">05</span>
+          <h2 id="h-market">Market and business model</h2>
+          <h3>Market{{ fs(p.sections.market.founder_stated) }}</h3>
+          {{ body('market') }}
+          <h3>How it was sized{{ fs(p.sections.market_method.founder_stated) }}</h3>
+          {{ body('market_method', 'The sizing method is not stated.') }}
+          <h3>Business model{{ fs(p.sections.business_model.founder_stated) }}</h3>
+          {{ body('business_model') }}
+        </section>
+
+        <section class="st-sec" id="team" aria-labelledby="h-team">
+          <span class="st-num">06</span>
+          <h2 id="h-team">Team</h2>
+          {% if p.team %}
+          <ul class="st-team">
+            {% for t in p.team %}
+            <li class="st-person">
+              {% if t.avatar %}<img class="st-av" src="{{ url_for('public.serve_avatar', filename=t.avatar) }}" alt="" width="46" height="46">
+              {% else %}<span class="st-av-ph" aria-hidden="true">{{ t.initials }}</span>{% endif %}
+              <div>
+                {% if t.url %}<a href="{{ t.url }}">{{ t.name }}</a>{% else %}<b>{{ t.name }}</b>{% endif %}
+                <span>{{ t.title }}</span>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="st-empty">Team details are not listed yet.</p>
+          {% endif %}
+        </section>
+
+        {% block st_ask %}{% endblock %}
+        {% block st_investor_extra %}{% endblock %}
+      </div>
+
+      <aside class="st-side" aria-label="Contact the founders">
+        {% block st_contact %}
+        <section class="st-panel contact" id="contact" aria-labelledby="h-contact">
+          <h2 id="h-contact">Request an introduction</h2>
+          <p>Your request goes to the founders of {{ p.name }}. They decide whether to reply.</p>
+          <form id="stReq" novalidate>
+            {% if p.request_kinds|length > 1 %}
+            <fieldset class="st-kind">
+              <legend>I would like</legend>
+              {% for k, label in p.request_kinds.items() %}
+              <label><input type="radio" name="kind" value="{{ k }}"{{ ' checked' if loop.first }}><span>{{ 'An introduction' if k == 'intro' else 'Data room access' }}</span></label>
+              {% endfor %}
+            </fieldset>
+            {% else %}
+            <input type="hidden" name="kind" value="intro">
+            {% endif %}
+            <label class="st-field"><span>Your name</span><input name="name" autocomplete="name" required maxlength="100"></label>
+            <label class="st-field"><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+            <label class="st-field"><span>Firm (optional)</span><input name="firm" autocomplete="organization" maxlength="200"></label>
+            <label class="st-field"><span>Message (optional)</span><textarea name="message" maxlength="2000"></textarea></label>
+            <label class="st-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+            <button class="btn primary btn-full" type="submit"{{ ' disabled' if preview }}>Send request</button>
+            {% if preview %}<p class="st-msg">Requests are switched off in the preview.</p>{% endif %}
+            <p class="st-msg" id="stReqMsg" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+        {% endblock %}
+        <nav class="st-panel toc" aria-label="On this page">
+          <ul class="st-toc">
+            <li><a href="#problem">Problem and customer</a></li>
+            <li><a href="#solution">Solution</a></li>
+            <li><a href="#proof">Proof</a></li>
+            <li><a href="#traction">Traction</a></li>
+            <li><a href="#market">Market and business model</a></li>
+            <li><a href="#team">Team</a></li>
+          </ul>
+        </nav>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<footer class="st-foot">
+  <div class="st-wrap">
+    <span class="st-made">Made with {{ logo_ui.logo('/', 'Made with SimiSI: SimiSI home') }}</span>
+    <span><a class="lk" href="/legal/terms">Terms</a> · <a class="lk" href="/legal/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+{% if not preview %}
+<script>
+(function () {
+  var f = document.getElementById('stReq'); if (!f) return;
+  var msg = document.getElementById('stReqMsg');
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var btn = f.querySelector('button[type=submit]');
+    var data = {}; new FormData(f).forEach(function (v, k) { data[k] = v; });
+    if (!data.name || !data.email) { msg.className = 'st-msg err'; msg.textContent = 'Add your name and email.'; return; }
+    btn.disabled = true; msg.className = 'st-msg'; msg.textContent = 'Sending...';
+    fetch('/startup/{{ p.slug }}/request', {method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)})
+      .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
+      .then(function (x) {
+        if (x.ok) { msg.className = 'st-msg ok'; msg.textContent = x.d.message; f.reset(); }
+        else { msg.className = 'st-msg err'; msg.textContent = x.d.error || 'That did not go through. Please try again.'; btn.disabled = false; }
+      })
+      .catch(function () { msg.className = 'st-msg err'; msg.textContent = 'That did not go through. Please try again.'; btn.disabled = false; });
+  });
+})();
+</script>
+{% endif %}
+{% block st_scripts %}{% endblock %}
+</body>
+</html>

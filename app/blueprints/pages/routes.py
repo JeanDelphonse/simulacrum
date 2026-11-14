@@ -104,6 +104,27 @@ def sitemap():
     except Exception:
         logger.warning('sitemap: could not append bio pages', exc_info=True)
 
+    # Founder Track: published public startup pages (none while the switch is off).
+    try:
+        from app.services import founder_feature
+        if founder_feature.public_pages_enabled():
+            from app.models.founder import StartupPage
+            from app.services import bio_seo
+            root = bio_seo.canonical_origin(request.url_root)
+            rows = []
+            for sp in (StartupPage.query.filter_by(status='published', name_check='clear')
+                       .order_by(StartupPage.published_at).limit(5000).all()):
+                parts = ['  <url>', '    <loc>' + _xesc('%s/startup/%s' % (root, sp.slug)) + '</loc>']
+                if sp.updated_at:
+                    parts.append('    <lastmod>' + sp.updated_at.strftime('%Y-%m-%d') + '</lastmod>')
+                parts += ['    <changefreq>weekly</changefreq>', '    <priority>0.6</priority>', '  </url>']
+                rows.append('\n'.join(parts))
+            if rows:
+                base = base.replace('</urlset>', '\n  <!-- Public startup pages -->\n' + '\n'.join(rows)
+                                    + '\n</urlset>')
+    except Exception:
+        logger.warning('sitemap: could not append startup pages', exc_info=True)
+
     return Response(base, mimetype='application/xml')
 
 
@@ -202,6 +223,11 @@ def robots():
         '',
         '# Filtered views of the directory duplicate the canonical listing.',
         'Disallow: /explore?*',
+        '',
+        '# Founder Track: private investor links, sign-in links and the founder app.',
+        'Disallow: /startup/*/i/',
+        'Disallow: /startup/*/signin/',
+        'Disallow: /founder/',
         '',
         'Sitemap: ' + root + '/sitemap.xml',
         '',

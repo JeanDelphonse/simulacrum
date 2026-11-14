@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% block title %}Startup page · {{ venture.name }}{% endblock %}
+{% block head %}
+<style>
+  .pe { color: var(--ink); padding-top: 2.5rem; padding-bottom: 3.5rem; max-width: 1040px; }
+  .pe-eyebrow { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); margin: 0 0 .4rem; }
+  .pe-eyebrow a { color: var(--mute); }
+  .pe h1 { font-size: 1.75rem; margin: 0 0 .35rem; }
+  .pe h2 { font-size: 1.15rem; margin: 0 0 .75rem; }
+  .pe-sub { color: var(--ink-2); margin: 0; }
+  .pe-head { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: flex-end; margin-bottom: 1.25rem; }
+  .pe-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .pe-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.25rem; align-items: start; }
+  .pe-card { border: 1px solid var(--rule); border-radius: var(--r-ui); background: #fff; padding: 1.25rem; margin: 0 0 1.25rem; }
+  .pe-side { position: sticky; top: 80px; }
+  .pe-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 13px;
+             font-weight: 700; background: var(--alt); color: var(--ink-2); white-space: nowrap; }
+  .pe-pill.published { background: #DCFCE7; color: #14532D; }
+  .pe-pill.held, .pe-pill.pending { background: #FEF3C7; color: #78350F; }
+  .pe-pill.unpublished { background: #FEE2E2; color: #7F1D1D; }
+  .pe-pill.ev { background: #E1F5F2; color: #0B4F49; font-weight: 600; height: 22px; font-size: 12.5px; }
+  .pe-pill.fs { background: #FFF8E8; color: #6B4A0C; border: 1px solid #E4B855; font-weight: 600; height: 22px; font-size: 12.5px; }
+  .pe-row { margin: 0 0 1rem; }
+  .pe-row label, .pe-lab { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; font-weight: 600; font-size: .92rem; margin: 0 0 .3rem; }
+  .pe-row input[type=text], .pe-row input[type=url], .pe-row input[type=date], .pe-row select, .pe-row textarea,
+  .pe-met input { width: 100%; border: 1px solid var(--rule); border-radius: 8px; padding: .55rem .7rem; font-size: 15px;
+                  background: #fff; color: var(--ink); }
+  .pe-row textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+  .pe-hint { font-size: .84rem; color: var(--mute); margin: .3rem 0 0; line-height: 1.45; }
+  .pe-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .pe-slug { display: flex; align-items: center; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .pe-slug span { padding: .55rem .6rem; background: var(--alt); color: var(--mute); font-size: 14px; white-space: nowrap; }
+  .pe-slug input { border: 0 !important; border-radius: 0 !important; min-width: 0; }
+  .pe-met { display: grid; grid-template-columns: 1.3fr 1fr 1fr auto; gap: .5rem; align-items: end; padding: .6rem 0;
+            border-bottom: 1px solid var(--rule); }
+  .pe-met label { font-size: .8rem; font-weight: 600; color: var(--ink-2); display: block; margin-bottom: .2rem; }
+  .pe-met .note { grid-column: 1 / -1; }
+  .pe-met .show { display: flex; gap: .35rem; align-items: center; font-size: .85rem; white-space: nowrap; padding-bottom: .55rem; }
+  .pe-msg { min-height: 1.3em; margin: .6rem 0 0; font-size: .92rem; }
+  .pe-msg.err { color: #991B1B; } .pe-msg.ok { color: #0B4F49; }
+  .pe-savebar { position: sticky; bottom: 0; background: rgba(255,255,255,.96); border-top: 1px solid var(--rule);
+                padding: .75rem 0; display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; z-index: 5; }
+  .pe-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: 0 0 .9rem; }
+  .pe-stat div { background: var(--alt); border-radius: 10px; padding: .6rem .7rem; }
+  .pe-stat b { display: block; font-size: 1.4rem; line-height: 1.1; }
+  .pe-stat span { font-size: .78rem; color: var(--ink-2); }
+  .pe-bars { display: flex; align-items: flex-end; gap: 2px; height: 72px; border-bottom: 1px solid var(--rule); margin: 0 0 .3rem; }
+  .pe-bars span { flex: 1; background: var(--ink); border-radius: 4px 4px 0 0; min-height: 0; position: relative; }
+  .pe-bars span:hover, .pe-bars span:focus-visible { background: var(--gold); }
+  .pe-bars span.zero { background: var(--rule); height: 2px !important; border-radius: 1px; }
+  .pe-axis { display: flex; justify-content: space-between; font-size: .75rem; color: var(--mute); }
+  .pe-tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--ink);
+            color: #fff; font-size: 12px; padding: 3px 7px; border-radius: 6px; white-space: nowrap; pointer-events: none;
+            display: none; z-index: 3; }
+  .pe-bars span:hover .pe-tip, .pe-bars span:focus-visible .pe-tip { display: block; }
+  .pe-tbl { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .pe-tbl td, .pe-tbl th { padding: .25rem .2rem; border-bottom: 1px solid var(--rule); text-align: left; }
+  .pe-tbl td:last-child, .pe-tbl th:last-child { text-align: right; }
+  .pe-note { border: 1px solid var(--rule); border-left: 4px solid var(--gold); border-radius: var(--r-ui); background: var(--alt);
+             padding: .75rem .9rem; font-size: .9rem; line-height: 1.5; margin: 0 0 1rem; }
+  .pe-pub p { margin: 0 0 .7rem; font-size: .93rem; line-height: 1.5; color: var(--ink-2); }
+  .pe-pub .btn { width: 100%; margin-bottom: .5rem; }
+  .pe-logo { display: flex; gap: .8rem; align-items: center; }
+  .pe-logo img, .pe-logo .ph { width: 56px; height: 56px; border-radius: 12px; border: 1px solid var(--rule); object-fit: contain; flex: none; }
+  .pe-logo .ph { display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--gold-hi); font-weight: 800; font-size: 22px; }
+  details.pe-det summary { cursor: pointer; font-size: .88rem; color: var(--ink-2); }
+  @media (max-width: 900px) { .pe-grid { grid-template-columns: 1fr; } .pe-side { position: static; order: -1; } .pe-logo input[type=file] { max-width: 100%; } }
+  @media (max-width: 640px) {
+    .pe { padding-top: 1.5rem; }
+    .pe-2 { grid-template-columns: 1fr; }
+    .pe-met { grid-template-columns: 1fr 1fr; }
+    .pe-met .show { grid-column: 1 / -1; padding-bottom: 0; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+{%- set d = state.page -%}
+{%- set stated = d.founder_stated -%}
+{%- macro tag(field) -%}
+  {%- if field in stated -%}<span class="pe-pill fs" data-tag="{{ field }}">founder-stated</span>
+  {%- elif field in supported -%}<span class="pe-pill ev" data-tag="{{ field }}">from your evaluated documents</span>
+  {%- else -%}<span data-tag="{{ field }}"></span>{%- endif -%}
+{%- endmacro -%}
+<div class="wrap pe">
+  <p class="pe-eyebrow"><a href="/founder">Founder Track</a> · {{ venture.name }}</p>
+  <div class="pe-head">
+    <div>
+      <h1>Startup page</h1>
+      <p class="pe-sub">A public company profile at <code>/startup/<span data-slug-out>{{ d.slug }}</span></code>. It never shows your round or terms.</p>
+    </div>
+    <div class="pe-actions">
+      <a class="btn" href="/founder/v/{{ venture.id }}/page/preview" target="_blank" rel="noopener">Preview</a>
+      {% if state.public %}<a class="btn" href="/startup/{{ d.slug }}" target="_blank" rel="noopener" data-live>View live page</a>{% endif %}
+    </div>
+  </div>
+  {% if nav %}{% set active = 'page' %}{% include 'founder/_ws_nav.html' %}{% endif %}
+
+  <div class="pe-grid">
+    <form id="peForm" novalidate>
+      <div class="pe-card">
+        <h2>Basics</h2>
+        <div class="pe-2">
+          <div class="pe-row"><label for="f-name">Company name</label>
+            <input type="text" id="f-name" name="name" value="{{ d.name or '' }}" maxlength="{{ field_max.name }}" required>
+            <p class="pe-hint">Names that look like a well-known company are reviewed by SimiSI before the page can go live.</p></div>
+          <div class="pe-row"><label for="f-stage">Stage</label>
+            <select id="f-stage" name="stage">{% for k, lab in stages.items() %}<option value="{{ k }}"{{ ' selected' if d.stage == k }}>{{ lab }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="pe-row"><label for="f-one_liner">One-line pitch {{ tag('one_liner') }}</label>
+          <input type="text" id="f-one_liner" name="one_liner" value="{{ d.one_liner or '' }}" maxlength="{{ field_max.one_liner }}"></div>
+        <div class="pe-2">
+          <div class="pe-row"><label for="f-slug">Page address</label>
+            <div class="pe-slug"><span>/startup/</span><input type="text" id="f-slug" name="slug" value="{{ d.slug }}" maxlength="60" autocapitalize="off" spellcheck="false" aria-describedby="slugHint"></div>
+            <p class="pe-hint" id="slugHint">Lowercase letters, numbers and hyphens. Old addresses keep redirecting here.</p></div>
+          <div class="pe-row"><span class="pe-lab" id="logoLab">Logo</span>
+            <div class="pe-logo">
+              {% if d.logo_path %}<img src="/startup/{{ d.slug }}/logo?v={{ d.updated_at }}" alt="Current logo" id="logoImg">{% else %}<span class="ph" aria-hidden="true" id="logoImg">{{ (d.name or '?')[:1]|upper }}</span>{% endif %}
+              <div><input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp" aria-labelledby="logoLab">
+                <p class="pe-hint">PNG, JPEG or WebP, up to 1 MB.</p></div>
+            </div></div>
+        </div>
+      </div>
+
+      <div class="pe-card">
+        <h2>Story</h2>
+        <p class="pe-note">Sections drafted from passages cited in your evaluation are marked <span class="pe-pill ev">from your evaluated documents</span>. Anything you write or change is shown to visitors as <span class="pe-pill fs">founder-stated</span>. Never include projected investor returns.</p>
+        <div class="pe-row"><label for="f-problem">The problem {{ tag('problem') }}</label>
+          <textarea id="f-problem" name="problem" maxlength="{{ field_max.problem }}">{{ d.problem or '' }}</textarea></div>
+        <div class="pe-row"><label for="f-customer">Who has it {{ tag('customer') }}</label>
+          <textarea id="f-customer" name="customer" maxlength="{{ field_max.customer }}">{{ d.customer or '' }}</textarea></div>
+        <div class="pe-row"><label for="f-solution">Solution {{ tag('solution') }}</label>
+          <textarea id="f-solution" name="solution" maxlength="{{ field_max.solution }}">{{ d.solution or '' }}</textarea></div>
+        <div class="pe-row"><label for="f-demo">Demo video link</label>
+          <input type="url" id="f-demo" name="demo_url" value="{{ d.demo_url or '' }}" placeholder="https://www.youtube.com/watch?v=..." aria-describedby="demoHint">
+          <p class="pe-hint" id="demoHint">YouTube, Vimeo or Loom share links only.</p></div>
+        <div class="pe-row"><label for="f-market">Market {{ tag('market') }}</label>
+          <textarea id="f-market" name="market" maxlength="{{ field_max.market }}">{{ d.market or '' }}</textarea></div>
+        <div class="pe-row"><label for="f-market_method">How you sized it {{ tag('market_method') }}</label>
+          <textarea id="f-market_method" name="market_method" maxlength="{{ field_max.market_method }}" placeholder="For example: bottom-up, number of target customers times price.">{{ d.market_method or '' }}</textarea></div>
+        <div class="pe-row"><label for="f-business_model">Business model {{ tag('business_model') }}</label>
+          <textarea id="f-business_model" name="business_model" maxlength="{{ field_max.business_model }}">{{ d.business_model or '' }}</textarea></div>
+        <button class="btn sm" type="button" id="peRedraft">Fill empty sections from the evaluation</button>
+      </div>
+
+      <div class="pe-card">
+        <h2>Traction</h2>
+        <p class="pe-hint" style="margin:0 0 .5rem">Choose up to {{ traction_max }} metrics to show. The first four also appear at the top of the page. Visitors see them as founder-stated.</p>
+        <div id="peMetrics">
+          {% for i in range(traction_max) %}{% set m = d.traction[i] if d.traction|length > i else {} %}
+          <div class="pe-met" data-met>
+            <div><label for="m-l{{ i }}">Metric {{ i + 1 }}</label><input id="m-l{{ i }}" data-k="label" value="{{ m.label or '' }}" maxlength="60"{% if i == 0 %} placeholder="Pilot customers"{% endif %}></div>
+            <div><label for="m-v{{ i }}">Value</label><input id="m-v{{ i }}" data-k="value" value="{{ m.value or '' }}" maxlength="40"{% if i == 0 %} placeholder="3"{% endif %}></div>
+            <div><label for="m-d{{ i }}">As of</label><input id="m-d{{ i }}" type="date" data-k="as_of" value="{{ m.as_of or '' }}"></div>
+            <label class="show"><input type="checkbox" data-k="show"{{ ' checked' if m.get('show', True) }}> Show</label>
+            <div class="note"><label for="m-n{{ i }}" class="sr">Metric {{ i + 1 }} note</label><input id="m-n{{ i }}" data-k="note" value="{{ m.note or '' }}" maxlength="160" placeholder="Note (optional, investor view only)"></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="pe-card">
+        <h2>The ask</h2>
+        <p class="pe-note">Investor view only. The round, amount and use of funds are never shown on the public page.</p>
+        <div class="pe-2">
+          <div class="pe-row"><label for="f-ask_round">Round</label><input type="text" id="f-ask_round" name="ask_round" value="{{ d.ask_round or '' }}" maxlength="60" placeholder="Pre-seed"></div>
+          <div class="pe-row"><label for="f-ask_amount">Amount (USD)</label><input type="text" id="f-ask_amount" name="ask_amount" inputmode="numeric" value="{{ d.ask_amount or '' }}"></div>
+        </div>
+        <div class="pe-row"><label for="f-use_of_funds">Use of funds</label>
+          <textarea id="f-use_of_funds" name="use_of_funds" maxlength="{{ field_max.use_of_funds }}">{{ d.use_of_funds or '' }}</textarea></div>
+      </div>
+
+      <div class="pe-savebar">
+        <button class="btn primary" type="submit">Save changes</button>
+        <p class="pe-msg" id="peMsg" role="status" aria-live="polite" style="margin:0"></p>
+      </div>
+    </form>
+
+    <aside class="pe-side">
+      <section class="pe-card pe-pub" aria-labelledby="h-pub">
+        <h2 id="h-pub">Publishing</h2>
+        <p>Status: <span class="pe-pill {{ d.status }}" id="pubStatus">{{ d.status }}</span></p>
+        <p>Name check: <span class="pe-pill {{ 'published' if d.name_check == 'clear' else d.name_check }}" id="nameCheck">{{ d.name_check }}</span></p>
+        <div id="pubBody">
+        {% if d.name_check == 'held' %}<p>SimiSI did not clear this name. Choose a different name; the new name gets a fresh review before the page can go live.</p>
+        {% elif d.name_check != 'clear' %}<p>SimiSI reviews names that look like a well-known company or another startup page. The page can go live once the review clears it.</p>{% endif %}
+        {% if state.missing %}<p>Before publishing, fill in: {{ state.missing|join(', ') }}.</p>{% endif %}
+        {% if state.holder_name %}<p>{% if state.is_holder %}You hold the publishing decision.{% else %}{{ state.holder_name }} holds the publishing decision; your request goes to them.{% endif %}</p>{% endif %}
+        {% if state.pending_request %}<p>Publish requested by {{ state.pending_request.by }} on {{ state.pending_request.at }}.</p>{% endif %}
+        </div>
+        {% if d.status != 'published' %}
+          {% if state.can_publish %}<button class="btn primary" type="button" data-pub="publish"{{ ' disabled' if state.missing or d.name_check != 'clear' }}>Publish</button>
+          {% else %}<button class="btn primary" type="button" data-pub="request"{{ ' disabled' if state.missing }}>Request publishing</button>{% endif %}
+        {% else %}
+          <button class="btn btn-danger" type="button" data-pub="unpublish">Unpublish</button>
+        {% endif %}
+        {% if d.status == 'held' and state.can_publish and d.name_check == 'clear' %}<p>The name review is done. You can publish now.</p>{% endif %}
+        <p class="pe-msg" id="pubMsg" role="status" aria-live="polite"></p>
+        <p class="pe-hint">Any founder can unpublish at any time.</p>
+      </section>
+
+      <section class="pe-card" aria-labelledby="h-views">
+        <h2 id="h-views">Page views</h2>
+        <div class="pe-stat">
+          <div><b>{{ stats.views }}</b><span>Views, {{ stats.days }} days</span></div>
+          <div><b>{{ stats.unique }}</b><span>Unique visitors</span></div>
+          <div><b>{{ stats.views_7d }}</b><span>Last 7 days</span></div>
+        </div>
+        <div class="pe-bars" role="img" aria-label="Daily views for the last {{ stats.days }} days, peak {{ stats.peak }}">
+          {% for s in stats.series %}
+          <span tabindex="0" class="{{ 'zero' if not s.views }}" style="height:{{ (s.views / stats.peak * 100) if stats.peak else 0 }}%"><span class="pe-tip">{{ s.date }}: {{ s.views }} view{{ '' if s.views == 1 else 's' }}</span></span>
+          {% endfor %}
+        </div>
+        <div class="pe-axis"><span>{{ stats.series[0].date }}</span><span>{{ stats.series[-1].date }}</span></div>
+        <details class="pe-det" style="margin-top:.6rem"><summary>Show as a table</summary>
+          <table class="pe-tbl"><thead><tr><th scope="col">Day</th><th scope="col">Views</th></tr></thead><tbody>
+          {% for s in stats.series|reverse %}{% if s.views %}<tr><td>{{ s.date }}</td><td>{{ s.views }}</td></tr>{% endif %}{% endfor %}
+          {% if not stats.views %}<tr><td colspan="2">No views yet.</td></tr>{% endif %}
+          </tbody></table></details>
+        {% if stats.referrers %}
+        <h3 style="font-size:.95rem;margin:.9rem 0 .3rem">Where visitors came from</h3>
+        <table class="pe-tbl"><tbody>{% for host, n in stats.referrers %}<tr><td>{{ host }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody></table>
+        {% endif %}
+        <p class="pe-hint">Visits by the venture's founders are not counted.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var vid = {{ venture.id|tojson }};
+  var form = document.getElementById('peForm'), msg = document.getElementById('peMsg');
+  function say(el, text, ok) { el.className = 'pe-msg ' + (ok ? 'ok' : 'err'); el.textContent = text; }
+  function post(url, body) {
+    return fetch(url, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+                       body: JSON.stringify(body || {})})
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return {ok: r.ok, d: d}; }); });
+  }
+  function collect() {
+    var data = {};
+    ['name', 'stage', 'one_liner', 'slug', 'problem', 'customer', 'solution', 'demo_url', 'market', 'market_method',
+     'business_model', 'ask_round', 'ask_amount', 'use_of_funds'].forEach(function (k) { data[k] = form.elements[k].value; });
+    data.traction = [];
+    form.querySelectorAll('[data-met]').forEach(function (row) {
+      var m = {};
+      row.querySelectorAll('[data-k]').forEach(function (i) { m[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
+      if (m.label || m.value) data.traction.push(m);
+    });
+    return data;
+  }
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    say(msg, 'Saving...', true);
+    post('/api/founder/v/' + vid + '/page', collect()).then(function (x) {
+      if (!x.ok) return say(msg, x.d.error || 'Could not save.', false);
+      say(msg, x.d.message, true);
+      if (x.d.changes && x.d.changes.length) setTimeout(function () { location.reload(); }, 900);
+    }).catch(function () { say(msg, 'Could not save. Check your connection.', false); });
+  });
+  document.getElementById('peRedraft').addEventListener('click', function () {
+    post('/api/founder/v/' + vid + '/page/redraft').then(function (x) {
+      say(msg, x.d.message || x.d.error || 'Done.', x.ok);
+      if (x.ok && x.d.filled && x.d.filled.length) setTimeout(function () { location.reload(); }, 900);
+    });
+  });
+  document.getElementById('f-logo').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    var fd = new FormData(); fd.append('logo', f);
+    say(msg, 'Uploading...', true);
+    fetch('/api/founder/v/' + vid + '/page/logo', {method: 'POST', credentials: 'same-origin', body: fd})
+      .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
+      .then(function (x) { say(msg, x.d.message || x.d.error, x.ok); if (x.ok) setTimeout(function () { location.reload(); }, 700); })
+      .catch(function () { say(msg, 'Upload failed.', false); });
+  });
+  var pubMsg = document.getElementById('pubMsg');
+  document.querySelectorAll('[data-pub]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.pub === 'unpublish' && !confirm('Take the page offline? Visitors will get "not found" until you publish again.')) return;
+      b.disabled = true;
+      post('/api/founder/v/' + vid + '/page/publish', {action: b.dataset.pub}).then(function (x) {
+        say(pubMsg, x.d.message || x.d.error || 'Done.', x.ok);
+        if (x.ok) setTimeout(function () { location.reload(); }, 900); else b.disabled = false;
+      }).catch(function () { say(pubMsg, 'That did not go through.', false); b.disabled = false; });
+    });
+  });
+})();
+</script>
+{% endblock %}
