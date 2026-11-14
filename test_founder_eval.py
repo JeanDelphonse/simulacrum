@@ -14,7 +14,7 @@ import os
 import re
 import sys
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 os.environ.setdefault('DATABASE_URL', 'sqlite:///:memory:')
@@ -60,7 +60,7 @@ class FakeClaude(object):
 
     def create(self, **kw):
         if self.fail:
-            raise RuntimeError('api down')
+            raise self.fail if isinstance(self.fail, Exception) else RuntimeError('api down')
         msgs = kw['messages']
         first = msgs[0]['content']
         doc = first[0]['text']
@@ -477,7 +477,46 @@ def main():
         check('when every call fails the run is marked failed', bad.status == 'failed', bad.status)
         check('a failed run leaves the previous findings current',
               all(f.evaluation_run_id != bad.id for f in fes.findings(venture())) and fes.findings(venture()))
+        check('an unclassified failure shows the generic message',
+              fes.report_view(venture(), founder)['failure']['reason'] == 'other')
+
+        class RateLimitError(Exception):
+            status_code = 429
+        fake.fail = RateLimitError('rate_limit_error: Number of request tokens has exceeded your per-minute rate limit')
+        artifact('pitch_deck', DECK + '\nAnother slide.', version=3)
+        rl = fes.run(venture(), founder)
+        member_view = fes.report_view(venture(), founder)
+        admin_view = fes.report_view(venture(), db.session.get(User, A_ID))
+        check('a rate-limited run fails with the reason "rate_limit"', rl.status == 'failed'
+              and member_view['failure']['reason'] == 'rate_limit', member_view.get('failure'))
+        check('... the member sees what to do, not the technical detail',
+              'usage limit' in member_view['failure']['message'] and 'detail' not in member_view['failure'])
+        check('... an admin also sees the technical detail', 'RateLimitError 429' in admin_view['failure']['detail']
+              and 'per-minute rate limit' in admin_view['failure']['detail'], admin_view['failure'])
+        body = client.get('/founder/v/%s/report' % V_ID).get_data(as_text=True)
+        check('the report page shows the reason', 'usage limit for the moment' in body and 'Admin detail' not in body)
+
+        class AuthenticationError(Exception):
+            status_code = 401
+        fake.fail = AuthenticationError('invalid x-api-key')
+        artifact('pitch_deck', DECK + '\nYet another slide.', version=4)
+        fes.run(venture(), founder)
+        check('a credentials failure says an administrator must fix it',
+              fes.report_view(venture(), founder)['failure']['reason'] == 'auth')
         fake.fail = False
+        stale = EvaluationRun(venture_id=V_ID, status='running',
+                              started_at=datetime.utcnow() - timedelta(minutes=fes.STALE_RUN_MINUTES + 5))
+        db.session.add(stale)
+        db.session.commit()
+        check('a run abandoned by a restarted worker is marked failed', fes.running_run(venture()) is None)
+        f = fes.failure_for(venture(), db.session.get(EvaluationRun, stale.id))
+        check('... with the reason "interrupted"', stale.status == 'failed' and f['reason'] == 'interrupted', f)
+        check('the real client retries transient errors with backoff',
+              fes.API_MAX_RETRIES >= 3 and fes.API_TIMEOUT_SECONDS >= 60)
+        check('a 529 overload is classified as busy, not as a fault',
+              fes.classify_failure(type('E', (Exception,), {'status_code': 529})()) == 'overloaded')
+        check('a missing model is classified for an admin',
+              fes.classify_failure(type('NotFoundError', (Exception,), {})()) == 'model')
         check('rung is never lowered by an evaluation', venture().rung == 2)
 
         print('\n12b. Partial failures, one run at a time, citation window')

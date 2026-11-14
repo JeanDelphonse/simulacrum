@@ -109,7 +109,7 @@
     <div class="fr-status"><span class="fr-spin" aria-hidden="true"></span>
       <span>Evaluation running. This page updates when it finishes.</span></div>
     {% elif r.status == 'failed' %}
-    <div class="fr-status is-failed"><span>The last evaluation didn't finish. Run it again; documents that were already scored aren't re-read.</span></div>
+    <div class="fr-status is-failed"><span>{{ r.failure.message if r.failure else "The last evaluation didn't finish. Run it again; documents that were already scored aren't re-read." }}{% if r.failure and r.failure.detail %}<br><small style="opacity:.8">Admin detail: {{ r.failure.detail }}</small>{% endif %}</span></div>
     {% endif %}
   </div>
   <p id="fr-msg" class="fr-sub" role="status" style="margin:0 0 1rem"></p>

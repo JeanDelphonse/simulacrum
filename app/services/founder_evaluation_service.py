@@ -126,7 +126,90 @@ FTYPE_LABELS = {'gap': 'Gap', 'contradiction': 'Contradiction', 'assumption': 'U
 
 
 class EvaluationError(ValueError):
-    pass
+    def __init__(self, message: str, causes=None):
+        super().__init__(message)
+        self.causes = list(causes or [])
+
+
+# Why a run failed, in words a founder can act on. The key and a short
+# technical detail are audit-logged (founder_evaluation_failed) per run; the
+# detail is shown to admins only.
+FAILURE_TEXT = {
+    'rate_limit': ("SimiSI's AI service reached its usage limit for the moment. Wait a minute or two and run it "
+                   "again; documents that were already scored aren't re-read."),
+    'overloaded': ("The AI service was busy. Run it again in a few minutes; documents that were already scored "
+                   "aren't re-read."),
+    'connection': ("SimiSI couldn't reach the AI service. Run it again in a few minutes; documents that were "
+                   "already scored aren't re-read."),
+    'auth': "The AI service did not accept SimiSI's credentials. An administrator needs to fix this; your documents are safe.",
+    'model': "The AI model SimiSI asked for isn't available. An administrator needs to fix this; your documents are safe.",
+    'bad_request': "The AI service refused the request. An administrator needs to look at this; your documents are safe.",
+    'interrupted': ("The evaluation stopped before it finished (the server restarted). Run it again; documents "
+                    "that were already scored aren't re-read."),
+    'other': "The last evaluation didn't finish. Run it again; documents that were already scored aren't re-read.",
+}
+
+
+def classify_failure(exc) -> str:
+    """A FAILURE_TEXT key for an exception from the AI client or the run."""
+    causes = getattr(exc, 'causes', None)
+    if causes:
+        keys = [classify_failure(c) for c in causes]
+        for k in ('auth', 'model', 'bad_request', 'rate_limit', 'overloaded', 'connection'):
+            if k in keys:
+                return k
+        return keys[0] if keys else 'other'
+    status = getattr(exc, 'status_code', None)
+    name = exc.__class__.__name__
+    if status == 429 or name == 'RateLimitError':
+        return 'rate_limit'
+    if status in (529, 503, 502, 500) or name in ('OverloadedError', 'InternalServerError', 'ServiceUnavailableError'):
+        return 'overloaded'
+    if status in (401, 403) or name in ('AuthenticationError', 'PermissionDeniedError'):
+        return 'auth'
+    if status == 404 or name == 'NotFoundError':
+        return 'model'
+    if status in (400, 413, 422) or name in ('BadRequestError', 'UnprocessableEntityError'):
+        return 'bad_request'
+    if name in ('APIConnectionError', 'APITimeoutError', 'ConnectionError', 'TimeoutError', 'ReadTimeout'):
+        return 'connection'
+    return 'other'
+
+
+def _failure_detail(exc) -> str:
+    causes = getattr(exc, 'causes', None) or [exc]
+    first = causes[0]
+    status = getattr(first, 'status_code', None)
+    text = ' '.join(str(first).split())[:300]
+    return '%s%s: %s (%d failed call%s)' % (first.__class__.__name__, ' %s' % status if status else '', text,
+                                            len(causes), '' if len(causes) == 1 else 's')
+
+
+def _log_failure(venture_id: str, run_id: str, reason: str, detail: str = '', user_id=None) -> None:
+    """Audit-log why a run failed. Doesn't commit."""
+    try:
+        from app.models.audit_log import AuditLog
+        AuditLog.log('founder_evaluation_failed', user_id=user_id, resource_id=venture_id,
+                     metadata={'run_id': run_id, 'reason': reason, 'detail': (detail or '')[:500]})
+    except Exception as exc:
+        logger.error('founder evaluation failure log skipped: %s', exc)
+
+
+def failure_for(venture, run_row) -> dict:
+    """{'reason', 'message', 'detail'} for a failed run (detail: admins only)."""
+    reason, detail = 'other', ''
+    try:
+        from app.models.audit_log import AuditLog
+        rows = (AuditLog.query.filter_by(action='founder_evaluation_failed', resource_id=venture.id)
+                .order_by(AuditLog.created_at.desc()).limit(5).all())
+        for row in rows:
+            meta = row.extra or {}
+            if meta.get('run_id') == run_row.id:
+                reason, detail = meta.get('reason') or 'other', meta.get('detail') or ''
+                break
+    except Exception as exc:
+        logger.debug('founder evaluation failure lookup skipped: %s', exc)
+    return {'reason': reason, 'message': FAILURE_TEXT.get(reason, FAILURE_TEXT['other']), 'detail': detail}
 
 
 # ---------------------------------------------------------------------------
@@ -221,11 +304,19 @@ def _messages(artifact_kind: str, text: str, dimension: str) -> list:
     ]}]
 
 
+API_MAX_RETRIES = 6           # the SDK backs off and honours retry-after on 429 / 529 / 5xx
+API_TIMEOUT_SECONDS = 180.0
+
+
 def _client():
     if AI_CLIENT is not None:
         return AI_CLIENT
     from app.services import claude
-    return claude._client()
+    c = claude._client()
+    try:
+        return c.with_options(max_retries=API_MAX_RETRIES, timeout=API_TIMEOUT_SECONDS)
+    except Exception:            # an SDK without with_options: its own defaults
+        return c
 
 
 def _model() -> str:
@@ -456,6 +547,7 @@ def running_run(venture):
          .order_by(EvaluationRun.started_at.desc()).first())
     if r is not None and r.started_at < datetime.utcnow() - timedelta(minutes=STALE_RUN_MINUTES):
         r.status, r.finished_at = 'failed', datetime.utcnow()
+        _log_failure(venture.id, r.id, 'interrupted', 'No result after %d minutes.' % STALE_RUN_MINUTES)
         db.session.commit()
         return None
     return r
@@ -559,7 +651,7 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
                 cache[(row.artifact_id, row.dimension)] = row
         jobs = [(a, d) for a in usable for d in DIMENSIONS
                 if a.id in force or (a.id, d) not in cache or not isinstance(cache[(a.id, d)].payload, dict)]
-        results, errors, cost = {}, 0, 0.0
+        results, errors, cost, causes = {}, 0, 0.0, []
         if jobs:
             client, model, system, tool = _client(), _model(), _system_prompt(), _tool()
             with ThreadPoolExecutor(max_workers=min(WORKERS, len(jobs))) as pool:
@@ -570,6 +662,7 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
                     results[key] = fut.result()
                 except Exception as exc:
                     errors += 1
+                    causes.append(exc)
                     logger.warning('founder eval call failed %s: %s', key, exc)
         obs = None
         if obs_run is not None:
@@ -603,7 +696,7 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
             # dimension's score. The previous findings stay current.
             r.cost_cents = int(round(cost))
             db.session.commit()
-            raise EvaluationError('%d of %d evaluation calls failed.' % (errors, len(jobs)))
+            raise EvaluationError('%d of %d evaluation calls failed.' % (errors, len(jobs)), causes)
 
         # 2. Findings, scores and ladder evidence from the (validated) payloads.
         now = datetime.utcnow()
@@ -684,6 +777,7 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
         logger.exception('founder evaluation %s failed: %s', r.id, exc)
         db.session.rollback()
         r.status, r.finished_at = 'failed', datetime.utcnow()
+        _log_failure(venture.id, r.id, classify_failure(exc), _failure_detail(exc), user_id)
         db.session.commit()
         if obs_run is not None:
             from app.services import observability_service as obs
@@ -893,6 +987,7 @@ def report_view(venture, user) -> dict:
         'locked': not paid,
         'status': run_row.status if run_row is not None else 'none',
         'run': run_info,
+        'failure': _failure_view(venture, run_row, user),
         'has_report': done is not None,
         'rung': {'current': rung, 'label': LADDER[rung - 1][1], 'ladder': ladder, 'next': nxt,
                  # The documents' own estimate, when it is above the recorded
@@ -962,3 +1057,12 @@ def _checkout_url(venture_id: str) -> str:
         return url_for('founder.checkout_page', venture_id=venture_id)
     except Exception:            # outside a request (jobs, tests without a request context)
         return '/founder/v/%s/checkout' % venture_id
+
+
+def _failure_view(venture, run_row, user):
+    if run_row is None or run_row.status != 'failed':
+        return None
+    f = failure_for(venture, run_row)
+    if not getattr(user, 'is_admin', False):
+        f.pop('detail', None)
+    return f

@@ -109,7 +109,7 @@
         if (d.status === 'done') {
           msg.innerHTML = 'Evaluation finished. <a href="/founder/v/' + encodeURIComponent(VID) + '/report">View the report</a>';
         } else {
-          msg.textContent = 'The evaluation did not finish. Please run it again.';
+          msg.textContent = (d.failure && d.failure.message) || 'The evaluation did not finish. Please run it again.';
         }
       }).catch(function () { pollEval(); });
     }, 5000);
