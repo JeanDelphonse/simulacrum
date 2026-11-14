@@ -1,0 +1,18 @@
+<style>
+  .fv-tabs { display: flex; gap: .25rem; flex-wrap: wrap; border-bottom: 1px solid var(--rule); margin: 0 0 1.5rem; padding: 0; list-style: none; }
+  .fv-tabs a { display: inline-block; padding: .55rem .85rem; color: var(--ink-2); text-decoration: none; font-weight: 600;
+               border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .fv-tabs a:hover, .fv-tabs a:focus-visible { color: var(--ink); }
+  .fv-tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--gold); }
+  @media (max-width: 640px) {
+    .fv-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+    .fv-tabs a { padding: .5rem .65rem; }
+  }
+</style>
+<nav aria-label="Venture sections">
+  <ul class="fv-tabs">
+    {% for key, label, href in nav %}
+    <li><a href="{{ href }}" {% if key == active %}aria-current="page"{% endif %}>{{ label }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>

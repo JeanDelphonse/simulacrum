@@ -65,6 +65,7 @@ EDITABLE = frozenset((
     'fnd_refund_window_days', 'fnd_fee_mode', 'fnd_action_cap_per_day', 'fnd_budget_cap_cents',
     'fnd_autonomy_matrix', 'fnd_first_contact_cap', 'fnd_targets', 'fnd_alert_error_rate_pct',
     'fnd_alert_cost_per_venture_cents', 'fnd_alert_stuck_days', 'fnd_retention_days',
+    'fnd_invite_days', 'fnd_invite_daily_cap', 'fnd_startup_request_limit', 'fnd_startup_page_request_limit',
 ))
 
 CSV_COLUMNS = ('name', 'firm', 'kind', 'stages', 'check_min', 'check_max', 'sectors', 'geographies', 'apply_url',

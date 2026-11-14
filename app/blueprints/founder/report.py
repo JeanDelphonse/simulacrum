@@ -11,7 +11,7 @@ from flask import abort, jsonify, render_template, request
 from flask_login import current_user
 
 from app.blueprints.founder import founder_bp
-from app.blueprints.founder.common import founder_required
+from app.blueprints.founder.common import founder_required, venture_nav
 
 
 @founder_bp.route('/api/founder/v/<venture_id>/evaluate', methods=['POST'])
@@ -51,7 +51,7 @@ def report_page(venture_id):
     fes.running_run(v)
     view = fes.report_view(v, current_user)
     return render_template('founder/report.html', venture=v, report=view,
-                           has_artifacts=bool(fes.current_artifacts(v)))
+                           has_artifacts=bool(fes.current_artifacts(v)), nav=venture_nav(v))
 
 
 @founder_bp.route('/api/founder/findings/<finding_id>/rating', methods=['POST'])

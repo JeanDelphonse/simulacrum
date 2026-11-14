@@ -175,6 +175,14 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
         <input type="number" id="s-stuck" min="1" max="365" data-key="fnd_alert_stuck_days" value="{{ settings.fnd_alert_stuck_days }}"></div>
       <div class="fa-row"><label for="s-ret">Keep venture data for (days)</label>
         <input type="number" id="s-ret" min="30" max="3650" data-key="fnd_retention_days" value="{{ settings.fnd_retention_days }}"></div>
+      <div class="fa-row"><label for="s-invd">Co-founder invite links last (days)</label>
+        <input type="number" id="s-invd" min="1" max="365" data-key="fnd_invite_days" value="{{ settings.fnd_invite_days }}"></div>
+      <div class="fa-row"><label for="s-invc">Co-founder invites per venture per day</label>
+        <input type="number" id="s-invc" min="1" max="1000" data-key="fnd_invite_daily_cap" value="{{ settings.fnd_invite_daily_cap }}"></div>
+      <div class="fa-row"><label for="s-sreq">Startup page requests per visitor per hour</label>
+        <input type="number" id="s-sreq" min="1" max="1000" data-key="fnd_startup_request_limit" value="{{ settings.fnd_startup_request_limit }}"></div>
+      <div class="fa-row"><label for="s-spreq">Startup page requests per page per hour</label>
+        <input type="number" id="s-spreq" min="1" max="10000" data-key="fnd_startup_page_request_limit" value="{{ settings.fnd_startup_page_request_limit }}"></div>
       <div class="fa-row"><button class="btn primary sm" type="submit">Save caps</button><span class="fa-msg" role="status"></span></div>
     </form>
   </section>

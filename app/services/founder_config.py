@@ -74,6 +74,11 @@ _SPEC = {
     'fnd_alert_error_rate_pct': ('int', 20, (0, 100)),
     'fnd_alert_cost_per_venture_cents': ('int', 2000, (0, 10000000)),
     'fnd_alert_stuck_days': ('int', 14, (1, 365)),
+    # Co-founder invites (WP5) and startup-page requests (WP6)
+    'fnd_invite_days': ('int', 30, (1, 365)),
+    'fnd_invite_daily_cap': ('int', 10, (1, 1000)),
+    'fnd_startup_request_limit': ('int', 5, (1, 1000)),
+    'fnd_startup_page_request_limit': ('int', 30, (1, 10000)),
     # Retention
     'fnd_retention_days': ('int', 365, (30, 3650)),
     # Counsel sign-off (ISO date or datetime; empty = not signed off)

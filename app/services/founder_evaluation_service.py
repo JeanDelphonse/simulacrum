@@ -679,6 +679,7 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
         founder_ventures.log_event(venture.id, 'evaluation_done', 'Evaluation %s finished' % r.id, user_id=user_id)
         _publish(venture.id, 'evaluation_done', {'evaluation_run_id': r.id, 'note': 'Readiness report updated'})
         db.session.commit()
+        _sync_proof_rung(venture, user_id)
     except Exception as exc:
         logger.exception('founder evaluation %s failed: %s', r.id, exc)
         db.session.rollback()
@@ -687,6 +688,24 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
         if obs_run is not None:
             from app.services import observability_service as obs
             obs.finish_run(status=obs.STATUS_ERROR, error_code=exc.__class__.__name__)
+
+
+def _sync_proof_rung(venture, user_id=None) -> None:
+    """After the evaluation is saved: once the documents reach rung 2, a proof
+    plan agreed earlier can climb the ladder (founder_proof_service.sync_rung,
+    WP5). Best effort: a failure here never fails the evaluation."""
+    from app.extensions import db
+    try:
+        from app.services import founder_proof_service
+        sync = founder_proof_service.sync_rung
+    except (ImportError, AttributeError):
+        return
+    try:
+        if founder_proof_service.current_rung(venture) >= 2:
+            sync(venture, user_id, commit=True)
+    except Exception as exc:
+        db.session.rollback()
+        logger.warning('proof ladder sync after evaluation failed: %s', exc)
 
 
 def _add_finding(r, venture, artifact_id, dimension, f, ref):

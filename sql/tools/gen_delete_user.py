@@ -94,6 +94,9 @@ SETS = [
     ('d_findings', "SELECT id FROM evaluation_finding WHERE venture_id IN (SELECT id FROM d_ventures)"),
     # The user's own member rows in any venture, plus every member row of the ventures they own.
     ('d_members', "SELECT id FROM venture_member WHERE user_id = @uid OR venture_id IN (SELECT id FROM d_ventures)"),
+    # Founder drafts of those ventures (snapshotted: action_approvals rows that
+    # point at them are deleted after venture_outreach_action itself).
+    ('d_voutreach', "SELECT id FROM venture_outreach_action WHERE venture_id IN (SELECT id FROM d_ventures)"),
 ]
 # Column name -> parent set(s) whose ids mean "this row belongs to the user".
 PARENT_COLS = {
@@ -140,7 +143,8 @@ SKIP_COLS = {
 # action_approvals.target_id can point at a plan step or a send batch; tie it to the user's plans.
 EXTRA_WHERE = {
     'action_approvals': ["target_id IN (SELECT id FROM plan_steps WHERE plan_id IN (SELECT id FROM d_plans))",
-                         "decided_by = @uid"],
+                         "decided_by = @uid",
+                         "(target_type = 'fnd_outreach' AND target_id IN (SELECT id FROM d_voutreach))"],
     'blog_reports': ["target_id IN (SELECT id FROM d_posts)", "target_id IN (SELECT id FROM d_comments)"],
     'observability_flags': ["run_id IN (SELECT id FROM d_runs)"],
     'artifact_units': ["artifact_id IN (SELECT id FROM d_actions)"],

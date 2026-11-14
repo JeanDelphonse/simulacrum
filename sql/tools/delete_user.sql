@@ -70,6 +70,7 @@ DROP TABLE IF EXISTS zz_del_spages;
 DROP TABLE IF EXISTS zz_del_vartifacts;
 DROP TABLE IF EXISTS zz_del_findings;
 DROP TABLE IF EXISTS zz_del_members;
+DROP TABLE IF EXISTS zz_del_voutreach;
 DROP TABLE IF EXISTS zz_del_preview;
 CREATE TABLE zz_del_sims (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_actions (id CHAR(9) PRIMARY KEY);
@@ -103,6 +104,7 @@ CREATE TABLE zz_del_spages (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_vartifacts (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_findings (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_members (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_voutreach (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_preview (tbl VARCHAR(64) PRIMARY KEY, rows_to_delete INT);
 
 START TRANSACTION;
@@ -139,6 +141,7 @@ INSERT INTO zz_del_spages SELECT id FROM startup_page WHERE venture_id IN (SELEC
 INSERT INTO zz_del_vartifacts SELECT id FROM venture_artifact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_findings SELECT id FROM evaluation_finding WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_members SELECT id FROM venture_member WHERE user_id = @uid OR venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_voutreach SELECT id FROM venture_outreach_action WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 
 -- Preview: rows that will be deleted, per table.
 INSERT INTO zz_del_preview SELECT 'email_logs', COUNT(*) FROM email_logs WHERE action_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts) OR simulation_id IN (SELECT id FROM zz_del_sims) OR step_id IN (SELECT id FROM zz_del_steps);
@@ -290,7 +293,7 @@ INSERT INTO zz_del_preview SELECT 'agent_artifacts', COUNT(*) FROM agent_artifac
 INSERT INTO zz_del_preview SELECT 'advisor_flags', COUNT(*) FROM advisor_flags WHERE action_id IN (SELECT id FROM zz_del_actions) OR advisor_access_id IN (SELECT id FROM zz_del_advisor) OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'activity_events', COUNT(*) FROM activity_events WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'action_items', COUNT(*) FROM action_items WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR source_action_id IN (SELECT id FROM zz_del_actions) OR source_contact_id IN (SELECT id FROM zz_del_contacts) OR user_id = @uid;
-INSERT INTO zz_del_preview SELECT 'action_approvals', COUNT(*) FROM action_approvals WHERE decided_by = @uid OR target_id IN (SELECT id FROM plan_steps WHERE plan_id IN (SELECT id FROM zz_del_plans));
+INSERT INTO zz_del_preview SELECT 'action_approvals', COUNT(*) FROM action_approvals WHERE (target_type = 'fnd_outreach' AND target_id IN (SELECT id FROM zz_del_voutreach)) OR decided_by = @uid OR target_id IN (SELECT id FROM plan_steps WHERE plan_id IN (SELECT id FROM zz_del_plans));
 INSERT INTO zz_del_preview SELECT 'account_exclusions', COUNT(*) FROM account_exclusions WHERE account_id IN (SELECT id FROM zz_del_mail);
 SELECT * FROM zz_del_preview WHERE rows_to_delete > 0 ORDER BY tbl;
 
@@ -561,7 +564,8 @@ DELETE FROM action_items WHERE simulation_id IN (SELECT id FROM zz_del_sims)
     OR source_action_id IN (SELECT id FROM zz_del_actions)
     OR source_contact_id IN (SELECT id FROM zz_del_contacts)
     OR user_id = @uid;
-DELETE FROM action_approvals WHERE decided_by = @uid
+DELETE FROM action_approvals WHERE (target_type = 'fnd_outreach' AND target_id IN (SELECT id FROM zz_del_voutreach))
+    OR decided_by = @uid
     OR target_id IN (SELECT id FROM plan_steps WHERE plan_id IN (SELECT id FROM zz_del_plans));
 DELETE FROM account_exclusions WHERE account_id IN (SELECT id FROM zz_del_mail);
 
@@ -640,4 +644,5 @@ DROP TABLE IF EXISTS zz_del_spages;
 DROP TABLE IF EXISTS zz_del_vartifacts;
 DROP TABLE IF EXISTS zz_del_findings;
 DROP TABLE IF EXISTS zz_del_members;
+DROP TABLE IF EXISTS zz_del_voutreach;
 DROP TABLE IF EXISTS zz_del_preview;

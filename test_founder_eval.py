@@ -557,8 +557,10 @@ def main():
             from app.models.founder import FounderRunMeta
             cur_deck = VentureArtifact.query.filter_by(venture_id=V_ID, kind='pitch_deck', is_current=True).first()
             traced = fes.run(venture(), founder, artifact_ids=[cur_deck.id])
-            meta = FounderRunMeta.query.filter_by(venture_id=V_ID).all()
-            hdr = AgentRun.query.filter_by(agent_key='fnd_evaluation').first()
+            # Scoped to the traced run: with WP7's F codes, earlier runs are traced too.
+            meta = (FounderRunMeta.query.filter_by(obs_run_id=traced.obs_run_id).all()
+                    if traced.obs_run_id else [])
+            hdr = db.session.get(AgentRun, traced.obs_run_id) if traced.obs_run_id else None
             if obs.setting('obs_capture_enabled'):
                 check('with F codes, the run is traced: agent_runs F1 + founder_run_meta + obs_run_id',
                       traced.status == 'done' and hdr is not None and hdr.layer == 'F1'
