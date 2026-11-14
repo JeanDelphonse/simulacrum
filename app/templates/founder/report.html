@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+{% block title %}Readiness report · {{ venture.name }}{% endblock %}
+{% block head %}
+<style>
+  .fr { color: var(--ink); padding-top: 2.5rem; padding-bottom: 3.5rem; max-width: 980px; }
+  .fr-eyebrow { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); margin: 0 0 .4rem; }
+  .fr h1 { font-size: 1.75rem; margin: 0 0 .35rem; }
+  .fr h2 { font-size: 1.2rem; margin: 0 0 .75rem; }
+  .fr h3 { font-size: 1rem; margin: 0; }
+  .fr-sub { color: var(--ink-2); margin: 0; }
+  .fr-head { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: flex-end; margin-bottom: 1.25rem; }
+  .fr-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .fr-disclaimer { border: 1px solid var(--rule); border-left: 4px solid var(--gold); border-radius: var(--r-ui);
+                   background: var(--alt); padding: .85rem 1rem; margin: 0 0 1.5rem; line-height: 1.55; color: var(--ink); }
+  .fr-disclaimer b { display: block; margin-bottom: .2rem; }
+  .fr-card { border: 1px solid var(--rule); border-radius: var(--r-panel, 12px); background: #fff; padding: 1.25rem; margin: 0 0 1.25rem; }
+  .fr-status { display: flex; gap: .6rem; align-items: center; padding: .75rem 1rem; border-radius: var(--r-ui);
+               background: var(--alt); margin: 0 0 1.25rem; }
+  .fr-status.is-failed { background: #FEF2F2; color: #991B1B; }
+  .fr-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rule); border-top-color: var(--ink);
+             animation: frspin 1s linear infinite; flex: none; }
+  @keyframes frspin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .fr-spin { animation: none; } }
+
+  .fr-ladder { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; }
+  .fr-rung { border: 1px solid var(--rule); border-radius: var(--r-ui); padding: .7rem .75rem; background: #fff; min-height: 92px; }
+  .fr-rung .n { font-size: .75rem; font-weight: 700; color: var(--mute); text-transform: uppercase; letter-spacing: .06em; }
+  .fr-rung .t { display: block; font-weight: 700; margin: .2rem 0; line-height: 1.25; }
+  .fr-rung .e { font-size: .82rem; color: var(--ink-2); line-height: 1.4; }
+  .fr-rung.reached { background: var(--alt); }
+  .fr-rung.current { border: 2px solid var(--gold); background: #fff; }
+  .fr-rung.current .n { color: var(--ink); }
+  .fr-next { border-top: 1px solid var(--rule); padding-top: .85rem; line-height: 1.55; }
+
+  .fr-lock { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; border: 1.5px dashed var(--ink-2); }
+  .fr-counts { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 0; padding: 0; list-style: none; }
+
+  .fr-layers { display: grid; gap: 1rem; }
+  .fr-layer { border-left: 4px solid var(--l1); padding-left: 1rem; }
+  .fr-layer[data-layer="2"] { border-left-color: var(--l2); }
+  .fr-layer[data-layer="3"] { border-left-color: var(--l3); }
+  .fr-layer[data-layer="4"] { border-left-color: var(--l4); }
+  .fr-layer[data-layer="5"] { border-left-color: var(--l5); }
+  .fr-dim { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem .75rem; align-items: center;
+            padding: .55rem 0; border-bottom: 1px solid var(--rule); }
+  .fr-dim:last-child { border-bottom: 0; }
+  .fr-dim .q { grid-column: 1 / -1; font-size: .85rem; color: var(--ink-2); }
+  .fr-band { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 13px;
+             font-weight: 700; background: var(--alt); color: var(--ink-2); white-space: nowrap; }
+  .fr-band.strong { background: #DCFCE7; color: #14532D; }
+  .fr-band.developing { background: #FEF3C7; color: #78350F; }
+  .fr-band.early { background: #FEE2E2; color: #7F1D1D; }
+  .fr-bar { grid-column: 1 / -1; height: 6px; background: var(--alt); border-radius: 999px; overflow: hidden; }
+  .fr-bar span { display: block; height: 100%; background: var(--ink); }
+
+  .fr-find { border: 1px solid var(--rule); border-radius: var(--r-ui); padding: .9rem 1rem; margin: .6rem 0; background: #fff; }
+  .fr-meta { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0 0 .4rem; }
+  .fr-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12.5px;
+             font-weight: 600; background: var(--alt); color: var(--ink-2); }
+  .fr-pill.gap { background: #FEE2E2; color: #7F1D1D; }
+  .fr-pill.contradiction { background: #FFEDD5; color: #7C2D12; }
+  .fr-pill.assumption { background: #FEF3C7; color: #78350F; }
+  .fr-pill.strength { background: #DCFCE7; color: #14532D; }
+  .fr-pill.sev-high { background: var(--ink); color: #fff; }
+  .fr-find p { margin: .25rem 0; line-height: 1.5; color: var(--ink-2); }
+  .fr-cite { margin: .55rem 0; padding: .5rem .75rem; border-left: 3px solid var(--gold); background: var(--alt);
+             font-size: .9rem; line-height: 1.5; color: var(--ink); }
+  .fr-cite cite { display: block; font-style: normal; font-size: .78rem; color: var(--mute); margin-top: .25rem; }
+  .fr-foot { display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; align-items: center; margin-top: .5rem; }
+  .fr-rate { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; font-size: .85rem; color: var(--mute); }
+  .fr-rate .btn[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .fr-empty { color: var(--ink-2); line-height: 1.6; }
+  .fr-overall { font-size: 2rem; font-weight: 800; line-height: 1; }
+  @media (max-width: 760px) {
+    .fr { padding-top: 1.5rem; }
+    .fr-ladder { grid-template-columns: 1fr; }
+    .fr-rung { min-height: 0; }
+    .fr-lock { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+{% set r = report %}
+<div class="wrap fr" id="founder-report" data-venture="{{ venture.id }}" data-status="{{ r.status }}">
+  <div class="fr-head">
+    <div>
+      <p class="fr-eyebrow">Founder Track · Readiness report</p>
+      <h1>{{ venture.name }}</h1>
+      <p class="fr-sub">
+        {% if r.has_report and r.run %}Based on the documents you shared{% if r.run.finished_at %}, evaluated {{ r.run.finished_at[:10] }}{% endif %}.
+        {% else %}What your documents show today, dimension by dimension.{% endif %}
+      </p>
+    </div>
+    <div class="fr-actions">
+      <a class="btn btn-ghost" href="/founder/v/{{ venture.id }}/intake">Add or replace documents</a>
+      {% if has_artifacts %}
+      <button type="button" class="btn primary" id="fr-run" {% if r.status == 'running' %}disabled{% endif %}>
+        {{ 'Re-run evaluation' if r.has_report else 'Run evaluation' }}
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="fr-disclaimer" role="note">{{ legal('founder_report_disclaimer') }}</div>
+
+  <div id="fr-live" aria-live="polite">
+    {% if r.status == 'running' %}
+    <div class="fr-status"><span class="fr-spin" aria-hidden="true"></span>
+      <span>Evaluation running. This page updates when it finishes.</span></div>
+    {% elif r.status == 'failed' %}
+    <div class="fr-status is-failed"><span>The last evaluation didn't finish. Run it again; documents that were already scored aren't re-read.</span></div>
+    {% endif %}
+  </div>
+  <p id="fr-msg" class="fr-sub" role="status" style="margin:0 0 1rem"></p>
+
+  {% if not r.has_report %}
+  <section class="fr-card">
+    <h2>No report yet</h2>
+    {% if has_artifacts %}
+    <p class="fr-empty">Run the evaluation to score your documents against the nine-part rubric. Every finding quotes the passage it comes from.</p>
+    {% else %}
+    <p class="fr-empty">Share your startup plan, deck or a spoken pitch first. A document you don't have yet is listed as a gap, not scored as zero.</p>
+    <p style="margin:.75rem 0 0"><a class="btn primary" href="/founder/v/{{ venture.id }}/intake">Add documents</a></p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <section class="fr-card" aria-labelledby="fr-ladder-h">
+    <h2 id="fr-ladder-h">Evidence ladder: rung {{ r.rung.current }} of 5, {{ r.rung.label }}</h2>
+    <ol class="fr-ladder">
+      {% for s in r.rung.ladder %}
+      <li class="fr-rung {{ 'reached' if s.reached }} {{ 'current' if s.current }}" {% if s.current %}aria-current="step"{% endif %}>
+        <span class="n">Rung {{ s.rung }}{% if s.current %} · you are here{% endif %}</span>
+        <span class="t">{{ s.label }}</span>
+        <span class="e">{{ s.evidence }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="fr-next">
+      {% if r.rung.next %}
+      <b>What moves you up:</b> {{ r.rung.next.evidence }}.
+      The <b>{{ r.rung.next.agent_label }}</b> agent helps you get there.
+      {% else %}
+      <b>Top rung reached.</b> A customer has paid or committed. Keep the evidence current as you grow.
+      {% endif %}
+      {% if r.rung.documents_suggest %}
+      <p class="fr-sub" style="margin:.5rem 0 0">Your documents suggest rung {{ r.rung.documents_suggest }} ({{ r.rung.documents_suggest_label }}).
+        The ladder moves past rung {{ r.rung.current }} when the evidence is confirmed through a proof-of-concept plan and its results, not from the documents alone.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if r.has_report and r.locked %}
+  <section class="fr-card fr-lock" aria-labelledby="fr-lock-h">
+    <div>
+      {% if r.total_findings is defined %}
+      <h2 id="fr-lock-h">{{ r.total_findings }} finding{{ '' if r.total_findings == 1 else 's' }} in your full report</h2>
+      {% else %}
+      <h2 id="fr-lock-h">Your full report is ready</h2>
+      {% endif %}
+      {% if r.counts %}
+      <ul class="fr-counts" aria-label="Findings by type and severity">
+        {% for t, n in r.counts.by_type.items() if n %}<li class="fr-pill {{ t }}">{{ n }} {{ {'gap':'gap','contradiction':'contradiction','assumption':'unsupported assumption','strength':'strength'}[t] }}{{ '' if n == 1 else 's' }}</li>{% endfor %}
+        {% for s in ['high', 'medium', 'low'] if r.counts.by_severity[s] %}<li class="fr-pill">{{ r.counts.by_severity[s] }} {{ s }} severity</li>{% endfor %}
+      </ul>
+      {% endif %}
+      <p class="fr-sub" style="margin-top:.6rem">
+        {% if r.total_findings is defined and r.hidden_count < r.total_findings %}The {{ r.findings|length }} most severe are shown below. {% endif %}Unlock the finding text, the cited passages, the team builder and your plan.
+      </p>
+    </div>
+    <a class="btn primary btn-lg" href="{{ r.checkout_url }}">Unlock the full report</a>
+  </section>
+  {% endif %}
+
+  {% if r.has_report and r.dimensions[0].band is defined %}
+  <section class="fr-card" aria-labelledby="fr-scores-h">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+      <h2 id="fr-scores-h">Score by dimension</h2>
+      {% if r.overall_score is defined and r.overall_score is not none %}
+      <div><div class="fr-overall">{{ r.overall_score|round|int }}</div>
+        <div class="fr-sub" style="font-size:.8rem">weighted overall, out of 100</div></div>
+      {% endif %}
+    </div>
+    <div class="fr-layers">
+      {% for L in r.layers %}
+      <div class="fr-layer" data-layer="{{ L.layer }}">
+        <h3>L{{ L.layer }} · {{ L.name }}</h3>
+        {% for d in L.dimensions %}
+        <div class="fr-dim">
+          <span><b>{{ d.label }}</b></span>
+          <span class="fr-band {{ d.band or '' }}">{{ d.band_label }}{% if d.score is defined and d.score is not none %} · {{ d.score }}{% endif %}</span>
+          <span class="q">{{ d.question }}</span>
+          {% if d.score is defined and d.score is not none %}
+          <span class="fr-bar" role="img" aria-label="{{ d.label }} score {{ d.score }} of 100"><span style="width:{{ d.score }}%"></span></span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if r.findings %}
+  <section aria-labelledby="fr-find-h">
+    <h2 id="fr-find-h">Findings by layer</h2>
+    {% for L in r.layers if L.findings %}
+    <div class="fr-card fr-layer" data-layer="{{ L.layer }}">
+      <h3>L{{ L.layer }} · {{ L.name }}</h3>
+      {% for f in L.findings %}
+      <article class="fr-find" id="finding-{{ f.id }}">
+        <div class="fr-meta">
+          <span class="fr-pill {{ f.ftype }}">{{ f.ftype_label }}</span>
+          <span class="fr-pill {{ 'sev-high' if f.severity == 'high' }}">{{ f.severity|capitalize }} severity</span>
+          <span class="fr-pill">{{ (f.confidence * 100)|round|int }}% confidence</span>
+          <span class="fr-pill">{{ f.dimension_label }}</span>
+        </div>
+        <h3>{{ f.title }}</h3>
+        {% if f.detail %}<p>{{ f.detail }}</p>{% endif %}
+        {% if f.cited %}
+        <blockquote class="fr-cite">“{{ f.citation_text }}”<cite>{{ f.citation_label }}</cite></blockquote>
+        {% else %}
+        <p class="fr-cite">Source: not provided<cite>Nothing in your documents covers this yet.</cite></p>
+        {% endif %}
+        <div class="fr-foot">
+          {% if f.recommended_agent %}
+          <a class="link" href="/founder/v/{{ venture.id }}/team#{{ f.recommended_agent }}">Recommended agent: {{ f.agent_label }}</a>
+          {% else %}<span></span>{% endif %}
+          <div class="fr-rate" role="group" aria-label="Is this finding fair and correct?">
+            <span>Fair and correct?</span>
+            <button type="button" class="btn sm btn-ghost" data-rate="{{ f.id }}" data-fair="1" aria-pressed="{{ 'true' if f.my_rating == true else 'false' }}">Yes</button>
+            <button type="button" class="btn sm btn-ghost" data-rate="{{ f.id }}" data-fair="0" aria-pressed="{{ 'true' if f.my_rating == false else 'false' }}">No</button>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <p class="fr-sub" style="font-size:.85rem;margin-top:1.5rem">{{ legal('founder_not_advice') }}</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var root = document.getElementById('founder-report');
+  if (!root) return;
+  var vid = root.getAttribute('data-venture');
+  var status = root.getAttribute('data-status');
+  var msg = document.getElementById('fr-msg');
+  var btn = document.getElementById('fr-run');
+
+  function poll() {
+    fetch('/api/founder/v/' + vid + '/evaluation', {credentials: 'same-origin'})
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && d.status !== 'running') { window.location.reload(); return; }
+        setTimeout(poll, 5000);
+      })
+      .catch(function () { setTimeout(poll, 10000); });
+  }
+  if (status === 'running') setTimeout(poll, 5000);
+
+  if (btn) btn.addEventListener('click', function () {
+    btn.disabled = true;
+    fetch('/api/founder/v/' + vid + '/evaluate', {method: 'POST', credentials: 'same-origin'})
+      .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
+      .then(function (res) {
+        msg.textContent = res.d.message || '';
+        if (res.d.status === 'running') {
+          document.getElementById('fr-live').innerHTML = '<div class="fr-status"><span class="fr-spin" aria-hidden="true"></span><span>Evaluation running. This page updates when it finishes.</span></div>';
+          setTimeout(poll, 5000);
+        } else { btn.disabled = false; }
+      })
+      .catch(function () { msg.textContent = 'Could not start the evaluation. Try again.'; btn.disabled = false; });
+  });
+
+  root.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-rate]');
+    if (!b) return;
+    var fid = b.getAttribute('data-rate');
+    var fair = b.getAttribute('data-fair') === '1';
+    fetch('/api/founder/findings/' + fid + '/rating', {
+      method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({fair: fair})
+    }).then(function (r) {
+      if (!r.ok) { msg.textContent = 'Could not save your rating.'; return; }
+      var group = b.parentNode.querySelectorAll('[data-rate]');
+      for (var i = 0; i < group.length; i++) group[i].setAttribute('aria-pressed', group[i] === b ? 'true' : 'false');
+      msg.textContent = 'Thanks. Your rating helps us check the findings.';
+    });
+  });
+})();
+</script>
+{% endblock %}
