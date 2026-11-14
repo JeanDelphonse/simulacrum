@@ -591,6 +591,25 @@ def main():
         check('page copy passes the banned-phrase check', not compliance_filter.banned_phrases(visible),
               compliance_filter.banned_phrases(visible))
 
+        print('\n11b. Drafts and updates render as Markdown')
+        from app.models.founder import InvestorUpdate
+        md_draft = VentureOutreachAction(venture_id=V_ID, action_type='intro_request', level_required=3,
+                                         status='awaiting_approval', subject='Markdown check',
+                                         body='**Hi Sam,**\n\n- point one\n- point two\n\n<img src=x onerror=alert(1)>')
+        md_update = InvestorUpdate(venture_id=V_ID, subject='MD update', status='sent', recipient_count=1,
+                                   sent_at=datetime.utcnow(),
+                                   body='## Progress\n\n1. Twelve clinics live\n2. **Rung 4** reached')
+        db.session.add_all([md_draft, md_update])
+        db.session.commit()
+        html = client.get(page).get_data(as_text=True)
+        check('draft messages render as Markdown', '<strong>Hi Sam,</strong>' in html and '<li>point one</li>' in html)
+        check('sent updates render as Markdown', 'Progress</h' in html and '<strong>Rung 4</strong>' in html)
+        check('raw HTML in a draft is escaped, never rendered', '<img src=x' not in html)
+        check('no raw <pre> blocks are left for drafts or updates', '<pre>' not in html)
+        db.session.delete(md_draft)
+        db.session.delete(md_update)
+        db.session.commit()
+
         print('\n12. Investor switch off again: everything 404s')
         founder_feature.set_mode('founder_investor', 'off', A_ID)
         check('page 404', client.get(page).status_code == 404)

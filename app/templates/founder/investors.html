@@ -49,8 +49,22 @@
   .iv-meter { display: inline-block; width: 70px; height: 6px; background: var(--alt); border-radius: 99px; vertical-align: middle; overflow: hidden; margin-right: .35rem; }
   .iv-meter span { display: block; height: 100%; background: var(--ink); }
   .iv-draft { border: 1px solid var(--rule); border-radius: 10px; padding: .9rem; margin: 0 0 .8rem; }
-  .iv-draft pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: .9rem; line-height: 1.5; background: var(--alt);
-                  border-radius: 8px; padding: .7rem .8rem; margin: .5rem 0; max-height: 280px; overflow: auto; }
+  .iv-draft .iv-md { overflow-wrap: anywhere; font-size: .9rem; line-height: 1.55; background: var(--alt); color: var(--ink);
+                     border-radius: 8px; padding: .7rem .8rem; margin: .5rem 0; max-height: 320px; overflow: auto; }
+  /* Drafts and updates rendered from Markdown (escape-first renderer) */
+  .iv-md > :first-child { margin-top: 0; }
+  .iv-md > :last-child { margin-bottom: 0; }
+  .iv-md h1, .iv-md h2, .iv-md h3, .iv-md h4 { color: var(--ink); line-height: 1.3; margin: .9rem 0 .35rem; }
+  .iv-md h1 { font-size: 1.08rem; } .iv-md h2 { font-size: 1rem; } .iv-md h3 { font-size: .95rem; } .iv-md h4 { font-size: .9rem; }
+  .iv-md p { margin: .4rem 0; }
+  .iv-md ul, .iv-md ol { margin: .4rem 0; padding-left: 1.3rem; }
+  .iv-md li { margin: .15rem 0; }
+  .iv-md blockquote { margin: .45rem 0; padding-left: .7rem; border-left: 3px solid var(--rule); color: var(--ink-2); }
+  .iv-md table { border-collapse: collapse; margin: .5rem 0; font-size: .84rem; display: block; overflow-x: auto; max-width: 100%; }
+  .iv-md th, .iv-md td { border: 1px solid var(--rule); padding: .3rem .5rem; text-align: left; vertical-align: top; }
+  .iv-md th { background: #fff; }
+  .iv-md pre, .iv-md code { font-size: .82rem; white-space: pre-wrap; }
+  .iv-md hr { border: 0; border-top: 1px solid var(--rule); margin: .6rem 0; }
   .iv-kv { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .84rem; color: var(--ink-2); margin: .3rem 0; }
   .iv-kv b { color: var(--ink); font-weight: 600; }
   .iv-block { font-size: .85rem; color: #7C2D12; background: #FFF7ED; border-radius: 8px; padding: .45rem .6rem; margin: .4rem 0; }
@@ -227,7 +241,7 @@
               <span><b>Level:</b> {{ d.level or '?' }} · {{ d.level_label }} (most allowed {{ d.limits.max }})</span>
               <span><b>Approver:</b> {{ d.approver }}</span>
             </div>
-            <details><summary class="iv-hint" style="cursor:pointer;margin:0">Show the {{ 'answers' if a.action_type == 'application' else 'message' }}</summary><pre>{{ a.body }}</pre></details>
+            <details><summary class="iv-hint" style="cursor:pointer;margin:0">Show the {{ 'answers' if a.action_type == 'application' else 'message' }}</summary><div class="iv-md">{{ a.body|founder_md }}</div></details>
             {% if d.ref[0] == 'linkedin' %}
               <p class="iv-block">{{ linkedin_note }}</p>
               <button type="button" class="btn sm" data-copy="{{ a.id }}">Copy text</button>
@@ -283,7 +297,7 @@
             <div class="iv-head" style="margin:0"><h3>{{ u.subject or 'Untitled update' }}</h3><span class="iv-pill {{ u.status }}">{{ u.status }}</span></div>
             {% if u.status == 'sent' %}
               <p class="iv-meta">Sent {{ u.sent_at.strftime('%b %d, %Y') if u.sent_at }} to {{ u.recipient_count }} investor{{ '' if u.recipient_count == 1 else 's' }}.</p>
-              <details><summary class="iv-hint" style="cursor:pointer;margin:0">Show the update</summary><pre>{{ u.body }}</pre></details>
+              <details><summary class="iv-hint" style="cursor:pointer;margin:0">Show the update</summary><div class="iv-md">{{ u.body|founder_md }}</div></details>
             {% else %}
               <div class="iv-row"><label for="us-{{ u.id }}">Subject</label><input type="text" id="us-{{ u.id }}" name="subject" value="{{ u.subject or '' }}" maxlength="300"></div>
               <div class="iv-row"><label for="ub-{{ u.id }}">Update</label><textarea id="ub-{{ u.id }}" name="body">{{ u.body }}</textarea></div>
@@ -415,8 +429,9 @@
   });
   document.querySelectorAll('[data-copy]').forEach(function (b) {
     b.addEventListener('click', function () {
-      var pre = b.closest('.iv-draft').querySelector('pre');
-      if (navigator.clipboard) { navigator.clipboard.writeText(pre.textContent).then(function () { say(near(b), 'Copied. Paste it into LinkedIn yourself.', true); }); }
+      var md = b.closest('.iv-draft').querySelector('.iv-md');
+      // innerText: the rendered message as plain text (no Markdown marks) for pasting into LinkedIn
+      if (md && navigator.clipboard) { navigator.clipboard.writeText(md.innerText || md.textContent).then(function () { say(near(b), 'Copied. Paste it into LinkedIn yourself.', true); }); }
     });
   });
   document.querySelectorAll('[data-recipient]').forEach(function (f) {
