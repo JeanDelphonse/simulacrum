@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Support access — {{ venture.name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:720px;padding-top:2.5rem;padding-bottom:3rem;color:var(--ink)">
+  <p style="font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .5rem">Founder Track · {{ venture.name }}</p>
+  <h1 style="font-size:1.75rem;margin:0 0 .6rem">Let SimiSI support see your venture</h1>
+  <p style="color:var(--ink-2);line-height:1.6;margin:0 0 1.4rem">Turn this on when you ask us for help with an agent run, so we can read what the agent read and wrote.</p>
+  {% if nav %}{% set active = 'support' %}{% include 'founder/_ws_nav.html' %}{% endif %}
+  {% include 'founder/_support_access.html' %}
+</div>
+{% endblock %}

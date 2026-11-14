@@ -318,10 +318,20 @@ def current() -> object:
     return getattr(_local, 'run', None)
 
 
+# Founder Track layers (FOUNDER_PLAN.md WP7). Opt-in: only a caller that passes
+# one of these strings gets it back; every L-code and integer input normalises
+# exactly as before, and LAYER_CODES (the overview cards) is unchanged, so
+# founder runs never fold into the wealth L6 card.
+FOUNDER_LAYER_CODES = ('F1', 'F2', 'F3', 'F4', 'F5')
+
+
 def layer_code(layer_number) -> str:
-    """Normalise a layer to its L-code. Anything unrecognised reads as L6."""
+    """Normalise a layer to its L-code. Anything unrecognised reads as L6.
+    Founder codes 'F1'..'F5' pass through unchanged."""
     if isinstance(layer_number, str):
         code = layer_number.upper()
+        if code in FOUNDER_LAYER_CODES:
+            return code
         return code if code in LAYER_CODES else 'L6'
     try:
         code = 'L%d' % int(layer_number)

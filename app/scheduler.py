@@ -151,6 +151,20 @@ def _observability_retention_job(app):
     _run_with_retry(app, 'observability retention job', _run)
 
 
+def _founder_alerts_job(app):
+    """FOUNDER_PLAN.md WP7 — Founder Track fleet alerts. A no-op while the
+    founder_track switch is off, which is the default."""
+    def _run():
+        from app.services import founder_feature
+        if founder_feature.mode() == 'off':
+            return
+        from app.services import founder_alerts
+        fired = founder_alerts.evaluate()
+        if any(fired.values()):
+            logger.info('APScheduler: founder alerts — %s', fired)
+    _run_with_retry(app, 'founder alerts job', _run)
+
+
 def start_scheduler(app):
     """Start the background scheduler.  Safe to call multiple times — no-ops if already running.
     If APScheduler is not installed the function logs a warning and returns — the app still starts."""
@@ -271,6 +285,17 @@ def start_scheduler(app):
         minute=45,
         args=[app],
         id='observability-retention-nightly',
+        replace_existing=True,
+    )
+
+    # FOUNDER_PLAN.md WP7: Founder Track alerts. Additive; the job returns at
+    # once while the founder_track switch is off.
+    _scheduler.add_job(
+        _founder_alerts_job,
+        'interval',
+        seconds=900,
+        args=[app],
+        id='founder-alerts-check',
         replace_existing=True,
     )
 

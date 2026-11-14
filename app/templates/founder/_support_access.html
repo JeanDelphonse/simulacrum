@@ -1,0 +1,57 @@
+{# Founder-granted support access card (WP7). Needs `venture` and `support`
+   (founder_obs_service.support_status). Works without JS: the plain form post
+   returns to the support page with a message; with JS the script posts JSON
+   and updates the card in place. #}
+<section class="card fsa" aria-labelledby="fsa-title"
+         style="padding:1.15rem 1.25rem;border:1px solid var(--rule);border-radius:var(--r-ui);background:#fff">
+  <h2 id="fsa-title" style="font-size:1.05rem;margin:0 0 .4rem">Support access</h2>
+  <p style="margin:0 0 .8rem;line-height:1.6;color:var(--ink-2)">
+    SimiSI support staff see only run details such as timings, status and cost. Your documents,
+    contact names and message text stay hidden from them unless you turn this on. It switches itself
+    off when the time is up, and every time staff open your content it is recorded.
+  </p>
+  <p id="fsa-state" role="status" aria-live="polite" style="margin:0 0 .9rem;font-weight:600">
+    {% if support.active %}On until {{ support.until[:16].replace('T', ' ') }} UTC.{% else %}Off. Support staff can't see your content.{% endif %}
+  </p>
+  <form id="fsa-form" method="post" action="{{ url_for('founder.support_access_set', venture_id=venture.id) }}"
+        data-venture="{{ venture.id }}" style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end">
+    <div id="fsa-days-wrap" {% if support.active %}hidden{% endif %}>
+      <label for="fsa-days" style="display:block;font-size:.85rem;color:var(--mute);margin:0 0 .25rem">Days</label>
+      <input id="fsa-days" name="days" type="number" inputmode="numeric" min="1" max="{{ support.max_days }}"
+             value="{{ support.default_days }}" style="width:6rem;padding:.5rem .6rem;border:1px solid var(--rule);border-radius:var(--r-ui);font:inherit">
+    </div>
+    <input type="hidden" name="grant" id="fsa-grant" value="{{ '0' if support.active else '1' }}">
+    <button class="btn{% if not support.active %} primary{% endif %}" id="fsa-btn" type="submit">
+      {% if support.active %}Turn off support access{% else %}Turn on support access{% endif %}
+    </button>
+  </form>
+  <p id="fsa-msg" role="alert" style="margin:.6rem 0 0;color:var(--danger, #b91c1c);font-size:.9rem;min-height:1em"></p>
+</section>
+<script>
+(function () {
+  var form = document.getElementById('fsa-form');
+  if (!form || !window.fetch) return;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var grant = document.getElementById('fsa-grant').value === '1';
+    var msg = document.getElementById('fsa-msg');
+    msg.textContent = '';
+    fetch('/api/founder/v/' + form.getAttribute('data-venture') + '/support-access', {
+      method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({grant: grant, days: document.getElementById('fsa-days').value})
+    }).then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.textContent = res.d.error || 'Could not save that.'; return; }
+        var on = !!res.d.active;
+        document.getElementById('fsa-state').textContent = on
+          ? 'On until ' + res.d.until.slice(0, 16).replace('T', ' ') + ' UTC.'
+          : "Off. Support staff can't see your content.";
+        document.getElementById('fsa-grant').value = on ? '0' : '1';
+        document.getElementById('fsa-days-wrap').hidden = on;
+        var btn = document.getElementById('fsa-btn');
+        btn.textContent = on ? 'Turn off support access' : 'Turn on support access';
+        btn.classList.toggle('primary', !on);
+      }).catch(function () { msg.textContent = 'Could not reach SimiSI. Try again.'; });
+  });
+})();
+</script>

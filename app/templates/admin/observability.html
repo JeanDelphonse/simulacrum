@@ -210,6 +210,8 @@
     <button class="ob-tab" data-panel="guardrails">Guardrails</button>
     <button class="ob-tab" data-panel="audit">Access audit</button>
     <button class="ob-tab" data-panel="settings">Settings</button>
+    {# Founder Track (WP7): hidden unless the founder_track switch is on; see _obs_founder.html #}
+    <button class="ob-tab" data-panel="founder" id="obFounderTab" hidden>Founder Track</button>
   </div>
 
   {# ── Layer overview ──────────────────────────────────────────────────── #}
@@ -307,6 +309,7 @@
       </div>
     </div>
   </div>
+{% include 'admin/_obs_founder.html' %}
 </div>
 
 {# ── Guardrail drawer ──────────────────────────────────────────────────── #}

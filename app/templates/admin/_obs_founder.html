@@ -1,0 +1,428 @@
+{# Founder Track tab of /admin/observability (FOUNDER_PLAN.md WP7).
+   Included once by admin/observability.html. The tab button there starts
+   hidden; this script shows it only while the founder_track switch is not off,
+   so with the switch off the console looks exactly as before. #}
+<style>
+.fo-sub { display:flex; gap:.35rem; flex-wrap:wrap; margin:0 0 1rem; }
+.fo-sub button { border:1px solid #d1d5db; background:#fff; border-radius:999px; padding:.3rem .8rem; font:inherit; font-size:.78rem; font-weight:600; color:#4b5563; cursor:pointer; }
+.fo-sub button[aria-pressed="true"] { border-color:#0d9488; background:#f0fdfa; color:#0f766e; }
+.fo-sub button:focus-visible, .fo-act:focus-visible { outline:2px solid #0d9488; outline-offset:2px; }
+.fo-view { display:none; } .fo-view.active { display:block; }
+.fo-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.fo-scroll .ob-table { min-width:640px; }
+.fo-masked { color:#9ca3af; font-style:italic; }
+.fo-pill { display:inline-block; padding:.05rem .45rem; border-radius:999px; font-size:.68rem; font-weight:700; background:#f3f4f6; color:#4b5563; }
+.fo-pill.on { background:#fef3c7; color:#92400e; } .fo-pill.ok { background:#ccfbf1; color:#115e59; } .fo-pill.bad { background:#fee2e2; color:#991b1b; }
+.fo-row { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin-bottom:.9rem; }
+.fo-row select, .fo-row input { border:1px solid #d1d5db; border-radius:6px; padding:.35rem .5rem; font:inherit; font-size:.82rem; max-width:100%; }
+.fo-tl { list-style:none; margin:0; padding:0; }
+.fo-tl li { border-left:2px solid #e5e7eb; margin-left:.3rem; padding:0 0 .8rem 1rem; position:relative; }
+.fo-tl li::before { content:''; position:absolute; left:-5px; top:.3rem; width:8px; height:8px; border-radius:50%; background:#94a3b8; }
+.fo-tl li.run::before { background:#0d9488; } .fo-tl li.approval::before { background:#C9952A; } .fo-tl li.evaluation::before { background:#6d5b9c; }
+.fo-tl .t { font-size:.68rem; color:#6b7280; font-family:ui-monospace,monospace; }
+.fo-tl .x { font-size:.82rem; color:#1f2937; margin-top:.1rem; overflow-wrap:anywhere; }
+.fo-tl .d { font-size:.74rem; color:#6b7280; margin-top:.15rem; overflow-wrap:anywhere; }
+</style>
+
+<div class="ob-panel" id="panel-founder" aria-labelledby="obFounderTab">
+  <div class="fo-sub" role="group" aria-label="Founder Track views">
+    <button type="button" data-fo="fleet" aria-pressed="true">Fleet</button>
+    <button type="button" data-fo="trace" aria-pressed="false">Venture trace</button>
+    <button type="button" data-fo="autonomy" aria-pressed="false">Autonomy audit</button>
+    <button type="button" data-fo="quality" aria-pressed="false">Evaluation quality</button>
+    <button type="button" data-fo="compliance" aria-pressed="false">Compliance</button>
+    <button type="button" data-fo="connectors" aria-pressed="false">Connectors</button>
+    <button type="button" data-fo="pages" aria-pressed="false">Startup pages</button>
+    <button type="button" data-fo="alerts" aria-pressed="false">Alerts</button>
+  </div>
+  <div id="foMsg" role="status" aria-live="polite"></div>
+
+  <div class="fo-view active" id="fo-fleet">
+    <div class="ob-summary" id="foTotals"></div>
+    <div class="ob-card">
+      <h2>By founder layer</h2>
+      <p class="hint">Founder runs only (layers F1 to F5). They never appear in the wealth-layer cards on the Layer overview. Cost is the recorded cost per run; where none was recorded it is estimated from tokens.</p>
+      <div class="fo-scroll" id="foLayers"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="ob-card">
+      <h2>By agent</h2>
+      <p class="hint">Pausing an agent stops it for every venture until you resume it. Runs already in flight finish.</p>
+      <div class="fo-scroll" id="foAgents"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="ob-card">
+      <h2>Failed runs</h2>
+      <p class="hint">Re-running a failed run sends its plan step back to the same agent. It is refused while the venture or the agent is paused.</p>
+      <div class="fo-scroll" id="foFailed"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="fo-view" id="fo-trace">
+    <div class="ob-card">
+      <h2>Venture trace</h2>
+      <p class="hint">Runs, plan-step changes, approvals and evaluations for one venture, newest first. Opening a trace is recorded in the access audit. Documents, contact names and message text are masked unless the founders turned on support access.</p>
+      <div class="fo-row">
+        <label for="foVenture" class="muted" style="font-size:.78rem">Venture</label>
+        <select id="foVenture"><option value="">Choose a venture…</option></select>
+        <button type="button" class="btn btn-sec btn-xs fo-act" id="foPauseVenture" hidden></button>
+      </div>
+      <div id="foTraceHead"></div>
+      <div id="foTrace"><div class="empty">Choose a venture to see its trace.</div></div>
+    </div>
+  </div>
+
+  <div class="fo-view" id="fo-autonomy">
+    <div class="ob-summary" id="foAutoStats"></div>
+    <div class="ob-card">
+      <h2>External actions</h2>
+      <p class="hint">Every drafted, approved, sent or blocked external action with the autonomy level it needed and the level it went out under. Levels: 1 advisor only, 2 approve each action, 3 approve the campaign, 4 act within limits. A send above its approved level is flagged at once; the expected count is zero.</p>
+      <div class="fo-scroll" id="foActions"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="fo-view" id="fo-quality">
+    <div class="ob-summary" id="foQualStats"></div>
+    <div class="ob-card"><h2>Finding accuracy by rubric dimension</h2>
+      <p class="hint">From founders rating findings fair or not fair.</p>
+      <div class="fo-scroll" id="foQualDim"><div class="empty">Loading…</div></div></div>
+    <div class="ob-card"><h2>Finding accuracy by recommended agent</h2>
+      <div class="fo-scroll" id="foQualAgent"><div class="empty">Loading…</div></div></div>
+    <div class="ob-card"><h2>Parameter overrides</h2>
+      <p class="hint">How often founders change an agent's recommended settings. A high rate means the defaults miss.</p>
+      <div class="fo-scroll" id="foOverrides"><div class="empty">Loading…</div></div></div>
+  </div>
+
+  <div class="fo-view" id="fo-compliance">
+    <div class="ob-summary" id="foCompStats"></div>
+    <div class="ob-card"><h2>Blocked actions</h2>
+      <p class="hint">Actions the compliance checks or the exemption gate stopped.</p>
+      <div class="fo-scroll" id="foBlocked"><div class="empty">Loading…</div></div></div>
+    <div class="ob-card"><h2>Exemption recorded per venture</h2>
+      <div class="fo-scroll" id="foExempt"><div class="empty">Loading…</div></div></div>
+  </div>
+
+  <div class="fo-view" id="fo-connectors">
+    <div class="ob-card"><h2>Connectors</h2>
+      <p class="hint">Mailbox and form-submission connectors arrive with investor connection. Until then this lists the tool calls founder runs made and how many failed.</p>
+      <div class="ob-summary" id="foConnStats"></div>
+      <div class="fo-scroll" id="foConn"><div class="empty">Loading…</div></div></div>
+  </div>
+
+  <div class="fo-view" id="fo-pages">
+    <div class="ob-summary" id="foPageStats"></div>
+    <div class="ob-card"><h2>Startup pages</h2>
+      <p class="hint">Views in the selected window. Unlocks, incomplete payments, refunds and updates sent come from investor connection; a dash means those tables aren't in use yet.</p>
+      <div class="fo-scroll" id="foPages"><div class="empty">Loading…</div></div></div>
+  </div>
+
+  <div class="fo-view" id="fo-alerts">
+    <div class="ob-card"><h2>Alert rules</h2>
+      <p class="hint">Checked every 15 minutes while the Founder Track is switched on. Alerts are written to the Flags tab as well. The error-rate, cost and stuck-step thresholds are the same settings as on <a href="/admin/founder">Founder Track settings</a>; a change on either page shows on both.</p>
+      <div class="fo-scroll" id="foRules"><div class="empty">Loading…</div></div>
+      <div style="margin-top:.8rem"><button type="button" class="btn btn-sec btn-xs fo-act" id="foEvalNow">Check now</button></div>
+    </div>
+    <div class="ob-card"><h2>Recent alerts</h2>
+      <div class="fo-scroll" id="foAlertFlags"><div class="empty">Loading…</div></div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var API = (window.ROOT || '') + '/api/admin/observability/founder';
+  var tab = document.getElementById('obFounderTab');
+  if (!tab) return;
+  var state = { view: 'fleet', venture: '', ventures: [] };
+
+  function el(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v === null || v === undefined ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function dash(v) { return v === null || v === undefined ? '—' : esc(v); }
+  function pct(v) { return v === null || v === undefined ? '—' : esc(v) + '%'; }
+  function when(iso) { return iso ? esc(iso.slice(0, 16).replace('T', ' ')) : '—'; }
+  function masked(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    return /^\[masked/.test(v) ? '<span class="fo-masked">masked</span>' : esc(v);
+  }
+  function hours() { var h = el('fHours'); return h && h.value ? h.value : '24'; }
+  function api(path, opts) {
+    return fetch(API + path, Object.assign({ credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' } }, opts || {})).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) throw new Error(d.error || ('Request failed (' + r.status + ')'));
+        return d;
+      });
+    });
+  }
+  function say(text, bad) {
+    el('foMsg').innerHTML = text ? '<div class="' + (bad ? 'err-box' : 'warn-box') + '">' + esc(text) + '</div>' : '';
+  }
+  function table(head, rows, empty) {
+    if (!rows.length) return '<div class="empty">' + esc(empty || 'Nothing in this window.') + '</div>';
+    return '<table class="ob-table"><thead><tr>' + head.map(function (h) { return '<th>' + h + '</th>'; }).join('') +
+      '</tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+  }
+  function stats(id, items) {
+    el(id).innerHTML = items.map(function (s) {
+      return '<div class="ob-stat"><div class="ob-stat-label">' + esc(s[0]) + '</div><div class="ob-stat-value' +
+        (s[2] ? ' ' + s[2] : '') + '">' + s[1] + '</div></div>';
+    }).join('');
+  }
+  function money(v) { return v === null || v === undefined ? '—' : '$' + Number(v).toFixed(2); }
+  function cents(v) { return v === null || v === undefined ? '—' : '$' + (Number(v) / 100).toFixed(2); }
+  function status(s) { return '<span class="st ' + esc(s) + '">' + esc(s) + '</span>'; }
+
+  // ── Fleet ──
+  function loadFleet() {
+    api('/fleet?hours=' + hours()).then(function (d) {
+      var t = d.totals;
+      stats('foTotals', [['Founder runs', esc(t.runs)], ['Success rate', pct(t.success_rate)],
+        ['Errors', esc(t.errors), 'err'], ['Avg latency', t.avg_latency_ms === null ? '—' : esc(t.avg_latency_ms) + ' ms'],
+        ['Cost', money(t.cost), 'spend'], ['Paused agents', esc(d.paused_agents.length)]]);
+      el('foLayers').innerHTML = table(['Layer', 'Runs', 'Success', 'Errors', 'Avg latency', 'Cost'],
+        d.layers.map(function (l) {
+          return '<tr><td><b>' + esc(l.layer) + '</b> · ' + esc(l.layer_name) + '</td><td>' + esc(l.runs) +
+            '</td><td>' + pct(l.success_rate) + '</td><td>' + esc(l.errors) + '</td><td>' +
+            (l.avg_latency_ms === null ? '—' : esc(l.avg_latency_ms) + ' ms') + '</td><td>' + money(l.cost) +
+            (l.cost_estimated ? ' <span class="muted">(est.)</span>' : '') + '</td></tr>';
+        }));
+      el('foAgents').innerHTML = table(['Agent', 'Layer', 'Runs', 'Success', 'Error rate', 'Avg latency', 'Cost', ''],
+        d.agents.map(function (a) {
+          return '<tr><td>' + esc(a.agent_label) + (a.paused ? ' <span class="fo-pill on">paused</span>' : '') +
+            '</td><td>' + dash(a.layer) + '</td><td>' + esc(a.runs) + '</td><td>' + pct(a.success_rate) +
+            '</td><td>' + pct(a.error_rate) + '</td><td>' + (a.avg_latency_ms === null ? '—' : esc(a.avg_latency_ms) + ' ms') +
+            '</td><td>' + money(a.cost) + '</td><td><button type="button" class="btn btn-sec btn-xs fo-act js-pause" data-key="' +
+            esc(a.agent_key) + '" data-paused="' + (a.paused ? '1' : '0') + '">' + (a.paused ? 'Resume' : 'Pause') + '</button></td></tr>';
+        }), 'No founder agent has run in this window.');
+      wirePause(el('foAgents'));
+    }).catch(function (e) { say(e.message, true); });
+    api('/runs?status=error&hours=' + hours()).then(function (d) {
+      el('foFailed').innerHTML = table(['When', 'Agent', 'Venture', 'Error', 'Trigger', ''], d.runs.map(function (r) {
+        return '<tr><td>' + when(r.started_at) + '</td><td>' + esc(r.agent_label) + '</td><td>' + dash(r.venture_name) +
+          '</td><td class="mono">' + dash(r.error_code) + '</td><td>' + dash(r.trigger) + '</td><td>' +
+          (r.can_rerun ? '<button type="button" class="btn btn-sec btn-xs fo-act js-rerun" data-run="' + esc(r.run_id) + '">Re-run</button>' : '') +
+          '</td></tr>';
+      }), 'No failed founder runs in this window.');
+      Array.prototype.forEach.call(el('foFailed').querySelectorAll('.js-rerun'), function (b) {
+        b.addEventListener('click', function () {
+          b.disabled = true;
+          api('/runs/' + b.getAttribute('data-run') + '/rerun', { method: 'POST', body: '{}' })
+            .then(function () { say('Re-run finished. The new run is in the list.'); loadFleet(); })
+            .catch(function (e) { say(e.message, true); b.disabled = false; });
+        });
+      });
+    }).catch(function () {});
+  }
+  function wirePause(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('.js-pause'), function (b) {
+      b.addEventListener('click', function () {
+        var pause = b.getAttribute('data-paused') !== '1';
+        b.disabled = true;
+        api('/agents/' + encodeURIComponent(b.getAttribute('data-key')) + '/pause',
+            { method: 'POST', body: JSON.stringify({ paused: pause }) })
+          .then(function () { say(pause ? 'Agent paused for every venture.' : 'Agent resumed.'); loadFleet(); })
+          .catch(function (e) { say(e.message, true); b.disabled = false; });
+      });
+    });
+  }
+
+  // ── Venture trace ──
+  function loadVentures() {
+    return api('/ventures?hours=' + hours()).then(function (d) {
+      state.ventures = d.ventures;
+      el('foVenture').innerHTML = '<option value="">Choose a venture…</option>' + d.ventures.map(function (v) {
+        return '<option value="' + esc(v.id) + '"' + (v.id === state.venture ? ' selected' : '') + '>' + esc(v.name) +
+          ' · ' + esc(v.runs) + ' runs' + (v.paused ? ' · paused' : '') + (v.support_access ? ' · support access on' : '') + '</option>';
+      }).join('');
+    });
+  }
+  function loadTrace() {
+    var vid = el('foVenture').value;
+    state.venture = vid;
+    var btn = el('foPauseVenture');
+    if (!vid) { btn.hidden = true; el('foTraceHead').innerHTML = ''; el('foTrace').innerHTML = '<div class="empty">Choose a venture to see its trace.</div>'; return; }
+    api('/ventures/' + vid + '/trace?hours=' + hours()).then(function (d) {
+      var v = d.venture;
+      btn.hidden = false;
+      btn.textContent = v.paused ? 'Resume all agents for this venture' : 'Pause all agents for this venture';
+      btn.setAttribute('data-paused', v.paused ? '1' : '0');
+      el('foTraceHead').innerHTML = '<p class="hint" style="margin:0 0 .8rem">' +
+        '<b>' + esc(v.name) + '</b> · ' + esc(v.stage) + ' · rung ' + esc(v.rung) + ' · ' + esc(v.status) +
+        (v.paused ? ' <span class="fo-pill on">agents paused</span>' : '') + ' ' +
+        (d.unmasked ? '<span class="fo-pill ok">support access on until ' + when(d.support_access_until) + ' (this view is audited)</span>'
+                    : '<span class="fo-pill">content masked</span>') + '</p>';
+      if (!d.items.length) { el('foTrace').innerHTML = '<div class="empty">No activity recorded for this venture yet.</div>'; return; }
+      el('foTrace').innerHTML = '<ul class="fo-tl">' + d.items.map(function (i) {
+        var x, extra = '';
+        if (i.kind === 'run') {
+          x = 'Run · ' + esc(i.agent_label) + ' · ' + status(i.status);
+          extra = esc(i.layer) + ' · trigger ' + dash(i.trigger) + ' · ' + (i.latency_ms === null ? '—' : esc(i.latency_ms) + ' ms') +
+            ' · ' + cents(i.cost_cents) + (i.autonomy_level ? ' · level ' + esc(i.autonomy_level) : '') +
+            (i.approved_by ? ' · approved by ' + esc(i.approved_by) : '') + (i.error_code ? ' · <span class="mono">' + esc(i.error_code) + '</span>' : '');
+        } else if (i.kind === 'step') {
+          x = 'Step · ' + dash(i.step_title) + ' · ' + dash(i.from_state) + ' → ' + dash(i.to_state);
+          extra = esc(i.actor_kind) + (i.actor ? ' (' + esc(i.actor) + ')' : '') + (i.note ? ' · ' + masked(i.note) : '');
+        } else if (i.kind === 'approval') {
+          x = 'Action · ' + esc(i.action_type) + ' · ' + status(i.status) + (i.above_level ? ' <span class="fo-pill bad">above approved level</span>' : '');
+          extra = 'level needed ' + dash(i.level_required) + ', applied ' + dash(i.level_applied) +
+            (i.approved_by ? ' · approved by ' + esc(i.approved_by) : '') + ' · to ' + masked(i.target) + ' · ' + masked(i.subject) +
+            (i.block_reason ? ' · blocked: ' + esc(i.block_reason) : '');
+        } else {
+          x = 'Evaluation · ' + status(i.status) + (i.overall_score !== null && i.overall_score !== undefined ? ' · score ' + esc(Math.round(i.overall_score)) : '');
+          extra = cents(i.cost_cents);
+        }
+        return '<li class="' + esc(i.kind) + '"><div class="t">' + when(i.at) + '</div><div class="x">' + x + '</div><div class="d">' + extra + '</div></li>';
+      }).join('') + '</ul>';
+    }).catch(function (e) { say(e.message, true); });
+  }
+  el('foVenture').addEventListener('change', loadTrace);
+  el('foPauseVenture').addEventListener('click', function () {
+    var b = el('foPauseVenture'), pause = b.getAttribute('data-paused') !== '1';
+    b.disabled = true;
+    api('/ventures/' + state.venture + '/pause', { method: 'POST', body: JSON.stringify({ paused: pause }) })
+      .then(function () { say(pause ? 'All agents for this venture are paused.' : 'Agents for this venture resumed.'); b.disabled = false; loadVentures().then(loadTrace); })
+      .catch(function (e) { say(e.message, true); b.disabled = false; });
+  });
+
+  // ── Autonomy audit ──
+  function loadAutonomy() {
+    api('/autonomy?hours=' + hours()).then(function (d) {
+      stats('foAutoStats', [['Actions', esc(d.actions.length)], ['Sent', esc(d.by_status.sent || 0)],
+        ['Awaiting approval', esc(d.by_status.awaiting_approval || 0)], ['Blocked', esc(d.by_status.blocked || 0), 'flag'],
+        ['Above approved level', esc(d.above_level), d.above_level ? 'err' : '']]);
+      el('foActions').innerHTML = table(['When', 'Venture', 'Action', 'Level needed', 'Level applied', 'Status', 'Approver', 'To', 'Subject'],
+        d.actions.map(function (a) {
+          return '<tr><td>' + when(a.sent_at || a.created_at) + '</td><td>' + dash(a.venture_name) + '</td><td>' + esc(a.action_type) +
+            '</td><td>' + dash(a.level_required) + '</td><td>' + dash(a.level_applied) + '</td><td>' + status(a.status) +
+            (a.above_level ? ' <span class="fo-pill bad">above level</span>' : '') + (a.block_reason ? '<div class="muted" style="font-size:.72rem">' + esc(a.block_reason) + '</div>' : '') +
+            '</td><td>' + dash(a.approved_by) + '</td><td>' + masked(a.target) + '</td><td>' + masked(a.subject) + '</td></tr>';
+        }), 'No external actions in this window.');
+    }).catch(function (e) { say(e.message, true); });
+  }
+
+  // ── Evaluation quality ──
+  function loadQuality() {
+    api('/eval-quality').then(function (d) {
+      stats('foQualStats', [['Ratings', esc(d.ratings)], ['Rated fair', pct(d.accuracy)],
+        ['Target', d.accuracy_target === null || d.accuracy_target === undefined ? '—' : esc(d.accuracy_target) + '%']]);
+      var rr = function (key, label) { return function (r) {
+        return '<tr><td>' + esc(label ? r[label] : r[key]) + '</td><td>' + esc(r.ratings) + '</td><td>' + esc(r.fair) + '</td><td>' + pct(r.accuracy) + '</td></tr>'; }; };
+      el('foQualDim').innerHTML = table(['Dimension', 'Ratings', 'Fair', 'Accuracy'], d.by_dimension.map(rr('dimension')), 'No findings rated yet.');
+      el('foQualAgent').innerHTML = table(['Agent', 'Ratings', 'Fair', 'Accuracy'], d.by_agent.map(rr('agent_key', 'agent_label')), 'No findings rated yet.');
+      el('foOverrides').innerHTML = table(['Agent', 'Recommended', 'Overrides', 'Override rate'], d.overrides_by_agent.map(function (r) {
+        return '<tr><td>' + esc(r.agent_label) + '</td><td>' + esc(r.blueprints) + '</td><td>' + esc(r.overrides) + '</td><td>' + pct(r.override_rate) + '</td></tr>';
+      }), 'No agents recommended yet.') + (d.overrides_by_param.length ? '<p class="hint" style="margin:.8rem 0 0">By setting: ' +
+        d.overrides_by_param.map(function (p) { return esc(p.param_key) + ' ' + esc(p.overrides); }).join(' · ') + '</p>' : '');
+    }).catch(function (e) { say(e.message, true); });
+  }
+
+  // ── Compliance ──
+  function loadCompliance() {
+    api('/compliance?hours=' + hours()).then(function (d) {
+      var ex = d.by_exemption;
+      stats('foCompStats', [['Blocked actions', esc(d.blocked_actions.length), 'flag'], ['Compliance warnings', esc(d.warning_events)],
+        ['506(b)', esc(ex['506b'] || 0)], ['506(c)', esc(ex['506c'] || 0)], ['Undecided', esc(ex.undecided || 0)],
+        ['Not recorded', esc(ex.not_recorded || 0)]]);
+      el('foBlocked').innerHTML = table(['When', 'Venture', 'Action', 'Reason'], d.blocked_actions.map(function (a) {
+        return '<tr><td>' + when(a.created_at) + '</td><td>' + dash(a.venture_name) + '</td><td>' + esc(a.action_type) + '</td><td>' + dash(a.block_reason) + '</td></tr>';
+      }), 'Nothing blocked in this window.') + (d.flags_by_rule.length ? '<p class="hint" style="margin:.8rem 0 0">Flags on founder runs: ' +
+        d.flags_by_rule.map(function (f) { return esc(f.rule_name) + ' ' + esc(f.count); }).join(' · ') + '</p>' : '');
+      el('foExempt').innerHTML = table(['Venture', 'Exemption', 'Recorded', 'Mailbox consent', 'Contacts consent'], d.ventures.map(function (v) {
+        return '<tr><td>' + esc(v.venture_name) + '</td><td>' + esc(v.exemption.replace('_', ' ')) + '</td><td>' + when(v.recorded_at) +
+          '</td><td>' + (v.mailbox_consent ? 'yes' : 'no') + '</td><td>' + (v.contacts_consent ? 'yes' : 'no') + '</td></tr>';
+      }), 'No ventures yet.');
+    }).catch(function (e) { say(e.message, true); });
+  }
+
+  // ── Connectors ──
+  function loadConnectors() {
+    api('/connectors?hours=' + hours()).then(function (d) {
+      stats('foConnStats', [['Calls', esc(d.calls)], ['Failures', esc(d.failures), d.failures ? 'err' : ''],
+        ['Mailbox consents', esc(d.consents.mailbox)], ['Contacts consents', esc(d.consents.contacts)]]);
+      el('foConn').innerHTML = table(['Tool', 'Calls', 'Failures'], d.tools.map(function (t) {
+        return '<tr><td class="mono">' + esc(t.tool) + '</td><td>' + esc(t.calls) + '</td><td>' + esc(t.failures) + '</td></tr>';
+      }), 'No connector calls in this window.');
+    }).catch(function (e) { say(e.message, true); });
+  }
+
+  // ── Startup pages ──
+  function loadPages() {
+    api('/startup-pages?hours=' + hours()).then(function (d) {
+      stats('foPageStats', [['Pages', esc(d.totals.pages)], ['Published', esc(d.totals.published)],
+        ['Views', esc(d.totals.views)], ['Investor unlocks', esc(d.totals.unlocks)]]);
+      el('foPages').innerHTML = table(['Page', 'Status', 'Public views', 'Investor views', 'Unlocks', 'Payments not completed', 'Refunds', 'Updates sent'],
+        d.pages.map(function (p) {
+          return '<tr><td>' + esc(p.name) + ' <span class="muted mono">/startup/' + esc(p.slug) + '</span></td><td>' + esc(p.status) +
+            (p.name_check === 'held' ? ' <span class="fo-pill on">name held</span>' : '') + '</td><td>' + esc(p.public_views) + '</td><td>' +
+            esc(p.investor_views) + '</td><td>' + dash(p.unlocks) + '</td><td>' + dash(p.payments_incomplete) + '</td><td>' + dash(p.refunds) +
+            '</td><td>' + dash(p.updates_sent) + '</td></tr>';
+        }), 'No startup pages yet.');
+    }).catch(function (e) { say(e.message, true); });
+  }
+
+  // ── Alerts ──
+  function loadAlerts() {
+    api('/alerts?hours=' + hours()).then(function (d) {
+      el('foRules').innerHTML = table(['Alert', 'Threshold', 'On', ''], d.rules.map(function (r) {
+        var id = 'foRule-' + r.metric;
+        return '<tr><td><label for="' + id + '">' + esc(r.label) + '</label><div class="muted" style="font-size:.72rem">' + esc(r.unit) + '</div></td><td>' +
+          (r.locked ? 'any' : '<input id="' + id + '" type="number" min="0" step="1" value="' + esc(r.threshold) + '" style="width:7rem;border:1px solid #d1d5db;border-radius:6px;padding:.3rem .45rem;font:inherit">') +
+          '</td><td>' + (r.locked ? 'always' : '<input type="checkbox" aria-label="' + esc(r.label) + ' on" id="' + id + '-on"' + (r.enabled ? ' checked' : '') + '>') +
+          '</td><td>' + (r.locked ? '' : '<button type="button" class="btn btn-sec btn-xs fo-act js-rule" data-metric="' + esc(r.metric) + '">Save</button>') + '</td></tr>';
+      }));
+      Array.prototype.forEach.call(el('foRules').querySelectorAll('.js-rule'), function (b) {
+        b.addEventListener('click', function () {
+          var m = b.getAttribute('data-metric');
+          api('/alerts', { method: 'PUT', body: JSON.stringify({ metric: m, threshold: el('foRule-' + m).value,
+            enabled: el('foRule-' + m + '-on').checked }) })
+            .then(function () { say('Alert rule saved.'); loadAlerts(); }).catch(function (e) { say(e.message, true); });
+        });
+      });
+      el('foAlertFlags').innerHTML = table(['When', 'Alert', 'Severity', 'Reason'], d.flags.map(function (f) {
+        return '<tr><td>' + when(f.created_at) + '</td><td>' + esc(f.metric) + '</td><td><span class="sev ' + esc(f.severity) + '">' + esc(f.severity) +
+          '</span></td><td>' + esc(f.reason) + '</td></tr>';
+      }), 'No founder alerts in the last week.');
+    }).catch(function (e) { say(e.message, true); });
+  }
+  el('foEvalNow').addEventListener('click', function () {
+    api('/alerts/evaluate', { method: 'POST', body: '{}' }).then(function (d) {
+      var n = 0; Object.keys(d.fired).forEach(function (k) { n += d.fired[k]; });
+      say(n ? n + ' new alert' + (n === 1 ? '' : 's') + ' raised.' : 'No new alerts.'); loadAlerts();
+    }).catch(function (e) { say(e.message, true); });
+  });
+
+  var LOADERS = { fleet: loadFleet, trace: function () { loadVentures().then(loadTrace).catch(function (e) { say(e.message, true); }); },
+    autonomy: loadAutonomy, quality: loadQuality, compliance: loadCompliance, connectors: loadConnectors,
+    pages: loadPages, alerts: loadAlerts };
+  function show(view) {
+    state.view = view;
+    say('');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-fo]'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-fo') === view ? 'true' : 'false');
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.fo-view'), function (v) {
+      v.classList.toggle('active', v.id === 'fo-' + view);
+    });
+    LOADERS[view]();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-fo]'), function (b) {
+    b.addEventListener('click', function () { show(b.getAttribute('data-fo')); });
+  });
+  tab.addEventListener('click', function () { show(state.view); });
+  var hrs = el('fHours');
+  if (hrs) hrs.addEventListener('change', function () {
+    if (el('panel-founder').classList.contains('active')) show(state.view);
+  });
+
+  api('/meta').then(function (d) {
+    if (!d.enabled) return;
+    tab.hidden = false;
+    if (/[?&]tab=founder\b/.test(location.search)) {
+      tab.click();
+      var m = /[?&]view=(\w+)/.exec(location.search);
+      if (m && LOADERS[m[1]]) show(m[1]);
+    }
+  }).catch(function () {});
+})();
+</script>

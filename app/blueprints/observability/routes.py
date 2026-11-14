@@ -146,13 +146,28 @@ def _agent_labels(agent_keys) -> dict:
     return labels
 
 
-def _filtered_runs():
-    """The run query behind the list, the export and the live feed."""
+def _filtered_runs(venture=None):
+    """The run query behind the list, the export and the live feed.
+
+    venture (or ?venture=) narrows to one Founder Track venture's runs through
+    founder_run_meta (or the run header's params). It is opt-in: with neither
+    given the query is unchanged.
+    """
     query = AgentRun.query.filter(AgentRun.started_at >= obs.window_start(_hours()))
 
     layer = (request.args.get('layer') or '').strip().upper()
     if layer in LAYER_CODES:
         query = query.filter(AgentRun.layer == layer)
+    elif layer in obs.FOUNDER_LAYER_CODES:
+        query = query.filter(AgentRun.layer == layer)
+
+    venture = venture or (request.args.get('venture') or '').strip() or None
+    if venture:
+        # founder_run_meta, or the run header's params for runs that failed
+        # before a meta row was written.
+        from app.services import founder_obs_service
+        query = query.filter(AgentRun.layer.in_(obs.FOUNDER_LAYER_CODES),
+                             founder_obs_service.venture_run_clause(venture))
 
     agent = (request.args.get('agent') or '').strip()
     if agent:

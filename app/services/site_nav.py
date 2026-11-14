@@ -110,7 +110,7 @@ ACTIONS = [
 # to that role. The account menu is labelled with the member's name.
 # 'target': 'bio_editor' resolves to the member's own editor (or Settings →
 # Profile while they have no username yet). 'action': 'signout' is the sign-out
-# button. Gates: 'blog', 'blog_post', 'guide'.
+# button. Gates: 'blog', 'blog_post', 'guide', 'founder'.
 
 MEMBER_GROUPS = [
     {
@@ -128,6 +128,9 @@ MEMBER_GROUPS = [
              'desc': 'Everyone your agents work with', 'endpoint': 'pages.contacts_list'},
             {'id': 'm_guide', 'title': 'SME guide',
              'desc': 'Ask an expert-trained guide (beta)', 'endpoint': 'guide.console_page', 'gate': 'guide'},
+            {'id': 'm_founder', 'title': 'Founder Track',
+             'desc': 'Evaluate your startup plan and work the next step', 'endpoint': 'founder.intro',
+             'gate': 'founder'},
         ],
     },
     {
@@ -272,6 +275,12 @@ def _member_gates(user) -> dict:
         gates['guide'] = bool(guide_service.is_enabled(user))
     except Exception:
         gates['guide'] = False
+    # Founder Track (FOUNDER_PLAN.md WP7): opt-in, hidden while the switch is off.
+    try:
+        from app.services import founder_feature
+        gates['founder'] = bool(founder_feature.is_enabled(user))
+    except Exception:
+        gates['founder'] = False
     return gates
 
 
