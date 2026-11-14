@@ -236,6 +236,41 @@ def _remove(path: str) -> None:
         pass
 
 
+def delete_kind(venture, kind: str, user) -> int:
+    """Delete an uploaded document: every version of `kind`, its stored files
+    and its cached evaluation answers. Past reports keep their quoted passages
+    (findings lose only the link to the deleted file). Refused while an
+    evaluation is running, since the run reads these files. Commits; returns
+    the number of versions removed."""
+    from app.extensions import db
+    from app.models.founder import EvaluationFinding, FounderEvalCache, FounderVenture, VentureArtifact
+    from app.services import founder_evaluation_service as fes
+    from app.services import founder_ventures
+    if kind not in UPLOAD_KINDS:
+        raise IntakeError('That document type cannot be deleted here.')
+    if fes.running_run(venture) is not None:
+        raise IntakeError('An evaluation is reading your documents right now. Delete it once the evaluation finishes.',
+                          409)
+    db.session.query(FounderVenture).filter(FounderVenture.id == venture.id).with_for_update().first()
+    rows = VentureArtifact.query.filter_by(venture_id=venture.id, kind=kind).all()
+    if not rows:
+        raise IntakeError('There is no %s to delete.' % KIND_LABELS[kind].lower(), 404)
+    ids = [a.id for a in rows]
+    root = files_root()
+    paths = [a.file_path for a in rows if a.file_path and _inside(a.file_path, root)]
+    FounderEvalCache.query.filter(FounderEvalCache.artifact_id.in_(ids)).delete(synchronize_session=False)
+    (EvaluationFinding.query.filter(EvaluationFinding.artifact_id.in_(ids))
+     .update({'artifact_id': None}, synchronize_session=False))
+    VentureArtifact.query.filter(VentureArtifact.id.in_(ids)).delete(synchronize_session=False)
+    venture.updated_at = datetime.utcnow()
+    founder_ventures.log_event(venture.id, 'artifact_deleted', '%s (%d version%s)' % (
+        kind, len(ids), '' if len(ids) == 1 else 's'), user_id=getattr(user, 'id', None))
+    db.session.commit()
+    for p in paths:
+        _remove(p)
+    return len(ids)
+
+
 def artifacts(venture, current_only: bool = False) -> list:
     from app.models.founder import VentureArtifact
     q = VentureArtifact.query.filter_by(venture_id=venture.id)

@@ -127,7 +127,7 @@ def main():
                                       user('other@x.com').id, user('cofounder@x.com').id)
 
             client = app.test_client()
-            for verb in ('get', 'post'):
+            for verb in ('get', 'post', 'delete'):
                 orig = getattr(client, verb)
                 setattr(client, verb, (lambda o: lambda *a, **k: (g.pop('_login_user', None), o(*a, **k))[1])(orig))
 
@@ -274,6 +274,58 @@ def main():
                   VentureArtifact.query.filter_by(venture_id=VID, kind='exec_summary').first().uploaded_by == C_ID)
             login(None)
             check('anonymous gets 404', client.get('/founder/v/%s/intake' % VID).status_code == 404)
+
+            print('\n6b. Back link and deleting a document')
+            login(F_ID)
+            body = client.get('/founder/v/%s/intake' % VID).get_data(as_text=True)
+            check('the intake page links back to the readiness report',
+                  'href="/founder/v/%s/report"' % VID in body and 'Back to readiness report' in body
+                  and body.index('Back to readiness report') < body.index('Your documents'))
+            check('uploaded documents show a Delete button, missing ones do not',
+                  'data-del="startup_plan" data-label="Startup plan">' in body
+                  and 'data-del="pitch_deck" data-label="Pitch deck" hidden>' in body)
+            plan_rows = VentureArtifact.query.filter_by(venture_id=VID, kind='startup_plan').all()
+            plan_paths = [a.file_path for a in plan_rows if a.file_path]
+            check('the plan has two stored versions on disk', len(plan_rows) == 2 and plan_paths
+                  and all(os.path.exists(x) for x in plan_paths), plan_paths)
+            login(O_ID)
+            r = client.delete('/api/founder/v/%s/artifacts/startup_plan' % VID)
+            check('a non-member cannot delete', r.status_code == 403, r.status_code)
+            login(F_ID)
+            from app.models.founder import EvaluationRun
+            running = EvaluationRun(venture_id=VID, status='running', started_at=datetime.utcnow())
+            db.session.add(running)
+            db.session.commit()
+            r = client.delete('/api/founder/v/%s/artifacts/startup_plan' % VID)
+            check('delete is refused while an evaluation is running', r.status_code == 409
+                  and VentureArtifact.query.filter_by(venture_id=VID, kind='startup_plan').count() == 2, r.status_code)
+            running.status = 'done'
+            db.session.commit()
+            check('an unknown or non-upload kind is refused',
+                  client.delete('/api/founder/v/%s/artifacts/pitch_transcript' % VID).status_code == 400
+                  and client.delete('/api/founder/v/%s/artifacts/nonsense' % VID).status_code == 400)
+            r = client.delete('/api/founder/v/%s/artifacts/startup_plan' % VID)
+            check('the owner deletes the document', r.status_code == 200 and (r.get_json() or {}).get('deleted') == 2,
+                  r.get_json())
+            check('every version row is gone',
+                  VentureArtifact.query.filter_by(venture_id=VID, kind='startup_plan').count() == 0)
+            check('... and the stored files are removed', not any(os.path.exists(x) for x in plan_paths))
+            check('other documents are untouched',
+                  VentureArtifact.query.filter_by(venture_id=VID, kind='exec_summary').count() == 1)
+            r = client.delete('/api/founder/v/%s/artifacts/startup_plan' % VID)
+            check('deleting again answers 404', r.status_code == 404, r.status_code)
+            body = client.get('/founder/v/%s/intake' % VID).get_data(as_text=True)
+            check('the page shows the plan as not provided, with Upload and no Delete',
+                  'data-del="startup_plan" data-label="Startup plan" hidden>' in body)
+            from app.models.audit_log import AuditLog
+            check('the deletion is audit-logged', AuditLog.query.filter(AuditLog.action.like('%artifact_deleted%')).count() >= 1
+                  or AuditLog.query.filter(AuditLog.details.like('%startup_plan%')).count() >= 1)
+            check('a co-founder may delete too', (login(C_ID) or True)
+                  and client.delete('/api/founder/v/%s/artifacts/exec_summary' % VID).status_code == 200)
+            login(F_ID)
+            r = upload(VID, 'startup_plan', make_pdf(PLAN_TEXT), 'plan.pdf')
+            check('a new upload after a delete starts the kind again', r.status_code == 201
+                  and VentureArtifact.query.filter_by(venture_id=VID, kind='startup_plan', is_current=True).count() == 1)
 
             print('\n7. Pitch with a faked Claude')
             login(F_ID)

@@ -54,7 +54,28 @@
       (a.filename && a.kind !== 'pitch_transcript' ? ' · ' + esc(a.filename) : '') + '</span>';
     var lab = row.querySelector('.fi-up label');
     if (lab) lab.firstChild.nodeValue = 'Replace';
+    var del = row.querySelector('[data-del]');
+    if (del) del.hidden = false;
   }
+  Array.prototype.forEach.call(root.querySelectorAll('[data-del]'), function (btn) {
+    btn.addEventListener('click', function () {
+      var kind = btn.getAttribute('data-del'), label = btn.getAttribute('data-label');
+      var row = btn.closest('.fi-doc'), msg = row.querySelector('[data-msg]');
+      if (!window.confirm('Delete your ' + label.toLowerCase() + '? This removes it and its earlier versions. ' +
+                          'Past reports keep the passages they quoted.')) return;
+      btn.disabled = true; msg.className = 'fi-msg'; msg.textContent = 'Deleting...';
+      api(BASE + '/artifacts/' + encodeURIComponent(kind), { method: 'DELETE' })
+        .then(function (d) {
+          row.querySelector('[data-state]').innerHTML = '<span class="fi-gap">Not provided yet</span>';
+          var lab = row.querySelector('.fi-up label');
+          if (lab) lab.firstChild.nodeValue = 'Upload';
+          btn.hidden = true;
+          msg.className = 'fi-msg ok'; msg.textContent = d.message;
+        })
+        .catch(function (e) { msg.className = 'fi-msg err'; msg.textContent = e.message; })
+        .then(function () { btn.disabled = false; });
+    });
+  });
   Array.prototype.forEach.call(root.querySelectorAll('input[type=file][data-kind]'), function (inp) {
     var row = inp.closest('.fi-doc'), msg = row.querySelector('[data-msg]'), lab = row.querySelector('.fi-up label');
     if (lab) lab.addEventListener('keydown', function (e) {

@@ -97,6 +97,19 @@ def upload_artifact(venture_id):
                     'message': '%s saved as version %d.' % (fis.KIND_LABELS[art.kind], art.version)}), 201
 
 
+@founder_bp.route('/api/founder/v/<venture_id>/artifacts/<kind>', methods=['DELETE'])
+@founder_required
+def delete_artifact(venture_id, kind):
+    from app.services import founder_intake_service as fis
+    v = _venture(venture_id)
+    try:
+        n = fis.delete_kind(v, kind, current_user)
+    except fis.IntakeError as exc:
+        return _err(str(exc), exc.status)
+    return jsonify({'ok': True, 'kind': kind, 'deleted': n,
+                    'message': '%s deleted.' % fis.KIND_LABELS[kind]})
+
+
 def _pitch_call(venture_id, fn):
     from app.services import founder_pitch_service as fps
     from app.services import founder_intake_service as fis

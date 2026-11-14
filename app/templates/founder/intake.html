@@ -15,6 +15,12 @@
   .fi-doc-name{font-weight:600}
   .fi-doc-hint{color:var(--mute);font-size:.84rem;margin-top:.1rem}
   .fi-doc-state{font-size:.86rem;margin-top:.3rem}
+  .fi-back{margin:0 0 1rem;font-size:.92rem}
+  .fi-back a{color:var(--ink-2);text-decoration:none;font-weight:600}
+  .fi-back a:hover,.fi-back a:focus-visible{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+  .fi-del[hidden]{display:none}
+  .btn.fi-del{color:#9B2C2C;border-color:#E3B4B4}
+  .btn.fi-del:hover,.btn.fi-del:focus-visible{background:#FBEAEA}
   .fi-have{color:var(--teal-ink)}
   .fi-gap{color:#8a5a00;background:#FFF6E3;border:1px dashed #E4B855;border-radius:6px;padding:.05rem .45rem;display:inline-block}
   .fi-up{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
@@ -79,6 +85,7 @@
   </form>
 
 {% else %}
+  <p class="fi-back"><a href="{{ url_for('founder.report_page', venture_id=venture.id) }}">&larr; Back to readiness report</a></p>
   <p class="fi-eyebrow">Founder Track</p>
   <h1>Share your idea: {{ venture.name }}</h1>
   <p class="fi-lede">Upload what you have, talk it through, or both. SimiSI reads everything here when you run the evaluation. Missing documents are fine: they show as gaps, not as zeros.</p>
@@ -104,6 +111,7 @@
         <div class="fi-up">
           <input type="file" id="file-{{ k.kind }}" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-kind="{{ k.kind }}">
           <label for="file-{{ k.kind }}" class="btn sm" role="button" tabindex="0">{{ 'Replace' if k.current else 'Upload' }}<span class="sr"> {{ k.label }}</span></label>
+          <button type="button" class="btn sm fi-del" data-del="{{ k.kind }}" data-label="{{ k.label }}"{% if not k.current %} hidden{% endif %}>Delete<span class="sr"> {{ k.label }}</span></button>
         </div>
         {% endif %}
         <p class="fi-msg" data-msg role="status" aria-live="polite"></p>
