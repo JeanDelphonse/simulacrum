@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Workspace · {{ venture.name }}{% endblock %}
+{% block head %}{% include 'founder/_ws_styles.html' %}{% endblock %}
+{% block content %}
+<div class="wrap fw" id="founder-ws" data-venture="{{ venture.id }}" data-view="workspace" {% if paid %}data-stream="1"{% endif %}>
+  <div class="fw-head">
+    <div>
+      <p class="fw-eyebrow">Founder Track · Workspace</p>
+      <h1>{{ venture.name }}</h1>
+      <p class="fw-sub">{% if venture.one_liner %}{{ venture.one_liner }} · {% endif %}Evidence rung {{ venture.rung }} of 5{% if venture.paused_at %} · <b>Paused</b>: agents don't run until it is resumed{% endif %}</p>
+    </div>
+  </div>
+  {% include 'founder/_ws_nav.html' %}
+
+  {% if not paid %}
+  <section class="fw-card fw-lock" aria-labelledby="fw-lock-h">
+    <div>
+      <h2 id="fw-lock-h">Your team and plan unlock with the Founder Track</h2>
+      <p class="fw-sub">{% if has_report %}Your readiness report is ready. {% else %}Start by sharing your documents and running the evaluation. {% endif %}
+        The full report, the agent team matched to your gaps and the step-by-step plan open after payment.</p>
+    </div>
+    {% if is_owner %}<a class="btn primary btn-lg" href="{{ checkout_url }}">Unlock the Founder Track</a>
+    {% else %}<a class="btn" href="/founder/v/{{ venture.id }}/report">See the report</a>{% endif %}
+  </section>
+  <section class="fw-card">
+    <h2>Where you are</h2>
+    <p class="fw-sub"><a class="link" href="/founder/v/{{ venture.id }}/intake">Documents and spoken pitch</a> ·
+      <a class="link" href="/founder/v/{{ venture.id }}/report">Readiness report</a></p>
+  </section>
+  {% else %}
+  <p id="fw-msg" class="fw-msg" role="status" aria-live="polite"></p>
+  <div id="fw-live">{% include 'founder/_workspace_live.html' %}</div>
+  {% endif %}
+
+  <p class="fw-sub" style="font-size:.85rem;margin-top:1.5rem">{{ legal('founder_not_advice') }}</p>
+</div>
+{% include 'founder/_ws_dialog.html' %}
+{% endblock %}
+{% block scripts %}
+{% if paid %}<script src="{{ url_for('static', filename='js/founder_workspace.js') }}"></script>{% endif %}
+{% endblock %}

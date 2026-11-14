@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block title %}Team · {{ venture.name }}{% endblock %}
+{% block head %}{% include 'founder/_ws_styles.html' %}
+<style>
+  .ft-agent { border: 1px solid var(--rule); border-radius: var(--r-ui); background: #fff; padding: 1rem 1.1rem; margin: 0 0 .9rem; }
+  .ft-agent.is-declined { opacity: .7; }
+  .ft-top { display: flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; align-items: flex-start; }
+  .ft-find { margin: .6rem 0; padding: .55rem .75rem; border-left: 3px solid var(--gold); background: var(--alt); font-size: .9rem; line-height: 1.5; }
+  .ft-find cite { display: block; font-style: normal; color: var(--mute); font-size: .8rem; margin-top: .2rem; }
+  .ft-params { width: 100%; border-collapse: collapse; margin: .6rem 0; font-size: .9rem; }
+  .ft-params th, .ft-params td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: top; overflow-wrap: anywhere; }
+  .ft-params thead th { overflow-wrap: normal; word-break: normal; }
+  .ft-params th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--mute); font-weight: 700; }
+  .ft-params tbody th { overflow-wrap: normal; word-break: normal; white-space: nowrap; width: 9rem; }
+  .ft-params td.changed { font-weight: 700; }
+  .ft-params td.changed::after { content: ' · changed'; font-weight: 600; color: var(--gold); font-size: .78rem; }
+  .ft-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  .ft-row select, .ft-form input, .ft-form textarea { border: 1px solid var(--rule); border-radius: 8px; padding: .4rem .5rem; font: inherit; background: #fff; }
+  .ft-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .6rem .9rem; margin: .6rem 0; }
+  .ft-form label { display: grid; gap: .25rem; font-size: .85rem; font-weight: 600; }
+  .ft-form .wide { grid-column: 1 / -1; }
+  .ft-hist { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  .ft-hist th, .ft-hist td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+  @media (max-width: 620px) {
+    .ft-params thead th { font-size: .68rem; letter-spacing: .02em; }
+    .ft-params tbody th { width: auto; white-space: normal; font-size: .82rem !important; }
+    .ft-hist thead { display: none; }
+    .ft-hist tr { display: grid; padding: .4rem 0; border-bottom: 1px solid var(--rule); }
+    .ft-hist td { border: 0; padding: .1rem 0; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="wrap fw" id="founder-ws" data-venture="{{ venture.id }}" data-view="team">
+  <div class="fw-head">
+    <div>
+      <p class="fw-eyebrow">Founder Track · Team</p>
+      <h1>{{ venture.name }}</h1>
+      <p class="fw-sub">Only agents tied to a finding in your report are recommended. The recommended setting stays next to yours.</p>
+    </div>
+    <div class="fw-actions">
+      <button type="button" class="btn btn-ghost" data-act="build-team">Refresh from the report</button>
+      <a class="btn primary" href="/founder/v/{{ venture.id }}/plan">Go to the plan</a>
+    </div>
+  </div>
+  {% include 'founder/_ws_nav.html' %}
+  <p id="fw-msg" class="fw-msg" role="status" aria-live="polite"></p>
+
+  <section class="fw-card">
+    <h2>How autonomy works</h2>
+    <p class="fw-sub">Levels: 1 {{ level_labels[1] }} · 2 {{ level_labels[2] }} · 3 {{ level_labels[3] }} · 4 {{ level_labels[4] }}.
+      You can always lower an agent's level. Raising it stops at the limit SimiSI sets for that kind of action.
+      Agents never send anything to customers or investors themselves, never negotiate or accept terms and never move money.</p>
+  </section>
+
+  {% if not team.total %}
+  <section class="fw-card">
+    <h2>No agents yet</h2>
+    {% if team.has_findings %}
+    <p class="fw-empty">Build your team from the open findings in your report.</p>
+    <p style="margin:.75rem 0 0"><button type="button" class="btn primary" data-act="build-team">Build my team</button></p>
+    {% else %}
+    <p class="fw-empty">Your team is built from the gaps in your readiness report. Run the evaluation first.</p>
+    <p style="margin:.75rem 0 0"><a class="btn primary" href="/founder/v/{{ venture.id }}/report">Go to the report</a></p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% for L in team.layers if L.agents %}
+  <section aria-labelledby="tl-{{ L.layer }}">
+    <div class="fw-layer-h" data-layer="{{ L.layer }}">
+      <h2 id="tl-{{ L.layer }}" style="margin:0">L{{ L.layer }} {{ L.name }} <span class="fw-sub" style="font-size:.9rem;font-weight:400">{{ L.agents|length }} agent{{ '' if L.agents|length == 1 else 's' }}</span></h2>
+      <div class="ft-row">
+        <label class="fw-note" for="layer-auto-{{ L.layer }}">Autonomy for the whole layer</label>
+        <select id="layer-auto-{{ L.layer }}" data-layer-autonomy="{{ L.layer }}">
+          <option value="">Choose…</option>
+          {% for lv, lab in L.agents[0].levels %}<option value="{{ lv }}">{{ lv }} · {{ lab }}</option>{% endfor %}
+        </select>
+        {% if L.pending %}<button type="button" class="btn sm primary" data-act="accept-layer" data-layer="{{ L.layer }}">Accept {{ L.pending }} agent{{ '' if L.pending == 1 else 's' }}</button>
+        {% else %}<span class="fw-chip s-done">Accepted</span>{% endif %}
+      </div>
+    </div>
+    {% for a in L.agents %}
+    <article class="ft-agent {{ 'is-declined' if a.status == 'declined' }}" id="{{ a.agent_key }}">
+      <div class="ft-top">
+        <div>
+          <h3>{{ a.label }}</h3>
+          <p class="fw-sub" style="font-size:.9rem;margin:.2rem 0 0">{{ a.description }}</p>
+        </div>
+        <div class="ft-row">
+          <span class="fw-chip {{ 's-done' if a.status == 'accepted' else ('s-skipped' if a.status == 'declined' else 's-ready') }}">{{ a.status|capitalize }}</span>
+          {% if a.external != 'none' %}<span class="fw-chip">Drafts for a {{ a.external }}</span>{% endif %}
+        </div>
+      </div>
+      {% if a.finding %}
+      <div class="ft-find"><b>Why:</b> {{ a.finding.title }} ({{ a.finding.severity }} {{ a.finding.ftype }})
+        {% if a.finding.citation_text %}<cite>“{{ a.finding.citation_text[:220] }}” · {{ a.finding.citation_ref }}</cite>{% endif %}</div>
+      {% endif %}
+      <table class="ft-params">
+        <thead><tr><th scope="col">Setting</th><th scope="col">Recommended</th><th scope="col">In force</th></tr></thead>
+        <tbody>
+          {% for p in a.params %}
+          <tr><th scope="row" style="text-transform:none;letter-spacing:0;font-size:.88rem;color:var(--ink)">{{ p.label }}</th>
+            <td>{{ p.recommended }}</td><td class="{{ 'changed' if p.changed }}">{{ p.current }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="ft-row">
+        <label class="fw-note" for="auto-{{ a.id }}">Autonomy</label>
+        <select id="auto-{{ a.id }}" data-autonomy="{{ a.id }}">
+          {% for lv, lab in a.levels %}
+          <option value="{{ lv }}" {% if lv == a.autonomy %}selected{% endif %} {% if lv > a.autonomy_max %}disabled{% endif %}>{{ lv }} · {{ lab }}{% if lv > a.autonomy_max %} (above the limit){% endif %}{% if lv == a.autonomy_recommended %} (recommended){% endif %}</option>
+          {% endfor %}
+        </select>
+        {% if a.status != 'accepted' %}<button type="button" class="btn sm" data-act="bp-status" data-bp="{{ a.id }}" data-status="accepted">Accept</button>{% endif %}
+        {% if a.status != 'declined' %}<button type="button" class="btn sm btn-ghost" data-act="bp-status" data-bp="{{ a.id }}" data-status="declined">Decline</button>{% endif %}
+      </div>
+      <details style="margin-top:.6rem">
+        <summary class="fw-link" style="display:inline">Change other settings</summary>
+        <form class="ft-form" data-override-form="{{ a.id }}">
+          {% for p in a.params if p.key != 'autonomy_level' %}
+          <label class="{{ 'wide' if p.key in ('scope', 'stopping_rule', 'success_metric') }}">{{ p.label }}
+            {% if p.key in ('budget_cap', 'action_cap') %}
+            <input type="number" min="0" step="1" name="{{ p.key }}" value="{{ p.raw if p.raw is not none else '' }}" data-orig="{{ p.raw if p.raw is not none else '' }}">
+            {% elif p.key == 'scope' %}
+            <input type="text" name="scope" value="{{ p.current if p.current != 'Not set' else '' }}" data-orig="{{ p.current if p.current != 'Not set' else '' }}" placeholder="Customer segment, stage, sector, geography">
+            {% else %}
+            <input type="text" name="{{ p.key }}" maxlength="500" value="{{ p.raw or '' }}" data-orig="{{ p.raw or '' }}">
+            {% endif %}
+          </label>
+          {% endfor %}
+          <p class="fw-note wide">Budget cap is in cents. Agents never spend or move money; the cap only bounds what a step may plan for.</p>
+          <div class="wide"><button type="submit" class="btn sm primary">Save changes</button></div>
+        </form>
+      </details>
+    </article>
+    {% endfor %}
+  </section>
+  {% endfor %}
+
+  {% if team.history %}
+  <section class="fw-card" aria-labelledby="ft-hist-h" style="margin-top:1.5rem">
+    <h2 id="ft-hist-h">Changes you made</h2>
+    <table class="ft-hist">
+      <thead><tr><th scope="col">When (UTC)</th><th scope="col">Agent or layer</th><th scope="col">Setting</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+      <tbody>
+        {% for h in team.history %}
+        <tr><td>{{ h.when }}</td><td>{{ h.target }}</td><td>{{ h.param }}</td><td>{{ h.previous }}</td><td>{{ h.value }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+  <p class="fw-sub" style="font-size:.85rem;margin-top:1.5rem">{{ legal('founder_not_advice') }}</p>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/founder_workspace.js') }}"></script>{% endblock %}

@@ -1,0 +1,84 @@
+{# The workspace's live area: re-rendered by founder_workspace.js on stream events. #}
+{% if not plan.has_plan %}
+  <section class="fw-card" aria-labelledby="fw-start-h">
+    {% if not team_count %}
+    <h2 id="fw-start-h">First, meet your agent team</h2>
+    <p class="fw-empty">Each gap in your readiness report points at one agent. Review them, change their settings if you want, and accept them layer by layer.</p>
+    <p style="margin:.75rem 0 0"><a class="btn primary" href="/founder/v/{{ venture.id }}/team">Review your team</a></p>
+    {% elif not accepted_count %}
+    <h2 id="fw-start-h">Accept your team to build the plan</h2>
+    <p class="fw-empty">{{ team_count }} agent{{ '' if team_count == 1 else 's' }} recommended. Accept at least one layer, then build your plan.</p>
+    <p style="margin:.75rem 0 0"><a class="btn primary" href="/founder/v/{{ venture.id }}/team">Review your team</a></p>
+    {% else %}
+    <h2 id="fw-start-h">Build your plan</h2>
+    <p class="fw-empty">{{ accepted_count }} agent{{ '' if accepted_count == 1 else 's' }} accepted. The plan orders their steps with the proof-of-concept path and shows you one next step at a time.</p>
+    <p style="margin:.75rem 0 0"><button type="button" class="btn primary" data-act="build-plan">Build my plan</button></p>
+    {% endif %}
+  </section>
+{% else %}
+  {% set p = next.primary %}
+  {% if p %}
+  <section class="fw-focus" aria-labelledby="fw-next-h">
+    <p class="lbl">Your next step</p>
+    <span class="fw-chip layer" data-layer="{{ p.layer }}">L{{ p.layer }} {{ p.layer_name }}</span>
+    <span class="fw-chip s-{{ p.state }}">{{ p.state_label }}</span>
+    <h2 id="fw-next-h">{{ p.title }}</h2>
+    <p class="why">{{ p.why }}{% if next.explore %} · Early on, the plan covers every layer once{% endif %}</p>
+    {% if p.description %}<p class="desc">{{ p.description }}</p>{% endif %}
+    {% set s = p %}{% include 'founder/_step_actions.html' %}
+  </section>
+  {% if next.alternates %}
+  <h2 style="font-size:1rem;margin:0 0 .5rem">Or pick one of these</h2>
+  <ul class="fw-alts">
+    {% for s in next.alternates %}
+    <li>
+      <span><span class="fw-chip layer" data-layer="{{ s.layer }}">L{{ s.layer }} {{ s.layer_name }}</span></span>
+      <span class="t">{{ s.title }}</span>
+      <span class="w">{{ s.why }}</span>
+      {% include 'founder/_step_actions.html' %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% elif plan.finished == plan.total %}
+  <section class="fw-focus"><p class="lbl">Plan complete</p><h2>Every step is done or skipped.</h2>
+    <p class="fw-sub">Upload revised documents and re-run the evaluation to find what to work on next.</p></section>
+  {% else %}
+  <section class="fw-focus"><p class="lbl">Nothing ready right now</p>
+    <h2>Your open steps are in progress, waiting for approval or locked.</h2>
+    <p class="fw-sub">Finish or approve what's in progress below; the next step appears here when it opens.</p></section>
+  {% endif %}
+
+  {% include 'founder/_drafts.html' %}
+
+  <section aria-labelledby="fw-lanes-h">
+      <h2 id="fw-lanes-h">Layers <span class="fw-sub" style="font-size:.9rem;font-weight:400">{{ plan.finished }} of {{ plan.total }} steps finished</span></h2>
+      <div class="fw-lanes">
+        {% for L in plan.lanes %}
+        <div class="fw-lane" data-layer="{{ L.layer }}">
+          <h3>L{{ L.layer }} {{ L.name }} <span>{{ L.done }}/{{ L.total }}</span></h3>
+          <ul>
+            {% for s in L.steps %}
+            <li><span class="t">{{ s.title }}</span>
+              <span class="fw-chip s-{{ s.state }}">{{ s.state_label }}</span>
+              {% if s.output %}<button type="button" class="fw-link" data-act="output" data-output="{{ s.output.id }}">Output</button>{% endif %}
+            </li>
+            {% else %}
+            <li class="empty">No steps in this layer.</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+  </section>
+    <section class="fw-card" aria-labelledby="fw-log-h">
+      <h2 id="fw-log-h">Activity</h2>
+      {% if activity %}
+      <ul class="fw-log">
+        {% for e in activity %}
+        <li><time datetime="{{ e.iso }}">{{ e.when }} UTC · <span class="{{ 'k-agent' if e.actor == 'agent' }}">{{ {'founder': 'Founder', 'agent': 'Agent', 'system': 'SimiSI'}[e.actor] or e.actor }}</span></time>{{ e.text }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="fw-empty">Nothing yet.</p>{% endif %}
+    </section>
+{% endif %}

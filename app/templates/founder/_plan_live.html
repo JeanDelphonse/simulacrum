@@ -1,0 +1,54 @@
+{# The plan page's live area, re-rendered on stream events. #}
+{% if not plan.has_plan %}
+<section class="fw-card">
+  <h2>No plan yet</h2>
+  {% if accepted_count %}
+  <p class="fw-empty">{{ accepted_count }} agent{{ '' if accepted_count == 1 else 's' }} accepted. Build the plan to order their steps with the proof-of-concept path.</p>
+  <p style="margin:.75rem 0 0"><button type="button" class="btn primary" data-act="build-plan">Build my plan</button></p>
+  {% else %}
+  <p class="fw-empty">Accept agents on your team first; the plan is built from them.</p>
+  <p style="margin:.75rem 0 0"><a class="btn primary" href="/founder/v/{{ venture.id }}/team">Review your team</a></p>
+  {% endif %}
+</section>
+{% else %}
+<div class="fw-actions" style="justify-content:space-between;margin:0 0 .5rem">
+  <p class="fw-sub">{{ plan.finished }} of {{ plan.total }} steps finished. Layers run in parallel when their prerequisites are met.</p>
+  <button type="button" class="btn sm btn-ghost" data-act="build-plan">Update plan from team</button>
+</div>
+{% include 'founder/_drafts.html' %}
+{% for L in plan.lanes %}
+<section aria-labelledby="pl-{{ L.layer }}">
+  <div class="fw-layer-h" data-layer="{{ L.layer }}">
+    <h2 id="pl-{{ L.layer }}" style="margin:0">L{{ L.layer }} {{ L.name }}</h2>
+    <span class="fw-sub">{{ L.done }} of {{ L.total }} finished</span>
+  </div>
+  {% if L.steps %}
+  <ol class="fw-steps">
+    {% for s in L.steps %}
+    <li id="step-{{ s.id }}">
+      <div class="top">
+        <h3>{{ s.title }}</h3>
+        <span class="fw-chip s-{{ s.state }}">{{ s.state_label }}</span>
+      </div>
+      <div class="meta">
+        <span class="fw-chip">{{ 'Agent: ' ~ s.agent_label if s.agent_label else {'proof': 'Proof of concept', 'alignment': 'Team alignment', 'manual': 'Your task', 'legal': 'For your lawyer'}[s.kind] }}</span>
+        <span class="fw-chip">Effort {{ s.effort }} of 5</span>
+        {% if s.external != 'none' %}<span class="fw-chip">Drafts for a {{ s.external }}: you approve and send</span>{% endif %}
+      </div>
+      {% if s.description %}<p class="d">{{ s.description }}</p>{% endif %}
+      {% if s.state == 'locked' %}
+        {% if s.gate %}<p class="why-locked">{{ s.gate }}</p>{% endif %}
+        {% if s.waiting_on %}<p class="why-locked">Waiting on: {{ s.waiting_on|join(', ') }}</p>{% endif %}
+      {% endif %}
+      {% if s.state == 'skipped' and s.skip_reason %}<p class="fw-note">Skipped: {{ s.skip_reason }}</p>{% endif %}
+      {% if s.state == 'done' and s.evidence_note %}<p class="fw-note">Evidence: {{ s.evidence_note }}</p>{% endif %}
+      {% include 'founder/_step_actions.html' %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="fw-empty">No steps in this layer. Accept an agent in this layer on your team to add one.</p>
+  {% endif %}
+</section>
+{% endfor %}
+{% endif %}

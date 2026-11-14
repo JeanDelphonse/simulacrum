@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Plan · {{ venture.name }}{% endblock %}
+{% block head %}{% include 'founder/_ws_styles.html' %}{% endblock %}
+{% block content %}
+<div class="wrap fw" id="founder-ws" data-venture="{{ venture.id }}" data-view="plan" data-stream="1">
+  <div class="fw-head">
+    <div>
+      <p class="fw-eyebrow">Founder Track · Plan</p>
+      <h1>{{ venture.name }}</h1>
+      <p class="fw-sub">Every step, by layer. Locked steps say what they are waiting for.</p>
+    </div>
+  </div>
+  {% include 'founder/_ws_nav.html' %}
+  <p id="fw-msg" class="fw-msg" role="status" aria-live="polite"></p>
+  <div id="fw-live">{% include 'founder/_plan_live.html' %}</div>
+  <p class="fw-sub" style="font-size:.85rem;margin-top:1.5rem">{{ legal('founder_not_advice') }}</p>
+</div>
+{% include 'founder/_ws_dialog.html' %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/founder_workspace.js') }}"></script>{% endblock %}

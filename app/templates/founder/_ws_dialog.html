@@ -1,0 +1,22 @@
+<dialog class="fw-dialog" id="fw-dialog" aria-labelledby="fw-dialog-h">
+  <form method="dialog" id="fw-dialog-form">
+    <h2 id="fw-dialog-h" style="font-size:1.15rem;margin:0 0 .35rem">Mark done</h2>
+    <p class="fw-sub" id="fw-dialog-sub" style="margin:0 0 .75rem"></p>
+    <label for="fw-dialog-text" id="fw-dialog-label" style="display:block;font-weight:600;margin:0 0 .35rem">Evidence (optional)</label>
+    <textarea id="fw-dialog-text" maxlength="2000"></textarea>
+    <p class="fw-msg err" id="fw-dialog-err" role="alert"></p>
+    <div class="fw-actions" style="justify-content:flex-end">
+      <button type="button" class="btn btn-ghost" value="cancel" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="fw-dialog-ok" value="ok">Save</button>
+    </div>
+  </form>
+</dialog>
+<dialog class="fw-dialog" id="fw-output" aria-labelledby="fw-output-h">
+  <div class="in">
+    <div class="fw-actions" style="justify-content:space-between;margin:0 0 .75rem">
+      <h2 id="fw-output-h" style="font-size:1.15rem;margin:0">Agent output</h2>
+      <button type="button" class="btn sm btn-ghost" data-close>Close</button>
+    </div>
+    <div class="out" id="fw-output-body" tabindex="0"></div>
+  </div>
+</dialog>

@@ -1,0 +1,21 @@
+{# One step's buttons. Expects s (plan_view / next_steps card dict). #}
+<div class="fw-actions">
+  {% if s.state in ('ready', 'in_progress') %}
+    {% if s.kind == 'agent' and s.agent_key and s.running %}
+    <span class="fw-note" role="status">The agent is working on this step. The plan updates when it finishes.</span>
+    {% elif s.kind == 'agent' and s.agent_key %}
+    <button type="button" class="btn primary sm" data-act="run" data-step="{{ s.id }}">Run agent</button>
+    {% elif s.state == 'ready' %}
+    <button type="button" class="btn sm" data-act="start" data-step="{{ s.id }}">Start</button>
+    {% endif %}
+    <button type="button" class="btn sm btn-ghost" data-act="complete" data-step="{{ s.id }}" data-title="{{ s.title }}">Mark done</button>
+    <button type="button" class="btn sm btn-ghost" data-act="skip" data-step="{{ s.id }}" data-title="{{ s.title }}">Skip</button>
+    {% if s.state == 'in_progress' and not s.running %}<span class="fw-note">In progress.</span>{% endif %}
+  {% elif s.state == 'awaiting_approval' %}
+    <span class="fw-note">Drafts are waiting for approval.</span>
+    <button type="button" class="btn sm btn-ghost" data-act="skip" data-step="{{ s.id }}" data-title="{{ s.title }}">Skip</button>
+  {% elif s.state == 'locked' %}
+    <button type="button" class="btn sm btn-ghost" data-act="skip" data-step="{{ s.id }}" data-title="{{ s.title }}">Skip</button>
+  {% endif %}
+  {% if s.output %}<button type="button" class="fw-link" data-act="output" data-output="{{ s.output.id }}">View output (v{{ s.output.version }})</button>{% endif %}
+</div>

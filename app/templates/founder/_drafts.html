@@ -1,0 +1,27 @@
+{# Drafts awaiting approval, across the plan. Expects plan, me. #}
+{% set ns = namespace(n=0) %}
+{% for L in plan.lanes %}{% for s in L.steps %}{% set ns.n = ns.n + s.drafts|length %}{% endfor %}{% endfor %}
+{% if ns.n %}
+<section class="fw-card" aria-labelledby="fw-drafts-h">
+  <h2 id="fw-drafts-h">Waiting for approval ({{ ns.n }})</h2>
+  <p class="fw-sub">Agents draft; they never send. Approve a draft, then send it yourself from your own account.</p>
+  {% for L in plan.lanes %}{% for s in L.steps %}{% for a in s.drafts %}
+  <article class="fw-draft" id="draft-{{ a.id }}">
+    <div class="fw-actions" style="justify-content:space-between">
+      <h3>{{ a.subject or s.title }}</h3>
+      <span class="fw-chip layer" data-layer="{{ s.layer }}">L{{ s.layer }} · {{ s.agent_label or s.title }}</span>
+    </div>
+    {% if a.target_ref %}<p class="fw-note" style="margin:.3rem 0 0">For: {{ a.target_ref }}</p>{% endif %}
+    <pre>{{ a.body }}</pre>
+    {% if a.approver_user_id == me %}
+    <div class="fw-actions">
+      <button type="button" class="btn primary sm" data-act="approve" data-action="{{ a.id }}">Approve draft</button>
+      <button type="button" class="btn sm btn-ghost" data-act="reject" data-action="{{ a.id }}">Decline</button>
+    </div>
+    {% else %}
+    <p class="fw-note">{{ a.approver }} has the final say on this and approves it.</p>
+    {% endif %}
+  </article>
+  {% endfor %}{% endfor %}{% endfor %}
+</section>
+{% endif %}
