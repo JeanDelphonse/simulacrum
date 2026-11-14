@@ -19,3 +19,5 @@ error.log
 *.log.*
 simulacrum_deploy*.zip
 .vscode/
+# Founder Track uploads and pitch drafts (private; kept outside UPLOAD_FOLDER)
+founder_private/

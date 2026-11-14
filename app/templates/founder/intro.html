@@ -21,14 +21,21 @@
   <div style="padding:1rem 1.1rem;border:1px solid var(--rule);border-radius:var(--r-ui);margin:0 0 1.5rem">
     <p style="margin:0 0 .35rem;font-size:.85rem;color:var(--mute)">Your venture{{ 's' if ventures|length > 1 }}</p>
     {% for v in ventures %}
-    <p style="margin:.25rem 0"><b>{{ v.name }}</b>{% if v.one_liner %} <span style="color:var(--ink-2)">· {{ v.one_liner }}</span>{% endif %}</p>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem;margin:.35rem 0">
+      <p style="margin:0"><b>{{ v.name }}</b>{% if v.one_liner %} <span style="color:var(--ink-2)">· {{ v.one_liner }}</span>{% endif %}</p>
+      <span style="display:flex;gap:.5rem">
+        <a class="btn sm" href="{{ url_for('founder.intake_page', venture_id=v.id) }}">Documents &amp; pitch</a>
+        <a class="btn sm primary" href="{{ url_for('founder.report_page', venture_id=v.id) }}">Readiness report</a>
+      </span>
+    </div>
     {% endfor %}
   </div>
   {% else %}
-  <p style="margin:0 0 1.5rem;color:var(--ink-2)">
+  <p style="margin:0 0 1rem;color:var(--ink-2)">
     The evaluation preview is free. The full report, the agents and the plan are a one-time
-    ${{ '{:,.0f}'.format(pricing.price_cents / 100) }} fee, refundable within {{ pricing.refund_window_days }} days.
+    ${{ '{:,.0f}'.format(pricing.price_cents / 100) }} fee. {{ legal('founder_refund_terms', days=pricing.refund_window_days) }}
   </p>
+  <p style="margin:0 0 1.5rem"><a class="btn primary" href="{{ url_for('founder.start_page') }}">Start your venture</a></p>
   {% endif %}
 
   <p style="font-size:.85rem;color:var(--mute);line-height:1.55;margin:0">{{ legal('founder_report_disclaimer') }}</p>

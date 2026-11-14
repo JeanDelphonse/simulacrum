@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}{% if venture %}Share your idea · {{ venture.name }}{% else %}Start your venture{% endif %} · Founder Track{% endblock %}
+{% block head %}
+<style>
+  .fi-root{color:var(--ink);padding-top:2.5rem;padding-bottom:3.5rem;max-width:880px}
+  .fi-eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .4rem}
+  .fi-root h1{font-size:1.7rem;margin:0 0 .5rem;line-height:1.2}
+  .fi-lede{color:var(--ink-2);line-height:1.6;margin:0 0 1.75rem}
+  .fi-card{border:1px solid var(--rule);border-radius:var(--r-ui);background:var(--bg);padding:1.25rem 1.35rem;margin:0 0 1.5rem}
+  .fi-card h2{font-size:1.15rem;margin:0 0 .3rem}
+  .fi-sub{color:var(--ink-2);font-size:.92rem;line-height:1.55;margin:0 0 1rem}
+  .fi-docs{list-style:none;margin:0;padding:0}
+  .fi-doc{display:grid;grid-template-columns:1fr auto;gap:.6rem 1rem;align-items:center;padding:.85rem 0;border-top:1px solid var(--rule)}
+  .fi-doc:first-child{border-top:0;padding-top:.2rem}
+  .fi-doc-name{font-weight:600}
+  .fi-doc-hint{color:var(--mute);font-size:.84rem;margin-top:.1rem}
+  .fi-doc-state{font-size:.86rem;margin-top:.3rem}
+  .fi-have{color:var(--teal-ink)}
+  .fi-gap{color:#8a5a00;background:#FFF6E3;border:1px dashed #E4B855;border-radius:6px;padding:.05rem .45rem;display:inline-block}
+  .fi-up{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .fi-up input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+  .fi-msg{font-size:.86rem;margin:.35rem 0 0;grid-column:1/-1}
+  .fi-msg.err{color:#B42318}.fi-msg.ok{color:var(--teal-ink)}
+  .fi-log{border:1px solid var(--rule);border-radius:10px;background:var(--alt);padding:.85rem 1rem;max-height:340px;overflow:auto;margin:0 0 .85rem}
+  .fi-turn{margin:.15rem 0 .65rem;line-height:1.5}
+  .fi-turn b{display:block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-bottom:.1rem}
+  .fi-turn.me{padding-left:.75rem;border-left:3px solid var(--gold)}
+  .fi-turn.crisis{background:#FFF1F0;border-radius:8px;padding:.6rem .75rem}
+  .fi-turn.crisis a{color:#B42318;font-weight:600}
+  .fi-compose{display:flex;gap:.5rem;align-items:flex-end}
+  .fi-compose textarea{flex:1;min-height:2.8rem;resize:vertical;font:inherit;padding:.6rem .7rem;border:1px solid var(--rule);border-radius:var(--r-btn)}
+  .fi-mic[aria-pressed=true]{background:#B42318;border-color:#B42318;color:#fff}
+  .fi-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:.75rem 0 0;padding:0;list-style:none;font-size:.82rem}
+  .fi-chips li{border:1px dashed var(--rule);border-radius:999px;padding:.15rem .6rem;color:var(--ink-2)}
+  .fi-restate{border:1px solid var(--gold);background:#FFFBF1;border-radius:10px;padding:1rem;margin:.9rem 0 0}
+  .fi-restate textarea{width:100%;min-height:7.5rem;font:inherit;line-height:1.5;padding:.6rem .7rem;border:1px solid var(--rule);border-radius:var(--r-btn);box-sizing:border-box;margin:.4rem 0 .7rem}
+  .fi-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .fi-field{margin:0 0 1rem}
+  .fi-field label{display:block;font-weight:600;margin:0 0 .3rem}
+  .fi-field input,.fi-field select{width:100%;box-sizing:border-box;font:inherit;padding:.6rem .7rem;border:1px solid var(--rule);border-radius:var(--r-btn);background:#fff}
+  .fi-note{font-size:.82rem;color:var(--mute);line-height:1.55;margin:.4rem 0 0}
+  .fi-status{font-size:.85rem;color:var(--mute);min-height:1.2em}
+  @media (max-width:640px){
+    .fi-root{padding-top:1.5rem}
+    .fi-root h1{font-size:1.4rem}
+    .fi-doc{grid-template-columns:1fr}
+    .fi-up{justify-content:flex-start}
+    .fi-compose{flex-direction:column;align-items:stretch}
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="wrap fi-root" id="fi-root"
+     {% if venture %}data-venture="{{ venture.id }}" data-pitch="{{ 1 if pitch_on else 0 }}"{% endif %}>
+
+{% if not venture %}
+  <p class="fi-eyebrow">Founder Track</p>
+  <h1>Start your venture</h1>
+  <p class="fi-lede">Name it and say what it does in one line. Next you'll share your documents or talk the idea through.</p>
+  <form class="fi-card" id="fi-create" novalidate>
+    <div class="fi-field">
+      <label for="fi-name">Venture name</label>
+      <input id="fi-name" name="name" maxlength="200" required autocomplete="organization">
+    </div>
+    <div class="fi-field">
+      <label for="fi-oneliner">One line about it <span style="font-weight:400;color:var(--mute)">(optional)</span></label>
+      <input id="fi-oneliner" name="one_liner" maxlength="300" placeholder="Who it helps and how">
+    </div>
+    <div class="fi-field">
+      <label for="fi-stage">Stage</label>
+      <select id="fi-stage" name="stage">
+        {% for s in stages %}<option value="{{ s }}">{{ {'idea':'Idea','pre-seed':'Pre-seed','seed':'Seed','series-a':'Series A'}.get(s, s) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="fi-actions">
+      <button type="submit" class="btn primary">Create venture</button>
+      <span class="fi-status" id="fi-create-msg" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+
+{% else %}
+  <p class="fi-eyebrow">Founder Track</p>
+  <h1>Share your idea: {{ venture.name }}</h1>
+  <p class="fi-lede">Upload what you have, talk it through, or both. SimiSI reads everything here when you run the evaluation. Missing documents are fine: they show as gaps, not as zeros.</p>
+
+  <section class="fi-card" aria-labelledby="fi-docs-h">
+    <h2 id="fi-docs-h">Your documents</h2>
+    <p class="fi-sub">PDF or Word (.docx), up to {{ max_mb }} MB each. A new upload becomes the current version; earlier versions are kept.</p>
+    <ul class="fi-docs">
+      {% for k in kinds %}
+      <li class="fi-doc" id="doc-{{ k.kind }}">
+        <div>
+          <div class="fi-doc-name">{{ k.label }}</div>
+          <div class="fi-doc-hint">{{ k.hint }}</div>
+          <div class="fi-doc-state" data-state>
+            {% if k.current %}
+              <span class="fi-have">Version {{ k.current.version }} · {{ k.current.created_at[:10] }}{% if k.current.filename and k.uploadable %} · {{ k.current.filename }}{% endif %}</span>
+            {% else %}
+              <span class="fi-gap">Not provided yet</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if k.uploadable %}
+        <div class="fi-up">
+          <input type="file" id="file-{{ k.kind }}" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-kind="{{ k.kind }}">
+          <label for="file-{{ k.kind }}" class="btn sm" role="button" tabindex="0">{{ 'Replace' if k.current else 'Upload' }}<span class="sr"> {{ k.label }}</span></label>
+        </div>
+        {% endif %}
+        <p class="fi-msg" data-msg role="status" aria-live="polite"></p>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% if pitch_on %}
+  <section class="fi-card" aria-labelledby="fi-pitch-h">
+    <h2 id="fi-pitch-h">Talk it through</h2>
+    <p class="fi-sub">Pitch the idea out loud or type it. SimiSI asks follow-up questions until it can restate your idea, then you confirm or correct it. Speech is turned into text in your browser; SimiSI never receives audio.</p>
+    <div class="fi-log" id="fi-log" aria-live="polite" aria-label="Pitch conversation">
+      {% if pitch and pitch.active %}
+        {% for t in pitch.turns %}<p class="fi-turn{{ ' me' if t.role == 'founder' }}{{ ' crisis' if t.crisis }}"><b>{{ 'You' if t.role == 'founder' else 'SimiSI' }}</b>{{ t.text }}{% for r in (t.resources or []) %}<br><a href="{{ r.href }}">{{ r.label }}</a>{% endfor %}</p>{% endfor %}
+      {% elif pitch and pitch.unreadable %}
+        <p class="fi-turn" id="fi-empty"><b>SimiSI</b>Your unfinished pitch couldn't be opened, so it can't be continued. Press Start to begin a new one. Your uploaded documents are not affected.</p>
+      {% else %}
+        <p class="fi-turn" id="fi-empty"><b>SimiSI</b>Press Start when you're ready.</p>
+      {% endif %}
+    </div>
+    <div class="fi-compose">
+      <label for="fi-text" class="sr">Your answer</label>
+      <textarea id="fi-text" rows="2" placeholder="Type here, or use the microphone"></textarea>
+      <div class="fi-actions">
+        <button type="button" class="btn fi-mic" id="fi-mic" aria-pressed="false">Speak</button>
+        <button type="button" class="btn primary" id="fi-send">{{ 'Send' if pitch and pitch.active and not pitch.crisis else 'Start' }}</button>
+      </div>
+    </div>
+    <p class="fi-status" id="fi-pitch-msg" role="status" aria-live="polite"></p>
+    <div id="fi-missing-wrap" {% if not (pitch and pitch.active) or pitch.crisis %}hidden{% endif %}>
+      <p class="fi-note" style="margin-top:.6rem">Not covered yet:</p>
+      <ul class="fi-chips" id="fi-missing">
+        {% for m in (pitch.missing if pitch else []) %}<li>{{ element_labels.get(m, m) }}</li>{% endfor %}
+      </ul>
+    </div>
+    <div class="fi-restate" id="fi-restate" {% if not (pitch and pitch.ready_to_confirm) %}hidden{% endif %}>
+      <label for="fi-restatement"><b>Here's your idea as SimiSI understood it.</b> Edit anything that's off, then confirm.</label>
+      <textarea id="fi-restatement">{{ pitch.restatement if pitch else '' }}</textarea>
+      <div class="fi-actions">
+        <button type="button" class="btn primary" id="fi-confirm">Confirm and save</button>
+        <button type="button" class="btn" id="fi-restart">Start over</button>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="fi-card" aria-labelledby="fi-eval-h">
+    <h2 id="fi-eval-h">Run the evaluation</h2>
+    <p class="fi-sub">SimiSI reads your current documents and confirmed pitch against a nine-part rubric. Every finding cites the passage it comes from.</p>
+    <div class="fi-actions">
+      <button type="button" class="btn primary" id="fi-eval">Run evaluation</button>
+      <span class="fi-status" id="fi-eval-msg" role="status" aria-live="polite"></span>
+    </div>
+    <p class="fi-note">{{ legal('founder_report_disclaimer') }}</p>
+  </section>
+  <p class="fi-note">{{ legal('founder_not_advice') }}</p>
+{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/founder_pitch.js') }}"></script>
+{% endblock %}

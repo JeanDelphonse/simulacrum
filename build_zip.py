@@ -15,6 +15,7 @@ EXCLUDES = [
                          # rotated error log full of stack traces has no business
                          # in a deploy artifact
     "docs",              # PRD/requirements docs — not needed on server
+    "founder_private",   # Founder Track uploads/pitch drafts: server data, never shipped
     "*.mp4",             # large marketing videos — already on server, rarely change
     "app/static/qr/*",   # bio QR codes are generated on the server at publish; local ones are test output
 ]
