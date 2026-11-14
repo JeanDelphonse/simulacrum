@@ -55,6 +55,35 @@ GROUPS = [
             'config': 'PLAYBOOK_URL', 'fallback': {'endpoint': 'pages.index', 'anchor': 'playbook'},
         },
     },
+    # Founder Track: shown only while the track is on for this visitor
+    # (switch fully on for visitors; enabled for the signed-in member).
+    {
+        'id': 'founders',
+        'label': 'Founder Track',
+        'gate': 'founder_public',
+        'nojs': {'endpoint': 'founder.intro'},
+        'columns': [
+            {'label': 'Build your startup', 'items': [
+                {'id': 'fnd_how', 'title': 'How it works',
+                 'desc': 'Pitch, evaluate, build the team, execute', 'endpoint': 'founder.intro', 'anchor': 'how'},
+                {'id': 'fnd_report', 'title': 'Readiness report',
+                 'desc': 'What your documents prove today', 'endpoint': 'founder.intro', 'anchor': 'report'},
+            ]},
+            {'label': 'Show investors', 'items': [
+                {'id': 'fnd_startup_page', 'title': 'Startup page',
+                 'desc': 'A page you publish when you are ready', 'endpoint': 'founder.intro', 'anchor': 'page'},
+                {'id': 'fnd_start', 'title': 'Start your venture',
+                 'desc': 'The evaluation preview is free', 'endpoint': 'founder.intro', 'anchor': 'start'},
+            ]},
+        ],
+        'promo': {
+            'id': 'promo_founders',
+            'title': 'Free evaluation preview',
+            'desc': 'See your rung on the evidence ladder before you pay anything.',
+            'link_label': 'Start your venture',
+            'endpoint': 'founder.intro', 'anchor': 'start',
+        },
+    },
     {
         'id': 'employers',
         'label': 'For employers',
@@ -207,7 +236,20 @@ def _gates() -> dict:
         blog = bool(blog_service.nav_visible())
     except Exception:
         blog = False
-    return {'blog': blog}
+    return {'blog': blog, 'founder_public': _founder_public()}
+
+
+def _founder_public() -> bool:
+    """The Founder Track panel: a signed-in member sees it when the track is
+    enabled for them; a visitor only when the switch is fully on."""
+    try:
+        from flask_login import current_user
+        from app.services import founder_feature
+        if getattr(current_user, 'is_authenticated', False):
+            return bool(founder_feature.is_enabled(current_user))
+        return founder_feature.mode() == 'on'
+    except Exception:
+        return False
 
 
 def _mode() -> str:
@@ -247,6 +289,8 @@ def resolve() -> dict:
     mode = _mode()
     groups = []
     for g in GROUPS:
+        if g.get('gate') and not gates.get(g['gate'], False):
+            continue
         columns = []
         for c in g['columns']:
             items = [_item(it) for it in c['items'] if gates.get(it.get('gate', ''), True)]

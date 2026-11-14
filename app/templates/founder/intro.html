@@ -10,12 +10,18 @@
     confirm them. Every finding cites the passage it comes from.
   </p>
 
-  <ol style="margin:0 0 1.5rem;padding-left:1.2rem;line-height:1.7;color:var(--ink-2)">
+  <ol id="how" style="scroll-margin-top:90px;margin:0 0 1.5rem;padding-left:1.2rem;line-height:1.7;color:var(--ink-2)">
     <li><b style="color:var(--ink)">Pitch.</b> Upload your documents or talk it through.</li>
-    <li><b style="color:var(--ink)">Evaluate.</b> A readiness report with your rung on the evidence ladder.</li>
+    <li id="report"><b style="color:var(--ink)">Evaluate.</b> A readiness report with your rung on the evidence ladder.</li>
     <li><b style="color:var(--ink)">Build the team.</b> Agents matched to your gaps, with settings you control.</li>
     <li><b style="color:var(--ink)">Execute.</b> One clear next step. Nothing reaches a customer or investor without your approval.</li>
   </ol>
+
+  <p id="page" style="scroll-margin-top:90px;color:var(--ink-2);line-height:1.6;margin:0 0 1.5rem">
+    <b style="color:var(--ink)">Startup page.</b> When you are ready, publish a page for investors at
+    simisi.io/startup/your-company: your problem, solution, proof and traction, with every unverified claim
+    labelled as founder-stated. You decide when it goes live and can take it down at any time.
+  </p>
 
   {% if ventures %}
   <div style="padding:1rem 1.1rem;border:1px solid var(--rule);border-radius:var(--r-ui);margin:0 0 1.5rem">
@@ -35,7 +41,14 @@
     The evaluation preview is free. The full report, the agents and the plan are a one-time
     ${{ '{:,.0f}'.format(pricing.price_cents / 100) }} fee. {{ legal('founder_refund_terms', days=pricing.refund_window_days) }}
   </p>
-  <p style="margin:0 0 1.5rem"><a class="btn primary" href="{{ url_for('founder.start_page') }}">Start your venture</a></p>
+  <p id="start" style="scroll-margin-top:90px;margin:0 0 1.5rem">
+    {% if current_user.is_authenticated %}
+    <a class="btn primary" href="{{ url_for('founder.start_page') }}">Start your venture</a>
+    {% else %}
+    <a class="btn primary" href="{{ url_for('pages.register_page') }}">Create a free account to start</a>
+    <a class="btn" style="margin-left:.5rem" href="{{ url_for('pages.login_page') }}?next={{ url_for('founder.start_page')|urlencode }}">Log in</a>
+    {% endif %}
+  </p>
   {% endif %}
 
   <p style="font-size:.85rem;color:var(--mute);line-height:1.55;margin:0">{{ legal('founder_report_disclaimer') }}</p>

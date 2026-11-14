@@ -250,6 +250,48 @@ def main():
         check('the browser sends only the event and the id', "data[key] = value" in js
               and 'location' not in js and 'cookie' not in js)
 
+        print('\n5. Founder Track panel, after For professionals')
+        from app.services import founder_feature
+        from app.models.user import User
+        anon = app.test_client()
+        from flask import g as _g
+
+        def _anon_get(url):
+            _g.pop('_login_user', None)
+            return anon.get(url)
+        check('hidden from visitors while the track is off', 'ssTrig-founders' not in _anon_get('/').get_data(as_text=True)
+              and _anon_get('/founder').status_code == 404)
+        admin_u = User.query.filter_by(is_admin=True).first()
+        if admin_u is None:
+            admin_u = User(id='NAVADMIN1',email='nav-admin@x.com', full_name='Nav Admin', password_hash='x',
+                           is_admin=True, email_verified=True)
+            db.session.add(admin_u)
+            db.session.commit()
+        founder_feature.set_mode('founder_track', 'allowlist', admin_u.id)
+        check('allowlist: still hidden from visitors', 'ssTrig-founders' not in _anon_get('/').get_data(as_text=True)
+              and _anon_get('/founder').status_code == 404)
+        founder_feature.set_mode('founder_track', 'on', admin_u.id)
+        with app.test_request_context('/'):
+            nav_on = site_nav.resolve()
+        check('switch on: Founder Track sits right after For professionals',
+              [g['id'] for g in nav_on['groups']] == ['professionals', 'founders', 'employers'])
+        fitems = {it['id']: it['href'] for g in nav_on['groups'] if g['id'] == 'founders'
+                  for c in g['columns'] for it in c['items']}
+        check('its links go to the founder intro sections', fitems == {
+            'fnd_how': '/founder#how', 'fnd_report': '/founder#report', 'fnd_startup_page': '/founder#page',
+            'fnd_start': '/founder#start'}, fitems)
+        home = _anon_get('/').get_data(as_text=True)
+        bar = re.findall(r'class="ss-trigger" id="ssTrig-[^"]+"[^>]*>([^<]+)<', home)
+        check('bar order: For professionals, Founder Track, For employers',
+              bar[:3] == ['For professionals', 'Founder Track', 'For employers'], bar)
+        r = _anon_get('/founder')
+        body = r.get_data(as_text=True)
+        check('visitors can read the intro once the switch is on', r.status_code == 200
+              and 'id="how"' in body and 'id="report"' in body and 'id="page"' in body and 'id="start"' in body)
+        check('visitors are asked to create an account, not shown member actions',
+              'Create a free account to start' in body and '/founder/start' in body and 'Your venture' not in body)
+        founder_feature.set_mode('founder_track', 'off', admin_u.id)
+
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     for label in FAIL:
         print('  FAILED: ' + label)
