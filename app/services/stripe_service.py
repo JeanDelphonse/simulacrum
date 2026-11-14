@@ -232,6 +232,46 @@ def create_founder_checkout(venture, user, product: str, success_url: str = None
     return {'checkout_url': session.url, 'session_id': session.id, 'amount_cents': amount, 'product': product}
 
 
+def create_investor_access_checkout(page, email: str, success_url: str = None, cancel_url: str = None) -> dict:
+    """One-time Stripe Checkout Session for investor access to one startup page
+    (FOUNDER_PLAN.md WP8). The price is founder_config fnd_investor_access_cents,
+    never a client value. A flat fee to SimiSI, not tied to any investment.
+    Raises ValueError when the configured price is below the card minimum."""
+    from flask import url_for
+    from app.services import founder_config
+    prices = founder_config.pricing()
+    amount = int(founder_config.get('fnd_investor_access_cents') or 0)
+    if amount < 50:
+        raise ValueError('Paid investor access is not available for this page.')
+    if not email:
+        raise ValueError('An email address is needed.')
+    if success_url is None:
+        success_url = url_for('startup.investor_unlock_success', slug=page.slug, _external=True) \
+            + '?session_id={CHECKOUT_SESSION_ID}'
+    if cancel_url is None:
+        cancel_url = url_for('startup.investor_unlock', slug=page.slug, cancelled=1, _external=True)
+    s = _stripe()
+    session = s.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': prices.get('currency') or 'usd',
+                'product_data': {'name': 'SimiSI investor access — ' + (page.name or 'Startup page')[:80]},
+                'unit_amount': amount,
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        client_reference_id=page.id,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        customer_email=email,
+        metadata={'product': 'investor_access', 'startup_page_id': page.id, 'email': email,
+                  'amount_cents': str(amount)},
+    )
+    return {'checkout_url': session.url, 'session_id': session.id, 'amount_cents': amount}
+
+
 def construct_webhook_event(payload: bytes, sig_header: str) -> object:
     s = _stripe()
     return s.Webhook.construct_event(

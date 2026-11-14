@@ -1,0 +1,34 @@
+{% extends 'startup/investor_base.html' %}
+{% block title %}Ask for access · {{ p.name }}{% endblock %}
+{% block content %}
+<section class="st-panel st-inv-card" aria-labelledby="h-inv">
+  {% if sent or (access and access.status == 'requested') %}
+    <h1 id="h-inv">Request sent to the founders</h1>
+    <p>The founders of {{ p.name }} decide who sees the investor view. You will get an email at {{ email or access.email }} when they decide. SimiSI does not decide for them.</p>
+  {% elif access and access.status == 'denied' %}
+    <h1 id="h-inv">Access not approved</h1>
+    <p>The founders have not opened the investor view to {{ access.email }}. You can still <a href="/startup/{{ p.slug }}#contact">request an introduction</a> from the public page.</p>
+  {% else %}
+    <h1 id="h-inv">Ask the founders for access</h1>
+    <p>Send a short note to the founders of {{ p.name }}. If they approve, the investor view opens for your email at no cost.</p>
+    {% if error %}<p class="st-msg err" role="alert">{{ error }}</p>{% endif %}
+    {% if email %}
+    <form method="post" action="{{ url_for('startup.investor_access_request', slug=p.slug) }}" class="st-inv-form" novalidate>
+      <p class="st-inv-muted">Asking as {{ email }}.</p>
+      <label class="st-field"><span>Your name (optional)</span><input name="name" autocomplete="name" maxlength="120"></label>
+      <label class="st-field"><span>Who you are and why you are interested (optional)</span><textarea name="message" maxlength="1000"></textarea></label>
+      <button class="btn primary btn-full" type="submit">Send the request</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('startup.investor_signin', slug=p.slug) }}" class="st-inv-form" novalidate>
+      <input type="hidden" name="next" value="request">
+      <p class="st-inv-muted">First, confirm your email so the founders know who is asking.</p>
+      <label class="st-field"><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+      <label class="st-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+      <button class="btn primary btn-full" type="submit">Email me a sign-in link</button>
+    </form>
+    {% endif %}
+  {% endif %}
+  <p class="st-inv-terms">{{ legal('startup_claims_note') }}</p>
+</section>
+{% endblock %}

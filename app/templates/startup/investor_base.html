@@ -1,0 +1,50 @@
+{#- Shell for the small investor-access pages (sign in, unlock, request access),
+    FOUNDER_PLAN.md WP8 part A. Same light design as startup/page.html under
+    .st-root; extra rules are the .st-inv* classes in static/css/startup.css.
+    Context: p (public_context), seo, page, emails, plus the page's own values. -#}
+{% import 'partials/_logo.html' as logo_ui %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ p.name }}{% endblock %} | SimiSI startup page</title>
+  {% include 'partials/_favicon.html' %}
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/startup.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/startup_investor.css') }}">
+</head>
+<body class="st-root">
+<a class="sr" href="#st-main">Skip to the page content</a>
+<header class="st-top">
+  <div class="st-wrap">
+    {{ logo_ui.logo('/', 'SimiSI home') }}
+    <p class="st-crumb"><span class="hide-sm">Startup page · </span><a href="/startup/{{ p.slug }}">{{ p.name }}</a> · <span>Investor access</span></p>
+  </div>
+</header>
+<main id="st-main" class="st-inv-main">
+  <div class="st-wrap st-inv-wrap">
+    <div class="st-inv-co">
+      {% if p.logo %}<img class="st-logo" src="/startup/{{ p.slug }}/logo" alt="" width="48" height="48">
+      {% else %}<span class="st-mono" aria-hidden="true">{{ (p.name or '?')[:1]|upper }}</span>{% endif %}
+      <div>
+        <p class="st-inv-kicker">{% block kicker %}Investor access{% endblock %}</p>
+        <p class="st-inv-name">{{ p.name }}{% if p.stage_label %} <span>· {{ p.stage_label }}</span>{% endif %}</p>
+      </div>
+    </div>
+    {% block content %}{% endblock %}
+    <p class="st-inv-back"><a href="/startup/{{ p.slug }}">Back to the public page</a></p>
+  </div>
+</main>
+<footer class="st-foot">
+  <div class="st-wrap">
+    <span class="st-made">Made with {{ logo_ui.logo('/', 'Made with SimiSI: SimiSI home') }}</span>
+    <span><a class="lk" href="/legal/terms">Terms</a> · <a class="lk" href="/legal/privacy">Privacy</a></span>
+  </div>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,56 @@
+{% extends 'startup/investor_base.html' %}
+{% block title %}Investor access · {{ p.name }}{% endblock %}
+{% block content %}
+{% set price = '$%.2f'|format(price_cents / 100) %}
+{% set waits = exemption != '506c' %}
+<section class="st-panel st-inv-card" aria-labelledby="h-inv">
+  {% if access and access.kind == 'paid' and access.status == 'requested' %}
+    <h1 id="h-inv">Payment received</h1>
+  {% else %}
+    <h1 id="h-inv">Open the investor view</h1>
+  {% endif %}
+  {% if notice %}<p class="st-msg ok" role="status">{{ notice }}</p>{% endif %}
+  {% if error %}<p class="st-msg err" role="alert">{{ error }}</p>{% endif %}
+
+  {% if not (access and access.kind == 'paid' and access.status == 'requested') %}
+  <h2 class="st-inv-h2">What it opens</h2>
+  <ul class="st-inv-list">
+    {% for t, d in unlocks %}<li><b>{{ t }}:</b> {{ d }}</li>{% endfor %}
+  </ul>
+  {% if waits %}
+  <p class="st-inv-callout">The founders review every paid access before the ask is shown. Until they approve, you see the full proof and traction detail without the ask. If they decline, the fee is refunded in full.</p>
+  {% endif %}
+
+  {% if paid_available %}
+  <div class="st-inv-price">
+    <span class="v">{{ price }}</span>
+    <span class="l">one time, for this startup page, for as long as it is published</span>
+  </div>
+  {% if email %}
+  <form method="post" action="{{ url_for('startup.investor_unlock_start', slug=p.slug) }}">
+    <input type="hidden" name="email" value="{{ email }}">
+    <button class="btn primary btn-full" type="submit">Continue to payment</button>
+    <p class="st-inv-muted">Paying as {{ email }}. Card payment through Stripe.</p>
+  </form>
+  {% else %}
+  <form method="post" action="{{ url_for('startup.investor_signin', slug=p.slug) }}" class="st-inv-form" novalidate>
+    <input type="hidden" name="next" value="unlock">
+    <p class="st-inv-muted">First, confirm your email. Access is tied to it, so it follows you to other devices.</p>
+    <label class="st-field"><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+    <label class="st-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+    <button class="btn primary btn-full" type="submit">Email me a sign-in link</button>
+  </form>
+  {% endif %}
+  {% else %}
+  <p>Paid access is not offered right now.</p>
+  {% endif %}
+  {% endif %}
+
+  <p class="st-inv-terms">{{ legal('investor_access_terms', days=refund_days) }}</p>
+</section>
+
+<section class="st-panel st-inv-card st-inv-alt" aria-labelledby="h-alt">
+  <h2 id="h-alt">Invited by the founders?</h2>
+  <p>Open the private link they sent you; invited investors do not pay. You can also <a href="{{ url_for('startup.investor_access_request', slug=p.slug) }}">ask the founders for access</a> at no cost, or <a href="/startup/{{ p.slug }}#contact">request an introduction</a> from the public page.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'startup/investor_base.html' %}
+{#- step: form | sent | bad_token | link_inactive -#}
+{% block title %}Sign in · {{ p.name }}{% endblock %}
+{% block kicker %}{% if step == 'link_inactive' %}Private link{% else %}Investor sign-in{% endif %}{% endblock %}
+{% block content %}
+<section class="st-panel st-inv-card" aria-labelledby="h-inv">
+  {% if step == 'sent' %}
+    <h1 id="h-inv">Check your email</h1>
+    <p>If the address can receive email, a sign-in link for the {{ p.name }} investor view is on its way. It works for 30 minutes, in the browser where you open it.</p>
+    <p class="st-inv-muted">No account is created. SimiSI keeps the verified address in this browser session only.</p>
+    <p><a href="{{ url_for('startup.investor_signin', slug=p.slug, next=nxt) }}">Use a different address</a></p>
+  {% elif step == 'bad_token' %}
+    <h1 id="h-inv">This sign-in link does not work</h1>
+    <p>It has expired, was already replaced, or belongs to another page. Sign-in links work for 30 minutes.</p>
+    <a class="btn primary" href="{{ url_for('startup.investor_signin', slug=p.slug) }}">Send a new link</a>
+  {% elif step == 'link_inactive' %}
+    <h1 id="h-inv">This private link is no longer active</h1>
+    <p>The founders of {{ p.name }} turned this link off. If you were expecting access, ask them for a new link. The public company profile is still open to everyone.</p>
+    <a class="btn primary" href="/startup/{{ p.slug }}">Open the public page</a>
+  {% else %}
+    <h1 id="h-inv">Sign in to the investor view</h1>
+    <p>Enter your email and we will send a sign-in link. If the founders invited you, or you already have access, it opens the investor view. There is no password and no account.</p>
+    {% if error %}<p class="st-msg err" role="alert">{{ error }}</p>{% endif %}
+    <form method="post" action="{{ url_for('startup.investor_signin', slug=p.slug) }}" class="st-inv-form" novalidate>
+      <input type="hidden" name="next" value="{{ nxt }}">
+      <label class="st-field"><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254" value="{{ email or '' }}"></label>
+      <label class="st-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+      <button class="btn primary btn-full" type="submit">Email me a sign-in link</button>
+    </form>
+    {% if emails %}<p class="st-inv-muted">Signed in on this browser as {{ emails[0] }}. <a href="{{ url_for('startup.investor_view', slug=p.slug) }}">Continue</a></p>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}

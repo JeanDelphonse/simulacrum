@@ -223,6 +223,14 @@
           </form>
         </section>
         {% endblock %}
+        {% if investor_gate %}
+        <section class="st-panel" aria-labelledby="h-investor">
+          <h2 id="h-investor">Investors</h2>
+          <p>Investors can see the full proof, traction detail and the founders' ask.</p>
+          <p><a class="btn btn-full" href="/startup/{{ p.slug }}/signin">Sign in with your email</a></p>
+          <p><a href="/startup/{{ p.slug }}/unlock">Unlock investor access</a></p>
+        </section>
+        {% endif %}
         <nav class="st-panel toc" aria-label="On this page">
           <ul class="st-toc">
             <li><a href="#problem">Problem and customer</a></li>

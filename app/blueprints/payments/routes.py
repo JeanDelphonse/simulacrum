@@ -106,6 +106,15 @@ def stripe_webhook():
             from app.blueprints.founder.billing import fulfil_founder_session
             fulfil_founder_session(session)
 
+        elif meta.get('product') == 'investor_access':
+            # Founder Track investor access (FOUNDER_PLAN.md WP8): idempotent.
+            try:
+                from app.services import startup_access_service
+                startup_access_service.fulfil(session)
+            except Exception as exc:
+                db.session.rollback()
+                logger.error('Investor access fulfilment failed for %s: %s', session.get('id'), exc)
+
     elif event['type'] == 'payment_intent.payment_failed':
         pi = event['data']['object']
         sim_id = pi.get('metadata', {}).get('simulation_id')
@@ -144,6 +153,14 @@ def stripe_webhook():
                 except Exception as exc:
                     db.session.rollback()
                     logger.error('Founder Track refund handling failed for %s: %s', pi_id, exc)
+                # Investor access (FOUNDER_PLAN.md WP8): only touches an
+                # investor_access row with this payment intent and no venture.
+                try:
+                    from app.services import startup_access_service
+                    startup_access_service.mark_refunded(pi_id, fully_refunded=bool(charge.get('refunded')))
+                except Exception as exc:
+                    db.session.rollback()
+                    logger.error('Investor access refund handling failed for %s: %s', pi_id, exc)
 
     elif event['type'] == 'charge.dispute.created':
         charge = event['data']['object']

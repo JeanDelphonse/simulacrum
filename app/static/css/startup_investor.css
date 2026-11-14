@@ -1,0 +1,64 @@
+/* Founder Track investor access (FOUNDER_PLAN.md WP8 part A). Loaded after
+   startup.css on the investor view and the sign-in / unlock / request pages.
+   Scoped under .st-root like startup.css. */
+
+/* Investor view bar (under the top bar) */
+.st-root .st-invbar { background: var(--ink); color: #fff; font-size: 14px; }
+.st-root .st-invbar .st-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding-top: 10px;
+  padding-bottom: 10px; }
+.st-root .st-invbar-tag { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px;
+  background: var(--gold); color: var(--ink); font-weight: 750; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.st-root .st-invbar-who { color: rgba(255,255,255,.82); overflow-wrap: anywhere; }
+.st-root .st-invbar-who b { color: #fff; }
+.st-root .st-invbar-act { margin-left: auto; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.st-root .st-invbar a, .st-root .st-invbar .st-linkbtn { color: #fff; font-weight: 600; }
+.st-root .st-invbar form { margin: 0; display: inline; }
+.st-root .st-linkbtn { background: none; border: 0; padding: 0; font: inherit; text-decoration: underline; cursor: pointer; }
+
+/* The ask */
+.st-root .st-ask { border-top: 4px solid var(--gold); }
+.st-root .st-ask-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 0 0 14px; }
+.st-root .st-ask-grid div { border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; }
+.st-root .st-ask-grid dt { font-size: 12px; font-weight: 700; color: var(--mute); text-transform: uppercase; letter-spacing: .06em; }
+.st-root .st-ask-grid dd { margin: 4px 0 0; font-size: 22px; font-weight: 750; font-stretch: 108%; }
+.st-root .st-sec p.st-ask-note { font-size: 12.5px; color: var(--mute); margin-top: 12px; }
+
+/* Proof in detail */
+.st-root .st-proofs { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.st-root .st-proofs > li { border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; }
+.st-root .st-sec p.st-proof-meta { font-size: 13px; color: var(--mute); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* Small investor pages */
+.st-root .st-inv-main { padding: 36px 0 48px; }
+.st-root .st-inv-wrap { max-width: 620px; }
+.st-root .st-inv-co { display: flex; align-items: center; gap: 14px; margin: 0 0 18px; }
+.st-root .st-inv-co .st-logo, .st-root .st-inv-co .st-mono { width: 48px; height: 48px; border-radius: 12px; font-size: 20px; }
+.st-root .st-inv-kicker { margin: 0; font-size: 12px; font-weight: 700; color: var(--mute); text-transform: uppercase; letter-spacing: .08em; }
+.st-root .st-inv-name { margin: 2px 0 0; font-size: 20px; font-weight: 750; color: var(--ink); }
+.st-root .st-inv-name span { font-size: 15px; font-weight: 600; color: var(--mute); }
+.st-root .st-inv-card { padding: 26px 28px; margin: 0 0 14px; border-top: 4px solid var(--gold); }
+.st-root .st-inv-card.st-inv-alt { border-top: 1px solid var(--rule); }
+.st-root .st-inv-card h1 { font-size: 26px; margin: 0 0 10px; line-height: 1.15; }
+.st-root .st-inv-card h2 { font-size: 17px; margin: 0 0 6px; }
+.st-root .st-inv-card p { font-size: 15px; }
+.st-root .st-inv-card .btn { margin-top: 4px; }
+.st-root h2.st-inv-h2 { font-size: 13px; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); }
+.st-root .st-inv-list { margin: 0 0 14px; padding-left: 18px; line-height: 1.55; color: var(--ink-2); font-size: 14.5px; }
+.st-root .st-inv-list li { margin: 0 0 4px; }
+.st-root .st-inv-callout { background: #FFF8E8; border: 1px solid #E4B855; border-radius: 10px; padding: 10px 12px; color: #5C3F0A !important; }
+.st-root .st-inv-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 14px 0; padding: 14px 16px;
+  border: 1px solid var(--rule); border-radius: 10px; background: var(--alt); }
+.st-root .st-inv-price .v { font-size: 30px; font-weight: 800; font-stretch: 108%; color: var(--ink); }
+.st-root .st-inv-price .l { font-size: 14px; color: var(--ink-2); }
+.st-root .st-inv-form { margin-top: 10px; }
+.st-root .st-inv-muted { color: var(--mute) !important; font-size: 13.5px !important; overflow-wrap: anywhere; }
+.st-root .st-inv-terms { font-size: 12.5px !important; color: var(--mute) !important; margin: 16px 0 0 !important;
+  padding-top: 12px; border-top: 1px dashed var(--rule); }
+.st-root .st-inv-back { font-size: 14px; margin: 6px 0 0; }
+
+@media (max-width: 640px) {
+  .st-root .st-invbar-act { margin-left: 0; }
+  .st-root .st-inv-main { padding: 22px 0 32px; }
+  .st-root .st-inv-card { padding: 20px 18px; }
+  .st-root .st-inv-card h1 { font-size: 22px; }
+}

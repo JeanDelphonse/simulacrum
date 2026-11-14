@@ -49,8 +49,15 @@ def render_page(page, ctx, preview: bool = False, status: int = 200):
         'indexable': not preview and not ctx.get('investor_view'),
     }
     from app.services import startup_page_service as sps
+    investor_gate = False
+    if not preview and not ctx.get('investor_view'):
+        try:
+            from app.services import startup_access_service
+            investor_gate = bool(startup_access_service.gate_open(page))
+        except Exception:          # investor connection not available: the page is unchanged
+            investor_gate = False
     return render_template('startup/page.html', p=ctx, seo=seo, preview=preview, is_live=sps.is_public(page),
-                           investor_view=bool(ctx.get('investor_view'))), status
+                           investor_view=bool(ctx.get('investor_view')), investor_gate=investor_gate), status
 
 
 @startup_bp.route('/startup/<slug>')

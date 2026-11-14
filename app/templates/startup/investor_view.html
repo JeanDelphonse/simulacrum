@@ -1,0 +1,114 @@
+{% extends 'startup/page.html' %}
+{#- Investor view (FOUNDER_PLAN.md WP8 part A). p is
+    startup_access_service.investor_context(): public context plus the ask
+    (None while a paid access awaits the founders), full_proof, access. -#}
+
+{% block st_head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/startup_investor.css') }}">
+<meta name="referrer" content="no-referrer">{% endblock %}
+
+{% block st_banner %}
+<div class="st-invbar" role="region" aria-label="Investor view">
+  <div class="st-wrap">
+    <span class="st-invbar-tag">Investor view</span>
+    <span class="st-invbar-who">{% if p.access.email %}Signed in as <b>{{ p.access.email }}</b>{% elif p.access.kind == 'invited' %}Opened through a private link from the founders{% endif %}</span>
+    <span class="st-invbar-act">
+      <a href="/startup/{{ p.slug }}/onepager.pdf">Download the one-pager (PDF)</a>
+      {% if p.access.email %}<form method="post" action="{{ url_for('startup.investor_signout', slug=p.slug) }}"><button type="submit" class="st-linkbtn">Sign out</button></form>
+      {% else %}<a href="{{ url_for('startup.investor_signin', slug=p.slug) }}">Sign in with email</a>{% endif %}
+    </span>
+  </div>
+</div>
+{% endblock %}
+
+{% block st_ask %}
+<section class="st-sec st-ask" id="ask" aria-labelledby="h-ask">
+  <span class="st-num">07</span>
+  <h2 id="h-ask">The ask <span class="st-fs" title="Stated by the founders">founder-stated</span></h2>
+  {% if p.ask %}
+  <dl class="st-ask-grid">
+    <div><dt>Round</dt><dd>{{ p.ask.round or 'Not stated' }}</dd></div>
+    <div><dt>Amount</dt><dd>{% if p.ask.amount %}US$ {{ '{:,}'.format(p.ask.amount|int) }}{% else %}Not stated{% endif %}</dd></div>
+  </dl>
+  <h3>Use of funds</h3>
+  {% if p.ask.use_of_funds %}<p>{{ p.ask.use_of_funds }}</p>{% else %}<p class="st-empty">The founders have not described the use of funds yet.</p>{% endif %}
+  <p class="st-ask-note">{{ legal('investor_access_terms', days=refund_days) }}</p>
+  {% else %}
+  <p>The founders review paid access before the ask is shown. You will get an email when they decide; if they decline, your fee is refunded in full.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block st_investor_extra %}
+<section class="st-sec" id="proof-detail" aria-labelledby="h-proofd">
+  <span class="st-num">08</span>
+  <h2 id="h-proofd">Proof in detail</h2>
+  {% if p.full_proof %}
+  <ul class="st-proofs">
+    {% for r in p.full_proof %}
+    <li>
+      <p class="st-proof-meta">{{ r.date.strftime('%d %b %Y') }}{% if r.duration %} · {{ r.duration }}{% endif %} ·
+        {% if r.measured %}<span class="st-ev">measured against agreed criteria</span>{% else %}<span class="st-fs">not measured</span>{% endif %}
+        {% if r.paid %} · <span class="st-ev">paid by the customer</span>{% endif %}</p>
+      {% if r.criteria %}<p><b>Success criteria:</b> {{ r.criteria|join('; ') }}</p>{% endif %}
+      {% if r.benefits %}<p>{{ r.benefits }}</p>{% endif %}
+      {% if r.quote %}<blockquote class="st-quote">"{{ r.quote }}"<footer>A customer, quoted with permission</footer></blockquote>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="st-empty">No proof-of-concept results are recorded yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block st_contact %}
+<section class="st-panel contact" id="contact" aria-labelledby="h-contact">
+  <h2 id="h-contact">{% if p.request_kinds|length > 1 %}Contact the founders{% else %}Request an introduction{% endif %}</h2>
+  <p>Your request goes to the founders of {{ p.name }}. They decide whether to reply.</p>
+  <form id="stInvReq" novalidate>
+    {% if p.request_kinds|length > 1 %}
+    <fieldset class="st-kind">
+      <legend>I would like</legend>
+      {% for k, label in p.request_kinds.items() %}
+      <label><input type="radio" name="kind" value="{{ k }}"{{ ' checked' if loop.first }}><span>{{ 'An introduction' if k == 'intro' else 'Data room access' }}</span></label>
+      {% endfor %}
+    </fieldset>
+    {% else %}
+    <input type="hidden" name="kind" value="intro">
+    {% endif %}
+    <label class="st-field"><span>Your name</span><input name="name" autocomplete="name" required maxlength="100"></label>
+    <label class="st-field"><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254" value="{{ p.access.email or '' }}"></label>
+    <label class="st-field"><span>Firm (optional)</span><input name="firm" autocomplete="organization" maxlength="200"></label>
+    <label class="st-field"><span>Message (optional)</span><textarea name="message" maxlength="2000"></textarea></label>
+    <label class="st-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+    <button class="btn primary btn-full" type="submit">Send request</button>
+    <p class="st-msg" id="stInvMsg" role="status" aria-live="polite"></p>
+  </form>
+</section>
+{% endblock %}
+
+{% block st_scripts %}
+<script>
+(function () {
+  var f = document.getElementById('stInvReq'); if (!f) return;
+  var msg = document.getElementById('stInvMsg');
+  var url = '/startup/{{ p.slug }}/investor-request';
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var btn = f.querySelector('button[type=submit]');
+    var data = {}; new FormData(f).forEach(function (v, k) { data[k] = v; });
+    if (!data.name || !data.email) { msg.className = 'st-msg err'; msg.textContent = 'Add your name and email.'; return; }
+    if (data.kind === 'data_room' && !data.firm && !data.message) { msg.className = 'st-msg err'; msg.textContent = 'Tell the founders who you are with, or add a short note.'; return; }
+    btn.disabled = true; msg.className = 'st-msg'; msg.textContent = 'Sending...';
+    fetch(url, {method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)})
+      .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
+      .then(function (x) {
+        if (x.ok) { msg.className = 'st-msg ok'; msg.textContent = x.d.message; f.querySelector('[name=message]').value = ''; btn.disabled = false; }
+        else { msg.className = 'st-msg err'; msg.textContent = x.d.error || 'That did not go through. Please try again.'; btn.disabled = false; }
+      })
+      .catch(function () { msg.className = 'st-msg err'; msg.textContent = 'That did not go through. Please try again.'; btn.disabled = false; });
+  });
+})();
+</script>
+{% endblock %}
