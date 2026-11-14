@@ -33,7 +33,7 @@ PAGES = {
     '/admin/corporate': ('Growth', 'Organizations'),
     '/admin/transition': ('Growth', 'Transition'),
     '/admin/inquiries': ('Growth', 'Inquiries'),
-    '/admin/founder': ('Growth', 'Founder Track'),
+    '/admin/founder': ('Founder Track', None),
     '/admin/experts': ('People', 'Experts'),
     '/admin/careers': ('People', 'Careers'),
     '/admin/feedback': ('People', 'Feedback'),
@@ -84,7 +84,7 @@ def main():
             groups = re.findall(r'class="subnav-link[^"]*"[^>]*>([^<]+)<', top.group(0)) if top else []
             active = re.findall(r'class="subnav-link active"[^>]*>([^<]+)<', top.group(0)) if top else []
             sub = re.search(r'<nav class="admin-subnav-sub".*?</nav>', html, re.S)
-            ok = groups == ['Overview', 'Growth', 'People', 'Content', 'Platform'] and active == [group]
+            ok = groups == ['Overview', 'Growth', 'People', 'Content', 'Platform', 'Founder Track'] and active == [group]
             if page is None:
                 ok = ok and sub is None
             else:

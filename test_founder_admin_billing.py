@@ -145,7 +145,7 @@ def main():
               and 'id="counselDate" max="%s" value=' % date.today().isoformat() not in html)
         check('investor connection shows locked until counsel sign-off', 'Locked until counsel sign-off' in html)
         check('the subnav marks Founder Track active',
-              'class="subnav-sublink active" aria-current="page">Founder Track<' in html)
+              'class="subnav-link active" aria-current="true">Founder Track<' in html)
         check('?tab=pricing opens the pricing tab',
               'id="tab-pricing" aria-controls="panel-pricing"\n            aria-selected="true"'
               in client.get('/admin/founder?tab=pricing').get_data(as_text=True))

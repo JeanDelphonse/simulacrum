@@ -14,8 +14,7 @@
               ('partners', 'Partners', 'pages.admin_partners_view'),
               ('corporate', 'Organizations', 'pages.admin_corporate_view'),
               ('transition', 'Transition', 'transition.admin_page'),
-              ('inquiries', 'Inquiries', 'marketing.admin_inquiries'),
-              ('founder', 'Founder Track', 'founder.admin_page')]),
+              ('inquiries', 'Inquiries', 'marketing.admin_inquiries')]),
   ('People', [('experts', 'Experts', 'pages.admin_experts_view'),
               ('careers', 'Careers', 'pages.admin_careers_view'),
               ('feedback', 'Feedback', 'pages.admin_feedback_view'),
@@ -27,6 +26,7 @@
                 ('email_import', 'Email Import', 'mail.admin_page'),
                 ('compliance', 'Compliance', 'compliance.admin_compliance'),
                 ('legal_text', 'Legal Text', 'compliance.admin_legal_text')]),
+  ('Founder Track', [('founder', 'Founder Track', 'founder.admin_page')]),
 ] %}
 {% set ns = namespace(current=None) %}
 {% for title, items in groups %}{% for key, label, ep in items %}{% if key == active %}{% set ns.current = title %}{% endif %}{% endfor %}{% endfor %}
