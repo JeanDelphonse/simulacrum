@@ -72,18 +72,45 @@
   });
 
   /* ---------- run evaluation (WP2 provides the endpoint) ---------- */
-  var evalBtn = $('fi-eval');
-  if (evalBtn) evalBtn.addEventListener('click', function () {
-    var msg = $('fi-eval-msg');
-    evalBtn.disabled = true; msg.textContent = 'Starting...';
-    postJSON(BASE + '/evaluate', {})
-      .then(function (d) {
-        msg.textContent = d.message || 'The evaluation has started.';
-        if (d.url || d.report_url) setTimeout(function () { window.location.href = d.url || d.report_url; }, 900);
-      })
-      .catch(function (e) { msg.textContent = e.status === 404 ? 'The evaluation is not available yet.' : e.message; })
-      .then(function () { evalBtn.disabled = false; });
-  });
+  var evalBtn = $('fi-eval'), evalTimer = null;
+  function setEvalRunning(on) {
+    evalBtn.disabled = on;
+    evalBtn.textContent = on ? 'Evaluation started' : 'Run evaluation';
+    evalBtn.setAttribute('data-running', on ? '1' : '0');
+  }
+  function pollEval() {
+    clearTimeout(evalTimer);
+    evalTimer = setTimeout(function () {
+      api(BASE + '/evaluation').then(function (d) {
+        if (d.status === 'running') return pollEval();
+        var msg = $('fi-eval-msg');
+        setEvalRunning(false);
+        if (d.status === 'done') {
+          msg.innerHTML = 'Evaluation finished. <a href="/founder/v/' + encodeURIComponent(VID) + '/report">View the report</a>';
+        } else {
+          msg.textContent = 'The evaluation did not finish. Please run it again.';
+        }
+      }).catch(function () { pollEval(); });
+    }, 5000);
+  }
+  if (evalBtn) {
+    if (evalBtn.getAttribute('data-running') === '1') pollEval();
+    evalBtn.addEventListener('click', function () {
+      var msg = $('fi-eval-msg');
+      evalBtn.disabled = true; msg.textContent = 'Starting...';
+      postJSON(BASE + '/evaluate', {})
+        .then(function (d) {
+          msg.textContent = d.message || 'The evaluation has started.';
+          if (d.status === 'running' || d.status === 'queued') { setEvalRunning(true); pollEval(); return; }
+          if (d.url || d.report_url) setTimeout(function () { window.location.href = d.url || d.report_url; }, 900);
+          setEvalRunning(false);
+        })
+        .catch(function (e) {
+          msg.textContent = e.status === 404 ? 'The evaluation is not available yet.' : e.message;
+          setEvalRunning(false);
+        });
+    });
+  }
 
   /* ---------- pitch ---------- */
   if (root.getAttribute('data-pitch') !== '1') return;

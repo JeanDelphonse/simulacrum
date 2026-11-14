@@ -155,8 +155,8 @@
     <h2 id="fi-eval-h">Run the evaluation</h2>
     <p class="fi-sub">SimiSI reads your current documents and confirmed pitch against a nine-part rubric. Every finding cites the passage it comes from.</p>
     <div class="fi-actions">
-      <button type="button" class="btn primary" id="fi-eval">Run evaluation</button>
-      <span class="fi-status" id="fi-eval-msg" role="status" aria-live="polite"></span>
+      <button type="button" class="btn primary" id="fi-eval" data-running="{{ '1' if eval_running else '0' }}"{{ ' disabled' if eval_running }}>{{ 'Evaluation started' if eval_running else 'Run evaluation' }}</button>
+      <span class="fi-status" id="fi-eval-msg" role="status" aria-live="polite">{% if eval_running %}The evaluation is running. This page updates when it finishes.{% endif %}</span>
     </div>
     <p class="fi-note">{{ legal('founder_report_disclaimer') }}</p>
   </section>

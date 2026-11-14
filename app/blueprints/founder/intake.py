@@ -63,10 +63,12 @@ def create_venture():
 @founder_bp.route('/founder/v/<venture_id>/intake')
 @founder_required
 def intake_page(venture_id):
+    from app.services import founder_evaluation_service as fes
     from app.services import founder_feature, founder_intake_service as fis, founder_pitch_service as fps
     v = _venture(venture_id)
     pitch_on = founder_feature.is_enabled(current_user, founder_feature.PITCH)
-    return render_template('founder/intake.html', venture=v, kinds=fis.summary(v),
+    eval_running = v is not None and fes.running_run(v) is not None
+    return render_template('founder/intake.html', venture=v, kinds=fis.summary(v), eval_running=eval_running,
                            upload_kinds=[(k, fis.KIND_LABELS[k]) for k in fis.UPLOAD_KINDS],
                            max_mb=fis.max_upload_bytes() // (1024 * 1024), pitch_on=pitch_on,
                            pitch=fps.state(v, current_user) if pitch_on else None,

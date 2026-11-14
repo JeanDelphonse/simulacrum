@@ -461,8 +461,16 @@ def main():
         db.session.commit()
         r = client.post('/api/founder/v/%s/evaluate' % V_ID)
         check('a run in flight is reused, not doubled', (r.get_json() or {}).get('run_id') == stuck.id)
+        g.pop('_login_user', None)
+        page_html = client.get('/founder/v/%s/intake' % V_ID).get_data(as_text=True)
+        check('while a run is in flight the intake button reads "Evaluation started" and is disabled',
+              'data-running="1" disabled>Evaluation started</button>' in page_html)
         stuck.status = 'done'
         db.session.commit()
+        g.pop('_login_user', None)
+        page_html = client.get('/founder/v/%s/intake' % V_ID).get_data(as_text=True)
+        check('once it finishes the button reads "Run evaluation" again',
+              'data-running="0">Run evaluation</button>' in page_html)
         fake.fail = True
         artifact('pitch_deck', DECK + '\nNew traction slide.', version=2)
         bad = fes.run(venture(), founder)
