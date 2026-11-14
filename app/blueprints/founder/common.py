@@ -48,4 +48,20 @@ def venture_nav(venture) -> list:
             out.append((key, label, url_for(endpoint, venture_id=venture.id)))
         except BuildError:
             continue
+        if key == 'page' and _investor_tab_open():
+            try:
+                out.append(('investors', 'Investors', url_for('founder.investors_page', venture_id=venture.id)))
+            except BuildError:
+                pass
     return out
+
+
+def _investor_tab_open() -> bool:
+    """The Investors tab shows only to a user the investor switch (with counsel
+    sign-off) is on for; for everyone else the tab list is unchanged."""
+    try:
+        from flask_login import current_user
+        from app.services import founder_feature
+        return founder_feature.is_enabled(current_user, founder_feature.INVESTOR)
+    except Exception:
+        return False

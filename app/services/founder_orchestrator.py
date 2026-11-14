@@ -142,7 +142,18 @@ def gate_reason(venture, step, investor_on=None):
     need = gate_rung(step.agent_key)
     if int(venture.rung or 1) < need:
         return 'Opens at evidence rung %d (you are on rung %d).' % (need, int(venture.rung or 1))
+    if not _exemption_recorded(venture):
+        return 'Capitalize agents open once the founders record which offering exemption applies (Investors page).'
     return None
+
+
+def _exemption_recorded(venture) -> bool:
+    try:
+        from app.services import founder_investors
+        return founder_investors.exemption_recorded(venture)
+    except Exception as exc:
+        logger.error('founder exemption gate unreadable, keeping L5 locked: %s', exc)
+        return False
 
 
 def _missing_prereqs(step, by_key: dict) -> list:

@@ -257,3 +257,235 @@ def _member_name(member) -> str:
 
 def approver_name(action) -> str:
     return _member_name(approver_for(action))
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: sending (FOUNDER_PLAN.md WP8). New functions only; everything above
+# keeps its behaviour. Behind the founder_investor switch and the counsel
+# sign-off, gated on the recorded offering exemption.
+# ---------------------------------------------------------------------------
+
+SEND_TYPES = ('intro_request', 'followup', 'first_contact', 'financial_message', 'application')
+# Under 506(b), or before an exemption is decided, only existing relationships
+# and published application forms may be reached (PRD, Compliance guardrails).
+CONSERVATIVE_EXEMPTIONS = ('506b', 'undecided')
+
+
+class SendBlocked(AutonomyError):
+    """A send refusal. above_level marks an attempt above the autonomy allowed
+    for the action type (it raises an observability flag at once)."""
+
+    def __init__(self, message, status=409, above_level=False):
+        super().__init__(message, status)
+        self.above_level = above_level
+
+
+def sent_today(venture) -> int:
+    """Outreach actions sent for this venture in the last 24 hours."""
+    from datetime import timedelta
+    from app.models.founder import VentureOutreachAction
+    since = datetime.utcnow() - timedelta(days=1)
+    return VentureOutreachAction.query.filter(VentureOutreachAction.venture_id == venture.id,
+                                              VentureOutreachAction.status == 'sent',
+                                              VentureOutreachAction.sent_at >= since).count()
+
+
+def send_cap() -> int:
+    from app.services import founder_config
+    return max(0, int(founder_config.get('fnd_action_cap_per_day')))
+
+
+def requested_level(venture, action) -> int:
+    """The level the action was drafted and approved under."""
+    if action.level_required is not None:
+        return int(action.level_required)
+    return level_for(venture, action.action_type)
+
+
+def _send_gate(action, user, venture) -> dict:
+    """Every check before a send, without side effects. Raises SendBlocked;
+    returns {'cls', 'level', 'rec', 'relationship', 'exemption'}."""
+    from app.services import founder_compliance, founder_config, founder_feature, founder_investors
+    from app.services import founder_ventures
+    if founder_ventures.get_member(venture, getattr(user, 'id', None)) is None:
+        raise SendBlocked('Only the founders of this venture can send its drafts.', 403)
+    if not founder_feature.is_enabled(user, founder_feature.INVESTOR) or not founder_config.counsel_signed_off():
+        raise SendBlocked('Investor connection is not switched on for your account.', 403)
+    if not founder_investors.exemption_recorded(venture):
+        raise SendBlocked('Record which offering exemption your lawyer chose before anything is sent to '
+                          'investors.', 409)
+    rec = founder_investors.resolve(venture, action)
+    if rec['kind'] == 'linkedin':
+        from app.services import legal_text
+        raise SendBlocked(legal_text.get('linkedin_manual'), 409)
+    if action.status == 'sent':
+        raise SendBlocked('This draft was already sent.', 409)
+    if action.status == 'blocked':
+        raise SendBlocked('This draft is held: %s.' % (action.block_reason or 'declined'), 409)
+    cls = action_class(action.action_type)
+    lim = limits(cls)
+    level = requested_level(venture, action)
+    if lim['max'] <= 0:
+        raise SendBlocked('SimiSI never sends this kind of message (negotiating or accepting terms is not '
+                          'permitted at any level).', 403, above_level=True)
+    if action.action_type not in SEND_TYPES:
+        raise SendBlocked('SimiSI sends only investor messages for the Founder Track. Copy this draft and send it '
+                          'yourself.', 409)
+    if level > lim['max']:
+        raise SendBlocked('This draft is set to level %d (%s), above the most allowed for %s (level %d). It was '
+                          'not sent.' % (level, LEVEL_LABELS.get(level, ''), cls.replace('_', ' '), lim['max']),
+                          403, above_level=True)
+    if level <= MIN_LEVEL:
+        raise SendBlocked('This agent is advisor only: copy the draft and send it yourself.', 409)
+    if action.status != 'approved' or not action.approved_by:
+        raise SendBlocked('Approve the draft first. %s has the final say.' % approver_name(action), 409)
+    ex = founder_investors.exemption(venture)
+    issues = founder_compliance.check('%s\n%s' % (action.subject or '', action.body or ''), 5, exemption=ex)
+    if issues:
+        raise SendBlocked('The draft breaks a SimiSI rule (%s). Edit or redraft it.'
+                          % ', '.join(sorted({i['label'] for i in issues})), 422)
+    if rec['kind'] in (None, 'text'):
+        raise SendBlocked('Choose who this goes to first (one of your contacts or an email address).', 409)
+    rel = founder_investors.relationship(venture, action, rec)
+    if ex in CONSERVATIVE_EXEMPTIONS and rel is None:
+        raise SendBlocked('Under %s, SimiSI reaches only people you already know, investors who replied to you, '
+                          'and published application forms. This recipient is none of those, so it was not sent.'
+                          % ('Rule 506(b)' if ex == '506b' else 'an undecided exemption'), 409)
+    if action.action_type == 'application':
+        if rec.get('profile') is None or not rec['profile'].apply_url:
+            raise SendBlocked('There is no published application form on file for this draft.', 409)
+    elif not rec.get('email'):
+        raise SendBlocked('There is no email address for this recipient yet.', 409)
+    if action.action_type != 'application' and sent_today(venture) >= send_cap():
+        raise SendBlocked('Your daily limit of %d investor messages is reached. Try again tomorrow.' % send_cap(),
+                          429)
+    return {'cls': cls, 'level': level, 'rec': rec, 'relationship': rel, 'exemption': ex}
+
+
+def send_check(action, user):
+    """Why this draft can't be sent right now, or None. No side effects."""
+    from app.extensions import db
+    from app.models.founder import FounderVenture
+    try:
+        _send_gate(action, user, db.session.get(FounderVenture, action.venture_id))
+    except SendBlocked as exc:
+        return str(exc)
+    except Exception as exc:
+        logger.error('send check failed for %s: %s', getattr(action, 'id', '?'), exc)
+        return 'SimiSI could not check this draft. Try again.'
+    return None
+
+
+def _flag_attempt(venture, action, user, message) -> None:
+    """An attempt above the allowed autonomy: hold the draft and raise the
+    above-level observability flag at once."""
+    from app.extensions import db
+    from app.services import founder_ventures
+    action.status = 'blocked'
+    action.block_reason = 'Not sent: above the allowed autonomy level'
+    founder_ventures.log_event(venture.id, 'send_refused_above_level', '%s %s: %s' % (
+        action.id, action.action_type, message), user_id=getattr(user, 'id', None))
+    try:
+        from app.services import founder_alerts
+        if not founder_alerts._recent_flag('above_level_send', None, target_id=action.id):
+            founder_alerts._flag('above_level_send', 'action', action.id,
+                                 '%s attempted at level %s; allowed %s' % (
+                                     action.action_type, action.level_required, limits(action.action_type)['max']),
+                                 severity='critical', user_id=venture.owner_user_id)
+    except Exception as exc:
+        logger.error('above-level flag failed for %s: %s', action.id, exc)
+    db.session.commit()
+
+
+def send(action, user) -> dict:
+    """Send one approved investor-facing draft (Phase 3).
+
+    Refuses unless investor connection is on for the user with the counsel
+    sign-off recorded and the venture's exemption recorded. Under 506(b) or an
+    undecided exemption only existing relationships (the founder's own
+    contacts, investors who replied) and published application forms. The
+    level must be within the matrix (first contact never above
+    fnd_first_contact_cap; negotiating terms never) and a founder must have
+    approved it. fnd_action_cap_per_day caps sends per venture.
+
+    Email goes through outreach_email_service.send_outreach_email (suppression,
+    postal address, footer, logging): the founder's name as display name,
+    reply-to the founder, labelled as sent on their behalf by SimiSI, with a
+    member-scoped unsubscribe. Applications are never submitted by SimiSI: the
+    approved answers are handed to the founder with the form link. LinkedIn is
+    copy-only. Returns {'ok', 'delivery', ...}; raises SendBlocked."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.models.founder import FounderVenture
+    from app.services import founder_investors, founder_ventures, send_pipeline
+    if action is None:
+        raise SendBlocked('Draft not found.', 404)
+    venture = db.session.get(FounderVenture, action.venture_id)
+    try:
+        gate = _send_gate(action, user, venture)
+    except SendBlocked as exc:
+        if exc.above_level and action.status != 'sent':
+            _flag_attempt(venture, action, user, str(exc))
+        raise
+    now = datetime.utcnow()
+    rec = gate['rec']
+    if action.action_type == 'application':
+        action.level_applied = gate['level']
+        AuditLog.log('founder_application_handoff', user_id=user.id, resource_id=venture.id,
+                     metadata={'action_id': action.id, 'apply_url': rec['profile'].apply_url,
+                               'level': gate['level'], 'exemption': gate['exemption']})
+        founder_ventures.log_event(venture.id, 'application_ready', '%s ready for the founder to submit' % action.id,
+                                   user_id=user.id)
+        db.session.commit()
+        return {'ok': True, 'delivery': 'founder_submits', 'apply_url': rec['profile'].apply_url,
+                'message': 'Approved. SimiSI does not submit applications: open the form and submit these answers '
+                           'yourself.'}
+    try:
+        sender = send_pipeline.sender_for(user)
+    except send_pipeline.SendRefused as exc:
+        raise SendBlocked(str(exc), 409)
+    contact = rec['contact']
+    if contact is None:
+        contact = founder_investors.contact_for(venture.owner_user_id, rec['email'])
+        db.session.commit()
+    founder = (getattr(user, 'full_name', '') or '').strip() or 'The founder'
+    url = founder_investors.unsubscribe_url(venture, rec['email'])
+    html = founder_investors._html(action.body) + founder_investors.on_behalf_html(founder)
+    action_id = action.id
+    from app.services.outreach_email_service import send_outreach_email
+    res = send_outreach_email(simulation_id=venture.id, contact_id=contact.id, subject=action.subject or venture.name,
+                              html_body=html, from_email=sender['from_email'], from_name=founder,
+                              action_id=action_id, api_key=sender['api_key'], unsubscribe=True,
+                              reply_to=(user.email or '').strip() or None, unsubscribe_url=url)
+    action = db.session.get(type(action), action_id)
+    if res.get('status') != 'sent':
+        reason = str(res.get('reason') or res.get('status') or 'not sent')
+        founder_ventures.log_event(venture.id, 'send_skipped', '%s: %s' % (action_id, reason), user_id=user.id)
+        db.session.commit()
+        labels = {'no_postal_address': 'Add your mailing address in Settings first; every email carries it.',
+                  'do_not_contact': 'This person asked not to be emailed.'}
+        msg = labels.get(reason) or ('Not sent: %s.' % (
+            'they unsubscribed or are on an opt-out list' if reason.startswith('suppressed')
+            else reason.replace('_', ' ')))
+        raise SendBlocked(msg, 409)
+    action.status, action.sent_at, action.level_applied = 'sent', now, gate['level']
+    AuditLog.log('founder_outreach_sent', user_id=user.id, resource_id=venture.id,
+                 metadata={'action_id': action.id, 'action_type': action.action_type, 'level': gate['level'],
+                           'relationship': gate['relationship'], 'exemption': gate['exemption'],
+                           'email_log_id': res.get('email_log_id')})
+    try:
+        from app.services import founder_stream
+        founder_stream.publish(venture.id, 'outreach_sent', {
+            'plan_step_id': action.plan_step_id, 'action_id': action.id, 'actor_user_id': user.id,
+            'actor_kind': 'founder', 'note': 'Sent on your behalf by SimiSI: %s' % (action.subject or '')[:200]},
+            commit=False)
+    except Exception as exc:
+        logger.debug('founder stream publish skipped: %s', exc)
+    db.session.commit()
+    try:
+        from app.services import founder_alerts
+        founder_alerts.check_action(action)
+    except Exception as exc:
+        logger.error('founder alert check failed for %s: %s', action.id, exc)
+    return {'ok': True, 'delivery': 'email', 'email_log_id': res.get('email_log_id'),
+            'message': 'Sent on your behalf by SimiSI. Replies go to %s.' % (user.email or 'you')}

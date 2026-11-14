@@ -463,6 +463,12 @@ def main():
         vv.rung = 2
         db.session.commit()
         fo.refresh(venture())
+        check('at the gate rung with investor on but no exemption recorded, L5 stays locked',
+              step_for('fnd_investor_readiness').state == 'locked'
+              and 'exemption' in (fo.gate_reason(venture(), step_for('fnd_investor_readiness')) or ''))
+        from app.services import founder_investors
+        founder_investors.record_exemption(venture(), db.session.get(User, F_ID), 'undecided', 'test')
+        fo.refresh(venture())
         check('at the gate rung with investor on, the L5 step opens', step_for('fnd_investor_readiness').state == 'ready')
         founder_feature.set_mode('founder_investor', 'off', A_ID)
         fo.refresh(venture())

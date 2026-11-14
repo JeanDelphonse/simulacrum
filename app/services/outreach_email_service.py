@@ -22,19 +22,29 @@ def send_outreach_email(
     api_key: str = None,
     unsubscribe: bool = True,
     transactional: bool = False,
+    reply_to: str = None,
+    unsubscribe_url: str = None,
 ) -> dict:
-    """Send one outreach email and record the attempt (COMPLIANCE_PLAN C7)."""
+    """Send one outreach email and record the attempt (COMPLIANCE_PLAN C7).
+
+    reply_to / unsubscribe_url are opt-in (Founder Track, FOUNDER_PLAN WP8):
+    left as None, replies route through the inbound-parse address and the
+    unsubscribe link is the global one, exactly as before. A caller that sends
+    on a member's behalf may pass the member's own reply-to address and a
+    member-scoped unsubscribe URL."""
     from app.services import sender_identity as _sender
     trail = {'unsubscribe': unsubscribe and not transactional}
     result = _send_outreach_email(simulation_id, contact_id, subject, html_body, from_email, from_name,
-                                  step_id, action_id, api_key, unsubscribe, transactional, trail)
+                                  step_id, action_id, api_key, unsubscribe, transactional, trail,
+                                  reply_to=reply_to, unsubscribe_url=unsubscribe_url)
     _sender.record_send('step' if step_id else 'agent', result, trail,
                         user_id=trail.get('owner_id'), resource_id=action_id or contact_id)
     return result
 
 
 def _send_outreach_email(simulation_id, contact_id, subject, html_body, from_email, from_name,
-                         step_id, action_id, api_key, unsubscribe, transactional, trail) -> dict:
+                         step_id, action_id, api_key, unsubscribe, transactional, trail,
+                         reply_to=None, unsubscribe_url=None) -> dict:
     """
     Send a single outreach email via SendGrid.
 
@@ -159,7 +169,7 @@ def _send_outreach_email(simulation_id, contact_id, subject, html_body, from_ema
             # List-Unsubscribe headers; the link adds the address to the
             # suppression list every send checks.
             from app.services.outreach_campaign_service import unsubscribe_url_for
-            unsub_url = unsubscribe_url_for(to_email)
+            unsub_url = unsubscribe_url or unsubscribe_url_for(to_email)
             html_body = (html_body or '') + _sender.footer_html(from_name, _postal, unsub_url)
 
         message = Mail(
@@ -199,7 +209,7 @@ def _send_outreach_email(simulation_id, contact_id, subject, html_body, from_ema
         # Reply-to routes through SimiSI for inbound parse tracking,
         # but points back to the user so replies also reach their inbox.
         base_domain = current_app.config.get('INBOUND_PARSE_DOMAIN', 'mail.simulacrumai.io')
-        message.reply_to = f'reply-{contact_id}@{base_domain}'
+        message.reply_to = reply_to or f'reply-{contact_id}@{base_domain}'
 
         client = sg_module.SendGridAPIClient(api_key)
         response = client.send(message)

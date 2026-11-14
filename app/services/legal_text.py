@@ -120,6 +120,16 @@ DEFAULTS = {
         'Bottom of every investor update email',
         'Sent on behalf of {sender_name} by SimiSI. This update is information, not an offer to sell or a '
         'solicitation to buy securities. Unsubscribe: {unsubscribe_url}'),
+    'founder_on_behalf_note': (
+        'Founder outreach sent through SimiSI (intro requests, follow-ups, investor updates)',
+        'Sent on behalf of {founder_name} by SimiSI. {founder_name} approved this message; replies go '
+        'straight to them.'),
+    'investor_access_terms': (
+        'Startup page investor access (unlock page, investor view, one-pager)',
+        'Investor access is a flat fee paid to SimiSI to read this startup page. Paying does not verify that '
+        'you are an accredited investor, is not tied to any investment, and is not an offer to sell or a '
+        'solicitation to buy securities. SimiSI does not verify, endorse or offer any investment. If the founders '
+        'unpublish the page within {days} days of your payment, the fee is refunded.'),
 }
 
 

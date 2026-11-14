@@ -1,0 +1,501 @@
+{% extends 'base.html' %}
+{% block title %}Investors · {{ venture.name }}{% endblock %}
+{% block head %}
+<style>
+  .iv { color: var(--ink); padding-top: 2.5rem; padding-bottom: 3.5rem; max-width: 1100px; }
+  .iv-eyebrow { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); margin: 0 0 .4rem; }
+  .iv-eyebrow a { color: var(--mute); }
+  .iv h1 { font-size: 1.75rem; margin: 0 0 .35rem; }
+  .iv h2 { font-size: 1.15rem; margin: 0 0 .35rem; }
+  .iv h3 { font-size: 1rem; margin: 0 0 .3rem; }
+  .iv-sub { color: var(--ink-2); margin: 0 0 1.25rem; max-width: 760px; line-height: 1.5; }
+  .iv-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.25rem; align-items: start; }
+  .iv-card { border: 1px solid var(--rule); border-radius: var(--r-ui); background: #fff; padding: 1.25rem; margin: 0 0 1.25rem; }
+  .iv-card > p, .iv-hint { color: var(--ink-2); font-size: .92rem; line-height: 1.5; margin: 0 0 .8rem; }
+  .iv-hint { font-size: .84rem; color: var(--mute); }
+  .iv-head { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: space-between; align-items: flex-start; margin-bottom: .6rem; }
+  .iv-note { border: 1px solid var(--rule); border-left: 4px solid var(--gold); border-radius: var(--r-ui); background: var(--alt);
+             padding: .75rem .9rem; font-size: .9rem; line-height: 1.5; margin: 0 0 1.25rem; }
+  .iv-note.warn { border-left-color: #B45309; background: #FFFBEB; }
+  .iv-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12.5px;
+             font-weight: 700; background: var(--alt); color: var(--ink-2); white-space: nowrap; }
+  .iv-pill.calibration { background: #E0E7FF; color: #312E81; }
+  .iv-pill.pursuing, .iv-pill.sent, .iv-pill.approved, .iv-pill.on { background: #DCFCE7; color: #14532D; }
+  .iv-pill.passed, .iv-pill.blocked, .iv-pill.off { background: #F1F5F9; color: #475569; }
+  .iv-pill.awaiting_approval, .iv-pill.draft, .iv-pill.drafted { background: #FEF3C7; color: #78350F; }
+  .iv-pill.ev { background: #FFF8E8; color: #6B4A0C; border: 1px solid #E4B855; }
+  .iv-row { margin: 0 0 .9rem; }
+  .iv-row label, .iv-lab { display: block; font-weight: 600; font-size: .9rem; margin: 0 0 .3rem; }
+  .iv input[type=text], .iv input[type=email], .iv input[type=url], .iv select, .iv textarea {
+      width: 100%; border: 1px solid var(--rule); border-radius: 8px; padding: .55rem .7rem; font-size: 15px; background: #fff; color: var(--ink); }
+  .iv textarea { min-height: 150px; resize: vertical; line-height: 1.5; font-family: inherit; }
+  .iv-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .iv-choice { display: grid; gap: .5rem; margin: 0 0 .8rem; }
+  .iv-choice label { display: flex; gap: .55rem; align-items: flex-start; border: 1px solid var(--rule); border-radius: 10px; padding: .6rem .7rem;
+                     font-weight: 400; font-size: .9rem; line-height: 1.45; cursor: pointer; }
+  .iv-choice input { margin-top: .2rem; flex: none; }
+  .iv-choice b { display: block; }
+  .iv-list { list-style: none; margin: 0; padding: 0; }
+  .iv-item { border-top: 1px solid var(--rule); padding: .85rem 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem 1rem; align-items: start; }
+  .iv-item:first-child { border-top: 0; }
+  .iv-item.suggested { background: #F5F8FF; border-radius: 10px; border: 1px solid #C7D2FE; padding: .85rem; margin-bottom: .4rem; }
+  .iv-name { font-weight: 700; }
+  .iv-meta { font-size: .85rem; color: var(--ink-2); margin: .15rem 0 0; line-height: 1.45; }
+  .iv-meta.gaps { color: var(--mute); }
+  .iv-acts { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: flex-end; }
+  .iv .btn.sm { padding: .3rem .7rem; font-size: .85rem; min-height: 34px; }
+  .iv-bar { height: 8px; background: var(--alt); border-radius: 99px; overflow: hidden; margin: .5rem 0 .3rem; }
+  .iv-bar span { display: block; height: 100%; background: var(--gold); }
+  .iv-meter { display: inline-block; width: 70px; height: 6px; background: var(--alt); border-radius: 99px; vertical-align: middle; overflow: hidden; margin-right: .35rem; }
+  .iv-meter span { display: block; height: 100%; background: var(--ink); }
+  .iv-draft { border: 1px solid var(--rule); border-radius: 10px; padding: .9rem; margin: 0 0 .8rem; }
+  .iv-draft pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: .9rem; line-height: 1.5; background: var(--alt);
+                  border-radius: 8px; padding: .7rem .8rem; margin: .5rem 0; max-height: 280px; overflow: auto; }
+  .iv-kv { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .84rem; color: var(--ink-2); margin: .3rem 0; }
+  .iv-kv b { color: var(--ink); font-weight: 600; }
+  .iv-block { font-size: .85rem; color: #7C2D12; background: #FFF7ED; border-radius: 8px; padding: .45rem .6rem; margin: .4rem 0; }
+  .iv-msg { min-height: 1.2em; margin: .5rem 0 0; font-size: .9rem; }
+  .iv-msg.err { color: #991B1B; } .iv-msg.ok { color: #0B4F49; }
+  .iv-side { position: sticky; top: 80px; }
+  .iv-switch { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .55rem 0; border-top: 1px solid var(--rule); }
+  .iv-switch:first-of-type { border-top: 0; }
+  .iv-switch div { font-size: .88rem; line-height: 1.4; }
+  .iv-stat { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin: .4rem 0 .6rem; }
+  .iv-stat div { background: var(--alt); border-radius: 10px; padding: .55rem .65rem; }
+  .iv-stat b { display: block; font-size: 1.25rem; }
+  .iv-stat span { font-size: .78rem; color: var(--ink-2); }
+  .iv-empty { color: var(--mute); font-size: .9rem; margin: .3rem 0; }
+  details.iv-det summary { cursor: pointer; font-weight: 600; font-size: .92rem; }
+  .iv-tbl { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  .iv-tbl th, .iv-tbl td { text-align: left; padding: .4rem .3rem; border-bottom: 1px solid var(--rule); vertical-align: top; word-break: break-word; }
+  .iv-locked { opacity: .55; pointer-events: none; }
+  @media (max-width: 900px) { .iv-grid { grid-template-columns: 1fr; } .iv-side { position: static; } .iv-side.first { order: -1; } }
+  @media (max-width: 640px) {
+    .iv { padding-top: 1.5rem; }
+    .iv-2 { grid-template-columns: 1fr; }
+    .iv-item { grid-template-columns: 1fr; }
+    .iv-acts { justify-content: flex-start; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+{%- set ready = s.exemption is not none -%}
+{%- set cal = s.calibration -%}
+{%- set kind_labels = {'intro_request': 'Intro request', 'followup': 'Follow-up', 'first_contact': 'First contact',
+                       'financial_message': 'Financial message', 'application': 'Application'} -%}
+<div class="wrap iv">
+  <p class="iv-eyebrow"><a href="/founder">Founder Track</a> · {{ venture.name }}</p>
+  <h1>Investors</h1>
+  <p class="iv-sub">Find investors and programs that fit, see who you already know who can introduce you, and prepare
+    applications and updates. Nothing goes out until a founder approves it, and SimiSI never negotiates or discusses terms.</p>
+  {% include 'founder/_ws_nav.html' %}
+
+  <p class="iv-note">{{ not_advice }}</p>
+
+  <div class="iv-grid">
+    <div>
+      {% if not ready %}
+      <section class="iv-card" aria-labelledby="h-start">
+        <h2 id="h-start">Start with your offering exemption</h2>
+        <p>Before any investor step runs, record which securities exemption your lawyer chose for this raise. It decides who SimiSI may help you reach.
+          Record it in the Offering exemption panel. The sections below open once it is recorded.</p>
+      </section>
+      {% endif %}
+
+      <section class="iv-card {{ '' if ready else 'iv-locked' }}" aria-labelledby="h-targets" {% if not ready %}aria-disabled="true"{% endif %}>
+        <div class="iv-head">
+          <div>
+            <h2 id="h-targets">Target list</h2>
+            <p class="iv-hint" style="margin:0">Scored against your scope: stage {{ s.scope.stage or 'any' }}{% if s.scope.sectors %}, {{ s.scope.sectors|join(', ') }}{% endif %}{% if s.scope.geographies %}, {{ s.scope.geographies|join(', ') }}{% endif %}. Change it on the Team page (Investor Matching, scope).</p>
+          </div>
+          <button type="button" class="btn primary sm" data-post="match">{{ 'Refresh matches' if s.targets else 'Find matches' }}</button>
+        </div>
+        {% if s.targets %}
+          <div aria-live="polite">
+            <p class="iv-hint" style="margin:.2rem 0 0">Calibration: {{ cal.reviewed }} of {{ cal.size }} reviewed</p>
+            <div class="iv-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ cal.size }}" aria-valuenow="{{ cal.reviewed }}"
+                 aria-label="Calibration matches reviewed"><span style="width:{{ (cal.reviewed / cal.size * 100) if cal.size else 100 }}%"></span></div>
+            <p class="iv-hint">{{ cal.note }}</p>
+          </div>
+          <ul class="iv-list">
+          {% for t in s.targets %}
+            {%- set p = s.profiles.get(t.investor_profile_id) -%}
+            {%- set fr = t.fit_reasons or {} -%}
+            <li class="iv-item {{ 'suggested' if cal.suggestion and cal.suggestion.id == t.id }}" data-target="{{ t.id }}">
+              <div>
+                <div><span class="iv-name">{{ t.name }}</span>{% if t.firm and t.firm != t.name %} · {{ t.firm }}{% endif %}
+                  <span class="iv-pill">{{ t.kind }}</span>
+                  <span class="iv-pill {{ t.status }}">{{ 'to calibrate' if t.status == 'calibration' else t.status }}</span>
+                  {% if cal.suggestion and cal.suggestion.id == t.id %}<span class="iv-pill on">suggested next</span>{% endif %}
+                  {% if p and p.source == 'founder' %}<span class="iv-pill">added by you</span>{% endif %}
+                </div>
+                <p class="iv-meta"><span class="iv-meter" aria-hidden="true"><span style="width:{{ ((t.fit_score or 0) * 100)|round }}%"></span></span>Fit {{ ((t.fit_score or 0) * 100)|round|int }} of 100{% if fr.fits %} · {{ fr.fits|join(' · ') }}{% endif %}</p>
+                {% if fr.gaps %}<p class="iv-meta gaps">Not a match on: {{ fr.gaps|join(' · ') }}</p>{% endif %}
+              </div>
+              <div class="iv-acts">
+                {% if t.status in ('calibration', 'candidate') %}
+                  <button type="button" class="btn sm" data-status="pursuing" data-id="{{ t.id }}">Pursue</button>
+                  <button type="button" class="btn sm" data-status="passed" data-id="{{ t.id }}">Pass</button>
+                {% else %}
+                  <button type="button" class="btn sm" data-status="candidate" data-id="{{ t.id }}">Undo</button>
+                {% endif %}
+                {% if p and p.accepts_applications and p.apply_url and t.status != 'passed' %}
+                  <button type="button" class="btn sm" data-app="{{ t.id }}">Draft application</button>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+          </ul>
+        {% else %}
+          <p class="iv-empty">No matches yet. Find matches from SimiSI's directory, or add investors you already know of below.</p>
+        {% endif %}
+        <p class="iv-hint">How this works: review the first {{ cal.size or 'few' }} matches (about 37% of the list) and mark each pursue or pass. That calibrates what a good fit looks like to you. Then SimiSI points you to the next match that beats the best one you saw.</p>
+        <details class="iv-det">
+          <summary>Add an investor or program you know of</summary>
+          <form id="ivAdd" style="margin-top:.8rem" novalidate>
+            <div class="iv-2">
+              <div class="iv-row"><label for="a-name">Name</label><input type="text" id="a-name" name="name" maxlength="200" required></div>
+              <div class="iv-row"><label for="a-firm">Firm or program</label><input type="text" id="a-firm" name="firm" maxlength="200"></div>
+            </div>
+            <div class="iv-2">
+              <div class="iv-row"><label for="a-kind">Kind</label>
+                <select id="a-kind" name="kind"><option value="investor">Investor</option><option value="accelerator">Accelerator</option><option value="grant">Grant program</option></select></div>
+              <div class="iv-row"><label for="a-stages">Stages (comma separated)</label><input type="text" id="a-stages" name="stages" placeholder="pre-seed, seed"></div>
+            </div>
+            <div class="iv-2">
+              <div class="iv-row"><label for="a-min">Smallest check (USD)</label><input type="text" id="a-min" name="check_min" inputmode="numeric"></div>
+              <div class="iv-row"><label for="a-max">Largest check (USD)</label><input type="text" id="a-max" name="check_max" inputmode="numeric"></div>
+            </div>
+            <div class="iv-2">
+              <div class="iv-row"><label for="a-sectors">Sectors</label><input type="text" id="a-sectors" name="sectors" placeholder="health, saas"></div>
+              <div class="iv-row"><label for="a-geo">Regions</label><input type="text" id="a-geo" name="geographies" placeholder="us, europe"></div>
+            </div>
+            <div class="iv-row"><label for="a-url">Application form link (if they publish one)</label><input type="url" id="a-url" name="apply_url" placeholder="https://"></div>
+            <div class="iv-row"><label style="display:flex;gap:.5rem;align-items:center;font-weight:400"><input type="checkbox" name="accepts_applications" value="1"> They accept applications through that form</label></div>
+            <button type="submit" class="btn">Add to my list</button>
+            <p class="iv-hint">Only your venture sees investors you add.</p>
+          </form>
+        </details>
+      </section>
+
+      <section class="iv-card {{ '' if ready else 'iv-locked' }}" aria-labelledby="h-paths">
+        <div class="iv-head">
+          <div>
+            <h2 id="h-paths">Warm paths</h2>
+            <p class="iv-hint" style="margin:0">People in your contacts who work at, or list, a firm on your list. Found by matching company names in your own records; no AI reads your contacts or mail.</p>
+          </div>
+          {% if s.consents.contacts %}<button type="button" class="btn primary sm" data-post="warm-paths">Find warm paths</button>{% endif %}
+        </div>
+        {% if not s.consents.contacts %}
+          <p class="iv-empty">Contacts access is off. Turn it on in <a href="#h-access">Data access</a> to look for warm paths.</p>
+        {% elif s.paths %}
+          <ul class="iv-list">
+          {% for row in s.paths %}
+            <li class="iv-item">
+              <div>
+                <div><span class="iv-name">{{ row.connector.name }}</span>{% if row.connector.title %} · {{ row.connector.title }}{% endif %}{% if row.connector.company %} at {{ row.connector.company }}{% endif %}
+                  {% if row.path.status != 'candidate' %}<span class="iv-pill {{ row.path.status }}">{{ row.path.status }}</span>{% endif %}</div>
+                <p class="iv-meta">Can introduce you to {{ row.target.name if row.target else 'a removed match' }}{% if row.target and row.target.firm %} ({{ row.target.firm }}){% endif %}</p>
+                <p class="iv-meta"><span class="iv-meter" aria-hidden="true"><span style="width:{{ (row.path.strength * 100)|round }}%"></span></span>Strength {{ (row.path.strength * 100)|round|int }} of 100
+                  {% for e in row.path.evidence or [] %}{% if e.kind == 'mailbox' %} · {{ e.sent }} sent, {{ e.received }} received{% if e.last_seen %}, last {{ e.last_seen }}{% endif %}{% elif e.kind == 'crm' %} · emailed {{ e.emails_sent }} time{{ '' if e.emails_sent == 1 else 's' }}{% elif e.kind == 'replied' %} · replied to you{% elif e.note %} · {{ e.note }}{% endif %}{% endfor %}</p>
+              </div>
+              <div class="iv-acts">
+                {% if row.path.status == 'candidate' %}<button type="button" class="btn sm" data-intro="{{ row.path.id }}">Draft intro request</button>{% endif %}
+              </div>
+            </li>
+          {% endfor %}
+          </ul>
+        {% else %}
+          <p class="iv-empty">No warm paths yet. Find matches first, then look for warm paths.</p>
+        {% endif %}
+        <p class="iv-hint">Intro requests open at evidence rung {{ gate_intros }}. The draft never includes anything from your mailbox: your contact's first name is added after the text is written.</p>
+      </section>
+
+      <section class="iv-card" aria-labelledby="h-drafts">
+        <h2 id="h-drafts">Messages and applications to approve</h2>
+        <p>Each draft shows the autonomy level it needs. You approve every one; SimiSI then sends it in your name with replies going to you, or, for applications, hands the answers back for you to submit.</p>
+        {% set open_drafts = s.drafts|selectattr('a.status', 'in', ['drafted', 'awaiting_approval', 'approved'])|list %}
+        {% for d in open_drafts %}
+          {%- set a = d.a -%}
+          <article class="iv-draft" data-action="{{ a.id }}">
+            <div class="iv-head" style="margin:0">
+              <h3>{% if a.action_type == 'application' and a.subject %}{{ a.subject }}{% else %}{{ kind_labels.get(a.action_type, a.action_type|replace('_', ' ')|capitalize) }}{% if a.subject %}: {{ a.subject }}{% endif %}{% endif %}</h3>
+              <span class="iv-pill {{ a.status }}">{{ a.status|replace('_', ' ') }}</span>
+            </div>
+            <div class="iv-kv">
+              <span><b>To:</b> {{ d.to or 'not chosen yet' }}</span>
+              <span><b>Level:</b> {{ d.level or '?' }} · {{ d.level_label }} (most allowed {{ d.limits.max }})</span>
+              <span><b>Approver:</b> {{ d.approver }}</span>
+            </div>
+            <details><summary class="iv-hint" style="cursor:pointer;margin:0">Show the {{ 'answers' if a.action_type == 'application' else 'message' }}</summary><pre>{{ a.body }}</pre></details>
+            {% if d.ref[0] == 'linkedin' %}
+              <p class="iv-block">{{ linkedin_note }}</p>
+              <button type="button" class="btn sm" data-copy="{{ a.id }}">Copy text</button>
+            {% else %}
+              {% if d.needs_recipient %}
+              <form class="iv-2" data-recipient="{{ a.id }}" style="margin:.4rem 0;align-items:end" novalidate>
+                <div><label class="iv-lab" for="r-{{ a.id }}">Recipient email</label><input type="email" id="r-{{ a.id }}" name="email" placeholder="name@firm.com"></div>
+                <div><button type="submit" class="btn sm">Save recipient</button></div>
+              </form>
+              {% endif %}
+              {% if d.blocker and a.status == 'approved' %}<p class="iv-block">{{ d.blocker }}</p>{% endif %}
+              <div class="iv-acts" style="justify-content:flex-start">
+                {% if a.action_type == 'application' %}
+                  <button type="button" class="btn primary sm" data-send="{{ a.id }}">{{ 'Approve answers' if a.status != 'approved' else 'Mark ready to submit' }}</button>
+                  {% if d.apply_url %}<a class="btn sm" href="{{ d.apply_url }}" target="_blank" rel="noopener">Open the form</a>{% endif %}
+                {% else %}
+                  <button type="button" class="btn primary sm" data-send="{{ a.id }}">{{ 'Approve and send' if a.status != 'approved' else 'Send' }}</button>
+                {% endif %}
+                {% if a.status != 'approved' %}<button type="button" class="btn sm" data-reject="{{ a.id }}">Decline</button>{% endif %}
+              </div>
+            {% endif %}
+            <p class="iv-msg" role="status"></p>
+          </article>
+        {% else %}
+          <p class="iv-empty">Nothing waiting. Drafts from warm paths, applications and the investor agents appear here.</p>
+        {% endfor %}
+        {% set done = s.drafts|selectattr('a.status', 'in', ['sent', 'blocked'])|list %}
+        {% if done %}
+        <details class="iv-det"><summary>Sent and held ({{ done|length }})</summary>
+          <table class="iv-tbl" style="margin-top:.6rem"><thead><tr><th scope="col">What</th><th scope="col">To</th><th scope="col">Status</th></tr></thead><tbody>
+          {% for d in done %}<tr><td>{{ kind_labels.get(d.a.action_type, d.a.action_type) }}{% if d.a.subject %}: {{ d.a.subject }}{% endif %}</td><td>{{ d.to }}</td>
+            <td><span class="iv-pill {{ d.a.status }}">{{ d.a.status }}</span>{% if d.a.status == 'sent' %} level {{ d.a.level_applied }}{% elif d.a.block_reason %} {{ d.a.block_reason }}{% endif %}</td></tr>{% endfor %}
+          </tbody></table></details>
+        {% endif %}
+        {% set handed = s.applications|selectattr('a.level_applied')|list %}
+        {% if handed %}
+        <h3 style="margin-top:1rem">Applications ready for you to submit</h3>
+        <ul class="iv-list">{% for d in handed %}<li class="iv-item"><div><span class="iv-name">{{ d.to }}</span><p class="iv-meta">Approved. SimiSI does not submit applications.</p></div>
+          <div class="iv-acts">{% if d.apply_url %}<a class="btn sm" href="{{ d.apply_url }}" target="_blank" rel="noopener">Open the form</a>{% endif %}</div></li>{% endfor %}</ul>
+        {% endif %}
+      </section>
+
+      <section class="iv-card {{ '' if ready else 'iv-locked' }}" aria-labelledby="h-updates">
+        <div class="iv-head">
+          <div>
+            <h2 id="h-updates">Investor updates</h2>
+            <p class="iv-hint" style="margin:0">Drafted from your plan progress, new evidence rungs and the metrics you show on your startup page. {{ s.recipients }} investor{{ '' if s.recipients == 1 else 's' }} will get the next one.</p>
+          </div>
+          <button type="button" class="btn primary sm" data-post="updates">Draft an update</button>
+        </div>
+        {% for u in s.updates %}
+          <article class="iv-draft" data-update="{{ u.id }}">
+            <div class="iv-head" style="margin:0"><h3>{{ u.subject or 'Untitled update' }}</h3><span class="iv-pill {{ u.status }}">{{ u.status }}</span></div>
+            {% if u.status == 'sent' %}
+              <p class="iv-meta">Sent {{ u.sent_at.strftime('%b %d, %Y') if u.sent_at }} to {{ u.recipient_count }} investor{{ '' if u.recipient_count == 1 else 's' }}.</p>
+              <details><summary class="iv-hint" style="cursor:pointer;margin:0">Show the update</summary><pre>{{ u.body }}</pre></details>
+            {% else %}
+              <div class="iv-row"><label for="us-{{ u.id }}">Subject</label><input type="text" id="us-{{ u.id }}" name="subject" value="{{ u.subject or '' }}" maxlength="300"></div>
+              <div class="iv-row"><label for="ub-{{ u.id }}">Update</label><textarea id="ub-{{ u.id }}" name="body">{{ u.body }}</textarea></div>
+              <div class="iv-acts" style="justify-content:flex-start">
+                <button type="button" class="btn sm" data-uedit="{{ u.id }}">Save edits</button>
+                {% if u.status == 'draft' %}<button type="button" class="btn primary sm" data-uapprove="{{ u.id }}">Approve</button>
+                {% else %}<button type="button" class="btn primary sm" data-usend="{{ u.id }}">Send to {{ s.recipients }} investor{{ '' if s.recipients == 1 else 's' }}</button>{% endif %}
+              </div>
+            {% endif %}
+            <p class="iv-msg" role="status"></p>
+          </article>
+        {% else %}
+          <p class="iv-empty">No updates yet.</p>
+        {% endfor %}
+        <p class="iv-hint">Every update needs a founder's approval, carries an unsubscribe link, and an unsubscribe only stops email from your venture.</p>
+      </section>
+
+      <section class="iv-card" aria-labelledby="h-links" id="ivLinks" data-vid="{{ venture.id }}">
+        <h2 id="h-links">Investor links and access</h2>
+        <p>Private links you give investors open the investor view of your startup page at no charge. Requests from investors who found the page on their own appear here for you to approve.</p>
+        <div data-links-body><p class="iv-empty">Loading...</p></div>
+      </section>
+    </div>
+
+    <aside class="iv-side {{ '' if ready else 'first' }}">
+      <section class="iv-card" aria-labelledby="h-ex">
+        <h2 id="h-ex">Offering exemption</h2>
+        {% if ready %}
+          <p><span class="iv-pill on">{{ s.exemption_label }}</span> recorded {{ s.exemption_at.strftime('%b %d, %Y') if s.exemption_at }}.</p>
+          {% if s.exemption in ('506b', 'undecided') %}
+          <p class="iv-hint">Under this setting SimiSI only helps you reach people you already know, investors who replied to you, and published application forms. Nothing about your raise is posted publicly.</p>
+          {% else %}
+          <p class="iv-hint">Rule 506(c) allows reaching investors you don't know, but every investor must be verified as accredited before they invest. SimiSI does not verify accreditation.</p>
+          {% endif %}
+        {% else %}
+          <p>Your lawyer picks the exemption your raise relies on. Ask them, then record it here.</p>
+        {% endif %}
+        {% if s.can_record %}
+        <form id="ivEx" novalidate {% if ready %}style="margin-top:.6rem"{% endif %}>
+          {% if ready %}<details class="iv-det"><summary>Change it</summary>{% endif %}
+          <fieldset class="iv-choice" style="border:0;padding:0;margin:.6rem 0">
+            <legend class="iv-lab">What did your lawyer choose?</legend>
+            <label><input type="radio" name="exemption" value="506b" {{ 'checked' if s.exemption == '506b' }}><span><b>Rule 506(b)</b>No public solicitation. You may raise from people you have an existing relationship with.</span></label>
+            <label><input type="radio" name="exemption" value="506c" {{ 'checked' if s.exemption == '506c' }}><span><b>Rule 506(c)</b>Public solicitation is allowed, but every investor must be a verified accredited investor.</span></label>
+            <label><input type="radio" name="exemption" value="undecided" {{ 'checked' if s.exemption == 'undecided' }}><span><b>Not decided yet</b>SimiSI treats this like 506(b) until you record a decision.</span></label>
+          </fieldset>
+          <div class="iv-row"><label for="ex-note">Note (optional)</label><input type="text" id="ex-note" name="note" maxlength="500" placeholder="e.g. confirmed with our counsel on ..."></div>
+          <button type="submit" class="btn primary" style="width:100%">Record</button>
+          {% if ready %}</details>{% endif %}
+          <p class="iv-msg" role="status"></p>
+        </form>
+        {% else %}
+          <p class="iv-hint">The venture owner or the co-founder who holds legal decisions records this.</p>
+        {% endif %}
+        <p class="iv-hint" style="margin-top:.6rem">SimiSI does not give legal advice. Ask your lawyer which exemption fits your raise.</p>
+      </section>
+
+      <section class="iv-card" aria-labelledby="h-access" id="h-access-card">
+        <h2 id="h-access">Data access</h2>
+        <p class="iv-hint">Used only to find warm paths, by plain matching code. You can turn either off in one click; turning contacts off removes every warm path found.</p>
+        <div class="iv-switch">
+          <div><b>Contacts</b><br><span class="iv-hint">Names, companies and titles in your SimiSI contacts.</span></div>
+          {% if s.consents.contacts %}<button type="button" class="btn sm" data-consent="contacts" data-grant="0">Turn off</button>
+          {% else %}<button type="button" class="btn sm" data-consent="contacts" data-grant="1" {{ 'disabled' if not s.is_owner }}>Allow</button>{% endif %}
+        </div>
+        <div class="iv-switch">
+          <div><b>Mailbox metadata</b><br><span class="iv-hint">How many emails you exchanged with each contact and when. Never the content.</span></div>
+          {% if s.consents.mailbox %}<button type="button" class="btn sm" data-consent="mailbox" data-grant="0">Turn off</button>
+          {% else %}<button type="button" class="btn sm" data-consent="mailbox" data-grant="1" {{ 'disabled' if not s.is_owner }}>Allow</button>{% endif %}
+        </div>
+        {% if not s.is_owner %}<p class="iv-hint">Only the venture owner can share their contacts.</p>{% endif %}
+        <p class="iv-msg" role="status" id="consentMsg"></p>
+      </section>
+
+      <section class="iv-card" aria-labelledby="h-limits">
+        <h2 id="h-limits">Sending limits</h2>
+        <div class="iv-stat">
+          <div><b>{{ sent_today }} / {{ daily_cap }}</b><span>Messages in the last 24 hours</span></div>
+          <div><b>Level {{ first_contact_cap }}</b><span>Most for first contact</span></div>
+        </div>
+        <p class="iv-hint">Levels: 1 advisor only, 2 approve each message, 3 approve the campaign, 4 act within limits. Negotiating or accepting terms is never allowed.</p>
+        <p class="iv-hint">Each email says: "{{ on_behalf }}"</p>
+      </section>
+    </aside>
+  </div>
+  <p class="iv-msg" id="ivMsg" role="status" aria-live="polite"></p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var vid = {{ venture.id|tojson }};
+  var base = '/api/founder/v/' + vid + '/investors';
+  var top = document.getElementById('ivMsg');
+  function say(el, text, ok) { if (!el) { el = top; } el.className = 'iv-msg ' + (ok ? 'ok' : 'err'); el.textContent = text || ''; }
+  function post(url, body) {
+    return fetch(url, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+                       body: JSON.stringify(body || {})})
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return {ok: r.ok, d: d}; }); });
+  }
+  function near(btn) { var box = btn.closest('.iv-draft, .iv-card'); return box ? box.querySelector('.iv-msg') : top; }
+  function act(btn, url, body, reload) {
+    btn.disabled = true;
+    var m = near(btn);
+    say(m, 'Working...', true);
+    return post(url, body).then(function (x) {
+      say(m, x.d.message || x.d.error || (x.ok ? 'Done.' : 'That did not go through.'), x.ok);
+      if (x.ok && reload !== false) { setTimeout(function () { location.reload(); }, 900); } else { btn.disabled = false; }
+      return x;
+    }).catch(function () { say(m, 'That did not go through. Check your connection.', false); btn.disabled = false; });
+  }
+  document.querySelectorAll('[data-post]').forEach(function (b) {
+    b.addEventListener('click', function () { act(b, base + '/' + b.dataset.post); });
+  });
+  document.querySelectorAll('[data-status]').forEach(function (b) {
+    b.addEventListener('click', function () { act(b, base + '/targets/' + b.dataset.id + '/status', {status: b.dataset.status}); });
+  });
+  document.querySelectorAll('[data-app]').forEach(function (b) {
+    b.addEventListener('click', function () { act(b, base + '/targets/' + b.dataset.app + '/application'); });
+  });
+  document.querySelectorAll('[data-intro]').forEach(function (b) {
+    b.addEventListener('click', function () { act(b, base + '/paths/' + b.dataset.intro + '/draft'); });
+  });
+  document.querySelectorAll('[data-send]').forEach(function (b) {
+    b.addEventListener('click', function () { act(b, base + '/actions/' + b.dataset.send + '/send'); });
+  });
+  document.querySelectorAll('[data-reject]').forEach(function (b) {
+    b.addEventListener('click', function () { act(b, '/api/founder/actions/' + b.dataset.reject + '/reject', {reason: 'Declined on the Investors page'}); });
+  });
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var pre = b.closest('.iv-draft').querySelector('pre');
+      if (navigator.clipboard) { navigator.clipboard.writeText(pre.textContent).then(function () { say(near(b), 'Copied. Paste it into LinkedIn yourself.', true); }); }
+    });
+  });
+  document.querySelectorAll('[data-recipient]').forEach(function (f) {
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      act(f.querySelector('button'), base + '/actions/' + f.dataset.recipient + '/recipient', {email: f.elements.email.value});
+    });
+  });
+  document.querySelectorAll('[data-consent]').forEach(function (b) {
+    b.addEventListener('click', function () { act(b, base + '/consent', {kind: b.dataset.consent, grant: b.dataset.grant === '1'}); });
+  });
+  function upd(id) { var a = document.querySelector('[data-update="' + id + '"]'); return {subject: a.querySelector('[name=subject]').value, body: a.querySelector('[name=body]').value}; }
+  document.querySelectorAll('[data-uedit]').forEach(function (b) {
+    b.addEventListener('click', function () { act(b, base + '/updates/' + b.dataset.uedit + '/edit', upd(b.dataset.uedit)); });
+  });
+  document.querySelectorAll('[data-uapprove]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var id = b.dataset.uapprove;
+      post(base + '/updates/' + id + '/edit', upd(id)).then(function (x) {
+        if (!x.ok) { return say(near(b), x.d.error || 'Could not save.', false); }
+        act(b, base + '/updates/' + id + '/approve');
+      });
+    });
+  });
+  document.querySelectorAll('[data-usend]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (!confirm('Send this update now? Each investor gets their own email with an unsubscribe link.')) { return; }
+      act(b, base + '/updates/' + b.dataset.usend + '/send');
+    });
+  });
+  var ex = document.getElementById('ivEx');
+  if (ex) {
+    ex.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var pick = ex.querySelector('[name=exemption]:checked');
+      if (!pick) { return say(ex.querySelector('.iv-msg'), 'Choose one of the three options.', false); }
+      act(ex.querySelector('button[type=submit]'), base + '/exemption', {exemption: pick.value, note: ex.elements.note.value});
+    });
+  }
+  var add = document.getElementById('ivAdd');
+  if (add) {
+    add.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var d = {};
+      ['name', 'firm', 'kind', 'stages', 'check_min', 'check_max', 'sectors', 'geographies', 'apply_url'].forEach(function (k) { d[k] = add.elements[k].value; });
+      d.accepts_applications = add.elements.accepts_applications.checked;
+      act(add.querySelector('button[type=submit]'), base + '/targets', d);
+    });
+  }
+  // Investor links and access requests come from the startup-page side; the
+  // section stays informative when those endpoints are not available.
+  var box = document.querySelector('[data-links-body]');
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function list(d, key) { if (Array.isArray(d)) { return d; } return (d && (d[key] || d.items)) || []; }
+  function getJSON(url) {
+    return fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}}).then(function (r) {
+      var ct = r.headers.get('content-type') || '';
+      if (!r.ok || ct.indexOf('json') < 0) { return null; }
+      return r.json().catch(function () { return null; });
+    }).catch(function () { return null; });
+  }
+  Promise.all([getJSON('/api/founder/v/' + vid + '/investor-links'), getJSON('/api/founder/v/' + vid + '/investor-access')]).then(function (res) {
+    var links = res[0], access = res[1], html = '';
+    if (!links && !access) {
+      box.innerHTML = '<p class="iv-empty">Investor links open once your startup page is published. Manage them from the startup page editor.</p>';
+      return;
+    }
+    var ls = list(links, 'links');
+    html += '<h3>Private links</h3>';
+    html += ls.length ? '<table class="iv-tbl"><thead><tr><th scope="col">For</th><th scope="col">Opened</th><th scope="col">Status</th></tr></thead><tbody>' + ls.map(function (l) {
+      return '<tr><td>' + esc(l.label || l.investor_email || 'Link') + '</td><td>' + esc(l.open_count || 0) + '</td><td>' + (l.revoked ? 'Revoked' : 'Active') + '</td></tr>';
+    }).join('') + '</tbody></table>' : '<p class="iv-empty">No private links yet.</p>';
+    var as = list(access, 'access');
+    html += '<h3 style="margin-top:1rem">Access</h3>';
+    html += as.length ? '<table class="iv-tbl"><thead><tr><th scope="col">Investor</th><th scope="col">How</th><th scope="col">Status</th></tr></thead><tbody>' + as.map(function (a) {
+      return '<tr><td>' + esc(a.email) + '</td><td>' + esc(a.kind) + '</td><td>' + esc(a.status) + '</td></tr>';
+    }).join('') + '</tbody></table>' : '<p class="iv-empty">No investor has access yet.</p>';
+    box.innerHTML = html;
+  });
+})();
+</script>
+{% endblock %}
