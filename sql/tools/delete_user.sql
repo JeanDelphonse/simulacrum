@@ -1,5 +1,5 @@
 -- delete_user.sql — permanently delete ONE user and everything that is theirs.
--- Generated from the models (all 162 tables reviewed). MySQL 5.7+/MariaDB.
+-- Generated from the models (all 191 tables reviewed). MySQL 5.7+/MariaDB.
 --
 -- BEFORE RUNNING
 --   1. Back up the database (cPanel > Backup, or mysqldump). This cannot be undone.
@@ -65,6 +65,11 @@ DROP TABLE IF EXISTS zz_del_seats;
 DROP TABLE IF EXISTS zz_del_csess;
 DROP TABLE IF EXISTS zz_del_smesess;
 DROP TABLE IF EXISTS zz_del_goals;
+DROP TABLE IF EXISTS zz_del_ventures;
+DROP TABLE IF EXISTS zz_del_spages;
+DROP TABLE IF EXISTS zz_del_vartifacts;
+DROP TABLE IF EXISTS zz_del_findings;
+DROP TABLE IF EXISTS zz_del_members;
 DROP TABLE IF EXISTS zz_del_preview;
 CREATE TABLE zz_del_sims (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_actions (id CHAR(9) PRIMARY KEY);
@@ -93,6 +98,11 @@ CREATE TABLE zz_del_seats (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_csess (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_smesess (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_goals (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_ventures (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_spages (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_vartifacts (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_findings (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_members (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_preview (tbl VARCHAR(64) PRIMARY KEY, rows_to_delete INT);
 
 START TRANSACTION;
@@ -124,6 +134,11 @@ INSERT INTO zz_del_seats SELECT id FROM transition_seats WHERE user_id = @uid;
 INSERT INTO zz_del_csess SELECT id FROM coaching_sessions WHERE seat_id IN (SELECT id FROM zz_del_seats);
 INSERT INTO zz_del_smesess SELECT id FROM sme_sessions WHERE user_id = @uid;
 INSERT INTO zz_del_goals SELECT id FROM goal_cards WHERE user_id = @uid;
+INSERT INTO zz_del_ventures SELECT id FROM founder_venture WHERE owner_user_id = @uid;
+INSERT INTO zz_del_spages SELECT id FROM startup_page WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_vartifacts SELECT id FROM venture_artifact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_findings SELECT id FROM evaluation_finding WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_members SELECT id FROM venture_member WHERE user_id = @uid OR venture_id IN (SELECT id FROM zz_del_ventures);
 
 -- Preview: rows that will be deleted, per table.
 INSERT INTO zz_del_preview SELECT 'email_logs', COUNT(*) FROM email_logs WHERE action_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts) OR simulation_id IN (SELECT id FROM zz_del_sims) OR step_id IN (SELECT id FROM zz_del_steps);
@@ -167,6 +182,12 @@ INSERT INTO zz_del_preview SELECT 'referral_partners', COUNT(*) FROM referral_pa
 INSERT INTO zz_del_preview SELECT 'profile_inquiries', COUNT(*) FROM profile_inquiries WHERE profile_user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'blog_reports', COUNT(*) FROM blog_reports WHERE reporter_user_id = @uid OR target_id IN (SELECT id FROM zz_del_comments) OR target_id IN (SELECT id FROM zz_del_posts);
 INSERT INTO zz_del_preview SELECT 'blog_posts', COUNT(*) FROM blog_posts WHERE author_user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'venture_step_event', COUNT(*) FROM venture_step_event WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'venture_plan_step', COUNT(*) FROM venture_plan_step WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'venture_outreach_action', COUNT(*) FROM venture_outreach_action WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'venture_member', COUNT(*) FROM venture_member WHERE user_id = @uid OR user_id IS NULL AND LOWER(invite_email) = LOWER((SELECT email FROM users WHERE id = @uid)) OR venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'venture_artifact', COUNT(*) FROM venture_artifact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'venture_agent_output', COUNT(*) FROM venture_agent_output WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'user_integrations', COUNT(*) FROM user_integrations WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'user_guide_prefs', COUNT(*) FROM user_guide_prefs WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'user_feature_overrides', COUNT(*) FROM user_feature_overrides WHERE user_id = @uid;
@@ -179,6 +200,9 @@ INSERT INTO zz_del_preview SELECT 'transition_outcomes', COUNT(*) FROM transitio
 INSERT INTO zz_del_preview SELECT 'sync_runs', COUNT(*) FROM sync_runs WHERE account_id IN (SELECT id FROM zz_del_mail);
 INSERT INTO zz_del_preview SELECT 'suppression_list', COUNT(*) FROM suppression_list WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'suggestion_blends', COUNT(*) FROM suggestion_blends WHERE share_id IN (SELECT id FROM zz_del_shares);
+INSERT INTO zz_del_preview SELECT 'startup_slug_history', COUNT(*) FROM startup_slug_history WHERE startup_page_id IN (SELECT id FROM zz_del_spages);
+INSERT INTO zz_del_preview SELECT 'startup_page_visit', COUNT(*) FROM startup_page_visit WHERE startup_page_id IN (SELECT id FROM zz_del_spages);
+INSERT INTO zz_del_preview SELECT 'startup_page', COUNT(*) FROM startup_page WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'social_post_queue', COUNT(*) FROM social_post_queue WHERE artifact_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'sme_turns', COUNT(*) FROM sme_turns WHERE session_id IN (SELECT id FROM zz_del_smesess);
 INSERT INTO zz_del_preview SELECT 'sme_sessions', COUNT(*) FROM sme_sessions WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
@@ -193,6 +217,8 @@ INSERT INTO zz_del_preview SELECT 'review_items', COUNT(*) FROM review_items WHE
 INSERT INTO zz_del_preview SELECT 'reciprocity_ledger', COUNT(*) FROM reciprocity_ledger WHERE peer_user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'published_pages', COUNT(*) FROM published_pages WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'prospect_research_runs', COUNT(*) FROM prospect_research_runs WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'proof_result', COUNT(*) FROM proof_result WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'proof_plan', COUNT(*) FROM proof_plan WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'platform_chats', COUNT(*) FROM platform_chats WHERE bio_page_id IN (SELECT id FROM zz_del_bio) OR chatter_user_id = @uid OR contact_id IN (SELECT id FROM zz_del_contacts) OR owner_user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'platform_chat_messages', COUNT(*) FROM platform_chat_messages WHERE chat_id IN (SELECT id FROM zz_del_pchats);
 INSERT INTO zz_del_preview SELECT 'plan_steps', COUNT(*) FROM plan_steps WHERE plan_id IN (SELECT id FROM zz_del_plans);
@@ -208,13 +234,25 @@ INSERT INTO zz_del_preview SELECT 'notifications', COUNT(*) FROM notifications W
 INSERT INTO zz_del_preview SELECT 'notification_preferences', COUNT(*) FROM notification_preferences WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'layer_income_records', COUNT(*) FROM layer_income_records WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'kajabi_products', COUNT(*) FROM kajabi_products WHERE action_id IN (SELECT id FROM zz_del_actions) OR artifact_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'investor_update', COUNT(*) FROM investor_update WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'investor_target', COUNT(*) FROM investor_target WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'investor_link', COUNT(*) FROM investor_link WHERE startup_page_id IN (SELECT id FROM zz_del_spages) OR venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'investor_access', COUNT(*) FROM investor_access WHERE startup_page_id IN (SELECT id FROM zz_del_spages);
+INSERT INTO zz_del_preview SELECT 'intro_path', COUNT(*) FROM intro_path WHERE connector_contact_id IN (SELECT id FROM zz_del_contacts) OR venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'integration_signals', COUNT(*) FROM integration_signals WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'integration_activity_log', COUNT(*) FROM integration_activity_log WHERE action_id IN (SELECT id FROM zz_del_actions) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'goal_cards', COUNT(*) FROM goal_cards WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'goal_card_agent_changes', COUNT(*) FROM goal_card_agent_changes WHERE goal_card_id IN (SELECT id FROM zz_del_goals);
+INSERT INTO zz_del_preview SELECT 'founder_venture', COUNT(*) FROM founder_venture WHERE owner_user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'founder_run_meta', COUNT(*) FROM founder_run_meta WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'founder_eval_cache', COUNT(*) FROM founder_eval_cache WHERE artifact_id IN (SELECT id FROM zz_del_vartifacts);
+INSERT INTO zz_del_preview SELECT 'finding_rating', COUNT(*) FROM finding_rating WHERE finding_id IN (SELECT id FROM zz_del_findings) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'execution_runs', COUNT(*) FROM execution_runs WHERE obs_run_id IN (SELECT id FROM zz_del_runs) OR plan_id IN (SELECT id FROM zz_del_plans) OR user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'evaluation_run', COUNT(*) FROM evaluation_run WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'evaluation_finding', COUNT(*) FROM evaluation_finding WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'email_campaigns', COUNT(*) FROM email_campaigns WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'email_accounts', COUNT(*) FROM email_accounts WHERE user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'decision_right', COUNT(*) FROM decision_right WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'credit_redemptions', COUNT(*) FROM credit_redemptions WHERE simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'contacts', COUNT(*) FROM contacts WHERE source_action_id IN (SELECT id FROM zz_del_actions) OR source_cycle_id IN (SELECT id FROM zz_del_cycles) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'contact_invites', COUNT(*) FROM contact_invites WHERE contact_id IN (SELECT id FROM zz_del_contacts) OR user_id = @uid;
@@ -222,6 +260,7 @@ INSERT INTO zz_del_preview SELECT 'contact_field_sources', COUNT(*) FROM contact
 INSERT INTO zz_del_preview SELECT 'contact_dnc_flags', COUNT(*) FROM contact_dnc_flags WHERE contact_id IN (SELECT id FROM zz_del_contacts);
 INSERT INTO zz_del_preview SELECT 'contact_activities', COUNT(*) FROM contact_activities WHERE action_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts) OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'contact_account_links', COUNT(*) FROM contact_account_links WHERE account_id IN (SELECT id FROM zz_del_mail) OR contact_id IN (SELECT id FROM zz_del_contacts);
+INSERT INTO zz_del_preview SELECT 'compliance_profile', COUNT(*) FROM compliance_profile WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'compliance_events', COUNT(*) FROM compliance_events WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'coaching_sessions', COUNT(*) FROM coaching_sessions WHERE seat_id IN (SELECT id FROM zz_del_seats);
 INSERT INTO zz_del_preview SELECT 'coaching_notes', COUNT(*) FROM coaching_notes WHERE session_id IN (SELECT id FROM zz_del_csess);
@@ -237,12 +276,15 @@ INSERT INTO zz_del_preview SELECT 'bio_access_grants', COUNT(*) FROM bio_access_
 INSERT INTO zz_del_preview SELECT 'bayesian_posteriors', COUNT(*) FROM bayesian_posteriors WHERE simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'artifact_units', COUNT(*) FROM artifact_units WHERE artifact_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts);
 INSERT INTO zz_del_preview SELECT 'artifact_actions', COUNT(*) FROM artifact_actions WHERE artifact_id IN (SELECT id FROM zz_del_actions);
+INSERT INTO zz_del_preview SELECT 'alignment_response', COUNT(*) FROM alignment_response WHERE member_id IN (SELECT id FROM zz_del_members) OR venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'agent_shares', COUNT(*) FROM agent_shares WHERE owner_user_id = @uid OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'agent_runs', COUNT(*) FROM agent_runs WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'agent_run_tools', COUNT(*) FROM agent_run_tools WHERE run_id IN (SELECT id FROM zz_del_runs);
 INSERT INTO zz_del_preview SELECT 'agent_recipients', COUNT(*) FROM agent_recipients WHERE action_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts) OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'agent_plans', COUNT(*) FROM agent_plans WHERE action_id IN (SELECT id FROM zz_del_actions) OR simulation_id IN (SELECT id FROM zz_del_sims) OR user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'agent_param_override', COUNT(*) FROM agent_param_override WHERE user_id = @uid OR venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'agent_events', COUNT(*) FROM agent_events WHERE run_id IN (SELECT id FROM zz_del_runs);
+INSERT INTO zz_del_preview SELECT 'agent_blueprint', COUNT(*) FROM agent_blueprint WHERE finding_id IN (SELECT id FROM zz_del_findings) OR venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'agent_autonomy_config', COUNT(*) FROM agent_autonomy_config WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'agent_artifacts', COUNT(*) FROM agent_artifacts WHERE run_id IN (SELECT id FROM zz_del_runs) OR user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'advisor_flags', COUNT(*) FROM advisor_flags WHERE action_id IN (SELECT id FROM zz_del_actions) OR advisor_access_id IN (SELECT id FROM zz_del_advisor) OR simulation_id IN (SELECT id FROM zz_del_sims);
@@ -253,6 +295,17 @@ INSERT INTO zz_del_preview SELECT 'account_exclusions', COUNT(*) FROM account_ex
 SELECT * FROM zz_del_preview WHERE rows_to_delete > 0 ORDER BY tbl;
 
 SET FOREIGN_KEY_CHECKS = 0;   -- every child row is deleted explicitly below
+
+-- Founder Track: a co-founder's decision rights in someone else's venture go back to its owner.
+UPDATE decision_right SET holder_member_id = COALESCE((SELECT vm.id FROM venture_member vm
+    WHERE vm.venture_id = decision_right.venture_id AND vm.role = 'owner'
+      AND vm.id NOT IN (SELECT id FROM zz_del_members) LIMIT 1), holder_member_id)
+    WHERE holder_member_id IN (SELECT id FROM zz_del_members);
+UPDATE venture_plan_step SET owner_member_id = NULL WHERE owner_member_id IN (SELECT id FROM zz_del_members);
+-- Founder Track: investors this user added to the directory go; admin-curated ones stay.
+UPDATE investor_target SET investor_profile_id = NULL WHERE investor_profile_id IN
+    (SELECT id FROM investor_profile WHERE source = 'founder' AND added_by = @uid);
+DELETE FROM investor_profile WHERE source = 'founder' AND added_by = @uid;
 
 DELETE FROM email_logs WHERE action_id IN (SELECT id FROM zz_del_actions)
     OR contact_id IN (SELECT id FROM zz_del_contacts)
@@ -328,6 +381,14 @@ DELETE FROM blog_reports WHERE reporter_user_id = @uid
     OR target_id IN (SELECT id FROM zz_del_comments)
     OR target_id IN (SELECT id FROM zz_del_posts);
 DELETE FROM blog_posts WHERE author_user_id = @uid;
+DELETE FROM venture_step_event WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM venture_plan_step WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM venture_outreach_action WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM venture_member WHERE user_id = @uid
+    OR user_id IS NULL AND LOWER(invite_email) = LOWER((SELECT email FROM users WHERE id = @uid))
+    OR venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM venture_artifact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM venture_agent_output WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM user_integrations WHERE user_id = @uid;
 DELETE FROM user_guide_prefs WHERE user_id = @uid;
 DELETE FROM user_feature_overrides WHERE user_id = @uid;
@@ -342,6 +403,9 @@ DELETE FROM transition_outcomes WHERE seat_id IN (SELECT id FROM zz_del_seats);
 DELETE FROM sync_runs WHERE account_id IN (SELECT id FROM zz_del_mail);
 DELETE FROM suppression_list WHERE user_id = @uid;
 DELETE FROM suggestion_blends WHERE share_id IN (SELECT id FROM zz_del_shares);
+DELETE FROM startup_slug_history WHERE startup_page_id IN (SELECT id FROM zz_del_spages);
+DELETE FROM startup_page_visit WHERE startup_page_id IN (SELECT id FROM zz_del_spages);
+DELETE FROM startup_page WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM social_post_queue WHERE artifact_id IN (SELECT id FROM zz_del_actions)
     OR simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
@@ -370,6 +434,8 @@ DELETE FROM published_pages WHERE action_id IN (SELECT id FROM zz_del_actions)
 DELETE FROM prospect_research_runs WHERE action_id IN (SELECT id FROM zz_del_actions)
     OR simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
+DELETE FROM proof_result WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM proof_plan WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM platform_chats WHERE bio_page_id IN (SELECT id FROM zz_del_bio)
     OR chatter_user_id = @uid
     OR contact_id IN (SELECT id FROM zz_del_contacts)
@@ -400,6 +466,13 @@ DELETE FROM kajabi_products WHERE action_id IN (SELECT id FROM zz_del_actions)
     OR artifact_id IN (SELECT id FROM zz_del_actions)
     OR simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
+DELETE FROM investor_update WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM investor_target WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM investor_link WHERE startup_page_id IN (SELECT id FROM zz_del_spages)
+    OR venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM investor_access WHERE startup_page_id IN (SELECT id FROM zz_del_spages);
+DELETE FROM intro_path WHERE connector_contact_id IN (SELECT id FROM zz_del_contacts)
+    OR venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM integration_signals WHERE simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
 DELETE FROM integration_activity_log WHERE action_id IN (SELECT id FROM zz_del_actions)
@@ -407,12 +480,20 @@ DELETE FROM integration_activity_log WHERE action_id IN (SELECT id FROM zz_del_a
 DELETE FROM goal_cards WHERE simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
 DELETE FROM goal_card_agent_changes WHERE goal_card_id IN (SELECT id FROM zz_del_goals);
+DELETE FROM founder_venture WHERE owner_user_id = @uid;
+DELETE FROM founder_run_meta WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM founder_eval_cache WHERE artifact_id IN (SELECT id FROM zz_del_vartifacts);
+DELETE FROM finding_rating WHERE finding_id IN (SELECT id FROM zz_del_findings)
+    OR user_id = @uid;
 DELETE FROM execution_runs WHERE obs_run_id IN (SELECT id FROM zz_del_runs)
     OR plan_id IN (SELECT id FROM zz_del_plans)
     OR user_id = @uid;
+DELETE FROM evaluation_run WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM evaluation_finding WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM email_campaigns WHERE action_id IN (SELECT id FROM zz_del_actions)
     OR simulation_id IN (SELECT id FROM zz_del_sims);
 DELETE FROM email_accounts WHERE user_id = @uid;
+DELETE FROM decision_right WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM credit_redemptions WHERE simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
 DELETE FROM contacts WHERE source_action_id IN (SELECT id FROM zz_del_actions)
@@ -428,6 +509,7 @@ DELETE FROM contact_activities WHERE action_id IN (SELECT id FROM zz_del_actions
     OR simulation_id IN (SELECT id FROM zz_del_sims);
 DELETE FROM contact_account_links WHERE account_id IN (SELECT id FROM zz_del_mail)
     OR contact_id IN (SELECT id FROM zz_del_contacts);
+DELETE FROM compliance_profile WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM compliance_events WHERE user_id = @uid;
 DELETE FROM coaching_sessions WHERE seat_id IN (SELECT id FROM zz_del_seats);
 DELETE FROM coaching_notes WHERE session_id IN (SELECT id FROM zz_del_csess);
@@ -449,6 +531,8 @@ DELETE FROM bayesian_posteriors WHERE simulation_id IN (SELECT id FROM zz_del_si
 DELETE FROM artifact_units WHERE artifact_id IN (SELECT id FROM zz_del_actions)
     OR contact_id IN (SELECT id FROM zz_del_contacts);
 DELETE FROM artifact_actions WHERE artifact_id IN (SELECT id FROM zz_del_actions);
+DELETE FROM alignment_response WHERE member_id IN (SELECT id FROM zz_del_members)
+    OR venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM agent_shares WHERE owner_user_id = @uid
     OR simulation_id IN (SELECT id FROM zz_del_sims);
 DELETE FROM agent_runs WHERE action_id IN (SELECT id FROM zz_del_actions)
@@ -461,7 +545,11 @@ DELETE FROM agent_recipients WHERE action_id IN (SELECT id FROM zz_del_actions)
 DELETE FROM agent_plans WHERE action_id IN (SELECT id FROM zz_del_actions)
     OR simulation_id IN (SELECT id FROM zz_del_sims)
     OR user_id = @uid;
+DELETE FROM agent_param_override WHERE user_id = @uid
+    OR venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM agent_events WHERE run_id IN (SELECT id FROM zz_del_runs);
+DELETE FROM agent_blueprint WHERE finding_id IN (SELECT id FROM zz_del_findings)
+    OR venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM agent_autonomy_config WHERE user_id = @uid;
 DELETE FROM agent_artifacts WHERE run_id IN (SELECT id FROM zz_del_runs)
     OR user_id = @uid;
@@ -481,18 +569,28 @@ DELETE FROM account_exclusions WHERE account_id IN (SELECT id FROM zz_del_mail);
 UPDATE action_approvals SET decided_by = NULL WHERE decided_by = @uid;
 UPDATE artifact_actions SET actor_id = NULL WHERE actor_id = @uid;
 UPDATE bio_chat_sessions SET takeover_by = NULL WHERE takeover_by = @uid;
+UPDATE compliance_profile SET recorded_by = NULL WHERE recorded_by = @uid;
 UPDATE contact_dnc_flags SET set_by = NULL WHERE set_by = @uid;
 UPDATE contact_dnc_flags SET lifted_by = NULL WHERE lifted_by = @uid;
 UPDATE contact_invites SET joined_user_id = NULL WHERE joined_user_id = @uid;
 UPDATE feature_flags SET updated_by = NULL WHERE updated_by = @uid;
+UPDATE founder_run_meta SET approved_by = NULL WHERE approved_by = @uid;
 UPDATE guardrail_policies SET created_by = NULL WHERE created_by = @uid;
 UPDATE guardrail_rules SET created_by = NULL WHERE created_by = @uid;
+UPDATE investor_access SET approved_by = NULL WHERE approved_by = @uid;
+UPDATE investor_link SET created_by = NULL WHERE created_by = @uid;
+UPDATE investor_profile SET added_by = NULL WHERE added_by = @uid;
+UPDATE investor_update SET approved_by = NULL WHERE approved_by = @uid;
 UPDATE layer_income_records SET voided_by_id = NULL WHERE voided_by_id = @uid;
 UPDATE legal_texts SET updated_by = NULL WHERE updated_by = @uid;
 UPDATE outreach_templates SET updated_by = NULL WHERE updated_by = @uid;
+UPDATE startup_page SET publish_approved_by = NULL WHERE publish_approved_by = @uid;
 UPDATE transition_cohorts SET created_by = NULL WHERE created_by = @uid;
 UPDATE user_discounts SET granted_by = NULL WHERE granted_by = @uid;
 UPDATE user_feature_overrides SET set_by = NULL WHERE set_by = @uid;
+UPDATE venture_artifact SET uploaded_by = NULL WHERE uploaded_by = @uid;
+UPDATE venture_outreach_action SET approved_by = NULL WHERE approved_by = @uid;
+UPDATE venture_step_event SET actor_user_id = NULL WHERE actor_user_id = @uid;
 UPDATE bundle_type_configs SET updated_by = NULL WHERE updated_by = @uid;
 UPDATE corporate_accounts SET admin_user_id = NULL WHERE admin_user_id = @uid;
 UPDATE platform_settings SET updated_by = NULL WHERE updated_by = @uid;
@@ -537,4 +635,9 @@ DROP TABLE IF EXISTS zz_del_seats;
 DROP TABLE IF EXISTS zz_del_csess;
 DROP TABLE IF EXISTS zz_del_smesess;
 DROP TABLE IF EXISTS zz_del_goals;
+DROP TABLE IF EXISTS zz_del_ventures;
+DROP TABLE IF EXISTS zz_del_spages;
+DROP TABLE IF EXISTS zz_del_vartifacts;
+DROP TABLE IF EXISTS zz_del_findings;
+DROP TABLE IF EXISTS zz_del_members;
 DROP TABLE IF EXISTS zz_del_preview;

@@ -111,6 +111,8 @@ def apply():
     ext = careers_service.resume_extension(file.filename)
     if not ext:
         return jsonify({'error': 'Resume must be a PDF or Word document (.pdf, .docx, .doc).'}), 400
+    if careers_service.upload_size(file) > careers_service.MAX_RESUME_BYTES:
+        return jsonify({'error': 'That resume is too large. Please upload a file under 5 MB.'}), 413
 
     existing = JobApplication.query.filter_by(email=email, job_slug=job_slug).first()
     if existing:

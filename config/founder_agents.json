@@ -1,0 +1,2280 @@
+{
+  "version": "1.0",
+  "document_id": "SIM-PRD-FND-001",
+  "track": "founder",
+  "total_agents": 27,
+  "layers": {
+    "1": "Validate",
+    "2": "Build",
+    "3": "Sell",
+    "4": "Operate",
+    "5": "Capitalize"
+  },
+  "rules": [
+    "Work only from the venture's own documents, the founder's answers and the facts in the briefing. Do not invent customers, numbers, quotes, investors or results.",
+    "Cite the source passage (artifact kind and version, or the briefing fact id) for every claim about the venture. If there is no source, say so and label the point as an assumption to test.",
+    "State your confidence (low, medium or high) for each conclusion and say what evidence would change it.",
+    "Be honest: name weaknesses, gaps and contradictions plainly. Do not flatter the founders.",
+    "Give no legal, tax, securities or investment advice. Where a question needs one, say which professional to ask (startup attorney, CPA, securities counsel) and list the questions to bring.",
+    "Never project investor returns, valuations the venture will reach, or the odds of raising money.",
+    "Never negotiate, accept terms, commit spend or move money. Anything addressed to a customer or investor is a draft for the founders to approve and send.",
+    "Label every estimate as an estimate, and show its inputs and method."
+  ],
+  "agents": [
+    {
+      "action_type": "fnd_problem_statement",
+      "track": "founder",
+      "layer": 1,
+      "label": "Problem Statement",
+      "description": "Write the problem in one paragraph: who has it, when it happens and what it costs them today.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Restate the problem the venture solves in the founders' own terms. Name the customer who has it, the moment it happens and what it costs them today. Quote the passages you used. List each part of the statement that rests on the founders' belief rather than customer evidence.",
+      "prompt_form": [
+        {
+          "key": "customer_segment",
+          "label": "Who has the problem?",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "current_workaround",
+          "label": "What do they do about it today?",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Write the problem in one paragraph: who has it, when it happens and what it costs them today.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Problem statement (one paragraph)",
+        "Who has it, when, and what it costs them (with sources)",
+        "Claims that are the founders' belief, not yet customer evidence",
+        "Three questions to test with customers"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "problem"
+      ],
+      "effort": 1,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one statement the founders confirm or edit.",
+        "voice": "founder",
+        "success_metric": "Founders confirm the statement (evidence rung 1: claimed pain)."
+      }
+    },
+    {
+      "action_type": "fnd_pain_evidence",
+      "track": "founder",
+      "layer": 1,
+      "label": "Pain-Point Evidence",
+      "description": "Collect target customers' own descriptions of the pain and what it costs them.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_problem_statement"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Plan how to collect pain evidence from target customers and draft short, honest outreach asking for a conversation (no selling). When the founders paste notes, extract each customer's words about the pain and its cost, quote them exactly, and say how many independent customers confirm it.",
+      "prompt_form": [
+        {
+          "key": "target_count",
+          "label": "How many customers will you talk to?",
+          "type": "select",
+          "required": true,
+          "options": [
+            "5",
+            "8",
+            "12",
+            "20"
+          ]
+        },
+        {
+          "key": "interview_notes",
+          "label": "Paste interview or call notes (optional)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "customer_reply",
+          "interview_logged"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Collect target customers' own descriptions of the pain and what it costs them.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "customer",
+      "output_spec": [
+        "Who to ask and why (from the problem statement)",
+        "Draft outreach message for the founders to send",
+        "Evidence table: customer, quote, cost of the pain, source",
+        "Verdict: confirmed, mixed or not confirmed"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "problem",
+        "customer"
+      ],
+      "effort": 3,
+      "external": "customer",
+      "action_type_class": "customer_message",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 2,
+        "scope": {
+          "segment": "",
+          "count": 8
+        },
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop when the target number of customers is reached or the founders end the step.",
+        "voice": "founder",
+        "success_metric": "Pain confirmed in customers' own words by the target number of customers (rung 2)."
+      }
+    },
+    {
+      "action_type": "fnd_customer_interview",
+      "track": "founder",
+      "layer": 1,
+      "label": "Customer Interview",
+      "description": "An interview guide that avoids leading questions, and a synthesis of what customers said.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_problem_statement"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Write a customer interview guide about past behaviour, not hypotheticals, with no leading questions and no pitch. When notes are supplied, synthesise patterns, quote customers, count how many said each thing, and flag where the founders' plan and the interviews disagree.",
+      "prompt_form": [
+        {
+          "key": "interview_goal",
+          "label": "What do you most need to learn?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "interview_notes",
+          "label": "Paste interview notes (optional)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "An interview guide that avoids leading questions, and a synthesis of what customers said.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "customer",
+      "output_spec": [
+        "Interview guide (10-12 questions)",
+        "Request-for-interview draft",
+        "Synthesis with counts and quotes",
+        "Contradictions with the startup plan"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "customer"
+      ],
+      "effort": 3,
+      "external": "customer",
+      "action_type_class": "customer_message",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 2,
+        "scope": {
+          "segment": "",
+          "count": 8
+        },
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after the guide, or after one synthesis of the notes supplied.",
+        "voice": "founder",
+        "success_metric": "Interviews logged and synthesised."
+      }
+    },
+    {
+      "action_type": "fnd_market_sizing",
+      "track": "founder",
+      "layer": 1,
+      "label": "Market Sizing",
+      "description": "A bottom-up market size with every input shown and sourced.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_problem_statement"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Size the market bottom-up: number of reachable customers times what they would pay. Show every input with its source or mark it as an assumption. Give a low and high range, explain the method, and do not present a top-down industry figure as the venture's market.",
+      "prompt_form": [
+        {
+          "key": "geography",
+          "label": "Where will you sell first?",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "price_point",
+          "label": "Expected price per customer per year (USD)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A bottom-up market size with every input shown and sourced.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": true,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Method (bottom-up)",
+        "Inputs table with sources or 'assumption'",
+        "Low and high range, labelled as an estimate",
+        "What would change the estimate"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "market"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one sized estimate with every input shown.",
+        "voice": "founder",
+        "success_metric": "An estimate the founders accept or correct."
+      }
+    },
+    {
+      "action_type": "fnd_competitor_scan",
+      "track": "founder",
+      "layer": 1,
+      "label": "Competitor Scan",
+      "description": "Direct competitors, alternatives and the do-nothing option, compared honestly.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_problem_statement"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "List direct competitors, indirect alternatives and the customer's do-nothing option. Compare them on what customers care about, using only facts you can source. Say where a competitor is stronger. Do not claim the venture has no competition.",
+      "prompt_form": [
+        {
+          "key": "known_competitors",
+          "label": "Competitors you already know about",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Direct competitors, alternatives and the do-nothing option, compared honestly.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": true,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Competitor and alternative list with sources",
+        "Comparison table",
+        "Where competitors are stronger",
+        "Openings worth testing (labelled as hypotheses)"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "market",
+        "solution"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one comparison table.",
+        "voice": "founder",
+        "success_metric": "Founders review the scan and pick the positioning gap to test."
+      }
+    },
+    {
+      "action_type": "fnd_poc_plan",
+      "track": "founder",
+      "layer": 2,
+      "label": "Proof-of-Concept Plan",
+      "description": "A one-page plan a named customer can say yes to, with success criteria set in advance.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_pain_evidence"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Draft a one-page proof-of-concept plan for one named customer: the pain being tested and their current baseline, the smallest build that tests it, success criteria and how each is measured, the duration, what each side provides, and what happens on success. The founders send it; you do not agree terms.",
+      "prompt_form": [
+        {
+          "key": "customer_name",
+          "label": "Which customer?",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "baseline",
+          "label": "Their current baseline (time, cost, error rate...)",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "duration",
+          "label": "Proposed duration",
+          "type": "select",
+          "required": false,
+          "options": [
+            "2 weeks",
+            "4 weeks",
+            "6 weeks",
+            "8 weeks"
+          ]
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "poc_agreed"
+        ],
+        "negative": [
+          "poc_declined"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A one-page plan a named customer can say yes to, with success criteria set in advance.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "customer",
+      "output_spec": [
+        "Pain and baseline",
+        "Smallest build",
+        "Success criteria and measurement",
+        "Duration and what each side provides",
+        "On success: next commitment (for the founders to propose)"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "solution",
+        "customer"
+      ],
+      "effort": 3,
+      "external": "customer",
+      "action_type_class": "customer_message",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 2,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop when the customer agrees the plan or the founders end the step.",
+        "voice": "founder",
+        "success_metric": "A named customer agrees the written plan (rung 3)."
+      }
+    },
+    {
+      "action_type": "fnd_mvp_scope",
+      "track": "founder",
+      "layer": 2,
+      "label": "MVP Scope",
+      "description": "The smallest product that tests the riskiest assumption, with what is out of scope.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_problem_statement"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Define the minimum product that tests the riskiest assumption in the findings. List what is in, what is deliberately out, and why. Tie each feature to a finding or customer quote.",
+      "prompt_form": [
+        {
+          "key": "riskiest_assumption",
+          "label": "The assumption you most need to test",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "The smallest product that tests the riskiest assumption, with what is out of scope.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Riskiest assumption",
+        "In scope (each tied to a source)",
+        "Out of scope and why",
+        "How to know it worked"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "solution"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one scope the founders accept.",
+        "voice": "founder",
+        "success_metric": "Scope accepted by the founders."
+      }
+    },
+    {
+      "action_type": "fnd_tech_stack",
+      "track": "founder",
+      "layer": 2,
+      "label": "Tech Stack",
+      "description": "A build approach that fits the team's skills, budget and the MVP scope.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_mvp_scope"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Recommend a build approach for the MVP scope that fits the team's skills and budget. Prefer existing tools and no-code where they test the assumption faster. Show trade-offs and rough monthly costs as estimates.",
+      "prompt_form": [
+        {
+          "key": "team_skills",
+          "label": "Who on the team builds, and with what?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "monthly_budget",
+          "label": "Monthly tooling budget (USD)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A build approach that fits the team's skills, budget and the MVP scope.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Recommended approach",
+        "Alternatives and trade-offs",
+        "Estimated monthly cost (labelled)",
+        "Build risks"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "solution",
+        "operations"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one recommendation.",
+        "voice": "founder",
+        "success_metric": "Founders choose a build approach."
+      }
+    },
+    {
+      "action_type": "fnd_roadmap",
+      "track": "founder",
+      "layer": 2,
+      "label": "Roadmap",
+      "description": "A sequence of milestones from MVP to proof of concept to first paid pilot.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_mvp_scope"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Lay out milestones from the MVP to the proof of concept to the first paid pilot, each with the evidence that marks it done. Keep dates as targets, not commitments, and show dependencies.",
+      "prompt_form": [
+        {
+          "key": "horizon",
+          "label": "Planning horizon",
+          "type": "select",
+          "required": true,
+          "options": [
+            "6 weeks",
+            "3 months",
+            "6 months"
+          ]
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A sequence of milestones from MVP to proof of concept to first paid pilot.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Milestones with evidence of done",
+        "Dependencies",
+        "Target dates (labelled as targets)",
+        "Risks"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "solution"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one roadmap.",
+        "voice": "founder",
+        "success_metric": "Roadmap accepted and its first milestone in the plan."
+      }
+    },
+    {
+      "action_type": "fnd_prototype_feedback",
+      "track": "founder",
+      "layer": 2,
+      "label": "Prototype Feedback",
+      "description": "A feedback session plan and a synthesis of what users did, not just what they said.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_mvp_scope"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Plan a prototype feedback session focused on what users do. Draft the invitation for the founders to send. When notes are supplied, report observed behaviour separately from opinions, with counts and quotes, and list changes ranked by evidence.",
+      "prompt_form": [
+        {
+          "key": "prototype_link",
+          "label": "Link to the prototype (optional)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "session_notes",
+          "label": "Paste session notes (optional)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A feedback session plan and a synthesis of what users did, not just what they said.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "customer",
+      "output_spec": [
+        "Session plan and tasks",
+        "Invitation draft",
+        "Behaviour vs opinion synthesis",
+        "Changes ranked by evidence"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "solution",
+        "customer"
+      ],
+      "effort": 3,
+      "external": "customer",
+      "action_type_class": "customer_message",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 2,
+        "scope": {
+          "segment": "",
+          "count": 5
+        },
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one synthesis.",
+        "voice": "founder",
+        "success_metric": "Feedback logged from the target number of users."
+      }
+    },
+    {
+      "action_type": "fnd_benefits_case",
+      "track": "founder",
+      "layer": 3,
+      "label": "Benefits Case",
+      "description": "A one-page before-and-after against the baseline, from measured results only.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_poc_plan"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Turn the proof-of-concept results into a one-page case: before and after against the agreed baseline, in time, cost, revenue or risk. Use measured results only, label any estimate as an estimate, and quote the customer only if they gave permission.",
+      "prompt_form": [
+        {
+          "key": "results",
+          "label": "Measured results against each success criterion",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "quote_permission",
+          "label": "Did the customer allow a quote?",
+          "type": "select",
+          "required": true,
+          "options": [
+            "yes",
+            "no"
+          ]
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "results_measured"
+        ],
+        "negative": []
+      },
+      "expertise_relevance": {},
+      "description_template": "A one-page before-and-after against the baseline, from measured results only.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Baseline vs result table",
+        "Benefit in the customer's terms",
+        "Estimates (labelled)",
+        "Customer quote (only with permission)"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "customer",
+        "business_model"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one case built from the results supplied.",
+        "voice": "founder",
+        "success_metric": "Benefit shown against the baseline (rung 4)."
+      }
+    },
+    {
+      "action_type": "fnd_pilot_offer",
+      "track": "founder",
+      "layer": 3,
+      "label": "Pilot Offer",
+      "description": "A paid pilot offer priced against the benefit shown, for the founders to send.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_benefits_case"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Draft a paid pilot offer priced against the benefit the customer saw. Explain the pricing logic. The offer is a draft: the founders approve, send and agree any terms themselves.",
+      "prompt_form": [
+        {
+          "key": "pilot_length",
+          "label": "Pilot length",
+          "type": "select",
+          "required": true,
+          "options": [
+            "1 month",
+            "3 months",
+            "6 months"
+          ]
+        },
+        {
+          "key": "price_floor",
+          "label": "Lowest price you would accept (USD, never shown to the customer)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "pilot_paid",
+          "commitment_signed"
+        ],
+        "negative": [
+          "pilot_declined"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A paid pilot offer priced against the benefit shown, for the founders to send.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "customer",
+      "output_spec": [
+        "Offer summary",
+        "Price and how it relates to the benefit",
+        "Draft message to the customer",
+        "Questions the customer may ask"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "business_model",
+        "gtm"
+      ],
+      "effort": 2,
+      "external": "customer",
+      "action_type_class": "customer_message",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 2,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop when the founders approve or discard the draft.",
+        "voice": "founder",
+        "success_metric": "Customer pays or signs a commitment (rung 5)."
+      }
+    },
+    {
+      "action_type": "fnd_positioning",
+      "track": "founder",
+      "layer": 3,
+      "label": "Positioning",
+      "description": "Who it is for, the alternative it replaces, and the one reason to choose it.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_competitor_scan"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Write positioning from the evidence: the customer, the alternative they use today, and the one difference that matters to them, each tied to an interview quote or finding. Avoid superlatives you cannot support.",
+      "prompt_form": [
+        {
+          "key": "primary_segment",
+          "label": "The segment to lead with",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Who it is for, the alternative it replaces, and the one reason to choose it.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Positioning statement",
+        "Evidence for each part",
+        "Messages to avoid (unsupported claims)",
+        "Test plan"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "gtm",
+        "market"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one statement.",
+        "voice": "founder",
+        "success_metric": "Positioning accepted and used on the landing page."
+      }
+    },
+    {
+      "action_type": "fnd_landing_page",
+      "track": "founder",
+      "layer": 3,
+      "label": "Landing Page",
+      "description": "Landing page copy that states only what the venture can show today.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_positioning"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Write landing page copy from the positioning: headline, problem, how it works, proof and one call to action. Every claim must be supported by a finding or customer quote; mark any that are not.",
+      "prompt_form": [
+        {
+          "key": "call_to_action",
+          "label": "What should a visitor do?",
+          "type": "select",
+          "required": true,
+          "options": [
+            "join a waitlist",
+            "book a call",
+            "start a pilot"
+          ]
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Landing page copy that states only what the venture can show today.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Headline and subhead",
+        "Sections with copy",
+        "Claim check: each claim and its source",
+        "What to measure"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "gtm"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one draft.",
+        "voice": "founder",
+        "success_metric": "Page live and collecting sign-ups or calls."
+      }
+    },
+    {
+      "action_type": "fnd_pricing_test",
+      "track": "founder",
+      "layer": 3,
+      "label": "Pricing Test",
+      "description": "A small, honest test of willingness to pay, with what result would change the price.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_positioning"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Design a willingness-to-pay test the founders can run with real prospects. State the hypothesis, the price points, how to ask, and what result would change the price. Do not present untested prices as validated.",
+      "prompt_form": [
+        {
+          "key": "price_points",
+          "label": "Price points to test (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A small, honest test of willingness to pay, with what result would change the price.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "customer",
+      "output_spec": [
+        "Hypothesis",
+        "Test design and script",
+        "Decision rule",
+        "Results table (when supplied)"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "business_model"
+      ],
+      "effort": 3,
+      "external": "customer",
+      "action_type_class": "customer_message",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 2,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after the design, or after one read-out of results supplied.",
+        "voice": "founder",
+        "success_metric": "Pricing decision backed by test data."
+      }
+    },
+    {
+      "action_type": "fnd_outbound_pipeline",
+      "track": "founder",
+      "layer": 3,
+      "label": "Outbound Pipeline",
+      "description": "A short, targeted prospect list and personal first messages, never mass outreach.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_positioning"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Build a short list of prospects that match the segment and draft a personal first message for each, referencing why it is relevant to them. No mass outreach: respect the daily action cap. Every message is a draft the founders approve.",
+      "prompt_form": [
+        {
+          "key": "segment",
+          "label": "Who to contact",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "list_size",
+          "label": "How many prospects",
+          "type": "select",
+          "required": true,
+          "options": [
+            "10",
+            "20",
+            "30"
+          ]
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A short, targeted prospect list and personal first messages, never mass outreach.",
+      "produces_contacts": true,
+      "contacts_mode": "draft",
+      "research_enabled": true,
+      "autonomy_channel": "customer",
+      "output_spec": [
+        "Prospect list with why each fits",
+        "First-message drafts",
+        "Follow-up plan",
+        "Tracking table"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "gtm",
+        "customer"
+      ],
+      "effort": 4,
+      "external": "customer",
+      "action_type_class": "customer_message",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 2,
+        "scope": {
+          "segment": "",
+          "count": 20
+        },
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop at the list size or the daily action cap.",
+        "voice": "founder",
+        "success_metric": "Replies and booked calls from the list."
+      }
+    },
+    {
+      "action_type": "fnd_incorporation_checklist",
+      "track": "founder",
+      "layer": 4,
+      "label": "Incorporation Checklist",
+      "description": "The questions and documents to bring to a startup attorney. Not legal advice.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt": "Prepare a checklist of the company formation topics founders usually cover (entity, founder equity and vesting, IP assignment, bank account) as questions to bring to a startup attorney. Do not recommend an entity type or give legal or tax advice.",
+      "prompt_form": [
+        {
+          "key": "founder_count",
+          "label": "Number of founders",
+          "type": "select",
+          "required": true,
+          "options": [
+            "1",
+            "2",
+            "3",
+            "4+"
+          ]
+        },
+        {
+          "key": "location",
+          "label": "Where the founders are based",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "The questions and documents to bring to a startup attorney. Not legal advice.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Checklist of topics",
+        "Questions for the attorney",
+        "Documents to gather",
+        "What to decide before the meeting"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "operations"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one checklist.",
+        "voice": "founder",
+        "success_metric": "Attorney meeting booked with the checklist."
+      }
+    },
+    {
+      "action_type": "fnd_runway_budget",
+      "track": "founder",
+      "layer": 4,
+      "label": "Runway and Budget",
+      "description": "A monthly budget and runway from the founders' own numbers, as an estimate.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt": "Build a monthly budget and runway from the founders' figures. Show every input, label estimates, and give the runway in months under the founders' assumptions. No tax advice and no revenue promises.",
+      "prompt_form": [
+        {
+          "key": "cash_on_hand",
+          "label": "Cash on hand (USD)",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "monthly_costs",
+          "label": "Monthly costs you know of",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A monthly budget and runway from the founders' own numbers, as an estimate.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Budget table (inputs and sources)",
+        "Runway in months (estimate)",
+        "Assumptions to check",
+        "Questions for a CPA"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "operations",
+        "fundraising"
+      ],
+      "effort": 3,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one budget.",
+        "voice": "founder",
+        "success_metric": "Founders accept a budget and runway figure."
+      }
+    },
+    {
+      "action_type": "fnd_hiring_plan",
+      "track": "founder",
+      "layer": 4,
+      "label": "Hiring Plan",
+      "description": "Which roles the roadmap needs, when, and what each is accountable for.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_roadmap"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "From the roadmap and the team, list the roles needed and when, what each is accountable for, and what can be done by founders or contractors first. No employment-law advice.",
+      "prompt_form": [
+        {
+          "key": "current_team",
+          "label": "Who is on the team and what they cover",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Which roles the roadmap needs, when, and what each is accountable for.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Gaps against the roadmap",
+        "Roles, timing and accountabilities",
+        "Founder or contractor options",
+        "Questions for counsel or HR"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "team",
+        "operations"
+      ],
+      "effort": 3,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one plan.",
+        "voice": "founder",
+        "success_metric": "Hiring plan accepted."
+      }
+    },
+    {
+      "action_type": "fnd_metrics_reporting",
+      "track": "founder",
+      "layer": 4,
+      "label": "Metrics Reporting",
+      "description": "The handful of metrics that show progress at this stage, and how to track them.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_mvp_scope"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Choose the few metrics that show real progress at the venture's stage, define each precisely, and say where the data comes from. Prefer measured over vanity metrics.",
+      "prompt_form": [
+        {
+          "key": "tools",
+          "label": "Tools you already use (analytics, CRM, billing)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "The handful of metrics that show progress at this stage, and how to track them.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Metric definitions",
+        "Data sources",
+        "Reporting cadence",
+        "Metrics to ignore for now"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "operations",
+        "business_model"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one metric set.",
+        "voice": "founder",
+        "success_metric": "Metrics tracked weekly."
+      }
+    },
+    {
+      "action_type": "fnd_investor_readiness",
+      "track": "founder",
+      "layer": 5,
+      "label": "Investor Readiness",
+      "description": "What an investor would ask that the evidence can't yet answer.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_runway_budget"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Review the venture as an investor would: list the questions they will ask and whether the evidence answers each, citing it. Say plainly where the evidence is thin. Do not predict whether investors will fund the venture.",
+      "prompt_form": [
+        {
+          "key": "raise_goal",
+          "label": "What you hope to raise and for what (optional)",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "What an investor would ask that the evidence can't yet answer.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Investor questions vs evidence",
+        "Weak spots",
+        "What to prove first",
+        "Materials needed"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "fundraising"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one review.",
+        "voice": "founder",
+        "success_metric": "Readiness gaps turned into plan steps."
+      }
+    },
+    {
+      "action_type": "fnd_startup_page",
+      "track": "founder",
+      "layer": 5,
+      "label": "Startup Page",
+      "description": "A draft of the startup page from evaluated evidence, with unproven claims marked.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_investor_readiness"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Draft the startup page sections (problem, customer, solution, market and method, business model, traction, the ask) from the evaluated artifacts. Mark every field that lacks evidence as founder-stated. Publishing needs the founder who holds the publish decision.",
+      "prompt_form": [
+        {
+          "key": "traction_metrics",
+          "label": "Metrics you want shown",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A draft of the startup page from evaluated evidence, with unproven claims marked.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Section drafts",
+        "Founder-stated fields",
+        "Claim check with sources",
+        "Publish checklist"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "fundraising",
+        "problem",
+        "solution"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one draft.",
+        "voice": "founder",
+        "success_metric": "Page published by the decision holder."
+      }
+    },
+    {
+      "action_type": "fnd_investor_matching",
+      "track": "founder",
+      "layer": 5,
+      "label": "Investor Matching",
+      "description": "A ranked list of investors and programs that fit the stage, sector, geography and check size.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_investor_readiness"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Rank investors and programs from the directory against the founders' scope: stage, sector, geography and check size. Explain each fit with the matching facts and leave out poor fits. Do not rate the chance of investment.",
+      "prompt_form": [
+        {
+          "key": "stage",
+          "label": "Round stage",
+          "type": "select",
+          "required": true,
+          "options": [
+            "pre-seed",
+            "seed",
+            "series-a"
+          ]
+        },
+        {
+          "key": "check_size",
+          "label": "Typical check size you are looking for (USD)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "A ranked list of investors and programs that fit the stage, sector, geography and check size.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": true,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Ranked target list",
+        "Fit reasons per target",
+        "Excluded and why",
+        "Calibration notes"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "fundraising"
+      ],
+      "effort": 2,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {
+          "stage": "",
+          "sectors": [],
+          "geographies": [],
+          "check_min": null,
+          "check_max": null
+        },
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one ranked list.",
+        "voice": "founder",
+        "success_metric": "Founders mark targets to pursue."
+      }
+    },
+    {
+      "action_type": "fnd_warm_intro",
+      "track": "founder",
+      "layer": 5,
+      "label": "Warm-Intro Mapping",
+      "description": "Intro requests to people the founders already know, drafted for the founders to approve.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_investor_matching"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "For each pursued target, use the connector paths found for you (you do not see the founders' mailbox) and draft a short intro request to the connector plus a forwardable blurb. The blurb states only evidenced facts and no terms. Each request is approved by the founders.",
+      "prompt_form": [
+        {
+          "key": "max_requests",
+          "label": "Most requests per week",
+          "type": "select",
+          "required": true,
+          "options": [
+            "2",
+            "3",
+            "5"
+          ]
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Intro requests to people the founders already know, drafted for the founders to approve.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "investor",
+      "output_spec": [
+        "Connector and target pairs",
+        "Intro request drafts",
+        "Forwardable blurb",
+        "Follow-up timing"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "fundraising",
+        "team"
+      ],
+      "effort": 3,
+      "external": "investor",
+      "action_type_class": "intro_request",
+      "gate": "intros",
+      "default_params": {
+        "autonomy_level": 3,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop at the weekly request cap.",
+        "voice": "founder",
+        "success_metric": "Intro requests that lead to an introduction."
+      }
+    },
+    {
+      "action_type": "fnd_application_form",
+      "track": "founder",
+      "layer": 5,
+      "label": "Application Form",
+      "description": "Draft answers to accelerator, grant and investor application forms, flagging unevidenced answers.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_investor_matching"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": true,
+      "prompt": "Draft answers for the selected application from the evaluated artifacts. Flag every answer that lacks evidence. The founders approve each application; where the site does not allow automated submission, prepare the answers for the founders to submit.",
+      "prompt_form": [
+        {
+          "key": "program",
+          "label": "Which program or investor form",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "deadline",
+          "label": "Deadline (optional)",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Draft answers to accelerator, grant and investor application forms, flagging unevidenced answers.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "investor",
+      "output_spec": [
+        "Answer drafts with sources",
+        "Unevidenced answers",
+        "Attachments needed",
+        "Submission route"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "fundraising"
+      ],
+      "effort": 3,
+      "external": "investor",
+      "action_type_class": "application",
+      "gate": "applications",
+      "default_params": {
+        "autonomy_level": 2,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one application draft.",
+        "voice": "founder",
+        "success_metric": "Approved applications submitted."
+      }
+    },
+    {
+      "action_type": "fnd_data_room",
+      "track": "founder",
+      "layer": 5,
+      "label": "Data Room",
+      "description": "An index of the documents investors usually request, with what is ready and what is missing.",
+      "model": "sonnet",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_investor_readiness"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": true,
+      "large_output": false,
+      "prompt": "Build a data room index: the documents investors usually request at this stage, which exist in the venture's artifacts, and which are missing. Do not draft legal documents; list them for counsel.",
+      "prompt_form": [
+        {
+          "key": "stage",
+          "label": "Round stage",
+          "type": "select",
+          "required": true,
+          "options": [
+            "pre-seed",
+            "seed",
+            "series-a"
+          ]
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "An index of the documents investors usually request, with what is ready and what is missing.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": null,
+      "output_spec": [
+        "Index with status (ready, draft, missing)",
+        "Owner per document",
+        "Items for counsel",
+        "Access plan"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "fundraising",
+        "operations"
+      ],
+      "effort": 3,
+      "external": "none",
+      "action_type_class": "research",
+      "gate": null,
+      "default_params": {
+        "autonomy_level": 4,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop after one index.",
+        "voice": "founder",
+        "success_metric": "Data room index complete."
+      }
+    },
+    {
+      "action_type": "fnd_followup_crm",
+      "track": "founder",
+      "layer": 5,
+      "label": "Follow-up and CRM",
+      "description": "Track investor conversations and draft follow-ups to investors who replied.",
+      "model": "haiku",
+      "cold_start_chain": false,
+      "cold_start_order": null,
+      "cold_start_prior": 0.5,
+      "prerequisites": [
+        "fnd_warm_intro"
+      ],
+      "triggered_by": [],
+      "integrations": [],
+      "data_dependencies": [
+        "venture.artifacts",
+        "venture.findings"
+      ],
+      "bio_page_update": false,
+      "hub_node": false,
+      "hub_label": null,
+      "disclaimer": false,
+      "large_output": false,
+      "prompt": "Keep the investor pipeline current from logged conversations and draft follow-ups only to investors who have already replied. Follow-ups share evidenced progress, never terms, valuations or return figures.",
+      "prompt_form": [
+        {
+          "key": "conversation_notes",
+          "label": "Notes from recent investor conversations",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "key": "extra_context",
+          "label": "Anything the agent should know that isn't in your documents",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "signals": {
+        "positive": [
+          "step_completed"
+        ],
+        "negative": [
+          "step_skipped"
+        ]
+      },
+      "expertise_relevance": {},
+      "description_template": "Track investor conversations and draft follow-ups to investors who replied.",
+      "produces_contacts": false,
+      "contacts_mode": null,
+      "research_enabled": false,
+      "autonomy_channel": "investor",
+      "output_spec": [
+        "Pipeline table",
+        "Follow-up drafts",
+        "Next actions with owners",
+        "Stale conversations"
+      ],
+      "external_facts": [],
+      "dimensions": [
+        "fundraising"
+      ],
+      "effort": 2,
+      "external": "investor",
+      "action_type_class": "followup",
+      "gate": "intros",
+      "default_params": {
+        "autonomy_level": 3,
+        "scope": {},
+        "budget_cap": null,
+        "action_cap": null,
+        "stopping_rule": "Stop when every replied investor has a next action.",
+        "voice": "founder",
+        "success_metric": "Follow-ups sent on time."
+      }
+    }
+  ]
+}

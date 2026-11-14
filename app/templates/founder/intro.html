@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Founder Track{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:760px;padding-top:3rem;padding-bottom:3rem;color:var(--ink)">
+  <p style="font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .5rem">Founder Track</p>
+  <h1 style="font-size:1.75rem;margin:0 0 .75rem">Turn your startup plan into evidence, one step at a time</h1>
+  <p style="color:var(--ink-2);line-height:1.6;margin:0 0 1.5rem">
+    Share your plan, deck or a spoken pitch. SimiSI reads it against a nine-part rubric and shows what your
+    documents prove today, where they contradict each other, and which assumptions still need customers to
+    confirm them. Every finding cites the passage it comes from.
+  </p>
+
+  <ol style="margin:0 0 1.5rem;padding-left:1.2rem;line-height:1.7;color:var(--ink-2)">
+    <li><b style="color:var(--ink)">Pitch.</b> Upload your documents or talk it through.</li>
+    <li><b style="color:var(--ink)">Evaluate.</b> A readiness report with your rung on the evidence ladder.</li>
+    <li><b style="color:var(--ink)">Build the team.</b> Agents matched to your gaps, with settings you control.</li>
+    <li><b style="color:var(--ink)">Execute.</b> One clear next step. Nothing reaches a customer or investor without your approval.</li>
+  </ol>
+
+  {% if ventures %}
+  <div style="padding:1rem 1.1rem;border:1px solid var(--rule);border-radius:var(--r-ui);margin:0 0 1.5rem">
+    <p style="margin:0 0 .35rem;font-size:.85rem;color:var(--mute)">Your venture{{ 's' if ventures|length > 1 }}</p>
+    {% for v in ventures %}
+    <p style="margin:.25rem 0"><b>{{ v.name }}</b>{% if v.one_liner %} <span style="color:var(--ink-2)">· {{ v.one_liner }}</span>{% endif %}</p>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="margin:0 0 1.5rem;color:var(--ink-2)">
+    The evaluation preview is free. The full report, the agents and the plan are a one-time
+    ${{ '{:,.0f}'.format(pricing.price_cents / 100) }} fee, refundable within {{ pricing.refund_window_days }} days.
+  </p>
+  {% endif %}
+
+  <p style="font-size:.85rem;color:var(--mute);line-height:1.55;margin:0">{{ legal('founder_report_disclaimer') }}</p>
+  <p style="font-size:.85rem;color:var(--mute);line-height:1.55;margin:.5rem 0 0">{{ legal('founder_not_advice') }}</p>
+</div>
+{% endblock %}

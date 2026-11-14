@@ -101,6 +101,23 @@ DEFAULTS = {
     'linkedin_manual': ('LinkedIn drafts',
                         "SimiSI doesn't post or message on LinkedIn for you. Copy this draft and post or "
                         'send it yourself.'),
+    # Founder Track (FOUNDER_PLAN.md). Drafts for counsel.
+    'founder_report_disclaimer': (
+        'Founder readiness report and scores',
+        'Scores describe what your documents show today. They are not a prediction of funding or of '
+        'investor decisions. Each finding cites the passage it comes from, so you can check it.'),
+    'founder_not_advice': (
+        'Founder agent outputs (legal, tax, finance, fundraising)',
+        'This is planning help, not legal, tax or investment advice. Check decisions about your company, '
+        'its securities and its taxes with a qualified attorney or CPA.'),
+    'startup_claims_note': (
+        'Public startup page, next to traction and claims',
+        'Information on this page is provided by the founders. Items marked founder-stated have not been '
+        'checked against evidence. SimiSI does not verify, endorse or offer any investment.'),
+    'investor_update_footer': (
+        'Bottom of every investor update email',
+        'Sent on behalf of {sender_name} by SimiSI. This update is information, not an offer to sell or a '
+        'solicitation to buy securities. Unsubscribe: {unsubscribe_url}'),
 }
 
 

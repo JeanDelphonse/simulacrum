@@ -127,6 +127,12 @@ def upload_resume():
     if not allowed_file(file.filename, current_app.config['ALLOWED_EXTENSIONS']):
         return jsonify({'error': 'Only PDF and DOCX files are accepted'}), 400
 
+    # The resume ceiling stays 5 MB; the global MAX_CONTENT_LENGTH is now 20 MB
+    # for Founder Track pitch decks.
+    from app.services.careers_service import MAX_RESUME_BYTES, upload_size
+    if upload_size(file) > MAX_RESUME_BYTES:
+        return jsonify({'error': 'File must be 5 MB or smaller'}), 413
+
     # FR-TOS-04: write consent record BEFORE touching the file
     ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()[:45]
     ua = (request.headers.get('User-Agent') or '')[:500]

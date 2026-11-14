@@ -93,6 +93,15 @@ from app.models.sme_guide import (
 from app.models.transition import (
     TransitionCohort, TransitionSeat, CoachingSession, CoachingNote, TransitionOutcome,
 )
+from app.models.founder import (
+    FounderVenture, VentureMember, VentureArtifact, FounderRunMeta,
+    EvaluationRun, EvaluationFinding, FindingRating, FounderEvalCache,
+    AgentBlueprint, AgentParamOverride, VenturePlanStep, VentureStepEvent, VentureAgentOutput,
+    ProofPlan, ProofResult, AlignmentResponse, DecisionRight,
+    StartupPage, StartupSlugHistory, StartupPageVisit,
+    ComplianceProfile, InvestorLink, InvestorAccess, InvestorUpdate, InvestorProfile,
+    InvestorTarget, IntroPath, VentureOutreachAction, FounderAlertRule,
+)
 
 __all__ = [
     'User', 'Resume', 'Simulation', 'SimulationLayer', 'IncomeStream',
@@ -135,4 +144,12 @@ __all__ = [
     'AgentShare', 'PeerInvite', 'ParameterSuggestion', 'SuggestionBlend',
     'ReciprocityLedger',
     'SimulationDiscount', 'UserDiscount', 'UserDiscountRedemption',
+    # Founder Track (FOUNDER_PLAN.md)
+    'FounderVenture', 'VentureMember', 'VentureArtifact', 'FounderRunMeta',
+    'EvaluationRun', 'EvaluationFinding', 'FindingRating', 'FounderEvalCache',
+    'AgentBlueprint', 'AgentParamOverride', 'VenturePlanStep', 'VentureStepEvent', 'VentureAgentOutput',
+    'ProofPlan', 'ProofResult', 'AlignmentResponse', 'DecisionRight',
+    'StartupPage', 'StartupSlugHistory', 'StartupPageVisit',
+    'ComplianceProfile', 'InvestorLink', 'InvestorAccess', 'InvestorUpdate', 'InvestorProfile',
+    'InvestorTarget', 'IntroPath', 'VentureOutreachAction', 'FounderAlertRule',
 ]

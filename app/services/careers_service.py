@@ -17,9 +17,20 @@ _JOBS_PATH = os.path.join(
 
 # Word is offered because most applicants send .docx; .doc is accepted so an older
 # resume is not silently rejected, but it cannot be previewed or text-extracted.
-# The 5 MB size ceiling is Flask's MAX_CONTENT_LENGTH, enforced before the request
-# body reaches the route — deliberately not duplicated here.
+# The resume ceiling stays 5 MB. Flask's MAX_CONTENT_LENGTH is now 20 MB (Founder
+# Track pitch decks), so the apply route checks this limit itself.
 ALLOWED_RESUME_EXTENSIONS = {'pdf', 'docx', 'doc'}
+MAX_RESUME_BYTES = 5 * 1024 * 1024
+
+
+def upload_size(file_storage) -> int:
+    """Byte size of an uploaded file, without reading it into memory."""
+    stream = file_storage.stream
+    pos = stream.tell()
+    stream.seek(0, os.SEEK_END)
+    size = stream.tell()
+    stream.seek(pos)
+    return size
 
 _cache = {'data': None}
 

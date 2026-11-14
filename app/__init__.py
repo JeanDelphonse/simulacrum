@@ -205,6 +205,12 @@ def create_app(config_name=None):
     app.register_blueprint(sme_bp, url_prefix='/api/sme')
     app.register_blueprint(sme_user_bp, url_prefix='/api/sme-advisor')
 
+    # Founder Track (FOUNDER_PLAN.md): every route 404s while founder_track is off.
+    from app.blueprints.founder import founder_bp
+    app.register_blueprint(founder_bp)
+    from app.blueprints.startup import startup_bp
+    app.register_blueprint(startup_bp)
+
     # Register page routes
     from app.blueprints.pages import pages_bp
     app.logger.info('startup: pages_bp imported')
@@ -260,7 +266,7 @@ def create_app(config_name=None):
         # Skip public/auth pages
         _public_prefixes = ('/legal/', '/u/', '/share/', '/samples/', '/ref/',
                             '/auth/', '/ping', '/sitemap.xml', '/outreach/',
-                            '/careers', '/blog')
+                            '/careers', '/blog', '/startup/', '/founder/join/')
         if _req.path.startswith(_public_prefixes):
             return
         if _req.path in ('/login', '/register', '/verify-sent', '/forgot-password',

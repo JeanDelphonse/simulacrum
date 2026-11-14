@@ -63,7 +63,7 @@ class Config:
     CAL_CLIENT_ID = os.environ.get('CAL_CLIENT_ID')
     CAL_CLIENT_SECRET = os.environ.get('CAL_CLIENT_SECRET')
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
-    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB
+    MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20 MB (Founder Track pitch decks; owner approved 2026-11-13)
     ALLOWED_EXTENSIONS = {'pdf', 'docx'}
     CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
     CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL', 'cache+memory://')

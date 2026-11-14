@@ -45,7 +45,9 @@ GLOBAL = {'admin_stage_rules', 'calibration_audit', 'calibration_configs', 'disc
           'transition_cohorts',   # employer-level records
           'enterprise_inquiries',  # inbound sales inquiries, not tied to a user account
           'sme_guides',            # the guide catalogue
-          'legal_texts'}           # site-wide legal wording
+          'legal_texts',           # site-wide legal wording
+          'investor_profile',      # Founder Track investor directory (admin-curated)
+          'founder_alert_rule'}    # Founder Track alert thresholds
 
 # Columns that hold THE user's id: rows matching are the user's data -> delete.
 USER_COLS = {'user_id', 'owner_user_id', 'author_user_id', 'profile_user_id', 'client_user_id',
@@ -85,6 +87,13 @@ SETS = [
     ('d_csess', "SELECT id FROM coaching_sessions WHERE seat_id IN (SELECT id FROM d_seats)"),
     ('d_smesess', "SELECT id FROM sme_sessions WHERE user_id = @uid"),
     ('d_goals', "SELECT id FROM goal_cards WHERE user_id = @uid"),
+    # Founder Track: the venture the user owns, its startup page and its artifacts.
+    ('d_ventures', "SELECT id FROM founder_venture WHERE owner_user_id = @uid"),
+    ('d_spages', "SELECT id FROM startup_page WHERE venture_id IN (SELECT id FROM d_ventures)"),
+    ('d_vartifacts', "SELECT id FROM venture_artifact WHERE venture_id IN (SELECT id FROM d_ventures)"),
+    ('d_findings', "SELECT id FROM evaluation_finding WHERE venture_id IN (SELECT id FROM d_ventures)"),
+    # The user's own member rows in any venture, plus every member row of the ventures they own.
+    ('d_members', "SELECT id FROM venture_member WHERE user_id = @uid OR venture_id IN (SELECT id FROM d_ventures)"),
 ]
 # Column name -> parent set(s) whose ids mean "this row belongs to the user".
 PARENT_COLS = {
@@ -101,6 +110,8 @@ PARENT_COLS = {
     'post_id': ['d_posts'], 'comment_id': ['d_comments'], 'enrollment_id': ['d_enroll'],
     'partner_id': ['d_partner'], 'resume_id': ['d_resumes'],
     'seat_id': ['d_seats'],
+    'venture_id': ['d_ventures'], 'startup_page_id': ['d_spages'],
+    'finding_id': ['d_findings'], 'member_id': ['d_members'], 'connector_contact_id': ['d_contacts'],
 }
 # Per-table overrides where a generic column means something else.
 SKIP_COLS = {
@@ -120,6 +131,11 @@ SKIP_COLS = {
     # SME Console guide tables: session_id is a guide session, not a bio-chat one
     ('sme_turns', 'session_id'), ('sme_briefings', 'session_id'), ('skill_suggestions', 'session_id'),
     ('goal_cards', 'session_id'), ('user_guide_prefs', 'guide_id'), ('sme_sessions', 'guide_id'),
+    # Founder Track: artifact_id is a venture_artifact, not an agent action
+    ('evaluation_finding', 'artifact_id'), ('founder_eval_cache', 'artifact_id'),
+    # Founder Track: a co-founder's agent_runs row can sit on the owner's venture, so these
+    # rows are matched by venture only, never by who started the run.
+    ('founder_run_meta', 'obs_run_id'), ('evaluation_run', 'obs_run_id'), ('venture_agent_output', 'obs_run_id'),
 }
 # action_approvals.target_id can point at a plan step or a send batch; tie it to the user's plans.
 EXTRA_WHERE = {
@@ -133,6 +149,32 @@ EXTRA_WHERE = {
     'sme_turns': ["session_id IN (SELECT id FROM d_smesess)"],
     'sme_briefings': ["session_id IN (SELECT id FROM d_smesess)"],
     'goal_card_agent_changes': ["goal_card_id IN (SELECT id FROM d_goals)"],
+    'founder_eval_cache': ["artifact_id IN (SELECT id FROM d_vartifacts)"],
+    # co-founder invitations to this user's email that were never accepted, in any venture
+    'venture_member': ["user_id IS NULL AND LOWER(invite_email) = LOWER((SELECT email FROM users WHERE id = @uid))"],
+}
+# Statements run after the preview and before the deletes, for other users'
+# rows that point at this user's rows and are kept.
+EXTRA_STATEMENTS = [
+    "-- Founder Track: a co-founder's decision rights in someone else's venture go back to its owner.",
+    "UPDATE decision_right SET holder_member_id = COALESCE((SELECT vm.id FROM venture_member vm"
+    "\n    WHERE vm.venture_id = decision_right.venture_id AND vm.role = 'owner'"
+    "\n      AND vm.id NOT IN (SELECT id FROM d_members) LIMIT 1), holder_member_id)"
+    "\n    WHERE holder_member_id IN (SELECT id FROM d_members);",
+    "UPDATE venture_plan_step SET owner_member_id = NULL WHERE owner_member_id IN (SELECT id FROM d_members);",
+    "-- Founder Track: investors this user added to the directory go; admin-curated ones stay.",
+    "UPDATE investor_target SET investor_profile_id = NULL WHERE investor_profile_id IN"
+    "\n    (SELECT id FROM investor_profile WHERE source = 'founder' AND added_by = @uid);",
+    "DELETE FROM investor_profile WHERE source = 'founder' AND added_by = @uid;",
+]
+# Founder Track actor columns, per table (approved_by / recorded_by mean other
+# things on older tables, so they are not added to ACTOR_COLS globally).
+TABLE_ACTOR_COLS = {
+    ('venture_artifact', 'uploaded_by'), ('founder_run_meta', 'approved_by'),
+    ('venture_step_event', 'actor_user_id'), ('startup_page', 'publish_approved_by'),
+    ('compliance_profile', 'recorded_by'), ('investor_access', 'approved_by'),
+    ('investor_update', 'approved_by'), ('investor_profile', 'added_by'),
+    ('venture_outreach_action', 'approved_by'),
 }
 
 deletes, nulls, unknown = {}, [], []
@@ -160,6 +202,8 @@ for name, t in tables.items():
         if (name, c.name) in SKIP_COLS:
             continue
         if c.name in ACTOR_COLS and (name not in deletes or c.name not in USER_COLS):
+            nulls.append((name, c.name, c.nullable))
+        elif (name, c.name) in TABLE_ACTOR_COLS:
             nulls.append((name, c.name, c.nullable))
 
 if unknown:
@@ -219,6 +263,9 @@ for n in order:
     w("INSERT INTO d_preview SELECT '%s', COUNT(*) FROM %s WHERE %s;" % (n, n, ' OR '.join(deletes[n])))
 w("SELECT * FROM d_preview WHERE rows_to_delete > 0 ORDER BY tbl;\n")
 w("SET FOREIGN_KEY_CHECKS = 0;   -- every child row is deleted explicitly below\n")
+for stmt in EXTRA_STATEMENTS:
+    w(stmt)
+w("")
 for n in order:
     w("DELETE FROM %s WHERE %s;" % (n, '\n    OR '.join(deletes[n])))
 w("")

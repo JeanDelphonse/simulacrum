@@ -36,7 +36,9 @@ SET_TABLE = {'d_sims': 'simulations', 'd_actions': 'agent_actions', 'd_contacts'
              'd_advisor': 'advisor_access', 'd_collabs': 'collaborations', 'd_posts': 'blog_posts',
              'd_comments': 'blog_comments', 'd_partner': 'referral_partners', 'd_enroll': 'outreach_enrollments',
              'd_resumes': 'resumes', 'd_seats': 'transition_seats', 'd_csess': 'coaching_sessions',
-             'd_smesess': 'sme_sessions', 'd_goals': 'goal_cards'}
+             'd_smesess': 'sme_sessions', 'd_goals': 'goal_cards',
+             'd_ventures': 'founder_venture', 'd_spages': 'startup_page', 'd_vartifacts': 'venture_artifact',
+             'd_findings': 'evaluation_finding', 'd_members': 'venture_member'}
 
 
 def dummy(col, now, u):
@@ -123,6 +125,8 @@ def main():
                     v['session_id'] = rid('sme_sessions', u)
                 if name == 'goal_card_agent_changes':
                     v['goal_card_id'] = rid('goal_cards', u)
+                if name == 'founder_eval_cache':
+                    v['artifact_id'] = rid('venture_artifact', u)
                 try:
                     with db.session.begin_nested():        # a failed insert can't undo the others
                         res = db.session.execute(tables[name].insert().values(**v))
