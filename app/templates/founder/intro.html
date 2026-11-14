@@ -2,6 +2,20 @@
 {% block title %}Founder Track{% endblock %}
 {% block content %}
 <div class="wrap" style="max-width:760px;padding-top:3rem;padding-bottom:3rem;color:var(--ink)">
+  {% if ventures %}
+  <div style="padding:1rem 1.1rem;border:1px solid var(--rule);border-radius:var(--r-ui);margin:0 0 2rem;background:#fff">
+    <p style="margin:0 0 .35rem;font-size:.85rem;color:var(--mute)">Your venture{{ 's' if ventures|length > 1 }}</p>
+    {% for v in ventures %}
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem;margin:.35rem 0">
+      <p style="margin:0"><b>{{ v.name }}</b>{% if v.one_liner %} <span style="color:var(--ink-2)">· {{ v.one_liner }}</span>{% endif %}</p>
+      <span style="display:flex;gap:.5rem">
+        <a class="btn sm" href="{{ url_for('founder.intake_page', venture_id=v.id) }}">Documents &amp; pitch</a>
+        <a class="btn sm primary" href="{{ url_for('founder.report_page', venture_id=v.id) }}">Readiness report</a>
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
   <p style="font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .5rem">Founder Track</p>
   <h1 style="font-size:1.75rem;margin:0 0 .75rem">Turn your startup plan into evidence, one step at a time</h1>
   <p style="color:var(--ink-2);line-height:1.6;margin:0 0 1.5rem">
@@ -23,20 +37,7 @@
     labelled as founder-stated. You decide when it goes live and can take it down at any time.
   </p>
 
-  {% if ventures %}
-  <div style="padding:1rem 1.1rem;border:1px solid var(--rule);border-radius:var(--r-ui);margin:0 0 1.5rem">
-    <p style="margin:0 0 .35rem;font-size:.85rem;color:var(--mute)">Your venture{{ 's' if ventures|length > 1 }}</p>
-    {% for v in ventures %}
-    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem;margin:.35rem 0">
-      <p style="margin:0"><b>{{ v.name }}</b>{% if v.one_liner %} <span style="color:var(--ink-2)">· {{ v.one_liner }}</span>{% endif %}</p>
-      <span style="display:flex;gap:.5rem">
-        <a class="btn sm" href="{{ url_for('founder.intake_page', venture_id=v.id) }}">Documents &amp; pitch</a>
-        <a class="btn sm primary" href="{{ url_for('founder.report_page', venture_id=v.id) }}">Readiness report</a>
-      </span>
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}
+  {% if not ventures %}
   <p style="margin:0 0 1rem;color:var(--ink-2)">
     The evaluation preview is free. The full report, the agents and the plan are a one-time
     ${{ '{:,.0f}'.format(pricing.price_cents / 100) }} fee. {{ legal('founder_refund_terms', days=pricing.refund_window_days) }}
