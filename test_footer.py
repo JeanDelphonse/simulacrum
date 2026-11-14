@@ -122,6 +122,17 @@ def main():
         check('identical footer on {}'.format(url),
               footer_of(bodies[url]) == landing_footer)
 
+    # /founder (Founder Track intro) once the track is on for visitors.
+    from app.models.mail_crm import FeatureFlag
+    with app.app_context():
+        db.session.add(FeatureFlag(feature_key='founder_track', mode='on'))
+        db.session.commit()
+    res = client.get('/founder')
+    check('identical footer on /founder (track on)', res.status_code == 200
+          and footer_of(res.get_data(as_text=True)) == landing_footer, res.status_code)
+    with app.app_context():
+        FeatureFlag.query.filter_by(feature_key='founder_track').delete()
+        db.session.commit()
     check('every footer link resolves (no url_for left unrendered)',
           'url_for' not in landing_footer and '{{' not in landing_footer)
     # playbook_url used to be passed by the landing route alone; a context
@@ -156,6 +167,7 @@ def main():
         'blog/post.html',
         'corporate/invite.html',
         'marketing/transition_package.html',
+        'founder/intro.html',
         'simulations/share_roi.html',
         'simulations/layer6_share.html',
         'landing.html',
