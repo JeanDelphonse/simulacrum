@@ -130,6 +130,26 @@ def main():
     res = client.get('/founder')
     check('identical footer on /founder (track on)', res.status_code == 200
           and footer_of(res.get_data(as_text=True)) == landing_footer, res.status_code)
+    # /founder/start (signed in, no venture yet) carries it too; a venture's
+    # intake page keeps the compact app bar.
+    with app.app_context():
+        from app.models.user import User as _U
+        from app.services import founder_ventures
+        uid = _U.query.filter_by(email='owner@t.local').first().id
+    with client.session_transaction() as s:
+        s['_user_id'], s['_fresh'] = uid, True
+    res = client.get('/founder/start')
+    check('identical footer on /founder/start', res.status_code == 200
+          and footer_of(res.get_data(as_text=True)) == landing_footer, res.status_code)
+    with app.app_context():
+        v = founder_ventures.create_venture(_U.query.get(uid), 'Footer Co', '', 'idea')
+        vid = v.id
+    res = client.get('/founder/v/%s/intake' % vid)
+    body = res.get_data(as_text=True)
+    check('a venture intake page keeps the compact app footer', res.status_code == 200
+          and COMPACT in body and MARKER not in body, res.status_code)
+    with client.session_transaction() as s:
+        s.pop('_user_id', None)
     with app.app_context():
         FeatureFlag.query.filter_by(feature_key='founder_track').delete()
         db.session.commit()
@@ -168,6 +188,7 @@ def main():
         'corporate/invite.html',
         'marketing/transition_package.html',
         'founder/intro.html',
+        'founder/intake.html',
         'simulations/share_roi.html',
         'simulations/layer6_share.html',
         'landing.html',

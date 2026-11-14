@@ -175,3 +175,6 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/founder_pitch.js') }}"></script>
 {% endblock %}
+{# /founder/start (no venture yet) is the track's front door: public footer like the home page.
+   The venture intake page keeps the compact app footer. #}
+{% block footer %}{% if not venture %}{% include 'partials/_footer_public.html' %}{% else %}{{ super() }}{% endif %}{% endblock %}
