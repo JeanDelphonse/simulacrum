@@ -102,6 +102,8 @@ DEFAULTS = {
                         "SimiSI doesn't post or message on LinkedIn for you. Copy this draft and post or "
                         'send it yourself.'),
     # Founder Track (FOUNDER_PLAN.md). Drafts for counsel.
+    'founder_refund_terms': ('Founder Track refund terms',
+                             'Refundable within {days} days of payment.'),
     'founder_report_disclaimer': (
         'Founder readiness report and scores',
         'Scores describe what your documents show today. They are not a prediction of funding or of '

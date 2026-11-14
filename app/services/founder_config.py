@@ -212,6 +212,12 @@ def get(key: str):
 def set(key: str, value, admin_id: str):     # noqa: A001 (interface name fixed by FOUNDER_PLAN section 5)
     """Validate and save. Returns the clean value. Raises FounderConfigError."""
     clean = _validate(key, value)
+    if key in ('fnd_autonomy_matrix', 'fnd_first_contact_cap'):
+        matrix = clean if key == 'fnd_autonomy_matrix' else get('fnd_autonomy_matrix')
+        cap = clean if key == 'fnd_first_contact_cap' else get('fnd_first_contact_cap')
+        row = (matrix or {}).get('first_contact') or {}
+        if int(row.get('max', 0) or 0) > int(cap) or int(row.get('default', 0) or 0) > int(cap):
+            raise FounderConfigError('First contact cannot go above the first-contact cap (level %d).' % int(cap))
     if key == 'fnd_counsel_signoff_at' and not clean:
         from app.services import founder_feature
         if founder_feature.mode(founder_feature.INVESTOR) != 'off':

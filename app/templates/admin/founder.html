@@ -1,0 +1,426 @@
+{% extends 'base.html' %}
+{% block title %}Founder Track — Admin{% endblock %}
+{% block head %}
+<style>
+.fa { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; font-family: var(--sans); color: var(--ink); }
+.fa h1 { font-size: 1.5rem; margin: 0 0 .35rem; }
+.fa h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
+.fa h3 { font-size: .95rem; margin: 0 0 .35rem; }
+.fa-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 1.1rem; max-width: 80ch; line-height: 1.5; }
+.fa-note { font-size: 13px; color: var(--mute); margin: .4rem 0 0; max-width: 80ch; line-height: 1.5; }
+.fa-card { background: #fff; border: 1px solid var(--rule); border-radius: var(--r-ui); padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.fa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .7rem; }
+.fa-stat b { display: block; font-size: 1.4rem; } .fa-stat span { font-size: 13px; color: var(--mute); }
+.fa-tabs { display: flex; flex-wrap: wrap; gap: .25rem; border-bottom: 1px solid var(--rule); margin: 0 0 1rem; }
+.fa-tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: .55rem .7rem; font: inherit;
+  font-size: 14px; color: var(--ink-2); cursor: pointer; margin-bottom: -1px; }
+.fa-tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--gold); font-weight: 600; }
+.fa-tab:focus-visible { outline: 2px solid var(--teal-ink); outline-offset: 2px; }
+.fa-row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin: .45rem 0; }
+.fa-row > label, .fa-row > .fa-lbl { min-width: 15rem; font-size: 14px; color: var(--ink-2); }
+.fa input[type=text], .fa input[type=number], .fa input[type=date], .fa select, .fa textarea {
+  border: 1px solid var(--rule); border-radius: 6px; padding: .4rem .55rem; font: inherit; font-size: 14px; background: #fff; color: var(--ink); }
+.fa input[type=number] { width: 7.5rem; }
+.fa-money { display: inline-flex; align-items: center; gap: .25rem; }
+.fa-msg { font-size: 13px; color: var(--teal-ink); }
+.fa-msg.err { color: #b42318; }
+.fa-badge { display: inline-block; font-size: 12px; padding: .1rem .5rem; border-radius: 999px; background: var(--alt); color: var(--ink-2); }
+.fa-badge.on { background: #e7f6f4; color: var(--teal-ink); }
+.fa-badge.lock { background: #fdf3e1; color: #8a5a00; }
+table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
+.fa-t th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); padding: .45rem; border-bottom: 1px solid var(--rule); }
+.fa-t td { padding: .45rem; border-bottom: 1px solid var(--alt); vertical-align: middle; }
+.fa-scroll { overflow-x: auto; position: relative; }
+.fa fieldset { border: 0; padding: 0; margin: 0; }
+.fa legend { font-size: 14px; font-weight: 600; margin-bottom: .3rem; }
+.fa-radio { display: flex; gap: .5rem; align-items: flex-start; margin: .45rem 0; font-size: 14px; }
+.fa-radio span { color: var(--ink-2); }
+.fa-stat.warn b { color: #b42318; }
+@media (max-width: 640px) {
+  .fa-row > label, .fa-row > .fa-lbl { min-width: 100%; }
+  .fa-tab { padding: .45rem .5rem; font-size: 13px; }
+  /* Autonomy and name checks: one block per row, both selects labelled, no sideways scroll */
+  .fa-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .fa-stack, .fa-stack tbody, .fa-stack tr, .fa-stack th, .fa-stack td { display: block; width: 100%; }
+  .fa-stack tr { border-bottom: 1px solid var(--rule); padding: .4rem 0 .6rem; }
+  .fa-stack th[scope=row], .fa-stack td { border: 0; padding: .2rem 0; }
+  .fa-stack td::before { content: attr(data-label); display: block; font-size: 12px; color: var(--mute); margin-bottom: .15rem; }
+  .fa-stack select { width: 100%; }
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="fa">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('founder') }}
+  <h1>Founder Track</h1>
+  <p class="fa-sub">Switches, rubric, gates, autonomy, prices and the investor directory for the Founder Track.
+    Every change here is recorded in the audit log.</p>
+
+  <div class="fa-tabs" role="tablist" aria-label="Founder Track settings">
+    {% for key, label in tabs %}
+    <button class="fa-tab" role="tab" type="button" id="tab-{{ key }}" aria-controls="panel-{{ key }}"
+            aria-selected="{{ 'true' if key == tab else 'false' }}" tabindex="{{ '0' if key == tab else '-1' }}"
+            data-tab="{{ key }}">{{ label }}</button>
+    {% endfor %}
+  </div>
+
+  {# ── Overview ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" {{ 'hidden' if tab != 'overview' }}>
+    <div class="fa-card">
+      <h2>At a glance</h2>
+      <div class="fa-grid">
+        <div class="fa-stat"><b>{{ metrics.ventures }}</b><span>ventures</span></div>
+        <div class="fa-stat"><b>{{ metrics.paid }}</b><span>paid ({{ metrics.addon }} add-on)</span></div>
+        <div class="fa-stat"><b>${{ '{:,.2f}'.format(metrics.revenue_cents / 100) }}</b><span>collected</span></div>
+        <div class="fa-stat"><b>{{ metrics.investors }}</b><span>investors in the directory</span></div>
+        <div class="fa-stat"><b>{{ metrics.refunded }}</b><span>refunded (locked again)</span></div>
+        <div class="fa-stat{{ ' warn' if metrics.duplicates }}"><b>{{ metrics.duplicates }}</b><span>duplicate payments to refund in Stripe</span></div>
+      </div>
+      {% if metrics.duplicates %}<p class="fa-note">A founder paid twice for the same venture. The audit log (<code>founder_duplicate_payment</code>) names the extra payment; refund it in the Stripe dashboard.</p>{% endif %}
+    </div>
+    {% for key, label, desc in switches %}
+    {% set locked = key == 'founder_investor' and not counsel_at %}
+    <div class="fa-card" data-switch="{{ key }}">
+      <h2>{{ label }}
+        {% if locked %}<span class="fa-badge lock">Locked until counsel sign-off</span>
+        {% else %}<span class="fa-badge{{ ' on' if modes[key] != 'off' }}" data-mode-badge>{{ modes[key] }}</span>{% endif %}</h2>
+      <p class="fa-note" style="margin:0 0 .5rem">{{ desc }}
+        {% if key == 'founder_investor' %}{% if locked %} It cannot be turned on until an admin records counsel's sign-off date on the Counsel tab.{% else %} Counsel signed off on {{ counsel_at }}.{% endif %}{% endif %}</p>
+      <div class="fa-row"><label for="mode-{{ key }}">{{ label }} is on for</label>
+        <select id="mode-{{ key }}" data-mode-select>
+          {% for m, mlabel in [('off', 'Off for everyone'), ('allowlist', 'Allowlisted users only'), ('on', 'Everyone')] %}
+          <option value="{{ m }}" {{ 'selected' if modes[key] == m }} {{ 'disabled' if locked and m != 'off' }}>{{ mlabel }}</option>{% endfor %}
+        </select>
+        <button class="btn sm" type="button" data-mode-save {{ 'disabled' if locked }}>Save</button>
+        <span class="fa-msg" role="status"></span></div>
+      <div class="fa-row"><label for="emails-{{ key }}">Allow or block users (emails)</label>
+        <input type="text" id="emails-{{ key }}" data-emails placeholder="a@x.com, b@y.com" style="flex:1 1 16rem">
+        <select data-state aria-label="Access for these users"><option value="allowed">Allowed</option><option value="blocked">Blocked</option><option value="follow_global">Follow the setting above</option></select>
+        <button class="btn sm" type="button" data-users-save>Apply</button>
+        <span class="fa-msg" role="status"></span></div>
+      <p class="fa-note" data-overrides>{% if overrides[key] %}{% for o in overrides[key] %}{{ o.email }} ({{ o.state }}){{ ', ' if not loop.last }}{% endfor %}{% else %}No per-user overrides.{% endif %}</p>
+    </div>
+    {% endfor %}
+  </section>
+
+  {# ── Rubric ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-rubric" aria-labelledby="tab-rubric" {{ 'hidden' if tab != 'rubric' }}>
+    <form class="fa-card" data-settings-form>
+      <h2>Rubric weights</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">How much each of the nine dimensions counts toward the overall score (0 to 10; at least one above zero). Equal weights are the default.</p>
+      {% for d in dimensions %}
+      <div class="fa-row"><label for="w-{{ d }}">{{ d.replace('_', ' ')|capitalize }}</label>
+        <input type="number" id="w-{{ d }}" step="0.1" min="0" max="10" data-weight="{{ d }}" value="{{ settings.fnd_rubric_weights[d] }}"></div>
+      {% endfor %}
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save weights</button><span class="fa-msg" role="status"></span></div>
+    </form>
+  </section>
+
+  {# ── Readiness ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-readiness" aria-labelledby="tab-readiness" {{ 'hidden' if tab != 'readiness' }}>
+    <form class="fa-card" data-settings-form>
+      <h2>Readiness gates</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">The minimum evidence rung (1 to 5) a venture must reach before these Capitalize agents unlock.</p>
+      <div class="fa-row"><label for="s-gate-app">Applications unlock at rung</label>
+        <input type="number" id="s-gate-app" min="1" max="5" data-key="fnd_gate_rung_applications" value="{{ settings.fnd_gate_rung_applications }}"></div>
+      <div class="fa-row"><label for="s-gate-int">Investor introductions unlock at rung</label>
+        <input type="number" id="s-gate-int" min="1" max="5" data-key="fnd_gate_rung_intros" value="{{ settings.fnd_gate_rung_intros }}"></div>
+      <div class="fa-row"><label for="s-alt">Alternate next steps shown</label>
+        <input type="number" id="s-alt" min="0" max="10" data-key="fnd_next_alternates" value="{{ settings.fnd_next_alternates }}"></div>
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save gates</button><span class="fa-msg" role="status"></span></div>
+    </form>
+  </section>
+
+  {# ── Autonomy ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-autonomy" aria-labelledby="tab-autonomy" {{ 'hidden' if tab != 'autonomy' }}>
+    <form class="fa-card" data-settings-form data-matrix>
+      <h2>Autonomy matrix</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">For each kind of action: the level agents start at, and the highest level a founder may raise it to.
+        Negotiating or accepting terms is never permitted. First contact cannot go above the first-contact cap.</p>
+      <div class="fa-scroll"><table class="fa-t fa-stack">
+        <thead><tr><th scope="col">Action</th><th scope="col">Default level</th><th scope="col">Founder may raise to</th></tr></thead>
+        <tbody>
+        {% for action, row in settings.fnd_autonomy_matrix.items() %}
+        {% set fixed = action == 'negotiate_terms' %}
+        <tr data-action="{{ action }}"><th scope="row" style="font-weight:500;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)">{{ action_labels.get(action, action) }}</th>
+          {% for col in ('default', 'max') %}
+          <td data-label="{{ 'Default level' if col == 'default' else 'Founder may raise to' }}"><select data-col="{{ col }}" aria-label="{{ action_labels.get(action, action) }}: {{ 'default level' if col == 'default' else 'highest level' }}" {{ 'disabled' if fixed }}>
+            {% for lvl, llabel in level_labels.items() %}<option value="{{ lvl }}" {{ 'selected' if row[col] == lvl }}>{{ lvl }} · {{ llabel }}</option>{% endfor %}
+          </select></td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      <div class="fa-row" style="margin-top:.8rem"><label for="s-fcc">First-contact cap (highest level for a first contact)</label>
+        <select id="s-fcc" data-key="fnd_first_contact_cap">{% for lvl in (1, 2, 3, 4) %}<option value="{{ lvl }}" {{ 'selected' if settings.fnd_first_contact_cap == lvl }}>{{ lvl }} · {{ level_labels[lvl] }}</option>{% endfor %}</select></div>
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save autonomy</button><span class="fa-msg" role="status"></span></div>
+    </form>
+  </section>
+
+  {# ── Caps ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-caps" aria-labelledby="tab-caps" {{ 'hidden' if tab != 'caps' }}>
+    <form class="fa-card" data-settings-form>
+      <h2>Agent caps and alerts</h2>
+      <div class="fa-row"><label for="s-acap">Agent actions per venture per day</label>
+        <input type="number" id="s-acap" min="0" max="1000" data-key="fnd_action_cap_per_day" value="{{ settings.fnd_action_cap_per_day }}"></div>
+      <div class="fa-row"><label for="s-bcap">Spend cap per venture (cents, 0 = no spend)</label>
+        <input type="number" id="s-bcap" min="0" data-key="fnd_budget_cap_cents" value="{{ settings.fnd_budget_cap_cents }}"></div>
+      <div class="fa-row"><label for="s-err">Alert when agent error rate passes (%)</label>
+        <input type="number" id="s-err" min="0" max="100" data-key="fnd_alert_error_rate_pct" value="{{ settings.fnd_alert_error_rate_pct }}"></div>
+      <div class="fa-row"><label for="s-cost">Alert when model cost per venture passes (cents)</label>
+        <input type="number" id="s-cost" min="0" data-key="fnd_alert_cost_per_venture_cents" value="{{ settings.fnd_alert_cost_per_venture_cents }}"></div>
+      <div class="fa-row"><label for="s-stuck">Alert when a venture is stuck for (days)</label>
+        <input type="number" id="s-stuck" min="1" max="365" data-key="fnd_alert_stuck_days" value="{{ settings.fnd_alert_stuck_days }}"></div>
+      <div class="fa-row"><label for="s-ret">Keep venture data for (days)</label>
+        <input type="number" id="s-ret" min="30" max="3650" data-key="fnd_retention_days" value="{{ settings.fnd_retention_days }}"></div>
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save caps</button><span class="fa-msg" role="status"></span></div>
+    </form>
+  </section>
+
+  {# ── Targets ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-targets" aria-labelledby="tab-targets" {{ 'hidden' if tab != 'targets' }}>
+    <form class="fa-card" data-settings-form data-targets>
+      <h2>Success-metric targets</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">The goals the observability console compares Founder Track results against.</p>
+      {% for k, v in settings.fnd_targets.items() %}
+      <div class="fa-row"><label for="t-{{ k }}">{{ target_labels[k][0] if k in target_labels else k }} <span style="color:var(--mute)">({{ target_labels[k][1] if k in target_labels else '' }})</span></label>
+        <input type="number" id="t-{{ k }}" min="0" {{ 'max=100' if k != 'step_completion_per_week' }} step="0.1" data-target="{{ k }}" value="{{ v }}"></div>
+      {% endfor %}
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save targets</button><span class="fa-msg" role="status"></span></div>
+    </form>
+  </section>
+
+  {# ── Pricing ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-pricing" aria-labelledby="tab-pricing" {{ 'hidden' if tab != 'pricing' }}>
+    <form class="fa-card" data-settings-form>
+      <h2>Pricing</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">One-time Stripe Checkout prices in US dollars. These are separate from the simulation price; sales and per-user comps do not apply.
+        Card payments need at least $0.50, and the add-on price cannot be above the Founder Track price.</p>
+      <div class="fa-row"><label for="p-price">Founder Track</label>
+        <span class="fa-money">$<input type="number" id="p-price" min="0.50" step="0.01" data-cents="fnd_price_cents" value="{{ '%.2f' % (settings.fnd_price_cents / 100) }}"></span></div>
+      <div class="fa-row"><label for="p-addon">Add-on price (members with a completed simulation or a published bio page)</label>
+        <span class="fa-money">$<input type="number" id="p-addon" min="0.50" step="0.01" data-cents="fnd_addon_price_cents" value="{{ '%.2f' % (settings.fnd_addon_price_cents / 100) }}"></span></div>
+      <div class="fa-row"><label for="p-inv">Investor access, per startup page</label>
+        <span class="fa-money">$<input type="number" id="p-inv" min="0" step="0.01" data-cents="fnd_investor_access_cents" value="{{ '%.2f' % (settings.fnd_investor_access_cents / 100) }}"></span></div>
+      <div class="fa-row"><label for="p-refund">Refund window (days)</label>
+        <input type="number" id="p-refund" min="0" max="365" data-key="fnd_refund_window_days" value="{{ settings.fnd_refund_window_days }}"></div>
+      <div class="fa-row"><label for="p-fee">Fee mode</label>
+        <select id="p-fee" data-key="fnd_fee_mode"><option value="one_time" selected>One-time payment</option><option value="recurring" disabled>Recurring (not built yet)</option></select></div>
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save prices</button><span class="fa-msg" role="status"></span></div>
+    </form>
+  </section>
+
+  {# ── Preview ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-preview" aria-labelledby="tab-preview" {{ 'hidden' if tab != 'preview' }}>
+    <form class="fa-card" data-settings-form>
+      <fieldset>
+        <legend>What the free report preview shows</legend>
+        <p class="fa-note" style="margin:0 0 .4rem">Finding text, citations, the team builder, the plan and the agents stay locked until payment.</p>
+        {% for lvl, desc in preview_descriptions.items() %}
+        <label class="fa-radio"><input type="radio" name="preview_level" value="{{ lvl }}" data-radio-key="fnd_preview_level" {{ 'checked' if settings.fnd_preview_level == lvl }}>
+          <div><b>{{ lvl }}</b> <span>{{ desc }}</span></div></label>
+        {% endfor %}
+      </fieldset>
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save preview level</button><span class="fa-msg" role="status"></span></div>
+    </form>
+  </section>
+
+  {# ── Investors ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-investors" aria-labelledby="tab-investors" {{ 'hidden' if tab != 'investors' }}>
+    <div class="fa-card">
+      <h2>Import the investor directory</h2>
+      <p class="fa-note" style="margin:0 0 .5rem">A CSV with a header row. Columns: <code>{{ csv_columns|join(', ') }}</code>. Only <code>name</code> is required.
+        Separate list values (stages, sectors, geographies) with semicolons. Amounts are whole dollars (<code>250k</code> and <code>1.5m</code> work).
+        A row with the same name and firm as an existing entry updates it.</p>
+      <form class="fa-row" id="csvForm">
+        <label for="csvFile" class="fa-lbl">CSV file</label>
+        <input type="file" id="csvFile" accept=".csv,text/csv" required>
+        <button class="btn primary sm" type="submit">Import</button><span class="fa-msg" role="status" id="csvMsg"></span>
+      </form>
+      <ul class="fa-note" id="csvErrors" style="padding-left:1.1rem"></ul>
+    </div>
+    <div class="fa-card">
+      <h2>Directory ({{ investors|length }})</h2>
+      {% if investors %}
+      <div class="fa-scroll"><table class="fa-t">
+        <thead><tr><th scope="col">Name</th><th scope="col">Firm</th><th scope="col">Kind</th><th scope="col">Stages</th><th scope="col">Check size</th><th scope="col">Applications</th><th scope="col">Source</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+        <tbody>
+        {% for p in investors %}
+        <tr data-investor="{{ p.id }}"><td>{% if p.apply_url %}<a class="link" href="{{ p.apply_url }}" rel="noopener noreferrer" target="_blank">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</td>
+          <td>{{ p.firm }}</td><td>{{ p.kind }}</td><td>{{ p.stages|join(', ') }}</td>
+          <td>{% if p.check_min or p.check_max %}${{ '{:,}'.format(p.check_min or 0) }}–${{ '{:,}'.format(p.check_max or 0) }}{% endif %}</td>
+          <td>{{ 'Accepts' if p.accepts_applications else '—' }}{{ ' · auto-submit' if p.auto_submit_allowed }}</td>
+          <td>{{ p.source }}</td>
+          <td>{% if p.source == 'admin' %}<button class="btn sm btn-ghost" type="button" data-del aria-label="Delete {{ p.name }}">Delete</button>{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<p class="fa-note">No investors yet. Import a CSV above.</p>{% endif %}
+    </div>
+  </section>
+
+  {# ── Name checks ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-names" aria-labelledby="tab-names" {{ 'hidden' if tab != 'names' }}>
+    <div class="fa-card">
+      <h2>Startup page name checks ({{ name_checks|length }})</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">Startup pages whose name has not been looked at yet, or is on hold. Check that the name does not copy a known company or trademark, or impersonate someone, then clear it or hold it.</p>
+      {% if name_checks %}
+      <div class="fa-scroll"><table class="fa-t fa-stack">
+        <thead><tr><th scope="col">Page name</th><th scope="col">Venture</th><th scope="col">Address</th><th scope="col">Page</th><th scope="col">Name check</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+        <tbody>
+        {% for n in name_checks %}
+        <tr data-name-check="{{ n.id }}"><th scope="row" style="font-weight:500;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)">{{ n.name }}</th><td data-label="Venture">{{ n.venture }}</td><td data-label="Address"><code>/startup/{{ n.slug }}</code></td><td data-label="Page">{{ n.status }}</td>
+          <td data-label="Name check"><span class="fa-badge{{ ' lock' if n.name_check == 'held' }}" data-nc-state>{{ n.name_check }}</span></td>
+          <td style="white-space:nowrap"><button class="btn sm" type="button" data-nc="clear" aria-label="Clear the name {{ n.name }}">Clear</button>
+            {% if n.name_check != 'held' %}<button class="btn sm btn-ghost" type="button" data-nc="held" aria-label="Hold the name {{ n.name }}">Hold</button>{% endif %}
+            <span class="fa-msg" role="status"></span></td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<p class="fa-note">No names waiting.</p>{% endif %}
+    </div>
+  </section>
+
+  {# ── Counsel ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-counsel" aria-labelledby="tab-counsel" {{ 'hidden' if tab != 'counsel' }}>
+    <div class="fa-card">
+      <h2>Counsel sign-off for investor connection</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">Investor connection (Phase 3) stays locked until securities counsel has reviewed it and the date is recorded here.
+        The date cannot be cleared while the investor connection switch is on.</p>
+      {% if counsel_at %}
+      <p style="margin:.2rem 0 .6rem">Signed off on <b>{{ counsel_at }}</b>. Investor connection is <b>{{ modes.founder_investor }}</b>.</p>
+      <div class="fa-row"><button class="btn sm btn-danger" type="button" id="counselClear" {{ 'disabled' if modes.founder_investor != 'off' }}>Clear the sign-off date</button>
+        <span class="fa-msg" role="status" id="counselMsg">{% if modes.founder_investor != 'off' %}Turn investor connection off on the Overview tab first.{% endif %}</span></div>
+      {% else %}
+      <p style="margin:.2rem 0 .6rem">Not signed off. Investor connection is locked.</p>
+      <div class="fa-row"><label for="counselDate">Date counsel signed off</label>
+        <input type="date" id="counselDate" max="{{ today }}" required></div>
+      <div class="fa-row"><label for="counselRef">Counsel and reference (firm, memo, email or matter number)</label>
+        <input type="text" id="counselRef" maxlength="300" required style="flex:1 1 16rem"></div>
+      <div class="fa-row"><button class="btn primary sm" type="button" id="counselRecord">Record sign-off</button>
+        <span class="fa-msg" role="status" id="counselMsg"></span></div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+<script>
+(function () {
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  function call(url, body, method) {
+    var opts = { method: method || 'POST', credentials: 'same-origin' };
+    if (body instanceof FormData) opts.body = body;
+    else if (body !== undefined) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
+    return fetch(ROOT + url, opts).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {
+      if (!r.ok) throw new Error(d.message || d.error || 'Failed'); return d; }); });
+  }
+  function say(el, text, bad) { if (!el) return; el.textContent = text; el.classList.toggle('err', !!bad); }
+
+  // Tabs
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.fa-tab'));
+  function show(key, focus) {
+    tabs.forEach(function (t) { var on = t.dataset.tab === key; t.setAttribute('aria-selected', on ? 'true' : 'false'); t.tabIndex = on ? 0 : -1;
+      document.getElementById('panel-' + t.dataset.tab).hidden = !on; if (on && focus) t.focus(); });
+    if (history.replaceState) { var u = new URL(location.href); u.searchParams.set('tab', key); history.replaceState(null, '', u); }
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { show(t.dataset.tab); });
+    t.addEventListener('keydown', function (e) {
+      var j = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : null;
+      if (j === null) return; e.preventDefault(); show(tabs[(j + tabs.length) % tabs.length].dataset.tab, true);
+    });
+  });
+
+  // Switches and allowlists
+  document.querySelectorAll('[data-switch]').forEach(function (card) {
+    var key = card.dataset.switch, msgs = card.querySelectorAll('.fa-msg');
+    card.querySelector('[data-mode-save]').onclick = function () {
+      call('/api/admin/founder/mode', { key: key, mode: card.querySelector('[data-mode-select]').value })
+        .then(function (d) { say(msgs[0], 'Saved: ' + d.mode); var b = card.querySelector('[data-mode-badge]'); if (b) { b.textContent = d.mode; b.classList.toggle('on', d.mode !== 'off'); } })
+        .catch(function (e) { say(msgs[0], e.message, true); });
+    };
+    card.querySelector('[data-users-save]').onclick = function () {
+      call('/api/admin/founder/users', { key: key, state: card.querySelector('[data-state]').value,
+        emails: card.querySelector('[data-emails]').value.split(/[\s,;]+/).filter(Boolean) })
+        .then(function (d) { say(msgs[1], 'Updated ' + d.updated + ' user(s).');
+          card.querySelector('[data-overrides]').textContent = d.overrides.length ? d.overrides.map(function (o) { return o.email + ' (' + o.state + ')'; }).join(', ') : 'No per-user overrides.'; })
+        .catch(function (e) { say(msgs[1], e.message, true); });
+    };
+  });
+
+  // Settings forms: collect only the fields in the submitted form
+  document.querySelectorAll('[data-settings-form]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var s = {}, msg = form.querySelector('.fa-msg');
+      form.querySelectorAll('[data-key]').forEach(function (el) { s[el.dataset.key] = el.value.trim(); });
+      form.querySelectorAll('[data-cents]').forEach(function (el) {
+        var v = parseFloat(el.value); s[el.dataset.cents] = isNaN(v) ? el.value : Math.round(v * 100); });
+      var radio = form.querySelector('[data-radio-key]:checked'); if (radio) s[radio.dataset.radioKey] = radio.value;
+      var weights = form.querySelectorAll('[data-weight]');
+      if (weights.length) { s.fnd_rubric_weights = {}; weights.forEach(function (el) { s.fnd_rubric_weights[el.dataset.weight] = el.value; }); }
+      var targets = form.querySelectorAll('[data-target]');
+      if (targets.length) { s.fnd_targets = {}; targets.forEach(function (el) { s.fnd_targets[el.dataset.target] = el.value; }); }
+      if (form.hasAttribute('data-matrix')) {
+        s.fnd_autonomy_matrix = {};
+        form.querySelectorAll('[data-action]').forEach(function (tr) {
+          var row = {}; tr.querySelectorAll('[data-col]').forEach(function (sel) { row[sel.dataset.col] = parseInt(sel.value, 10); });
+          s.fnd_autonomy_matrix[tr.dataset.action] = row; });
+      }
+      call('/api/admin/founder/settings', { settings: s }, 'PUT')
+        .then(function (d) { say(msg, 'Saved.'); })
+        .catch(function (e) { say(msg, e.message, true); });
+    });
+  });
+
+  // Investor CSV import and delete
+  var csvForm = document.getElementById('csvForm');
+  if (csvForm) csvForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = document.getElementById('csvFile').files[0], msg = document.getElementById('csvMsg'), list = document.getElementById('csvErrors');
+    if (!f) return say(msg, 'Choose a CSV file.', true);
+    var fd = new FormData(); fd.append('file', f); list.innerHTML = '';
+    call('/api/admin/founder/investors/import', fd).then(function (d) {
+      say(msg, d.created + ' added, ' + d.updated + ' updated' + (d.errors.length ? ', ' + d.errors.length + ' row(s) skipped.' : '.'), d.errors.length > 0);
+      d.errors.forEach(function (x) { var li = document.createElement('li'); li.textContent = 'Row ' + x.row + ': ' + x.message; list.appendChild(li); });
+      if (d.created || d.updated) setTimeout(function () { location.reload(); }, 1200);
+    }).catch(function (err) { say(msg, err.message, true); });
+  });
+  document.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () {
+    var tr = b.closest('[data-investor]');
+    if (!confirm('Delete this investor from the directory?')) return;
+    call('/api/admin/founder/investors/' + tr.dataset.investor, undefined, 'DELETE').then(function () { tr.remove(); })
+      .catch(function (e) { alert(e.message); });
+  }; });
+
+  // Name checks
+  document.querySelectorAll('[data-name-check]').forEach(function (tr) {
+    tr.querySelectorAll('[data-nc]').forEach(function (b) { b.onclick = function () {
+      var msg = tr.querySelector('.fa-msg');
+      call('/api/admin/founder/name-checks/' + tr.dataset.nameCheck, { state: b.dataset.nc }).then(function (d) {
+        var badge = tr.querySelector('[data-nc-state]'); badge.textContent = d.name_check; badge.classList.toggle('lock', d.name_check === 'held');
+        say(msg, d.name_check === 'clear' ? 'Cleared.' : 'Held.');
+        tr.querySelectorAll('[data-nc]').forEach(function (x) { x.disabled = x.dataset.nc === d.name_check; });
+      }).catch(function (e) { say(msg, e.message, true); });
+    }; });
+  });
+
+  // Counsel
+  var rec = document.getElementById('counselRecord'), clr = document.getElementById('counselClear'), cmsg = document.getElementById('counselMsg');
+  if (rec) rec.onclick = function () {
+    var d = document.getElementById('counselDate').value, ref = document.getElementById('counselRef').value.trim();
+    if (!d) return say(cmsg, 'Enter the date counsel signed off.', true);
+    if (ref.length < 3) return say(cmsg, 'Name counsel or the sign-off reference.', true);
+    if (!confirm('Record that counsel (' + ref + ') signed off on ' + d + '? This lets admins turn investor connection on.')) return;
+    call('/api/admin/founder/counsel', { action: 'record', date: d, reference: ref, confirm: true }).then(function () { location.href = location.pathname + '?tab=counsel'; })
+      .catch(function (e) { say(cmsg, e.message, true); });
+  };
+  if (clr) clr.onclick = function () {
+    if (!confirm('Clear the counsel sign-off date? Investor connection will be locked again.')) return;
+    call('/api/admin/founder/counsel', { action: 'clear', confirm: true }).then(function () { location.href = location.pathname + '?tab=counsel'; })
+      .catch(function (e) { say(cmsg, e.message, true); });
+  };
+})();
+</script>
+{% endblock %}

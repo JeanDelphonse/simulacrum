@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Unlock the Founder Track — {{ venture.name }}{% endblock %}
+{% block content %}
+{% macro money(cents) %}{{ '$' if offer.currency == 'usd' else offer.currency|upper ~ ' ' }}{{ '{:,.2f}'.format(cents / 100) if cents % 100 else '{:,.0f}'.format(cents / 100) }}{% endmacro %}
+<div class="wrap" style="max-width:720px;padding-top:2.5rem;padding-bottom:3rem;color:var(--ink)">
+  <p style="font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .5rem">Founder Track · {{ venture.name }}</p>
+  <h1 style="font-size:1.75rem;margin:0 0 .6rem">Unlock your full report and plan</h1>
+  <p style="color:var(--ink-2);line-height:1.6;margin:0 0 1.4rem">One payment, no subscription. Your free preview stays as it is; this unlocks the rest.</p>
+
+  {% if error %}<div class="flash flash-error" role="alert" style="margin:0 0 1rem">{{ error }}</div>{% endif %}
+  {% if notice %}<div class="flash flash-info" role="status" style="margin:0 0 1rem">{{ notice }}</div>{% endif %}
+
+  <div class="card" style="padding:1.25rem 1.3rem;border:1px solid var(--rule);border-radius:var(--r-ui);margin:0 0 1.25rem;background:#fff">
+    <div style="display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;margin:0 0 .25rem">
+      <span style="font-size:2rem;font-weight:700">{{ money(offer.amount_cents) }}</span>
+      <span style="color:var(--mute)">one-time</span>
+      {% if offer.addon and offer.full_cents > offer.amount_cents %}
+      <span style="font-size:.85rem;color:var(--teal-ink)">Member price (usually {{ money(offer.full_cents) }})</span>
+      {% endif %}
+    </div>
+    {% if offer.addon %}<p style="margin:0 0 .9rem;font-size:.9rem;color:var(--ink-2)">You get the member price because you already use SimiSI.</p>{% endif %}
+
+    <h2 style="font-size:1rem;margin:.6rem 0 .5rem">What unlocks</h2>
+    <ul style="margin:0 0 1rem;padding-left:1.15rem;line-height:1.65;color:var(--ink-2)">
+      {% for title, desc in unlocks %}<li><b style="color:var(--ink)">{{ title }}:</b> {{ desc }}</li>{% endfor %}
+    </ul>
+
+    <form method="post" action="{{ url_for('founder.checkout_start', venture_id=venture.id) }}">
+      <button class="btn primary" type="submit" style="width:100%;max-width:22rem">Continue to secure checkout</button>
+    </form>
+    <p style="font-size:.85rem;color:var(--mute);margin:.7rem 0 0">
+      {% if offer.refund_window_days %}{{ legal('founder_refund_terms', days=offer.refund_window_days) }} {% endif %}Card payment through Stripe; SimiSI never sees your card number.
+    </p>
+  </div>
+
+  <p style="font-size:.85rem;color:var(--mute);line-height:1.55;margin:0">{{ legal('founder_report_disclaimer') }}</p>
+  <p style="font-size:.85rem;color:var(--mute);line-height:1.55;margin:.5rem 0 0">{{ legal('founder_not_advice') }}</p>
+</div>
+{% endblock %}

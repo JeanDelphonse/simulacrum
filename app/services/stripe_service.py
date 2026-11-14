@@ -169,6 +169,69 @@ def create_voice_training_checkout(user_id: str, success_url: str, cancel_url: s
     return {'checkout_url': session.url, 'session_id': session.id}
 
 
+FOUNDER_PRODUCTS = ('founder_track', 'founder_addon')
+
+
+def founder_addon_eligible(user_id: str) -> bool:
+    """Founder Track add-on price: the member already has a completed
+    simulation or a published bio page (FOUNDER_PLAN.md WP3)."""
+    if not user_id:
+        return False
+    from app.models.bio_page import BioPage
+    from app.models.simulation import Simulation
+    if Simulation.query.filter_by(user_id=user_id, status=Simulation.STATUS_COMPLETE).first() is not None:
+        return True
+    return BioPage.query.filter_by(user_id=user_id, status=BioPage.STATUS_PUBLISHED).first() is not None
+
+
+def create_founder_checkout(venture, user, product: str, success_url: str = None, cancel_url: str = None) -> dict:
+    """One-time Stripe Checkout Session for the Founder Track (FOUNDER_PLAN.md WP3).
+
+    product is 'founder_track' (standalone price) or 'founder_addon' (the
+    add-on price, only for members who are eligible). Prices come from
+    founder_config.pricing(), never from the simulation price, sales or comps.
+    Raises ValueError for an unknown product or an ineligible add-on."""
+    from flask import url_for
+    from app.services import founder_config
+    if product not in FOUNDER_PRODUCTS:
+        raise ValueError('Unknown Founder Track product.')
+    if product == 'founder_addon' and not founder_addon_eligible(user.id):
+        raise ValueError('The add-on price is for members with a completed simulation or a published bio page.')
+    prices = founder_config.pricing()
+    if prices.get('fee_mode') != 'one_time':
+        raise ValueError('Only one-time Founder Track payments are supported.')
+    amount = int(prices['addon_price_cents'] if product == 'founder_addon' else prices['price_cents'])
+    if amount < 50:
+        raise ValueError('The Founder Track price is below the card minimum.')
+    if success_url is None:
+        success_url = url_for('founder.checkout_success', venture_id=venture.id, _external=True) \
+            + '?session_id={CHECKOUT_SESSION_ID}'
+    if cancel_url is None:
+        cancel_url = url_for('founder.checkout_page', venture_id=venture.id, cancelled=1, _external=True)
+    extra = {'customer_email': user.email} if getattr(user, 'email', None) else {}
+    s = _stripe()
+    session = s.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': prices.get('currency') or 'usd',
+                'product_data': {'name': 'SimiSI Founder Track' + (' (add-on)' if product == 'founder_addon' else '')
+                                         + ' — ' + (venture.name or 'Venture')[:80]},
+                'unit_amount': amount,
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        client_reference_id=venture.id,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={'product': product, 'venture_id': venture.id, 'user_id': user.id,
+                  'amount_cents': str(amount)},
+        **extra,
+    )
+    return {'checkout_url': session.url, 'session_id': session.id, 'amount_cents': amount, 'product': product}
+
+
 def construct_webhook_event(payload: bytes, sig_header: str) -> object:
     s = _stripe()
     return s.Webhook.construct_event(

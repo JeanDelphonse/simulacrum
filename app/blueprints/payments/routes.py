@@ -101,6 +101,11 @@ def stripe_webhook():
                         upgrade_to_tier, sim_id, delta_cents,
                     )
 
+        elif meta.get('product') in ('founder_track', 'founder_addon'):
+            # Founder Track (FOUNDER_PLAN.md WP3): marks the venture paid once.
+            from app.blueprints.founder.billing import fulfil_founder_session
+            fulfil_founder_session(session)
+
     elif event['type'] == 'payment_intent.payment_failed':
         pi = event['data']['object']
         sim_id = pi.get('metadata', {}).get('simulation_id')
@@ -131,6 +136,14 @@ def stripe_webhook():
                     db.session.commit()
                 except Exception as exc:
                     logger.warning(f'Commission refund marking failed for sim {sim.id}: {exc}')
+            else:
+                # Founder Track (FOUNDER_PLAN.md WP3): a full refund locks the venture again.
+                try:
+                    from app.blueprints.founder.billing import revoke_founder_payment
+                    revoke_founder_payment(pi_id, fully_refunded=bool(charge.get('refunded')))
+                except Exception as exc:
+                    db.session.rollback()
+                    logger.error('Founder Track refund handling failed for %s: %s', pi_id, exc)
 
     elif event['type'] == 'charge.dispute.created':
         charge = event['data']['object']
