@@ -1,0 +1,400 @@
+{% extends 'base.html' %}
+{% block title %}Proof of concept · {{ venture.name }}{% endblock %}
+{% block head %}
+<style>
+  .fp-root{color:var(--ink);padding-top:2.5rem;padding-bottom:3.5rem;max-width:960px}
+  .fp-eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .4rem}
+  .fp-root h1{font-size:1.7rem;margin:0 0 .4rem;line-height:1.2}
+  .fp-root h2{font-size:1.15rem;margin:0 0 .35rem}
+  .fp-root h3{font-size:1rem;margin:1rem 0 .35rem}
+  .fp-lede{color:var(--ink-2);line-height:1.6;margin:0 0 1.25rem}
+  .fp-sub{color:var(--ink-2);font-size:.92rem;line-height:1.55;margin:0 0 1rem}
+  .fp-tabs{display:flex;gap:.25rem;flex-wrap:wrap;list-style:none;margin:0 0 1.5rem;padding:0;border-bottom:1px solid var(--rule)}
+  .fp-tabs a{display:inline-block;padding:.55rem .75rem;color:var(--ink-2);text-decoration:none;font-weight:600;
+             border-bottom:3px solid transparent;margin-bottom:-1px}
+  .fp-tabs a:hover{color:var(--ink)}
+  .fp-tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--gold)}
+  .fp-tabs a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .fp-plans{list-style:none;margin:0;padding:0}
+  .fp-plans li{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.5rem;padding:.55rem 0;border-top:1px solid var(--rule)}
+  .fp-plans li:first-child{border-top:0}
+  .fp-card{border:1px solid var(--rule);border-radius:var(--r-ui);background:var(--bg);padding:1.25rem 1.35rem;margin:0 0 1.5rem}
+  .fp-ladder{list-style:none;margin:0 0 1rem;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem}
+  .fp-rung{border:1px solid var(--rule);border-radius:var(--r-ui);padding:.65rem .7rem;background:#fff}
+  .fp-rung .n{font-size:.72rem;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+  .fp-rung .t{display:block;font-weight:700;margin:.2rem 0 0;line-height:1.25}
+  .fp-rung.reached{background:var(--alt)}
+  .fp-rung.current{border:2px solid var(--gold);background:#fff}
+  .fp-next{border-top:1px solid var(--rule);padding-top:.8rem;line-height:1.55;margin:0}
+  .fp-field{margin:0 0 .9rem}
+  .fp-field label,.fp-lab{display:block;font-weight:600;font-size:.9rem;margin:0 0 .3rem}
+  .fp-hint{display:block;font-weight:400;color:var(--mute);font-size:.82rem}
+  .fp-root input[type=text],.fp-root textarea,.fp-root select{width:100%;box-sizing:border-box;font:inherit;padding:.55rem .65rem;
+      border:1px solid var(--rule);border-radius:var(--r-btn);background:#fff;color:var(--ink)}
+  .fp-root textarea{min-height:4.2rem;resize:vertical;line-height:1.45}
+  .fp-two{display:grid;grid-template-columns:1fr 1fr;gap:0 1rem}
+  .fp-crit{border:1px solid var(--rule);border-radius:10px;padding:.8rem .9rem;margin:0 0 .6rem;background:var(--alt)}
+  .fp-crit-grid{display:grid;grid-template-columns:2fr 1fr;gap:.5rem .75rem}
+  .fp-crit-grid .wide{grid-column:1/-1}
+  .fp-crit-grid label{font-size:.82rem;font-weight:600;display:block;margin:0 0 .2rem}
+  .fp-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.5rem}
+  .fp-msg{font-size:.88rem;min-height:1.2em;margin:.5rem 0 0}
+  .fp-msg.err{color:#B42318}.fp-msg.ok{color:var(--teal-ink)}
+  .fp-pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:12.5px;font-weight:600;
+           background:var(--alt);color:var(--ink-2);white-space:nowrap}
+  .fp-pill.ok{background:#DCFCE7;color:#14532D}.fp-pill.warn{background:#FEF3C7;color:#78350F}
+  .fp-dl{display:grid;grid-template-columns:200px 1fr;gap:.45rem 1rem;margin:0}
+  .fp-dl dt{font-weight:600;color:var(--ink-2)}
+  .fp-dl dd{margin:0;white-space:pre-line;line-height:1.5}
+  .fp-table{width:100%;border-collapse:collapse;margin:.25rem 0 .75rem}
+  .fp-table th,.fp-table td{text-align:left;padding:.5rem .4rem;border-top:1px solid var(--rule);vertical-align:top}
+  .fp-table th{font-size:.78rem;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;border-top:0}
+  .fp-case{white-space:pre-wrap;font:inherit;line-height:1.55;background:var(--alt);border-left:4px solid var(--gold);
+           border-radius:var(--r-btn);padding:1rem;margin:.5rem 0}
+  .fp-check{display:flex;gap:.5rem;align-items:flex-start;line-height:1.45;margin:.4rem 0}
+  .fp-check input{margin-top:.25rem;accent-color:var(--ink)}
+  .fp-missing{background:#FFF6E3;border:1px dashed #E4B855;border-radius:8px;padding:.55rem .75rem;font-size:.9rem;margin:.5rem 0}
+  @media (max-width:760px){
+    .fp-root{padding-top:1.5rem}
+    .fp-root h1{font-size:1.4rem}
+    .fp-ladder{grid-template-columns:1fr}
+    .fp-two,.fp-crit-grid{grid-template-columns:1fr}
+    .fp-dl{grid-template-columns:1fr}
+    .fp-dl dd{margin-bottom:.5rem}
+    .fp-table thead{display:none}
+    .fp-table tr{display:block;border-top:1px solid var(--rule);padding:.5rem 0}
+    .fp-table td{display:block;border:0;padding:.2rem 0}
+    .fp-table td[data-label]::before{content:attr(data-label);display:block;font-size:.78rem;font-weight:600;color:var(--mute)}
+    .fp-tabs a{padding:.45rem .55rem;font-size:.92rem}
+  }
+</style>
+{% endblock %}
+{% block content %}
+{% set P = proof.plan %}{% set R = proof.result %}
+<div class="wrap fp-root" id="fp-root" data-venture="{{ venture.id }}" data-plan="{{ P.id if P else '' }}">
+  <p class="fp-eyebrow">Founder Track · {{ venture.name }}</p>
+  <h1>Prove it with a customer</h1>
+  <p class="fp-lede">Agree a small test with a named customer, write the success criteria down before you start, then record what you measured.</p>
+  {% include 'founder/_ws_nav.html' %}
+
+  <section class="fp-card" aria-labelledby="fp-ladder-h">
+    <h2 id="fp-ladder-h">Evidence ladder: rung {{ proof.rung }} of 5</h2>
+    <ol class="fp-ladder">
+      {% for s in proof.ladder %}
+      <li class="fp-rung {{ 'reached' if s.reached }} {{ 'current' if s.current }}" {% if s.current %}aria-current="step"{% endif %}>
+        <span class="n">Rung {{ s.rung }}{% if s.current %} · here{% endif %}</span><span class="t">{{ s.label }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    <p class="fp-next"><b>{% if proof.next.rung %}Next, rung {{ proof.next.rung }}:{% else %}Done:{% endif %}</b> {{ proof.next.text }}
+      The ladder moves one rung at a time, and only on evidence you record.</p>
+    {% if proof.can_climb %}
+    <div class="fp-actions" style="margin-top:.75rem">
+      <button type="button" class="btn primary" id="fp-sync">Update the ladder</button>
+      <span class="fp-hint">Evidence you already recorded is enough for the next rung.</span>
+    </div>
+    <p class="fp-msg" id="fp-sync-msg" role="status" aria-live="polite"></p>
+    {% endif %}
+  </section>
+
+  {% if proof.plans|length > 1 %}
+  <section class="fp-card" aria-labelledby="fp-plans-h">
+    <h2 id="fp-plans-h">Your proof-of-concept plans</h2>
+    <p class="fp-sub">Open an earlier plan to record its results or a payment.</p>
+    <ul class="fp-plans">
+      {% for x in proof.plans %}
+      <li><a class="link" href="{{ url_for('founder.tp_proof_page', venture_id=venture.id, plan=x.id) }}" {% if x.selected %}aria-current="true"{% endif %}>{{ x.customer_name }}</a>
+        <span><span class="fp-pill {{ 'ok' if x.state in ('Measured', 'Paid') else ('warn' if x.status == 'draft' else '') }}">{{ x.state }}</span>
+        <span class="fp-hint" style="display:inline">· started {{ x.created_at }}{% if x.selected %} · showing{% endif %}</span></span></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% macro plan_form(p) %}
+  <form id="fp-plan" novalidate>
+    {% if p %}<input type="hidden" name="plan_id" value="{{ p.id }}">{% endif %}
+    <div class="fp-field"><label for="fp-customer">Customer <span class="fp-hint">A named company or person who will say yes to this plan.</span></label>
+      <input type="text" id="fp-customer" name="customer_name" maxlength="200" value="{{ p.customer_name if p else '' }}"></div>
+    <div class="fp-two">
+      <div class="fp-field"><label for="fp-pain">The pain being tested</label>
+        <textarea id="fp-pain" name="pain">{{ p.pain if p else '' }}</textarea></div>
+      <div class="fp-field"><label for="fp-baseline">Their baseline today <span class="fp-hint">What it costs them now, in their terms.</span></label>
+        <textarea id="fp-baseline" name="baseline">{{ p.baseline if p else '' }}</textarea></div>
+    </div>
+    <div class="fp-field"><label for="fp-build">The smallest build that can test it</label>
+      <textarea id="fp-build" name="smallest_build">{{ p.smallest_build if p else '' }}</textarea></div>
+
+    <p class="fp-lab" id="fp-crit-h">Success criteria <span class="fp-hint">Set them now, before the work starts. Once the customer agrees, they can't change.</span></p>
+    <div id="fp-crits" aria-labelledby="fp-crit-h">
+      {% set crits = (p.success_criteria if p and p.success_criteria else [{}]) %}
+      {% for c in crits %}
+      <div class="fp-crit" data-crit>
+        <div class="fp-crit-grid">
+          <div><label>What is measured</label><input type="text" data-k="metric" maxlength="200" value="{{ c.metric or '' }}" aria-label="What is measured"></div>
+          <div><label>Type</label><select data-k="kind" aria-label="Type of benefit">{% for k, l in proof.kinds %}<option value="{{ k }}" {% if c.kind == k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+          <div><label>Baseline value</label><input type="text" data-k="baseline" maxlength="200" value="{{ c.baseline or '' }}" aria-label="Baseline value"></div>
+          <div><label>Target</label><input type="text" data-k="target" maxlength="200" value="{{ c.target or '' }}" aria-label="Target"></div>
+          <div class="wide"><label>How it will be measured</label><input type="text" data-k="how_measured" maxlength="200" value="{{ c.how_measured or '' }}" aria-label="How it will be measured"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn sm btn-ghost" id="fp-add-crit">Add a criterion</button>
+
+    <div class="fp-two" style="margin-top:1rem">
+      <div class="fp-field"><label for="fp-duration">Duration</label>
+        <input type="text" id="fp-duration" name="duration" maxlength="100" placeholder="For example: 4 weeks" value="{{ p.duration if p else '' }}"></div>
+      <div></div>
+      <div class="fp-field"><label for="fp-pf">What you provide <span class="fp-hint">One item per line.</span></label>
+        <textarea id="fp-pf" name="provides_founder">{{ (p.provides.founder or [])|join('\n') if p else '' }}</textarea></div>
+      <div class="fp-field"><label for="fp-pc">What the customer provides <span class="fp-hint">One item per line.</span></label>
+        <textarea id="fp-pc" name="provides_customer">{{ (p.provides.customer or [])|join('\n') if p else '' }}</textarea></div>
+    </div>
+    <div class="fp-field"><label for="fp-success">What happens on success <span class="fp-hint">The pilot price or next commitment, agreed up front.</span></label>
+      <textarea id="fp-success" name="on_success">{{ p.on_success if p else '' }}</textarea></div>
+    <div class="fp-actions">
+      <button type="submit" class="btn primary">Save draft</button>
+      {% if p %}<button type="button" class="btn" id="fp-agree">The customer agreed this plan</button>{% endif %}
+    </div>
+    {% if p and p.missing_to_agree %}<p class="fp-missing">Before the customer can agree, add {{ p.missing_to_agree|join(', ') }}.</p>{% endif %}
+    <p class="fp-msg" id="fp-plan-msg" role="status" aria-live="polite"></p>
+  </form>
+  {% endmacro %}
+
+  {% macro plan_summary(p) %}
+  <dl class="fp-dl">
+    <dt>Customer</dt><dd>{{ p.customer_name }}</dd>
+    <dt>Pain</dt><dd>{{ p.pain }}</dd>
+    <dt>Baseline today</dt><dd>{{ p.baseline }}</dd>
+    <dt>Smallest build</dt><dd>{{ p.smallest_build }}</dd>
+    <dt>Duration</dt><dd>{{ p.duration }}</dd>
+    {% if p.provides.founder %}<dt>You provide</dt><dd>{{ p.provides.founder|join('\n') }}</dd>{% endif %}
+    {% if p.provides.customer %}<dt>Customer provides</dt><dd>{{ p.provides.customer|join('\n') }}</dd>{% endif %}
+    <dt>On success</dt><dd>{{ p.on_success }}</dd>
+  </dl>
+  <h3>Success criteria, agreed {{ p.agreed_at }}</h3>
+  <table class="fp-table">
+    <thead><tr><th scope="col">Measure</th><th scope="col">Baseline</th><th scope="col">Target</th><th scope="col">How measured</th></tr></thead>
+    <tbody>{% for c in p.success_criteria %}<tr><td><b>{{ c.metric }}</b></td><td data-label="Baseline">{{ c.baseline or '-' }}</td><td data-label="Target">{{ c.target }}</td><td data-label="How measured">{{ c.how_measured }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% endmacro %}
+
+  {% if not P %}
+  <section class="fp-card" aria-labelledby="fp-new-h">
+    <h2 id="fp-new-h">Proof-of-concept plan</h2>
+    <p class="fp-sub">A one-page plan a customer can say yes to. Nothing is sent to the customer from here; you share it yourself.</p>
+    {{ plan_form(None) }}
+  </section>
+
+  {% elif P.status == 'draft' %}
+  <section class="fp-card" aria-labelledby="fp-draft-h">
+    <h2 id="fp-draft-h">Proof-of-concept plan <span class="fp-pill warn">Draft</span></h2>
+    <p class="fp-sub">Share it with the customer yourself. When they accept it, mark it agreed: the criteria are then fixed.</p>
+    {{ plan_form(P) }}
+  </section>
+
+  {% else %}
+  <section class="fp-card" aria-labelledby="fp-plan-h">
+    <h2 id="fp-plan-h">Proof-of-concept plan with {{ P.customer_name }} <span class="fp-pill ok">{{ 'Agreed' if P.status == 'agreed' else 'Measured' }}</span></h2>
+    {{ plan_summary(P) }}
+  </section>
+
+  {% if P.status == 'agreed' or (R and not R.paid) %}
+  <section class="fp-card" aria-labelledby="fp-res-h">
+    <h2 id="fp-res-h">{{ 'Record the results' if not R else 'Update the results' }}</h2>
+    <p class="fp-sub">Enter what you saw for each criterion. Mark a figure as an estimate if you didn't measure it; estimates never count as evidence.</p>
+    <form id="fp-results" novalidate>
+      <table class="fp-table">
+        <thead><tr><th scope="col">Measure</th><th scope="col">Result</th><th scope="col">Basis</th><th scope="col">Target met?</th></tr></thead>
+        <tbody>
+        {% for c in P.success_criteria %}
+        {% set prev = (R.results|selectattr('criterion_id', 'equalto', c.id)|list|first) if R else None %}
+        <tr data-cid="{{ c.id }}">
+          <td><b>{{ c.metric }}</b><br><span class="fp-hint">Target {{ c.target }}</span></td>
+          <td data-label="Result"><input type="text" data-k="value" maxlength="200" aria-label="Result for {{ c.metric }}" value="{{ prev.value if prev else '' }}"></td>
+          <td data-label="Basis"><select data-k="basis" aria-label="Basis for {{ c.metric }}">
+            <option value="measured" {% if prev and prev.basis == 'measured' %}selected{% endif %}>Measured</option>
+            <option value="estimate" {% if prev and prev.basis == 'estimate' %}selected{% endif %}>Estimate</option></select></td>
+          <td data-label="Target met?"><select data-k="met" aria-label="Was the target for {{ c.metric }} met?">
+            <option value="">Not sure</option>
+            <option value="1" {% if prev and prev.met == true %}selected{% endif %}>Yes</option>
+            <option value="0" {% if prev and prev.met == false %}selected{% endif %}>No</option></select></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div class="fp-field"><label for="fp-quote">Customer quote (optional) <span class="fp-hint">Their words, exactly as they said them.</span></label>
+        <textarea id="fp-quote" name="quote_text" maxlength="1000">{{ R.quote_text if R else '' }}</textarea></div>
+      <label class="fp-check"><input type="checkbox" id="fp-quote-ok" {% if R and R.quote_permission %}checked{% endif %}>
+        <span>The customer gave permission to use this quote. Without it, the quote is never shown.</span></label>
+      <div class="fp-actions"><button type="submit" class="btn primary">Save results</button></div>
+      <p class="fp-msg" id="fp-res-msg" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if R %}
+  <section class="fp-card" aria-labelledby="fp-case-h">
+    <h2 id="fp-case-h">Benefits case
+      {% if R.measured %}<span class="fp-pill ok">All criteria measured</span>{% else %}<span class="fp-pill warn">Not every criterion measured</span>{% endif %}</h2>
+    <p class="fp-sub">Before and after against the baseline, from measured results only. Estimates are labelled as estimates.
+      {% if R.quote_text and not R.quote_permission %}The customer quote is left out because permission isn't recorded.{% endif %}</p>
+    {% if R.benefits_text %}<pre class="fp-case" id="fp-case">{{ R.benefits_text }}</pre>{% endif %}
+    {% if R.has_measured %}
+    <div class="fp-actions"><button type="button" class="btn" id="fp-benefits">{{ 'Rewrite the benefits case' if R.benefits_text else 'Write the benefits case' }}</button></div>
+    {% else %}
+    <p class="fp-missing">A benefits case needs at least one measured result. Estimates alone are not evidence.</p>
+    {% endif %}
+    <p class="fp-msg" id="fp-case-msg" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="fp-card" aria-labelledby="fp-pay-h">
+    <h2 id="fp-pay-h">Paid pilot or commitment</h2>
+    {% if R.paid %}
+    <p class="fp-sub"><span class="fp-pill ok">Recorded {{ R.paid_at }}</span></p>
+    {% elif R.measured %}
+    <p class="fp-sub">When the customer pays for a pilot or signs a commitment, record it here. You agree the price and send any offer yourself; SimiSI never takes or moves the money.</p>
+    <form id="fp-pay" class="fp-actions" novalidate>
+      <label class="fp-lab" for="fp-pay-kind" style="margin:0">What happened</label>
+      <select id="fp-pay-kind" style="width:auto"><option value="paid">They paid for a pilot</option><option value="commitment">They signed a commitment</option></select>
+      <input type="text" id="fp-pay-note" maxlength="500" placeholder="Note (optional)" aria-label="Note" style="flex:1;min-width:12rem">
+      <button type="submit" class="btn primary">Record it</button>
+    </form>
+    <p class="fp-msg" id="fp-pay-msg" role="status" aria-live="polite"></p>
+    {% else %}
+    <p class="fp-sub">Record a measured result for every success criterion first.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% endif %}
+
+  {% if P and P.status != 'draft' and proof.can_start_new %}
+  <section class="fp-card" aria-labelledby="fp-another-h">
+    <h2 id="fp-another-h">Run another proof of concept</h2>
+    <p class="fp-sub">Test with another customer, or test something new. This plan and its results stay on record.</p>
+    <details><summary class="link" style="cursor:pointer">Start a new plan</summary><div style="margin-top:1rem">{{ plan_form(None) }}</div></details>
+  </section>
+  {% endif %}
+
+  <p class="fp-sub" style="font-size:.85rem">{{ legal('founder_not_advice') }}</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var root = document.getElementById('fp-root');
+  if (!root) return;
+  var base = '/api/founder/v/' + root.getAttribute('data-venture') + '/proof';
+  var planId = root.getAttribute('data-plan');
+
+  function post(path, body) {
+    return fetch(base + path, {method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})})
+      .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }, function () { return {ok: false, d: {}}; }); })
+      .catch(function () { return {ok: false, d: {error: 'Network error. Try again.'}}; });
+  }
+  function say(id, text, ok) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'fp-msg ' + (ok ? 'ok' : 'err');
+  }
+  function lines(v) { return (v || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean); }
+
+  var add = document.getElementById('fp-add-crit');
+  if (add) add.addEventListener('click', function () {
+    var box = document.getElementById('fp-crits');
+    var rows = box.querySelectorAll('[data-crit]');
+    if (rows.length >= {{ proof.criteria_max }}) return;
+    var copy = rows[rows.length - 1].cloneNode(true);
+    var inputs = copy.querySelectorAll('input');
+    for (var i = 0; i < inputs.length; i++) inputs[i].value = '';
+    box.appendChild(copy);
+    copy.querySelector('input').focus();
+  });
+
+  var form = document.getElementById('fp-plan');
+  function planBody() {
+    var crits = [];
+    var rows = form.querySelectorAll('[data-crit]');
+    for (var i = 0; i < rows.length; i++) {
+      var c = {};
+      var fields = rows[i].querySelectorAll('[data-k]');
+      for (var j = 0; j < fields.length; j++) c[fields[j].getAttribute('data-k')] = fields[j].value;
+      crits.push(c);
+    }
+    return {plan_id: form.plan_id ? form.plan_id.value : '', customer_name: form.customer_name.value, pain: form.pain.value,
+            baseline: form.baseline.value, smallest_build: form.smallest_build.value, success_criteria: crits,
+            duration: form.duration.value, on_success: form.on_success.value,
+            provides: {founder: lines(form.provides_founder.value), customer: lines(form.provides_customer.value)}};
+  }
+  if (form) form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    post('', planBody()).then(function (res) {
+      if (!res.ok) { say('fp-plan-msg', res.d.error || 'Could not save the plan.', false); return; }
+      say('fp-plan-msg', 'Draft saved.', true);
+      setTimeout(function () { location.href = location.pathname + '?plan=' + encodeURIComponent(res.d.plan_id); }, 700);
+    });
+  });
+
+  var agree = document.getElementById('fp-agree');
+  if (agree) agree.addEventListener('click', function () {
+    if (!confirm('Mark this plan as agreed by the customer? The success criteria are fixed from then on.')) return;
+    agree.disabled = true;
+    post('', planBody()).then(function (res) {
+      if (!res.ok) { agree.disabled = false; say('fp-plan-msg', res.d.error || 'Could not save the plan.', false); return; }
+      post('/' + res.d.plan_id + '/agree').then(function (r2) {
+        if (!r2.ok) { agree.disabled = false; say('fp-plan-msg', r2.d.error || 'Could not mark it agreed.', false); return; }
+        location.reload();
+      });
+    });
+  });
+
+  var res = document.getElementById('fp-results');
+  if (res) res.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var out = [];
+    var rows = res.querySelectorAll('tr[data-cid]');
+    for (var i = 0; i < rows.length; i++) {
+      var g = function (k) { return rows[i].querySelector('[data-k="' + k + '"]').value; };
+      out.push({criterion_id: rows[i].getAttribute('data-cid'), value: g('value'), basis: g('basis'), met: g('met')});
+    }
+    post('/' + planId + '/results', {results: out, quote_text: document.getElementById('fp-quote').value,
+      quote_permission: document.getElementById('fp-quote-ok').checked}).then(function (r) {
+      if (!r.ok) { say('fp-res-msg', r.d.error || 'Could not save the results.', false); return; }
+      location.reload();
+    });
+  });
+
+  var ben = document.getElementById('fp-benefits');
+  if (ben) ben.addEventListener('click', function () {
+    ben.disabled = true;
+    post('/' + planId + '/benefits').then(function (r) {
+      if (!r.ok) { ben.disabled = false; say('fp-case-msg', r.d.error || 'Could not write the benefits case.', false); return; }
+      location.reload();
+    });
+  });
+
+  var sync = document.getElementById('fp-sync');
+  if (sync) sync.addEventListener('click', function () {
+    sync.disabled = true;
+    post('/sync').then(function (r) {
+      if (!r.ok) { sync.disabled = false; say('fp-sync-msg', r.d.error || 'Could not update the ladder.', false); return; }
+      location.reload();
+    });
+  });
+
+  var pay = document.getElementById('fp-pay');
+  if (pay) pay.addEventListener('submit', function (e) {
+    e.preventDefault();
+    post('/' + planId + '/payment', {kind: document.getElementById('fp-pay-kind').value,
+      note: document.getElementById('fp-pay-note').value}).then(function (r) {
+      if (!r.ok) { say('fp-pay-msg', r.d.error || 'Could not record it.', false); return; }
+      location.reload();
+    });
+  });
+})();
+</script>
+{% endblock %}

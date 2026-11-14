@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Join {{ venture.name if venture else 'a venture' }} · Founder Track{% endblock %}
+{% block head %}
+<meta name="robots" content="noindex">
+<style>
+  .fj-root{color:var(--ink);padding-top:3rem;padding-bottom:3.5rem;max-width:640px}
+  .fj-eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .4rem}
+  .fj-root h1{font-size:1.6rem;margin:0 0 .6rem;line-height:1.25}
+  .fj-card{border:1px solid var(--rule);border-radius:var(--r-ui);background:var(--bg);padding:1.35rem 1.4rem;margin:0 0 1.25rem}
+  .fj-sub{color:var(--ink-2);line-height:1.6;margin:0 0 1rem}
+  .fj-list{margin:0 0 1.25rem;padding-left:1.2rem;line-height:1.7;color:var(--ink-2)}
+  .fj-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .fj-err{background:#FEF2F2;color:#991B1B;border-radius:var(--r-btn);padding:.75rem 1rem;margin:0 0 1rem;line-height:1.5}
+  @media (max-width:640px){ .fj-root{padding-top:1.75rem} .fj-root h1{font-size:1.35rem} .fj-actions .btn{width:100%} }
+</style>
+{% endblock %}
+{% block content %}
+<div class="wrap fj-root">
+  <p class="fj-eyebrow">Founder Track · Co-founder invite</p>
+  {% if not venture %}
+  <h1>This invite can't be used</h1>
+  <div class="fj-card">
+    <p class="fj-err" role="alert">{{ error }}</p>
+    <a class="btn" href="/">Go to SimiSI</a>
+  </div>
+  {% else %}
+  <h1>{{ inviter }} invited you to join {{ venture.name }}</h1>
+  <div class="fj-card">
+    {% if venture.one_liner %}<p class="fj-sub"><b>{{ venture.name }}</b> · {{ venture.one_liner }}</p>{% endif %}
+    {% if member.title %}<p class="fj-sub">Your role on the invite: <b>{{ member.title }}</b></p>{% endif %}
+    <ul class="fj-list">
+      <li>You'll share the venture's readiness report, plan and activity with your co-founders.</li>
+      <li>Each of you answers a short alignment check on your own. No one sees the others' answers until everyone has answered.</li>
+      <li>Nothing goes to a customer or an investor without the team's approval.</li>
+    </ul>
+    {% if error %}<p class="fj-err" role="alert">{{ error }}</p>{% endif %}
+    {% if current_user.is_authenticated %}
+      {% if already %}
+      <p class="fj-sub">You're already on this team.</p>
+      <a class="btn primary" href="{{ url_for('founder.tp_alignment_page', venture_id=venture.id) }}">Open the team page</a>
+      {% elif mismatch %}
+      {% if not error %}<p class="fj-err" role="alert">{{ mismatch }}</p>{% endif %}
+      <p class="fj-sub" style="margin:0;font-size:.88rem">You're signed in as {{ current_user.email }}. Sign out from the menu, sign in with the invited address, then open this link again.</p>
+      {% else %}
+      <form method="post" action="{{ next_url }}" class="fj-actions">
+        <button type="submit" class="btn primary btn-lg">Join as {{ current_user.full_name or current_user.email }}</button>
+      </form>
+      <p class="fj-sub" style="margin:.75rem 0 0;font-size:.88rem">Not you? Sign out from the menu, then open this link again.</p>
+      {% endif %}
+    {% else %}
+    <p class="fj-sub">Sign in to accept. Each co-founder uses their own SimiSI account.</p>
+    <div class="fj-actions">
+      <a class="btn primary" href="/login?next={{ next_url|urlencode }}">Sign in to accept</a>
+      <a class="btn btn-ghost" href="/register">Create an account</a>
+    </div>
+    <p class="fj-sub" style="margin:.75rem 0 0;font-size:.88rem">New to SimiSI? Create your account, then open this invite link again.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

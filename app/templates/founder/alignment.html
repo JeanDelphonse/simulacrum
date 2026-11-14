@@ -1,0 +1,374 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Roles and check-ins' if section == 'roles' else 'Team alignment' }} · {{ venture.name }}{% endblock %}
+{% block head %}
+<style>
+  .fa-root{color:var(--ink);padding-top:2.5rem;padding-bottom:3.5rem;max-width:960px}
+  .fa-eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .4rem}
+  .fa-root h1{font-size:1.7rem;margin:0 0 .4rem;line-height:1.2}
+  .fa-root h2{font-size:1.15rem;margin:0 0 .35rem}
+  .fa-root h3{font-size:1rem;margin:0}
+  .fa-lede{color:var(--ink-2);line-height:1.6;margin:0 0 1.25rem}
+  .fa-sub{color:var(--ink-2);font-size:.92rem;line-height:1.55;margin:0 0 1rem}
+  .fa-tabs{display:flex;gap:.25rem;flex-wrap:wrap;list-style:none;margin:0 0 1.5rem;padding:0;border-bottom:1px solid var(--rule)}
+  .fa-tabs a{display:inline-block;padding:.55rem .75rem;color:var(--ink-2);text-decoration:none;font-weight:600;
+             border-bottom:3px solid transparent;margin-bottom:-1px}
+  .fa-tabs a:hover{color:var(--ink)}
+  .fa-tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--gold)}
+  .fa-tabs a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .fa-card{border:1px solid var(--rule);border-radius:var(--r-ui);background:var(--bg);padding:1.25rem 1.35rem;margin:0 0 1.5rem}
+  .fa-note{border:1px solid var(--rule);border-left:4px solid var(--gold);border-radius:var(--r-ui);background:var(--alt);
+           padding:.85rem 1rem;margin:0 0 1.5rem;line-height:1.55}
+  .fa-people{list-style:none;margin:0 0 1rem;padding:0}
+  .fa-people li{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.5rem;padding:.6rem 0;border-top:1px solid var(--rule)}
+  .fa-people li:first-child{border-top:0}
+  .fa-pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:12.5px;font-weight:600;
+           background:var(--alt);color:var(--ink-2);white-space:nowrap}
+  .fa-pill.match{background:#DCFCE7;color:#14532D}
+  .fa-pill.differ{background:#FEF3C7;color:#78350F}
+  .fa-pill.legal{background:var(--ink);color:#fff}
+  .fa-form{display:grid;grid-template-columns:1fr 1fr auto;gap:.6rem;align-items:end}
+  .fa-field label{display:block;font-weight:600;font-size:.9rem;margin:0 0 .3rem}
+  .fa-field input,.fa-field select,.fa-q textarea,.fa-sel{width:100%;box-sizing:border-box;font:inherit;padding:.55rem .65rem;
+           border:1px solid var(--rule);border-radius:var(--r-btn);background:#fff;color:var(--ink)}
+  .fa-q{border:1px solid var(--rule);border-radius:var(--r-ui);padding:1rem 1.1rem;margin:0 0 .9rem}
+  .fa-q legend{font-weight:700;padding:0 .25rem}
+  .fa-q-head{display:flex;justify-content:space-between;gap:.75rem;flex-wrap:wrap;align-items:center;margin:0 0 .35rem}
+  .fa-q-text{margin:0 0 .6rem;color:var(--ink-2)}
+  .fa-opts{display:grid;gap:.35rem;margin:0 0 .6rem}
+  .fa-opts label{display:flex;gap:.55rem;align-items:flex-start;line-height:1.4;cursor:pointer;padding:.25rem 0}
+  .fa-opts input{margin-top:.2rem;accent-color:var(--ink)}
+  .fa-q textarea{min-height:2.6rem;resize:vertical}
+  .fa-ans{list-style:none;margin:.75rem 0 0;padding:.75rem 0 0;border-top:1px dashed var(--rule);display:grid;gap:.5rem}
+  .fa-ans b{display:block;font-size:.8rem;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+  .fa-ans .n{color:var(--ink-2);font-size:.9rem;margin:.15rem 0 0}
+  .fa-counts{display:flex;gap:.4rem;flex-wrap:wrap;margin:0 0 1rem}
+  .fa-table{width:100%;border-collapse:collapse}
+  .fa-table th,.fa-table td{text-align:left;padding:.55rem .4rem;border-top:1px solid var(--rule);vertical-align:middle}
+  .fa-table th{font-size:.8rem;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;border-top:0}
+  .fa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1rem 0}
+  .fa-col{border:1px solid var(--rule);border-radius:10px;padding:.85rem 1rem;background:#fff}
+  .fa-col h3{font-size:.95rem;margin:0 0 .4rem}
+  .fa-col ul{margin:0;padding-left:1.1rem;line-height:1.5;color:var(--ink-2);font-size:.92rem}
+  .fa-empty{color:var(--mute);font-size:.9rem;margin:0}
+  .fa-row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  .fa-msg{font-size:.88rem;min-height:1.2em;margin:.5rem 0 0}
+  .fa-msg.err{color:#B42318}.fa-msg.ok{color:var(--teal-ink)}
+  .fa-link{word-break:break-all;font-size:.85rem;color:var(--ink-2)}
+  @media (max-width:760px){
+    .fa-root{padding-top:1.5rem}
+    .fa-root h1{font-size:1.4rem}
+    .fa-form{grid-template-columns:1fr}
+    .fa-grid{grid-template-columns:1fr}
+    .fa-table thead{display:none}
+    .fa-table tr{display:block;border-top:1px solid var(--rule);padding:.5rem 0}
+    .fa-table td{display:block;border:0;padding:.2rem 0}
+    .fa-tabs a{padding:.45rem .55rem;font-size:.92rem}
+  }
+</style>
+{% endblock %}
+{% block content %}
+{% set V = view %}
+<div class="wrap fa-root" id="fa-root" data-venture="{{ venture.id }}">
+  <p class="fa-eyebrow">Founder Track · {{ venture.name }}</p>
+  {% if section == 'roles' %}
+  <h1>Roles and check-ins</h1>
+  <p class="fa-lede">Who leads each layer, who has the final say on each decision, who owns each step, and a regular check-in.</p>
+  {% else %}
+  <h1>Founding team alignment</h1>
+  <p class="fa-lede">Agree the basics early: where you're headed, who does what, and who decides. Each founder answers on their own.</p>
+  {% endif %}
+  {% include 'founder/_ws_nav.html' %}
+
+  {% macro invite_form() %}
+  <form class="fa-form" id="fa-invite" novalidate>
+    <div class="fa-field"><label for="fa-inv-email">Co-founder's email</label>
+      <input id="fa-inv-email" name="email" type="email" autocomplete="off" required></div>
+    <div class="fa-field"><label for="fa-inv-title">Their role (optional)</label>
+      <input id="fa-inv-title" name="title" type="text" maxlength="120" placeholder="For example: CTO"></div>
+    <button class="btn primary" type="submit">Send invite</button>
+  </form>
+  <p class="fa-sub" style="margin:.6rem 0 0">They join with their own SimiSI account. The link works once and expires in {{ invite_days }} days.</p>
+  <p class="fa-msg" id="fa-inv-msg" role="status" aria-live="polite"></p>
+  {% endmacro %}
+
+  {% macro invites_list() %}
+  {% if V.invites %}
+  <h3 style="margin-top:1rem">Waiting to join</h3>
+  <ul class="fa-people">
+    {% for m in V.invites %}
+    <li><span>{{ m.invite_email }}{% if m.title %} <span class="fa-pill">{{ m.title }}</span>{% endif %}</span>
+      {% if V.is_owner %}<button type="button" class="btn sm btn-ghost" data-revoke="{{ m.id }}">Cancel invite</button>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% endmacro %}
+
+  {% if V.solo %}
+  <section class="fa-card" aria-labelledby="fa-solo-h">
+    <h2 id="fa-solo-h">Alignment is skipped for solo founders</h2>
+    <p class="fa-sub">The alignment check, roles, decision rights and check-ins are for teams of two or more. If someone is building this with you, invite them and you'll each answer the same questions separately.</p>
+    {% if V.is_owner %}{{ invite_form() }}{% else %}<p class="fa-empty">Only the venture owner can invite co-founders.</p>{% endif %}
+    {{ invites_list() }}
+  </section>
+  {% elif section != 'roles' %}
+
+  <section class="fa-card" aria-labelledby="fa-team-h">
+    <h2 id="fa-team-h">Your team</h2>
+    <ul class="fa-people">
+      {% for m in V.members %}
+      <li><span><b>{{ m.name }}</b>{% if m.id == V.me.id %} (you){% endif %}{% if m.title %} · {{ m.title }}{% endif %}</span>
+        <span class="fa-pill">{{ 'Owner' if m.role == 'owner' else 'Co-founder' }}</span></li>
+      {% endfor %}
+    </ul>
+    {{ invites_list() }}
+    {% if V.is_owner %}<details style="margin-top:.75rem"><summary class="link" style="cursor:pointer">Invite another co-founder</summary>
+      <div style="margin-top:.75rem">{{ invite_form() }}</div></details>{% endif %}
+  </section>
+
+  <div class="fa-note" role="note">
+    <b>How the check works.</b> Each founder answers on their own. You see the others' answers to a question only once everyone has answered it.
+    SimiSI shows where you match and where you differ, using only what each of you stated. It doesn't profile anyone, take sides or settle disagreements.
+    Differences on equity, vesting or someone leaving go to a lawyer.
+  </div>
+
+  <section class="fa-card" aria-labelledby="fa-check-h">
+    <h2 id="fa-check-h">Alignment check</h2>
+    <ul class="fa-counts" aria-label="Alignment summary">
+      <li class="fa-pill match">{{ V.counts.match }} match</li>
+      <li class="fa-pill differ">{{ V.counts.differ }} differ</li>
+      <li class="fa-pill">{{ V.counts.waiting }} waiting for answers</li>
+    </ul>
+    <form id="fa-answers" novalidate>
+      {% for q in V.questions %}
+      <fieldset class="fa-q" id="q-{{ q.key }}">
+        <legend>{{ q.label }}</legend>
+        <div class="fa-q-head">
+          <p class="fa-q-text" style="margin:0">{{ q.question }}</p>
+          {% if q.status == 'match' %}<span class="fa-pill match">You match</span>
+          {% elif q.status == 'differ' %}<span class="fa-pill {{ 'legal' if q.legal else 'differ' }}">You differ{% if q.legal %} · see a lawyer{% endif %}</span>
+          {% else %}<span class="fa-pill">{{ q.answered }} of {{ q.total }} answered</span>{% endif %}
+        </div>
+        <div class="fa-opts" role="radiogroup" aria-label="{{ q.label }}">
+          {% for val, label in q.options %}
+          <label><input type="radio" name="{{ q.key }}" value="{{ val }}" {% if q.mine and q.mine.choice == val %}checked{% endif %}> <span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+        <label class="fa-field" for="note-{{ q.key }}" style="display:block"><span style="display:block;font-weight:600;font-size:.85rem;margin:0 0 .25rem">Anything to add? (optional)</span>
+          <textarea id="note-{{ q.key }}" name="note-{{ q.key }}" maxlength="1000">{{ q.mine.note if q.mine else '' }}</textarea></label>
+        {% if q.revealed %}
+        <ul class="fa-ans" aria-label="Everyone's answers">
+          {% for a in q.answers %}
+          <li><b>{{ 'You' if a.is_me else a.name }}</b>{{ a.choice_label }}{% if a.note %}<p class="n">{{ a.note }}</p>{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% elif q.mine %}
+        <p class="fa-empty" style="margin-top:.5rem">Your answer is saved. The others' answers appear once everyone has answered.</p>
+        {% endif %}
+      </fieldset>
+      {% endfor %}
+      <div class="fa-row"><button class="btn primary" type="submit">Save my answers</button>
+        <span class="fa-msg" id="fa-ans-msg" role="status" aria-live="polite"></span></div>
+    </form>
+  </section>
+  <p class="fa-sub">Next: <a class="link" href="{{ url_for('founder.tp_roles_page', venture_id=venture.id) }}">set roles, decision rights and check-ins</a>.</p>
+
+  {% else %}
+
+  <section class="fa-card" aria-labelledby="fa-leads-h">
+    <h2 id="fa-leads-h">Who leads each layer</h2>
+    <p class="fa-sub">One founder leads each layer of the plan. The owner leads a layer until the team names someone. Only the owner or the current lead can hand a layer on.</p>
+    <table class="fa-table">
+      <thead><tr><th scope="col">Layer</th><th scope="col">Lead</th></tr></thead>
+      <tbody>
+      {% for l in leads %}
+      {% set can = V.is_owner or l.holder_member_id == V.me.id %}
+      <tr>
+        <td><label for="lead-{{ l.layer }}">{{ l.label }}</label></td>
+        <td><select class="fa-sel" id="lead-{{ l.layer }}" data-lead="{{ l.layer }}" {% if not can %}disabled{% endif %}>
+          {% for m in V.members %}<option value="{{ m.id }}" {% if m.id == l.holder_member_id %}selected{% endif %}>{{ m.name }}{% if not l.named and m.id == l.holder_member_id %} (owner, by default){% endif %}</option>{% endfor %}
+        </select></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="fa-msg" id="fa-leads-msg" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="fa-card" aria-labelledby="fa-rights-h">
+    <h2 id="fa-rights-h">Who decides</h2>
+    <p class="fa-sub">One person has the final say on each type of decision, and approvals go to them. Only the owner or the current holder can hand a decision on.</p>
+    <table class="fa-table">
+      <thead><tr><th scope="col">Decision</th><th scope="col">Final say</th></tr></thead>
+      <tbody>
+      {% for r in rights if r.layer is none %}
+      {% set can = V.is_owner or r.holder_member_id == V.me.id %}
+      <tr>
+        <td><label for="right-{{ r.decision_type }}">{{ r.label }}</label></td>
+        <td><select class="fa-sel" id="right-{{ r.decision_type }}" data-right="{{ r.decision_type }}" {% if not can %}disabled aria-describedby="fa-rights-why"{% endif %}>
+          {% for m in V.members %}<option value="{{ m.id }}" {% if m.id == r.holder_member_id %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+        </select></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% set layer_rights = rights|rejectattr('layer', 'none')|list %}
+    {% if layer_rights %}
+    <h3 style="margin:1rem 0 .25rem">For one layer only</h3>
+    <p class="fa-sub">These take precedence over the rows above for that layer, so approvals there go to this person.</p>
+    <ul class="fa-people">{% for r in layer_rights %}<li><span>{{ r.label }}</span><b>{{ r.holder_name }}</b></li>{% endfor %}</ul>
+    {% endif %}
+    {% if not V.is_owner and rights|rejectattr('holder_member_id', 'equalto', V.me.id)|list %}
+    <p class="fa-empty" id="fa-rights-why" style="margin-top:.5rem">Greyed-out rows are held by someone else.</p>{% endif %}
+    <p class="fa-msg" id="fa-rights-msg" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="fa-card" aria-labelledby="fa-ci-h">
+    <h2 id="fa-ci-h">Check-ins</h2>
+    <div class="fa-row">
+      <label for="fa-cadence" style="font-weight:600">Check in every</label>
+      <select class="fa-sel" id="fa-cadence" style="width:auto">
+        <option value="">Off</option>
+        {% for d in cadence_choices %}<option value="{{ d }}" {% if checkin.cadence_days == d %}selected{% endif %}>{{ d }} days</option>{% endfor %}
+        {% if checkin.cadence_days and checkin.cadence_days not in cadence_choices %}<option value="{{ checkin.cadence_days }}" selected>{{ checkin.cadence_days }} days</option>{% endif %}
+      </select>
+      <button type="button" class="btn sm" id="fa-checkin">Mark today's check-in as held</button>
+    </div>
+    <p class="fa-sub" style="margin:.6rem 0 0">
+      {% if checkin.last_checkin %}Last check-in {{ checkin.last_checkin }}.{% else %}No check-in recorded yet.{% endif %}
+      {% if checkin.next_due %} Next one due {{ checkin.next_due }}{% if checkin.overdue %} (overdue){% endif %}.{% endif %}
+      Showing work since {{ checkin.since }}.
+    </p>
+    <div class="fa-grid">
+      <div class="fa-col"><h3>Done</h3>
+        {% if checkin.done %}<ul>{% for s in checkin.done %}<li>{{ s.title }}{% if s.owner_name %} · {{ s.owner_name }}{% endif %}</li>{% endfor %}</ul>
+        {% else %}<p class="fa-empty">Nothing finished in this period.</p>{% endif %}</div>
+      <div class="fa-col"><h3>Blocked</h3>
+        {% if checkin.blocked %}<ul>{% for s in checkin.blocked %}<li>{{ s.title }}</li>{% endfor %}</ul>
+        {% else %}<p class="fa-empty">Nothing is waiting on another step.</p>{% endif %}</div>
+      <div class="fa-col"><h3>Decisions pending</h3>
+        {% if checkin.pending or checkin.drafts_awaiting_approval %}<ul>{% for s in checkin.pending %}<li>{{ s.title }}</li>{% endfor %}
+          {% if checkin.drafts_awaiting_approval %}<li>{{ checkin.drafts_awaiting_approval }} draft{{ '' if checkin.drafts_awaiting_approval == 1 else 's' }} awaiting approval</li>{% endif %}</ul>
+        {% else %}<p class="fa-empty">No decisions waiting.</p>{% endif %}</div>
+    </div>
+    {% if checkin.open_steps %}
+    <h3 style="margin:1rem 0 .25rem">Step owners</h3>
+    <p class="fa-sub">Every step has one owner. Hand-offs are logged.</p>
+    <table class="fa-table">
+      <thead><tr><th scope="col">Step</th><th scope="col">Owner</th></tr></thead>
+      <tbody>
+      {% for s in checkin.open_steps %}
+      {% set can_own = V.is_owner or not s.owner_member_id or s.owner_member_id == V.me.id %}
+      <tr><td><label for="own-{{ s.id }}">{{ s.title }}</label></td>
+        <td><select class="fa-sel" id="own-{{ s.id }}" data-step="{{ s.id }}" {% if not can_own %}disabled{% endif %}>
+          {% if not s.owner_member_id %}<option value="" selected disabled>No owner yet: choose one</option>{% endif %}
+          {% for m in V.members %}<option value="{{ m.id }}" {% if m.id == s.owner_member_id %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+        </select></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <p class="fa-msg" id="fa-ci-msg" role="status" aria-live="polite"></p>
+  </section>
+  {% endif %}
+
+  <p class="fa-sub" style="font-size:.85rem">{{ legal('founder_not_advice') }}</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var root = document.getElementById('fa-root');
+  if (!root) return;
+  var base = '/api/founder/v/' + root.getAttribute('data-venture') + '/alignment';
+
+  function post(path, body) {
+    return fetch(base + path, {method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})})
+      .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }, function () { return {ok: false, d: {}}; }); })
+      .catch(function () { return {ok: false, d: {error: 'Network error. Try again.'}}; });
+  }
+  function say(el, text, ok) {
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'fa-msg ' + (ok ? 'ok' : 'err');
+  }
+
+  var inv = document.getElementById('fa-invite');
+  if (inv) inv.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var msg = document.getElementById('fa-inv-msg');
+    var btn = inv.querySelector('button[type=submit]');
+    btn.disabled = true;
+    post('/invite', {email: document.getElementById('fa-inv-email').value, title: document.getElementById('fa-inv-title').value}).then(function (res) {
+      btn.disabled = false;
+      if (!res.ok) { say(msg, res.d.error || 'Could not send the invite.', false); return; }
+      say(msg, res.d.message, true);
+      if (!res.d.email_sent && res.d.join_url) {
+        var p = document.createElement('p'); p.className = 'fa-link'; p.textContent = res.d.join_url;
+        msg.parentNode.insertBefore(p, msg.nextSibling);
+      } else { setTimeout(function () { location.reload(); }, 900); }
+    });
+  });
+
+  root.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-revoke]');
+    if (!b) return;
+    b.disabled = true;
+    post('/invites/' + b.getAttribute('data-revoke') + '/revoke').then(function (res) {
+      if (res.ok) location.reload(); else { b.disabled = false; alert(res.d.error || 'Could not cancel the invite.'); }
+    });
+  });
+
+  var form = document.getElementById('fa-answers');
+  if (form) form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var msg = document.getElementById('fa-ans-msg');
+    var answers = {};
+    var sets = form.querySelectorAll('fieldset.fa-q');
+    for (var i = 0; i < sets.length; i++) {
+      var key = sets[i].id.slice(2);
+      var c = sets[i].querySelector('input[type=radio]:checked');
+      if (c) answers[key] = {choice: c.value, note: sets[i].querySelector('textarea').value};
+    }
+    if (!Object.keys(answers).length) { say(msg, 'Pick an answer for at least one question.', false); return; }
+    post('/answers', {answers: answers}).then(function (res) {
+      if (!res.ok) { say(msg, res.d.error || 'Could not save your answers.', false); return; }
+      say(msg, 'Saved.' + (res.d.steps_created ? ' ' + res.d.steps_created + ' new step' + (res.d.steps_created === 1 ? '' : 's') + ' added to your plan.' : ''), true);
+      setTimeout(function () { location.reload(); }, 900);
+    });
+  });
+
+  root.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.hasAttribute('data-lead')) {
+      post('/rights', {decision_type: 'layer_lead', layer: t.getAttribute('data-lead'), member_id: t.value}).then(function (res) {
+        say(document.getElementById('fa-leads-msg'), res.ok ? 'Saved.' : (res.d.error || 'Could not save.'), res.ok);
+        if (res.ok) setTimeout(function () { location.reload(); }, 700);
+      });
+    } else if (t.hasAttribute('data-right')) {
+      post('/rights', {decision_type: t.getAttribute('data-right'), member_id: t.value}).then(function (res) {
+        say(document.getElementById('fa-rights-msg'), res.ok ? 'Saved.' : (res.d.error || 'Could not save.'), res.ok);
+        if (res.ok) setTimeout(function () { location.reload(); }, 700);
+      });
+    } else if (t.hasAttribute('data-step')) {
+      post('/steps/' + t.getAttribute('data-step') + '/owner', {member_id: t.value}).then(function (res) {
+        say(document.getElementById('fa-ci-msg'), res.ok ? 'Owner saved. The hand-off is logged.' : (res.d.error || 'Could not save.'), res.ok);
+      });
+    } else if (t.id === 'fa-cadence') {
+      post('/cadence', {days: t.value}).then(function (res) {
+        say(document.getElementById('fa-ci-msg'), res.ok ? 'Cadence saved.' : (res.d.error || 'Could not save.'), res.ok);
+      });
+    }
+  });
+
+  var ci = document.getElementById('fa-checkin');
+  if (ci) ci.addEventListener('click', function () {
+    ci.disabled = true;
+    post('/checkin').then(function (res) {
+      if (res.ok) location.reload();
+      else { ci.disabled = false; say(document.getElementById('fa-ci-msg'), res.d.error || 'Could not record it.', false); }
+    });
+  });
+})();
+</script>
+{% endblock %}
