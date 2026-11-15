@@ -279,7 +279,7 @@ def main():
                   for c in g['columns'] for it in c['items']}
         check('its links go to the founder intro sections', fitems == {
             'fnd_how': '/founder#how', 'fnd_report': '/founder#report', 'fnd_startup_page': '/founder#page',
-            'fnd_start': '/founder#start'}, fitems)
+            'fnd_directory': '/startups', 'fnd_start': '/founder#start'}, fitems)
         home = _anon_get('/').get_data(as_text=True)
         bar = re.findall(r'class="ss-trigger" id="ssTrig-[^"]+"[^>]*>([^<]+)<', home)
         check('bar order: For professionals, Founder Track, For employers',

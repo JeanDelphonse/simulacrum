@@ -145,6 +145,19 @@ def sitemap():
     except Exception:
         logger.warning('sitemap: could not append the founder intro', exc_info=True)
 
+    # Founder Track: the investor directory, once at least one startup is listed in it.
+    try:
+        from app.services import bio_seo, founder_feature
+        if founder_feature.public_pages_enabled():
+            from app.services import startup_page_service as _sps
+            if _sps.directory_pages():
+                root = bio_seo.canonical_origin(request.url_root)
+                base = base.replace('</urlset>', '\n  <!-- Startup directory -->\n  <url>\n    <loc>%s/startups</loc>\n'
+                                    '    <changefreq>daily</changefreq>\n    <priority>0.7</priority>\n  </url>\n</urlset>'
+                                    % _xesc(root))
+    except Exception:
+        logger.warning('sitemap: could not append the startup directory', exc_info=True)
+
     # Founder Track: published public startup pages (none while the switch is off).
     try:
         from app.services import founder_feature
@@ -310,6 +323,30 @@ def _get_recent_bio_pages(limit: int = 8) -> list:
         return []
 
 
+def _get_recent_startups(limit: int = 8) -> list:
+    """Startups listed in the investor directory (/startups), newest first, for
+    the home page. Same gate as the directory: public startup pages on, page
+    published and name-cleared, founders opted in. Public facts only."""
+    try:
+        from app.services import founder_feature
+        if not founder_feature.public_pages_enabled():
+            return []
+        from app.services import startup_page_service as sps
+        out = []
+        for page in sps.directory_pages():
+            if not sps.is_public(page):
+                continue
+            stage = page.stage or getattr(sps._venture(page), 'stage', None)
+            out.append({'slug': page.slug, 'name': page.name, 'logo': bool(page.logo_path),
+                        'stage_label': sps.STAGE_LABELS.get(stage, '')})
+            if len(out) >= limit:
+                break
+        return out
+    except Exception as _e:
+        logger.warning('_get_recent_startups failed: %s', _e)
+        return []
+
+
 def _get_hero_cards(limit: int = 4) -> list:
     """4 randomly selected published users with at least one simulation."""
     import random
@@ -357,6 +394,7 @@ def index():
                            integrations=site_context.integration_unlocks(),
                            show_integrations=site_context.show_integrations(current_user),
                            recent_bio_pages=_get_recent_bio_pages(),
+                           recent_startups=_get_recent_startups(),
                            hero_cards=_get_hero_cards(),
                            playbook_url=current_app.config['PLAYBOOK_URL'],
                            guide_enabled=_guide_enabled_for_current_user())

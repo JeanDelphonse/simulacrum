@@ -189,6 +189,7 @@ def main():
         'marketing/transition_package.html',
         'founder/intro.html',
         'founder/intake.html',
+        'startup/directory.html',
         'simulations/share_roi.html',
         'simulations/layer6_share.html',
         'landing.html',

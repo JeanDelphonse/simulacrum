@@ -72,6 +72,8 @@ GROUPS = [
             {'label': 'Show investors', 'items': [
                 {'id': 'fnd_startup_page', 'title': 'Startup page',
                  'desc': 'A page you publish when you are ready', 'endpoint': 'founder.intro', 'anchor': 'page'},
+                {'id': 'fnd_directory', 'title': 'Explore startups',
+                 'desc': 'Founders on SimiSI, by stage', 'endpoint': 'startup.directory'},
                 {'id': 'fnd_start', 'title': 'Start your venture',
                  'desc': 'The evaluation preview is free', 'endpoint': 'founder.intro', 'anchor': 'start'},
             ]},

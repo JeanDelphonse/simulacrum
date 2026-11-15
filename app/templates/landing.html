@@ -262,6 +262,25 @@
 </div></section>
 {% endif %}
 
+<!-- STARTUPS (investor directory, founder opt-in) -->
+{% set startups = (recent_startups or [])[:8] %}
+{% if startups %}
+<section id="startups"><div class="wrap">
+  <div class="sec-head">
+    <h2>Startups on SimiSI</h2>
+    <p>Founders building with the Founder Track, by stage. <a class="link" href="{{ url_for('startup.directory') }}">Browse all startups</a></p>
+  </div>
+  <div class="people">
+    {% for s in startups %}
+    <a class="person" href="{{ url_for('startup.public_page', slug=s.slug) }}">
+      <div class="ph" style="--bgc:var(--ink)">{% if s.logo %}<img src="{{ url_for('startup.page_logo', slug=s.slug) }}" alt="{{ s.name }} logo" loading="lazy">{% else %}<span aria-hidden="true" style="color:var(--gold)">{{ (s.name or '?')[0]|upper }}</span>{% endif %}</div>
+      <div><b>{{ s.name }}</b><br><span>{% if s.stage_label %}{{ s.stage_label }} · {% endif %}View page</span></div>
+    </a>
+    {% endfor %}
+  </div>
+</div></section>
+{% endif %}
+
 <!-- SAMPLE SIMULATIONS -->
 <section id="sims" class="tint"><div class="wrap">
   <div class="sec-head">

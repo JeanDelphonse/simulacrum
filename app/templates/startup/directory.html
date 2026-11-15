@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{# Investor directory (/startups): startup pages whose founders opted in, by stage.
+   Same shell as /explore (base.html nav, tokens, public footer). Public facts only:
+   the ask and full proof sit behind the per-venture investor access rule. #}
+{% block full_title %}Explore startups on SimiSI{% endblock %}
+{% block head %}
+  <meta name="description" content="Browse early-stage startups building on SimiSI, by stage. Every claim is labelled: measured evidence, or stated by the founders.">
+  <meta property="og:title" content="Explore startups on SimiSI">
+  <meta property="og:description" content="Browse early-stage startups building on SimiSI, by stage.">
+  <meta property="og:type" content="website">
+  <link rel="canonical" href="{{ canonical_origin }}{{ url_for('startup.directory') }}">
+  <meta property="og:url" content="{{ canonical_origin }}{{ url_for('startup.directory') }}">
+  <meta name="robots" content="{{ 'noindex, follow' if stage else 'index, follow' }}">
+  <style>
+    .sd a { text-decoration: none; }
+    .sd-header { text-align: center; padding: 4rem 1.5rem 2rem; max-width: 700px; margin: 0 auto; }
+    .sd-eyebrow { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); margin: 0 0 .6rem; }
+    .sd-header h1 { font-size: clamp(30px, 3.6vw, 44px); font-weight: 750; color: var(--ink); margin: 0 0 .75rem; line-height: 1.2; }
+    .sd-header p { color: var(--ink-2); font-size: 1.05rem; margin: 0 0 1.25rem; line-height: 1.6; }
+    .sd-founder-cta { font-size: .92rem; color: var(--ink-2); }
+    .sd-founder-cta a { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+    .sd-pills { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; padding: 0 1.5rem 2.25rem; max-width: 900px; margin: 0 auto; }
+    .sd-pill { display: inline-flex; gap: .4rem; align-items: center; padding: .4rem 1rem; border-radius: 999px; border: 1px solid var(--rule);
+               background: #fff; font-size: .85rem; color: var(--ink-2); }
+    .sd-pill:hover { border-color: var(--ink); color: var(--ink); }
+    .sd-pill.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .sd-pill .n { font-size: .74rem; opacity: .75; }
+
+    .sd-section { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 2.75rem; }
+    .sd-stage-h { display: flex; align-items: baseline; gap: .6rem; margin: 0 0 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--rule); }
+    .sd-stage-h h2 { font-size: 1.15rem; margin: 0; color: var(--ink); }
+    .sd-stage-h span { font-size: .85rem; color: var(--mute); }
+    .sd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    .sd-card { background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column;
+               box-shadow: 0 1px 4px rgba(0,0,0,.06); transition: box-shadow .15s, border-color .15s; }
+    .sd-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); border-color: var(--ink); }
+    .sd-top { display: flex; gap: .85rem; align-items: center; margin-bottom: .75rem; }
+    .sd-logo { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; flex-shrink: 0; background: var(--alt); border: 1px solid var(--rule); }
+    .sd-logo-ph { width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0; background: var(--ink); color: var(--gold);
+                  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; }
+    .sd-name { font-weight: 700; font-size: 1rem; color: var(--ink); margin: 0 0 .15rem; }
+    .sd-chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .sd-chip { font-size: .7rem; font-weight: 700; padding: .14rem .5rem; border-radius: 999px; background: var(--alt); color: var(--ink-2); }
+    .sd-chip.rung { background: #FBF3E2; color: #8A6514; }
+    .sd-tag { display: inline-block; font-size: .66rem; font-weight: 700; padding: .05rem .4rem; border-radius: 999px; border: 1px solid #E8D29C;
+              color: #8A6514; background: #FFFBF0; margin-left: .3rem; vertical-align: middle; }
+    .sd-line { font-size: .9rem; color: var(--ink-2); line-height: 1.55; margin: 0 0 .8rem;
+               display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .sd-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin: 0 0 .9rem; }
+    .sd-metric { border: 1px solid var(--rule); border-radius: 8px; padding: .45rem .6rem; }
+    .sd-metric b { display: block; font-size: 1.05rem; color: var(--ink); }
+    .sd-metric span { font-size: .74rem; color: var(--mute); }
+    .sd-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: auto; }
+    .sd-btn { font-size: .82rem; font-weight: 600; padding: .4rem .85rem; border-radius: 7px; border: 1px solid var(--ink); color: var(--ink); background: #fff; }
+    .sd-btn:hover { background: var(--ink); color: #fff; }
+    .sd-btn.gold { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+    .sd-btn.gold:hover { background: var(--gold-hi); }
+    .sd-note { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 3rem; font-size: .82rem; color: var(--mute); line-height: 1.6; }
+    .sd-note p { margin: .35rem 0; }
+    .sd-empty { text-align: center; padding: 3rem 1.5rem 4rem; color: var(--mute); max-width: 560px; margin: 0 auto; }
+    .sd-empty p { margin: 0 0 1rem; }
+  </style>
+{% endblock %}
+{% block content %}
+<div class="sd">
+  <header class="sd-header">
+    <p class="sd-eyebrow">For investors</p>
+    <h1>Explore founders on SimiSI</h1>
+    <p>Early-stage startups, by stage. Each one shows where it stands on the evidence ladder, from a founder's own
+       statement of the problem to a paying customer, and labels every claim it has not proven yet.</p>
+    <p class="sd-founder-cta">Building a startup? <a href="{{ url_for('founder.intro') }}">List yours with the Founder Track</a></p>
+  </header>
+
+  <nav class="sd-pills" aria-label="Filter by stage">
+    <a class="sd-pill{{ ' active' if not stage }}" href="{{ url_for('startup.directory') }}"{% if not stage %} aria-current="page"{% endif %}>All stages <span class="n">{{ totals.values()|sum }}</span></a>
+    {% for key, label in stages.items() %}
+    <a class="sd-pill{{ ' active' if stage == key }}" href="{{ url_for('startup.directory', stage=key) }}"{% if stage == key %} aria-current="page"{% endif %}>{{ label }} <span class="n">{{ totals.get(key, 0) }}</span></a>
+    {% endfor %}
+  </nav>
+
+  {% if data.groups %}
+    {% for g in data.groups %}
+    <section class="sd-section" aria-labelledby="sd-h-{{ g.key }}">
+      <div class="sd-stage-h"><h2 id="sd-h-{{ g.key }}">{{ g.label }}</h2><span>{{ g.cards|length }} startup{{ '' if g.cards|length == 1 else 's' }}</span></div>
+      <div class="sd-grid">
+        {% for c in g.cards %}
+        <article class="sd-card" data-slug="{{ c.slug }}">
+          <div class="sd-top">
+            {% if c.logo %}<img class="sd-logo" src="{{ url_for('startup.page_logo', slug=c.slug) }}" alt="" loading="lazy">
+            {% else %}<span class="sd-logo-ph" aria-hidden="true">{{ c.initial }}</span>{% endif %}
+            <div>
+              <h3 class="sd-name">{{ c.name }}</h3>
+              <div class="sd-chips">
+                {% if c.stage_label %}<span class="sd-chip">{{ c.stage_label }}</span>{% endif %}
+                <span class="sd-chip rung" title="Evidence ladder">Rung {{ c.rung }} of 5{% if c.rung_label %} · {{ c.rung_label }}{% endif %}</span>
+              </div>
+            </div>
+          </div>
+          {% if c.one_liner %}<p class="sd-line">{{ c.one_liner }}{% if c.one_liner_stated %}<span class="sd-tag">founder-stated</span>{% endif %}</p>{% endif %}
+          {% if c.metrics %}
+          <div class="sd-metrics">
+            {% for m in c.metrics %}<div class="sd-metric"><b>{{ m.value }}</b><span>{{ m.label }}</span><span class="sd-tag">founder-stated</span></div>{% endfor %}
+          </div>
+          {% endif %}
+          <div class="sd-actions">
+            <a class="sd-btn" href="{{ url_for('startup.public_page', slug=c.slug) }}">View page</a>
+            {% if c.has_access %}
+            <a class="sd-btn gold" href="/startup/{{ c.slug }}/investor">Open investor view</a>
+            {% elif c.unlock_open %}
+            <a class="sd-btn gold" href="/startup/{{ c.slug }}/unlock">Unlock full details{% if price_cents %} · ${{ '%.0f'|format(price_cents / 100) }}{% endif %}</a>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  {% else %}
+  <div class="sd-empty">
+    {% if stage %}
+    <p>No {{ stages[stage] }} startups are listed yet.</p>
+    <a class="sd-btn" href="{{ url_for('startup.directory') }}">See all stages</a>
+    {% else %}
+    <p>No startups are listed yet. Founders choose whether to appear here once their startup page is published.</p>
+    <a class="sd-btn" href="{{ url_for('founder.intro') }}">Learn about the Founder Track</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="sd-note" role="note">
+    <p>Information on these pages is provided by the founders. Items marked founder-stated have not been checked against evidence. SimiSI does not verify, endorse or offer any investment.</p>
+    {% if any_unlock %}
+    <p><b>Full details</b> (the founders' ask, full proof and data-room requests) open per startup: free with a founder's private link, otherwise through investor access{% if price_cents %} (${{ '%.0f'|format(price_cents / 100) }} per startup){% endif %}. Some founders review each request before the ask is shown.</p>
+    <p>{{ legal('investor_access_terms', days=refund_days) }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block footer %}{% include 'partials/_footer_public.html' %}{% endblock %}

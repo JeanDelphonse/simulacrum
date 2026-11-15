@@ -467,6 +467,7 @@ class StartupPage(db.Model):
     name_check = db.Column(db.String(8), nullable=False, default='pending')
     published_at = db.Column(db.DateTime, nullable=True)
     publish_approved_by = db.Column(db.String(9), nullable=True)
+    show_in_directory = db.Column(db.Boolean, nullable=False, default=False)   # /startups, founder opt-in (sql/075)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -478,7 +479,8 @@ class StartupPage(db.Model):
                 'business_model': self.business_model, 'traction': self.traction or [],
                 'ask_round': self.ask_round, 'ask_amount': self.ask_amount, 'use_of_funds': self.use_of_funds,
                 'founder_stated': self.founder_stated or [], 'name_check': self.name_check,
-                'published_at': _iso(self.published_at), 'updated_at': _iso(self.updated_at)}
+                'published_at': _iso(self.published_at), 'updated_at': _iso(self.updated_at),
+                'show_in_directory': bool(self.show_in_directory)}
 
 
 class StartupSlugHistory(db.Model):

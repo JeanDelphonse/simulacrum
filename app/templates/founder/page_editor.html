@@ -15,6 +15,9 @@
   .pe-side { position: sticky; top: 80px; }
   .pe-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 13px;
              font-weight: 700; background: var(--alt); color: var(--ink-2); white-space: nowrap; }
+  .pe-dir { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--rule); }
+  .pe-dir-row { display: flex; gap: .5rem; align-items: center; font-weight: 600; cursor: pointer; }
+  .pe-dir-row input { width: 18px; height: 18px; }
   .pe-pill.published { background: #DCFCE7; color: #14532D; }
   .pe-pill.held, .pe-pill.pending { background: #FEF3C7; color: #78350F; }
   .pe-pill.unpublished { background: #FEE2E2; color: #7F1D1D; }
@@ -196,6 +199,12 @@
         {% if d.status == 'held' and state.can_publish and d.name_check == 'clear' %}<p>The name review is done. You can publish now.</p>{% endif %}
         <p class="pe-msg" id="pubMsg" role="status" aria-live="polite"></p>
         <p class="pe-hint">Any founder can unpublish at any time.</p>
+        <div class="pe-dir">
+          <label class="pe-dir-row"><input type="checkbox" id="dirToggle"{{ ' checked' if d.show_in_directory }}{{ '' if state.can_publish else ' disabled' }}>
+            <span>List in the investor directory</span></label>
+          <p class="pe-hint">Shows this page's name, stage, rung and public metrics on <a href="/startups">simisi.io/startups</a> while it is published. The ask never shows there. Check with your lawyer first if your raise relies on Rule 506(b).{% if not state.can_publish %} Only the founder who holds the publishing decision can change this.{% endif %}</p>
+          <p class="pe-msg" id="dirMsg" role="status" aria-live="polite"></p>
+        </div>
       </section>
 
       <section class="pe-card" aria-labelledby="h-views">
@@ -272,6 +281,16 @@
       .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
       .then(function (x) { say(msg, x.d.message || x.d.error, x.ok); if (x.ok) setTimeout(function () { location.reload(); }, 700); })
       .catch(function () { say(msg, 'Upload failed.', false); });
+  });
+  var dirToggle = document.getElementById('dirToggle'), dirMsg = document.getElementById('dirMsg');
+  if (dirToggle) dirToggle.addEventListener('change', function () {
+    var want = dirToggle.checked;
+    dirToggle.disabled = true;
+    post('/api/founder/v/' + vid + '/page', {show_in_directory: want}).then(function (x) {
+      say(dirMsg, x.ok ? (want ? 'Listed in the investor directory while the page is published.' : 'Removed from the investor directory.') : (x.d.error || 'That did not go through.'), x.ok);
+      if (!x.ok) dirToggle.checked = !want;
+      dirToggle.disabled = false;
+    }).catch(function () { say(dirMsg, 'That did not go through.', false); dirToggle.checked = !want; dirToggle.disabled = false; });
   });
   var pubMsg = document.getElementById('pubMsg');
   document.querySelectorAll('[data-pub]').forEach(function (b) {

@@ -60,6 +60,42 @@ def render_page(page, ctx, preview: bool = False, status: int = 200):
                            investor_view=bool(ctx.get('investor_view')), investor_gate=investor_gate), status
 
 
+@startup_bp.route('/startups')
+def directory():
+    """Investor directory: published startup pages whose founders opted in,
+    grouped by stage. Cards show public facts only; the full investor view
+    (the ask, full proof, data room) goes through the per-venture investor
+    access rule (startup_access_service: invited links free, otherwise the paid
+    unlock, with founder approval under 506(b) or an undecided exemption)."""
+    _gate()
+    from app.services import startup_page_service as sps
+    stage = (request.args.get('stage') or '').strip().lower()
+    stage = stage if stage in sps.STAGE_LABELS else None
+    data = sps.directory(stage)
+    totals = sps.directory()['counts'] if stage else data['counts']
+    try:
+        from app.services import startup_access_service as sas
+        price = sas.price_cents()
+        emails = sas.session_emails()
+        for g in data['groups']:
+            for c in g['cards']:
+                page = c['page']
+                c['unlock_open'] = bool(sas.gate_open(page))
+                c['has_access'] = c['unlock_open'] and (
+                    any(sas.has_access(page, e) for e in emails) or sas.session_link_for(page) is not None)
+    except Exception:              # investor connection unavailable: public facts only
+        price = None
+        for g in data['groups']:
+            for c in g['cards']:
+                c['unlock_open'] = c['has_access'] = False
+    any_unlock = any(c['unlock_open'] for g in data['groups'] for c in g['cards'])
+    from app.services import bio_seo, founder_config
+    return render_template('startup/directory.html', data=data, stage=stage, stages=sps.STAGE_LABELS,
+                           totals=totals, price_cents=price, any_unlock=any_unlock,
+                           refund_days=founder_config.get('fnd_refund_window_days'),
+                           canonical_origin=bio_seo.canonical_origin(request.url_root))
+
+
 @startup_bp.route('/startup/<slug>')
 def public_page(slug):
     _gate()

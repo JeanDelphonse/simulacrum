@@ -627,6 +627,16 @@ def update(page, data: dict, user=None, commit: bool = True):
             page.traction = tr
             changes.append('traction')
 
+    if 'show_in_directory' in data:
+        want = data.get('show_in_directory') in (True, 1, '1', 'true', 'on', 'yes')
+        if want != bool(page.show_in_directory):
+            # Listing widens the page's reach, so it is the publishing decision.
+            if not can_publish(page, user):
+                raise PageError('Only the founder who holds the publishing decision can list the page in the '
+                                'investor directory.')
+            page.show_in_directory = want
+            changes.append('show_in_directory')
+
     page.founder_stated = sorted(stated)
     if 'name' in changes:
         run_name_check(page)
@@ -1154,3 +1164,46 @@ def _email(to, subject, text):
     except Exception as exc:
         logger.error('startup page email to %s failed: %s', to, exc)
         return False
+
+
+# ---------------------------------------------------------------------------
+# Investor directory (/startups)
+# ---------------------------------------------------------------------------
+
+DIRECTORY_LIMIT = 500
+
+
+def directory_pages() -> list:
+    """Published, name-cleared pages whose founders opted in to the directory."""
+    from app.models.founder import StartupPage
+    return (StartupPage.query.filter_by(status='published', name_check='clear', show_in_directory=True)
+            .order_by(StartupPage.published_at.desc()).limit(DIRECTORY_LIMIT).all())
+
+
+def directory(stage_filter: str = None) -> dict:
+    """The directory grouped by stage, in ladder order (idea first). Cards carry
+    public facts only: never the ask, never a founder's contact details."""
+    groups = {k: [] for k in STAGE_LABELS}
+    other = []
+    ladder = {n: t for (n, t, *_r) in _ladder()}
+    for page in directory_pages():
+        if not is_public(page):
+            continue
+        venture = _venture(page)
+        stage = page.stage or getattr(venture, 'stage', None)
+        if stage_filter and stage != stage_filter:
+            continue
+        rung = int(getattr(venture, 'rung', 1) or 1)
+        metrics = [m for m in (page.traction or []) if m.get('show', True)][:2]
+        card = {'page': page, 'slug': page.slug, 'name': page.name, 'one_liner': page.one_liner or '',
+                'logo': bool(page.logo_path), 'initial': (page.name or '?')[:1].upper(),
+                'stage': stage, 'stage_label': STAGE_LABELS.get(stage, ''),
+                'rung': rung, 'rung_label': ladder.get(rung, ''),
+                'metrics': metrics, 'one_liner_stated': 'one_liner' in set(page.founder_stated or [])}
+        (groups[stage] if stage in groups else other).append(card)
+    out = [{'key': k, 'label': STAGE_LABELS[k], 'cards': groups[k]} for k in STAGE_LABELS if groups[k]]
+    if other:
+        out.append({'key': 'other', 'label': 'Stage not given', 'cards': other})
+    return {'groups': out, 'total': sum(len(g['cards']) for g in out),
+            'counts': {k: len(groups[k]) for k in STAGE_LABELS}}
+
