@@ -654,9 +654,17 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
         results, errors, cost, causes = {}, 0, 0.0, []
         if jobs:
             client, model, system, tool = _client(), _model(), _system_prompt(), _tool()
-            with ThreadPoolExecutor(max_workers=min(WORKERS, len(jobs))) as pool:
-                futs = {(a.id, d): pool.submit(_evaluate_one, client, model, system, tool, a.kind,
-                                               a.text_content or '', d) for a, d in jobs}
+            # Plain values only from here: the API calls can take minutes, and
+            # no database connection may stay checked out (inside an open
+            # transaction) that long. MySQL drops idle connections (GoDaddy
+            # wait_timeout ~300s) and SQLAlchemy cannot reconnect mid-transaction
+            # (PendingRollbackError). Commit now to return the connection to the
+            # pool; the writes below check out a fresh one (pool_pre_ping).
+            calls = [(a.id, a.kind, a.text_content or '', d) for a, d in jobs]
+            db.session.commit()
+            with ThreadPoolExecutor(max_workers=min(WORKERS, len(calls))) as pool:
+                futs = {(aid, d): pool.submit(_evaluate_one, client, model, system, tool, kind, text, d)
+                        for aid, kind, text, d in calls}
             for key, fut in futs.items():
                 try:
                     results[key] = fut.result()

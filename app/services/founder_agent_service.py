@@ -191,8 +191,15 @@ def _call(agent, venture, brief, stricter=None, model=None) -> tuple:
     """(payload dict, usage, model). model: a guardrail model pin, if any."""
     model = model or _model(agent)
     tool = _tool(agent)
+    system = system_prompt(agent, venture, stricter)
+    # Release the database connection before the API call: MySQL drops a
+    # connection left idle inside an open transaction across a slow call, and
+    # SQLAlchemy cannot reconnect mid-transaction (PendingRollbackError). Nothing
+    # below touches the database until the call returns.
+    from app.extensions import db
+    db.session.commit()
     resp = _client().messages.create(
-        model=model, max_tokens=MAX_TOKENS, system=system_prompt(agent, venture, stricter),
+        model=model, max_tokens=MAX_TOKENS, system=system,
         tools=[tool], tool_choice={'type': 'tool', 'name': tool['name']},
         messages=[{'role': 'user', 'content': [{'type': 'text', 'text': brief}]}])
     payload = None

@@ -158,6 +158,13 @@ def main():
 
         fake = FakeClaude()
         fas.AI_CLIENT = fake
+        tx_during_calls = []
+        _real_agent_create = fake.create
+
+        def _watch_agent_create(**kw):
+            tx_during_calls.append(db.session().in_transaction())
+            return _real_agent_create(**kw)
+        fake.create = _watch_agent_create
         fas._spawn = lambda step_id, uid, trigger, inputs, prior=None: fas._run_by_id(step_id, uid, trigger, inputs, prior)
 
         client = app.test_client()
@@ -748,6 +755,9 @@ def main():
             check('drafts awaiting approval render as Markdown', '<strong>Hi Sam,</strong>' in page
                   and '<li>point one</li>' in page and 'fw-draft-body' in page)
             check('... with raw HTML escaped', '<img src=x' not in page)
+
+        check('no database transaction is held while an agent calls the API',
+              tx_during_calls and not any(tx_during_calls), (len(tx_during_calls), sum(tx_during_calls)))
 
         print('\n17. Copy and prompts carry no banned phrases')
         import test_compliance_phrases as tcp

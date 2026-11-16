@@ -617,6 +617,22 @@ def main():
                 check('with capture off, no meta row is written', traced.status == 'done' and not meta)
         finally:
             obs.layer_code = real_layer_code
+        # MySQL drops a connection left idle inside an open transaction during
+        # minutes of API calls (PendingRollbackError in production). The run
+        # must hold no transaction while the calls are in flight.
+        main_session = db.session()
+        seen = []
+        real_create = fake.create
+
+        def watching_create(**kw):
+            seen.append(main_session.in_transaction())
+            return real_create(**kw)
+        fake.create = watching_create
+        artifact('pitch_deck', DECK + '\nConnection check slide.', version=9)
+        ok_run = fes.run(venture(), founder)
+        fake.create = real_create
+        check('no database transaction is held while the evaluation calls run',
+              seen and not any(seen) and ok_run.status == 'done', (len(seen), any(seen), ok_run.status))
         sys.path.insert(0, ROOT)
         import test_compliance_phrases as tcp
         src = io.open(os.path.join(ROOT, 'app/templates/founder/report.html'), encoding='utf-8').read()
