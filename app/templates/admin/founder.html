@@ -104,6 +104,44 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
     {% endfor %}
   </section>
 
+  {# ── Ventures: founders and status (metadata only) ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-ventures" aria-labelledby="tab-ventures" {{ 'hidden' if tab != 'ventures' }}>
+    <div class="fa-card">
+      <h2>Ventures ({{ ventures|length }})</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">Every venture with its founders, stage, payment and startup page.
+        Names and emails only: documents, findings and agent output stay masked until the founders turn on support
+        access, and you read them in the <a href="/admin/observability?tab=founder&amp;view=trace">venture trace</a> (each view is audited).</p>
+      {% if ventures %}
+      <div class="fa-scroll"><table class="fa-t fa-stack admin-table" id="faVentures">
+        <thead><tr>
+          <th scope="col">Venture</th><th scope="col">Owner</th><th scope="col">Co-founders</th><th scope="col">Stage</th>
+          <th scope="col">Rung</th><th scope="col">Paid</th><th scope="col">Evaluation</th><th scope="col">Startup page</th>
+          <th scope="col">Support access</th><th scope="col">Created</th>
+        </tr></thead>
+        <tbody>
+        {% for v in ventures %}
+        <tr data-venture="{{ v.id }}">
+          <th scope="row" style="font-weight:600;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)">{{ v.name }}
+            {% if v.paused %}<span class="fa-badge lock">paused</span>{% endif %}{% if v.status != 'active' %}<span class="fa-badge">{{ v.status }}</span>{% endif %}
+            <br><a style="font-weight:500;font-size:13px" href="/admin/observability?tab=founder&amp;view=trace&amp;venture={{ v.id }}">Trace →</a></th>
+          <td data-label="Owner">{{ v.owner.name or '(no name)' }}<br><a href="mailto:{{ v.owner.email }}">{{ v.owner.email }}</a></td>
+          <td data-label="Co-founders">{% for m in v.team %}{{ m.name or m.email }}{% if m.title %} ({{ m.title }}){% endif %}{% if m.status != 'active' %} <span class="fa-badge">{{ m.status }}</span>{% endif %}{% if m.name %}<br><a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}{% if not loop.last %}<br>{% endif %}{% else %}<span class="fa-note">none</span>{% endfor %}</td>
+          <td data-label="Stage">{{ v.stage }}</td>
+          <td data-label="Rung">{{ v.rung }}{% if v.rung_label %} · {{ v.rung_label }}{% endif %}</td>
+          <td data-label="Paid">{% if v.paid_at %}{{ v.paid_at }}{% if v.amount %}<br>{{ v.amount }} · {{ v.track }}{% endif %}{% else %}<span class="fa-badge">unpaid</span>{% endif %}</td>
+          <td data-label="Evaluation">{% if v.evaluation %}<span class="fa-badge{{ ' on' if v.evaluation.status == 'done' else (' lock' if v.evaluation.status == 'failed' else '') }}">{{ v.evaluation.status }}</span><br>{{ v.evaluation.at }}{% else %}<span class="fa-note">not run</span>{% endif %}</td>
+          <td data-label="Startup page">{% if v.page %}<span class="fa-badge{{ ' on' if v.page.status == 'published' }}">{{ v.page.status }}</span>{% if v.page.name_check != 'clear' %} <span class="fa-badge lock">name {{ v.page.name_check }}</span>{% endif %}{% if v.page.listed %} <span class="fa-badge on">in directory</span>{% endif %}
+            {% if v.page.status == 'published' and v.page.name_check == 'clear' %}<br><a href="/startup/{{ v.page.slug }}" target="_blank" rel="noopener">/startup/{{ v.page.slug }}</a>{% else %}<br><code>/startup/{{ v.page.slug }}</code>{% endif %}{% else %}<span class="fa-note">none</span>{% endif %}</td>
+          <td data-label="Support access">{% if v.support_until %}<span class="fa-badge on">on</span><br>until {{ v.support_until }} UTC{% else %}<span class="fa-badge">off</span>{% endif %}</td>
+          <td data-label="Created">{{ v.created_at }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<p class="fa-note">No ventures yet.</p>{% endif %}
+    </div>
+  </section>
+
   {# ── Rubric ── #}
   <section class="fa-panel" role="tabpanel" id="panel-rubric" aria-labelledby="tab-rubric" {{ 'hidden' if tab != 'rubric' }}>
     <form class="fa-card" data-settings-form>
@@ -431,4 +469,5 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
   };
 })();
 </script>
+<script src="{{ url_for('static', filename='js/admin_table_filter.js') }}"></script>
 {% endblock %}

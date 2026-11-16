@@ -575,6 +575,41 @@ def main():
         check('the refunded owner sees checkout again', r.status_code == 200)
 
 
+        print('\n10b. Ventures tab: founders and status, metadata only')
+        from app.models.founder import StartupPage, VentureArtifact, VentureMember
+        cof = user('cora@x.com')
+        db.session.add(VentureMember(venture_id=V_ID, user_id=cof.id, role='cofounder', status='active',
+                                     title='CTO', joined_at=now))
+        db.session.add(VentureMember(venture_id=V_ID, invite_email='pending@x.com', role='cofounder',
+                                     status='invited'))
+        db.session.add(VentureArtifact(venture_id=V_ID, kind='startup_plan', version=1, is_current=True,
+                                       text_content='TOP SECRET PLAN TEXT', char_count=20))
+        vv = db.session.get(FounderVenture, V_ID)
+        vv.support_access_until = now.replace(year=now.year + 1)
+        sp = StartupPage(venture_id=V_ID, slug='acme-robotics-adm', name='Acme Robotics', status='published',
+                         name_check='clear', show_in_directory=True, published_at=now)
+        db.session.add(sp)
+        db.session.commit()
+        login(M_ID)
+        check('a member gets 403 on the Ventures tab', client.get('/admin/founder?tab=ventures').status_code == 403)
+        html = (login(A_ID), client.get('/admin/founder?tab=ventures').get_data(as_text=True))[1]
+        check('the Ventures tab is listed and opens', 'data-tab="ventures"' in html and 'id="panel-ventures"' in html
+              and 'id="panel-ventures" aria-labelledby="tab-ventures" >' in html)
+        check('each venture shows its owner name and email', 'Acme Robotics' in html and 'founder@x.com' in html
+              and 'Dockside' in html and 'member@x.com' in html)
+        check('co-founders are listed, invited ones by email with their status',
+              'cora@x.com' in html and '(CTO)' in html and 'pending@x.com' in html and '>invited<' in html)
+        check('startup page state, directory listing and support access are shown',
+              '/startup/acme-robotics-adm' in html and 'in directory' in html and 'until ' in html)
+        check('each row links to its observability trace',
+              'href="/admin/observability?tab=founder&amp;view=trace&amp;venture=%s"' % V_ID in html)
+        check('no document text reaches the table', 'TOP SECRET PLAN TEXT' not in html)
+        check('the table gets the shared per-column filters',
+              'class="fa-t fa-stack admin-table"' in html and 'admin_table_filter.js' in html)
+        obs_tpl = io.open(os.path.join(ROOT, 'app/templates/admin/_obs_founder.html'), encoding='utf-8').read()
+        check('the observability trace accepts the venture deep link', 'venture=' in obs_tpl and 'state.venture = vm[1]' in obs_tpl)
+
+
         print('\n11. Existing checkout branches are unaffected')
         sim = Simulation(id=generate_id(), user_id=O_ID, name='Tiered', status='complete')
         db.session.add(sim)

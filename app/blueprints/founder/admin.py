@@ -23,7 +23,7 @@ from flask_login import current_user, login_required
 from app.blueprints.founder import founder_bp
 from app.extensions import db
 
-TABS = (('overview', 'Overview'), ('rubric', 'Rubric'), ('readiness', 'Readiness'), ('autonomy', 'Autonomy'),
+TABS = (('overview', 'Overview'), ('ventures', 'Ventures'), ('rubric', 'Rubric'), ('readiness', 'Readiness'), ('autonomy', 'Autonomy'),
         ('caps', 'Caps'), ('targets', 'Targets'), ('pricing', 'Pricing'), ('preview', 'Preview'),
         ('investors', 'Investors'), ('names', 'Name checks'), ('counsel', 'Counsel'))
 
@@ -287,6 +287,71 @@ def _name_checks() -> list:
              'created_at': p.created_at.strftime('%Y-%m-%d') if p.created_at else ''} for p in pages]
 
 
+VENTURES_LIMIT = 1000
+
+
+def _ventures() -> list:
+    """Every venture with its founders and status, for the Ventures tab.
+    Metadata only: names, emails, stage, payment and page state. Documents,
+    findings and agent output stay behind the founder-granted support access
+    (venture trace in /admin/observability)."""
+    from datetime import datetime as _dt
+    from app.models.founder import EvaluationRun, FounderVenture, StartupPage, VentureMember
+    from app.models.user import User
+    rows = FounderVenture.query.order_by(FounderVenture.created_at.desc()).limit(VENTURES_LIMIT).all()
+    if not rows:
+        return []
+    ids = [v.id for v in rows]
+    members = VentureMember.query.filter(VentureMember.venture_id.in_(ids)).all()
+    user_ids = {v.owner_user_id for v in rows} | {m.user_id for m in members if m.user_id}
+    users = {u.id: u for u in User.query.filter(User.id.in_(list(user_ids) or ['-'])).all()}
+    pages = {p.venture_id: p for p in StartupPage.query.filter(StartupPage.venture_id.in_(ids)).all()}
+    last_eval = {}
+    for r in (EvaluationRun.query.filter(EvaluationRun.venture_id.in_(ids))
+              .order_by(EvaluationRun.started_at.desc()).all()):
+        last_eval.setdefault(r.venture_id, r)
+    try:
+        from app.services.founder_evaluation_service import LADDER
+        rung_labels = {n: t for (n, t, *_r) in LADDER}
+    except Exception:
+        rung_labels = {}
+    now = _dt.utcnow()
+
+    def person(uid, fallback_email=None):
+        u = users.get(uid) if uid else None
+        return {'id': uid, 'name': getattr(u, 'full_name', None) or '', 'email': getattr(u, 'email', None)
+                or fallback_email or ''}
+
+    out = []
+    for v in rows:
+        team = []
+        for m in members:
+            if m.venture_id != v.id or m.user_id == v.owner_user_id:
+                continue
+            p = person(m.user_id, m.invite_email)
+            p.update(role=m.role, title=m.title or '', status=m.status)
+            team.append(p)
+        page = pages.get(v.id)
+        ev = last_eval.get(v.id)
+        until = v.support_access_until
+        out.append({
+            'id': v.id, 'name': v.name, 'stage': v.stage, 'status': v.status,
+            'rung': v.rung, 'rung_label': rung_labels.get(v.rung, ''),
+            'owner': person(v.owner_user_id), 'team': team,
+            'paid_at': v.paid_at.strftime('%Y-%m-%d') if v.paid_at else '',
+            'amount': ('$%.0f' % (v.amount_cents / 100.0)) if v.amount_cents else '',
+            'track': v.track,
+            'page': ({'status': page.status, 'slug': page.slug, 'name_check': page.name_check,
+                      'listed': bool(getattr(page, 'show_in_directory', False))} if page else None),
+            'evaluation': ({'status': ev.status, 'at': ev.started_at.strftime('%Y-%m-%d') if ev.started_at else ''}
+                           if ev else None),
+            'support_until': until.strftime('%Y-%m-%d %H:%M') if until and until > now else '',
+            'paused': v.paused_at is not None,
+            'created_at': v.created_at.strftime('%Y-%m-%d') if v.created_at else '',
+        })
+    return out
+
+
 def _metrics() -> dict:
     from app.models.audit_log import AuditLog
     from app.models.founder import FounderVenture, InvestorProfile
@@ -322,6 +387,7 @@ def admin_page():
         dimensions=fc.DIMENSIONS, level_labels=LEVEL_LABELS, action_labels=ACTION_LABELS,
         target_labels=TARGET_LABELS, preview_descriptions=PREVIEW_DESCRIPTIONS, pricing=fc.pricing(),
         investors=[_investor_dict(p) for p in investors], csv_columns=CSV_COLUMNS, name_checks=_name_checks(),
+        ventures=_ventures(),
         today=date.today().isoformat(),
     )
 

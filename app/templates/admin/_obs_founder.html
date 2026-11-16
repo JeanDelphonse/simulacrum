@@ -419,6 +419,8 @@
     if (!d.enabled) return;
     tab.hidden = false;
     if (/[?&]tab=founder\b/.test(location.search)) {
+      var vm = /[?&]venture=(\w+)/.exec(location.search);
+      if (vm) state.venture = vm[1];          // deep link from /admin/founder?tab=ventures
       tab.click();
       var m = /[?&]view=(\w+)/.exec(location.search);
       if (m && LOADERS[m[1]]) show(m[1]);
