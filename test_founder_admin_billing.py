@@ -605,7 +605,7 @@ def main():
               'href="/admin/observability?tab=founder&amp;view=trace&amp;venture=%s"' % V_ID in html)
         check('no document text reaches the table', 'TOP SECRET PLAN TEXT' not in html)
         check('the table gets the shared per-column filters',
-              'class="fa-t fa-stack admin-table"' in html and 'admin_table_filter.js' in html)
+              'class="fa-t fa-stack admin-table fa-ventures"' in html and 'admin_table_filter.js' in html)
         obs_tpl = io.open(os.path.join(ROOT, 'app/templates/admin/_obs_founder.html'), encoding='utf-8').read()
         check('the observability trace accepts the venture deep link', 'venture=' in obs_tpl and 'state.venture = vm[1]' in obs_tpl)
 
