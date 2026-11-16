@@ -65,6 +65,7 @@
   .iv-md th { background: #fff; }
   .iv-md pre, .iv-md code { font-size: .82rem; white-space: pre-wrap; }
   .iv-md hr { border: 0; border-top: 1px solid var(--rule); margin: .6rem 0; }
+  .iv-linkform { border: 1px solid var(--rule); border-radius: 10px; padding: .8rem; background: var(--alt); }
   .iv-kv { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .84rem; color: var(--ink-2); margin: .3rem 0; }
   .iv-kv b { color: var(--ink); font-weight: 600; }
   .iv-block { font-size: .85rem; color: #7C2D12; background: #FFF7ED; border-radius: 8px; padding: .45rem .6rem; margin: .4rem 0; }
@@ -493,24 +494,106 @@
       return r.json().catch(function () { return null; });
     }).catch(function () { return null; });
   }
-  Promise.all([getJSON('/api/founder/v/' + vid + '/investor-links'), getJSON('/api/founder/v/' + vid + '/investor-access')]).then(function (res) {
-    var links = res[0], access = res[1], html = '';
-    if (!links && !access) {
-      box.innerHTML = '<p class="iv-empty">Investor links open once your startup page is published. Manage them from the startup page editor.</p>';
+  var LBASE = '/api/founder/v/' + vid;
+  var KIND = {invited: 'Private link', paid: 'Paid access', requested: 'Asked for access'};
+  var STATUS = {active: 'Has access', requested: 'Waiting for your approval', denied: 'Declined',
+                refunded: 'Refunded', revoked: 'Revoked', pending: 'Payment pending'};
+  function copyText(text, btn) {
+    var m = btn.closest('.iv-card').querySelector('.iv-msg');
+    function done() { say(m, 'Link copied. Send it to the investor yourself.', true); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { window.prompt('Copy this link:', text); });
+    } else { window.prompt('Copy this link:', text); }
+  }
+  function renderLinks() {
+    return Promise.all([getJSON(LBASE + '/investor-links'), getJSON(LBASE + '/investor-access')]).then(function (res) {
+      var links = res[0], access = res[1], html = '';
+      if (!links && !access) {
+        box.innerHTML = '<p class="iv-empty">Investor links are not available right now.</p>';
+        return;
+      }
+      var manage = !!((links && links.can_manage) || (access && access.can_manage));
+      var page = links && links.page;
+      if (!page) {
+        box.innerHTML = '<p class="iv-empty">Create your startup page first (Startup page tab). Private links open its investor view.</p>';
+        return;
+      }
+      if (page.status !== 'published') {
+        html += '<p class="iv-hint" style="margin:0 0 .6rem">Your startup page is not published yet. Links you create now start working once it is.</p>';
+      }
+      if (manage) {
+        html += '<form class="iv-linkform" data-link-form novalidate>' +
+          '<div class="iv-row"><label for="ln-label">Who is it for?</label><input type="text" id="ln-label" name="label" maxlength="120" placeholder="e.g. Dana at Seed Fund" required></div>' +
+          '<div class="iv-row"><label for="ln-email">Investor email (optional)</label><input type="email" id="ln-email" name="investor_email" maxlength="254" placeholder="dana@seedfund.vc"></div>' +
+          '<p class="iv-hint" style="margin:.2rem 0 .5rem">Anyone who opens the link sees the full investor view, including your ask, at no charge. Add the email to tie the link to one investor. You can revoke it at any time.</p>' +
+          '<button class="btn primary sm" type="submit">Create private link</button></form>';
+      } else {
+        html += '<p class="iv-hint">Only the founder who holds the investor-contact decision can create links and approve requests.</p>';
+      }
+      var ls = (links && links.links) || [];
+      html += '<h3 style="margin-top:1rem">Private links</h3>';
+      html += ls.length ? '<table class="iv-tbl"><thead><tr><th scope="col">For</th><th scope="col">Link</th><th scope="col">Opened</th><th scope="col">Status</th></tr></thead><tbody>' + ls.map(function (l) {
+        var who = esc(l.label || l.investor_email || 'Link') + (l.label && l.investor_email ? '<br><span class="iv-hint">' + esc(l.investor_email) + '</span>' : '');
+        var cell = l.revoked ? '<span class="iv-hint">revoked</span>' :
+          '<button class="btn sm" type="button" data-copy-link="' + esc(l.url) + '">Copy link</button>' +
+          (manage ? ' <button class="btn sm btn-ghost" type="button" data-revoke-link="' + esc(l.id) + '">Revoke</button>' : '');
+        return '<tr><td>' + who + '</td><td style="white-space:nowrap">' + cell + '</td><td>' + esc(l.open_count || 0) + '</td><td>' + (l.revoked ? 'Revoked' : 'Active') + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="iv-empty">No private links yet.</p>';
+      var as = (access && access.access) || [];
+      html += '<h3 style="margin-top:1rem">Who has access</h3>';
+      html += as.length ? '<table class="iv-tbl"><thead><tr><th scope="col">Investor</th><th scope="col">How</th><th scope="col">Status</th></tr></thead><tbody>' + as.map(function (a) {
+        var st = esc(STATUS[a.status] || a.status);
+        if (manage && a.status === 'requested') {
+          st += '<br><button class="btn primary sm" type="button" data-access="' + esc(a.id) + '" data-decide="approve">Approve</button>' +
+                ' <button class="btn sm btn-ghost" type="button" data-access="' + esc(a.id) + '" data-decide="deny">Decline</button>';
+        }
+        return '<tr><td>' + esc(a.email) + '</td><td>' + esc(KIND[a.kind] || a.kind) + '</td><td>' + st + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="iv-empty">No investor has access yet.</p>';
+      html += '<p class="iv-msg" role="status" aria-live="polite"></p>';
+      box.innerHTML = html;
+    });
+  }
+  box.addEventListener('submit', function (e) {
+    var f = e.target.closest('[data-link-form]');
+    if (!f) return;
+    e.preventDefault();
+    var m = f.closest('.iv-card').querySelector('.iv-msg') || top;
+    var label = f.elements.label.value.trim(), email = f.elements.investor_email.value.trim();
+    if (!label) { say(m, 'Say who the link is for.', false); f.elements.label.focus(); return; }
+    var btn = f.querySelector('button[type=submit]');
+    btn.disabled = true;
+    post(LBASE + '/investor-links', {label: label, investor_email: email || null}).then(function (x) {
+      btn.disabled = false;
+      if (!x.ok) { say(m, x.d.error || 'That did not go through.', false); return; }
+      renderLinks().then(function () {
+        var m2 = box.querySelector('.iv-msg');
+        if (m2) say(m2, 'Link created. Use "Copy link" and send it to the investor yourself.', true);
+      });
+    }).catch(function () { btn.disabled = false; say(m, 'That did not go through. Check your connection.', false); });
+  });
+  box.addEventListener('click', function (e) {
+    var c = e.target.closest('[data-copy-link]');
+    if (c) { copyText(c.getAttribute('data-copy-link'), c); return; }
+    var r = e.target.closest('[data-revoke-link]');
+    if (r) {
+      if (!window.confirm('Revoke this link? Anyone holding it loses the investor view.')) return;
+      r.disabled = true;
+      post(LBASE + '/investor-links/' + r.getAttribute('data-revoke-link') + '/revoke', {}).then(function (x) {
+        if (!x.ok) { r.disabled = false; say(box.querySelector('.iv-msg'), x.d.error || 'That did not go through.', false); return; }
+        renderLinks();
+      });
       return;
     }
-    var ls = list(links, 'links');
-    html += '<h3>Private links</h3>';
-    html += ls.length ? '<table class="iv-tbl"><thead><tr><th scope="col">For</th><th scope="col">Opened</th><th scope="col">Status</th></tr></thead><tbody>' + ls.map(function (l) {
-      return '<tr><td>' + esc(l.label || l.investor_email || 'Link') + '</td><td>' + esc(l.open_count || 0) + '</td><td>' + (l.revoked ? 'Revoked' : 'Active') + '</td></tr>';
-    }).join('') + '</tbody></table>' : '<p class="iv-empty">No private links yet.</p>';
-    var as = list(access, 'access');
-    html += '<h3 style="margin-top:1rem">Access</h3>';
-    html += as.length ? '<table class="iv-tbl"><thead><tr><th scope="col">Investor</th><th scope="col">How</th><th scope="col">Status</th></tr></thead><tbody>' + as.map(function (a) {
-      return '<tr><td>' + esc(a.email) + '</td><td>' + esc(a.kind) + '</td><td>' + esc(a.status) + '</td></tr>';
-    }).join('') + '</tbody></table>' : '<p class="iv-empty">No investor has access yet.</p>';
-    box.innerHTML = html;
+    var d = e.target.closest('[data-decide]');
+    if (d) {
+      d.disabled = true;
+      post(LBASE + '/investor-access/' + d.getAttribute('data-access'), {action: d.getAttribute('data-decide')}).then(function (x) {
+        if (!x.ok) { d.disabled = false; say(box.querySelector('.iv-msg'), x.d.error || 'That did not go through.', false); return; }
+        renderLinks();
+      });
+    }
   });
+  renderLinks();
 })();
 </script>
 {% endblock %}

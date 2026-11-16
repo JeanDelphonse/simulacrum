@@ -374,9 +374,13 @@ def _serializer():
 
 
 def _base_url() -> str:
+    # The canonical origin (BASE_URL, https://simisi.io), not the request host:
+    # behind cPanel's proxy the request can arrive as http:// or an internal
+    # host, and a link a founder copies and emails must be the public address.
     try:
         from flask import request
-        return request.url_root.rstrip('/')
+        from app.services import bio_seo
+        return bio_seo.canonical_origin(request.url_root).rstrip('/')
     except Exception:
         from flask import current_app
         return (current_app.config.get('APP_BASE_URL') or 'https://simisi.io').rstrip('/')

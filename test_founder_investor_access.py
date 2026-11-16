@@ -230,6 +230,10 @@ def main():
         named = InvestorLink.query.get(body['link']['id'])
         check('the token is random, long and stored', named.token and len(named.token) >= 40
               and body['link']['url'].endswith('/startup/%s/i/%s' % (SLUG, named.token)))
+        from app.services import bio_seo
+        origin = bio_seo.canonical_origin('http://localhost/')
+        check('the link uses the public site address, not the request host',
+              body['link']['url'] == '%s/startup/%s/i/%s' % (origin, SLUG, named.token), (origin, body['link']['url']))
         code, body = api('post', '/api/founder/v/%s/investor-links' % V, {'label': 'Bad', 'investor_email': 'nope'})
         check('a bad investor email is refused (400)', code == 400, (code, body))
         code, body = api('get', '/api/founder/v/%s/investor-links' % V, uid=C_ID)

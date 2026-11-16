@@ -610,6 +610,15 @@ def main():
         db.session.delete(md_update)
         db.session.commit()
 
+        print('\n11c. Founders create, copy and revoke private links and decide requests here')
+        tpl = io.open(os.path.join(ROOT, 'app/templates/founder/investors.html'), encoding='utf-8').read()
+        check('the Investors page has a create-link form posting to the link API',
+              'data-link-form' in tpl and "LBASE + '/investor-links'" in tpl and 'Create private link' in tpl)
+        check('each link has Copy and Revoke', 'data-copy-link' in tpl and "'/revoke'" in tpl)
+        check('requests waiting for approval get Approve and Decline', 'data-decide="approve"' in tpl
+              and 'data-decide="deny"' in tpl and "'/investor-access/'" in tpl)
+        check('no stale pointer to the startup page editor for links', 'Manage them from the startup page editor' not in tpl)
+
         print('\n12. Investor switch off again: everything 404s')
         founder_feature.set_mode('founder_investor', 'off', A_ID)
         check('page 404', client.get(page).status_code == 404)
