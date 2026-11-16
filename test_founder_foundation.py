@@ -258,16 +258,24 @@ def main():
         from app.models.audit_log import AuditLog
         check('creation is audit-logged', AuditLog.query.filter_by(action='founder_venture_created',
                                                                    resource_id=v.id).count() == 1)
-        check('one owned venture per account',
-              raises(lambda: founder_ventures.create_venture(fu, 'Second', '', 'idea'), founder_ventures.VentureError))
-        real_vfo = founder_ventures.venture_for_owner
-        founder_ventures.venture_for_owner = lambda uid: None     # both requests pass the check (race)
-        try:
-            raced = raises(lambda: founder_ventures.create_venture(fu, 'Twin', '', 'idea'),
-                           founder_ventures.VentureError)
-        finally:
-            founder_ventures.venture_for_owner = real_vfo
-        check('a racing second create hits the UNIQUE key and becomes VentureError, not a 500', raced)
+        # A founder may own several ventures (sql/078), each with its own name, up to the cap.
+        check('the same name twice for one owner is refused (also stops a double-click)',
+              raises(lambda: founder_ventures.create_venture(fu, 'acme robotics', '', 'idea'),
+                     founder_ventures.VentureError))
+        multi = User(id=generate_id(), email='multi@x.com', full_name='Multi Founder', password_hash='x',
+                     email_verified=True, onboarding_completed_at=datetime.utcnow())
+        db.session.add(multi)
+        db.session.commit()
+        made = [founder_ventures.create_venture(multi, 'Venture %d' % i, '', 'idea')
+                for i in range(founder_ventures.MAX_VENTURES_PER_OWNER)]
+        check('a founder can own several ventures, each a separate venture with its own owner membership',
+              len({m.id for m in made}) == founder_ventures.MAX_VENTURES_PER_OWNER
+              and all(founder_ventures.get_member(m, multi.id).role == 'owner' for m in made))
+        check('... listed for them', len(founder_ventures.owned_ventures(multi.id)) == founder_ventures.MAX_VENTURES_PER_OWNER
+              and len(founder_ventures.ventures_for_user(multi.id)) == founder_ventures.MAX_VENTURES_PER_OWNER)
+        check('the per-owner cap is enforced',
+              raises(lambda: founder_ventures.create_venture(multi, 'One too many', '', 'idea'),
+                     founder_ventures.VentureError) and not founder_ventures.can_start_another(multi.id))
         check('... and the session is usable afterwards', founder_ventures.venture_for_owner(F_ID).id == v.id)
         check('bad stage / empty name refused',
               raises(lambda: founder_ventures.create_venture(db.session.get(User, O_ID), 'X', '', 'unicorn'),

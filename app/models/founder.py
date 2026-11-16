@@ -1,6 +1,6 @@
 """Founder Track (SIM-PRD-FND-001, FOUNDER_PLAN.md section 3).
 
-A founder owns one venture. Co-founders join it as members. The venture's
+A founder may own several ventures. Co-founders join each as members. The venture's
 artifacts are evaluated against a nine-dimension rubric, the findings feed a
 team of founder agents (config/founder_agents.json, never config/agents.json),
 and the agents' work runs through a per-venture plan. The startup page and the
@@ -43,7 +43,7 @@ class FounderVenture(db.Model):
     TRACKS = ('standalone', 'addon')
 
     id = db.Column(db.String(9), primary_key=True, default=generate_pk)
-    owner_user_id = db.Column(db.String(9), nullable=False, unique=True)
+    owner_user_id = db.Column(db.String(9), nullable=False, index=True)   # several per owner (sql/078)
     name = db.Column(db.String(200), nullable=False)
     one_liner = db.Column(db.String(300), nullable=True)
     stage = db.Column(db.String(12), nullable=False, default='idea')

@@ -1,7 +1,9 @@
 """Founder Track ventures: lookup, access and creation (FOUNDER_PLAN.md section 5).
 
-A user owns at most one venture (founder_venture.owner_user_id is UNIQUE) and
-may be an active co-founder on others. Every founder route resolves its venture
+A user may own several ventures (up to MAX_VENTURES_PER_OWNER, each with a
+distinct name; sql/078 dropped the one-per-owner key) and may be an active
+co-founder on others. Each venture has its own documents, team, report, page
+and one-time payment. Every founder route resolves its venture
 through require_member(), which 404s for a missing venture and 403s for a user
 who isn't an active member.
 """
@@ -12,6 +14,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 STAGES = ('idea', 'pre-seed', 'seed', 'series-a')
+# Every venture gets a free evaluation preview (model cost), so ownership is
+# capped. Raise it here if founders need more.
+MAX_VENTURES_PER_OWNER = 5
 NAME_MAX = 200
 ONE_LINER_MAX = 300
 
@@ -21,10 +26,24 @@ class VentureError(ValueError):
 
 
 def venture_for_owner(user_id: str):
+    """The owner's most recent venture, or None (a founder may own several)."""
     from app.models.founder import FounderVenture
     if not user_id:
         return None
-    return FounderVenture.query.filter_by(owner_user_id=user_id).first()
+    return (FounderVenture.query.filter_by(owner_user_id=user_id)
+            .order_by(FounderVenture.created_at.desc()).first())
+
+
+def owned_ventures(user_id: str) -> list:
+    from app.models.founder import FounderVenture
+    if not user_id:
+        return []
+    return (FounderVenture.query.filter_by(owner_user_id=user_id)
+            .order_by(FounderVenture.created_at).all())
+
+
+def can_start_another(user_id: str) -> bool:
+    return len(owned_ventures(user_id)) < MAX_VENTURES_PER_OWNER
 
 
 def ventures_for_user(user_id: str) -> list:
@@ -82,8 +101,14 @@ def create_venture(user, name: str, one_liner: str = '', stage: str = 'idea'):
         raise VentureError('The one-liner is too long (%d characters at most).' % ONE_LINER_MAX)
     if stage not in STAGES:
         raise VentureError('Unknown stage.')
-    if venture_for_owner(user.id) is not None:
-        raise VentureError('You already have a venture.')
+    owned = owned_ventures(user.id)
+    if any((x.name or '').strip().lower() == name.lower() for x in owned):
+        # Also stops a double-click on Start from creating the venture twice.
+        raise VentureError('You already have a venture called %s. Open it from the Founder Track page, '
+                           'or give the new one a different name.' % name)
+    if len(owned) >= MAX_VENTURES_PER_OWNER:
+        raise VentureError('You can run up to %d ventures on the Founder Track. Contact SimiSI if you need more.'
+                           % MAX_VENTURES_PER_OWNER)
 
     now = datetime.utcnow()
     v = FounderVenture(owner_user_id=user.id, name=name, one_liner=one_liner or None, stage=stage,
@@ -93,9 +118,8 @@ def create_venture(user, name: str, one_liner: str = '', stage: str = 'idea'):
     try:
         db.session.flush()
     except IntegrityError:
-        # A second request (a double-click on start) won the UNIQUE owner_user_id race.
         db.session.rollback()
-        raise VentureError('You already have a venture.')
+        raise VentureError('That venture could not be created. Try again.')
     owner = VentureMember(venture_id=v.id, user_id=user.id, role='owner', status='active', joined_at=now,
                           title='Founder')
     db.session.add(owner)

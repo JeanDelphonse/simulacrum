@@ -162,10 +162,15 @@ def main():
                                                            'stage': 'pre-seed'})
             check('create returns 201 with the intake url', r.status_code == 201 and '/intake' in r.get_json()['url'])
             VID = r.get_json()['venture_id']
-            check('a second venture is refused', client.post('/api/founder/ventures', json={'name': 'Two'}).status_code == 400)
+            r = client.post('/api/founder/ventures', json={'name': 'acme robotics'})
+            check('a second venture with the same name is refused', r.status_code == 400
+                  and 'already have a venture called' in r.get_json()['error'], r.get_json())
             r = client.get('/founder/start')
-            check('/founder/start redirects once you have a venture', r.status_code == 302
-                  and r.headers['Location'].endswith('/founder/v/%s/intake' % VID))
+            body = r.get_data(as_text=True)
+            check('/founder/start offers another venture and links the ones you have', r.status_code == 200
+                  and 'Start another venture' in body and '/founder/v/%s' % VID in body and 'id="fi-create"' in body)
+            check('/founder offers "Start another venture" once you have one',
+                  'Start another venture' in client.get('/founder').get_data(as_text=True))
 
             print('\n4. Intake page: gaps, not zeros')
             r = client.get('/founder/v/%s/intake' % VID)

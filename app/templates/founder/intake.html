@@ -61,8 +61,16 @@
 
 {% if not venture %}
   <p class="fi-eyebrow">Founder Track</p>
-  <h1>Start your venture</h1>
-  <p class="fi-lede">Name it and say what it does in one line. Next you'll share your documents or talk the idea through.</p>
+  <h1>{{ 'Start another venture' if owned else 'Start your venture' }}</h1>
+  {% if owned %}
+  <p class="fi-lede">You already run {{ owned|length }} venture{{ '' if owned|length == 1 else 's' }}:
+    {% for o in owned %}<a class="link" href="{{ url_for('founder.workspace_page', venture_id=o.id) }}">{{ o.name }}</a>{{ ', ' if not loop.last }}{% endfor %}.
+    A new venture has its own documents, team, readiness report and startup page, and its own one-time Founder Track fee.</p>
+  {% endif %}
+  {% if at_cap %}
+  <div class="fi-card"><p style="margin:0">You can run up to {{ max_ventures }} ventures on the Founder Track. Contact <a class="link" href="mailto:simi@simisi.io">simi@simisi.io</a> if you need more.</p></div>
+  {% else %}
+  {% if not owned %}<p class="fi-lede">Name it and say what it does in one line. Next you'll share your documents or talk the idea through.</p>{% endif %}
   <form class="fi-card" id="fi-create" novalidate>
     <div class="fi-field">
       <label for="fi-name">Venture name</label>
@@ -83,6 +91,7 @@
       <span class="fi-status" id="fi-create-msg" role="status" aria-live="polite"></span>
     </div>
   </form>
+  {% endif %}
 
 {% else %}
   <p class="fi-back"><a href="{{ url_for('founder.report_page', venture_id=venture.id) }}">&larr; Back to readiness report</a></p>

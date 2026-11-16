@@ -39,11 +39,13 @@ def _payload() -> dict:
 @founder_bp.route('/founder/start')
 @founder_required
 def start_page():
+    """Start a venture. A founder may own several (up to the cap); at the cap
+    the page explains it instead of showing the form."""
     from app.services import founder_ventures
-    v = founder_ventures.venture_for_owner(current_user.id)
-    if v is not None:
-        return redirect(url_for('founder.intake_page', venture_id=v.id))
-    return render_template('founder/intake.html', venture=None, stages=founder_ventures.STAGES)
+    owned = founder_ventures.owned_ventures(current_user.id)
+    return render_template('founder/intake.html', venture=None, stages=founder_ventures.STAGES,
+                           owned=owned, at_cap=len(owned) >= founder_ventures.MAX_VENTURES_PER_OWNER,
+                           max_ventures=founder_ventures.MAX_VENTURES_PER_OWNER)
 
 
 @founder_bp.route('/api/founder/ventures', methods=['POST'])
