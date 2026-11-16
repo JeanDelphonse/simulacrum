@@ -71,7 +71,8 @@ def page_editor(venture_id):
     return render_template('founder/page_editor.html', venture=v, page=page, state=_state(v, page),
                            stats=sps.analytics(page), stages=sps.STAGE_LABELS, labels=sps.FIELD_LABELS,
                            supported=sps.supported_fields(v), traction_max=sps.TRACTION_MAX,
-                           field_max=sps.FIELD_MAX, nav=venture_nav(v))
+                           field_max=sps.FIELD_MAX, nav=venture_nav(v), agent_choices=sps.agent_choices(page),
+                           agent_sections=sps.AGENT_SECTION_TITLES)
 
 
 @founder_bp.route('/founder/v/<venture_id>/page/preview')
@@ -106,6 +107,27 @@ def page_save(venture_id):
     if page.name_check != 'clear':
         msg += ' ' + sps.name_check_message(page)
     return jsonify(dict(_state(v, page), changes=changes, message=msg))
+
+
+@founder_bp.route('/api/founder/v/<venture_id>/page/agent-content', methods=['POST'])
+@founder_required
+def page_agent_content(venture_id):
+    """Show an agent's latest output on the page: {agent_key, audience: none |
+    investor | public}. The publishing-decision holder decides."""
+    from app.extensions import db
+    from app.services import startup_page_service as sps
+    v, page = _load(venture_id, api=True)
+    data = request.get_json(silent=True) or {}
+    key = data.get('agent_key') if isinstance(data.get('agent_key'), str) else ''
+    audience = data.get('audience') if isinstance(data.get('audience'), str) else ''
+    try:
+        sel = sps.set_agent_content(page, current_user, key, audience)
+    except sps.PageError as exc:
+        db.session.rollback()
+        return jsonify({'error': str(exc)}), 400
+    msg = {'none': 'No longer shown on the page.', 'investor': 'Shown to investors in the investor view.',
+           'public': 'Shown on the public page and to investors.'}[audience]
+    return jsonify({'ok': True, 'selection': sel, 'message': msg})
 
 
 @founder_bp.route('/api/founder/v/<venture_id>/page/logo', methods=['POST'])

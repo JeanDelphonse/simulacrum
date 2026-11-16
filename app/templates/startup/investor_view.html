@@ -59,6 +59,34 @@
   <p class="st-empty">No proof-of-concept results are recorded yet.</p>
   {% endif %}
 </section>
+{% if p.agent and p.agent.investor_total %}
+<section class="st-sec" id="full-picture" aria-labelledby="h-full">
+  <span class="st-num">09</span>
+  <h2 id="h-full">The full picture, layer by layer</h2>
+  <p>The analyses the founders chose to share with investors, from validating the problem to raising capital. Each was prepared with a SimiSI agent from the founders' own documents and reviewed by the founders. They are working analyses, not audited figures or a forecast.</p>
+  {% for L in p.agent.by_layer %}
+  <details class="st-layer" data-layer="{{ L.layer }}"{{ ' open' if loop.first and L.blocks }}{{ ' aria-disabled="true"' if not L.blocks }}>
+    <summary><span class="t">L{{ L.layer }} · {{ L.name }}</span>
+      <span class="s">{% if L.blocks %}{{ L.blocks|length }} analys{{ 'is' if L.blocks|length == 1 else 'es' }}{% else %}Not shared yet{% endif %}</span></summary>
+    {% if L.blocks %}
+    <div class="st-layer-body">
+      {% for b in L.blocks %}
+      <details class="st-agent" data-agent="{{ b.key }}">
+        <summary>
+          <span class="st-agent-t">{{ b.label }}</span>
+          <span class="st-agent-m">{{ b.description }} · version {{ b.version }}{% if b.date %}, {{ b.date.strftime('%d %b %Y') }}{% endif %}</span>
+          <span class="st-agent-p">{{ b.teaser }}</span>
+          <span class="st-agent-more" aria-hidden="true">Read the analysis</span>
+        </summary>
+        <div class="st-agent-body">{{ b.text|founder_md }}</div>
+      </details>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </details>
+  {% endfor %}
+</section>
+{% endif %}
 {% endblock %}
 
 {% block st_contact %}

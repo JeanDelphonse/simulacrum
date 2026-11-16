@@ -162,3 +162,42 @@
   .st-root .st-crumb .hide-sm { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .st-root * { scroll-behavior: auto !important; } }
+
+/* Founder-approved agent analyses (sql/076): beside a public section, and the
+   investor view's layer-by-layer accordion. Rendered from Markdown by the
+   escape-first renderer. */
+.st-root details.st-agent { margin: 14px 0 0; border: 1px solid var(--rule); border-left: 3px solid var(--ink);
+  border-radius: 10px; background: #FBFCFD; }
+.st-root details.st-agent > summary { list-style: none; cursor: pointer; padding: 12px 16px; display: grid; gap: 4px; }
+.st-root details.st-agent > summary::-webkit-details-marker { display: none; }
+.st-root details.st-agent > summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 10px; }
+.st-root .st-agent-t { font-weight: 700; color: var(--ink); font-size: 15px; }
+.st-root .st-agent-m { font-size: 12.5px; color: var(--mute); line-height: 1.45; }
+.st-root .st-agent-p { font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+.st-root .st-agent-more { font-size: 13px; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.st-root details.st-agent[open] .st-agent-p { display: none; }
+.st-root details.st-agent[open] .st-agent-more::after { content: ' (hide)'; }
+.st-root .st-agent-body { padding: 4px 16px 14px; border-top: 1px solid var(--rule); font-size: 14.5px; color: var(--ink-2);
+  line-height: 1.6; overflow-wrap: anywhere; }
+.st-root .st-agent-body p { white-space: normal; margin: 8px 0; }
+.st-root .st-agent-body h2, .st-root .st-agent-body h3, .st-root .st-agent-body h4 { font-size: 15px; margin: 14px 0 6px; color: var(--ink); display: block; }
+.st-root .st-agent-body ul, .st-root .st-agent-body ol { margin: 6px 0; padding-left: 20px; }
+.st-root .st-agent-body li { margin: 3px 0; }
+.st-root .st-agent-body table { border-collapse: collapse; margin: 8px 0; font-size: 13px; display: block; overflow-x: auto; max-width: 100%; }
+.st-root .st-agent-body th, .st-root .st-agent-body td { border: 1px solid var(--rule); padding: 5px 8px; text-align: left; vertical-align: top; }
+.st-root .st-agent-body th { background: var(--alt); }
+.st-root .st-agent-body blockquote { margin: 8px 0; padding-left: 10px; border-left: 3px solid var(--rule); }
+.st-root .st-agent-body hr { border: 0; border-top: 1px solid var(--rule); margin: 10px 0; }
+.st-root details.st-layer { border: 1px solid var(--rule); border-left: 4px solid var(--l1, var(--ink)); border-radius: 10px; margin: 10px 0 0; background: #fff; }
+.st-root details.st-layer[data-layer="2"] { border-left-color: var(--l2, var(--ink)); }
+.st-root details.st-layer[data-layer="3"] { border-left-color: var(--l3, var(--ink)); }
+.st-root details.st-layer[data-layer="4"] { border-left-color: var(--l4, var(--ink)); }
+.st-root details.st-layer[data-layer="5"] { border-left-color: var(--l5, var(--gold)); }
+.st-root details.st-layer > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+.st-root details.st-layer > summary::-webkit-details-marker { display: none; }
+.st-root details.st-layer > summary .t { font-weight: 700; color: var(--ink); }
+.st-root details.st-layer > summary .s { font-size: 13px; color: var(--mute); }
+.st-root details.st-layer[aria-disabled="true"] > summary { cursor: default; opacity: .7; }
+.st-root .st-layer-body { padding: 0 14px 14px; }
+@media print { .st-root details.st-agent, .st-root details.st-layer { break-inside: avoid; } }
+

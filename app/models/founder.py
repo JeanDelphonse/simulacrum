@@ -468,6 +468,7 @@ class StartupPage(db.Model):
     published_at = db.Column(db.DateTime, nullable=True)
     publish_approved_by = db.Column(db.String(9), nullable=True)
     show_in_directory = db.Column(db.Boolean, nullable=False, default=False)   # /startups, founder opt-in (sql/075)
+    agent_content = db.Column(db.JSON, nullable=True)   # founder-approved agent outputs (sql/076)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 

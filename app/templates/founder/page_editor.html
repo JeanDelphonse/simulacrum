@@ -15,6 +15,13 @@
   .pe-side { position: sticky; top: 80px; }
   .pe-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 13px;
              font-weight: 700; background: var(--alt); color: var(--ink-2); white-space: nowrap; }
+  .pe-agents { list-style: none; margin: .5rem 0 0; padding: 0; }
+  .pe-agent { border-top: 1px solid var(--rule); padding: .8rem 0; }
+  .pe-agent:first-child { border-top: 0; }
+  .pe-agent-head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .pe-agent-prev { margin: .3rem 0 .5rem; color: var(--ink-2); font-size: .9rem; line-height: 1.5; }
+  .pe-agent-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+  .pe-agent-row select { min-height: 36px; border: 1px solid var(--rule); border-radius: 8px; padding: 0 .5rem; font: inherit; background: #fff; }
   .pe-dir { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--rule); }
   .pe-dir-row { display: flex; gap: .5rem; align-items: center; font-weight: 600; cursor: pointer; }
   .pe-dir-row input { width: 18px; height: 18px; }
@@ -176,6 +183,37 @@
         <button class="btn primary" type="submit">Save changes</button>
         <p class="pe-msg" id="peMsg" role="status" aria-live="polite" style="margin:0"></p>
       </div>
+      <section class="pe-card" aria-labelledby="h-agents" id="peAgents">
+        <h2 id="h-agents">From your agents</h2>
+        <p class="pe-hint">Add your agents' analyses to the page so investors see the work behind it. You choose each one, and the version you reviewed is what shows; a newer run waits for you here. <b>Validate</b> analyses can go on the public page, beside the section they support. Every layer can go in the investor view, for invited and paying investors.</p>
+        {% if agent_choices %}
+        <ul class="pe-agents">
+          {% for a in agent_choices %}
+          <li class="pe-agent" data-agent-key="{{ a.key }}">
+            <div class="pe-agent-head">
+              <b>{{ a.label }}</b> <span class="pe-pill">L{{ a.layer }}</span>
+              {% if a.public_allowed %}<span class="pe-hint" style="margin:0">Public section: {{ agent_sections[a.section] }}</span>{% endif %}
+            </div>
+            <p class="pe-agent-prev">{{ a.preview }}</p>
+            <div class="pe-agent-row">
+              <label class="sr" for="ag-{{ a.key }}">Who sees the {{ a.label }} analysis</label>
+              <select id="ag-{{ a.key }}" data-agent-select{{ '' if state.can_publish else ' disabled' }}>
+                <option value="none"{{ ' selected' if a.audience == 'none' }}>Not shown</option>
+                <option value="investor"{{ ' selected' if a.audience == 'investor' }}>Investors only</option>
+                {% if a.public_allowed %}<option value="public"{{ ' selected' if a.audience == 'public' }}>Public page and investors</option>{% endif %}
+              </select>
+              <span class="pe-hint" style="margin:0">Latest: version {{ a.latest_version }}{% if a.latest_at %}, {{ a.latest_at.strftime('%d %b %Y') }}{% endif %}{% if a.shown_version %} · showing version {{ a.shown_version }}{% endif %}</span>
+              {% if a.newer and state.can_publish %}<button type="button" class="btn sm" data-agent-update>Show version {{ a.latest_version }}</button>{% endif %}
+            </div>
+            <p class="pe-msg" role="status" aria-live="polite"></p>
+          </li>
+          {% endfor %}
+        </ul>
+        {% if not state.can_publish %}<p class="pe-hint">Only the founder who holds the publishing decision can change what the page shows.</p>{% endif %}
+        {% else %}
+        <p class="pe-hint">No agent output yet. Run agents from your plan; their analyses appear here for you to add.</p>
+        {% endif %}
+      </section>
     </form>
 
     <aside class="pe-side">
@@ -291,6 +329,31 @@
       if (!x.ok) dirToggle.checked = !want;
       dirToggle.disabled = false;
     }).catch(function () { say(dirMsg, 'That did not go through.', false); dirToggle.checked = !want; dirToggle.disabled = false; });
+  });
+  function setAgent(li, audience, ctrl) {
+    var m = li.querySelector('.pe-msg');
+    ctrl.disabled = true;
+    say(m, 'Saving...', true);
+    return post('/api/founder/v/' + vid + '/page/agent-content', {agent_key: li.getAttribute('data-agent-key'), audience: audience})
+      .then(function (x) {
+        say(m, x.d.message || x.d.error || 'That did not go through.', x.ok);
+        ctrl.disabled = false;
+        if (x.ok && ctrl.hasAttribute('data-agent-update')) { setTimeout(function () { location.reload(); }, 700); }
+        return x;
+      }).catch(function () { say(m, 'That did not go through.', false); ctrl.disabled = false; });
+  }
+  document.querySelectorAll('[data-agent-select]').forEach(function (sel) {
+    var before = sel.value;
+    sel.addEventListener('change', function () {
+      var li = sel.closest('[data-agent-key]');
+      setAgent(li, sel.value, sel).then(function (x) { if (x && x.ok) { before = sel.value; } else { sel.value = before; } });
+    });
+  });
+  document.querySelectorAll('[data-agent-update]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var li = b.closest('[data-agent-key]');
+      setAgent(li, li.querySelector('[data-agent-select]').value, b);
+    });
   });
   var pubMsg = document.getElementById('pubMsg');
   document.querySelectorAll('[data-pub]').forEach(function (b) {

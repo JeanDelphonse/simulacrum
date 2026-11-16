@@ -907,6 +907,8 @@ def investor_context(page, access=None, link=None) -> dict:
     ctx = sps.investor_context(page, access or link)
     venture = _venture(page)
     ctx['full_proof'] = full_proof(venture)
+    # Every layer's founder-approved analyses (paying and invited investors).
+    ctx['agent'] = sps.agent_blocks(page, investor=True)
     ctx['ask_pending'] = not full
     if not full:
         ctx['ask'] = None

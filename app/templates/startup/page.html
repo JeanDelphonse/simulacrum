@@ -36,6 +36,19 @@
   {% block st_head_extra %}{% endblock %}
 </head>
 {%- macro fs(on) -%}{% if on %} <span class="st-fs" title="Stated by the founders; not checked against evidence">founder-stated</span>{% endif %}{%- endmacro -%}
+{%- macro agent_for(sec) -%}
+  {%- for b in ((p.agent or {}).get('by_section') or {}).get(sec, []) %}
+  <details class="st-agent" data-agent="{{ b.key }}">
+    <summary>
+      <span class="st-agent-t">{{ b.section_title or b.label }}</span>
+      <span class="st-agent-m">Prepared with SimiSI's {{ b.label }} agent from the founders' documents · reviewed and shared by the founders · version {{ b.version }}{% if b.date %}, {{ b.date.strftime('%d %b %Y') }}{% endif %}</span>
+      <span class="st-agent-p">{{ b.teaser }}</span>
+      <span class="st-agent-more" aria-hidden="true">Read the analysis</span>
+    </summary>
+    <div class="st-agent-body">{{ b.text|founder_md }}</div>
+  </details>
+  {%- endfor %}
+{%- endmacro -%}
 {%- macro body(field, empty='Not provided yet.') -%}
   {%- set s = p.sections[field] -%}
   {% if s.text %}<p>{{ s.text }}</p>{% else %}<p class="st-empty">{{ empty }}</p>{% endif %}
@@ -105,6 +118,7 @@
           {{ body('problem') }}
           <h3>Who has it{{ fs(p.sections.customer.founder_stated) }}</h3>
           {{ body('customer') }}
+          {{ agent_for('problem') }}
         </section>
 
         <section class="st-sec" id="solution" aria-labelledby="h-solution">
@@ -117,6 +131,7 @@
                     allow="fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
           </div>
           {% endif %}
+          {{ agent_for('solution') }}
         </section>
 
         <section class="st-sec" id="proof" aria-labelledby="h-proof">
@@ -142,6 +157,7 @@
           {% for q in p.proof.quotes %}
           <blockquote class="st-quote">"{{ q }}"<footer>A customer, quoted with permission</footer></blockquote>
           {% endfor %}
+          {{ agent_for('proof') }}
         </section>
 
         <section class="st-sec" id="traction" aria-labelledby="h-traction">
@@ -158,6 +174,7 @@
           {% else %}
           <p class="st-empty">The founders have not shared traction metrics yet.</p>
           {% endif %}
+          {{ agent_for('traction') }}
         </section>
 
         <section class="st-sec" id="market" aria-labelledby="h-market">
@@ -169,6 +186,7 @@
           {{ body('market_method', 'The sizing method is not stated.') }}
           <h3>Business model{{ fs(p.sections.business_model.founder_stated) }}</h3>
           {{ body('business_model') }}
+          {{ agent_for('market') }}
         </section>
 
         <section class="st-sec" id="team" aria-labelledby="h-team">
@@ -239,6 +257,11 @@
             <li><a href="#traction">Traction</a></li>
             <li><a href="#market">Market and business model</a></li>
             <li><a href="#team">Team</a></li>
+            {% if investor_view %}
+            {% if p.ask %}<li><a href="#ask">The ask</a></li>{% endif %}
+            <li><a href="#proof-detail">Proof in detail</a></li>
+            {% if p.agent and p.agent.investor_total %}<li><a href="#full-picture">The full picture</a></li>{% endif %}
+            {% endif %}
           </ul>
         </nav>
       </aside>

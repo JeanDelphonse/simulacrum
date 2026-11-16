@@ -894,6 +894,7 @@ def public_context(page) -> dict:
         'team': _team(venture),
         'founder_stated': sorted(stated),
         'request_kinds': {k: REQUEST_KINDS[k] for k in PUBLIC_REQUEST_KINDS},
+        'agent': agent_blocks(page, investor=False),
     }
     try:
         from app.services import contact_masking
@@ -1206,4 +1207,189 @@ def directory(stage_filter: str = None) -> dict:
         out.append({'key': 'other', 'label': 'Stage not given', 'cards': other})
     return {'groups': out, 'total': sum(len(g['cards']) for g in out),
             'counts': {k: len(groups[k]) for k in STAGE_LABELS}}
+
+
+# ---------------------------------------------------------------------------
+# Agent analyses on the page (sql/076)
+# ---------------------------------------------------------------------------
+# Founders choose, per agent, whether its latest output is shown, and to whom.
+# The version they reviewed is pinned. Layer 1 (Validate) analyses may go on
+# the public page, each beside the section it supports; every layer may go in
+# the investor view (paying and invited investors), grouped by layer.
+
+AGENT_PUBLIC_SECTIONS = {            # agent -> public section it supports (Layer 1 only)
+    'fnd_problem_statement': 'problem',
+    'fnd_competitor_scan': 'solution',
+    'fnd_pain_evidence': 'proof',
+    'fnd_customer_interview': 'traction',
+    'fnd_market_sizing': 'market',
+}
+AGENT_SECTION_TITLES = {
+    'problem': 'The problem, analysed', 'solution': 'How it compares to the alternatives',
+    'proof': 'What customers say about the pain', 'traction': 'Customer discovery',
+    'market': 'Market sizing',
+}
+# Outreach, investor-pipeline and internal working documents never go on the page.
+AGENT_NEVER_SHOWN = frozenset((
+    'fnd_investor_matching', 'fnd_warm_intro', 'fnd_followup_crm', 'fnd_application_form',
+    'fnd_outbound_pipeline', 'fnd_startup_page', 'fnd_incorporation_checklist',
+))
+AUDIENCES = ('none', 'investor', 'public')
+AGENT_PREVIEW_CHARS = 240
+
+
+def _latest_outputs(venture) -> dict:
+    """{agent_key: latest VentureAgentOutput} for the venture."""
+    from app.models.founder import VentureAgentOutput
+    out = {}
+    for o in (VentureAgentOutput.query.filter_by(venture_id=venture.id)
+              .order_by(VentureAgentOutput.created_at.desc(), VentureAgentOutput.version.desc()).all()):
+        out.setdefault(o.agent_key, o)
+    return out
+
+
+def _agent_meta(key: str) -> dict:
+    try:
+        from app.services import founder_registry
+        return founder_registry.get(key) or {}
+    except Exception:
+        return {}
+
+
+def _plain(text: str, limit: int) -> str:
+    """A readable one-line preview: prose lines first (tables, headings and
+    rules skipped), Markdown marks removed. Falls back to the first heading."""
+    lines = [ln.strip() for ln in (text or '').splitlines()]
+    prose = [ln for ln in lines if ln and not ln.startswith(('|', '#', '---', '***', '___'))]
+    heads = [ln.lstrip('#').strip() for ln in lines if ln.startswith('#')]
+    t = ' '.join(prose) if prose else ' '.join(heads)
+    if not t:
+        rows = [ln for ln in lines if ln.startswith('|') and not set(ln) <= set('|-: ')]
+        if rows:
+            t = 'Table: ' + ', '.join(c.strip() for c in rows[0].strip('|').split('|') if c.strip())
+    t = re.sub(r'^\s*(?:[-*+]|\d+[.)])\s+', '', t)
+    t = re.sub(r'(?:(?<=\s)|^)(?:[-*+]|\d+[.)])\s+', '', t)
+    t = re.sub(r'[*_`>\[\]]+', '', t)
+    t = ' '.join(t.split())
+    return (t[:limit].rsplit(' ', 1)[0] + '...') if len(t) > limit else t
+
+
+def _agent_rank(key: str) -> int:
+    """The agent's position in the catalog (the plan's own order)."""
+    try:
+        from app.services import founder_registry
+        order = [a.get('action_type') or a.get('key') for a in founder_registry.all_agents()]
+        return order.index(key)
+    except (ValueError, Exception):
+        return 999
+
+
+def agent_choices(page) -> list:
+    """For the editor: every agent with an output that may go on the page,
+    with the founders' current choice and whether a newer version is waiting."""
+    venture = _venture(page)
+    chosen = dict(page.agent_content or {})
+    rows = []
+    for key, o in _latest_outputs(venture).items():
+        if key in AGENT_NEVER_SHOWN or not (o.content or '').strip():
+            continue
+        meta = _agent_meta(key)
+        sel = chosen.get(key) or {}
+        audience = sel.get('audience') if sel.get('audience') in AUDIENCES else 'none'
+        rows.append({
+            'key': key, 'label': meta.get('label') or key.replace('fnd_', '').replace('_', ' ').title(),
+            'layer': int(meta.get('layer') or 1), 'public_allowed': key in AGENT_PUBLIC_SECTIONS,
+            'section': AGENT_PUBLIC_SECTIONS.get(key), 'audience': audience,
+            'latest_version': o.version, 'latest_at': o.created_at,
+            'shown_version': sel.get('version') if audience != 'none' else None,
+            'newer': bool(audience != 'none' and sel.get('output_id') != o.id),
+            'preview': _plain(o.content, AGENT_PREVIEW_CHARS),
+        })
+    rows.sort(key=lambda r: (r['layer'], _agent_rank(r['key'])))
+    return rows
+
+
+def set_agent_content(page, user, agent_key: str, audience: str, commit: bool = True) -> dict:
+    """Show (or stop showing) an agent's latest output on the page. The
+    publishing-decision holder decides; public content passes the same checks
+    as the founders' own public copy, investor content the ask's checks."""
+    from app.extensions import db
+    if not can_publish(page, user):
+        raise PageError('Only the founder who holds the publishing decision can choose what the page shows.')
+    if audience not in AUDIENCES:
+        raise PageError('Choose who sees it: no one, investors, or everyone.')
+    if agent_key in AGENT_NEVER_SHOWN:
+        raise PageError('This agent drafts outreach or internal working documents; they do not go on the page.')
+    if audience == 'public' and agent_key not in AGENT_PUBLIC_SECTIONS:
+        raise PageError('Only Validate analyses can go on the public page. Show this one to investors instead.')
+    content = dict(page.agent_content or {})
+    if audience == 'none':
+        content.pop(agent_key, None)
+    else:
+        o = _latest_outputs(_venture(page)).get(agent_key)
+        if o is None or not (o.content or '').strip():
+            raise PageError('That agent has no output yet. Run it from your plan first.')
+        problem = copy_problem(o.content, _exemption(_venture(page)), public=(audience == 'public'))
+        if problem:
+            raise PageError('This analysis cannot go on the page as written. %s Re-run the agent or edit the '
+                            'page copy yourself.' % problem)
+        content[agent_key] = {'output_id': o.id, 'version': o.version, 'audience': audience,
+                              'by': getattr(user, 'id', None), 'at': _now().isoformat()}
+    page.agent_content = content or None
+    page.updated_at = _now()
+    _log(page, 'agent_content', '%s: %s' % (agent_key, audience), user)
+    if commit:
+        db.session.commit()
+    return content.get(agent_key) or {'audience': 'none'}
+
+
+def _agent_block(key, sel, output) -> dict:
+    meta = _agent_meta(key)
+    text = output.content or ''
+    try:
+        from app.services import contact_masking
+        text = contact_masking.mask_deep(text, force=True)
+    except Exception as exc:
+        logger.warning('agent content masking failed: %s', exc)
+    return {'key': key, 'label': meta.get('label') or key, 'layer': int(meta.get('layer') or 1),
+            'description': meta.get('description') or '', 'version': output.version,
+            'date': output.created_at, 'text': text, 'teaser': _plain(text, AGENT_PREVIEW_CHARS),
+            'section': AGENT_PUBLIC_SECTIONS.get(key),
+            'section_title': AGENT_SECTION_TITLES.get(AGENT_PUBLIC_SECTIONS.get(key), '')}
+
+
+def agent_blocks(page, investor: bool = False) -> dict:
+    """{'by_section': {section: [block]}, 'by_layer': [{layer, name, blocks}]}.
+    Public: Layer 1 analyses approved for everyone, beside their sections.
+    Investor: everything approved (public or investors), grouped by layer.
+    Only the pinned, founder-reviewed version is shown."""
+    from app.extensions import db
+    from app.models.founder import VentureAgentOutput
+    chosen = dict(page.agent_content or {})
+    by_section, by_layer = {}, {}
+    for key, sel in chosen.items():
+        audience = (sel or {}).get('audience')
+        if key in AGENT_NEVER_SHOWN or audience not in ('public', 'investor'):
+            continue
+        if audience == 'investor' and not investor:
+            continue
+        if audience == 'public' and key not in AGENT_PUBLIC_SECTIONS:
+            continue
+        o = db.session.get(VentureAgentOutput, sel.get('output_id')) if sel.get('output_id') else None
+        if o is None or o.venture_id != page.venture_id or not (o.content or '').strip():
+            continue
+        b = _agent_block(key, sel, o)
+        if audience == 'public':
+            by_section.setdefault(b['section'], []).append(b)
+        if investor:
+            by_layer.setdefault(b['layer'], []).append(b)
+    try:
+        from app.services import founder_registry
+        names = founder_registry.LAYER_NAMES
+    except Exception:
+        names = {1: 'Validate', 2: 'Build', 3: 'Sell', 4: 'Operate', 5: 'Capitalize'}
+    layers = [{'layer': n, 'name': names.get(n, 'Layer %d' % n),
+               'blocks': sorted(by_layer.get(n, []), key=lambda b: _agent_rank(b['key']))} for n in sorted(names)]
+    return {'by_section': by_section, 'by_layer': layers,
+            'investor_total': sum(len(L['blocks']) for L in layers)}
 
