@@ -67,6 +67,11 @@ class FounderVenture(db.Model):
                 'created_at': _iso(self.created_at), 'updated_at': _iso(self.updated_at)}
 
 
+TEAM_ROLE_LABELS = {'founder': 'Founder', 'cofounder': 'Co-founder', 'advisor': 'Advisor',
+                    'team_member': 'Team member'}
+FOUNDING_ROLES = ('founder', 'cofounder')
+
+
 class VentureMember(db.Model):
     """The owner and co-founders. An invited co-founder has invite_email and
     invite_token until they join with their own account."""
@@ -84,6 +89,7 @@ class VentureMember(db.Model):
     invite_token = db.Column(db.String(64), nullable=True, unique=True)
     role = db.Column(db.String(10), nullable=False, default='cofounder')
     title = db.Column(db.String(120), nullable=True)
+    team_role = db.Column(db.String(12), nullable=True)   # founder|cofounder|advisor|team_member (sql/077)
     status = db.Column(db.String(10), nullable=False, default='invited')
     joined_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -91,7 +97,20 @@ class VentureMember(db.Model):
     def to_dict(self):
         return {'id': self.id, 'venture_id': self.venture_id, 'user_id': self.user_id,
                 'invite_email': self.invite_email, 'role': self.role, 'title': self.title,
+                'team_role': self.team_role_key, 'team_role_label': TEAM_ROLE_LABELS.get(self.team_role_key, ''),
                 'status': self.status, 'joined_at': _iso(self.joined_at), 'created_at': _iso(self.created_at)}
+
+    @property
+    def team_role_key(self) -> str:
+        """What the person is on the team. The account role ('owner') is a
+        permission, not a job: the owner may be an advisor or an operator."""
+        if self.team_role in TEAM_ROLE_LABELS:
+            return self.team_role
+        return 'founder' if self.role == 'owner' else 'cofounder'
+
+    @property
+    def is_founding(self) -> bool:
+        return self.team_role_key in FOUNDING_ROLES
 
 
 class VentureArtifact(db.Model):

@@ -172,7 +172,8 @@ def tp_invite(venture_id):
     if locked:
         return locked
     d = _payload()
-    out, err = _call(fas.invite, v, current_user, d.get('email', ''), d.get('title', ''))
+    out, err = _call(fas.invite, v, current_user, d.get('email', ''), d.get('title', ''),
+                     d.get('team_role') if isinstance(d.get('team_role'), str) else None)
     if err:
         return err
     member, sent = out
@@ -180,6 +181,24 @@ def tp_invite(venture_id):
         ("We couldn't send the email. Share the invite link with %s yourself." % member.invite_email)
     return jsonify({'ok': True, 'member_id': member.id, 'email_sent': sent, 'message': msg,
                     'join_url': fas.join_url(member.invite_token)}), 201
+
+
+@founder_bp.route('/api/founder/v/<venture_id>/alignment/members/<member_id>', methods=['POST'])
+@founder_required
+def tp_member_update(venture_id, member_id):
+    """{team_role?, title?}: the owner for anyone, a member for themselves."""
+    from app.services import founder_alignment_service as fas
+    v, locked = _api_venture(venture_id)
+    if locked:
+        return locked
+    d = _payload()
+    role = d.get('team_role') if isinstance(d.get('team_role'), str) else None
+    title = d.get('title') if isinstance(d.get('title'), str) else None
+    out, err = _call(fas.set_team_member, v, current_user, member_id, role, title)
+    if err:
+        return err
+    return jsonify({'ok': True, 'member': out.to_dict(), 'message': 'Saved.',
+                    'view': fas.alignment_view(v, current_user)})
 
 
 @founder_bp.route('/api/founder/v/<venture_id>/alignment/invites/<member_id>/revoke', methods=['POST'])

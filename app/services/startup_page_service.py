@@ -847,6 +847,7 @@ def _team(venture) -> list:
     members = (VentureMember.query.filter_by(venture_id=venture.id, status='active')
                .order_by(VentureMember.role.desc(), VentureMember.joined_at, VentureMember.created_at).all())
     out = []
+    members = sorted(members, key=lambda m: (not m.is_founding, m.role != 'owner'))
     for m in members:
         if not m.user_id:
             continue
@@ -857,7 +858,9 @@ def _team(venture) -> list:
         bio = BioPage.query.filter_by(user_id=u.id, status=BioPage.STATUS_PUBLISHED).first()
         linked = prof is not None and bio is not None and bool(prof.username)
         name = (prof.display_name if prof is not None and prof.display_name else u.full_name) or 'Co-founder'
-        out.append({'name': name, 'title': m.title or ('Founder' if m.role == 'owner' else 'Co-founder'),
+        role_label = m.to_dict().get('team_role_label') or ('Founder' if m.role == 'owner' else 'Co-founder')
+        out.append({'name': name, 'title': ('%s · %s' % (role_label, m.title)) if m.title else role_label,
+                    'founding': m.is_founding,
                     'url': '/u/%s' % prof.username if linked else None,
                     'avatar': prof.avatar_path if linked and prof.avatar_path else None,
                     'initials': ''.join(w[0] for w in name.split()[:2]).upper()})

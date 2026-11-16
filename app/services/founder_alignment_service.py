@@ -171,8 +171,53 @@ def pending_invites(venture) -> list:
             .order_by(VentureMember.created_at.asc()).all())
 
 
+def founding_members(venture) -> list:
+    """Active members whose team role is Founder or Co-founder: the people
+    who take the alignment check. Advisors and team members do not."""
+    return [m for m in active_members(venture) if m.is_founding]
+
+
 def is_solo(venture) -> bool:
-    return len(active_members(venture)) < 2
+    return len(founding_members(venture)) < 2
+
+
+def set_team_member(venture, user, member_id: str, team_role: str = None, title=None):
+    """Set a member's team role and/or title. The owner may set anyone's;
+    every member may set their own. At least one founder or co-founder stays
+    on the team. Commits."""
+    from app.extensions import db
+    from app.models.founder import TEAM_ROLE_LABELS, VentureMember
+    me = _member_for(venture, user)
+    m = db.session.get(VentureMember, member_id)
+    if m is None or m.venture_id != venture.id or m.status not in ('active', 'invited'):
+        raise AlignmentError('That person is not on this team.')
+    if me.role != 'owner' and m.id != me.id:
+        raise PermissionError('Only the venture owner can change other people\'s roles.')
+    changes = []
+    if team_role is not None:
+        team_role = str(team_role).strip()
+        if team_role not in TEAM_ROLE_LABELS:
+            raise AlignmentError('Choose a team role: Founder, Co-founder, Advisor or Team member.')
+        if team_role != m.team_role_key:
+            before = m.team_role
+            m.team_role = team_role
+            if m.status == 'active' and not founding_members(venture):
+                m.team_role = before
+                raise AlignmentError('At least one person on the team must be a founder or co-founder.')
+            changes.append('team role %s' % TEAM_ROLE_LABELS[team_role])
+    if title is not None:
+        clean = ' '.join(str(title).split())[:TITLE_MAX] or None
+        if clean != m.title:
+            m.title = clean
+            changes.append('title %s' % (clean or '(none)'))
+    if changes:
+        who = m.invite_email if m.status == 'invited' else (m.user_id or m.id)
+        _log(venture.id, 'team_role', '%s: %s' % (who, ', '.join(changes)), user_id=getattr(user, 'id', None))
+        _publish(venture.id, 'member_updated', {'actor_user_id': getattr(user, 'id', None), 'actor_kind': 'founder',
+                                                'note': ', '.join(changes)})
+        db.session.commit()
+        _refresh_plan(venture)
+    return m
 
 
 def _names(members) -> dict:
@@ -250,7 +295,7 @@ def _send_invite_email(venture, inviter_name: str, email: str, url: str) -> bool
         return False
 
 
-def invite(venture, user, email: str, title: str = ''):
+def invite(venture, user, email: str, title: str = '', team_role: str = None):
     """Invite a co-founder by email (owner only). Re-inviting a pending address
     issues a fresh token. Returns (member, email_sent)."""
     from app.extensions import db
@@ -302,6 +347,9 @@ def invite(venture, user, email: str, title: str = ''):
     else:
         m.created_at = now                     # the expiry window restarts with the new token
     m.title = title or m.title
+    from app.models.founder import TEAM_ROLE_LABELS
+    if team_role in TEAM_ROLE_LABELS:
+        m.team_role = team_role
     m.invite_token = secrets.token_urlsafe(24)
     db.session.flush()
     _log(venture.id, 'cofounder_invited', 'Co-founder invited (%s)' % m.id, user_id=user.id)
@@ -424,7 +472,7 @@ def _load(row) -> dict:
 def _responses(venture) -> dict:
     """{member_id: {question_key: {choice, note}}} for active members only."""
     from app.models.founder import AlignmentResponse
-    active = {m.id for m in active_members(venture)}
+    active = {m.id for m in founding_members(venture)}
     out = {}
     for r in AlignmentResponse.query.filter_by(venture_id=venture.id).all():
         if r.member_id in active:
@@ -468,6 +516,9 @@ def submit_answers(venture, user, answers: dict) -> dict:
     from app.extensions import db
     from sqlalchemy.exc import IntegrityError
     me = _member_for(venture, user)
+    if not me.is_founding:
+        raise AlignmentError('The alignment check is for founders and co-founders. Your team role is %s.'
+                             % me.to_dict()['team_role_label'])
     if not isinstance(answers, dict) or not answers:
         raise AlignmentError('Answer at least one question.')
     clean = []
@@ -535,7 +586,7 @@ def _note_now_match(venture, key: str, user_id=None) -> None:
 def agreement_rates(venture) -> dict:
     """Agreement at the first check (answers as they stood when the question
     was revealed) and now, over questions every active member has answered."""
-    members = active_members(venture)
+    members = founding_members(venture)
     resp = _responses(venture)
     revealed = first = now = 0
     for key in QUESTION_KEYS:
@@ -552,7 +603,7 @@ def agreement_rates(venture) -> dict:
 def compare(venture) -> dict:
     """{question_key: 'match' | 'differ' | None}. None until every active
     member (two or more) has answered the question."""
-    members = active_members(venture)
+    members = founding_members(venture)
     resp = _responses(venture)
     out = {}
     for key in QUESTION_KEYS:
@@ -648,8 +699,9 @@ def alignment_view(venture, user) -> dict:
     """What this member may see: their own answers always; others' answers
     only for questions every active member has answered."""
     me = _member_for(venture, user)
-    members = active_members(venture)
-    names = _names(members + pending_invites(venture))
+    team = active_members(venture)
+    members = founding_members(venture)
+    names = _names(team + pending_invites(venture))
     resp = _responses(venture)
     status = compare(venture)
     mine = resp.get(me.id, {})
@@ -670,8 +722,11 @@ def alignment_view(venture, user) -> dict:
     counts = {'match': sum(1 for s in status.values() if s == 'match'),
               'differ': sum(1 for s in status.values() if s == 'differ'),
               'waiting': sum(1 for s in status.values() if s is None)}
+    from app.models.founder import TEAM_ROLE_LABELS
     return {'me': me.to_dict(), 'is_owner': me.role == 'owner', 'solo': len(members) < 2,
-            'members': [dict(m.to_dict(), name=names.get(m.id)) for m in members],
+            'me_founding': me.is_founding, 'team_roles': list(TEAM_ROLE_LABELS.items()),
+            'members': [dict(m.to_dict(), name=names.get(m.id),
+                             can_edit=(me.role == 'owner' or m.id == me.id)) for m in team],
             'invites': [dict(m.to_dict(), name=names.get(m.id)) for m in pending_invites(venture)],
             'questions': questions, 'counts': counts}
 

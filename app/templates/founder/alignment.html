@@ -79,11 +79,20 @@
   {% endif %}
   {% include 'founder/_ws_nav.html' %}
 
+  <style>
+    .fa-team li { flex-wrap: wrap; }
+    .fa-edit { flex-basis: 100%; margin: .2rem 0 .1rem; }
+    .fa-member-form { margin-top: .5rem; }
+  </style>
   {% macro invite_form() %}
   <form class="fa-form" id="fa-invite" novalidate>
     <div class="fa-field"><label for="fa-inv-email">Co-founder's email</label>
       <input id="fa-inv-email" name="email" type="email" autocomplete="off" required></div>
-    <div class="fa-field"><label for="fa-inv-title">Their role (optional)</label>
+    <div class="fa-field"><label for="fa-inv-role">Team role</label>
+      <select id="fa-inv-role" name="team_role">
+        {% for k, label in V.team_roles %}<option value="{{ k }}"{{ ' selected' if k == 'cofounder' }}>{{ label }}</option>{% endfor %}
+      </select></div>
+    <div class="fa-field"><label for="fa-inv-title">Title (optional)</label>
       <input id="fa-inv-title" name="title" type="text" maxlength="120" placeholder="For example: CTO"></div>
     <button class="btn primary" type="submit">Send invite</button>
   </form>
@@ -96,11 +105,45 @@
   <h3 style="margin-top:1rem">Waiting to join</h3>
   <ul class="fa-people">
     {% for m in V.invites %}
-    <li><span>{{ m.invite_email }}{% if m.title %} <span class="fa-pill">{{ m.title }}</span>{% endif %}</span>
+    <li><span>{{ m.invite_email }} <span class="fa-pill">{{ m.team_role_label }}</span>{% if m.title %} · {{ m.title }}{% endif %}</span>
       {% if V.is_owner %}<button type="button" class="btn sm btn-ghost" data-revoke="{{ m.id }}">Cancel invite</button>{% endif %}</li>
     {% endfor %}
   </ul>
   {% endif %}
+  {% endmacro %}
+
+  {% macro team_card() %}
+  <section class="fa-card" aria-labelledby="fa-team-h">
+    <h2 id="fa-team-h">Your team</h2>
+    <p class="fa-sub" style="margin:0 0 .5rem">Team role is what each person is on the team. The account owner set up the venture and manages invites; they don't have to be a founder. Founders and co-founders take the alignment check; advisors and team members don't.</p>
+    <ul class="fa-people fa-team">
+      {% for m in V.members %}
+      <li data-member="{{ m.id }}">
+        <span><b>{{ m.name }}</b>{% if m.id == V.me.id %} (you){% endif %}{% if m.title %} · {{ m.title }}{% endif %}
+          {% if m.role == 'owner' %}<span class="fa-sub" style="font-size:.8rem">· account owner</span>{% endif %}</span>
+        <span class="fa-pill" data-role-pill>{{ m.team_role_label }}</span>
+        {% if m.can_edit %}
+        <details class="fa-edit">
+          <summary class="link" style="cursor:pointer">Edit{% if m.id != V.me.id %} {{ m.name.split()[0] if m.name else '' }}'s role{% else %} my role{% endif %}</summary>
+          <form class="fa-form fa-member-form" data-member-form="{{ m.id }}" novalidate>
+            <div class="fa-field"><label for="tr-{{ m.id }}">Team role</label>
+              <select id="tr-{{ m.id }}" name="team_role">
+                {% for k, label in V.team_roles %}<option value="{{ k }}"{{ ' selected' if k == m.team_role }}>{{ label }}</option>{% endfor %}
+              </select></div>
+            <div class="fa-field"><label for="tt-{{ m.id }}">Title (optional)</label>
+              <input id="tt-{{ m.id }}" name="title" type="text" maxlength="120" value="{{ m.title or '' }}" placeholder="For example: CEO"></div>
+            <button class="btn primary sm" type="submit">Save</button>
+            <p class="fa-msg" role="status" aria-live="polite"></p>
+          </form>
+        </details>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {{ invites_list() }}
+    {% if V.is_owner and not V.solo %}<details style="margin-top:.75rem"><summary class="link" style="cursor:pointer">Invite someone</summary>
+      <div style="margin-top:.75rem">{{ invite_form() }}</div></details>{% endif %}
+  </section>
   {% endmacro %}
 
   {% if V.solo %}
@@ -108,22 +151,11 @@
     <h2 id="fa-solo-h">Alignment is skipped for solo founders</h2>
     <p class="fa-sub">The alignment check, roles, decision rights and check-ins are for teams of two or more. If someone is building this with you, invite them and you'll each answer the same questions separately.</p>
     {% if V.is_owner %}{{ invite_form() }}{% else %}<p class="fa-empty">Only the venture owner can invite co-founders.</p>{% endif %}
-    {{ invites_list() }}
   </section>
+  {% if section != 'roles' %}{{ team_card() }}{% endif %}
   {% elif section != 'roles' %}
 
-  <section class="fa-card" aria-labelledby="fa-team-h">
-    <h2 id="fa-team-h">Your team</h2>
-    <ul class="fa-people">
-      {% for m in V.members %}
-      <li><span><b>{{ m.name }}</b>{% if m.id == V.me.id %} (you){% endif %}{% if m.title %} · {{ m.title }}{% endif %}</span>
-        <span class="fa-pill">{{ 'Owner' if m.role == 'owner' else 'Co-founder' }}</span></li>
-      {% endfor %}
-    </ul>
-    {{ invites_list() }}
-    {% if V.is_owner %}<details style="margin-top:.75rem"><summary class="link" style="cursor:pointer">Invite another co-founder</summary>
-      <div style="margin-top:.75rem">{{ invite_form() }}</div></details>{% endif %}
-  </section>
+  {{ team_card() }}
 
   <div class="fa-note" role="note">
     <b>How the check works.</b> Each founder answers on their own. You see the others' answers to a question only once everyone has answered it.
@@ -138,6 +170,7 @@
       <li class="fa-pill differ">{{ V.counts.differ }} differ</li>
       <li class="fa-pill">{{ V.counts.waiting }} waiting for answers</li>
     </ul>
+    {% if V.me_founding %}
     <form id="fa-answers" novalidate>
       {% for q in V.questions %}
       <fieldset class="fa-q" id="q-{{ q.key }}">
@@ -169,6 +202,9 @@
       <div class="fa-row"><button class="btn primary" type="submit">Save my answers</button>
         <span class="fa-msg" id="fa-ans-msg" role="status" aria-live="polite"></span></div>
     </form>
+    {% else %}
+    <p class="fa-empty">The alignment check is for founders and co-founders. Your team role is {{ V.me.team_role_label }}; you can see how the founders compare once they have all answered.</p>
+    {% endif %}
   </section>
   <p class="fa-sub">Next: <a class="link" href="{{ url_for('founder.tp_roles_page', venture_id=venture.id) }}">set roles, decision rights and check-ins</a>.</p>
 
@@ -293,13 +329,28 @@
     el.className = 'fa-msg ' + (ok ? 'ok' : 'err');
   }
 
+  Array.prototype.forEach.call(document.querySelectorAll('[data-member-form]'), function (f) {
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var m = f.querySelector('.fa-msg'), b = f.querySelector('button[type=submit]');
+      b.disabled = true;
+      post('/members/' + f.getAttribute('data-member-form'),
+           {team_role: f.elements.team_role.value, title: f.elements.title.value}).then(function (x) {
+        say(m, x.d.message || x.d.error || 'That did not go through.', x.ok);
+        b.disabled = false;
+        if (x.ok) { setTimeout(function () { location.reload(); }, 700); }
+      }).catch(function () { say(m, 'That did not go through.', false); b.disabled = false; });
+    });
+  });
   var inv = document.getElementById('fa-invite');
   if (inv) inv.addEventListener('submit', function (e) {
     e.preventDefault();
     var msg = document.getElementById('fa-inv-msg');
     var btn = inv.querySelector('button[type=submit]');
     btn.disabled = true;
-    post('/invite', {email: document.getElementById('fa-inv-email').value, title: document.getElementById('fa-inv-title').value}).then(function (res) {
+    var roleSel = document.getElementById('fa-inv-role');
+    post('/invite', {email: document.getElementById('fa-inv-email').value, title: document.getElementById('fa-inv-title').value,
+                     team_role: roleSel ? roleSel.value : 'cofounder'}).then(function (res) {
       btn.disabled = false;
       if (!res.ok) { say(msg, res.d.error || 'Could not send the invite.', false); return; }
       say(msg, res.d.message, true);
