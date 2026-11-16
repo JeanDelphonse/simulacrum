@@ -412,6 +412,20 @@ def main():
         check('evidence ladder: 5 rungs, current marked', html.count('class="fr-rung') == 5
               and 'aria-current="step"' in html and 'What moves you up' in html)
         check('no unlock prompt once paid', 'Unlock the full report' not in html)
+        score_acc = re.findall(r'<details class="fr-layer" data-layer="(\d)"( open)?>', html)
+        find_acc = re.findall(r'<details class="fr-card fr-layer" data-layer="(\d)"( open)?>', html)
+        check('scores by dimension: one accordion per layer, the first open',
+              len(score_acc) == len(d['layers']) and score_acc[0][1] == ' open'
+              and all(not o for _l, o in score_acc[1:]), score_acc)
+        check('findings by layer: one accordion per layer with findings, the first open',
+              len(find_acc) == len([L for L in d['layers'] if L['findings']]) and find_acc[0][1] == ' open'
+              and all(not o for _l, o in find_acc[1:]), find_acc)
+        check('each layer header summarises it (dimensions / average, findings / gaps)',
+              re.search(r'\d+ dimensions? · average \d+', html) is not None
+              and re.search(r'\d+ findings?( · \d+ gaps?)?</span>', html) is not None)
+        check('Expand all / Collapse all controls for both sections',
+              html.count('data-acc="open"') == 2 and html.count('data-acc="close"') == 2)
+        check('a link to one finding opens its layer', 'closest(\'details\')' in html and 'hashchange' in html)
         login(C_ID)
         check('a co-founder sees the same report', client.get('/founder/v/%s/report' % V_ID).status_code == 200)
 

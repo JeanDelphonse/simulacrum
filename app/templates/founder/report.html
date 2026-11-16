@@ -41,6 +41,31 @@
   .fr-layer[data-layer="3"] { border-left-color: var(--l3); }
   .fr-layer[data-layer="4"] { border-left-color: var(--l4); }
   .fr-layer[data-layer="5"] { border-left-color: var(--l5); }
+  /* Layer accordions (native details/summary) */
+  .fr-acc-tools { display: flex; gap: .5rem; justify-content: flex-end; margin: -.25rem 0 .6rem; }
+  .fr-acc-tools button { background: none; border: 0; padding: .2rem .1rem; font: inherit; font-size: .85rem; font-weight: 600;
+                         color: var(--ink-2); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .fr-acc-tools button:hover { color: var(--ink); }
+  details.fr-layer { border: 1px solid var(--rule); border-left-width: 4px; border-radius: var(--r-ui); padding: 0; background: #fff; }
+  details.fr-layer + details.fr-layer { margin-top: .6rem; }
+  details.fr-layer > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .75rem;
+                               padding: .8rem 1rem; border-radius: var(--r-ui); }
+  details.fr-layer > summary::-webkit-details-marker { display: none; }
+  details.fr-layer > summary:hover { background: var(--alt); }
+  details.fr-layer > summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  details.fr-layer > summary .t { font-weight: 700; color: var(--ink); flex: 1; min-width: 0; }
+  details.fr-layer > summary .s { font-size: .85rem; color: var(--ink-2); white-space: nowrap; }
+  details.fr-layer > summary .chev { width: 18px; height: 18px; flex-shrink: 0; transition: transform .15s; color: var(--ink-2); }
+  details.fr-layer[open] > summary .chev { transform: rotate(180deg); }
+  details.fr-layer[open] > summary { border-bottom: 1px solid var(--rule); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  details.fr-layer > .fr-acc-body { padding: .4rem 1rem .9rem; }
+  details.fr-layer.fr-card { padding: 0; }
+  @media (max-width: 560px) {
+    details.fr-layer > summary { flex-wrap: wrap; row-gap: .2rem; }
+    details.fr-layer > summary .t { white-space: nowrap; order: 1; }
+    details.fr-layer > summary .chev { order: 2; }
+    details.fr-layer > summary .s { order: 3; flex-basis: 100%; white-space: normal; }
+  }
   .fr-dim { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem .75rem; align-items: center;
             padding: .55rem 0; border-bottom: 1px solid var(--rule); }
   .fr-dim:last-child { border-bottom: 0; }
@@ -182,10 +207,14 @@
         <div class="fr-sub" style="font-size:.8rem">weighted overall, out of 100</div></div>
       {% endif %}
     </div>
-    <div class="fr-layers">
+    <div class="fr-acc-tools" data-acc-tools="scores"><button type="button" data-acc="open">Expand all</button><button type="button" data-acc="close">Collapse all</button></div>
+    <div class="fr-layers" data-acc-group="scores">
       {% for L in r.layers %}
-      <div class="fr-layer" data-layer="{{ L.layer }}">
-        <h3>L{{ L.layer }} · {{ L.name }}</h3>
+      {% set scored = L.dimensions|selectattr('score', 'defined')|rejectattr('score', 'none')|map(attribute='score')|list %}
+      <details class="fr-layer" data-layer="{{ L.layer }}"{{ ' open' if loop.first }}>
+        <summary><span class="t">L{{ L.layer }} · {{ L.name }}</span>
+          <span class="s">{{ L.dimensions|length }} dimension{{ '' if L.dimensions|length == 1 else 's' }}{% if scored %} · average {{ ((scored|sum) / (scored|length))|round|int }}{% endif %}</span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+        <div class="fr-acc-body">
         {% for d in L.dimensions %}
         <div class="fr-dim">
           <span><b>{{ d.label }}</b></span>
@@ -196,7 +225,8 @@
           {% endif %}
         </div>
         {% endfor %}
-      </div>
+        </div>
+      </details>
       {% endfor %}
     </div>
   </section>
@@ -204,10 +234,19 @@
 
   {% if r.findings %}
   <section aria-labelledby="fr-find-h">
-    <h2 id="fr-find-h">Findings by layer</h2>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">
+      <h2 id="fr-find-h">Findings by layer</h2>
+      <div class="fr-acc-tools" data-acc-tools="findings"><button type="button" data-acc="open">Expand all</button><button type="button" data-acc="close">Collapse all</button></div>
+    </div>
+    <div data-acc-group="findings">
+    {% set ns = namespace(first=true) %}
     {% for L in r.layers if L.findings %}
-    <div class="fr-card fr-layer" data-layer="{{ L.layer }}">
-      <h3>L{{ L.layer }} · {{ L.name }}</h3>
+    {% set gaps = L.findings|selectattr('ftype', 'equalto', 'gap')|list|length %}
+    <details class="fr-card fr-layer" data-layer="{{ L.layer }}"{{ ' open' if ns.first }}>
+      {% set ns.first = false %}
+      <summary><span class="t">L{{ L.layer }} · {{ L.name }}</span>
+        <span class="s">{{ L.findings|length }} finding{{ '' if L.findings|length == 1 else 's' }}{% if gaps %} · {{ gaps }} gap{{ '' if gaps == 1 else 's' }}{% endif %}</span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="fr-acc-body">
       {% for f in L.findings %}
       <article class="fr-find" id="finding-{{ f.id }}">
         <div class="fr-meta">
@@ -235,8 +274,10 @@
         </div>
       </article>
       {% endfor %}
-    </div>
+      </div>
+    </details>
     {% endfor %}
+    </div>
   </section>
   {% endif %}
 
@@ -248,6 +289,23 @@
 (function () {
   var root = document.getElementById('founder-report');
   if (!root) return;
+  Array.prototype.forEach.call(document.querySelectorAll('[data-acc-tools]'), function (tools) {
+    var group = document.querySelector('[data-acc-group="' + tools.getAttribute('data-acc-tools') + '"]');
+    tools.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-acc]');
+      if (!b || !group) return;
+      var open = b.getAttribute('data-acc') === 'open';
+      Array.prototype.forEach.call(group.querySelectorAll('details.fr-layer'), function (d) { d.open = open; });
+    });
+  });
+  function openTarget() {
+    if (!location.hash) return;
+    var t = document.getElementById(location.hash.slice(1));
+    var d = t && t.closest('details');
+    if (d) { d.open = true; t.scrollIntoView({block: 'start'}); }
+  }
+  openTarget();
+  window.addEventListener('hashchange', openTarget);
   var vid = root.getAttribute('data-venture');
   var status = root.getAttribute('data-status');
   var msg = document.getElementById('fr-msg');
