@@ -202,11 +202,17 @@ def main():
               and 'Dockwise' not in home and 'Quietpre' not in home)
         check('... placed right below People on SimiSI', 'id="people"' in home
               and home.index('id="people"') < home.index('id="startups"') < home.index('id="sims"'))
+        fpage = client.get('/founder').get_data(as_text=True)
+        check('/founder shows "Startups on SimiSI" with a Browse all startups link',
+              'id="startups"' in fpage and 'Startups on SimiSI' in fpage and 'href="/startups"' in fpage
+              and 'Tinyledger' in fpage, fpage[:0])
+        check('... above How it works', fpage.index('id="startups"') < fpage.index('id="how"'))
         StartupPage.query.update({'show_in_directory': False})
         db.session.commit()
         smap = client.get('/sitemap.xml').get_data(as_text=True)
         check('... and not when none is', '/startups</loc>' not in smap)
         check('the home page hides the section when no startup is listed', 'id="startups"' not in client.get('/').get_data(as_text=True))
+        check('/founder hides it too when no startup is listed', 'id="startups"' not in client.get('/founder').get_data(as_text=True))
         check('the empty directory explains how founders get listed',
               'Founders choose whether to appear here' in client.get('/startups').get_data(as_text=True))
         founder_feature.set_mode('founder_track', 'on', A_ID)

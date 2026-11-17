@@ -178,6 +178,13 @@
     </div>
   </section>
 
+  {# ── Startups on SimiSI (same as the home page; hidden while none are listed) ── #}
+  {% if startups %}
+  <section class="ft-sec" id="startups" style="padding-top:1rem">
+    <div class="wrap">{% include 'partials/_startups_strip.html' %}</div>
+  </section>
+  {% endif %}
+
   {# ── How it works ── #}
   <section class="ft-sec tint" id="how" style="scroll-margin-top:80px">
     <div class="wrap">

@@ -23,7 +23,17 @@ def intro():
             abort(404)
         ventures = []
     return render_template('founder/intro.html', ventures=ventures, pricing=founder_config.pricing(),
-                           preview_level=founder_config.get('fnd_preview_level'), team=_team_by_layer())
+                           preview_level=founder_config.get('fnd_preview_level'), team=_team_by_layer(),
+                           startups=_recent_startups())
+
+
+def _recent_startups() -> list:
+    """The same listed startups as the home page section."""
+    try:
+        from app.blueprints.pages.routes import _get_recent_startups
+        return _get_recent_startups()
+    except Exception:
+        return []
 
 
 def _team_by_layer() -> list:

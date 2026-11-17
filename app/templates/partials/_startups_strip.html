@@ -1,0 +1,33 @@
+{# "Startups on SimiSI": the directory's newest listed startups (founder opt-in),
+   same data as the home page section (pages._get_recent_startups). Self-contained
+   styles so any page can include it. Expects `startups`; renders nothing when empty. #}
+{% if startups %}
+<style>
+  .sst-wrap { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: .6rem 2rem; margin: 0 0 1.6rem; }
+  .sst-wrap h2 { margin: 0; }
+  .sst-wrap p { margin: 0; max-width: 46ch; color: var(--ink-2); line-height: 1.6; }
+  .sst-wrap p a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: 4px; }
+  .sst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 24px; }
+  .sst-item { display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: var(--ink); }
+  .sst-tile { aspect-ratio: 1 / 1; border-radius: var(--r-ui, 12px); background: var(--ink); display: grid; place-items: center; overflow: hidden;
+              position: relative; font-size: 34px; font-weight: 760; color: var(--gold); }
+  .sst-tile.logo { background: #fff; border: 1px solid var(--rule); }
+  .sst-tile.logo img { position: absolute; inset: 12%; width: 76%; height: 76%; object-fit: contain; }
+  .sst-item b { font-size: 16px; font-weight: 650; }
+  .sst-item span.m { font-size: 14px; color: var(--mute); }
+  .sst-item:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 560px) { .sst-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; } }
+</style>
+<div class="sst-wrap">
+  <h2>Startups on SimiSI</h2>
+  <p>Founders building with the Founder Track, by stage. <a href="{{ url_for('startup.directory') }}">Browse all startups</a></p>
+</div>
+<div class="sst-grid">
+  {% for s in startups[:8] %}
+  <a class="sst-item" href="{{ url_for('startup.public_page', slug=s.slug) }}">
+    <div class="sst-tile{{ ' logo' if s.logo }}">{% if s.logo %}<img src="{{ url_for('startup.page_logo', slug=s.slug) }}" alt="{{ s.name }} logo" loading="lazy">{% else %}<span aria-hidden="true">{{ (s.name or '?')[0]|upper }}</span>{% endif %}</div>
+    <div><b>{{ s.name }}</b><br><span class="m">{% if s.stage_label %}{{ s.stage_label }} · {% endif %}View page</span></div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
