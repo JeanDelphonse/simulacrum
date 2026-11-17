@@ -273,7 +273,7 @@
   <div class="people">
     {% for s in startups %}
     <a class="person" href="{{ url_for('startup.public_page', slug=s.slug) }}">
-      <div class="ph" style="--bgc:var(--ink)">{% if s.logo %}<img src="{{ url_for('startup.page_logo', slug=s.slug) }}" alt="{{ s.name }} logo" loading="lazy">{% else %}<span aria-hidden="true" style="color:var(--gold)">{{ (s.name or '?')[0]|upper }}</span>{% endif %}</div>
+      <div class="ph{{ ' logo' if s.logo }}" style="--bgc:{{ '#fff' if s.logo else 'var(--ink)' }}">{% if s.logo %}<img src="{{ url_for('startup.page_logo', slug=s.slug) }}" alt="{{ s.name }} logo" loading="lazy">{% else %}<span aria-hidden="true" style="color:var(--gold)">{{ (s.name or '?')[0]|upper }}</span>{% endif %}</div>
       <div><b>{{ s.name }}</b><br><span>{% if s.stage_label %}{{ s.stage_label }} · {% endif %}View page</span></div>
     </a>
     {% endfor %}
