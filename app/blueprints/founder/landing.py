@@ -23,4 +23,20 @@ def intro():
             abort(404)
         ventures = []
     return render_template('founder/intro.html', ventures=ventures, pricing=founder_config.pricing(),
-                           preview_level=founder_config.get('fnd_preview_level'))
+                           preview_level=founder_config.get('fnd_preview_level'), team=_team_by_layer())
+
+
+def _team_by_layer() -> list:
+    """The agent catalog by layer, for the 'Build the team' section."""
+    try:
+        from app.services import founder_registry
+        names = founder_registry.LAYER_NAMES
+        agents = founder_registry.all_agents()
+    except Exception:
+        return []
+    out = []
+    for n in sorted(names):
+        row = [{'label': a.get('label'), 'description': a.get('description') or '',
+                'external': (a.get('external') or 'none') != 'none'} for a in agents if int(a.get('layer') or 0) == n]
+        out.append({'layer': n, 'name': names[n], 'agents': row})
+    return out
