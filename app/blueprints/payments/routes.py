@@ -106,6 +106,16 @@ def stripe_webhook():
             from app.blueprints.founder.billing import fulfil_founder_session
             fulfil_founder_session(session)
 
+        elif meta.get('product') == 'concierge_fee':
+            # Founder Track concierge consultation fee (FOUNDER_CONCIERGE_PLAN.md
+            # step 9): the only place a concierge case is accepted. Idempotent.
+            try:
+                from app.services import concierge_service
+                concierge_service.fulfil(session)
+            except Exception as exc:
+                db.session.rollback()
+                logger.error('Concierge fulfilment failed for %s: %s', session.get('id'), exc)
+
         elif meta.get('product') == 'investor_access':
             # Founder Track investor access (FOUNDER_PLAN.md WP8): idempotent.
             try:
@@ -161,6 +171,14 @@ def stripe_webhook():
                 except Exception as exc:
                     db.session.rollback()
                     logger.error('Investor access refund handling failed for %s: %s', pi_id, exc)
+                # Concierge consultation fee (FOUNDER_CONCIERGE_PLAN.md step 9, D5):
+                # only touches a concierge_case with this payment intent.
+                try:
+                    from app.services import concierge_service
+                    concierge_service.on_refund(pi_id, fully_refunded=bool(charge.get('refunded')))
+                except Exception as exc:
+                    db.session.rollback()
+                    logger.error('Concierge refund handling failed for %s: %s', pi_id, exc)
 
     elif event['type'] == 'charge.dispute.created':
         charge = event['data']['object']

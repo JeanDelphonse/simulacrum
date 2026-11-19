@@ -1203,7 +1203,7 @@ def invite_view(case) -> dict:
                        and case.expires_at > now),
         'can_reopen': case.state == 'revision_requested',
         'can_reply': case.state in WINDOW_STATES + ('declined',),
-        'messages': messages(case), 'fmt_date': fmt_date,
+        'messages': messages(case), 'fmt_date': fmt_date, 'refund_view': refund_view(case),
     }
 
 
@@ -1379,3 +1379,254 @@ def pending_for(user, now=None) -> list:
                     'expires_on': fmt_date(c.expires_at), 'state': c.state,
                     'state_label': STATE_LABELS.get(c.state, c.state), 'url': '/founder/concierge/%s' % c.id})
     return out
+
+
+# ---------------------------------------------------------------------------
+# Payment and refund (step 9)
+# ---------------------------------------------------------------------------
+# Acceptance is recorded ONLY from a Checkout Session Stripe reports as paid
+# (the webhook, or the success return verifying the session with Stripe).
+# Starting or abandoning a checkout never changes the case. fulfil() checks
+# the amount against the fee recorded when that checkout was created.
+
+CHECKOUT_REUSE_HOURS = 23
+
+
+def _g(obj, key, default=None):
+    if obj is None:
+        return default
+    try:
+        v = obj.get(key, default)
+    except AttributeError:
+        v = getattr(obj, key, default)
+    return default if v is None else v
+
+
+def checkout_started(case, session_id: str):
+    """The audit row written when this checkout was created (with the fee)."""
+    from app.models.audit_log import AuditLog
+    if not session_id:
+        return None
+    for row in (AuditLog.query.filter_by(action='concierge_checkout_started', resource_id=case.venture_id)
+                .order_by(AuditLog.created_at.desc()).limit(50).all()):
+        if (row.extra or {}).get('session_id') == session_id:
+            return row
+    return None
+
+
+def record_checkout(case, user, result) -> None:
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    AuditLog.log('concierge_checkout_started', user_id=getattr(user, 'id', None), resource_id=case.venture_id,
+                 metadata={'case': case.id, 'session_id': result.get('session_id'),
+                           'amount_cents': int(result.get('amount_cents') or 0), 'currency': result.get('currency'),
+                           'price_id': result.get('price_id')})
+    db.session.commit()
+
+
+def open_checkout(case, amount_cents: int):
+    """The case's last checkout if Stripe still has it open at the same
+    amount ('url'), 'paid' if that session was paid (and is fulfilled now),
+    else None. Avoids a second chargeable session on a double click."""
+    from datetime import timedelta
+    from app.models.audit_log import AuditLog
+    from app.services import stripe_service
+    row = (AuditLog.query.filter(AuditLog.action == 'concierge_checkout_started',
+                                 AuditLog.resource_id == case.venture_id,
+                                 AuditLog.created_at >= datetime.utcnow() - timedelta(hours=CHECKOUT_REUSE_HOURS))
+           .order_by(AuditLog.created_at.desc()).first())
+    sid = (row.extra or {}).get('session_id') if row is not None else None
+    if not sid:
+        return None
+    try:
+        s = stripe_service._stripe().checkout.Session.retrieve(sid)
+    except Exception as exc:
+        logger.info('concierge checkout %s could not be reused: %s', sid, exc)
+        return None
+    meta = _g(s, 'metadata', {}) or {}
+    if _g(meta, 'case_id') != case.id:
+        return None
+    if _g(s, 'payment_status') == 'paid':
+        fulfil(s)
+        return 'paid'
+    if (_g(s, 'status') == 'open' and str(_g(meta, 'amount_cents') or '') == str(amount_cents)
+            and int((row.extra or {}).get('amount_cents') or 0) == int(amount_cents) and _g(s, 'url')):
+        return _g(s, 'url')
+    return None
+
+
+def _payment_problem(case, action: str, session, note: str, notify: bool = True) -> bool:
+    """Record a paid session that cannot be accepted (for an admin refund)."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    pi = _g(session, 'payment_intent')
+    pi = _g(pi, 'id') if pi is not None and not isinstance(pi, str) else pi
+    sid = _g(session, 'id')
+    if case is not None:
+        dup = [a for a in AuditLog.query.filter_by(action=action, resource_id=case.venture_id).all()
+               if (a.extra or {}).get('session_id') == sid]
+        if dup:
+            return False                       # webhook replay or the success return
+    logger.error('concierge payment %s (%s) not accepted: %s', sid, pi, note)
+    try:
+        AuditLog.log(action, resource_id=getattr(case, 'venture_id', None),
+                     metadata={'case': getattr(case, 'id', None), 'session_id': sid, 'payment_intent': pi,
+                               'amount_total': _g(session, 'amount_total'), 'note': note})
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error('could not audit the concierge payment problem: %s', exc)
+    if notify and case is not None:
+        notify_admin(case, 'received a payment that was not accepted (refund it in Stripe)',
+                     ['%s. Checkout %s, payment %s.' % (note, sid, pi)])
+    return False
+
+
+def fulfil(session) -> bool:
+    """Accept the case for a paid concierge_fee Checkout Session. Idempotent:
+    True only for the call that recorded the acceptance. Never raises for a
+    session that is not a concierge payment."""
+    from app.extensions import db
+    from app.models.founder import ConciergeCase, FounderVenture
+    from app.models.user import User
+    meta = _g(session, 'metadata', {}) or {}
+    if _g(meta, 'product') != 'concierge_fee':
+        return False
+    if _g(session, 'payment_status') != 'paid':
+        logger.info('concierge checkout %s not paid (%s)', _g(session, 'id'), _g(session, 'payment_status'))
+        return False
+    case = db.session.get(ConciergeCase, _g(meta, 'case_id') or '-')
+    if case is None:
+        logger.error('concierge checkout %s names an unknown case %s', _g(session, 'id'), _g(meta, 'case_id'))
+        return False
+    venture = db.session.get(FounderVenture, case.venture_id)
+    pi = _g(session, 'payment_intent')
+    pi = _g(pi, 'id') if pi is not None and not isinstance(pi, str) else pi
+    if pi and case.payment_intent_id == pi:
+        return False                                   # replay of the payment we accepted
+    if venture is None or _g(meta, 'venture_id') != case.venture_id:
+        return _payment_problem(case, 'concierge_payment_mismatch', session, 'venture does not match the case')
+    if case.state in ('accepted_paid', 'active'):
+        return _payment_problem(case, 'concierge_duplicate_payment', session, 'the case was already accepted')
+    try:
+        amount = int(_g(session, 'amount_total') or 0)
+    except (TypeError, ValueError):
+        amount = 0
+    started = checkout_started(case, _g(session, 'id'))
+    recorded = int((started.extra or {}).get('amount_cents') or 0) if started is not None else None
+    if recorded is None or amount != recorded or str(_g(meta, 'amount_cents')) != str(recorded):
+        return _payment_problem(case, 'concierge_payment_mismatch', session,
+                                'amount %s does not match the fee recorded at checkout (%s)' % (amount, recorded))
+    user = db.session.get(User, _g(meta, 'user_id') or '-')
+    if user is None or not is_primary(_Auth(user), case):
+        return _payment_problem(case, 'concierge_payment_mismatch', session,
+                                'the payer is not the verified primary founder')
+    if case.state not in ACCEPT_STATES:
+        return _payment_problem(case, 'concierge_payment_unmatched', session,
+                                'the case is %s' % STATE_LABELS.get(case.state, case.state).lower())
+    try:
+        if case.state == 'shared':
+            case = transition(case, 'viewed', user.id, note='viewed (paid before the first view was recorded)',
+                              commit=False)
+        case = transition(case, 'accepted_paid', user.id, note='paid: checkout %s' % _g(session, 'id'), commit=False)
+    except ConciergeError:
+        db.session.rollback()
+        return False                                   # the other call (webhook / success return) won
+    now = datetime.utcnow()
+    case.accepted_user_id, case.payment_intent_id, case.amount_cents = user.id, pi or None, amount
+    case.updated_at = now
+    db.session.commit()
+    logger.info('concierge case %s accepted and paid (%d cents)', case.id, amount)
+    _after_payment(venture, case, user, session)
+    return True
+
+
+class _Auth(object):
+    """A User seen as signed in (fulfil runs in the webhook, without a login)."""
+
+    def __init__(self, user):
+        self._u = user
+        self.is_authenticated = True
+
+    def __getattr__(self, k):
+        return getattr(self._u, k)
+
+
+def _after_payment(venture, case, user, session) -> None:
+    """Hook for the ownership transfer (step 10)."""
+    return None
+
+
+def refund_view(case) -> dict:
+    if not case.payment_intent_id:
+        return {}
+    days = (datetime.utcnow() - case.accepted_at).days if case.accepted_at else None
+    return {'can_refund': case.refunded_at is None, 'refunded_at': case.refunded_at,
+            'amount': money(case.amount_cents) if case.amount_cents else '', 'days_since_payment': days,
+            'refund_window_days': _cfg('fnd_refund_window_days')}
+
+
+def refund(case, reason: str, admin) -> dict:
+    """Admin "Refund": a full Stripe refund of the consultation fee, then the
+    same handling as the charge.refunded webhook (on_refund). Audited."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.services import stripe_service
+    reason = _clean(reason, REASON_MAX)
+    if not reason:
+        raise ConciergeError('Give a reason for the refund.', 400)
+    if not case.payment_intent_id:
+        raise ConciergeError('There is no payment to refund.')
+    if case.refunded_at is not None:
+        raise ConciergeError('This payment was already refunded.')
+    try:
+        out = stripe_service.issue_refund(case.payment_intent_id, reason='Concierge refund: %s' % reason)
+    except Exception as exc:
+        logger.error('concierge refund for %s failed: %s', case.id, exc)
+        raise ConciergeError('Stripe refused the refund: %s' % exc, 502)
+    AuditLog.log('concierge_refund_requested', user_id=getattr(admin, 'id', None), resource_id=case.venture_id,
+                 metadata={'case': case.id, 'payment_intent': case.payment_intent_id, 'reason': reason,
+                           'refund_id': out.get('refund_id'), 'status': out.get('status')})
+    db.session.commit()
+    on_refund(case.payment_intent_id, fully_refunded=True, actor=getattr(admin, 'id', None))
+    return out
+
+
+def on_refund(payment_intent_id: str, fully_refunded: bool = True, actor: str = None) -> bool:
+    """A refunded consultation fee (charge.refunded webhook or the admin
+    action), per decision D5: the venture stays the founder's but locks again
+    (paid_at cleared, as billing.revoke_founder_payment does), refunded_at is
+    set and the refund is audited. A partial refund is only logged. True when
+    this call recorded the refund."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.models.founder import ConciergeCase
+    if not payment_intent_id:
+        return False
+    case = ConciergeCase.query.filter_by(payment_intent_id=payment_intent_id).first()
+    if case is None or case.refunded_at is not None:
+        return False
+    if not fully_refunded:
+        AuditLog.log('concierge_partial_refund', user_id=actor, resource_id=case.venture_id,
+                     metadata={'case': case.id, 'payment_intent': payment_intent_id})
+        db.session.commit()
+        return False
+    try:
+        from app.blueprints.founder.billing import revoke_founder_payment
+        revoke_founder_payment(payment_intent_id, fully_refunded=True)      # no-op when already locked
+    except Exception as exc:
+        db.session.rollback()
+        logger.error('concierge refund: venture lock failed for %s: %s', payment_intent_id, exc)
+    case = ConciergeCase.query.filter_by(payment_intent_id=payment_intent_id).first()
+    now = datetime.utcnow()
+    n = ConciergeCase.query.filter(ConciergeCase.id == case.id, ConciergeCase.refunded_at.is_(None)).update(
+        {'refunded_at': now, 'updated_at': now}, synchronize_session=False)
+    if not n:
+        db.session.rollback()
+        return False
+    AuditLog.log('concierge_refunded', user_id=actor, resource_id=case.venture_id,
+                 metadata={'case': case.id, 'payment_intent': payment_intent_id, 'amount_cents': case.amount_cents,
+                           'effect': 'venture locked again; it stays in the founder account', 'at': now.isoformat()})
+    db.session.commit()
+    db.session.expire_all()
+    return True

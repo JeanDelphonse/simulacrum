@@ -226,6 +226,7 @@ def run_all(app, db, generate_id, tmp_root):
     install_mail_fake(ctx)
     step7_share(ctx)
     step8_preview(ctx)
+    step9_payment(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -1238,6 +1239,247 @@ def step8_preview(ctx):
     case = cs.case_for(vid)
     check('the founder may change their mind within the window: declined -> viewed',
           r.status_code == 200 and case.state == 'viewed' and case.declined_at is None and case.decline_reason is None)
+
+
+
+# ---------------------------------------------------------------------------
+# Stripe fakes and a quick shared case
+# ---------------------------------------------------------------------------
+
+class FakeStripeObj(dict):
+    """A stripe object: dict access plus attributes."""
+    def __getattr__(self, k):
+        try:
+            return self[k]
+        except KeyError:
+            raise AttributeError(k)
+
+
+def install_stripe_fake(ctx):
+    import stripe
+    from app.blueprints.payments import routes as pay_routes
+    ctx.app.config.update(STRIPE_SECRET_KEY='sk_test_fake', STRIPE_WEBHOOK_SECRET='whsec_fake')
+    ctx.created, ctx.sessions, ctx.refunds = [], {}, []
+
+    def fake_create(**kw):
+        sid = 'cs_cc_%d' % (len(ctx.created) + 1)
+        ctx.created.append(kw)
+        s = FakeStripeObj(id=sid, url='https://checkout.stripe.test/' + sid, status='open', payment_status='unpaid',
+                          metadata=dict(kw.get('metadata') or {}),
+                          amount_total=int((kw.get('metadata') or {}).get('amount_cents') or 0))
+        ctx.sessions[sid] = s
+        return s
+    stripe.checkout.Session.create = staticmethod(fake_create)
+    stripe.checkout.Session.retrieve = staticmethod(lambda sid, **kw: ctx.sessions[sid])
+    stripe.PaymentIntent.retrieve = staticmethod(lambda pi, **kw: FakeStripeObj(id=pi, latest_charge='ch_' + pi))
+
+    def fake_refund(**kw):
+        ctx.refunds.append(kw)
+        return FakeStripeObj(id='re_%d' % len(ctx.refunds), status='succeeded', amount=0)
+    stripe.Refund.create = staticmethod(fake_refund)
+    ctx.next_event = {}
+    pay_routes.construct_webhook_event = lambda payload, sig: ctx.next_event['e']
+
+    def hook(obj, etype='checkout.session.completed'):
+        ctx.next_event['e'] = {'type': etype, 'data': {'object': obj}}
+        ctx.login(None)
+        return ctx.client.post('/api/payments/webhook', data=b'{}', headers={'Stripe-Signature': 'sig'})
+    ctx.hook = hook
+
+
+def paid(ctx, sid, pi, **over):
+    """The completed-session event Stripe would send for checkout sid."""
+    s = dict(ctx.sessions[sid])
+    s.update({'payment_status': 'paid', 'status': 'complete', 'payment_intent': pi})
+    s.update(over)
+    return s
+
+
+def quick_case(ctx, email, state='viewed', name='Quick Co', days_left_=20, shared_days_ago=10, fee_override=None):
+    """A concierge venture with a finished evaluation and a case already shared."""
+    from datetime import timedelta
+    from app.models.founder import ConciergeCase, EvaluationFinding, EvaluationRun, FounderVenture
+    db = ctx.db
+    now = datetime.utcnow()
+    v = FounderVenture(owner_user_id=None, name=name, one_liner='Helps %s' % name, stage='idea', status='concierge',
+                       track='concierge', rung=1)
+    db.session.add(v)
+    db.session.flush()
+    run = EvaluationRun(venture_id=v.id, status='done', overall_score=55, scores={'team': 55}, finished_at=now)
+    db.session.add(run)
+    db.session.flush()
+    db.session.add(EvaluationFinding(venture_id=v.id, evaluation_run_id=run.id, dimension='team', ftype='gap',
+                                     severity='high', title='Gap of %s' % name, detail='Secret detail of %s' % name,
+                                     citation_text='secret quote %s' % name))
+    c = ConciergeCase(venture_id=v.id, state=state, primary_name=name + ' Founder', primary_email=email,
+                      cofounder_emails=['co-%s' % email], consent_given_by='Founder', consent_at=now,
+                      shared_at=now - timedelta(days=shared_days_ago),
+                      expires_at=now + timedelta(days=days_left_), invite_version=1, invite_token_hash='h' + v.id,
+                      fee_override_cents=fee_override, notes='Private note %s' % name,
+                      prefill={'_meta': {}, 'name': {'value': name, 'status': 'admin'},
+                               'one_liner': {'value': None, 'status': 'needs_input'},
+                               'stage': {'value': None, 'status': 'needs_input'},
+                               'team': {'value': None, 'status': 'needs_input'},
+                               'alignment': {'value': None, 'status': 'needs_input'}},
+                      reminders_sent={}, created_by=ctx.admin.id)
+    db.session.add(c)
+    db.session.commit()
+    return v, c
+
+
+# ---------------------------------------------------------------------------
+# Step 9: payment
+# ---------------------------------------------------------------------------
+
+def step9_payment(ctx):
+    db, c, vid = ctx.db, ctx.client, ctx.vid
+    from app.models.audit_log import AuditLog
+    from app.models.founder import FounderVenture
+    from app.services import concierge_service as cs, founder_config as fc, stripe_service
+    print('\n10. Step 9: Stripe checkout for the consultation fee; acceptance only on a paid session')
+    install_stripe_fake(ctx)
+    case = cs.case_for(vid)
+    jane = ctx.jane
+    accept = '/founder/concierge/%s/accept' % case.id
+    check('the case is viewed before checkout', case.state == 'viewed')
+
+    for label, uid in (('a co-founder', ctx.cofounder.id), ('another account', ctx.member.id),
+                       ('an admin', ctx.admin.id)):
+        ctx.login(uid)
+        r = c.post(accept)
+        check('%s cannot accept (403) and no checkout is created' % label, r.status_code == 403 and not ctx.created)
+
+    fc.set('fnd_concierge_active', False, ctx.admin.id)
+    ctx.login(jane.id)
+    r = c.post(accept)
+    check('with the fee inactive, Accept creates no checkout', r.status_code == 303 and not ctx.created
+          and 'notice=unavailable' in r.headers['Location'])
+    fc.set('fnd_concierge_active', True, ctx.admin.id)
+
+    r = c.post(accept)
+    db.session.expire_all()
+    kw = ctx.created[-1] if ctx.created else {}
+    check('"Accept and pay" redirects to Stripe Checkout (303)', r.status_code == 303
+          and r.headers['Location'].startswith('https://checkout.stripe.test/'))
+    li = (kw.get('line_items') or [{}])[0]
+    check('the amount is the Pricing fee, inline price_data, in the configured currency',
+          li.get('price_data', {}).get('unit_amount') == FEE and li['price_data']['currency'] == 'usd')
+    md = kw.get('metadata') or {}
+    check('metadata: product concierge_fee, case_id, venture_id, user_id, amount',
+          md.get('product') == 'concierge_fee' and md.get('case_id') == case.id and md.get('venture_id') == vid
+          and md.get('user_id') == jane.id and md.get('amount_cents') == str(FEE))
+    check('starting checkout leaves the case unchanged', cs.case_for(vid).state == 'viewed')
+    row = AuditLog.query.filter_by(action='concierge_checkout_started', resource_id=vid).first()
+    check('the fee at checkout creation is recorded', row is not None and row.extra.get('amount_cents') == FEE
+          and row.extra.get('session_id') == 'cs_cc_1')
+    r = c.post(accept)
+    check('a second click reuses the open session (no second chargeable session)',
+          len(ctx.created) == 1 and r.headers['Location'].endswith('cs_cc_1'))
+
+    ctx.login(ctx.admin.id)
+    c.post('/api/admin/ventures/%s/fee' % vid, json={'fee_cents': 9900, 'reason': 'Pilot cohort rate'})
+    ctx.login(jane.id)
+    c.post(accept)
+    check('the per-venture override is charged (new session at the new amount)',
+          len(ctx.created) == 2 and ctx.created[-1]['line_items'][0]['price_data']['unit_amount'] == 9900)
+    fc.set('fnd_concierge_stripe_price_id', 'price_cc123', ctx.admin.id)
+    c.post(accept)
+    check('with a Stripe price id set, an override still uses an inline price',
+          'price_data' in ctx.created[-1]['line_items'][0])
+    ctx.login(ctx.admin.id)
+    c.post('/api/admin/ventures/%s/fee' % vid, json={'clear': True, 'reason': 'Back to standard'})
+    ctx.login(jane.id)
+    c.post(accept)
+    check('with a Stripe price id set, the Pricing fee uses that price id',
+          ctx.created[-1]['line_items'][0] == {'price': 'price_cc123', 'quantity': 1})
+    fc.set('fnd_concierge_stripe_price_id', '', ctx.admin.id)
+    sid = ctx.created[-1]['metadata'] and 'cs_cc_%d' % len(ctx.created)
+
+    # Abandoned and failed payments change nothing.
+    ctx.sessions[sid]['status'] = 'expired'
+    r = c.get('/founder/concierge/%s/success?session_id=%s' % (case.id, sid))
+    db.session.expire_all()
+    check('an abandoned checkout (success return, session unpaid) leaves the state', r.status_code == 303
+          and cs.case_for(vid).state == 'viewed' and 'notice=pending' in r.headers['Location'])
+    ctx.hook(dict(ctx.sessions[sid], payment_status='unpaid', status='expired'))
+    ctx.hook({'id': 'pi_fail', 'metadata': {}}, etype='payment_intent.payment_failed')
+    db.session.expire_all()
+    check('an unpaid session and a failed payment webhook leave the state', cs.case_for(vid).state == 'viewed'
+          and cs.case_for(vid).payment_intent_id is None)
+    check('nothing was charged twice: no venture is paid', db.session.get(FounderVenture, vid).paid_at is None)
+
+    # A paid session for the wrong amount or the wrong payer is not accepted.
+    n0 = len(ctx.mails)
+    ctx.hook(paid(ctx, sid, 'pi_wrong', amount_total=FEE - 100))
+    db.session.expire_all()
+    check('a paid session whose amount differs from the recorded fee is not accepted',
+          cs.case_for(vid).state == 'viewed' and AuditLog.query.filter_by(action='concierge_payment_mismatch',
+                                                                          resource_id=vid).count() == 1)
+    check('... and the admin is told to refund it', any('not accepted' in m['subject'] for m in ctx.mails[n0:]))
+    other = paid(ctx, sid, 'pi_other')
+    other['metadata'] = dict(other['metadata'], user_id=ctx.cofounder.id)
+    ctx.hook(other)
+    db.session.expire_all()
+    check('a paid session by someone other than the primary founder is not accepted', cs.case_for(vid).state == 'viewed')
+    from app.blueprints.founder.billing import fulfil_founder_session
+    check('the self-serve fulfilment ignores a concierge session', fulfil_founder_session(paid(ctx, sid, 'pi_x')) is False)
+
+    # The paid webhook accepts.
+    n0 = len(ctx.mails)
+    r = ctx.hook(paid(ctx, sid, 'pi_cc_good'))
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('a paid concierge_fee session (webhook) accepts the case', r.status_code == 200
+          and case.state in ('accepted_paid', 'active'), case.state)
+    check('... recording the payment intent, amount and accepting user',
+          case.payment_intent_id == 'pi_cc_good' and case.amount_cents == FEE and case.accepted_user_id == jane.id
+          and case.accepted_at is not None)
+    check('accepted_paid is an audited transition',
+          AuditLog.query.filter_by(action='concierge_accepted_paid', resource_id=vid).count() == 1)
+    r = ctx.hook(paid(ctx, sid, 'pi_cc_good'))
+    db.session.expire_all()
+    check('a replayed webhook changes nothing',
+          AuditLog.query.filter_by(action='concierge_accepted_paid', resource_id=vid).count() == 1)
+    ctx.hook(paid(ctx, 'cs_cc_1', 'pi_cc_second'))
+    db.session.expire_all()
+    check('a second paid session for an accepted case is flagged for refund, not accepted again',
+          AuditLog.query.filter_by(action='concierge_duplicate_payment', resource_id=vid).count() == 1
+          and cs.case_for(vid).payment_intent_id == 'pi_cc_good')
+    ctx.paid_session = sid
+
+    # Second founder: the success return (webhook fallback) and the admin refund.
+    bob = make_user(ctx, 'bob@founder.io')
+    bv, bc = quick_case(ctx, 'bob@founder.io', name='Bob Labs')
+    ctx.bob, ctx.bob_vid = bob, bv.id
+    ctx.login(bob.id)
+    c.get('/founder/concierge/%s' % bc.id)
+    r = c.post('/founder/concierge/%s/accept' % bc.id)
+    bsid = 'cs_cc_%d' % len(ctx.created)
+    ctx.sessions[bsid].update({'payment_status': 'paid', 'status': 'complete', 'payment_intent': 'pi_bob'})
+    r = c.get('/founder/concierge/%s/success?session_id=%s' % (bc.id, bsid))
+    db.session.expire_all()
+    bc = cs.case_for(bv.id)
+    check('the success return verifies the session with Stripe and accepts when it is paid',
+          bc.state in ('accepted_paid', 'active') and bc.payment_intent_id == 'pi_bob')
+    ctx.login(ctx.admin.id)
+    r = c.post('/api/admin/ventures/%s/refund' % bv.id, json={})
+    check('a refund needs a reason', r.status_code == 400 and not ctx.refunds)
+    html = c.get('/admin/ventures/%s' % bv.id).get_data(as_text=True)
+    check('the case page offers the refund', 'id="ccRefundForm"' in html)
+    r = c.post('/api/admin/ventures/%s/refund' % bv.id, json={'reason': 'Founder asked within the window'})
+    db.session.expire_all()
+    bc = cs.case_for(bv.id)
+    check('"Refund" issues a Stripe refund of the charge', r.status_code == 200 and len(ctx.refunds) == 1
+          and ctx.refunds[0]['charge'] == 'ch_pi_bob')
+    check('refunded_at is set and the refund is audited', bc.refunded_at is not None
+          and AuditLog.query.filter_by(action='concierge_refunded', resource_id=bv.id).count() == 1)
+    ctx.hook({'id': 'ch_pi_bob', 'payment_intent': 'pi_bob', 'refunded': True}, etype='charge.refunded')
+    db.session.expire_all()
+    check('the charge.refunded webhook afterwards is a no-op',
+          AuditLog.query.filter_by(action='concierge_refunded', resource_id=bv.id).count() == 1)
+    ctx.login(ctx.admin.id)
+    r = c.post('/api/admin/ventures/%s/refund' % bv.id, json={'reason': 'again'})
+    check('a second refund is refused', r.status_code == 409 and len(ctx.refunds) == 1)
 
 
 def no_price_literal():

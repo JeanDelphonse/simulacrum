@@ -359,3 +359,16 @@ def api_concierge_reply(venture_id):
         m = cs.admin_reply(v, c, b.get('body'), current_user)
         return {'message_id': m.id}
     return _case_action(venture_id, go)
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/refund', methods=['POST'])
+@concierge_api
+def api_concierge_refund(venture_id):
+    """Full Stripe refund of the consultation fee (D5: the venture stays the
+    founder's and locks again)."""
+    from app.services import concierge_service as cs
+
+    def go(v, c, b):
+        out = cs.refund(c, b.get('reason'), current_user)
+        return {'refund': {'id': out.get('refund_id'), 'status': out.get('status')}}
+    return _case_action(venture_id, go)

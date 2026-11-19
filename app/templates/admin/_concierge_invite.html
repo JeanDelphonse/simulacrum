@@ -45,7 +45,7 @@
   <p class="fa-banner" style="margin:.7rem 0 .4rem">The founder asked for a revision. Reopen the evaluation for review, edit it, confirm it and share it again (a new link; the window keeps running).</p>
   <div class="fa-row"><button class="btn sm" type="button" id="ccReopen">Reopen for review</button><span class="fa-msg" role="status" id="ccReopenMsg"></span></div>
   {% endif %}
-  {% if refund_view is defined and refund_view %}{% include 'admin/_concierge_refund.html' ignore missing %}{% endif %}
+  {% if refund_view %}{% include 'admin/_concierge_refund.html' %}{% endif %}
 </section>
 
 {% if messages or can_reply %}

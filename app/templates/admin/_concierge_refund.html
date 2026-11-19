@@ -1,0 +1,32 @@
+{# Concierge case page: the consultation-fee payment and the admin refund (step 9). #}
+<div id="ccRefund" style="border-top:1px solid var(--rule);margin-top:.8rem;padding-top:.7rem">
+  <h3>Payment</h3>
+  <p class="fa-note" style="margin:0 0 .4rem">Paid {{ refund_view.amount }}{% if refund_view.days_since_payment is not none %}, {{ refund_view.days_since_payment }} day{{ '' if refund_view.days_since_payment == 1 else 's' }} ago{% endif %} · payment {{ case.payment_intent_id }}.
+    Refund window in the policy: {{ refund_view.refund_window_days }} days.</p>
+  {% if refund_view.refunded_at %}
+  <p style="margin:0"><span class="fa-badge bad">Refunded</span> {{ refund_view.refunded_at.strftime('%Y-%m-%d %H:%M') }} UTC · the venture stays the founder's and is locked again.</p>
+  {% elif refund_view.can_refund %}
+  <form id="ccRefundForm">
+    <label class="fa-note" for="ccRefundWhy" style="display:block">Refund in full (reason required). The venture stays in the founder's account and locks again.</label>
+    <div class="fa-row"><input type="text" id="ccRefundWhy" maxlength="500" placeholder="Reason" style="flex:1 1 14rem;min-width:0">
+      <button class="btn sm btn-ghost" type="submit">Refund</button></div>
+    <span class="fa-msg" role="status" id="ccRefundMsg"></span>
+  </form>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('ccRefundForm'), call = window.ccCall, say = window.ccSay;
+    if (!f || !call) return;
+    var VID = document.getElementById('ccCase').dataset.venture;
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var why = document.getElementById('ccRefundWhy').value.trim(), msg = document.getElementById('ccRefundMsg');
+      if (!why) return say(msg, 'Give a reason.', true);
+      if (!confirm('Refund the consultation fee in full through Stripe? The venture locks again.')) return;
+      say(msg, 'Refunding…');
+      call('/api/admin/ventures/' + VID + '/refund', { reason: why }).then(function () { location.reload(); })
+        .catch(function (err) { say(msg, err.message, true); });
+    });
+  });
+  </script>
+  {% endif %}
+</div>

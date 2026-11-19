@@ -277,3 +277,60 @@ def construct_webhook_event(payload: bytes, sig_header: str) -> object:
     return s.Webhook.construct_event(
         payload, sig_header, current_app.config['STRIPE_WEBHOOK_SECRET']
     )
+
+
+CONCIERGE_PRODUCT = 'concierge_fee'
+
+
+def create_concierge_checkout(case, user, success_url: str = None, cancel_url: str = None) -> dict:
+    """One-time Stripe Checkout Session for a concierge consultation fee
+    (FOUNDER_CONCIERGE_PLAN.md step 9). The amount is the venture's fee
+    override or the Pricing fee (concierge_service.effective_fee_cents), never
+    a client value. The configured Stripe price id is used only for the
+    Pricing fee; an override is always an inline price. Mirrors
+    create_founder_checkout. Raises ValueError when the fee is not offered,
+    below the card minimum, or the case cannot be accepted now."""
+    from flask import url_for
+    from app.extensions import db
+    from app.models.founder import FounderVenture
+    from app.services import concierge_service, founder_config
+    pricing = founder_config.concierge_pricing()
+    if not pricing.get('active'):
+        raise ValueError('The consultation fee is not available right now.')
+    if case.state not in ('shared', 'viewed'):
+        raise ValueError('This evaluation cannot be accepted now.')
+    amount = int(concierge_service.effective_fee_cents(case))
+    if amount < 50:
+        raise ValueError('The consultation fee is below the card minimum.')
+    venture = db.session.get(FounderVenture, case.venture_id)
+    if venture is None:
+        raise ValueError('Unknown venture.')
+    currency = (pricing.get('currency') or 'usd').lower()
+    price_id = (pricing.get('stripe_price_id') or '') if case.fee_override_cents is None else ''
+    if price_id:
+        line = {'price': price_id, 'quantity': 1}
+    else:
+        line = {'price_data': {'currency': currency,
+                               'product_data': {'name': 'SimiSI consultation fee — ' + (venture.name or 'Venture')[:80]},
+                               'unit_amount': amount},
+                'quantity': 1}
+    if success_url is None:
+        success_url = url_for('founder.concierge_checkout_success', case_id=case.id, _external=True) \
+            + '?session_id={CHECKOUT_SESSION_ID}'
+    if cancel_url is None:
+        cancel_url = url_for('founder.concierge_preview', case_id=case.id, notice='cancelled', _external=True)
+    extra = {'customer_email': user.email} if getattr(user, 'email', None) else {}
+    s = _stripe()
+    session = s.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[line],
+        mode='payment',
+        client_reference_id=case.id,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={'product': CONCIERGE_PRODUCT, 'case_id': case.id, 'venture_id': case.venture_id,
+                  'user_id': user.id, 'amount_cents': str(amount), 'currency': currency},
+        **extra,
+    )
+    return {'checkout_url': session.url, 'session_id': session.id, 'amount_cents': amount, 'currency': currency,
+            'price_id': price_id or None}
