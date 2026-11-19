@@ -276,3 +276,39 @@ concierge venture page shows total API cost of its runs next to the fee.
 
 Deploy notes (when built): run `sql/079_founder_concierge.sql`; set `ENCRYPTION_KEY`; add the
 `cron_concierge.py` daily cron line; grant the `founder_concierge` permission to the admins who onboard.
+
+---
+
+## 10. Build status (steps 1–12 built) and deploy notes
+
+Built on `feat/founder-concierge`; `test_founder_concierge.py` covers every step and the brief's
+QUALITY CHECKS. Changes beyond the plan, made while building steps 7–11:
+- **Transitions:** `declined → viewed` (the founder may change their mind until the window ends, as P4
+  says) and `ready_for_review | confirmed → expired` (a case sent back for a revision keeps its running
+  window and can expire while back in review).
+- **Share refuses** while the consultation fee is inactive or under the card minimum, and while the
+  Founder Track switch is `off` (an accepted venture could not be opened). On acceptance the founder is
+  allowed on the `founder_track` allowlist when it is in allowlist mode.
+- **Plan after acceptance:** `founder_orchestrator.build_plan` needs accepted agents, so (as on self-serve)
+  the founder accepts the recommended team on the Team page and the plan follows; the team and the private
+  startup page draft are created at acceptance.
+- **Reminders** link the preview (sign-in protected), not the token (only its hash is stored). If several
+  reminder days were missed, only the latest due one is sent; the rest are recorded as skipped.
+
+Deploy:
+1. Run `sql/079_founder_concierge.sql` (no other migration; steps 7–12 use its columns).
+2. Set `ENCRYPTION_KEY` in the cPanel environment **and** in `~/simisi/.env` (cron reads the .env).
+   Without it concierge uploads and reads are refused.
+3. Add the daily cron line (same interpreter as `cron_mail.py`):
+   `30 5 * * * /home/dburriyy6pdz/virtualenv/simisi/3.9/bin/python /home/dburriyy6pdz/simisi/cron_concierge.py >> /home/dburriyy6pdz/simisi/cron.log 2>&1`
+   (`python cron_concierge.py` daily; the in-process APScheduler job `concierge-daily` runs the same
+   idempotent function at 05:20 UTC.)
+4. Grant the concierge permission: Admin → Founder Track → Overview → `founder_concierge`, allowlist the
+   admins who onboard (mode stays "allowlist").
+5. Set the fee: Admin → Founder Track → Pricing → Consultation fee (amount, currency, optional Stripe price
+   id) and turn it **active**. Founder Track must not be `off`.
+6. Stripe: the existing webhook endpoint already receives `checkout.session.completed` and
+   `charge.refunded`; no new event types.
+7. `FOUNDER_EMAIL` (admin notices) and `MAIL_DEFAULT_SENDER` (sender, simi@simisi.io) as today.
+8. Counsel: every string is a draft in Admin → Legal text (`concierge_*`); R2 needs the host's backup
+   retention before it is published (COUNSEL_REVIEW_CONCIERGE.md §6b).

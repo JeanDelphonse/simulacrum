@@ -80,6 +80,7 @@
         <h2 id="ccpUnlockH">What accepting unlocks</h2>
         <p>{{ p.unlocks }}</p>
         <p class="ccp-small">{{ p.ownership_terms }}</p>
+        <p class="ccp-small" id="ccpAdminAccess">{{ p.admin_access }}</p>
       </section>
       {% if p.messages %}
       <section class="ccp-card" aria-labelledby="ccpMsgH">
@@ -98,6 +99,7 @@
         {% if p.fee.line %}<p class="ccp-fee" id="ccpFee">{{ p.fee.line }}</p>{% endif %}
         <p class="ccp-small">{{ p.refund_policy }}</p>
         <p class="ccp-days" id="ccpDays">{{ p.days_left_text }}</p>
+        <p class="ccp-small" id="ccpRetention">{{ p.retention }}</p>
         <div class="ccp-actions">
           {% if p.actions.accept %}
           <form method="post" action="/founder/concierge/{{ case_id }}/accept" id="ccpAccept">

@@ -229,6 +229,7 @@ def run_all(app, db, generate_id, tmp_root):
     step9_payment(ctx)
     step10_transfer(ctx)
     step11_expiry(ctx)
+    step12_finalize(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -1058,7 +1059,7 @@ def step7_share(ctx):
 PREVIEW_KEYS = {'case_id', 'state', 'state_label', 'venture', 'overall_score', 'top_gaps', 'needs_input_count',
                 'unlocks', 'ownership_terms', 'fee', 'refund_policy', 'expires_on', 'days_left', 'days_left_text',
                 'disclaimer', 'revision_note', 'decline_confirm', 'messages', 'actions', 'declined',
-                'revision_requested'}
+                'revision_requested', 'admin_access', 'retention'}
 
 
 def leaks(text, ctx, v):
@@ -1802,6 +1803,108 @@ def step11_expiry(ctx):
     cron = io.open(os.path.join(ROOT, 'cron_concierge.py'), encoding='utf-8').read()
     check('cron_concierge.py runs run_daily under a lock, like cron_mail.py',
           'concierge_service.run_daily()' in cron and 'LOCK_PATH' in cron and "create_app('production')" in cron)
+
+
+
+# ---------------------------------------------------------------------------
+# Step 12: legal text, counsel file, no literals, NULL owner tolerated
+# ---------------------------------------------------------------------------
+
+COUNSEL_KEYS = {
+    'C1': 'concierge_consent', 'C2': 'concierge_consent_source_label', 'C3': 'concierge_nda_label',
+    'C4': 'concierge_confidentiality', 'E1': 'concierge_not_advice', 'E2': 'concierge_eval_basis',
+    'E3': 'concierge_missing_docs', 'E4': 'concierge_ai_review', 'P1': 'concierge_unlocks',
+    'P2': 'concierge_ownership_terms', 'P3': 'concierge_days_left', 'P4': 'concierge_decline_confirm',
+    'P5': 'concierge_revision_note', 'F1': 'concierge_fee_line', 'F2': 'concierge_refund_policy',
+    'F3': 'concierge_receipt_footer', 'M1': 'concierge_invite_body', 'M2': 'concierge_reminder',
+    'M3': 'concierge_final_reminder', 'M4': 'concierge_accepted_email', 'M5': 'concierge_deleted_email',
+    'M6': 'concierge_email_mismatch', 'R1': 'concierge_privacy_deletion', 'R2': 'concierge_backups',
+    'R3': 'concierge_admin_access',
+}
+
+CONCIERGE_FILES = ('app/services/concierge_service.py', 'app/blueprints/founder/concierge_admin.py',
+                   'app/blueprints/founder/concierge_founder.py', 'app/services/stripe_service.py',
+                   'cron_concierge.py')
+
+
+def concierge_templates():
+    return [os.path.relpath(p, ROOT) for p in glob.glob(os.path.join(ROOT, 'app', 'templates', '**', '*concierge*.html'),
+                                                        recursive=True)]
+
+
+def price_like_literals():
+    """Digits next to fee/price/amount words in the concierge code and
+    templates (a hardcoded price would show up here)."""
+    allowed = {'10000000'}                 # the override's upper bound (validation), not a price
+    hits = []
+    pat = re.compile(r'(?i)(fee|price|amount|cents|unit_amount)[^\n]{0,40}?\b(\d{3,})\b')
+    for rel in list(CONCIERGE_FILES) + concierge_templates():
+        txt = io.open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        if rel.endswith('stripe_service.py'):
+            txt = txt[txt.index('def create_concierge_checkout'):]
+        for m_ in pat.finditer(txt):
+            num, before = m_.group(2), txt[max(0, m_.start(2) - 12):m_.start(2)]
+            if num in allowed:
+                continue
+            if num == '100' and re.search(r'[/*]\s*$', before):
+                continue                   # cents <-> currency units
+            if re.search(r"(', |\), |status=)$", before) and len(num) == 3 and num[0] in '45':
+                continue                   # an HTTP status code
+            if re.search(r'maxlength="$', before):
+                continue
+            hits.append((rel, m_.group(0)[:60]))
+    return hits
+
+
+def step12_finalize(ctx):
+    db, c = ctx.db, ctx.client
+    from app.models.founder import ConciergeCase, FounderVenture
+    from app.services import concierge_service as cs, legal_text
+    print('\n13. Step 12: every counsel string lives in legal_text (and only there); no literals; NULL owner OK')
+    missing = [k for k in COUNSEL_KEYS.values() if k not in legal_text.DEFAULTS]
+    check('C1-C4, E1-E4, P1-P5, F1-F3, M1-M6 and R1-R3 are legal_text keys', not missing, missing)
+    counsel = io.open(os.path.join(ROOT, 'COUNSEL_REVIEW_CONCIERGE.md'), encoding='utf-8').read()
+    unmapped = [code for code, key in COUNSEL_KEYS.items() if '`%s`' % key not in counsel]
+    check('COUNSEL_REVIEW_CONCIERGE.md names the legal_text key of every string', not unmapped, unmapped)
+    copies = []
+    for key in COUNSEL_KEYS.values():
+        body = legal_text.DEFAULTS[key][1]
+        probe = body.split('{')[0].strip()[:50]
+        if len(probe) < 25:
+            continue
+        for path in glob.glob(os.path.join(ROOT, 'app', '**', '*.*'), recursive=True):
+            if path.endswith(('legal_text.py',)) or not path.endswith(('.py', '.html', '.js')):
+                continue
+            if probe in io.open(path, encoding='utf-8', errors='replace').read():
+                copies.append((key, os.path.relpath(path, ROOT)))
+    check('no counsel wording is copied outside legal_text.py', not copies, copies)
+    hits = price_like_literals()
+    check('no price-like literal next to fee/price/amount in the concierge code and templates', not hits, hits)
+    check('... and no file under app/ carries the consultation fee', not no_price_literal(), no_price_literal())
+
+    # R1 and R3 on the preview of a still-open case.
+    rc = ConciergeCase.query.filter_by(primary_email='rem@founder.io').first()
+    rem = make_user(ctx, 'rem@founder.io')
+    ctx.login(rem.id)
+    html = c.get('/founder/concierge/%s' % rc.id).get_data(as_text=True)
+    check('the preview carries R1 (retention) and R3 (admin access after transfer)',
+          legal_text.get('concierge_admin_access') in html and legal_text.get(
+              'concierge_privacy_deletion', window_days=30)[:80] in html)
+
+    # NULL owner: the admin Ventures tab and observability.
+    ctx.login(ctx.admin.id)
+    r = c.get('/admin/founder?tab=ventures')
+    check('the admin Ventures tab renders with unowned concierge ventures', r.status_code == 200
+          and 'Unassigned (concierge)' in r.get_data(as_text=True))
+    from app.services import founder_obs_service as fob
+    try:
+        fob.venture_trace(db.session.get(FounderVenture, rc.venture_id), ctx.admin.id)
+        ok = True
+    except Exception as exc:
+        ok = exc
+    check('the observability venture trace tolerates the unowned venture', ok is True, ok)
+    r = c.get('/admin/observability')
+    check('/admin/observability renders', r.status_code in (200, 302), r.status_code)
 
 
 def no_price_literal():

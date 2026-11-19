@@ -213,6 +213,19 @@ DEFAULTS = {
     'concierge_email_mismatch': (
         'Concierge: invitation opened by another or an unverified account (M6)',
         'This invitation was sent to another email address. Sign in with that address, or ask SimiSI to update it.'),
+    'concierge_privacy_deletion': (
+        'Concierge: deletion statement for the privacy policy and the preview (R1)',
+        'If a concierge evaluation is declined or not accepted within {window_days} days of being shared, SimiSI '
+        'permanently deletes the uploaded documents and the evaluation. A minimal record (dates, status and fee) is '
+        'kept.'),
+    'concierge_backups': (
+        'Concierge: backup retention for the privacy policy (R2; backup_days to be confirmed with the host)',
+        'Deleted data can remain in encrypted server backups for up to {backup_days} days, after which the backups '
+        'are overwritten.'),
+    'concierge_admin_access': (
+        'Concierge: admin access after transfer (R3)',
+        'After you accept, SimiSI staff can view your venture read-only to support you. They can change it only if '
+        'you turn on support access.'),
 }
 
 

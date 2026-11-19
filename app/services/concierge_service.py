@@ -1289,6 +1289,8 @@ def preview_data(venture, case, now=None) -> dict:
         'expires_on': expires_on, 'days_left': left,
         'days_left_text': legal_text.get('concierge_days_left', expires_on=expires_on, days_left=left),
         'disclaimer': legal_text.get('concierge_not_advice'),
+        'admin_access': legal_text.get('concierge_admin_access'),
+        'retention': legal_text.get('concierge_privacy_deletion', window_days=_cfg('fnd_cc_window_days')),
         'revision_note': legal_text.get('concierge_revision_note', window_days=_cfg('fnd_cc_window_days')),
         'decline_confirm': legal_text.get('concierge_decline_confirm', deletion_date=expires_on),
         'messages': [{'direction': m['direction'], 'by': m['by'], 'body': m['body'],
