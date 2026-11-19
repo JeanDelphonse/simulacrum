@@ -9,6 +9,11 @@ Keys:
   founder_pitch     the spoken pitch. Default on (matters only when the track is on).
   founder_investor  Phase 3. Default off. Refuses to leave off until an admin has
                     recorded the counsel sign-off date (fnd_counsel_signoff_at).
+  founder_concierge Admin permission for concierge onboarding (/admin/ventures).
+                    Unlike the others it is a strict per-admin allowlist: only
+                    admins with an 'allowed' override pass, never members, and
+                    the mode is off or allowlist (never on). Independent of
+                    founder_track, so ventures can be onboarded before launch.
 """
 from __future__ import annotations
 
@@ -20,8 +25,9 @@ logger = logging.getLogger(__name__)
 TRACK = 'founder_track'
 PITCH = 'founder_pitch'
 INVESTOR = 'founder_investor'
+CONCIERGE = 'founder_concierge'
 
-DEFAULT_MODES = {TRACK: 'off', PITCH: 'on', INVESTOR: 'off'}
+DEFAULT_MODES = {TRACK: 'off', PITCH: 'on', INVESTOR: 'off', CONCIERGE: 'allowlist'}
 MODES = ('off', 'allowlist', 'on')
 STATES = ('follow_global', 'allowed', 'blocked')
 
@@ -52,6 +58,8 @@ def is_enabled(user, key: str = TRACK) -> bool:
     also need the track itself to be enabled for the user."""
     if user is None or not getattr(user, 'is_authenticated', False):
         return False
+    if key == CONCIERGE:
+        return _concierge_allowed(user)
     try:
         if key != TRACK and not is_enabled(user, TRACK):
             return False
@@ -75,6 +83,19 @@ def is_enabled(user, key: str = TRACK) -> bool:
         return False
 
 
+def _concierge_allowed(user) -> bool:
+    """An admin with an explicit 'allowed' override, while the mode isn't off."""
+    try:
+        if not getattr(user, 'is_admin', False) or mode(CONCIERGE) == 'off':
+            return False
+        from app.models.mail_crm import UserFeatureOverride
+        row = UserFeatureOverride.query.filter_by(user_id=user.id, feature_key=CONCIERGE).first()
+        return bool(row is not None and row.state == 'allowed')
+    except Exception as exc:
+        logger.error('concierge permission failed closed for %s: %s', getattr(user, 'id', '?'), exc)
+        return False
+
+
 def public_pages_enabled() -> bool:
     """Public /startup/<slug> pages render only while the track is not off."""
     return mode(TRACK) != 'off'
@@ -90,6 +111,8 @@ def set_mode(key: str, mode: str = None, admin_id: str = None, *, new_mode: str 
     new_mode = mode if mode is not None else new_mode
     if new_mode not in MODES:
         raise FounderError('Unknown mode.')
+    if key == CONCIERGE and new_mode == 'on':
+        raise FounderError('Concierge onboarding is a per-admin permission: choose Allowlisted and allow admins by email.')
     if key == INVESTOR and new_mode != 'off':
         from app.services import founder_config
         if not founder_config.counsel_signed_off():

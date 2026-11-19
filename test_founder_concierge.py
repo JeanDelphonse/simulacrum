@@ -124,6 +124,7 @@ def run_all(app, db, generate_id, tmp_root):
 
     step1_schema(ctx)
     step2_settings(ctx)
+    step3_state_machine(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +248,119 @@ def step2_settings(ctx):
     r = c.put('/api/admin/founder/settings', json={'settings': {'fnd_concierge_fee_cents': 100}})
     check('a member cannot change the fee', r.status_code == 403)
     fc.set('fnd_cc_max_upload_mb', 20, ctx.admin.id)
+
+
+# ---------------------------------------------------------------------------
+# Step 3: state machine, audit, permission
+# ---------------------------------------------------------------------------
+
+EXPECTED_TRANSITIONS = {
+    'draft': {'documents_uploaded'},
+    'documents_uploaded': {'evaluating'},
+    'evaluating': {'ready_for_review', 'documents_uploaded'},
+    'ready_for_review': {'confirmed', 'evaluating'},
+    'confirmed': {'shared', 'evaluating'},
+    'shared': {'viewed', 'expired'},
+    'viewed': {'accepted_paid', 'revision_requested', 'declined', 'expired'},
+    'revision_requested': {'ready_for_review', 'declined', 'expired'},
+    'accepted_paid': {'active'},
+    'active': set(),
+    'declined': {'deleted'},
+    'expired': {'deleted'},
+    'deleted': set(),
+}
+
+
+def step3_state_machine(ctx):
+    db = ctx.db
+    from app.models.audit_log import AuditLog
+    from app.models.founder import ConciergeCase, FounderVenture
+    from app.services import concierge_service as cs, founder_feature as ff
+    print('\n4. Step 3: state machine (every allowed and refused transition), audit, permission')
+    check('STATES are the plan\'s thirteen states', set(cs.STATES) == set(EXPECTED_TRANSITIONS)
+          and len(cs.STATES) == 13)
+    check('TRANSITIONS are exactly plan section 3.6',
+          {k: set(v) for k, v in cs.TRANSITIONS.items()} == EXPECTED_TRANSITIONS)
+    v = FounderVenture(owner_user_id=None, name='Machine Co', stage='idea', status='concierge', track='concierge')
+    db.session.add(v)
+    db.session.commit()
+    case = ConciergeCase(venture_id=v.id, state='draft', primary_name='P', primary_email='p@x.com')
+    db.session.add(case)
+    db.session.commit()
+    wrong, refused_ok, audit_ok = [], [], []
+    for frm in cs.STATES:
+        for to in cs.STATES:
+            case.state = frm
+            db.session.commit()
+            before = AuditLog.query.filter_by(action='concierge_' + to).count()
+            try:
+                cs.transition(case, to, ctx.admin, note='test')
+                moved = True
+            except cs.ConciergeError:
+                moved = False
+            db.session.expire_all()
+            c2 = db.session.get(ConciergeCase, case.id)
+            after = AuditLog.query.filter_by(action='concierge_' + to).count()
+            should = to in EXPECTED_TRANSITIONS[frm]
+            if moved != should or (c2.state == to) != should and frm != to:
+                wrong.append((frm, to, moved))
+            if not should and (c2.state != frm or after != before):
+                refused_ok.append((frm, to))
+            if should:
+                rows = [a for a in AuditLog.query.filter_by(action='concierge_' + to).all()
+                        if (a.extra or {}).get('from') == frm] if after == before + 1 else []
+                row = rows[0] if len(rows) == 1 else None
+                meta = getattr(row, 'extra', None) or {}
+                if not (row and meta.get('from') == frm and meta.get('to') == to and meta.get('venture') == v.id
+                        and meta.get('actor') == ctx.admin.id and row.user_id == ctx.admin.id):
+                    audit_ok.append((frm, to, meta))
+            case = c2
+    n_allowed = sum(len(x) for x in EXPECTED_TRANSITIONS.values())
+    check('all %d allowed transitions succeed and %d refused ones raise' % (n_allowed, 13 * 13 - n_allowed),
+          not wrong, wrong[:10])
+    check('a refused transition leaves the state and the audit log untouched', not refused_ok, refused_ok[:10])
+    check('every allowed transition writes concierge_<to_state> with from, to, venture and actor',
+          not audit_ok, audit_ok[:5])
+    case.state = 'ready_for_review'
+    db.session.commit()
+    cs.transition(case, 'confirmed', ctx.admin)
+    check('confirming stamps confirmed_at and confirmed_by',
+          case.confirmed_at is not None and case.confirmed_by == ctx.admin.id)
+    try:
+        cs.transition(case, 'nonsense', ctx.admin)
+        bad = False
+    except cs.ConciergeError:
+        bad = True
+    check('an unknown state is refused', bad)
+    db.session.delete(case)
+    db.session.delete(v)
+    db.session.commit()
+
+    # Permission: admin + explicit allow; members never; not 'on'.
+    check('an admin without the allowlist entry cannot concierge', not cs.can_concierge(ctx.admin))
+    check('a member cannot concierge', not cs.can_concierge(ctx.member))
+    ff.set_user_access([ctx.admin.id, ctx.member.id], 'allowed', ctx.admin.id, key=ff.CONCIERGE)
+    check('an allowlisted admin can concierge', cs.can_concierge(ctx.admin))
+    check('an allowlisted member still cannot (admins only)', not cs.can_concierge(ctx.member))
+    check('another admin, not allowlisted, cannot', not cs.can_concierge(ctx.admin2))
+    check('the concierge permission does not depend on the founder_track switch',
+          ff.mode('founder_track') == 'off' and cs.can_concierge(ctx.admin))
+    try:
+        ff.set_mode(ff.CONCIERGE, 'on', ctx.admin.id)
+        on_refused = False
+    except ff.FounderError:
+        db.session.rollback()
+        on_refused = True
+    check('the concierge permission cannot be set to "on for everyone"', on_refused)
+    ff.set_mode(ff.CONCIERGE, 'off', ctx.admin.id)
+    check('mode off closes it even for allowlisted admins', not cs.can_concierge(ctx.admin))
+    ff.set_mode(ff.CONCIERGE, 'allowlist', ctx.admin.id)
+    check('the existing switches keep their defaults', (ff.mode('founder_pitch'), ff.mode('founder_investor'))
+          == ('on', 'off'))
+    ctx.login(ctx.admin.id)
+    html = ctx.client.get('/admin/founder').get_data(as_text=True)
+    check('the Overview lists the concierge permission with its allowlist',
+          'data-switch="founder_concierge"' in html and 'cc-admin@x.com (allowed)' in html)
 
 
 def no_price_literal():

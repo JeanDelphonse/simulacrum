@@ -106,7 +106,7 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
       <div class="fa-row"><label for="mode-{{ key }}">{{ label }} is on for</label>
         <select id="mode-{{ key }}" data-mode-select>
           {% for m, mlabel in [('off', 'Off for everyone'), ('allowlist', 'Allowlisted users only'), ('on', 'Everyone')] %}
-          <option value="{{ m }}" {{ 'selected' if modes[key] == m }} {{ 'disabled' if locked and m != 'off' }}>{{ mlabel }}</option>{% endfor %}
+          <option value="{{ m }}" {{ 'selected' if modes[key] == m }} {{ 'disabled' if (locked and m != 'off') or (key == 'founder_concierge' and m == 'on') }}>{{ mlabel }}</option>{% endfor %}
         </select>
         <button class="btn sm" type="button" data-mode-save {{ 'disabled' if locked }}>Save</button>
         <span class="fa-msg" role="status"></span></div>

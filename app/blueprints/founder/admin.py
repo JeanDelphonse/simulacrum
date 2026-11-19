@@ -31,7 +31,10 @@ SWITCHES = (('founder_track', 'Founder Track', 'The whole track: intake, report,
             ('founder_pitch', 'Spoken pitch', 'Founders may talk their pitch through instead of uploading a deck. '
                                               'Only matters while the Founder Track is enabled.'),
             ('founder_investor', 'Investor connection (Phase 3)',
-             'Investor matching, introductions, investor access and updates.'))
+             'Investor matching, introductions, investor access and updates.'),
+            ('founder_concierge', 'Concierge onboarding (admin permission)',
+             'Admin-led onboarding at /admin/ventures. Only admins allowed by email below can use it; '
+             'members never can. Off closes the area for everyone.'))
 
 LEVEL_LABELS = {0: 'Not permitted', 1: 'Advisor only', 2: 'Approve each action', 3: 'Approve the campaign',
                 4: 'Act within limits'}
