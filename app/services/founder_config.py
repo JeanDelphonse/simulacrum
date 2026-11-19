@@ -13,6 +13,7 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import re
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,9 @@ TARGET_KEYS = ('eval_completion', 'finding_accuracy', 'paid_poc_rate', 'step_com
                'intro_acceptance', 'application_submission', 'alignment_agreement')
 
 PREVIEW_LEVELS = ('rung', 'scores', 'top3')
+# Concierge uploads may only be types the app can read (PyMuPDF, python-docx).
+CC_READABLE_TYPES = ('pdf', 'docx')
+CC_MAX_UPLOAD_MB = 20        # same ceiling as self-serve uploads (founder_intake_service.UPLOAD_CAP_BYTES)
 FEE_MODES = ('one_time', 'recurring')
 FEE_MODES_BUILT = ('one_time',)          # 'recurring' is rejected until it is built
 
@@ -83,6 +87,17 @@ _SPEC = {
     'fnd_retention_days': ('int', 365, (30, 3650)),
     # Counsel sign-off (ISO date or datetime; empty = not signed off)
     'fnd_counsel_signoff_at': ('datetime', '', None),
+    # Concierge onboarding (FOUNDER_CONCIERGE_PLAN.md 3.7). The consultation fee
+    # has no price in code: 0 means not offered until an admin sets it.
+    'fnd_concierge_fee_cents': ('int', 0, (0, 10000000)),
+    'fnd_concierge_active': ('bool', False, None),
+    'fnd_concierge_currency': ('currency', 'usd', None),
+    'fnd_concierge_stripe_price_id': ('price_id', '', None),
+    'fnd_cc_window_days': ('int', 30, (1, 365)),
+    'fnd_cc_reminder_days': ('reminders', [7, 21, -3], None),
+    'fnd_cc_extend_days': ('int', 14, (1, 365)),
+    'fnd_cc_allowed_types': ('types', ['pdf', 'docx'], CC_READABLE_TYPES),
+    'fnd_cc_max_upload_mb': ('int', 20, (1, CC_MAX_UPLOAD_MB)),
 }
 
 DEFAULTS = {k: v[1] for k, v in _SPEC.items()}
@@ -130,6 +145,60 @@ def _validate(key: str, value):
         if v not in extra:
             raise FounderConfigError('%s must be one of: %s.' % (key, ', '.join(extra)))
         return v
+    if kind == 'bool':
+        if isinstance(value, bool):
+            return value
+        v = str(value if value is not None else '').strip().lower()
+        if v in ('1', 'true', 'yes', 'on'):
+            return True
+        if v in ('0', 'false', 'no', 'off', ''):
+            return False
+        raise FounderConfigError('%s must be true or false.' % key)
+    if kind == 'currency':
+        v = str(value or '').strip().lower()
+        if not re.match(r'^[a-z]{3}$', v):
+            raise FounderConfigError('%s must be a three-letter currency code, e.g. usd.' % key)
+        return v
+    if kind == 'price_id':
+        v = str(value or '').strip()
+        if v and not re.match(r'^price_[A-Za-z0-9]{3,200}$', v):
+            raise FounderConfigError('%s must be a Stripe price id (price_...) or empty.' % key)
+        return v
+    if kind in ('reminders', 'types'):
+        try:
+            data = _parse_json(value) if not isinstance(value, (list, tuple)) else list(value)
+        except (TypeError, ValueError):
+            data = [p for p in re.split(r'[\s,;]+', str(value or '')) if p]
+        if isinstance(data, (int, float, str)) and not isinstance(data, bool):
+            data = [data]
+        if not isinstance(data, list):
+            raise FounderConfigError('%s must be a list.' % key)
+        if kind == 'types':
+            out = []
+            for t in data:
+                t = str(t or '').strip().lower().lstrip('.')
+                if t not in extra:
+                    raise FounderConfigError('Allowed types can only be types SimiSI can read: %s.' % ', '.join(extra))
+                if t not in out:
+                    out.append(t)
+            if not out:
+                raise FounderConfigError('Allow at least one file type.')
+            return out
+        out = []
+        for d in data:
+            try:
+                if isinstance(d, bool):
+                    raise ValueError
+                n = int(str(d).strip())
+            except (TypeError, ValueError):
+                raise FounderConfigError('Reminder days must be whole numbers (negative = days before expiry).')
+            if n == 0 or abs(n) > 365:
+                raise FounderConfigError('Reminder days must be between -365 and 365, and not 0.')
+            if n not in out:
+                out.append(n)
+        if len(out) > 10:
+            raise FounderConfigError('Ten reminders at most.')
+        return out
     if kind == 'datetime':
         v = str(value or '').strip()
         if not v:
@@ -252,4 +321,15 @@ def pricing() -> dict:
         'refund_window_days': get('fnd_refund_window_days'),
         'fee_mode': get('fnd_fee_mode'),
         'currency': 'usd',
+    }
+
+
+def concierge_pricing() -> dict:
+    """The consultation (concierge) fee settings. fee_cents 0 = not offered."""
+    return {
+        'fee_cents': get('fnd_concierge_fee_cents'),
+        'active': bool(get('fnd_concierge_active')),
+        'currency': get('fnd_concierge_currency'),
+        'stripe_price_id': get('fnd_concierge_stripe_price_id'),
+        'refund_window_days': get('fnd_refund_window_days'),
     }

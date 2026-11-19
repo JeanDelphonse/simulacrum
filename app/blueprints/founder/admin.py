@@ -25,7 +25,7 @@ from app.extensions import db
 
 TABS = (('overview', 'Overview'), ('ventures', 'Ventures'), ('rubric', 'Rubric'), ('readiness', 'Readiness'), ('autonomy', 'Autonomy'),
         ('caps', 'Caps'), ('targets', 'Targets'), ('pricing', 'Pricing'), ('preview', 'Preview'),
-        ('investors', 'Investors'), ('names', 'Name checks'), ('counsel', 'Counsel'))
+        ('investors', 'Investors'), ('names', 'Name checks'), ('counsel', 'Counsel'), ('concierge', 'Concierge'))
 
 SWITCHES = (('founder_track', 'Founder Track', 'The whole track: intake, report, agents, plan and startup pages.'),
             ('founder_pitch', 'Spoken pitch', 'Founders may talk their pitch through instead of uploading a deck. '
@@ -66,6 +66,10 @@ EDITABLE = frozenset((
     'fnd_autonomy_matrix', 'fnd_first_contact_cap', 'fnd_targets', 'fnd_alert_error_rate_pct',
     'fnd_alert_cost_per_venture_cents', 'fnd_alert_stuck_days', 'fnd_retention_days',
     'fnd_invite_days', 'fnd_invite_daily_cap', 'fnd_startup_request_limit', 'fnd_startup_page_request_limit',
+    # Concierge onboarding (FOUNDER_CONCIERGE_PLAN.md 3.7)
+    'fnd_concierge_fee_cents', 'fnd_concierge_active', 'fnd_concierge_currency', 'fnd_concierge_stripe_price_id',
+    'fnd_cc_window_days', 'fnd_cc_reminder_days', 'fnd_cc_extend_days', 'fnd_cc_allowed_types',
+    'fnd_cc_max_upload_mb',
 ))
 
 CSV_COLUMNS = ('name', 'firm', 'kind', 'stages', 'check_min', 'check_max', 'sectors', 'geographies', 'apply_url',
@@ -142,6 +146,16 @@ def validate_settings(changes: dict) -> dict:
                                     % (CARD_MINIMUM_CENTS / 100))
     if after('fnd_addon_price_cents') > after('fnd_price_cents'):
         raise fc.FounderConfigError('The add-on (member) price cannot be above the Founder Track price.')
+    # Concierge consultation fee: 0 = not offered; otherwise at least the card minimum.
+    cc_fee = after('fnd_concierge_fee_cents')
+    if 0 < cc_fee < CARD_MINIMUM_CENTS:
+        raise fc.FounderConfigError('The consultation fee must be 0 (not offered) or at least %.2f (the card minimum).'
+                                    % (CARD_MINIMUM_CENTS / 100))
+    if after('fnd_concierge_active') and cc_fee <= 0:
+        raise fc.FounderConfigError('Set a consultation fee before turning it on.')
+    windows = after('fnd_cc_window_days')
+    if any(d >= windows or -d >= windows for d in after('fnd_cc_reminder_days')):
+        raise fc.FounderConfigError('Every reminder must fall inside the %d-day window.' % windows)
     return clean
 
 

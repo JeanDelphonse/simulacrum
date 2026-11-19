@@ -123,6 +123,7 @@ def run_all(app, db, generate_id, tmp_root):
     ctx.client, ctx.login = client, login
 
     step1_schema(ctx)
+    step2_settings(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +180,86 @@ def step1_schema(ctx):
           and 'UPDATE concierge_case SET confirmed_by = NULL' in sqltxt)
     db.session.delete(v)
     db.session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Step 2: settings
+# ---------------------------------------------------------------------------
+
+FEE = 13579          # a fee no code or template may carry
+
+
+def step2_settings(ctx):
+    from app.services import founder_config as fc
+    print('\n3. Step 2: concierge settings, safe defaults, validation, admin UI')
+    d = fc.DEFAULTS
+    check('defaults: fee 0 (not offered), inactive, usd, no Stripe price id',
+          (d['fnd_concierge_fee_cents'], d['fnd_concierge_active'], d['fnd_concierge_currency'],
+           d['fnd_concierge_stripe_price_id']) == (0, False, 'usd', ''))
+    check('defaults: window 30, reminders [7, 21, -3], extend 14, pdf+docx, 20 MB',
+          (d['fnd_cc_window_days'], d['fnd_cc_reminder_days'], d['fnd_cc_extend_days'], d['fnd_cc_allowed_types'],
+           d['fnd_cc_max_upload_mb']) == (30, [7, 21, -3], 14, ['pdf', 'docx'], 20))
+    E = fc.FounderConfigError
+
+    def refused(k, v):
+        try:
+            fc.set(k, v, ctx.admin.id)
+            return False
+        except E:
+            ctx.db.session.rollback()
+            return True
+    bad = [('fnd_cc_allowed_types', ['pptx']), ('fnd_cc_allowed_types', []), ('fnd_cc_reminder_days', [0]),
+           ('fnd_cc_reminder_days', ['x']), ('fnd_cc_max_upload_mb', 21), ('fnd_cc_window_days', 0),
+           ('fnd_concierge_currency', 'dollars'), ('fnd_concierge_stripe_price_id', 'prod_123'),
+           ('fnd_concierge_fee_cents', -1), ('fnd_concierge_active', 'maybe')]
+    let = [(k, v) for k, v in bad if not refused(k, v)]
+    check('invalid concierge settings are refused (unreadable types, bad reminders, caps)', not let, let)
+
+    c = ctx.client
+    ctx.login(ctx.admin.id)
+    r = c.put('/api/admin/founder/settings', json={'settings': {'fnd_concierge_active': True}})
+    check('the fee cannot be turned on while it is 0', r.status_code == 400, r.get_data(as_text=True)[:200])
+    r = c.put('/api/admin/founder/settings', json={'settings': {'fnd_concierge_fee_cents': 20}})
+    check('a fee under the card minimum is refused', r.status_code == 400)
+    r = c.put('/api/admin/founder/settings', json={'settings': {'fnd_cc_reminder_days': [7, 40]}})
+    check('a reminder outside the window is refused', r.status_code == 400)
+    r = c.put('/api/admin/founder/settings', json={'settings': {
+        'fnd_concierge_fee_cents': FEE, 'fnd_concierge_active': True, 'fnd_concierge_currency': 'usd',
+        'fnd_cc_reminder_days': [5, -2], 'fnd_cc_allowed_types': ['pdf', 'docx'], 'fnd_cc_max_upload_mb': 10}})
+    check('admin saves the fee and concierge settings', r.status_code == 200, r.get_data(as_text=True)[:300])
+    p = fc.concierge_pricing()
+    check('concierge_pricing() follows the settings', p['fee_cents'] == FEE and p['active'] and p['currency'] == 'usd')
+    check('reminders and upload cap are stored typed',
+          fc.get('fnd_cc_reminder_days') == [5, -2] and fc.get('fnd_cc_max_upload_mb') == 10)
+    from app.models.audit_log import AuditLog
+    check('each setting change is audit-logged',
+          len([a for a in AuditLog.query.filter_by(action='founder_setting').all()
+               if str((a.extra or {}).get('key', '')).startswith(('fnd_cc_', 'fnd_concierge_'))]) >= 6)
+    html = c.get('/admin/founder?tab=pricing').get_data(as_text=True)
+    check('Pricing tab has the consultation fee fields',
+          'data-cents="fnd_concierge_fee_cents"' in html and 'data-bool="fnd_concierge_active"' in html
+          and 'fnd_concierge_stripe_price_id' in html and '%.2f' % (FEE / 100.0) in html)
+    html = c.get('/admin/founder?tab=concierge').get_data(as_text=True)
+    check('a Concierge tab carries window, reminders, extension, types and size',
+          all(k in html for k in ('fnd_cc_window_days', 'fnd_cc_reminder_days', 'fnd_cc_extend_days',
+                                  'fnd_cc_allowed_types', 'fnd_cc_max_upload_mb')) and 'id="panel-concierge"' in html)
+    ctx.login(ctx.member.id)
+    r = c.put('/api/admin/founder/settings', json={'settings': {'fnd_concierge_fee_cents': 100}})
+    check('a member cannot change the fee', r.status_code == 403)
+    fc.set('fnd_cc_max_upload_mb', 20, ctx.admin.id)
+
+
+def no_price_literal():
+    """The consultation fee lives only in settings: no file under app/ carries it."""
+    hits = []
+    needles = (str(FEE), '%.2f' % (FEE / 100.0), '{:,.2f}'.format(FEE / 100.0))
+    for path in glob.glob(os.path.join(ROOT, 'app', '**', '*.*'), recursive=True):
+        if not path.endswith(('.py', '.html', '.js', '.json')):
+            continue
+        txt = io.open(path, encoding='utf-8', errors='replace').read()
+        if any(n in txt for n in needles):
+            hits.append(os.path.relpath(path, ROOT))
+    return hits
 
 
 if __name__ == '__main__':

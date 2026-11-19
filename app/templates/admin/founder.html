@@ -277,6 +277,21 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
         <select id="p-fee" data-key="fnd_fee_mode"><option value="one_time" selected>One-time payment</option><option value="recurring" disabled>Recurring (not built yet)</option></select></div>
       <div class="fa-row"><button class="btn primary sm" type="submit">Save prices</button><span class="fa-msg" role="status"></span></div>
     </form>
+    <form class="fa-card" data-settings-form id="ccPricing">
+      <h2>Consultation fee (concierge onboarding)</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">What a founder pays to accept an evaluation an admin prepared for them at
+        <a href="/admin/ventures">/admin/ventures</a>. It replaces the Founder Track fee for that venture; a founder never pays both.
+        0 means not offered. An admin can override it per venture, with a reason. The refund window above applies.</p>
+      <div class="fa-row"><label for="p-ccfee">Consultation fee</label>
+        <span class="fa-money"><span data-cc-currency>{{ settings.fnd_concierge_currency|upper }}</span><input type="number" id="p-ccfee" min="0" step="0.01" data-cents="fnd_concierge_fee_cents" value="{{ '%.2f' % (settings.fnd_concierge_fee_cents / 100) }}"></span></div>
+      <div class="fa-row"><label for="p-cccur">Currency (three-letter code)</label>
+        <input type="text" id="p-cccur" maxlength="3" style="width:5rem" data-key="fnd_concierge_currency" value="{{ settings.fnd_concierge_currency }}"></div>
+      <div class="fa-row"><label for="p-ccprice">Stripe price id (optional; empty = the fee above is sent inline)</label>
+        <input type="text" id="p-ccprice" maxlength="210" style="flex:1 1 14rem" placeholder="price_..." data-key="fnd_concierge_stripe_price_id" value="{{ settings.fnd_concierge_stripe_price_id }}"></div>
+      <div class="fa-row"><label for="p-ccactive">Offer the consultation fee</label>
+        <input type="checkbox" id="p-ccactive" data-bool="fnd_concierge_active" {{ 'checked' if settings.fnd_concierge_active }}></div>
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save consultation fee</button><span class="fa-msg" role="status"></span></div>
+    </form>
   </section>
 
   {# ── Preview ── #}
@@ -348,6 +363,26 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
       </table></div>
       {% else %}<p class="fa-note">No names waiting.</p>{% endif %}
     </div>
+  </section>
+
+  {# ── Concierge onboarding settings ── #}
+  <section class="fa-panel" role="tabpanel" id="panel-concierge" aria-labelledby="tab-concierge" {{ 'hidden' if tab != 'concierge' }}>
+    <form class="fa-card" data-settings-form>
+      <h2>Concierge onboarding</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">Limits for ventures an admin onboards at <a href="/admin/ventures">/admin/ventures</a>.
+        The consultation fee is on the Pricing tab. Admins need the concierge permission (Overview tab) to use the area.</p>
+      <div class="fa-row"><label for="cc-window">A shared evaluation stays open for (days)</label>
+        <input type="number" id="cc-window" min="1" max="365" data-key="fnd_cc_window_days" value="{{ settings.fnd_cc_window_days }}"></div>
+      <div class="fa-row"><label for="cc-rem">Reminder days (after sharing; negative = days before expiry)</label>
+        <input type="text" id="cc-rem" style="width:10rem" data-list="fnd_cc_reminder_days" value="{{ settings.fnd_cc_reminder_days|join(', ') }}"></div>
+      <div class="fa-row"><label for="cc-ext">One extension adds (days)</label>
+        <input type="number" id="cc-ext" min="1" max="365" data-key="fnd_cc_extend_days" value="{{ settings.fnd_cc_extend_days }}"></div>
+      <div class="fa-row"><span class="fa-lbl">Allowed file types</span>
+        {% for t in ('pdf', 'docx') %}<label style="min-width:0"><input type="checkbox" data-type-of="fnd_cc_allowed_types" value="{{ t }}" {{ 'checked' if t in settings.fnd_cc_allowed_types }}> {{ t|upper }}</label>{% endfor %}</div>
+      <div class="fa-row"><label for="cc-mb">Largest upload (MB, 20 at most)</label>
+        <input type="number" id="cc-mb" min="1" max="20" data-key="fnd_cc_max_upload_mb" value="{{ settings.fnd_cc_max_upload_mb }}"></div>
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save concierge settings</button><span class="fa-msg" role="status"></span></div>
+    </form>
   </section>
 
   {# ── Counsel ── #}
@@ -425,6 +460,11 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
       form.querySelectorAll('[data-cents]').forEach(function (el) {
         var v = parseFloat(el.value); s[el.dataset.cents] = isNaN(v) ? el.value : Math.round(v * 100); });
       var radio = form.querySelector('[data-radio-key]:checked'); if (radio) s[radio.dataset.radioKey] = radio.value;
+      form.querySelectorAll('[data-bool]').forEach(function (el) { s[el.dataset.bool] = el.checked; });
+      form.querySelectorAll('[data-list]').forEach(function (el) {
+        s[el.dataset.list] = el.value.split(/[\s,;]+/).filter(Boolean).map(function (x) { var n = parseInt(x, 10); return isNaN(n) ? x : n; }); });
+      var types = form.querySelectorAll('[data-type-of]');
+      if (types.length) { s[types[0].dataset.typeOf] = []; types.forEach(function (el) { if (el.checked) s[el.dataset.typeOf].push(el.value); }); }
       var weights = form.querySelectorAll('[data-weight]');
       if (weights.length) { s.fnd_rubric_weights = {}; weights.forEach(function (el) { s.fnd_rubric_weights[el.dataset.weight] = el.value; }); }
       var targets = form.querySelectorAll('[data-target]');
