@@ -760,7 +760,7 @@ def step6_evaluation(ctx):
 
     html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
     check('the venture page shows the pre-fill with its quote and the needs-input count',
-          'Acme Robotics startup plan' in html and 'Needs founder input' in html and 'need founder input' in html)
+          'Acme Robotics startup plan' in html and 'Needs founder input' in html and 'need founder input.' in html.replace('needs founder input.', 'need founder input.'))
     check('the page shows the findings and the API cost next to the fee',
           'No one sells' in html and 'id="ccCost"' in html and "Model (API) cost" in html)
     check('the evaluation carries the required disclaimer', legal_text.get('concierge_not_advice') in html

@@ -65,7 +65,7 @@
       <section class="fa-card" aria-labelledby="ccPfH" id="ccPrefill">
         <h2 id="ccPfH">Pre-filled fields</h2>
         <p class="fa-note" style="margin:0 0 .4rem">Proposed from the documents, each with the passage it comes from. Anything not found is "Needs founder input", never guessed.
-          {% if needs_input %}<b>{{ needs_input|length }} field{{ 's' if needs_input|length != 1 }} need founder input.</b>{% endif %}</p>
+          {% if needs_input %}<b>{{ needs_input|length }} {{ 'field needs' if needs_input|length == 1 else 'fields need' }} founder input.</b>{% endif %}</p>
         {% for f, label in prefill_fields %}{% set item = prefill.get(f) or {} %}
         <div class="cc-field" data-field="{{ f }}">
           <div><b>{{ label }}</b><br>
