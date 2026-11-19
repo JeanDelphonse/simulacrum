@@ -156,6 +156,63 @@ DEFAULTS = {
         'Some documents were not provided, so parts of this evaluation rest on less evidence.'),
     'concierge_ai_review': ('Concierge: AI and human review note (E4)',
                             'The evaluation was drafted with AI and reviewed by a SimiSI team member.'),
+    'concierge_unlocks': (
+        'Concierge preview: what accepting unlocks (P1)',
+        'Accepting gives you the full evaluation, your recommended agent team, your step-by-step execution plan, '
+        'your documents and a private startup page draft, in your own account.'),
+    'concierge_ownership_terms': (
+        'Concierge preview: ownership terms on acceptance (P2)',
+        'When your payment is confirmed, this venture, its documents, the final evaluation, the agent team, the plan '
+        'and the startup page draft become yours. SimiSI keeps read-only access for support; it edits only with your '
+        'permission.'),
+    'concierge_days_left': (
+        'Concierge preview: days left (P3)',
+        'This evaluation is available until {expires_on} ({days_left} days left). If it is not accepted by then, the '
+        'documents and the evaluation are permanently deleted.'),
+    'concierge_decline_confirm': (
+        'Concierge preview: decline confirmation (P4)',
+        'Decline this evaluation? It will be permanently deleted with your documents on {deletion_date}. You can '
+        'still accept it until then.'),
+    'concierge_revision_note': (
+        'Concierge preview: revision request note (P5)',
+        'Ask SimiSI for a revision. The {window_days}-day window keeps running unless SimiSI extends it.'),
+    'concierge_fee_line': (
+        'Concierge preview: fee line (F1)',
+        'Consultation fee: {fee} (one time). This replaces the Founder Track fee for this venture; you will not be '
+        'charged both.'),
+    'concierge_refund_policy': (
+        'Concierge: refund policy on the preview and receipt (F2; effect per decision D5)',
+        "Refundable within {refund_days} days of payment. A refund locks the venture's paid features again; it stays "
+        'in your account.'),
+    'concierge_receipt_footer': (
+        'Concierge: receipt email footer (F3)',
+        'Payment received for the SimiSI consultation fee. This is not an investment and does not give anyone a '
+        'stake in your company.'),
+    'concierge_invite_subject': ('Concierge: share/invite email subject (M1)',
+                                 'Your SimiSI Founder Track evaluation for {venture_name} is ready'),
+    'concierge_invite_body': (
+        'Concierge: share/invite email body (M1)',
+        '{primary_name}, SimiSI has prepared a Founder Track evaluation of {venture_name} from the documents '
+        '{consent_given_by} shared with us. Preview it and decide whether to accept it: {link}. The link works only '
+        'for {primary_email} and expires on {expires_on}.'),
+    'concierge_reminder': (
+        'Concierge: reminder email (M2, day 7 / day 21)',
+        'Your evaluation of {venture_name} is waiting. {days_left} days left before it and your documents are '
+        'deleted.'),
+    'concierge_final_reminder': (
+        'Concierge: final reminder email (M3, days before expiry)',
+        'Last reminder: on {expires_on} your evaluation of {venture_name} and the documents behind it will be '
+        'permanently deleted unless you accept it.'),
+    'concierge_accepted_email': (
+        'Concierge: acceptance confirmation and receipt email (M4)',
+        "{venture_name} is now in your SimiSI account. Start with the fields marked 'Needs founder input'."),
+    'concierge_deleted_email': (
+        'Concierge: deletion notice email to the founder (M5, optional)',
+        'Your evaluation of {venture_name} was not accepted and has been permanently deleted, together with the '
+        'documents shared with us, on {date}.'),
+    'concierge_email_mismatch': (
+        'Concierge: invitation opened by another or an unverified account (M6)',
+        'This invitation was sent to another email address. Sign in with that address, or ask SimiSI to update it.'),
 }
 
 

@@ -28,7 +28,8 @@ sys.path.insert(0, ROOT)
 
 PASS, FAIL = [], []
 
-NEW_PY = ['app/services/concierge_service.py', 'app/blueprints/founder/concierge_admin.py']
+NEW_PY = ['app/services/concierge_service.py', 'app/blueprints/founder/concierge_admin.py',
+          'app/blueprints/founder/concierge_founder.py']
 
 PLAN_TEXT = ('Acme Robotics startup plan. Problem: small warehouses lose hours every day to manual picking. '
              'Customer: owners of warehouses with 5 to 50 staff. Solution: a rentable picking robot that '
@@ -222,6 +223,8 @@ def run_all(app, db, generate_id, tmp_root):
     step4_encryption(ctx)
     step5_admin_area(ctx)
     step6_evaluation(ctx)
+    install_mail_fake(ctx)
+    step7_share(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -355,14 +358,14 @@ EXPECTED_TRANSITIONS = {
     'draft': {'documents_uploaded'},
     'documents_uploaded': {'evaluating'},
     'evaluating': {'ready_for_review', 'documents_uploaded'},
-    'ready_for_review': {'confirmed', 'evaluating'},
-    'confirmed': {'shared', 'evaluating'},
+    'ready_for_review': {'confirmed', 'evaluating', 'expired'},
+    'confirmed': {'shared', 'evaluating', 'expired'},
     'shared': {'viewed', 'expired'},
     'viewed': {'accepted_paid', 'revision_requested', 'declined', 'expired'},
     'revision_requested': {'ready_for_review', 'declined', 'expired'},
     'accepted_paid': {'active'},
     'active': set(),
-    'declined': {'deleted'},
+    'declined': {'deleted', 'viewed'},
     'expired': {'deleted'},
     'deleted': set(),
 }
@@ -376,7 +379,7 @@ def step3_state_machine(ctx):
     print('\n4. Step 3: state machine (every allowed and refused transition), audit, permission')
     check('STATES are the plan\'s thirteen states', set(cs.STATES) == set(EXPECTED_TRANSITIONS)
           and len(cs.STATES) == 13)
-    check('TRANSITIONS are exactly plan section 3.6',
+    check('TRANSITIONS are plan section 3.6 plus declined->viewed and review->expired (steps 7-11)',
           {k: set(v) for k, v in cs.TRANSITIONS.items()} == EXPECTED_TRANSITIONS)
     v = FounderVenture(owner_user_id=None, name='Machine Co', stage='idea', status='concierge', track='concierge')
     db.session.add(v)
@@ -843,6 +846,200 @@ def step6_evaluation(ctx):
     check('the earlier edit history is kept', ConciergeEdit.query.filter_by(case_id=case.id).count() >= 5)
     cs.RUN_INLINE = False
     fes.AI_CLIENT = None
+
+
+# ---------------------------------------------------------------------------
+# Faked email (every concierge email goes through email_service._send)
+# ---------------------------------------------------------------------------
+
+TOKEN_RE = re.compile(r'/founder/concierge/t/([A-Za-z0-9_\-]+)')
+
+
+def install_mail_fake(ctx):
+    from app.services import email_service
+    ctx.mails = []
+
+    def fake_send(subject, recipients, body, html=None):
+        ctx.mails.append({'subject': subject, 'to': list(recipients), 'body': body, 'html': html or ''})
+    email_service._send = fake_send
+
+
+def mails_to(ctx, addr, since=0):
+    return [m for m in ctx.mails[since:] if addr in m['to']]
+
+
+def last_token(ctx, addr):
+    for m in reversed(ctx.mails):
+        if addr in m['to']:
+            t = TOKEN_RE.search(m['body'])
+            if t:
+                return t.group(1)
+    return None
+
+
+def make_user(ctx, email, verified=True, admin=False):
+    from utils.id_gen import generate_id
+    from app.models.user import User
+    u = User(id=generate_id(), email=email, full_name=email.split('@')[0].title(), password_hash='x', is_admin=admin,
+             email_verified=verified, onboarding_completed_at=datetime.utcnow())
+    ctx.db.session.add(u)
+    ctx.db.session.commit()
+    return u
+
+
+# ---------------------------------------------------------------------------
+# Step 7: share and invite
+# ---------------------------------------------------------------------------
+
+def step7_share(ctx):
+    db, c, vid = ctx.db, ctx.client, ctx.vid
+    from datetime import timedelta
+    from app.models.audit_log import AuditLog
+    from app.models.founder import ConciergeCase, FounderVenture
+    from app.services import concierge_service as cs, founder_config as fc, legal_text
+    print('\n8. Step 7: share with the founder, hashed single-purpose token, re-send, extend, messages')
+    ctx.login(ctx.admin.id)
+    r = c.post('/api/admin/ventures/%s/share' % vid)
+    check('Share is refused before Confirm (ready_for_review)', r.status_code == 409, r.status_code)
+    c.post('/api/admin/ventures/%s/prefill' % vid, json={'field': 'name', 'value': 'Acme Robotics'})
+    c.post('/api/admin/ventures/%s/prefill' % vid, json={'field': 'one_liner',
+                                                        'value': 'Rentable picking robots for small warehouses'})
+    c.post('/api/admin/ventures/%s/confirm' % vid)
+    fc.set('fnd_concierge_active', False, ctx.admin.id)
+    r = c.post('/api/admin/ventures/%s/share' % vid)
+    check('Share is refused while the consultation fee is not active', r.status_code == 409
+          and 'not active' in r.get_json()['message'])
+    fc.set('fnd_concierge_active', True, ctx.admin.id)
+    ctx.login(ctx.admin2.id)
+    check('a non-allowlisted admin cannot share (404)', c.post('/api/admin/ventures/%s/share' % vid).status_code == 404)
+    ctx.login(ctx.admin.id)
+    n0 = len(ctx.mails)
+    before = datetime.utcnow()
+    r = c.post('/api/admin/ventures/%s/share' % vid)
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('Share moves confirmed -> shared and says it emailed', r.status_code == 200 and case.state == 'shared'
+          and r.get_json()['emailed'] is True, r.get_data(as_text=True)[:200])
+    window = fc.get('fnd_cc_window_days')
+    check('the window opens: shared_at now, expires_at = now + fnd_cc_window_days',
+          case.shared_at >= before.replace(microsecond=0) and
+          abs((case.expires_at - case.shared_at) - timedelta(days=window)) < timedelta(seconds=5))
+    sent = mails_to(ctx, 'jane@founder.io', n0)
+    token = last_token(ctx, 'jane@founder.io')
+    check('one invitation email goes to the primary founder', len(sent) == 1 and token, [m['to'] for m in ctx.mails[n0:]])
+    m = sent[0]
+    v = db.session.get(FounderVenture, vid)
+    check('the email is M1 (subject and body from legal_text) and carries E1',
+          m['subject'] == legal_text.get('concierge_invite_subject', venture_name=v.name)
+          and 'The link works only for jane@founder.io' in m['body'] and 'Pat Ref shared with us' in m['body']
+          and legal_text.get('concierge_not_advice') in m['body'])
+    check('the sender is the configured MAIL_DEFAULT_SENDER (email_service._send)',
+          ctx.app.config['MAIL_DEFAULT_SENDER'] == 'simi@simisi.io' or ctx.app.config['MAIL_DEFAULT_SENDER'])
+    check('only the token hash is stored (64-hex SHA-256), never the token',
+          re.match(r'^[0-9a-f]{64}$', case.invite_token_hash or '') and case.invite_token_hash != token
+          and token not in json.dumps({k: str(getattr(case, k)) for k in ConciergeCase.__table__.columns.keys()}))
+    check('invite_version starts at 1 and the send is audited',
+          case.invite_version == 1 and AuditLog.query.filter_by(action='concierge_invite_sent', resource_id=vid).count() == 1)
+    check('the shared transition is audited', AuditLog.query.filter_by(action='concierge_shared', resource_id=vid).count() == 1)
+    check('the admin email carries no venture document content', 'warehouse' not in m['body'].lower()
+          or 'Rentable picking robots' not in m['body'])
+
+    # The link.
+    link = '/founder/concierge/t/%s' % token
+    ctx.login(None)
+    r = c.get(link)
+    html = r.get_data(as_text=True)
+    check('signed out: the link asks to sign in (next=) and shows no venture data',
+          r.status_code == 200 and 'next=' in html and v.name not in html and 'jane@founder.io' not in html)
+    other = make_user(ctx, 'stranger@x.com')
+    ctx.login(other.id)
+    r = c.get(link)
+    html = r.get_data(as_text=True)
+    check('another verified account gets the M6 page (403) with no venture data',
+          r.status_code == 403 and legal_text.get('concierge_email_mismatch') in html and v.name not in html
+          and 'Rentable' not in html)
+    jane = make_user(ctx, 'Jane@Founder.io', verified=False)
+    ctx.jane = jane
+    ctx.login(jane.id)
+    r = c.get(link)
+    check('the right email, unverified: M6 (403), no venture data', r.status_code == 403
+          and v.name not in r.get_data(as_text=True))
+    check('refused claims are audited without the addresses',
+          AuditLog.query.filter_by(action='concierge_invite_refused', resource_id=vid).count() == 2)
+    jane.email_verified = True
+    db.session.commit()
+    r = c.get(link)
+    check('the verified primary founder (email compared case-insensitively) is sent to the preview',
+          r.status_code == 302 and r.headers['Location'].endswith('/founder/concierge/%s' % case.id), r.status_code)
+    r = c.get('/founder/concierge/t/not-a-real-token')
+    check('an unknown token is "no longer valid" (410)', r.status_code == 410)
+
+    # Re-send and correct the email.
+    ctx.login(ctx.admin.id)
+    r = c.post('/api/admin/ventures/%s/resend' % vid, json={})
+    token2 = last_token(ctx, 'jane@founder.io')
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('re-send issues a new token and version 2', r.status_code == 200 and token2 != token and case.invite_version == 2)
+    ctx.login(jane.id)
+    check('the old link stops working (410)', c.get(link).status_code == 410)
+    check('the new link works', c.get('/founder/concierge/t/%s' % token2).status_code == 302)
+    ctx.login(ctx.admin.id)
+    r = c.post('/api/admin/ventures/%s/resend' % vid, json={'email': 'not an email'})
+    check('a bad corrected email is refused', r.status_code == 400)
+    r = c.post('/api/admin/ventures/%s/resend' % vid, json={'email': 'roe@founder.io'})
+    token3 = last_token(ctx, 'roe@founder.io')
+    db.session.expire_all()
+    check('"Correct email & re-send" updates primary_email and emails the new address',
+          r.status_code == 200 and cs.case_for(vid).primary_email == 'roe@founder.io' and token3)
+    a = AuditLog.query.filter_by(action='concierge_invite_resent', resource_id=vid).order_by(
+        AuditLog.created_at.desc()).first()
+    check('the correction is audited (email_changed, version) without the addresses',
+          a is not None and a.extra.get('email_changed') is True and a.extra.get('version') == 3
+          and 'roe@founder.io' not in json.dumps(a.extra))
+    ctx.login(jane.id)
+    check('after the correction the old address cannot use its link (410)',
+          c.get('/founder/concierge/t/%s' % token2).status_code == 410)
+    check('... nor the new link (M6, 403)', c.get('/founder/concierge/t/%s' % token3).status_code == 403)
+    ctx.login(ctx.admin.id)
+    c.post('/api/admin/ventures/%s/resend' % vid, json={'email': 'jane@founder.io'})
+    ctx.token = last_token(ctx, 'jane@founder.io')
+    db.session.expire_all()
+    check('the email is corrected back (version 4)', cs.case_for(vid).invite_version == 4)
+
+    # Extend once.
+    case = cs.case_for(vid)
+    exp = case.expires_at
+    r = c.post('/api/admin/ventures/%s/extend' % vid, json={})
+    check('an extension needs a reason', r.status_code == 400)
+    r = c.post('/api/admin/ventures/%s/extend' % vid, json={'reason': 'Founder travelling'})
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('Extend adds fnd_cc_extend_days once', r.status_code == 200 and case.expires_at - exp ==
+          timedelta(days=fc.get('fnd_cc_extend_days')) and case.extend_reason == 'Founder travelling')
+    a = AuditLog.query.filter_by(action='concierge_extended', resource_id=vid).first()
+    check('the extension is audited with before, after and reason',
+          a is not None and a.extra.get('reason') == 'Founder travelling' and a.extra.get('after'))
+    r = c.post('/api/admin/ventures/%s/extend' % vid, json={'reason': 'again'})
+    db.session.expire_all()
+    check('a second extension is refused and changes nothing', r.status_code == 409
+          and cs.case_for(vid).expires_at == case.expires_at)
+    r = c.post('/api/admin/ventures/%s/reopen' % vid)
+    check('"Reopen for review" is refused unless a revision was requested', r.status_code == 409)
+
+    # The admin page.
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('the case page shows the window, days left, re-send and the used extension',
+          'id="ccInvite"' in html and 'days left' in html and 'id="ccResend"' in html
+          and 'cannot be extended again' in html and 'id="ccExtend"' not in html)
+    check('the case page offers the messages thread', 'id="ccMessages"' in html and 'id="ccReply"' in html)
+    n0 = len(ctx.mails)
+    r = c.post('/api/admin/ventures/%s/messages' % vid, json={'body': 'Happy to walk you through it.'})
+    check('an admin reply is saved and the founder is told by email (without the text)',
+          r.status_code == 200 and len(mails_to(ctx, 'jane@founder.io', n0)) == 1
+          and 'walk you through' not in ctx.mails[-1]['body'])
+    html = c.get('/admin/ventures').get_data(as_text=True)
+    check('the queue shows days since shared and days left', 'Shared' in html)
 
 
 def no_price_literal():

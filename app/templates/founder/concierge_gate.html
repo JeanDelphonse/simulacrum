@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Your SimiSI invitation{% endblock %}
+{% block head %}
+<meta name="robots" content="noindex, nofollow">
+<style>
+  .ccg { max-width: 640px; margin: 0 auto; padding: 3rem 1rem 4rem; color: var(--ink); }
+  .ccg h1 { font-size: clamp(24px, 3vw, 32px); margin: 0 0 .8rem; line-height: 1.2; }
+  .ccg p { line-height: 1.6; color: var(--ink-2); }
+  .ccg-card { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 1.5rem; }
+  .ccg-ctas { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.2rem 0 .4rem; }
+  .ccg-small { font-size: .88rem; color: var(--mute); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ccg">
+  <div class="ccg-card" id="ccGate" data-mode="{{ mode }}">
+  {% if mode == 'signin' %}
+    <h1>Sign in to open your invitation</h1>
+    <p>This invitation opens in your SimiSI account. Sign in with the email address it was sent to.</p>
+    <div class="ccg-ctas">
+      <a class="btn primary" href="{{ url_for('pages.login_page') }}?next={{ next_path|urlencode }}">Sign in</a>
+      <a class="btn" href="{{ url_for('pages.register_page') }}">Create an account</a>
+    </div>
+    <p class="ccg-small">New to SimiSI? Create your account with the address the invitation was sent to and verify it, then open the link again. Your invitation also appears on your Founder Track page once your email is verified.</p>
+  {% elif mode == 'mismatch' %}
+    <h1>This invitation is for another address</h1>
+    <p>{{ legal('concierge_email_mismatch') }}</p>
+    {% if unverified %}<p class="ccg-small">If this is your address, verify it first (check your inbox for the verification email), then open the link again.</p>{% endif %}
+    <div class="ccg-ctas"><a class="btn" href="{{ url_for('pages.dashboard') }}">Go to your dashboard</a></div>
+  {% else %}
+    <h1>This link is no longer valid</h1>
+    <p>The invitation was replaced by a newer link, has ended, or was already used to accept. If you were expecting it, ask SimiSI to send it again.</p>
+    <div class="ccg-ctas"><a class="btn" href="{{ url_for('pages.dashboard') }}">Go to your dashboard</a></div>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

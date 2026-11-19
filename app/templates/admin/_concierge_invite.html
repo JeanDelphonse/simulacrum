@@ -1,0 +1,110 @@
+{# Concierge case page: share with the founder, the window, re-send, extend,
+   and the revision thread (FOUNDER_CONCIERGE_PLAN.md step 7). #}
+<section class="fa-card" aria-labelledby="ccInvH" id="ccInvite">
+  <h2 id="ccInvH">Founder invitation</h2>
+  {% if case.shared_at %}
+  <dl class="cc-kv">
+    <dt>Shared</dt><dd>{{ case.shared_at.strftime('%Y-%m-%d %H:%M') }} UTC{% if days_since_shared is not none %} · {{ days_since_shared }} day{{ '' if days_since_shared == 1 else 's' }} ago{% endif %}</dd>
+    <dt>Window ends</dt><dd id="ccExpires">{{ case.expires_at.strftime('%Y-%m-%d %H:%M') }} UTC
+      {% if case.state in open_states or case.state in ('ready_for_review', 'confirmed') %}· <b id="ccDaysLeft">{{ days_left }} day{{ '' if days_left == 1 else 's' }} left</b>{% endif %}</dd>
+    {% if case.extended_at %}<dt>Extended</dt><dd>{{ case.extended_at.strftime('%Y-%m-%d') }}, reason: {{ case.extend_reason }}</dd>{% endif %}
+    <dt>Link</dt><dd>version {{ case.invite_version }}{% if case.invite_sent_at %}, sent {{ case.invite_sent_at.strftime('%Y-%m-%d %H:%M') }} UTC{% endif %} to {{ case.primary_email }}</dd>
+    <dt>Viewed</dt><dd>{{ case.viewed_at.strftime('%Y-%m-%d %H:%M') ~ ' UTC' if case.viewed_at else 'not yet' }}</dd>
+    {% if case.declined_at %}<dt>Declined</dt><dd>{{ case.declined_at.strftime('%Y-%m-%d') }}{% if case.decline_reason %}: {{ case.decline_reason }}{% endif %}</dd>{% endif %}
+    {% if case.accepted_at %}<dt>Accepted</dt><dd>{{ case.accepted_at.strftime('%Y-%m-%d %H:%M') }} UTC</dd>{% endif %}
+  </dl>
+  {% else %}
+  <p class="fa-note" style="margin:0 0 .4rem">Not shared yet. Sharing opens a {{ window_days }}-day window and emails {{ case.primary_email }} a private link that works only for that verified address.</p>
+  {% endif %}
+
+  {% if can_share %}
+  <div class="fa-row"><button class="btn primary sm" type="button" id="ccShare">{{ 'Share again (new link)' if case.expires_at else 'Share with founder' }}</button>
+    <span class="fa-msg" role="status" id="ccShareMsg"></span></div>
+  {% if not fee %}<p class="fa-note">Set the consultation fee first (Pricing, or an override above).</p>{% endif %}
+  {% endif %}
+
+  {% if can_resend %}
+  <form id="ccResend" style="margin-top:.6rem">
+    <label class="fa-note" for="ccResendEmail" style="display:block">Correct the email and re-send (the old link stops working)</label>
+    <div class="fa-row"><input type="email" id="ccResendEmail" value="{{ case.primary_email }}" maxlength="254" style="flex:1 1 14rem;min-width:0">
+      <button class="btn sm" type="submit">Re-send</button></div>
+    <span class="fa-msg" role="status" id="ccResendMsg"></span>
+  </form>
+  {% endif %}
+
+  {% if can_extend %}
+  <form id="ccExtend" style="margin-top:.6rem">
+    <label class="fa-note" for="ccExtendWhy" style="display:block">Extend once by {{ extend_days }} days (reason required)</label>
+    <div class="fa-row"><input type="text" id="ccExtendWhy" maxlength="500" placeholder="Reason" style="flex:1 1 14rem;min-width:0">
+      <button class="btn sm" type="submit">Extend</button></div>
+    <span class="fa-msg" role="status" id="ccExtendMsg"></span>
+  </form>
+  {% elif case.extended_at %}<p class="fa-note">The window was extended once; it cannot be extended again.</p>{% endif %}
+
+  {% if can_reopen %}
+  <p class="fa-banner" style="margin:.7rem 0 .4rem">The founder asked for a revision. Reopen the evaluation for review, edit it, confirm it and share it again (a new link; the window keeps running).</p>
+  <div class="fa-row"><button class="btn sm" type="button" id="ccReopen">Reopen for review</button><span class="fa-msg" role="status" id="ccReopenMsg"></span></div>
+  {% endif %}
+  {% if refund_view is defined and refund_view %}{% include 'admin/_concierge_refund.html' ignore missing %}{% endif %}
+</section>
+
+{% if messages or can_reply %}
+<section class="fa-card" aria-labelledby="ccMsgH" id="ccMessages">
+  <h2 id="ccMsgH">Messages{% if messages %} ({{ messages|length }}){% endif %}</h2>
+  {% if messages %}
+  <ul class="cc-hist">
+    {% for m in messages %}
+    <li><b>{{ 'Founder' if m.direction == 'founder' else 'SimiSI' }}</b>{% if m.admin_name %} <span class="cc-sub2" style="display:inline">({{ m.admin_name }})</span>{% endif %} · {{ m.at.strftime('%Y-%m-%d %H:%M') }} UTC
+      <div style="white-space:pre-wrap;margin-top:.2rem">{{ m.body }}</div></li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="fa-note" style="margin:0">No messages yet. A founder's revision request appears here.</p>{% endif %}
+  {% if can_reply %}
+  <form id="ccReply" style="margin-top:.6rem">
+    <label class="sr" for="ccReplyBody">Reply to the founder</label>
+    <textarea id="ccReplyBody" rows="3" maxlength="4000" placeholder="Reply to the founder" style="width:100%"></textarea>
+    <div class="fa-row"><button class="btn sm" type="submit">Send reply</button><span class="fa-msg" role="status" id="ccReplyMsg"></span></div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var call = window.ccCall, say = window.ccSay;
+  if (!call) return;
+  var VID = document.getElementById('ccCase').dataset.venture;
+  function post(path, body, msgId, ok) {
+    var msg = document.getElementById(msgId);
+    say(msg, 'Working…');
+    return call('/api/admin/ventures/' + VID + path, body || {}).then(function (d) {
+      if (d.emailed === false) { say(msg, 'Saved, but the email could not be sent. Re-send it.', true); setTimeout(function () { location.reload(); }, 2500); return; }
+      say(msg, ok || 'Done.'); setTimeout(function () { location.reload(); }, 600);
+    }).catch(function (e) { say(msg, e.message, true); });
+  }
+  var sh = document.getElementById('ccShare');
+  if (sh) sh.onclick = function () {
+    if (!confirm('Email the founder a private link to preview this evaluation? The window starts now.')) return;
+    sh.disabled = true; post('/share', {}, 'ccShareMsg', 'Shared and emailed.').then(function () { sh.disabled = false; });
+  };
+  var rs = document.getElementById('ccResend');
+  if (rs) rs.addEventListener('submit', function (e) {
+    e.preventDefault(); post('/resend', { email: document.getElementById('ccResendEmail').value }, 'ccResendMsg', 'Re-sent; the old link no longer works.');
+  });
+  var ex = document.getElementById('ccExtend');
+  if (ex) ex.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var why = document.getElementById('ccExtendWhy').value.trim();
+    if (!why) return say(document.getElementById('ccExtendMsg'), 'Give a reason.', true);
+    post('/extend', { reason: why }, 'ccExtendMsg', 'Extended.');
+  });
+  var ro = document.getElementById('ccReopen');
+  if (ro) ro.onclick = function () { post('/reopen', {}, 'ccReopenMsg', 'Back in review.'); };
+  var rp = document.getElementById('ccReply');
+  if (rp) rp.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var body = document.getElementById('ccReplyBody').value.trim();
+    if (!body) return say(document.getElementById('ccReplyMsg'), 'Write a reply.', true);
+    post('/messages', { body: body }, 'ccReplyMsg', 'Sent.');
+  });
+});
+</script>

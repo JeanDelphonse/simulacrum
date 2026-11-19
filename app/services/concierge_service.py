@@ -2,7 +2,9 @@
 
 An admin with the concierge permission onboards a venture for a founder:
 uploads the founder's documents, runs the evaluation, reviews and confirms it,
-and (steps 7-12, not built yet) shares it for the founder to accept and pay.
+and shares it with the primary founder, who previews it and accepts and pays
+(or asks for a revision, or declines). Unaccepted cases are deleted at the end
+of their window (run_daily).
 
 The venture is a normal FounderVenture with track and status 'concierge' and
 no owner until acceptance, so it reuses the evaluation, team and plan code.
@@ -28,19 +30,23 @@ STATES = ('draft', 'documents_uploaded', 'evaluating', 'ready_for_review', 'conf
 
 # Plan section 3.6. A failed evaluation returns to documents_uploaded; new
 # documents after review re-run the evaluation (ready_for_review|confirmed ->
-# evaluating). Nothing else moves a case.
+# evaluating). Two additions from building steps 7-11: a founder who declined
+# may change their mind until the window ends (declined -> viewed, the P4
+# wording), and a case sent back for a revision keeps its running window, so
+# it can expire while back in review (ready_for_review|confirmed -> expired).
+# Nothing else moves a case.
 TRANSITIONS = {
     'draft': ('documents_uploaded',),
     'documents_uploaded': ('evaluating',),
     'evaluating': ('ready_for_review', 'documents_uploaded'),
-    'ready_for_review': ('confirmed', 'evaluating'),
-    'confirmed': ('shared', 'evaluating'),
+    'ready_for_review': ('confirmed', 'evaluating', 'expired'),
+    'confirmed': ('shared', 'evaluating', 'expired'),
     'shared': ('viewed', 'expired'),
     'viewed': ('accepted_paid', 'revision_requested', 'declined', 'expired'),
     'revision_requested': ('ready_for_review', 'declined', 'expired'),
     'accepted_paid': ('active',),
     'active': (),
-    'declined': ('deleted',),
+    'declined': ('deleted', 'viewed'),
     'expired': ('deleted',),
     'deleted': (),
 }
@@ -869,4 +875,329 @@ def case_view(venture, case) -> dict:
         'created_by': getattr(creator, 'full_name', None) or getattr(creator, 'email', '') or '',
         'cofounders': list(case.cofounder_emails or []),
         **evaluation_view(venture, case),
+        **invite_view(case),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Share and invite (step 7)
+# ---------------------------------------------------------------------------
+# "Share with founder" (confirmed only) opens the window, issues a random
+# single-purpose token (only its SHA-256 is stored, with invite_version) and
+# emails the primary founder the link /founder/concierge/t/<token>. A re-send
+# (optionally to a corrected email) issues a new token: the old one stops
+# working. The link shows the venture only to a signed-in account whose
+# verified email is the primary founder's.
+
+OPEN_STATES = ('shared', 'viewed', 'revision_requested')
+# States that may carry a running window (a revision returns the case to review).
+WINDOW_STATES = OPEN_STATES + ('ready_for_review', 'confirmed')
+TOKEN_BYTES = 32
+MESSAGE_MAX = 4000
+REASON_MAX = 500
+
+
+def _cfg(key):
+    from app.services import founder_config
+    return founder_config.get(key)
+
+
+def _hash_token(token: str) -> str:
+    import hashlib
+    return hashlib.sha256(str(token or '').encode('utf-8')).hexdigest()
+
+
+def _new_token(case, now) -> str:
+    import secrets
+    token = secrets.token_urlsafe(TOKEN_BYTES)
+    case.invite_token_hash = _hash_token(token)
+    case.invite_version = (case.invite_version or 0) + 1
+    case.invite_sent_at = now
+    return token
+
+
+def case_for_token(token: str):
+    from app.models.founder import ConciergeCase
+    token = str(token or '')
+    if not token or len(token) > 200:
+        return None
+    return ConciergeCase.query.filter_by(invite_token_hash=_hash_token(token)).first()
+
+
+def token_usable(case, now=None) -> bool:
+    now = now or datetime.utcnow()
+    return bool(case is not None and case.state in OPEN_STATES and case.invite_token_hash
+                and case.expires_at is not None and case.expires_at > now)
+
+
+def email_matches(user, case) -> bool:
+    if user is None or not getattr(user, 'is_authenticated', False) or case is None:
+        return False
+    a = (getattr(user, 'email', None) or '').strip().lower()
+    b = (case.primary_email or '').strip().lower()
+    return bool(a and b and a == b)
+
+
+def is_primary(user, case) -> bool:
+    """The signed-in account is the primary founder: same email
+    (case-insensitive) and that email is verified."""
+    return email_matches(user, case) and bool(getattr(user, 'email_verified', False))
+
+
+def days_left(case, now=None) -> int:
+    import math
+    if case is None or case.expires_at is None:
+        return 0
+    now = now or datetime.utcnow()
+    return max(0, int(math.ceil((case.expires_at - now).total_seconds() / 86400.0)))
+
+
+def fmt_date(dt) -> str:
+    return '{:%B} {}, {:%Y}'.format(dt, dt.day, dt) if dt else ''
+
+
+def _site_url(path: str) -> str:
+    from flask import current_app, has_request_context, request
+    if has_request_context():
+        return request.host_url.rstrip('/') + path
+    base = (current_app.config.get('SITE_URL') or current_app.config.get('BASE_URL') or 'https://simisi.io').rstrip('/')
+    return base + path
+
+
+def invite_link(token: str) -> str:
+    return _site_url('/founder/concierge/t/%s' % token)
+
+
+def preview_link(case) -> str:
+    return _site_url('/founder/concierge/%s' % case.id)
+
+
+def admin_link(case) -> str:
+    return _site_url('/admin/ventures/%s' % case.venture_id)
+
+
+def _mail(to: str, subject: str, paragraphs: list, link: str = None, link_label: str = None,
+          small: list = None) -> bool:
+    """One plain email through email_service (sender MAIL_DEFAULT_SENDER).
+    Never raises: a failure is logged and returns False."""
+    from markupsafe import escape
+    from app.services import email_service as es
+    if not to:
+        return False
+    try:
+        html = ''.join(es._p(str(escape(p))) for p in paragraphs if p)
+        text = '\n\n'.join(p for p in paragraphs if p)
+        if link:
+            html += es._btn(str(escape(link)), str(escape(link_label or 'Open'))) + es._fallback_link(str(escape(link)))
+            text += '\n\n%s: %s' % (link_label or 'Open', link)
+        for line in small or []:
+            if line:
+                html += es._p(str(escape(line)), muted=True)
+                text += '\n\n' + line
+        es._send(subject, [to], text, es._html_wrap(html, preheader=subject))
+        return True
+    except Exception as exc:
+        logger.error('concierge email "%s" to %s failed: %s', subject, to, exc)
+        return False
+
+
+def notify_admin(case, what: str, lines: list = None) -> bool:
+    """Admin notice (FOUNDER_EMAIL) on view, accept, decline, expiry and
+    revision requests. Names the venture and links the case page; never any
+    document or evaluation content."""
+    from flask import current_app
+    from app.extensions import db
+    from app.models.founder import FounderVenture
+    to = current_app.config.get('FOUNDER_EMAIL') or current_app.config.get('MAIL_DEFAULT_SENDER')
+    v = db.session.get(FounderVenture, case.venture_id) if case.venture_id else None
+    name = getattr(v, 'name', None) or case.venture_id
+    return _mail(to, 'Concierge: %s %s' % (name, what),
+                 ['Concierge venture %s (case %s) %s.' % (name, case.id, what)] + list(lines or []),
+                 link=admin_link(case), link_label='Open the case')
+
+
+def _send_invite(venture, case, token: str) -> bool:
+    from app.services import legal_text
+    vals = {'venture_name': venture.name, 'primary_name': case.primary_name or '',
+            'consent_given_by': case.consent_given_by or 'you', 'link': invite_link(token),
+            'primary_email': case.primary_email, 'expires_on': fmt_date(case.expires_at)}
+    return _mail(case.primary_email, legal_text.get('concierge_invite_subject', **vals),
+                 [legal_text.get('concierge_invite_body', **vals)], link=invite_link(token),
+                 link_label='Preview the evaluation', small=[legal_text.get('concierge_not_advice')])
+
+
+def _invite_audit(action, case, admin, now, **extra):
+    from app.models.audit_log import AuditLog
+    meta = {'case': case.id, 'venture': case.venture_id, 'version': case.invite_version,
+            'expires_at': case.expires_at.isoformat() if case.expires_at else None, 'at': now.isoformat()}
+    meta.update(extra)
+    AuditLog.log(action, user_id=getattr(admin, 'id', admin if isinstance(admin, str) else None),
+                 resource_id=case.venture_id, metadata=meta)
+
+
+def _require_payable_fee(case):
+    from app.blueprints.founder.admin import CARD_MINIMUM_CENTS
+    if not _cfg('fnd_concierge_active'):
+        raise ConciergeError('The consultation fee is not active: turn it on in Admin > Founder Track > Pricing '
+                             'before sharing.')
+    if effective_fee_cents(case) < CARD_MINIMUM_CENTS:
+        raise ConciergeError('Set the consultation fee (Pricing, or an override on this venture) before sharing.')
+
+
+def share(venture, case, admin):
+    """confirmed -> shared. The first share opens the window (shared_at,
+    expires_at = now + fnd_cc_window_days); a re-share after a revision keeps
+    the running window. A new token every time (the old one stops working).
+    Emails the primary founder (M1 + E1). Returns (case, emailed)."""
+    from datetime import timedelta
+    from app.extensions import db
+    if case.state != 'confirmed':
+        raise ConciergeError('Only a confirmed evaluation can be shared (the case is %s).'
+                             % STATE_LABELS.get(case.state, case.state).lower())
+    _require_payable_fee(case)
+    now = datetime.utcnow()
+    if case.expires_at is not None and case.expires_at <= now:
+        raise ConciergeError('The window ended on %s; it cannot be shared again.' % fmt_date(case.expires_at))
+    reshare = case.expires_at is not None
+    case = transition(case, 'shared', admin, note='re-shared after a revision' if reshare else 'shared',
+                      commit=False)
+    if case.shared_at is None:
+        case.shared_at = now
+    if case.expires_at is None:
+        case.expires_at = now + timedelta(days=int(_cfg('fnd_cc_window_days')))
+    token = _new_token(case, now)
+    _invite_audit('concierge_invite_sent', case, admin, now, reshare=reshare)
+    db.session.commit()
+    emailed = _send_invite(venture, case, token)
+    if not emailed:
+        _invite_audit('concierge_invite_email_failed', case, admin, now)
+        db.session.commit()
+    return case, emailed
+
+
+def resend(venture, case, admin, new_email: str = None):
+    """Correct the primary founder's email (optional) and re-send: a new
+    token and invite_version; the old link stops working. Audited (whether
+    the email changed, not the addresses). Returns (case, emailed)."""
+    from app.extensions import db
+    if case.state not in OPEN_STATES:
+        raise ConciergeError('Only a shared invitation can be re-sent (the case is %s).'
+                             % STATE_LABELS.get(case.state, case.state).lower())
+    now = datetime.utcnow()
+    if case.expires_at is None or case.expires_at <= now:
+        raise ConciergeError('The window has ended.')
+    changed = False
+    if new_email is not None and str(new_email).strip():
+        email = _email(new_email, 'Primary founder email')
+        if email != (case.primary_email or '').lower():
+            case.primary_email = email
+            case.cofounder_emails = [e for e in (case.cofounder_emails or []) if e != email]
+            changed = True
+    token = _new_token(case, now)
+    case.updated_at = now
+    _invite_audit('concierge_invite_resent', case, admin, now, email_changed=changed)
+    db.session.commit()
+    emailed = _send_invite(venture, case, token)
+    if not emailed:
+        _invite_audit('concierge_invite_email_failed', case, admin, now)
+        db.session.commit()
+    return case, emailed
+
+
+def extend(case, reason: str, admin):
+    """Extend the window once by fnd_cc_extend_days, with a reason. Audited.
+    A second extension is refused."""
+    from datetime import timedelta
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    reason = _clean(reason, REASON_MAX)
+    if not reason:
+        raise ConciergeError('Give a reason for the extension.', 400)
+    if case.extended_at is not None:
+        raise ConciergeError('This window was already extended once (%s); it cannot be extended again.'
+                             % fmt_date(case.extended_at))
+    now = datetime.utcnow()
+    if case.state not in WINDOW_STATES or case.expires_at is None:
+        raise ConciergeError('Only a shared evaluation with a running window can be extended.')
+    if case.expires_at <= now:
+        raise ConciergeError('The window has already ended.')
+    days = int(_cfg('fnd_cc_extend_days'))
+    before = case.expires_at
+    case.expires_at = before + timedelta(days=days)
+    case.extended_at, case.extended_by, case.extend_reason = now, getattr(admin, 'id', None), reason
+    case.updated_at = now
+    AuditLog.log('concierge_extended', user_id=getattr(admin, 'id', None), resource_id=case.venture_id,
+                 metadata={'case': case.id, 'before': before.isoformat(), 'after': case.expires_at.isoformat(),
+                           'days': days, 'reason': reason, 'at': now.isoformat()})
+    db.session.commit()
+    return case
+
+
+def reopen_for_review(case, admin):
+    """revision_requested -> ready_for_review: the admin edits and re-confirms,
+    then shares again (a new link; the window keeps running)."""
+    return transition(case, 'ready_for_review', admin, note='reopened for the revision request')
+
+
+def add_message(case, direction: str, body: str, user):
+    """Add one message to the case thread (not committed). Audited without
+    the body."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.models.founder import ConciergeMessage
+    body = str(body or '').strip()
+    if not body:
+        raise ConciergeError('Write a message.', 400)
+    if len(body) > MESSAGE_MAX:
+        raise ConciergeError('Messages are %d characters at most.' % MESSAGE_MAX, 400)
+    m = ConciergeMessage(case_id=case.id, direction=direction, body=body, by_user_id=getattr(user, 'id', None))
+    db.session.add(m)
+    AuditLog.log('concierge_message', user_id=getattr(user, 'id', None), resource_id=case.venture_id,
+                 metadata={'case': case.id, 'direction': direction})
+    return m
+
+
+def admin_reply(venture, case, body: str, admin):
+    """An admin reply in the case thread; the founder is told by email (the
+    reply itself is read on the preview page, behind sign-in)."""
+    from app.extensions import db
+    if case.state not in WINDOW_STATES + ('declined',):
+        raise ConciergeError('Replies are possible while the invitation is open.')
+    m = add_message(case, 'admin', body, admin)
+    db.session.commit()
+    _mail(case.primary_email, 'SimiSI replied about %s' % venture.name,
+          ['SimiSI replied to your message about the evaluation of %s. Sign in to read it.' % venture.name],
+          link=preview_link(case), link_label='Read the reply')
+    return m
+
+
+def messages(case) -> list:
+    from app.models.founder import ConciergeMessage
+    from app.models.user import User
+    rows = ConciergeMessage.query.filter_by(case_id=case.id).order_by(ConciergeMessage.created_at).limit(200).all()
+    users = {u.id: u for u in User.query.filter(User.id.in_({r.by_user_id for r in rows if r.by_user_id} or ['-']))}
+    out = []
+    for r in rows:
+        u = users.get(r.by_user_id)
+        out.append({'id': r.id, 'direction': r.direction, 'body': r.body, 'at': r.created_at,
+                    'by': 'SimiSI' if r.direction == 'admin' else (getattr(u, 'full_name', None) or 'Founder'),
+                    'admin_name': (getattr(u, 'full_name', None) or getattr(u, 'email', '')) if r.direction == 'admin'
+                    else ''})
+    return out
+
+
+def invite_view(case) -> dict:
+    """The share/invite block of the admin case page."""
+    now = datetime.utcnow()
+    return {
+        'open_states': OPEN_STATES, 'window_days': int(_cfg('fnd_cc_window_days')),
+        'extend_days': int(_cfg('fnd_cc_extend_days')), 'days_left': days_left(case, now),
+        'days_since_shared': (now - case.shared_at).days if case.shared_at else None,
+        'can_share': case.state == 'confirmed' and not (case.expires_at and case.expires_at <= now),
+        'can_resend': case.state in OPEN_STATES and bool(case.expires_at and case.expires_at > now),
+        'can_extend': (case.extended_at is None and case.state in WINDOW_STATES and case.expires_at is not None
+                       and case.expires_at > now),
+        'can_reopen': case.state == 'revision_requested',
+        'can_reply': case.state in WINDOW_STATES + ('declined',),
+        'messages': messages(case), 'fmt_date': fmt_date,
     }

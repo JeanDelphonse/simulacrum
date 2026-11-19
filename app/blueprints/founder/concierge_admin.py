@@ -292,3 +292,70 @@ def api_concierge_confirm(venture_id):
         db.session.rollback()
         return _err(exc, exc.status)
     return jsonify({'state': c.state})
+
+
+# ── Share, invite, extend, messages (step 7) ─────────────────────────────────
+
+def _case_action(venture_id, fn):
+    from app.services import concierge_service as cs
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    try:
+        out = fn(v, c, request.get_json(silent=True) or {})
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    c = cs.case_for(v.id)
+    body = {'state': c.state, 'state_label': cs.STATE_LABELS.get(c.state, c.state),
+            'expires_at': c.expires_at.isoformat() if c.expires_at else None, 'days_left': cs.days_left(c),
+            'invite_version': c.invite_version}
+    body.update(out or {})
+    return jsonify(body)
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/share', methods=['POST'])
+@concierge_api
+def api_concierge_share(venture_id):
+    from app.services import concierge_service as cs
+
+    def go(v, c, b):
+        _c, emailed = cs.share(v, c, current_user)
+        return {'emailed': emailed}
+    return _case_action(venture_id, go)
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/resend', methods=['POST'])
+@concierge_api
+def api_concierge_resend(venture_id):
+    from app.services import concierge_service as cs
+
+    def go(v, c, b):
+        _c, emailed = cs.resend(v, c, current_user, new_email=b.get('email'))
+        return {'emailed': emailed, 'primary_email': _c.primary_email}
+    return _case_action(venture_id, go)
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/extend', methods=['POST'])
+@concierge_api
+def api_concierge_extend(venture_id):
+    from app.services import concierge_service as cs
+    return _case_action(venture_id, lambda v, c, b: cs.extend(c, b.get('reason'), current_user) and None)
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/reopen', methods=['POST'])
+@concierge_api
+def api_concierge_reopen(venture_id):
+    from app.services import concierge_service as cs
+    return _case_action(venture_id, lambda v, c, b: cs.reopen_for_review(c, current_user) and None)
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/messages', methods=['POST'])
+@concierge_api
+def api_concierge_reply(venture_id):
+    from app.services import concierge_service as cs
+
+    def go(v, c, b):
+        m = cs.admin_reply(v, c, b.get('body'), current_user)
+        return {'message_id': m.id}
+    return _case_action(venture_id, go)

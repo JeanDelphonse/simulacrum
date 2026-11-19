@@ -185,11 +185,12 @@
         <div class="fa-row"><button class="btn primary sm" type="button" id="ccConfirm">Confirm evaluation</button><span class="fa-msg" role="status" id="ccConfirmMsg"></span></div>
         {% elif case.state == 'confirmed' %}
         <p style="margin:0"><span class="fa-badge on">Confirmed</span> {{ case.confirmed_at.strftime('%Y-%m-%d %H:%M') if case.confirmed_at }} UTC</p>
-        <p class="fa-note">Sharing with the founder is not built yet. New documents need a re-run, which returns it to review.</p>
+        <p class="fa-note">Share it with the founder below. New documents need a re-run, which returns it to review.</p>
         {% else %}
         <p class="fa-note" style="margin:0">Confirm becomes available once the evaluation is ready for review.</p>
         {% endif %}
       </section>
+      {% include 'admin/_concierge_invite.html' %}
       {% if team %}
       <section class="fa-card" aria-labelledby="ccTeamH">
         <h2 id="ccTeamH">Recommended agent team</h2>
