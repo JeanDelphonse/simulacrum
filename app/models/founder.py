@@ -141,7 +141,8 @@ class VentureArtifact(db.Model):
              'is_current': bool(self.is_current), 'filename': self.filename, 'char_count': self.char_count,
              'uploaded_by': self.uploaded_by, 'created_at': _iso(self.created_at)}
         if with_text:
-            d['text_content'] = self.text_content
+            from app.services.founder_intake_service import artifact_text
+            d['text_content'] = artifact_text(self)
         return d
 
 

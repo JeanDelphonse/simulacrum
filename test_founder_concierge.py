@@ -43,6 +43,100 @@ def check(label, condition, detail=''):
     print(line.encode(enc, 'replace').decode(enc))
 
 
+def make_pdf(text, **save):
+    import fitz
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_textbox(fitz.Rect(40, 40, 560, 800), text, fontsize=10)
+    if save.pop('embed', False):
+        doc.embfile_add('secret.txt', b'hidden payload')
+    data = doc.tobytes(**save)
+    doc.close()
+    return data
+
+
+def make_docx(text, extra_parts=None):
+    from docx import Document
+    d = Document()
+    for para in text.split('. '):
+        d.add_paragraph(para)
+    buf = io.BytesIO()
+    d.save(buf)
+    if not extra_parts:
+        return buf.getvalue()
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(buf.getvalue())) as src, zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as dst:
+        for item in src.infolist():
+            dst.writestr(item, src.read(item.filename))
+        for name, body in extra_parts.items():
+            dst.writestr(name, body)
+    return out.getvalue()
+
+
+def js_pdf(text):
+    """A PDF whose catalog runs JavaScript on open."""
+    import fitz
+    doc = fitz.open(stream=make_pdf(text), filetype='pdf')
+    js = doc.get_new_xref()
+    doc.update_object(js, '<< /Type /Action /S /JavaScript /JS (app.alert\\(1\\)) >>')
+    doc.xref_set_key(doc.pdf_catalog(), 'OpenAction', '%d 0 R' % js)
+    data = doc.tobytes(garbage=0, deflate=True, use_objstms=1) if hasattr(doc, 'tobytes') else doc.write()
+    doc.close()
+    return data
+
+
+def upload(data, name):
+    from werkzeug.datastructures import FileStorage
+    return FileStorage(stream=io.BytesIO(data), filename=name)
+
+
+class FakeClaude(object):
+    """evaluate_dimension: every dimension covered, one finding quoting the
+    document. extract_venture_facts (the pre-fill): name, one-liner and team
+    with quotes, stage not found."""
+
+    def __init__(self):
+        self.calls, self.lock, self.fail = [], threading.Lock(), False
+        self.messages = self
+        self.prefill = None
+
+    def create(self, **kw):
+        if self.fail:
+            raise RuntimeError('api down')
+        tool = (kw.get('tools') or [{}])[0].get('name')
+        with self.lock:
+            self.calls.append(tool)
+        usage = SimpleNamespace(input_tokens=1000, output_tokens=200, cache_read_input_tokens=0,
+                                cache_creation_input_tokens=0)
+        if tool == 'evaluate_dimension':
+            first = kw['messages'][0]['content']
+            dim = re.search(r'dimension "([a-z_]+)"', first[1]['text']).group(1)
+            out = {'covered': True, 'score': 60, 'findings': []}
+            if dim == 'team':
+                out['findings'] = [{'ftype': 'gap', 'severity': 'high', 'title': 'No one sells',
+                                    'detail': 'Nobody on the team owns sales.',
+                                    'citation_text': 'robotics engineer', 'confidence': 0.8}]
+            if dim == 'problem':
+                out['findings'] = [{'ftype': 'strength', 'severity': 'low', 'title': 'Pain is concrete',
+                                    'detail': 'Warehouses lose hours.',
+                                    'citation_text': 'small warehouses lose hours every day', 'confidence': 0.7}]
+            block = SimpleNamespace(type='tool_use', id='tu', name=tool, input=out)
+            return SimpleNamespace(content=[block], usage=usage, model='fake-sonnet')
+        doc = kw['messages'][0]['content'] if isinstance(kw['messages'][0]['content'], str) else \
+            ' '.join(b.get('text', '') for b in kw['messages'][0]['content'])
+        out = self.prefill or {
+            'name': {'value': 'Acme Robotics', 'citation': 'Acme Robotics startup plan'},
+            'one_liner': {'value': 'Rentable picking robots for small warehouses',
+                          'citation': 'a rentable picking robot that learns the shelf layout in a day'},
+            'stage': {'value': None, 'citation': None},
+            'team': [{'name': 'Jane Roe', 'role': 'CEO', 'citation': 'Jane Roe, CEO'},
+                     {'name': 'Ghost Person', 'role': 'CTO', 'citation': 'Ghost Person, CTO'}],
+        }
+        self.last_doc = doc
+        block = SimpleNamespace(type='tool_use', id='tu', name=tool, input=out)
+        return SimpleNamespace(content=[block], usage=usage, model='fake-haiku')
+
+
 def sql_columns(path):
     """{table: {column: not_null}} from the CREATE TABLE statements in a migration."""
     out = {}
@@ -125,6 +219,7 @@ def run_all(app, db, generate_id, tmp_root):
     step1_schema(ctx)
     step2_settings(ctx)
     step3_state_machine(ctx)
+    step4_encryption(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -361,6 +456,109 @@ def step3_state_machine(ctx):
     html = ctx.client.get('/admin/founder').get_data(as_text=True)
     check('the Overview lists the concierge permission with its allowlist',
           'data-switch="founder_concierge"' in html and 'cc-admin@x.com (allowed)' in html)
+
+
+# ---------------------------------------------------------------------------
+# Step 4: encrypted storage and content checks
+# ---------------------------------------------------------------------------
+
+def step4_encryption(ctx):
+    db, app = ctx.db, ctx.app
+    from sqlalchemy import text as sqltext
+    from app.models.founder import EvaluationRun, FounderVenture, VentureArtifact
+    from app.services import founder_config as fc, founder_intake_service as fis
+    from app.services import founder_evaluation_service as fes
+    print('\n5. Step 4: concierge uploads are encrypted at rest; structural content checks')
+    v = FounderVenture(owner_user_id=None, name='Crypt Co', stage='idea', status='concierge', track='concierge')
+    db.session.add(v)
+    db.session.commit()
+    pdf = make_pdf(PLAN_TEXT)
+    a = fis.save_concierge_upload(v, upload(pdf, 'plan.pdf'), 'startup_plan', ctx.admin)
+    check('a concierge PDF is stored with encrypted=1', a.encrypted is True and a.kind == 'startup_plan')
+    on_disk = open(a.file_path, 'rb').read()
+    check('the file on disk is not the original and holds none of its text',
+          on_disk != pdf and b'%PDF' not in on_disk and b'Acme' not in on_disk and a.file_path.endswith('.enc'))
+    check('decrypting the file gives the original bytes', fis.artifact_file_bytes(a) == pdf)
+    raw = db.session.execute(sqltext('SELECT text_content FROM venture_artifact WHERE id = :i'), {'i': a.id}).scalar()
+    check('text_content in the database is not plain text', raw and 'Acme' not in raw and 'warehouse' not in raw)
+    check('artifact_text() decrypts it', 'Acme Robotics startup plan' in fis.artifact_text(a))
+    check('char_count is the plain text length', a.char_count == len(fis.artifact_text(a)))
+    folder = os.path.dirname(a.file_path)
+    check('no plain copy of the upload is left in the venture folder',
+          all(n.endswith('.enc') for n in os.listdir(folder)), os.listdir(folder))
+    d = fis.save_concierge_upload(v, upload(make_docx(PLAN_TEXT), 'summary.docx'), 'exec_summary', ctx.admin)
+    check('a plain DOCX is accepted and encrypted', d.encrypted and 'Jane Roe' in fis.artifact_text(d))
+
+    def refused(data, name, kind='ops_plan', status=422):
+        try:
+            fis.save_concierge_upload(v, upload(data, name), kind, ctx.admin)
+            return False
+        except fis.IntakeError as exc:
+            db.session.rollback()
+            return exc.status == status or exc.status
+    before = VentureArtifact.query.filter_by(venture_id=v.id).count()
+    check('a macro-enabled DOCX (vbaProject.bin) is refused',
+          refused(make_docx(PLAN_TEXT, {'word/vbaProject.bin': b'\x00macro'}), 'm.docx') is True)
+    check('a DOCX with an embedded OLE object is refused',
+          refused(make_docx(PLAN_TEXT, {'word/embeddings/oleObject1.bin': b'\xd0\xcf\x11\xe0'}), 'o.docx') is True)
+    check('a DOCX carrying macro data (vbaData.xml) is refused',
+          refused(make_docx(PLAN_TEXT, {'customXml/x.xml': b'<x/>', 'word/vbaData.xml': b'<v/>'}), 'v.docx') is True)
+    check('a PDF with JavaScript is refused', refused(js_pdf(PLAN_TEXT), 'js.pdf') is True)
+    import fitz
+    check('an encrypted PDF is refused', refused(make_pdf(PLAN_TEXT, encryption=fitz.PDF_ENCRYPT_AES_256,
+                                                          owner_pw='owner', user_pw=''), 'enc.pdf') is True)
+    check('a PDF with an embedded file is refused', refused(make_pdf(PLAN_TEXT, embed=True), 'emb.pdf') is True)
+    check('a PDF with a launch action is refused',
+          refused(make_pdf(PLAN_TEXT) + b'\n% /Launch /F (calc.exe)\n', 'l.pdf') is True)
+    check('a renamed non-PDF is refused', refused(b'MZ\x90\x00 not a pdf' * 50, 'x.pdf') is True)
+    fc.set('fnd_cc_allowed_types', ['pdf'], ctx.admin.id)
+    check('a type not in the allowed-types setting is refused',
+          refused(make_docx(PLAN_TEXT), 'ok.docx', status=400) is True)
+    fc.set('fnd_cc_allowed_types', ['pdf', 'docx'], ctx.admin.id)
+    fc.set('fnd_cc_max_upload_mb', 1, ctx.admin.id)
+    check('a file over the size setting is refused (413)',
+          refused(b'%PDF-1.4\n' + b'0' * (1024 * 1024 + 10), 'big.pdf', status=413) is True)
+    fc.set('fnd_cc_max_upload_mb', 20, ctx.admin.id)
+    check('refused uploads add no artifact rows', VentureArtifact.query.filter_by(venture_id=v.id).count() == before)
+
+    key = app.config['ENCRYPTION_KEY']
+    app.config['ENCRYPTION_KEY'] = None
+    try:
+        try:
+            fis.save_concierge_upload(v, upload(make_pdf(PLAN_TEXT), 'p.pdf'), 'ops_plan', ctx.admin)
+            no_key = False
+        except fis.EncryptionUnavailable:
+            no_key = True
+        check('without ENCRYPTION_KEY the upload is refused (no plain-text fallback)',
+              no_key and VentureArtifact.query.filter_by(venture_id=v.id).count() == before)
+        try:
+            fis.artifact_text(a)
+            read_refused = False
+        except fis.EncryptionUnavailable:
+            read_refused = True
+        check('without ENCRYPTION_KEY an encrypted text is not returned', read_refused)
+    finally:
+        app.config['ENCRYPTION_KEY'] = key
+
+    fake = FakeClaude()
+    fes.AI_CLIENT = fake
+    run = fes.run(v, ctx.admin)
+    check('the evaluation runs on encrypted documents', run.status == 'done', run.status)
+    from app.models.founder import EvaluationFinding
+    titles = {f.title for f in EvaluationFinding.query.filter_by(evaluation_run_id=run.id).all()}
+    check('findings quote the decrypted text (citations verified)', 'No one sells' in titles
+          and 'Pain is concrete' in titles, titles)
+    check('the model was sent the plain text, not the ciphertext',
+          len([c for c in fake.calls if c == 'evaluate_dimension']) == 18)
+    plain = VentureArtifact(venture_id=v.id, kind='ops_plan', version=1, is_current=True, filename='o.txt',
+                            text_content='Plain self-serve text', char_count=21)
+    db.session.add(plain)
+    db.session.commit()
+    check('a self-serve artifact (encrypted=0) reads as before',
+          plain.encrypted is False and fis.artifact_text(plain) == 'Plain self-serve text')
+    db.session.delete(plain)
+    db.session.commit()
+    ctx.crypt_venture = v
 
 
 def no_price_literal():

@@ -895,7 +895,8 @@ def draft_application(venture, target, user) -> dict:
     questions = _questions(p)
     docs, used = [], 0
     for art in fes.current_artifacts(venture):
-        text = (art.text_content or '')[:min(ARTIFACT_CHARS, max(0, ARTIFACTS_TOTAL - used))]
+        from app.services.founder_intake_service import artifact_text
+        text = (artifact_text(art) or '')[:min(ARTIFACT_CHARS, max(0, ARTIFACTS_TOTAL - used))]
         if not text:
             continue
         used += len(text)

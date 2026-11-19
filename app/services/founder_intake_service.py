@@ -19,6 +19,7 @@ writes to the resumes table: guide facts and bio readiness read it.
 """
 from __future__ import annotations
 
+import io
 import logging
 import os
 import re
@@ -125,7 +126,8 @@ def _next_version(venture_id: str, kind: str) -> int:
     return int(top or 0) + 1
 
 
-def _store(venture, kind: str, text: str, user, filename=None, file_path=None):
+def _store(venture, kind: str, text: str, user, filename=None, file_path=None, encrypted: bool = False,
+           plain_chars: int = None):
     """Retire the current version of `kind` and add the new one. Commits.
 
     The venture row is locked first (SELECT ... FOR UPDATE; a no-op on SQLite)
@@ -141,7 +143,8 @@ def _store(venture, kind: str, text: str, user, filename=None, file_path=None):
     art = VentureArtifact(venture_id=venture.id, kind=kind, version=version,
                           is_current=True, filename=(filename or '').replace('{version}', str(version)) or None,
                           file_path=file_path, text_content=text,
-                          char_count=len(text or ''), uploaded_by=getattr(user, 'id', None),
+                          char_count=plain_chars if plain_chars is not None else len(text or ''),
+                          uploaded_by=getattr(user, 'id', None), encrypted=bool(encrypted),
                           created_at=datetime.utcnow())
     db.session.add(art)
     db.session.flush()
@@ -292,3 +295,235 @@ def summary(venture) -> list:
         if a.is_current:
             r['current'] = a.to_dict()
     return [rows[k] for k in ALL_KINDS]
+
+
+# ---------------------------------------------------------------------------
+# Concierge uploads: encrypted at rest (FOUNDER_CONCIERGE_PLAN.md 3.5, D2, D3)
+# ---------------------------------------------------------------------------
+# An admin uploads a founder's documents for a concierge venture. The original
+# file is stored Fernet-encrypted (ENCRYPTION_KEY) and so is the extracted text
+# in venture_artifact.text_content (encrypted=1). The plain file never touches
+# the disk: checks and text extraction run in memory. Without ENCRYPTION_KEY
+# the upload is refused (no plain-text fallback). There is no antivirus on the
+# host, so "content checks" are structural: PDF/DOCX only, no macros, OLE or
+# ActiveX parts, no external template, no encrypted PDF, no PDF JavaScript,
+# launch actions or embedded files. Originals are only ever served as
+# attachments. Self-serve uploads (save_upload above) are unchanged.
+
+_PDF_ACTIVE = re.compile(rb'/(JavaScript|JS|Launch|EmbeddedFiles?)(?![A-Za-z])')
+_PDF_ACTIVE_STR = re.compile(r'/(JavaScript|JS|Launch|EmbeddedFiles?)(?![A-Za-z])')
+CONTENT_CHECK_MESSAGE = ('This file contains macros, embedded files, scripts or encryption, which concierge uploads '
+                         'do not accept. Save it again as a plain PDF or .docx (export it, without macros or '
+                         'a password) and retry.')
+
+
+class EncryptionUnavailable(IntakeError):
+    """ENCRYPTION_KEY is not configured: concierge files cannot be stored or read."""
+
+    def __init__(self, message: str = 'Encrypted storage is not configured (ENCRYPTION_KEY is missing), so '
+                                      'concierge documents cannot be stored or read.'):
+        super().__init__(message, 503)
+
+
+def _fernet():
+    from cryptography.fernet import Fernet
+    from flask import current_app
+    key = current_app.config.get('ENCRYPTION_KEY')
+    if not key:
+        raise EncryptionUnavailable()
+    try:
+        return Fernet(key.encode() if isinstance(key, str) else key)
+    except Exception:
+        raise EncryptionUnavailable('ENCRYPTION_KEY is not a valid Fernet key, so concierge documents cannot be '
+                                    'stored or read.')
+
+
+def encryption_ready() -> bool:
+    try:
+        _fernet()
+        return True
+    except EncryptionUnavailable:
+        return False
+
+
+def artifact_text(a) -> str:
+    """An artifact's extracted text, decrypted when the artifact is encrypted.
+    Every reader of venture_artifact.text_content goes through this.
+    Raises EncryptionUnavailable if an encrypted text cannot be decrypted."""
+    if a is None:
+        return ''
+    raw = a.text_content or ''
+    if not getattr(a, 'encrypted', False) or not raw:
+        return raw
+    from cryptography.fernet import InvalidToken
+    try:
+        return _fernet().decrypt(raw.encode()).decode('utf-8')
+    except InvalidToken:
+        logger.error('concierge artifact %s could not be decrypted with the configured key', getattr(a, 'id', '?'))
+        raise EncryptionUnavailable('A concierge document could not be decrypted with the configured '
+                                    'ENCRYPTION_KEY.')
+
+
+def artifact_file_bytes(a) -> bytes:
+    """The original file of an artifact, decrypted when encrypted. For the
+    concierge admin download (served as an attachment only)."""
+    if a is None or not a.file_path or not _inside(a.file_path, files_root()):
+        raise IntakeError('The file is not available.', 404)
+    try:
+        with open(a.file_path, 'rb') as fh:
+            data = fh.read()
+    except OSError:
+        raise IntakeError('The file is not available.', 404)
+    if not getattr(a, 'encrypted', False):
+        return data
+    from cryptography.fernet import InvalidToken
+    try:
+        return _fernet().decrypt(data)
+    except InvalidToken:
+        raise EncryptionUnavailable('The file could not be decrypted with the configured ENCRYPTION_KEY.')
+
+
+def cc_allowed_types() -> list:
+    from app.services import founder_config
+    return [t for t in founder_config.get('fnd_cc_allowed_types') if t in EXTENSIONS]
+
+
+def cc_max_upload_bytes() -> int:
+    from app.services import founder_config
+    return min(int(founder_config.get('fnd_cc_max_upload_mb')) * 1024 * 1024, max_upload_bytes())
+
+
+def _sniff_bytes(data: bytes, ext: str) -> bool:
+    """The same content sniffing as _content_ok, on bytes in memory."""
+    try:
+        if ext == 'pdf':
+            return b'%PDF-' in data[:1024]
+        if not data.startswith(b'PK'):
+            return False
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            infos = zf.infolist()
+            names = {i.filename for i in infos}
+            return ('word/document.xml' in names and len(infos) <= DOCX_MAX_ENTRIES
+                    and sum(i.file_size for i in infos) <= DOCX_UNPACKED_CAP_BYTES)
+    except Exception:
+        return False
+
+
+def structure_problem(data: bytes, ext: str):
+    """Why a PDF/DOCX fails the structural content checks, or None."""
+    if ext == 'docx':
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                names = zf.namelist()
+                for n in names:
+                    low = n.lower()
+                    if low.endswith('vbaproject.bin') or low.endswith('vbadata.xml'):
+                        return 'macros'
+                    if '/embeddings/' in low or 'oleobject' in low or '/activex/' in low:
+                        return 'embedded objects'
+                ct = zf.read('[Content_Types].xml').decode('utf-8', 'replace') if '[Content_Types].xml' in names else ''
+                if 'macroenabled' in ct.lower() or 'vbaproject' in ct.lower():
+                    return 'macros'
+                for n in names:
+                    if n.lower().endswith('.rels'):
+                        rels = zf.read(n).decode('utf-8', 'replace')
+                        if 'attachedTemplate' in rels and 'External' in rels:
+                            return 'external template'
+        except Exception:
+            return 'unreadable'
+        return None
+    if ext == 'pdf':
+        if _PDF_ACTIVE.search(data):
+            return 'scripts or embedded files'
+        try:
+            import fitz
+            with fitz.open(stream=data, filetype='pdf') as doc:
+                if doc.needs_pass or doc.is_encrypted or (doc.metadata or {}).get('encryption') \
+                        or re.search(rb'/Encrypt(?![A-Za-z])', data):
+                    return 'encrypted'
+                if doc.embfile_count() > 0:
+                    return 'embedded files'
+                for x in range(1, doc.xref_length()):     # objects inside compressed streams too
+                    try:
+                        obj = doc.xref_object(x, compressed=False)
+                    except Exception:
+                        continue
+                    if obj and _PDF_ACTIVE_STR.search(obj):
+                        return 'scripts or embedded files'
+        except Exception:
+            return 'unreadable'
+        return None
+    return 'type'
+
+
+def _extract_bytes(data: bytes, ext: str) -> str:
+    """resume_parser's PDF/DOCX extraction, in memory."""
+    if ext == 'pdf':
+        import fitz
+        with fitz.open(stream=data, filetype='pdf') as doc:
+            return '\n'.join(page.get_text() for page in doc).strip()
+    from docx import Document
+    doc = Document(io.BytesIO(data))
+    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                if cell.text.strip():
+                    paragraphs.append(cell.text.strip())
+    return '\n'.join(paragraphs).strip()
+
+
+def save_concierge_upload(venture, file_storage, kind: str, user):
+    """Store one concierge document encrypted, as the new current version of
+    `kind`. Types and size come from the Concierge settings. Raises IntakeError
+    (EncryptionUnavailable when ENCRYPTION_KEY is missing)."""
+    from werkzeug.utils import secure_filename
+    from app.services.careers_service import upload_size
+    from utils.id_gen import generate_id
+
+    fernet = _fernet()                    # refuse before reading anything
+    if kind not in UPLOAD_KINDS:
+        raise IntakeError('Choose which document this is.')
+    if file_storage is None or not getattr(file_storage, 'filename', ''):
+        raise IntakeError('Choose a file to upload.')
+    original = file_storage.filename
+    ext = original.rsplit('.', 1)[1].lower() if '.' in original else ''
+    allowed = cc_allowed_types()
+    if ext not in allowed:
+        raise IntakeError('Only %s files are accepted.' % ' and '.join(t.upper() for t in allowed))
+    cap = cc_max_upload_bytes()
+    size = upload_size(file_storage)
+    if size > cap:
+        raise IntakeError('The file must be %d MB or smaller.' % (cap // (1024 * 1024)), 413)
+    if size == 0:
+        raise IntakeError('That file is empty.')
+    data = file_storage.stream.read(cap + 1)
+    if len(data) > cap:
+        raise IntakeError('The file must be %d MB or smaller.' % (cap // (1024 * 1024)), 413)
+    if not _sniff_bytes(data, ext):
+        raise IntakeError("That file isn't a readable %s. Save it again as PDF or .docx and retry."
+                          % ('PDF' if ext == 'pdf' else 'Word (.docx) document'), 422)
+    problem = structure_problem(data, ext)
+    if problem:
+        logger.warning('concierge upload refused for venture %s: %s', venture.id, problem)
+        raise IntakeError(CONTENT_CHECK_MESSAGE, 422)
+    try:
+        text = _extract_bytes(data, ext)
+    except Exception as exc:
+        logger.warning('concierge upload parse failed for venture %s: %s', venture.id, exc)
+        raise IntakeError("We couldn't read that file. Save it again as PDF or .docx and retry.", 422)
+    if _readable_chars(text) < _unreadable_threshold():
+        raise IntakeError('We could read almost no text from this file. It may be a scanned image. '
+                          'Upload a text-based PDF or Word document.', 422)
+    safe = secure_filename(original) or ('document.' + ext)
+    if not safe.lower().endswith('.' + ext):
+        safe = '%s.%s' % (safe, ext)
+    path = os.path.join(_venture_dir(venture), '%s_%s.enc' % (generate_id(), safe))
+    with open(path, 'wb') as fh:
+        fh.write(fernet.encrypt(data))
+    try:
+        return _store(venture, kind, fernet.encrypt(text.encode('utf-8')).decode('ascii'), user, filename=safe,
+                      file_path=path, encrypted=True, plain_chars=len(text))
+    except Exception:
+        _remove(path)
+        raise

@@ -641,7 +641,9 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
     try:
         arts = current_artifacts(venture)
         r.artifact_versions = {a.kind: a.version for a in arts}
-        usable = [a for a in arts if normalize(a.text_content)]
+        from app.services.founder_intake_service import artifact_text
+        texts = {a.id: artifact_text(a) for a in arts}      # decrypts concierge (encrypted) artifacts
+        usable = [a for a in arts if normalize(texts[a.id])]
 
         # 1. Cache lookups, then the calls that are still needed.
         cache = {}
@@ -660,7 +662,7 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
             # wait_timeout ~300s) and SQLAlchemy cannot reconnect mid-transaction
             # (PendingRollbackError). Commit now to return the connection to the
             # pool; the writes below check out a fresh one (pool_pre_ping).
-            calls = [(a.id, a.kind, a.text_content or '', d) for a, d in jobs]
+            calls = [(a.id, a.kind, texts[a.id] or '', d) for a, d in jobs]
             db.session.commit()
             with ThreadPoolExecutor(max_workers=min(WORKERS, len(calls))) as pool:
                 futs = {(aid, d): pool.submit(_evaluate_one, client, model, system, tool, kind, text, d)

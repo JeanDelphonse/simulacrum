@@ -135,7 +135,8 @@ def briefing(step, venture, params: dict, inputs: dict = None) -> str:
     for a in fes.current_artifacts(venture):
         if used >= ARTIFACTS_TOTAL_CHARS:
             break
-        text = _clip(a.text_content, min(ARTIFACT_CHARS, ARTIFACTS_TOTAL_CHARS - used))
+        from app.services.founder_intake_service import artifact_text
+        text = _clip(artifact_text(a), min(ARTIFACT_CHARS, ARTIFACTS_TOTAL_CHARS - used))
         used += len(text)
         parts.append('<artifact kind="%s" version="%d">\n%s\n</artifact>' % (a.kind, a.version, text))
     rows = fes.findings(venture)[:MAX_FINDINGS]
