@@ -11,6 +11,7 @@
     </div>
   </div>
   {% include 'founder/_ws_nav.html' %}
+  {% if venture.track == 'concierge' %}{% include 'founder/_concierge_details.html' %}{% endif %}
 
   {% if not paid %}
   <section class="fw-card fw-lock" aria-labelledby="fw-lock-h">
@@ -19,7 +20,8 @@
       <p class="fw-sub">{% if has_report %}Your readiness report is ready. {% else %}Start by sharing your documents and running the evaluation. {% endif %}
         The full report, the agent team matched to your gaps and the step-by-step plan open after payment.</p>
     </div>
-    {% if is_owner %}<a class="btn primary btn-lg" href="{{ checkout_url }}">Unlock the Founder Track</a>
+    {% if is_owner and venture.track == 'concierge' %}<a class="btn" href="{{ checkout_url }}">Why is it locked?</a>
+    {% elif is_owner %}<a class="btn primary btn-lg" href="{{ checkout_url }}">Unlock the Founder Track</a>
     {% else %}<a class="btn" href="/founder/v/{{ venture.id }}/report">See the report</a>{% endif %}
   </section>
   <section class="fw-card">

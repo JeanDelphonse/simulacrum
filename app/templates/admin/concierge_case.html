@@ -10,10 +10,13 @@
     <div>
       <h1>{{ venture.name }}</h1>
       <p class="fa-sub" style="margin-bottom:.6rem"><span class="fa-badge{{ ' on' if case.state in ('ready_for_review', 'confirmed') else (' lock' if case.state == 'evaluating' else '') }}" id="ccState">{{ state_label }}</span>
-        · unowned until {{ case.primary_name }} accepts · created {{ case.created_at.strftime('%Y-%m-%d') }}{% if created_by %} by {{ created_by }}{% endif %}</p>
+        · {{ 'owned by ' ~ case.primary_name if owned else 'unowned until ' ~ case.primary_name ~ ' accepts' }} · created {{ case.created_at.strftime('%Y-%m-%d') }}{% if created_by %} by {{ created_by }}{% endif %}</p>
     </div>
   </div>
   <p class="fa-banner">{{ legal('concierge_confidentiality') }}</p>
+  {% if owned %}<p class="fa-banner" id="ccOwned"><b>Accepted.</b> This venture belongs to {{ case.primary_name }} now.
+    {% if read_only %}This page is read-only; changes need the founder to turn on support access.
+    {% else %}The founder granted support access until {{ support_until.strftime('%Y-%m-%d') if support_until }}: you may message them; your views are audited.{% endif %}</p>{% endif %}
   {% if not encryption_ready %}<p class="fa-banner err">ENCRYPTION_KEY is not configured on this server, so documents cannot be uploaded or read.</p>{% endif %}
 
   <div class="cc-grid2">

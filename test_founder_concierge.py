@@ -227,6 +227,7 @@ def run_all(app, db, generate_id, tmp_root):
     step7_share(ctx)
     step8_preview(ctx)
     step9_payment(ctx)
+    step10_transfer(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -867,7 +868,7 @@ def install_mail_fake(ctx):
 
 
 def mails_to(ctx, addr, since=0):
-    return [m for m in ctx.mails[since:] if addr in m['to']]
+    return [m for m in ctx.mails[since:] if addr.lower() in [t.lower() for t in m['to']]]
 
 
 def last_token(ctx, addr):
@@ -1480,6 +1481,153 @@ def step9_payment(ctx):
     ctx.login(ctx.admin.id)
     r = c.post('/api/admin/ventures/%s/refund' % bv.id, json={'reason': 'again'})
     check('a second refund is refused', r.status_code == 409 and len(ctx.refunds) == 1)
+
+
+
+# ---------------------------------------------------------------------------
+# Step 10: acceptance transfer
+# ---------------------------------------------------------------------------
+
+def step10_transfer(ctx):
+    db, c, vid = ctx.db, ctx.client, ctx.vid
+    from datetime import timedelta
+    from app.models.audit_log import AuditLog
+    from app.models.founder import DecisionRight, FounderVenture, StartupPage, VentureMember
+    from app.services import concierge_service as cs, founder_ventures, legal_text
+    print('\n11. Step 10: ownership transfer, confirm-your-details card, no premium fee, D5 refund')
+    jane = ctx.jane
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    v = db.session.get(FounderVenture, vid)
+    check('the paid case ends active', case.state == 'active', case.state)
+    check('the venture is the primary founder\'s: owner, status active, track concierge, paid',
+          v.owner_user_id == jane.id and v.status == 'active' and v.track == 'concierge' and v.paid_at is not None
+          and v.amount_cents == FEE and v.payment_intent_id == 'pi_cc_good')
+    m = VentureMember.query.filter_by(venture_id=vid).all()
+    check('one owner member, as create_venture makes it', len(m) == 1 and m[0].user_id == jane.id
+          and m[0].role == 'owner' and m[0].status == 'active')
+    rights = DecisionRight.query.filter_by(venture_id=vid).all()
+    check('the default decision rights are held by the owner',
+          len(rights) == len(DecisionRight.DECISION_TYPES) and all(r.holder_member_id == m[0].id for r in rights))
+    check('the transfer is audited ("ownership transferred") and active is an audited transition',
+          AuditLog.query.filter_by(action='concierge_ownership_transferred', resource_id=vid).count() == 1
+          and AuditLog.query.filter_by(action='concierge_active', resource_id=vid).count() == 1)
+    page = StartupPage.query.filter_by(venture_id=vid).first()
+    check('a startup page draft exists and is private', page is not None and page.status == 'draft')
+    ctx.login(None)
+    check('the draft page is not public', c.get('/startup/%s' % page.slug).status_code == 404)
+    check('the venture is in the founder\'s list', vid in [x.id for x in founder_ventures.ventures_for_user(jane.id)])
+    receipt = [x for x in mails_to(ctx, 'jane@founder.io') if x['subject'].startswith('Receipt')]
+    check('the receipt (M4 + amount + F2 + F3) is emailed to the founder', len(receipt) == 1
+          and legal_text.get('concierge_accepted_email', venture_name=v.name) in receipt[0]['body']
+          and cs.money(FEE) in receipt[0]['body'] and legal_text.get('concierge_receipt_footer') in receipt[0]['body']
+          and 'Refundable within' in receipt[0]['body'])
+    check('the admin is notified of the acceptance', any('accepted and paid' in x['subject'] for x in ctx.mails))
+    check('co-founders on file are NOT invited (D8)', not mails_to(ctx, 'sam@founder.io') and not mails_to(ctx, 'x@y.com')
+          and VentureMember.query.filter_by(venture_id=vid).count() == 1)
+
+    ctx.login(jane.id)
+    r = c.get('/founder/concierge/%s' % case.id)
+    check('the preview link now opens the workspace', r.status_code == 302 and r.headers['Location'].endswith('/founder/v/%s' % vid))
+    r = c.get('/founder/v/%s' % vid)
+    html = r.get_data(as_text=True)
+    check('the workspace opens like a paid self-serve venture, with "Confirm your details"',
+          r.status_code == 200 and 'id="ccDetails"' in html and 'id="fw-live"' in html)
+    fields = re.findall(r'class="ccd-row" data-field="([a-z_]+)"', html)
+    need = [k for k in fields if k in ('stage', 'team', 'alignment')]
+    check('"Needs founder input" fields come first', fields[:len(need)] == need and 'Needs founder input' in html, fields)
+    check('co-founder emails on file pre-fill the invite form (link only, no send)',
+          '/alignment?invite=sam%40founder.io' in html)
+    r = c.get('/founder/v/%s/alignment?invite=sam%%40founder.io' % vid)
+    check('the alignment page reads ?invite= to pre-fill the email', r.status_code == 200
+          and "get('invite')" in r.get_data(as_text=True))
+
+    # Never the Founder Track premium fee.
+    n_created = len(ctx.created)
+    r = c.get('/founder/v/%s/checkout' % vid)
+    html = r.get_data(as_text=True)
+    from app.services import founder_config
+    price = founder_config.pricing()['price_cents']
+    check('the Founder Track checkout page refuses a concierge venture (409, no price)',
+          r.status_code == 409 and 'id="ccNoFee"' in html and '{:,.2f}'.format(price / 100.0) not in html)
+    r = c.post('/founder/v/%s/checkout' % vid)
+    check('... and creating a Founder Track checkout for it is refused', r.status_code == 409
+          and len(ctx.created) == n_created)
+
+    # Confirm your details.
+    r = c.post('/api/founder/concierge/v/%s/details' % vid, json={'name': 'Acme Robotics', 'one_liner': 'x',
+                                                                  'stage': 'galactic'})
+    check('an unknown stage is refused', r.status_code == 400)
+    ctx.login(ctx.cofounder.id)
+    r = c.post('/api/founder/concierge/v/%s/details' % vid, json={'name': 'Hijack', 'stage': 'seed'})
+    check('someone who is not a member cannot confirm (403)', r.status_code == 403)
+    ctx.login(jane.id)
+    r = c.post('/api/founder/concierge/v/%s/details' % vid, json={'name': 'Acme Robotics', 'stage': 'pre-seed',
+                                                                  'one_liner': 'Robots that pick for small warehouses'})
+    db.session.expire_all()
+    v = db.session.get(FounderVenture, vid)
+    check('the owner confirms name, one-liner and stage', r.status_code == 200 and v.stage == 'pre-seed'
+          and v.one_liner == 'Robots that pick for small warehouses')
+    check('the card closes once confirmed', 'id="ccDetails"' not in c.get('/founder/v/%s' % vid).get_data(as_text=True))
+    check('the confirmation is audited', AuditLog.query.filter_by(action='concierge_details_confirmed',
+                                                                  resource_id=vid).count() == 1)
+
+    # Owner cap: concierge ventures are exempt (D6).
+    bob = ctx.bob
+    made = []
+    for i in range(founder_ventures.MAX_VENTURES_PER_OWNER):
+        made.append(founder_ventures.create_venture(bob, 'Bob self-serve %d' % i))
+    check('a concierge venture does not count toward the owner cap (D6)', len(made) == founder_ventures.MAX_VENTURES_PER_OWNER
+          and len(founder_ventures.owned_ventures(bob.id)) == founder_ventures.MAX_VENTURES_PER_OWNER + 1)
+    try:
+        founder_ventures.create_venture(bob, 'One too many')
+        capped = False
+    except founder_ventures.VentureError:
+        db.session.rollback()
+        capped = True
+    check('the cap still applies to self-serve ventures', capped and not founder_ventures.can_start_another(bob.id))
+
+    # Admin: read-only after the transfer unless support access is on.
+    ctx.login(ctx.admin.id)
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('the admin case page is read-only after the transfer',
+          'id="ccOwned"' in html and 'read-only' in html and 'id="ccReply"' not in html and 'id="ccFeeForm"' not in html
+          and 'class="cc-upload"' not in html and 'id="ccRun"' not in html)
+    r = c.post('/api/admin/ventures/%s/messages' % vid, json={'body': 'Hello'})
+    check('... and refuses changes', r.status_code == 409)
+    let = []
+    for path, body in (('/upload', None), ('/evaluate', {}), ('/fee', {'fee_cents': 9900, 'reason': 'x'}),
+                       ('/confirm', {}), ('/share', {}), ('/extend', {'reason': 'x'}), ('/reopen', {}),
+                       ('/prefill', {'field': 'name', 'value': 'x'})):
+        rr = c.post('/api/admin/ventures/%s%s' % (vid, path), json=body) if body is not None else \
+            c.post('/api/admin/ventures/%s%s' % (vid, path))
+        if rr.status_code < 400:
+            let.append((path, rr.status_code))
+    check('upload, evaluate, fee, confirm, share, extend, reopen and edits are all refused after the transfer',
+          not let, let)
+    v.support_access_until = datetime.utcnow() + timedelta(days=3)
+    db.session.commit()
+    r = c.post('/api/admin/ventures/%s/messages' % vid, json={'body': 'Support note'})
+    check('with the founder\'s support access the admin may message them', r.status_code == 200)
+    v.support_access_until = None
+    db.session.commit()
+
+    # D5: a refund keeps the venture the founder's but locks it again.
+    r = ctx.hook({'id': 'ch_pi_cc_good', 'payment_intent': 'pi_cc_good', 'refunded': True}, etype='charge.refunded')
+    db.session.expire_all()
+    v = db.session.get(FounderVenture, vid)
+    case = cs.case_for(vid)
+    check('charge.refunded on the consultation fee locks the venture (paid_at cleared) and keeps the owner (D5)',
+          r.status_code == 200 and v.paid_at is None and v.owner_user_id == jane.id and case.refunded_at is not None
+          and case.state == 'active')
+    check('the refund is audited', AuditLog.query.filter_by(action='concierge_refunded', resource_id=vid).count() == 1)
+    ctx.login(jane.id)
+    html = c.get('/founder/v/%s' % vid).get_data(as_text=True)
+    check('the locked concierge workspace never offers the Founder Track fee',
+          'Unlock the Founder Track</a>' not in html and 'Why is it locked?' in html)
+    bv = db.session.get(FounderVenture, ctx.bob_vid)
+    check('the admin refund (Bob) also locked his venture and kept him as owner', bv.paid_at is None
+          and bv.owner_user_id == bob.id)
 
 
 def no_price_literal():

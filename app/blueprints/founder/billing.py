@@ -215,6 +215,12 @@ def _offer(user) -> dict:
             'currency': (prices.get('currency') or 'usd').lower()}
 
 
+def _concierge_refused(venture):
+    """A concierge venture's consultation fee replaces the Founder Track fee
+    (FOUNDER_CONCIERGE_PLAN.md step 10): never offer or charge it here."""
+    return render_template('founder/concierge_notice.html', venture=venture), 409
+
+
 def _page(venture, error=None, notice=None, code=200):
     return render_template('founder/checkout.html', venture=venture, offer=_offer(current_user), unlocks=UNLOCKS,
                            error=error, notice=notice), code
@@ -224,6 +230,8 @@ def _page(venture, error=None, notice=None, code=200):
 @founder_required
 def checkout_page(venture_id):
     v = _owner_venture(venture_id)
+    if (v.track or '') == 'concierge':
+        return _concierge_refused(v)
     if v.paid_at is not None:
         return redirect(_report_url(v.id))
     notice = 'Checkout was cancelled. Nothing was charged.' if request.args.get('cancelled') else None
@@ -235,6 +243,8 @@ def checkout_page(venture_id):
 def checkout_start(venture_id):
     from app.services import stripe_service
     v = _owner_venture(venture_id)
+    if (v.track or '') == 'concierge':
+        return _concierge_refused(v)
     if v.paid_at is not None:
         return redirect(_report_url(v.id))
     if not current_app.config.get('STRIPE_SECRET_KEY'):

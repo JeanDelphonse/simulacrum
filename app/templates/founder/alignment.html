@@ -343,6 +343,11 @@
     });
   });
   var inv = document.getElementById('fa-invite');
+  // Concierge ventures: a co-founder email on file pre-fills the form (?invite=); nothing is sent until submitted.
+  (function () {
+    var pre = new URLSearchParams(location.search).get('invite'), box = document.getElementById('fa-inv-email');
+    if (pre && box && !box.value && /^[^\s@]+@[^\s@]+$/.test(pre)) box.value = pre;
+  })();
   if (inv) inv.addEventListener('submit', function (e) {
     e.preventDefault();
     var msg = document.getElementById('fa-inv-msg');

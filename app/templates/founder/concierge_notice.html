@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}{{ venture.name }} · Founder Track{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:640px;padding:3rem 1rem 4rem">
+  <div style="background:#fff;border:1px solid var(--rule);border-radius:14px;padding:1.5rem" id="ccNoFee">
+    <h1 style="font-size:clamp(22px,3vw,30px);margin:0 0 .7rem">No Founder Track fee for this venture</h1>
+    <p style="line-height:1.6;color:var(--ink-2)">{{ venture.name }} came to you through SimiSI's concierge onboarding. Its consultation fee replaces the Founder Track fee, so there is nothing to pay here.
+      {% if not venture.paid_at %}Its paid features are locked (for example after a refund). Contact SimiSI if you want them back.{% endif %}</p>
+    <p><a class="btn" href="/founder/v/{{ venture.id }}">Back to the workspace</a></p>
+  </div>
+</div>
+{% endblock %}

@@ -248,3 +248,39 @@ def concierge_checkout_success(case_id):
     if c.state in ('accepted_paid', 'active'):
         return redirect('/founder/v/%s' % v.id)
     return _back(c.id, 'pending')
+
+
+# ── After acceptance: "Confirm your details" (step 10) ───────────────────────
+
+@founder_bp.record_once
+def _register_details(state):
+    def concierge_details(venture):
+        try:
+            from app.services import concierge_service as cs
+            return cs.details_view(venture, current_user)
+        except Exception:
+            return {}
+    state.app.jinja_env.globals['concierge_details'] = concierge_details
+
+
+@founder_bp.route('/api/founder/concierge/v/<venture_id>/details', methods=['POST'])
+def api_concierge_details(venture_id):
+    """The owner confirms or corrects name, one-liner and stage of an accepted
+    concierge venture (the workspace card)."""
+    from flask import jsonify
+    from app.blueprints.founder.admin import _same_origin
+    from app.services import concierge_service as cs
+    from app.services import founder_ventures
+    if not _same_origin():
+        return jsonify({'error': 'Cross-site request refused.'}), 403
+    v = founder_ventures.require_member(venture_id, current_user)
+    c = cs.case_for(v.id)
+    if c is None or v.owner_user_id != current_user.id:
+        return jsonify({'error': 'Only the venture owner can confirm these details.'}), 403
+    b = request.get_json(silent=True) or {}
+    try:
+        cs.confirm_details(v, c, current_user, b.get('name'), b.get('one_liner'), b.get('stage'))
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return jsonify({'error': str(exc)}), exc.status
+    return jsonify({'ok': True, 'name': v.name, 'one_liner': v.one_liner, 'stage': v.stage})

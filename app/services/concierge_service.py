@@ -868,7 +868,9 @@ def case_view(venture, case) -> dict:
     from app.models.user import User
     creator = db.session.get(User, case.created_by) if case.created_by else None
     fee = effective_fee_cents(case)
-    return {
+    owned = case.state in OWNED_STATES
+    writable = admin_can_edit(venture, case)
+    view = {
         'venture': venture, 'case': case, 'state_label': STATE_LABELS.get(case.state, case.state),
         'documents': documents(venture), 'can_upload': case.state in UPLOAD_STATES,
         'fee_cents': fee, 'fee': money(fee) if fee else '', 'base_fee_cents': base_fee_cents(),
@@ -878,6 +880,13 @@ def case_view(venture, case) -> dict:
         **evaluation_view(venture, case),
         **invite_view(case),
     }
+    view.update({'owned': owned, 'read_only': owned and not writable,
+                 'support_until': getattr(venture, 'support_access_until', None) if owned and writable else None})
+    if owned:
+        # After the transfer: no review edits; replies only with support access.
+        view.update({'can_upload': False, 'can_evaluate': False, 'can_edit': False, 'can_confirm': False,
+                     'can_reply': writable})
+    return view
 
 
 # ---------------------------------------------------------------------------
@@ -1165,7 +1174,11 @@ def admin_reply(venture, case, body: str, admin):
     """An admin reply in the case thread; the founder is told by email (the
     reply itself is read on the preview page, behind sign-in)."""
     from app.extensions import db
-    if case.state not in WINDOW_STATES + ('declined',):
+    if case.state in OWNED_STATES:
+        if not admin_can_edit(venture, case):
+            raise ConciergeError('The venture is the founder\'s now: the case is read-only unless they grant support '
+                                 'access.')
+    elif case.state not in WINDOW_STATES + ('declined',):
         raise ConciergeError('Replies are possible while the invitation is open.')
     m = add_message(case, 'admin', body, admin)
     db.session.commit()
@@ -1553,8 +1566,14 @@ class _Auth(object):
 
 
 def _after_payment(venture, case, user, session) -> None:
-    """Hook for the ownership transfer (step 10)."""
-    return None
+    """The ownership transfer (step 10). A failure leaves the case
+    accepted_paid; run_daily retries it."""
+    from app.extensions import db
+    try:
+        transfer(venture, case, user)
+    except Exception as exc:
+        db.session.rollback()
+        logger.exception('concierge transfer failed for case %s (left accepted_paid): %s', case.id, exc)
 
 
 def refund_view(case) -> dict:
@@ -1630,3 +1649,196 @@ def on_refund(payment_intent_id: str, fully_refunded: bool = True, actor: str = 
     db.session.commit()
     db.session.expire_all()
     return True
+
+
+# ---------------------------------------------------------------------------
+# Acceptance transfer (step 10)
+# ---------------------------------------------------------------------------
+# Inside fulfil(), after accepted_paid: the venture becomes the primary
+# founder's exactly as a paid self-serve venture (owner member, default
+# decision rights, paid_at), keeps track 'concierge' (so the Founder Track
+# premium fee is never offered for it, and it does not count toward
+# MAX_VENTURES_PER_OWNER, D6), gets its team and a private startup-page draft,
+# and the case becomes active. Co-founders on file are NOT invited (D8).
+
+OWNED_STATES = ('accepted_paid', 'active')
+
+
+def transfer(venture, case, user) -> bool:
+    """Transfer ownership to user and move accepted_paid -> active.
+    Idempotent (a retry after a crash completes what is missing). Commits."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.models.founder import DecisionRight, FounderVenture, VentureMember
+    from app.services import founder_ventures
+    if case.state != 'accepted_paid':
+        return False
+    now = datetime.utcnow()
+    venture = (db.session.query(FounderVenture).filter(FounderVenture.id == venture.id).with_for_update().first())
+    first = venture.owner_user_id is None
+    venture.owner_user_id = user.id
+    venture.status = 'active'
+    venture.track = 'concierge'
+    if venture.paid_at is None and case.refunded_at is None:
+        venture.paid_at = case.accepted_at or now
+    venture.amount_cents = case.amount_cents
+    venture.payment_intent_id = case.payment_intent_id
+    venture.updated_at = now
+    # Owner member and default decision rights: the same rows
+    # founder_ventures.create_venture writes for a self-serve venture.
+    owner = VentureMember.query.filter_by(venture_id=venture.id, user_id=user.id).first()
+    if owner is None:
+        owner = VentureMember(venture_id=venture.id, user_id=user.id, role='owner', status='active', joined_at=now,
+                              title='Founder')
+        db.session.add(owner)
+    else:
+        owner.role, owner.status = 'owner', 'active'
+    db.session.flush()
+    if DecisionRight.query.filter_by(venture_id=venture.id).count() == 0:
+        for dt in DecisionRight.DECISION_TYPES:
+            db.session.add(DecisionRight(venture_id=venture.id, decision_type=dt, holder_member_id=owner.id))
+    founder_ventures.log_event(venture.id, 'paid', 'concierge_fee %s cents (case %s)' % (case.amount_cents, case.id),
+                               user_id=user.id)
+    if first:
+        AuditLog.log('concierge_ownership_transferred', user_id=user.id, resource_id=venture.id,
+                     metadata={'case': case.id, 'venture': venture.id, 'to_user': user.id, 'from': None,
+                               'payment_intent': case.payment_intent_id, 'amount_cents': case.amount_cents,
+                               'at': now.isoformat()})
+    db.session.commit()
+    _grant_track(user)
+    _build_team_and_page(venture, user)
+    case = transition(case, 'active', user.id, note='ownership transferred to the primary founder')
+    _send_receipt(venture, case, user)
+    notify_admin(case, 'was accepted and paid', ['Amount: %s. Ownership transferred to the primary founder.'
+                                                 % money(case.amount_cents)])
+    return True
+
+
+def _grant_track(user) -> None:
+    """An accepted venture must open for its owner: allow the founder_track
+    switch for them when it is on an allowlist (share refuses while it is off)."""
+    try:
+        from app.services import founder_feature as ff
+        if not ff.is_enabled(user, ff.TRACK) and ff.mode(ff.TRACK) == 'allowlist':
+            ff.set_user_access([user.id], 'allowed', None, key=ff.TRACK)
+    except Exception as exc:
+        logger.warning('concierge: could not allow the Founder Track for %s: %s', user.id, exc)
+
+
+def _build_team_and_page(venture, user) -> None:
+    """The team (as self-serve recommends it), the plan when accepted agents
+    exist, and the private startup page draft. Each part is best effort; the
+    founder can rebuild from the workspace as on self-serve."""
+    from app.extensions import db
+    try:
+        from app.services import founder_team_service as fts
+        if not fts.blueprints(venture):
+            fts.build(venture, user)
+    except Exception as exc:
+        db.session.rollback()
+        logger.warning('concierge team build after acceptance failed for %s: %s', venture.id, exc)
+    try:
+        from app.services import founder_orchestrator as fo
+        fo.build_plan(venture, user)
+        db.session.commit()
+    except Exception as exc:          # OrchestratorError: no accepted agents yet, as on self-serve
+        db.session.rollback()
+        logger.info('concierge plan not built yet for %s: %s', venture.id, exc)
+    try:
+        from app.services import startup_page_service
+        startup_page_service.ensure_page(venture, user)          # draft = private
+    except Exception as exc:
+        db.session.rollback()
+        logger.warning('concierge startup page draft failed for %s: %s', venture.id, exc)
+
+
+def _send_receipt(venture, case, user) -> bool:
+    from app.services import founder_config, legal_text
+    paid_on = fmt_date(case.accepted_at or datetime.utcnow())
+    return _mail(user.email, 'Receipt: %s is now in your SimiSI account' % venture.name,
+                 [legal_text.get('concierge_accepted_email', venture_name=venture.name),
+                  'Receipt: SimiSI consultation fee, %s, paid on %s. Payment reference %s.'
+                  % (money(case.amount_cents), paid_on, case.payment_intent_id or case.id)],
+                 link=_site_url('/founder/v/%s' % venture.id), link_label='Open your workspace',
+                 small=[legal_text.get('concierge_refund_policy',
+                                       refund_days=founder_config.concierge_pricing().get('refund_window_days')),
+                        legal_text.get('concierge_receipt_footer')])
+
+
+def admin_can_edit(venture, case) -> bool:
+    """Before acceptance the admin works on the case; after the transfer the
+    case page is read-only unless the founder granted support access."""
+    if case.state not in OWNED_STATES:
+        return True
+    try:
+        from app.services import founder_obs_service as fobs
+        return bool(fobs.support_access_active(venture))
+    except Exception:
+        return False
+
+
+# ── Confirm your details (workspace card) ────────────────────────────────────
+
+DETAIL_FIELDS = ('name', 'one_liner', 'stage')
+
+
+def details_view(venture, user) -> dict:
+    """The workspace "Confirm your details" card for the owner of an accepted
+    concierge venture: pre-filled fields, "Needs founder input" first; empty
+    once the founder confirmed them."""
+    case = case_for(venture.id) if venture is not None else None
+    if (case is None or venture.track != 'concierge' or case.state not in OWNED_STATES
+            or venture.owner_user_id != getattr(user, 'id', None)):
+        return {}
+    pf = case.prefill or {}
+    if (pf.get('_meta') or {}).get('confirmed_at'):
+        return {}
+    rows = []
+    for f in PREFILL_FIELDS:
+        item = pf.get(f) or {}
+        status = item.get('status') or 'needs_input'
+        value = getattr(venture, f, None) if f in DETAIL_FIELDS else item.get('value')
+        if f in DETAIL_FIELDS and value and status == 'needs_input' and f != 'stage':
+            status = 'admin'
+        rows.append({'key': f, 'label': PREFILL_LABELS[f], 'value': value, 'status': status,
+                     'citation': item.get('citation'), 'editable': f in DETAIL_FIELDS})
+    rows.sort(key=lambda r: (r['status'] != 'needs_input', PREFILL_FIELDS.index(r['key'])))
+    return {'case_id': case.id, 'rows': rows, 'stage_labels': STAGE_LABELS,
+            'cofounders': list(case.cofounder_emails or []),
+            'needs_input': sum(1 for r in rows if r['status'] == 'needs_input')}
+
+
+def confirm_details(venture, case, user, name, one_liner, stage) -> None:
+    """The owner confirms (or corrects) the venture's name, one-liner and
+    stage; the card then closes. Same validation as self-serve creation."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.services import founder_ventures as fv
+    if case.state not in OWNED_STATES or venture.owner_user_id != getattr(user, 'id', None):
+        raise ConciergeError('Only the venture owner can confirm these details.', 403)
+    name = ' '.join(str(name or '').split())
+    one_liner = ' '.join(str(one_liner or '').split())
+    stage = str(stage or '').strip().lower()
+    if not name:
+        raise ConciergeError('Give the venture a name.', 400)
+    if len(name) > fv.NAME_MAX:
+        raise ConciergeError('The name is too long (%d characters at most).' % fv.NAME_MAX, 400)
+    if len(one_liner) > fv.ONE_LINER_MAX:
+        raise ConciergeError('The one-liner is too long (%d characters at most).' % fv.ONE_LINER_MAX, 400)
+    if stage not in fv.STAGES:
+        raise ConciergeError('Choose the stage.', 400)
+    before = {'name': venture.name, 'one_liner': venture.one_liner, 'stage': venture.stage}
+    now = datetime.utcnow()
+    venture.name, venture.one_liner, venture.stage, venture.updated_at = name, one_liner or None, stage, now
+    pf = dict(case.prefill or _empty_prefill())
+    for f, val in (('name', name), ('one_liner', one_liner or None), ('stage', stage)):
+        item = dict(pf.get(f) or {})
+        item.update({'value': val, 'status': 'founder'})
+        pf[f] = item
+    meta = dict(pf.get('_meta') or {})
+    meta['confirmed_at'] = now.isoformat()
+    pf['_meta'] = meta
+    case.prefill, case.updated_at = pf, now
+    AuditLog.log('concierge_details_confirmed', user_id=user.id, resource_id=venture.id,
+                 metadata={'case': case.id, 'changed': sorted(k for k in before if before[k] != getattr(venture, k))})
+    db.session.commit()

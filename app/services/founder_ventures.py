@@ -42,8 +42,14 @@ def owned_ventures(user_id: str) -> list:
             .order_by(FounderVenture.created_at).all())
 
 
+def _capped(ventures: list) -> list:
+    """The ventures that count toward MAX_VENTURES_PER_OWNER: concierge
+    ventures (admin-led, track 'concierge') are exempt (decision D6)."""
+    return [x for x in ventures if (getattr(x, 'track', None) or '') != 'concierge']
+
+
 def can_start_another(user_id: str) -> bool:
-    return len(owned_ventures(user_id)) < MAX_VENTURES_PER_OWNER
+    return len(_capped(owned_ventures(user_id))) < MAX_VENTURES_PER_OWNER
 
 
 def ventures_for_user(user_id: str) -> list:
@@ -106,7 +112,7 @@ def create_venture(user, name: str, one_liner: str = '', stage: str = 'idea'):
         # Also stops a double-click on Start from creating the venture twice.
         raise VentureError('You already have a venture called %s. Open it from the Founder Track page, '
                            'or give the new one a different name.' % name)
-    if len(owned) >= MAX_VENTURES_PER_OWNER:
+    if len(_capped(owned)) >= MAX_VENTURES_PER_OWNER:
         raise VentureError('You can run up to %d ventures on the Founder Track. Contact SimiSI if you need more.'
                            % MAX_VENTURES_PER_OWNER)
 
