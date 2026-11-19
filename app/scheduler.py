@@ -165,6 +165,16 @@ def _founder_alerts_job(app):
     _run_with_retry(app, 'founder alerts job', _run)
 
 
+def _concierge_daily_job(app):
+    """FOUNDER_CONCIERGE_PLAN.md step 11: concierge reminders, expiry and the
+    permanent deletion of unaccepted cases. cron_concierge.py runs the same
+    function daily (Passenger can stop this in-process scheduler)."""
+    def _run():
+        from app.services import concierge_service
+        concierge_service.run_daily()
+    _run_with_retry(app, 'concierge daily job', _run)
+
+
 def start_scheduler(app):
     """Start the background scheduler.  Safe to call multiple times — no-ops if already running.
     If APScheduler is not installed the function logs a warning and returns — the app still starts."""
@@ -296,6 +306,18 @@ def start_scheduler(app):
         seconds=900,
         args=[app],
         id='founder-alerts-check',
+        replace_existing=True,
+    )
+
+    # FOUNDER_CONCIERGE_PLAN.md step 11: concierge reminders, expiry and deletion.
+    # Idempotent, so running it here and from cron_concierge.py is safe.
+    _scheduler.add_job(
+        _concierge_daily_job,
+        'cron',
+        hour=5,
+        minute=20,
+        args=[app],
+        id='concierge-daily',
         replace_existing=True,
     )
 

@@ -1842,3 +1842,219 @@ def confirm_details(venture, case, user, name, one_liner, stage) -> None:
     AuditLog.log('concierge_details_confirmed', user_id=user.id, resource_id=venture.id,
                  metadata={'case': case.id, 'changed': sorted(k for k in before if before[k] != getattr(venture, k))})
     db.session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Reminders, expiry and permanent deletion (step 11)
+# ---------------------------------------------------------------------------
+# run_daily(now) is called by the APScheduler job (app/scheduler.py) and by
+# cron_concierge.py (the guarantee on Passenger, which can stop the in-process
+# scheduler). It is idempotent: reminders are recorded in reminders_sent and
+# never sent twice; expiry and deletion are state transitions.
+
+def _reminder_due_at(case, d: int):
+    from datetime import timedelta
+    if d > 0:
+        return case.shared_at + timedelta(days=d) if case.shared_at else None
+    return case.expires_at - timedelta(days=-d) if case.expires_at else None
+
+
+def remind(case, now=None) -> bool:
+    """Send the latest due, unsent reminder (M2 for day N after sharing, M3
+    for N days before expiry). Earlier due ones that were missed are marked
+    skipped, so a founder never gets a burst. True when one was sent."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.models.founder import FounderVenture
+    from app.services import legal_text
+    now = now or datetime.utcnow()
+    if case.state not in OPEN_STATES or case.expires_at is None or case.expires_at <= now:
+        return False
+    sent = dict(case.reminders_sent or {})
+    due = []
+    for d in _cfg('fnd_cc_reminder_days') or []:
+        try:
+            d = int(d)
+        except (TypeError, ValueError):
+            continue
+        at = _reminder_due_at(case, d)
+        if d and str(d) not in sent and at is not None and at <= now:
+            due.append((at, d))
+    if not due:
+        return False
+    due.sort()
+    _at, d = due[-1]
+    for _x, skipped in due[:-1]:
+        sent[str(skipped)] = {'skipped': now.isoformat()}
+    venture = db.session.get(FounderVenture, case.venture_id)
+    name = getattr(venture, 'name', '') or ''
+    left = days_left(case, now)
+    if d < 0:
+        subject = 'Last reminder: your SimiSI evaluation of %s' % name
+        body = legal_text.get('concierge_final_reminder', expires_on=fmt_date(case.expires_at), venture_name=name)
+    else:
+        subject = 'Your SimiSI evaluation of %s is waiting' % name
+        body = legal_text.get('concierge_reminder', venture_name=name, days_left=left)
+    ok = _mail(case.primary_email, subject, [body], link=preview_link(case), link_label='Open the evaluation',
+               small=[legal_text.get('concierge_not_advice')])
+    sent[str(d)] = {'sent': now.isoformat(), 'ok': ok}
+    case.reminders_sent = sent
+    case.updated_at = now
+    AuditLog.log('concierge_reminder', resource_id=case.venture_id,
+                 metadata={'case': case.id, 'day': d, 'emailed': ok, 'days_left': left,
+                           'skipped': [s for _x, s in due[:-1]]})
+    db.session.commit()
+    return True
+
+
+def expire(case, now=None) -> bool:
+    """A case past its window that was not accepted -> expired (+ admin notice)."""
+    now = now or datetime.utcnow()
+    if case.state not in WINDOW_STATES or case.expires_at is None or case.expires_at > now:
+        return False
+    case = transition(case, 'expired', None, note='window ended %s without acceptance' % case.expires_at.isoformat())
+    notify_admin(case, 'expired without acceptance',
+                 ['Its documents and evaluation are deleted permanently now (the window ended %s).'
+                  % fmt_date(case.expires_at)])
+    return True
+
+
+# Columns of concierge_case that hold content; nulled at deletion. What stays:
+# id, venture_id (a reference string), state, dates, fee and amount, admin ids,
+# reminder dates and documents_deleted_at.
+CONTENT_COLUMNS = ('primary_name', 'primary_email', 'cofounder_emails', 'source', 'referrer', 'notes',
+                   'consent_given_by', 'fee_override_reason', 'extend_reason', 'decline_reason', 'invite_token_hash',
+                   'prefill')
+
+
+def _venture_rows(venture_id: str) -> dict:
+    """Delete every content row of a venture. Returns counts. No commit."""
+    from app.models import founder as m
+    counts = {}
+
+    def gone(model, *crit):
+        n = model.query.filter(*crit).delete(synchronize_session=False)
+        if n:
+            counts[model.__tablename__] = counts.get(model.__tablename__, 0) + n
+    art_ids = [a.id for a in m.VentureArtifact.query.filter_by(venture_id=venture_id).all()]
+    finding_ids = [f.id for f in m.EvaluationFinding.query.filter_by(venture_id=venture_id).all()]
+    page_ids = [p.id for p in m.StartupPage.query.filter_by(venture_id=venture_id).all()]
+    if art_ids:
+        gone(m.FounderEvalCache, m.FounderEvalCache.artifact_id.in_(art_ids))
+    if finding_ids:
+        gone(m.FindingRating, m.FindingRating.finding_id.in_(finding_ids))
+    if page_ids:
+        gone(m.StartupSlugHistory, m.StartupSlugHistory.startup_page_id.in_(page_ids))
+        gone(m.StartupPageVisit, m.StartupPageVisit.startup_page_id.in_(page_ids))
+        gone(m.InvestorAccess, m.InvestorAccess.startup_page_id.in_(page_ids))
+    for model in (m.EvaluationFinding, m.EvaluationRun, m.VentureArtifact, m.FounderRunMeta, m.VentureAgentOutput,
+                  m.VentureStepEvent, m.VenturePlanStep, m.VentureOutreachAction, m.AgentParamOverride,
+                  m.AgentBlueprint, m.ProofResult, m.ProofPlan, m.AlignmentResponse, m.ComplianceProfile,
+                  m.InvestorLink, m.InvestorUpdate, m.InvestorTarget, m.IntroPath, m.StartupPage, m.DecisionRight,
+                  m.VentureMember):
+        gone(model, model.venture_id == venture_id)
+    gone(m.FounderVenture, m.FounderVenture.id == venture_id)
+    return counts
+
+
+def _remove_folder(venture_id: str) -> bool:
+    """Delete the venture's private folder (every encrypted file in it)."""
+    import os
+    import shutil
+    from app.services import founder_intake_service as fis
+    root = fis.files_root()
+    folder = os.path.join(root, venture_id)
+    if not venture_id or not fis._inside(folder, root) or os.path.normcase(os.path.realpath(folder)) == \
+            os.path.normcase(os.path.realpath(root)):
+        return False
+    if os.path.isdir(folder):
+        shutil.rmtree(folder)
+    return not os.path.exists(folder)
+
+
+def purge(case, now=None) -> dict:
+    """Permanently delete an unaccepted (declined or expired) case at the end
+    of its window: the encrypted files, every database row of the venture
+    (documents, evaluation, cache, run meta, plan, team, page, members), the
+    edits and messages, and the venture row; then null the case's content
+    columns and keep the minimal record. Audited "documents deleted on <date>".
+    Commits. Raises ConciergeError when the case may not be deleted."""
+    from app.extensions import db
+    from app.models.audit_log import AuditLog
+    from app.models.founder import ConciergeEdit, ConciergeMessage, FounderVenture
+    now = now or datetime.utcnow()
+    if case.state not in ('declined', 'expired'):
+        raise ConciergeError('Only a declined or expired case is deleted.')
+    if case.expires_at is not None and case.expires_at > now:
+        raise ConciergeError('The window has not ended yet.')
+    venture_id = case.venture_id
+    v = db.session.get(FounderVenture, venture_id)
+    if v is not None and v.owner_user_id is not None:
+        raise ConciergeError('This venture has an owner; it is never deleted here.')
+    to, name = case.primary_email, getattr(v, 'name', '') or ''
+    files_gone = _remove_folder(venture_id)          # files first: no content may outlive the rows
+    counts = _venture_rows(venture_id)
+    counts['concierge_edit'] = ConciergeEdit.query.filter_by(case_id=case.id).delete(synchronize_session=False)
+    counts['concierge_message'] = ConciergeMessage.query.filter_by(case_id=case.id).delete(synchronize_session=False)
+    case = transition(case, 'deleted', None, note='documents deleted on %s' % now.strftime('%Y-%m-%d'), commit=False)
+    for col in CONTENT_COLUMNS:
+        setattr(case, col, None)
+    case.documents_deleted_at, case.updated_at = now, now
+    # The creation audit row quoted the consent text with the founder's name.
+    for row in AuditLog.query.filter_by(action='concierge_draft', resource_id=venture_id).all():
+        extra = dict(row.extra or {})
+        if 'consent_text' in extra:
+            extra['consent_text'] = '[deleted %s]' % now.strftime('%Y-%m-%d')
+            row.extra = extra
+    AuditLog.log('concierge_documents_deleted', resource_id=venture_id,
+                 metadata={'case': case.id, 'venture': venture_id, 'note': 'documents deleted on %s'
+                           % now.strftime('%Y-%m-%d'), 'files_removed': files_gone,
+                           'rows': {k: v_ for k, v_ in counts.items() if v_}})
+    db.session.commit()
+    if to:
+        from app.services import legal_text
+        _mail(to, 'Your SimiSI evaluation was deleted',
+              [legal_text.get('concierge_deleted_email', venture_name=name, date=fmt_date(now))])
+    return counts
+
+
+def run_daily(now=None) -> dict:
+    """The daily concierge job: finish stuck transfers, send due reminders,
+    expire cases past their window, delete declined/expired cases whose window
+    has ended. Each case is handled on its own; one failure doesn't stop the rest."""
+    from app.extensions import db
+    from app.models.founder import ConciergeCase, FounderVenture
+    from app.models.user import User
+    now = now or datetime.utcnow()
+    out = {'transfers': 0, 'reminders': 0, 'expired': 0, 'deleted': 0, 'errors': 0}
+
+    def each(q, fn, key):
+        for cid in [c.id for c in q.all()]:
+            try:
+                c = db.session.get(ConciergeCase, cid)
+                if c is not None and fn(c):
+                    out[key] += 1
+            except Exception as exc:
+                db.session.rollback()
+                out['errors'] += 1
+                logger.exception('concierge daily %s failed for case %s: %s', key, cid, exc)
+
+    def _transfer(c):
+        u = db.session.get(User, c.accepted_user_id) if c.accepted_user_id else None
+        v = db.session.get(FounderVenture, c.venture_id)
+        return bool(u and v and transfer(v, c, u))
+
+    def _purge(c):
+        purge(c, now)
+        return True
+
+    each(ConciergeCase.query.filter(ConciergeCase.state == 'accepted_paid'), _transfer, 'transfers')
+    each(ConciergeCase.query.filter(ConciergeCase.state.in_(OPEN_STATES), ConciergeCase.expires_at > now),
+         lambda c: remind(c, now), 'reminders')
+    each(ConciergeCase.query.filter(ConciergeCase.state.in_(WINDOW_STATES), ConciergeCase.expires_at <= now),
+         lambda c: expire(c, now), 'expired')
+    each(ConciergeCase.query.filter(ConciergeCase.state.in_(('declined', 'expired')),
+                                    ConciergeCase.expires_at <= now), _purge, 'deleted')
+    if any(out.values()):
+        logger.info('concierge daily: %s', out)
+    return out

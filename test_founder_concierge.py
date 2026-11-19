@@ -228,6 +228,7 @@ def run_all(app, db, generate_id, tmp_root):
     step8_preview(ctx)
     step9_payment(ctx)
     step10_transfer(ctx)
+    step11_expiry(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -1628,6 +1629,179 @@ def step10_transfer(ctx):
     bv = db.session.get(FounderVenture, ctx.bob_vid)
     check('the admin refund (Bob) also locked his venture and kept him as owner', bv.paid_at is None
           and bv.owner_user_id == bob.id)
+
+
+
+# ---------------------------------------------------------------------------
+# Step 11: reminders, expiry, permanent deletion
+# ---------------------------------------------------------------------------
+
+def table_dump_hits(db, needles):
+    """Every table, every row: which needles still appear anywhere."""
+    from sqlalchemy import text as sqltext
+    hits = []
+    for t in db.metadata.sorted_tables:
+        try:
+            rows = db.session.execute(sqltext('SELECT * FROM %s' % t.name)).fetchall()
+        except Exception:
+            db.session.rollback()
+            continue
+        for row in rows:
+            blob = ' '.join(str(x) for x in row)
+            for n in needles:
+                if n in blob:
+                    hits.append((t.name, n))
+    return sorted(set(hits))
+
+
+def step11_expiry(ctx):
+    db, c = ctx.db, ctx.client
+    from datetime import timedelta
+    from app.models.audit_log import AuditLog
+    from app.models import founder as m
+    from app.services import concierge_service as cs, founder_config as fc, founder_intake_service as fis
+    from app.services import founder_stream, legal_text
+    print('\n12. Step 11: reminders once at the set days, expiry, permanent deletion at window end')
+    fc.set('fnd_cc_reminder_days', [7, 21, -3], ctx.admin.id)
+    fc.set('fnd_cc_window_days', 30, ctx.admin.id)
+    t0 = datetime.utcnow()
+
+    # Reminders.
+    rv, rc = quick_case(ctx, 'rem@founder.io', name='Remind Co', days_left_=30, shared_days_ago=0)
+    rc.shared_at, rc.expires_at = t0, t0 + timedelta(days=30)
+    db.session.commit()
+
+    def reminders(at):
+        n0 = len(ctx.mails)
+        cs.run_daily(at)
+        return [x for x in mails_to(ctx, 'rem@founder.io', n0)]
+    check('no reminder before day 7', not reminders(t0 + timedelta(days=6)))
+    sent = reminders(t0 + timedelta(days=7, hours=1))
+    check('day 7: one reminder (M2 from legal_text, with days left and E1)', len(sent) == 1
+          and legal_text.get('concierge_reminder', venture_name='Remind Co', days_left=23) in sent[0]['body']
+          and legal_text.get('concierge_not_advice') in sent[0]['body'], [s['body'][:120] for s in sent])
+    check('the reminder links the preview (sign-in protected), not a token', '/founder/concierge/%s' % rc.id in sent[0]['body']
+          and '/founder/concierge/t/' not in sent[0]['body'])
+    check('running again the same day sends nothing (never twice)', not reminders(t0 + timedelta(days=7, hours=2)))
+    check('day 21: the second reminder', len(reminders(t0 + timedelta(days=21, hours=1))) == 1)
+    sent = reminders(t0 + timedelta(days=27, hours=1))
+    check('3 days before expiry: the final reminder (M3)', len(sent) == 1 and legal_text.get(
+        'concierge_final_reminder', expires_on=cs.fmt_date(rc.expires_at), venture_name='Remind Co') in sent[0]['body'])
+    check('no more reminders after the final one', not reminders(t0 + timedelta(days=29)))
+    db.session.expire_all()
+    rc = db.session.get(m.ConciergeCase, rc.id)
+    check('reminders_sent records each day once', set(rc.reminders_sent) == {'7', '21', '-3'}
+          and AuditLog.query.filter_by(action='concierge_reminder', resource_id=rv.id).count() == 3)
+    mv, mc = quick_case(ctx, 'late@founder.io', name='Late Co', days_left_=8, shared_days_ago=22)
+    n0 = len(ctx.mails)
+    cs.run_daily(t0 + timedelta(hours=1))
+    db.session.expire_all()
+    mc = db.session.get(m.ConciergeCase, mc.id)
+    check('missed reminders do not burst: only the latest due one is sent',
+          len(mails_to(ctx, 'late@founder.io', n0)) == 1 and mc.reminders_sent['7'].get('skipped')
+          and mc.reminders_sent['21'].get('sent'))
+
+    # A full concierge venture to delete: encrypted files, evaluation, cache, run meta, edits, messages, events.
+    ev, ec = quick_case(ctx, 'exp@founder.io', name='Expiring Co', days_left_=5, shared_days_ago=25)
+    a1 = fis.save_concierge_upload(ev, upload(make_pdf(PLAN_TEXT), 'plan.pdf'), 'startup_plan', ctx.admin)
+    a2 = fis.save_concierge_upload(ev, upload(make_docx(PLAN_TEXT), 'summary.docx'), 'exec_summary', ctx.admin)
+    folder = os.path.dirname(a1.file_path)
+    ART_IDS = [a1.id, a2.id]
+    db.session.add(m.FounderEvalCache(artifact_id=a1.id, dimension='team', payload={'q': 'cached secret answer'}))
+    db.session.add(m.FounderRunMeta(obs_run_id='OBSRUN001', venture_id=ev.id, agent_key='fnd_eval', trigger='dispatch',
+                                    prompt_version='x', cost_cents=3))
+    db.session.add(m.AgentBlueprint(venture_id=ev.id, agent_key='fnd_customer_discovery', layer=1, status='recommended'))
+    db.session.add(m.ConciergeEdit(case_id=ec.id, entity='prefill', field='name', ai_value='Expiring AI name',
+                                   before_value='a', after_value='b'))
+    db.session.add(m.ConciergeMessage(case_id=ec.id, direction='founder', body='Expiring founder message'))
+    db.session.commit()
+    founder_stream.publish(ev.id, 'concierge_ready', {'note': 'Expiring stream note'})
+    before_files = os.listdir(folder)
+    check('the venture to delete has encrypted files on disk', len(before_files) == 2
+          and all(f.endswith('.enc') for f in before_files))
+
+    # Declined inside the window: kept until the window ends.
+    dv, dc = quick_case(ctx, 'dec@founder.io', name='Declined Co', state='declined', days_left_=3)
+    cs.run_daily(t0 + timedelta(days=1))
+    db.session.expire_all()
+    check('a declined case is kept until its window ends', db.session.get(m.ConciergeCase, dc.id).state == 'declined'
+          and db.session.get(m.FounderVenture, dv.id) is not None)
+    check('a case inside its window is not expired', db.session.get(m.ConciergeCase, ec.id).state == 'viewed')
+
+    # A case back in review after a revision, past its window.
+    revv, revc = quick_case(ctx, 'rev@founder.io', name='Revised Co', state='ready_for_review', days_left_=2)
+    DVID, RVID = dv.id, revv.id
+
+    n0 = len(ctx.mails)
+    end = t0 + timedelta(days=6)
+    EV = ev.id
+    out = cs.run_daily(end)
+    db.session.expire_all()
+    ec = db.session.get(m.ConciergeCase, ec.id)
+    check('at window end the job expires and deletes the unaccepted cases',
+          out['expired'] >= 2 and out['deleted'] >= 3 and out['errors'] == 0, out)
+    check('the expired case ends deleted with documents_deleted_at', ec.state == 'deleted'
+          and ec.documents_deleted_at is not None and ec.expired_at is not None)
+    check('expired and deleted are audited transitions',
+          AuditLog.query.filter_by(action='concierge_expired', resource_id=EV).count() == 1
+          and AuditLog.query.filter_by(action='concierge_deleted', resource_id=EV).count() == 1)
+    check('the admin is notified of the expiry', any('expired' in x['subject'] and 'Expiring Co' in x['subject']
+                                                     for x in ctx.mails[n0:]))
+    check('the founder gets the M5 deletion notice', any(legal_text.get('concierge_deleted_email', venture_name='Expiring Co',
+                                                                        date=cs.fmt_date(end)) in x['body']
+                                                         for x in mails_to(ctx, 'exp@founder.io', n0)))
+    check('storage is empty for the venture (its folder is gone)', not os.path.exists(folder)
+          or not os.listdir(folder))
+    left = {name: model.query.filter_by(venture_id=EV).count() for name, model in (
+        ('venture_artifact', m.VentureArtifact), ('evaluation_run', m.EvaluationRun),
+        ('evaluation_finding', m.EvaluationFinding), ('founder_run_meta', m.FounderRunMeta),
+        ('venture_step_event', m.VentureStepEvent), ('agent_blueprint', m.AgentBlueprint))}
+    left['founder_eval_cache'] = m.FounderEvalCache.query.filter(m.FounderEvalCache.artifact_id.in_(ART_IDS)).count()
+    left['concierge_edit'] = m.ConciergeEdit.query.filter_by(case_id=ec.id).count()
+    left['concierge_message'] = m.ConciergeMessage.query.filter_by(case_id=ec.id).count()
+    left['founder_venture'] = m.FounderVenture.query.filter_by(id=EV).count()
+    check('no document, evaluation, cache, run meta, team, event, edit, message or venture row remains',
+          not any(left.values()), {k: v for k, v in left.items() if v})
+    nulls = {col: getattr(ec, col) for col in cs.CONTENT_COLUMNS if getattr(ec, col) not in (None, [], {})}
+    check('every content column of the case is null', not nulls, nulls)
+    check('the minimal record remains: id, venture id, state, dates, fee',
+          ec.venture_id == EV and ec.shared_at is not None and ec.expires_at is not None and ec.created_at
+          and ec.state == 'deleted')
+    a = AuditLog.query.filter_by(action='concierge_documents_deleted', resource_id=EV).first()
+    check('the audit says "documents deleted on <date>"', a is not None
+          and a.extra.get('note') == 'documents deleted on %s' % end.strftime('%Y-%m-%d') and a.extra.get('files_removed'))
+    hits = table_dump_hits(db, ['Secret detail of Expiring Co', 'secret quote Expiring Co', 'Private note Expiring Co',
+                                'Expiring AI name', 'Expiring founder message', 'Expiring stream note',
+                                'exp@founder.io', 'Expiring Co Founder', 'cached secret answer'])
+    check('no content of the deleted case survives in any table', not hits, hits)
+    for label, vvid, cc in (('the declined case', DVID, dc), ('the case back in review past its window', RVID, revc)):
+        cc = db.session.get(m.ConciergeCase, cc.id)
+        check('%s is deleted at window end' % label, cc.state == 'deleted' and cc.primary_email is None
+              and db.session.get(m.FounderVenture, vvid) is None)
+    case = cs.case_for(ctx.vid)
+    check('an accepted (active) case is never expired or deleted', case.state == 'active'
+          and db.session.get(m.FounderVenture, ctx.vid) is not None)
+    out = cs.run_daily(end + timedelta(days=1))
+    check('running the job again changes nothing', out['deleted'] == 0 and out['expired'] == 0 and out['errors'] == 0, out)
+    try:
+        cs.purge(case, end)
+        refused = False
+    except cs.ConciergeError:
+        db.session.rollback()
+        refused = True
+    check('purge refuses an accepted case', refused)
+
+    # Admin view of a deleted case, wiring.
+    ctx.login(ctx.admin.id)
+    r = c.get('/admin/ventures/%s' % EV)
+    check('the deleted case no longer opens as a venture page (404; the queue keeps the minimal row)',
+          r.status_code == 404 and 'Deleted' in c.get('/admin/ventures?state=deleted').get_data(as_text=True))
+    sched = io.open(os.path.join(ROOT, 'app', 'scheduler.py'), encoding='utf-8').read()
+    check('app/scheduler.py runs concierge_service.run_daily daily', "concierge_service.run_daily()" in sched
+          and "id='concierge-daily'" in sched and "'cron'" in sched)
+    cron = io.open(os.path.join(ROOT, 'cron_concierge.py'), encoding='utf-8').read()
+    check('cron_concierge.py runs run_daily under a lock, like cron_mail.py',
+          'concierge_service.run_daily()' in cron and 'LOCK_PATH' in cron and "create_app('production')" in cron)
 
 
 def no_price_literal():
