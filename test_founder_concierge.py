@@ -221,6 +221,7 @@ def run_all(app, db, generate_id, tmp_root):
     step3_state_machine(ctx)
     step4_encryption(ctx)
     step5_admin_area(ctx)
+    step6_evaluation(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -680,6 +681,168 @@ def step5_admin_area(ctx):
     hits = no_price_literal()
     check('no file under app/ carries the consultation fee as a literal', not hits, hits)
     ctx.vid = vid
+
+
+# ---------------------------------------------------------------------------
+# Step 6: evaluation, pre-fill, edits, confirm
+# ---------------------------------------------------------------------------
+
+def step6_evaluation(ctx):
+    db, c, vid = ctx.db, ctx.client, ctx.vid
+    from app.models.audit_log import AuditLog
+    from app.models.founder import (AgentBlueprint, ConciergeEdit, EvaluationFinding, EvaluationRun, FounderRunMeta,
+                                    FounderVenture)
+    from app.services import concierge_service as cs, founder_stream, legal_text
+    from app.services import founder_evaluation_service as fes, observability_service as obs
+    print('\n7. Step 6: evaluation run, pre-fill with citations, edit history, confirm, cost')
+    fake = FakeClaude()
+    fes.AI_CLIENT = fake
+    cs.RUN_INLINE = True
+
+    ctx.login(ctx.admin2.id)
+    check('a non-allowlisted admin cannot start the evaluation',
+          c.post('/api/admin/ventures/%s/evaluate' % vid).status_code == 404)
+    ctx.login(ctx.member.id)
+    check('a member cannot open the venture stream', c.get('/api/admin/ventures/%s/stream' % vid).status_code == 403)
+    ctx.login(ctx.admin.id)
+    r = c.post('/api/admin/ventures/%s/confirm' % vid)
+    check('confirm is refused before review (documents_uploaded)', r.status_code == 409, r.status_code)
+
+    r = c.post('/api/admin/ventures/%s/evaluate' % vid)
+    check('"Run evaluation" starts the run (202)', r.status_code == 202, r.get_data(as_text=True)[:200])
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    v = db.session.get(FounderVenture, vid)
+    run = fes.latest_run(v)
+    check('the run finishes and the case is ready for review', run.status == 'done' and case.state == 'ready_for_review',
+          (run.status, case.state))
+    states = [ (a.extra or {}).get('to') for a in AuditLog.query.filter(AuditLog.resource_id == vid,
+                                                                       AuditLog.action.like('concierge_%')).all()]
+    check('evaluating and ready_for_review are both audited transitions',
+          'evaluating' in states and 'ready_for_review' in states)
+    check('one pre-fill call per run', fake.calls.count('extract_venture_facts') == 1, fake.calls.count('extract_venture_facts'))
+    check('the pre-fill call was sent decrypted text', 'Acme Robotics startup plan' in getattr(fake, 'last_doc', ''))
+    pf = case.prefill
+    check('name and one-liner are proposed by the AI with their quotes',
+          pf['name']['status'] == 'ai' and pf['name']['value'] == 'Acme Robotics' and pf['name']['citation']
+          and pf['one_liner']['status'] == 'ai')
+    check('a fact the documents do not state (stage) is needs_input, never guessed',
+          pf['stage']['status'] == 'needs_input' and pf['stage']['value'] is None)
+    check('a team member whose quote is not in the documents is dropped',
+          [m['name'] for m in pf['team']['value']] == ['Jane Roe'], pf['team'])
+    check('alignment is always needs_input', pf['alignment']['status'] == 'needs_input')
+    evs = [founder_stream._event_payload(e)[0] for e in founder_stream.events_since(vid)]
+    check('progress is published on the venture stream (SSE)',
+          'concierge_evaluating' in evs and 'evaluation_done' in evs and 'concierge_ready' in evs, evs)
+    r = c.get('/api/admin/ventures/%s/stream' % vid)
+    check('the admin stream endpoint is an SSE response', r.status_code == 200 and r.mimetype == 'text/event-stream')
+    r.close()
+
+    from app.models.observability import AgentRun
+    if obs.layer_code('F1') == 'F1' and obs.setting('obs_capture_enabled'):
+        ar = AgentRun.query.filter_by(agent_key=cs.PREFILL_AGENT_KEY).all()
+        check('the pre-fill call is an observability run (F1) with tokens',
+              len(ar) == 1 and ar[0].layer == 'F1' and ar[0].prompt_tokens == 1000 and ar[0].completion_tokens == 200,
+              [(a.layer, a.prompt_tokens) for a in ar])
+        meta = FounderRunMeta.query.filter_by(venture_id=vid, agent_key=cs.PREFILL_AGENT_KEY).all()
+        check('... with founder run meta carrying its cost', len(meta) == 1 and meta[0].obs_run_id == ar[0].id)
+        ev_meta = FounderRunMeta.query.filter_by(venture_id=vid, agent_key=fes.AGENT_KEY).all()
+        check('the evaluation run is in observability too, with cost', ev_meta and run.obs_run_id
+              and run.cost_cents > 0)
+    else:
+        check('observability capture is off in this config (skipped)', True)
+    pa = AuditLog.query.filter_by(action='concierge_prefill_run', resource_id=vid).first()
+    check('the pre-fill cost is recorded', pa is not None and pa.extra.get('cost_cents', 0) > 0)
+    check('total API cost = evaluation runs + pre-fill',
+          abs(cs.api_cost_cents(v) - (run.cost_cents + pa.extra['cost_cents'])) < 0.01, cs.api_cost_cents(v))
+    check('the recommended team is built from the findings (no owner needed)',
+          AgentBlueprint.query.filter_by(venture_id=vid, status='recommended').count() >= 1)
+
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('the venture page shows the pre-fill with its quote and the needs-input count',
+          'Acme Robotics startup plan' in html and 'Needs founder input' in html and 'need founder input' in html)
+    check('the page shows the findings and the API cost next to the fee',
+          'No one sells' in html and 'id="ccCost"' in html and "Model (API) cost" in html)
+    check('the evaluation carries the required disclaimer', legal_text.get('concierge_not_advice') in html
+          and 'Not investment advice and not a promise of funding.' in legal_text.get('concierge_not_advice'))
+
+    # Edits: prefill
+    r = c.post('/api/admin/ventures/%s/prefill' % vid, json={'field': 'stage', 'value': 'galactic'})
+    check('an unknown stage is refused', r.status_code == 400)
+    r = c.post('/api/admin/ventures/%s/prefill' % vid, json={'field': 'alignment', 'value': 'aligned'})
+    check('alignment cannot be filled in by an admin', r.status_code == 400)
+    r = c.post('/api/admin/ventures/%s/prefill' % vid, json={'field': 'stage', 'value': 'seed'})
+    check('the admin fills a needs-input field', r.status_code == 200 and cs.case_for(vid).prefill['stage'] ==
+          dict(cs.case_for(vid).prefill['stage'], value='seed', status='admin'))
+    c.post('/api/admin/ventures/%s/prefill' % vid, json={'field': 'name', 'value': 'Acme Robotics Inc.'})
+    e = ConciergeEdit.query.filter_by(case_id=cs.case_for(vid).id, entity='prefill', field='name').first()
+    check('an edit records the AI value, before and after, and who',
+          e is not None and e.ai_value == 'Acme Robotics' and e.before_value == 'Acme Robotics'
+          and e.after_value == 'Acme Robotics Inc.' and e.by_user_id == ctx.admin.id)
+    c.post('/api/admin/ventures/%s/prefill' % vid, json={'field': 'team', 'value': 'Jane Roe, CEO\nSam Poe, COO'})
+    check('the team can be edited as lines', [m['name'] for m in cs.case_for(vid).prefill['team']['value']]
+          == ['Jane Roe', 'Sam Poe'])
+    # Edits: findings
+    f = (EvaluationFinding.query.filter_by(venture_id=vid, superseded_at=None, title='No one sells').first())
+    r = c.post('/api/admin/ventures/%s/findings/%s' % (vid, f.id), json={'title': 'No one owns sales yet',
+                                                                          'severity': 'medium'})
+    check('the admin edits a finding', r.status_code == 200 and db.session.get(EvaluationFinding, f.id).title ==
+          'No one owns sales yet')
+    c.post('/api/admin/ventures/%s/findings/%s' % (vid, f.id), json={'title': 'Sales owner missing'})
+    rows = ConciergeEdit.query.filter_by(case_id=cs.case_for(vid).id, entity='finding', entity_id=f.id,
+                                         field='title').order_by(ConciergeEdit.created_at).all()
+    check('every finding edit keeps the AI original', len(rows) == 2 and all(r.ai_value == 'No one sells' for r in rows)
+          and rows[1].before_value == 'No one owns sales yet' and rows[1].after_value == 'Sales owner missing')
+    r = c.post('/api/admin/ventures/%s/findings/%s' % (vid, f.id), json={'severity': 'extreme'})
+    check('an unknown severity is refused', r.status_code == 400)
+    r = c.post('/api/admin/ventures/%s/findings/NOPE00000' % vid, json={'title': 'x'})
+    check('a finding of another venture is 404', r.status_code == 404)
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('the page shows the edit history (AI vs admin)', 'Edit history' in html and 'Sales owner missing' in html
+          and 'AI: No one sells' in html and 'AI: Acme Robotics' in html)
+    ctx.shot_vid = vid
+
+    # Confirm
+    r = c.post('/api/admin/ventures/%s/confirm' % vid)
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    v = db.session.get(FounderVenture, vid)
+    check('Confirm moves ready_for_review -> confirmed', r.status_code == 200 and case.state == 'confirmed'
+          and case.confirmed_by == ctx.admin.id)
+    check('the confirmed name, one-liner and stage are saved on the venture',
+          v.name == 'Acme Robotics Inc.' and v.stage == 'seed' and v.one_liner == pf['one_liner']['value'])
+    check('confirming twice is refused', c.post('/api/admin/ventures/%s/confirm' % vid).status_code == 409)
+    r = c.post('/api/admin/ventures/%s/prefill' % vid, json={'field': 'stage', 'value': 'idea'})
+    check('edits are refused once confirmed', r.status_code == 409)
+    check('the venture still has no owner', v.owner_user_id is None)
+
+    # New documents, re-run, failure, needs_input
+    data = {'kind': 'pitch_deck', 'file': (io.BytesIO(make_pdf(PLAN_TEXT + ' Deck.')), 'deck.pdf')}
+    r = c.post('/api/admin/ventures/%s/upload' % vid, data=data, content_type='multipart/form-data')
+    check('a new document can be added after confirming', r.status_code == 200 and cs.case_for(vid).state == 'confirmed')
+    fake.fail = True
+    r = c.post('/api/admin/ventures/%s/evaluate' % vid)
+    db.session.expire_all()
+    check('a failed run returns the case to documents_uploaded', r.status_code == 202
+          and cs.case_for(vid).state == 'documents_uploaded', cs.case_for(vid).state)
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('the failure reason is shown on the venture page', 'The last run failed' in html)
+    note = [(a.extra or {}).get('note', '') for a in AuditLog.query.filter_by(action='concierge_documents_uploaded',
+                                                                           resource_id=vid).all()]
+    check('the failure is audited with its reason', any(n.startswith('evaluation failed') for n in note), note)
+    fake.fail = False
+    fake.prefill = {'name': {'value': 'Invented Co', 'citation': 'a sentence that is not in any document'},
+                    'one_liner': {'value': None, 'citation': None},
+                    'stage': {'value': 'seed', 'citation': None}, 'team': []}
+    r = c.post('/api/admin/ventures/%s/evaluate' % vid)
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('a re-run after new documents reaches review again', case.state == 'ready_for_review', case.state)
+    check('values without a verifiable quote are needs_input',
+          all(case.prefill[k]['status'] == 'needs_input' for k in ('name', 'one_liner', 'stage', 'team', 'alignment')))
+    check('the earlier edit history is kept', ConciergeEdit.query.filter_by(case_id=case.id).count() >= 5)
+    cs.RUN_INLINE = False
+    fes.AI_CLIENT = None
 
 
 def no_price_literal():

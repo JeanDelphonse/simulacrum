@@ -202,3 +202,93 @@ def api_concierge_fee(venture_id):
         return _err(exc, exc.status)
     return jsonify({'fee_cents': cs.effective_fee_cents(c), 'override': c.fee_override_cents,
                     'fee': cs.money(cs.effective_fee_cents(c))})
+
+
+# ── Evaluation, review and confirm (step 6) ──────────────────────────────────
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/evaluate', methods=['POST'])
+@concierge_api
+def api_concierge_evaluate(venture_id):
+    from app.services import concierge_service as cs
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    try:
+        run = cs.start_evaluation(v, c, current_user)
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    c = cs.case_for(v.id)
+    return jsonify({'evaluation_run_id': run.id, 'state': c.state}), 202
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/status')
+@concierge_api
+def api_concierge_status(venture_id):
+    from app.services import concierge_service as cs
+    from app.services import founder_evaluation_service as fes
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    run = fes.latest_run(v)
+    return jsonify({'state': c.state, 'state_label': cs.STATE_LABELS.get(c.state, c.state),
+                    'run': ({'id': run.id, 'status': run.status} if run else None)})
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/stream')
+@concierge_api
+def api_concierge_stream(venture_id):
+    """Live progress (SSE) for the admin venture page: the venture's
+    founder_stream, admin-only (the founder stream route needs membership)."""
+    from app.services import founder_stream
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    return founder_stream.response(v.id)
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/prefill', methods=['POST'])
+@concierge_api
+def api_concierge_prefill(venture_id):
+    from app.services import concierge_service as cs
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    b = request.get_json(silent=True) or {}
+    try:
+        cs.edit_prefill(c, b.get('field'), b.get('value'), current_user)
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    return jsonify({'prefill': c.prefill})
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/findings/<finding_id>', methods=['POST'])
+@concierge_api
+def api_concierge_finding(venture_id, finding_id):
+    from app.services import concierge_service as cs
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    b = request.get_json(silent=True) or {}
+    try:
+        f = cs.edit_finding(c, v, finding_id, {k: b[k] for k in cs.FINDING_FIELDS if k in b}, current_user)
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    return jsonify({'finding': f.to_dict()})
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/confirm', methods=['POST'])
+@concierge_api
+def api_concierge_confirm(venture_id):
+    from app.services import concierge_service as cs
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    try:
+        cs.confirm(v, c, current_user)
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    return jsonify({'state': c.state})

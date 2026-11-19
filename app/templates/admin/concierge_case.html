@@ -42,7 +42,100 @@
           {% endfor %}
         </div>
       </section>
-      {% block evaluation %}{% endblock %}
+      {# ── Evaluation ── #}
+      <section class="fa-card" aria-labelledby="ccEvalH" id="ccEval">
+        <div class="fa-head"><h2 id="ccEvalH">Evaluation</h2>
+          {% if can_evaluate %}<button class="btn primary sm" type="button" id="ccRun">{{ 'Re-run evaluation' if done_run else 'Run evaluation' }}</button>{% endif %}</div>
+        {% if failure %}<p class="fa-banner err" id="ccFailure">The last run failed: {{ failure.message }}{% if failure.detail %} <span class="cc-sub2">{{ failure.detail }}</span>{% endif %}</p>{% endif %}
+        {% if case.state == 'evaluating' %}<p class="fa-note" style="margin:0">Running now. This page follows it live.</p>{% endif %}
+        <ul class="cc-progress" id="ccProgress" aria-live="polite"></ul>
+        <span class="fa-msg" role="status" id="ccRunMsg"></span>
+        {% if done_run %}
+        <dl class="cc-kv" style="margin-top:.6rem">
+          <dt>Overall score</dt><dd><b>{{ done_run.overall_score if done_run.overall_score is not none else '—' }}</b>{% if done_run.finished_at %} <span class="cc-sub2">run {{ done_run.id }} · {{ done_run.finished_at.strftime('%Y-%m-%d %H:%M') }} UTC</span>{% endif %}</dd>
+          <dt>Scores</dt><dd>{% for d, s in (done_run.scores or {}).items() %}{{ rubric[d][0] }} {{ s }}{{ ' · ' if not loop.last }}{% else %}none{% endfor %}</dd>
+        </dl>
+        <p class="fa-note">{{ legal('concierge_eval_basis') }}{% if missing_docs %} {{ legal('concierge_missing_docs') }} Not provided: {{ missing_docs|join(', ') }}.{% endif %}</p>
+        <p class="fa-note">{{ legal('concierge_ai_review') }} <b>{{ legal('concierge_not_advice') }}</b></p>
+        {% elif not run %}<p class="fa-note" style="margin:0">Not run yet. Upload at least one document, then run it.</p>{% endif %}
+      </section>
+
+      {% if prefill %}
+      {# ── Pre-filled fields ── #}
+      <section class="fa-card" aria-labelledby="ccPfH" id="ccPrefill">
+        <h2 id="ccPfH">Pre-filled fields</h2>
+        <p class="fa-note" style="margin:0 0 .4rem">Proposed from the documents, each with the passage it comes from. Anything not found is "Needs founder input", never guessed.
+          {% if needs_input %}<b>{{ needs_input|length }} field{{ 's' if needs_input|length != 1 }} need founder input.</b>{% endif %}</p>
+        {% for f, label in prefill_fields %}{% set item = prefill.get(f) or {} %}
+        <div class="cc-field" data-field="{{ f }}">
+          <div><b>{{ label }}</b><br>
+            {% if item.status == 'ai' %}<span class="fa-badge on">AI</span>{% elif item.status == 'admin' %}<span class="fa-badge lock">edited by admin</span>{% else %}<span class="fa-badge bad">Needs founder input</span>{% endif %}</div>
+          <div>
+            {% if f == 'team' %}
+              {% if item.value %}<ul class="cc-hist" style="font-size:14px">{% for m in item.value %}<li style="border:0;padding:.1rem 0">{{ m.name }}{% if m.role %}, {{ m.role }}{% endif %}{% if m.citation %}<span class="cc-cite">“{{ m.citation }}”</span>{% endif %}</li>{% endfor %}</ul>{% else %}<span class="fa-note">—</span>{% endif %}
+            {% elif f == 'stage' %}{{ stage_labels.get(item.value, '—') if item.value else '—' }}
+            {% elif f == 'alignment' %}<span class="fa-note">{{ item.note or 'Each founder answers the alignment check themselves after acceptance.' }}</span>
+            {% else %}{{ item.value or '—' }}{% endif %}
+            {% if item.citation and f != 'team' %}<span class="cc-cite">“{{ item.citation }}”</span>{% endif %}
+            {% if item.status == 'admin' and item.ai_value %}<span class="cc-sub2">AI proposed: {% if f == 'team' %}{% for m in item.ai_value %}{{ m.name }}{{ ', ' if not loop.last }}{% endfor %}{% else %}{{ stage_labels.get(item.ai_value, item.ai_value) if f == 'stage' else item.ai_value }}{% endif %}</span>{% endif %}
+            {% if can_edit and f in editable_prefill %}
+            <form class="cc-edit" data-prefill="{{ f }}">
+              <label class="sr" for="pf-{{ f }}">{{ label }}</label>
+              {% if f == 'stage' %}<select id="pf-{{ f }}"><option value="">Needs founder input</option>{% for k, l in stage_labels.items() %}<option value="{{ k }}" {{ 'selected' if item.value == k }}>{{ l }}</option>{% endfor %}</select>
+              {% elif f == 'team' %}<textarea id="pf-{{ f }}" rows="3" placeholder="One per line: Name, Role">{% for m in item.value or [] %}{{ m.name }}{% if m.role %}, {{ m.role }}{% endif %}
+{% endfor %}</textarea>
+              {% else %}<input type="text" id="pf-{{ f }}" maxlength="{{ 200 if f == 'name' else 300 }}" value="{{ item.value or '' }}">{% endif %}
+              <button class="btn sm" type="submit">Save</button><span class="fa-msg" role="status"></span>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+        {% if prefill._meta and prefill._meta.error %}<p class="fa-banner err">The pre-fill call failed ({{ prefill._meta.error }}); every field needs founder input. Re-run the evaluation to try again.</p>{% endif %}
+      </section>
+      {% endif %}
+
+      {% if findings %}
+      {# ── Findings ── #}
+      <section class="fa-card" aria-labelledby="ccFindH" id="ccFindings">
+        <h2 id="ccFindH">Findings ({{ findings|length }})</h2>
+        {% for f in findings %}
+        <div class="cc-finding" data-finding="{{ f.id }}">
+          <div><span class="fa-badge{{ ' bad' if f.severity == 'high' else (' lock' if f.severity == 'medium' else '') }}">{{ f.severity }}</span>
+            <span class="fa-badge">{{ ftype_labels.get(f.ftype, f.ftype) }}</span> <span class="cc-sub2" style="display:inline">{{ rubric[f.dimension][0] }}</span>
+            {% if finding_edits.get(f.id) %}<span class="fa-badge lock">edited ×{{ finding_edits[f.id]|length }}</span>{% endif %}</div>
+          <b style="display:block;margin-top:.3rem" data-title>{{ f.title }}</b>
+          {% if f.detail %}<div style="margin-top:.2rem">{{ f.detail }}</div>{% endif %}
+          {% if f.citation_text %}<span class="cc-cite" style="display:block;font-size:12px;color:var(--mute);font-style:italic;margin-top:.2rem">“{{ f.citation_text }}” · {{ f.citation_ref }}</span>{% endif %}
+          {% if can_edit %}
+          <details style="margin-top:.4rem"><summary class="fa-note">Edit finding</summary>
+            <form class="cc-edit" data-finding-form="{{ f.id }}" style="flex-direction:column;align-items:stretch">
+              <label class="fa-note" for="ft-{{ f.id }}">Title</label><input type="text" id="ft-{{ f.id }}" name="title" maxlength="300" value="{{ f.title }}">
+              <label class="fa-note" for="fd-{{ f.id }}">Detail</label><textarea id="fd-{{ f.id }}" name="detail" rows="3" maxlength="5000">{{ f.detail or '' }}</textarea>
+              <label class="fa-note" for="fs-{{ f.id }}">Severity</label><select id="fs-{{ f.id }}" name="severity">{% for s in severities %}<option value="{{ s }}" {{ 'selected' if f.severity == s }}>{{ s }}</option>{% endfor %}</select>
+              <div class="fa-row"><button class="btn sm" type="submit">Save finding</button><span class="fa-msg" role="status"></span></div>
+            </form>
+          </details>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if edits %}
+      {# ── Edit history (AI vs admin) ── #}
+      <section class="fa-card" aria-labelledby="ccHistH" id="ccHistory">
+        <h2 id="ccHistH">Edit history ({{ edits|length }})</h2>
+        <p class="fa-note" style="margin:0 0 .4rem">What the AI wrote and every change an admin made.</p>
+        <ul class="cc-hist">
+          {% for e in edits %}
+          <li><b>{{ e.label }}</b>{% if e.entity == 'finding' %} <span class="cc-sub2" style="display:inline">({{ e.entity_id }})</span>{% endif %} · {{ e.at.strftime('%Y-%m-%d %H:%M') }} UTC · {{ e.by }}<br>
+            <span class="cc-sub2">AI: {{ e.ai_value or '—' }}</span>
+            <span class="cc-sub2">Before: {{ e.before or '—' }} → After: {{ e.after or '— (needs founder input)' }}</span></li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% endif %}
     </div>
 
     <div>
@@ -67,7 +160,7 @@
         <p style="margin:.1rem 0 .3rem;font-size:15px"><b id="ccFee">{{ fee or 'Not set' }}</b>
           {% if case.fee_override_cents is not none %}<span class="fa-badge lock">override</span>{% endif %}</p>
         <p class="fa-note" style="margin:0">Pricing setting: {{ base_fee or 'not set' }}.{% if case.fee_override_cents is not none %} Override reason: {{ case.fee_override_reason }}{% endif %}</p>
-        {% block cost %}{% endblock %}
+        <p class="fa-note" style="margin:.3rem 0 0" id="ccCost">Model (API) cost of this venture's runs so far: <b>USD {{ '%.2f' % (cost_cents / 100) }}</b> (evaluation and pre-fill calls).</p>
         {% if case.state not in ('accepted_paid', 'active', 'declined', 'expired', 'deleted') %}
         <form id="ccFeeForm" style="margin-top:.6rem">
           <div class="fa-row"><label for="ccFeeAmt" class="fa-lbl" style="min-width:0">Override ({{ currency|upper }})</label>
@@ -84,7 +177,26 @@
           <ul class="cc-hist">{% for h in fee_history %}<li>{{ h.at.strftime('%Y-%m-%d %H:%M') }}: {{ h.before if h.before is not none else 'none' }} → {{ h.after if h.after is not none else 'cleared' }} (cents) · {{ h.reason }}</li>{% endfor %}</ul>
         </details>{% endif %}
       </section>
-      {% block side %}{% endblock %}
+      {# ── Review and confirm ── #}
+      <section class="fa-card" aria-labelledby="ccConfH">
+        <h2 id="ccConfH">Review</h2>
+        {% if can_confirm %}
+        <p class="fa-note" style="margin:0 0 .6rem">Check the pre-filled fields and findings, edit what is wrong, then confirm. Only a confirmed evaluation can be shared with the founder.</p>
+        <div class="fa-row"><button class="btn primary sm" type="button" id="ccConfirm">Confirm evaluation</button><span class="fa-msg" role="status" id="ccConfirmMsg"></span></div>
+        {% elif case.state == 'confirmed' %}
+        <p style="margin:0"><span class="fa-badge on">Confirmed</span> {{ case.confirmed_at.strftime('%Y-%m-%d %H:%M') if case.confirmed_at }} UTC</p>
+        <p class="fa-note">Sharing with the founder is not built yet. New documents need a re-run, which returns it to review.</p>
+        {% else %}
+        <p class="fa-note" style="margin:0">Confirm becomes available once the evaluation is ready for review.</p>
+        {% endif %}
+      </section>
+      {% if team %}
+      <section class="fa-card" aria-labelledby="ccTeamH">
+        <h2 id="ccTeamH">Recommended agent team</h2>
+        <ul class="cc-hist">{% for t in team %}<li>L{{ t.layer }} · {{ t.label }} <span class="fa-badge">{{ t.status }}</span></li>{% endfor %}</ul>
+        <p class="fa-note">From the open findings, as self-serve recommends. The execution plan is built when the founder accepts (it needs their owner account).</p>
+      </section>
+      {% endif %}
     </div>
   </div>
 </div>
@@ -134,5 +246,63 @@
   }
 })();
 </script>
-{% block scripts %}{% endblock %}
+<script>
+(function () {
+  var call = window.ccCall, say = window.ccSay;
+  var root = document.getElementById('ccCase'), VID = root.dataset.venture;
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  var list = document.getElementById('ccProgress');
+  function line(text) { if (!list) return; var li = document.createElement('li'); li.textContent = new Date().toLocaleTimeString() + ' · ' + text; list.appendChild(li); list.scrollTop = list.scrollHeight; }
+  var es = null, poll = null;
+  function follow() {
+    if (window.EventSource && !es) {
+      es = new EventSource(ROOT + '/api/admin/ventures/' + VID + '/stream');
+      ['concierge_evaluating', 'evaluation_done', 'concierge_prefill', 'team_built'].forEach(function (ev) {
+        es.addEventListener(ev, function (e) { try { var d = JSON.parse(e.data); line(d.note || ev); } catch (x) { line(ev); } });
+      });
+      ['concierge_ready', 'concierge_failed'].forEach(function (ev) {
+        es.addEventListener(ev, function (e) { try { line(JSON.parse(e.data).note || ev); } catch (x) {} es.close(); setTimeout(function () { location.reload(); }, 800); });
+      });
+    }
+    // Fallback and safety net: poll the state every 10 seconds.
+    if (!poll) poll = setInterval(function () {
+      call('/api/admin/ventures/' + VID + '/status', undefined, 'GET').then(function (d) {
+        if (d.state !== 'evaluating') { clearInterval(poll); if (es) es.close(); location.reload(); }
+      }).catch(function () {});
+    }, 10000);
+  }
+  if (root.dataset.state === 'evaluating') { line('Evaluation running…'); follow(); }
+  var run = document.getElementById('ccRun'), rmsg = document.getElementById('ccRunMsg');
+  if (run) run.onclick = function () {
+    run.disabled = true; say(rmsg, 'Starting…');
+    call('/api/admin/ventures/' + VID + '/evaluate', {}).then(function (d) {
+      say(rmsg, ''); var st = document.getElementById('ccState'); if (st) st.textContent = 'Evaluating';
+      root.dataset.state = d.state; line('Evaluation started'); follow();
+    }).catch(function (e) { run.disabled = false; say(rmsg, e.message, true); });
+  };
+  document.querySelectorAll('[data-prefill]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var el = form.querySelector('input, select, textarea'), msg = form.querySelector('.fa-msg');
+      call('/api/admin/ventures/' + VID + '/prefill', { field: form.dataset.prefill, value: el.value })
+        .then(function () { location.reload(); }).catch(function (err) { say(msg, err.message, true); });
+    });
+  });
+  document.querySelectorAll('[data-finding-form]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var msg = form.querySelector('.fa-msg');
+      call('/api/admin/ventures/' + VID + '/findings/' + form.dataset.findingForm,
+           { title: form.elements.title.value, detail: form.elements.detail.value, severity: form.elements.severity.value })
+        .then(function () { location.reload(); }).catch(function (err) { say(msg, err.message, true); });
+    });
+  });
+  var conf = document.getElementById('ccConfirm');
+  if (conf) conf.onclick = function () {
+    if (!confirm('Confirm this evaluation? Its name, one-liner and stage are saved on the venture.')) return;
+    call('/api/admin/ventures/' + VID + '/confirm', {}).then(function () { location.reload(); })
+      .catch(function (e) { say(document.getElementById('ccConfirmMsg'), e.message, true); });
+  };
+})();
+</script>
 {% endblock %}
