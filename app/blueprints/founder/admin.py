@@ -296,14 +296,16 @@ def _ventures() -> list:
     findings and agent output stay behind the founder-granted support access
     (venture trace in /admin/observability)."""
     from datetime import datetime as _dt
-    from app.models.founder import EvaluationRun, FounderVenture, StartupPage, VentureMember
+    from app.models.founder import ConciergeCase, EvaluationRun, FounderVenture, StartupPage, VentureMember
     from app.models.user import User
     rows = FounderVenture.query.order_by(FounderVenture.created_at.desc()).limit(VENTURES_LIMIT).all()
     if not rows:
         return []
     ids = [v.id for v in rows]
     members = VentureMember.query.filter(VentureMember.venture_id.in_(ids)).all()
-    user_ids = {v.owner_user_id for v in rows} | {m.user_id for m in members if m.user_id}
+    # A concierge venture has no owner until the founder accepts it (sql/079).
+    user_ids = {v.owner_user_id for v in rows if v.owner_user_id} | {m.user_id for m in members if m.user_id}
+    cases = {c.venture_id: c for c in ConciergeCase.query.filter(ConciergeCase.venture_id.in_(ids)).all()}
     users = {u.id: u for u in User.query.filter(User.id.in_(list(user_ids) or ['-'])).all()}
     pages = {p.venture_id: p for p in StartupPage.query.filter(StartupPage.venture_id.in_(ids)).all()}
     last_eval = {}
@@ -334,10 +336,13 @@ def _ventures() -> list:
         page = pages.get(v.id)
         ev = last_eval.get(v.id)
         until = v.support_access_until
+        case = cases.get(v.id)
         out.append({
             'id': v.id, 'name': v.name, 'stage': v.stage, 'status': v.status,
             'rung': v.rung, 'rung_label': rung_labels.get(v.rung, ''),
-            'owner': person(v.owner_user_id), 'team': team,
+            'owner': person(v.owner_user_id) if v.owner_user_id else None, 'team': team,
+            'concierge': ({'state': case.state, 'primary_name': case.primary_name or '',
+                           'primary_email': case.primary_email or ''} if case else None),
             'paid_at': v.paid_at.strftime('%Y-%m-%d') if v.paid_at else '',
             'amount': ('$%.0f' % (v.amount_cents / 100.0)) if v.amount_cents else '',
             'track': v.track,

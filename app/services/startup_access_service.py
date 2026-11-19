@@ -177,7 +177,7 @@ def gate_open(page=None) -> bool:
             from app.extensions import db
             from app.models.user import User
             v = _venture(page)
-            owner = db.session.get(User, v.owner_user_id) if v is not None else None
+            owner = db.session.get(User, v.owner_user_id) if v is not None and v.owner_user_id else None
             return bool(owner is not None and founder_feature.is_enabled(owner, founder_feature.INVESTOR))
         return True
     except Exception as exc:
@@ -228,7 +228,7 @@ def _managers(venture) -> list:
     """Users to tell about investor access: the owner and the right holder."""
     from app.extensions import db
     from app.models.user import User
-    ids = [venture.owner_user_id]
+    ids = [venture.owner_user_id] if venture.owner_user_id else []
     h = investor_contact_holder(venture)
     if h is not None and h.user_id and h.user_id not in ids:
         ids.append(h.user_id)

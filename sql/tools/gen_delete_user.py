@@ -89,6 +89,9 @@ SETS = [
     ('d_goals', "SELECT id FROM goal_cards WHERE user_id = @uid"),
     # Founder Track: the venture the user owns, its startup page and its artifacts.
     ('d_ventures', "SELECT id FROM founder_venture WHERE owner_user_id = @uid"),
+    # Concierge cases of those ventures (a concierge venture has no owner until it is
+    # accepted, so an unaccepted case is never matched here; it is not the user's).
+    ('d_ccases', "SELECT id FROM concierge_case WHERE venture_id IN (SELECT id FROM d_ventures)"),
     ('d_spages', "SELECT id FROM startup_page WHERE venture_id IN (SELECT id FROM d_ventures)"),
     ('d_vartifacts', "SELECT id FROM venture_artifact WHERE venture_id IN (SELECT id FROM d_ventures)"),
     ('d_findings', "SELECT id FROM evaluation_finding WHERE venture_id IN (SELECT id FROM d_ventures)"),
@@ -115,6 +118,7 @@ PARENT_COLS = {
     'seat_id': ['d_seats'],
     'venture_id': ['d_ventures'], 'startup_page_id': ['d_spages'],
     'finding_id': ['d_findings'], 'member_id': ['d_members'], 'connector_contact_id': ['d_contacts'],
+    'case_id': ['d_ccases'],
 }
 # Per-table overrides where a generic column means something else.
 SKIP_COLS = {
@@ -156,6 +160,8 @@ EXTRA_WHERE = {
     'founder_eval_cache': ["artifact_id IN (SELECT id FROM d_vartifacts)"],
     # co-founder invitations to this user's email that were never accepted, in any venture
     'venture_member': ["user_id IS NULL AND LOWER(invite_email) = LOWER((SELECT email FROM users WHERE id = @uid))"],
+    # the user's own revision requests on a concierge case (admin replies stay, actor nulled)
+    'concierge_message': ["(direction = 'founder' AND by_user_id = @uid)"],
 }
 # Statements run after the preview and before the deletes, for other users'
 # rows that point at this user's rows and are kept.
@@ -179,6 +185,8 @@ TABLE_ACTOR_COLS = {
     ('compliance_profile', 'recorded_by'), ('investor_access', 'approved_by'),
     ('investor_update', 'approved_by'), ('investor_profile', 'added_by'),
     ('venture_outreach_action', 'approved_by'),
+    ('concierge_case', 'fee_override_by'), ('concierge_case', 'confirmed_by'), ('concierge_case', 'extended_by'),
+    ('concierge_case', 'accepted_user_id'), ('concierge_edit', 'by_user_id'), ('concierge_message', 'by_user_id'),
 }
 
 deletes, nulls, unknown = {}, [], []

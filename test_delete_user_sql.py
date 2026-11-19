@@ -38,7 +38,8 @@ SET_TABLE = {'d_sims': 'simulations', 'd_actions': 'agent_actions', 'd_contacts'
              'd_resumes': 'resumes', 'd_seats': 'transition_seats', 'd_csess': 'coaching_sessions',
              'd_smesess': 'sme_sessions', 'd_goals': 'goal_cards',
              'd_ventures': 'founder_venture', 'd_spages': 'startup_page', 'd_vartifacts': 'venture_artifact',
-             'd_findings': 'evaluation_finding', 'd_members': 'venture_member'}
+             'd_findings': 'evaluation_finding', 'd_members': 'venture_member',
+             'd_ccases': 'concierge_case'}
 
 
 def dummy(col, now, u):

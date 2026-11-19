@@ -11,7 +11,7 @@ Every primary key is a CHAR(9) uppercase id from generate_pk(). Column names
 avoid session_id / run_id / step_id (sql/tools/gen_delete_user.py maps those to
 other tables): plan steps are plan_step_id and observability runs obs_run_id.
 
-Migrations: sql/069_founder_core.sql ... sql/074_founder_investor.sql.
+Migrations: sql/069_founder_core.sql ... sql/074_founder_investor.sql, ... sql/079_founder_concierge.sql.
 """
 from __future__ import annotations
 
@@ -39,11 +39,12 @@ class FounderVenture(db.Model):
     __table_args__ = (db.Index('ix_founder_venture_status', 'status'),)
 
     STAGES = ('idea', 'pre-seed', 'seed', 'series-a')
-    STATUSES = ('active', 'paused', 'archived')
-    TRACKS = ('standalone', 'addon')
+    STATUSES = ('active', 'paused', 'archived', 'concierge')    # 'concierge': admin-led, not yet accepted (sql/079)
+    TRACKS = ('standalone', 'addon', 'concierge')
 
     id = db.Column(db.String(9), primary_key=True, default=generate_pk)
-    owner_user_id = db.Column(db.String(9), nullable=False, index=True)   # several per owner (sql/078)
+    # several per owner (sql/078); NULL only for a concierge venture not yet accepted (sql/079)
+    owner_user_id = db.Column(db.String(9), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False)
     one_liner = db.Column(db.String(300), nullable=True)
     stage = db.Column(db.String(12), nullable=False, default='idea')
@@ -130,6 +131,9 @@ class VentureArtifact(db.Model):
     text_content = db.Column(_LongText, nullable=True)
     char_count = db.Column(db.Integer, nullable=False, default=0)
     uploaded_by = db.Column(db.String(9), nullable=True)
+    # 1 = file on disk and text_content are Fernet-encrypted (concierge uploads, sql/079).
+    # Read the text through founder_intake_service.artifact_text(), never text_content directly.
+    encrypted = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def to_dict(self, with_text: bool = False):
@@ -714,4 +718,101 @@ class FounderAlertRule(db.Model):
     metric = db.Column(db.String(60), nullable=False)
     threshold = db.Column(db.Float, nullable=False, default=0.0)
     enabled = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# 079 founder_concierge (FOUNDER_CONCIERGE_PLAN.md section 3)
+# ---------------------------------------------------------------------------
+
+class ConciergeCase(db.Model):
+    """One admin-led (concierge) venture: its state, primary founder, consent,
+    fee override, share window and pre-filled fields. State changes go through
+    concierge_service.transition() only."""
+    __tablename__ = 'concierge_case'
+    __table_args__ = (db.UniqueConstraint('venture_id', name='uq_concierge_case_venture'),
+                      db.UniqueConstraint('invite_token_hash', name='uq_concierge_case_token'),
+                      db.Index('ix_concierge_case_state', 'state'),
+                      db.Index('ix_concierge_case_email', 'primary_email'))
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_pk)
+    venture_id = db.Column(db.String(9), nullable=False)
+    state = db.Column(db.String(20), nullable=False, default='draft')
+    primary_name = db.Column(db.String(200), nullable=True)
+    primary_email = db.Column(db.String(255), nullable=True)
+    cofounder_emails = db.Column(db.JSON, nullable=True)
+    source = db.Column(db.String(120), nullable=True)
+    referrer = db.Column(db.String(200), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    consent_given_by = db.Column(db.String(200), nullable=True)
+    consent_at = db.Column(db.DateTime, nullable=True)
+    consent_version = db.Column(db.String(40), nullable=True)
+    nda = db.Column(db.Boolean, nullable=False, default=False)
+    fee_override_cents = db.Column(db.Integer, nullable=True)
+    fee_override_reason = db.Column(db.String(500), nullable=True)
+    fee_override_by = db.Column(db.String(9), nullable=True)
+    confirmed_at = db.Column(db.DateTime, nullable=True)
+    confirmed_by = db.Column(db.String(9), nullable=True)
+    shared_at = db.Column(db.DateTime, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    extended_at = db.Column(db.DateTime, nullable=True)
+    extended_by = db.Column(db.String(9), nullable=True)
+    extend_reason = db.Column(db.String(500), nullable=True)
+    viewed_at = db.Column(db.DateTime, nullable=True)
+    accepted_at = db.Column(db.DateTime, nullable=True)
+    accepted_user_id = db.Column(db.String(9), nullable=True)
+    declined_at = db.Column(db.DateTime, nullable=True)
+    decline_reason = db.Column(db.String(500), nullable=True)
+    expired_at = db.Column(db.DateTime, nullable=True)
+    documents_deleted_at = db.Column(db.DateTime, nullable=True)
+    invite_token_hash = db.Column(db.String(64), nullable=True)
+    invite_version = db.Column(db.Integer, nullable=False, default=0)
+    invite_sent_at = db.Column(db.DateTime, nullable=True)
+    reminders_sent = db.Column(db.JSON, nullable=True)
+    payment_intent_id = db.Column(db.String(255), nullable=True)
+    amount_cents = db.Column(db.Integer, nullable=True)
+    refunded_at = db.Column(db.DateTime, nullable=True)
+    prefill = db.Column(db.JSON, nullable=True)     # {field: {value, status: ai|admin|needs_input, citation}}
+    created_by = db.Column(db.String(9), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ConciergeEdit(db.Model):
+    """One admin edit to a pre-filled field or a finding. ai_value keeps what
+    the AI wrote; before/after record this change."""
+    __tablename__ = 'concierge_edit'
+    __table_args__ = (db.Index('ix_concierge_edit_case', 'case_id', 'created_at'),)
+
+    ENTITIES = ('prefill', 'finding')
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_pk)
+    case_id = db.Column(db.String(9), nullable=False)
+    entity = db.Column(db.String(10), nullable=False)
+    entity_id = db.Column(db.String(40), nullable=True)
+    field = db.Column(db.String(40), nullable=False)
+    ai_value = db.Column(db.Text, nullable=True)
+    before_value = db.Column(db.Text, nullable=True)
+    after_value = db.Column(db.Text, nullable=True)
+    by_user_id = db.Column(db.String(9), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {'id': self.id, 'entity': self.entity, 'entity_id': self.entity_id, 'field': self.field,
+                'ai_value': self.ai_value, 'before': self.before_value, 'after': self.after_value,
+                'by_user_id': self.by_user_id, 'created_at': _iso(self.created_at)}
+
+
+class ConciergeMessage(db.Model):
+    """A revision request from the primary founder, or an admin reply."""
+    __tablename__ = 'concierge_message'
+    __table_args__ = (db.Index('ix_concierge_message_case', 'case_id', 'created_at'),)
+
+    DIRECTIONS = ('founder', 'admin')
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_pk)
+    case_id = db.Column(db.String(9), nullable=False)
+    direction = db.Column(db.String(10), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    by_user_id = db.Column(db.String(9), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)

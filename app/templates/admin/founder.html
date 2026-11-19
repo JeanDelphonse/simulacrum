@@ -144,7 +144,8 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
             <a class="fa-trace" href="/admin/observability?tab=founder&amp;view=trace&amp;venture={{ v.id }}">Trace →</a>
           </div>
           <div class="fa-vcell" data-label="Founders">
-            <div class="fa-person"><b>{{ v.owner.name or '(no name)' }}</b> <span class="fa-badge">owner</span><br><a href="mailto:{{ v.owner.email }}">{{ v.owner.email }}</a></div>
+            {% if v.owner %}<div class="fa-person"><b>{{ v.owner.name or '(no name)' }}</b> <span class="fa-badge">owner</span><br><a href="mailto:{{ v.owner.email }}">{{ v.owner.email }}</a></div>
+            {% else %}<div class="fa-person"><span class="fa-badge lock">Unassigned (concierge)</span>{% if v.concierge %}<br>{{ v.concierge.primary_name }} · {{ v.concierge.primary_email }}<br><span class="fa-sub2">Concierge state: {{ v.concierge.state|replace('_', ' ') }}</span>{% endif %}</div>{% endif %}
             {% for m in v.team %}<div class="fa-person">{{ m.name or m.email }}{% if m.title %} ({{ m.title }}){% endif %}{% if m.status != 'active' %} <span class="fa-badge">{{ m.status }}</span>{% endif %}{% if m.name %}<br><a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}</div>{% endfor %}
           </div>
           <div class="fa-vcell" data-label="Progress">

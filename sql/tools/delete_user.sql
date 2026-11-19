@@ -1,5 +1,5 @@
 -- delete_user.sql — permanently delete ONE user and everything that is theirs.
--- Generated from the models (all 191 tables reviewed). MySQL 5.7+/MariaDB.
+-- Generated from the models (all 194 tables reviewed). MySQL 5.7+/MariaDB.
 --
 -- BEFORE RUNNING
 --   1. Back up the database (cPanel > Backup, or mysqldump). This cannot be undone.
@@ -66,6 +66,7 @@ DROP TABLE IF EXISTS zz_del_csess;
 DROP TABLE IF EXISTS zz_del_smesess;
 DROP TABLE IF EXISTS zz_del_goals;
 DROP TABLE IF EXISTS zz_del_ventures;
+DROP TABLE IF EXISTS zz_del_ccases;
 DROP TABLE IF EXISTS zz_del_spages;
 DROP TABLE IF EXISTS zz_del_vartifacts;
 DROP TABLE IF EXISTS zz_del_findings;
@@ -100,6 +101,7 @@ CREATE TABLE zz_del_csess (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_smesess (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_goals (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_ventures (id CHAR(9) PRIMARY KEY);
+CREATE TABLE zz_del_ccases (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_spages (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_vartifacts (id CHAR(9) PRIMARY KEY);
 CREATE TABLE zz_del_findings (id CHAR(9) PRIMARY KEY);
@@ -137,6 +139,7 @@ INSERT INTO zz_del_csess SELECT id FROM coaching_sessions WHERE seat_id IN (SELE
 INSERT INTO zz_del_smesess SELECT id FROM sme_sessions WHERE user_id = @uid;
 INSERT INTO zz_del_goals SELECT id FROM goal_cards WHERE user_id = @uid;
 INSERT INTO zz_del_ventures SELECT id FROM founder_venture WHERE owner_user_id = @uid;
+INSERT INTO zz_del_ccases SELECT id FROM concierge_case WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_spages SELECT id FROM startup_page WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_vartifacts SELECT id FROM venture_artifact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_findings SELECT id FROM evaluation_finding WHERE venture_id IN (SELECT id FROM zz_del_ventures);
@@ -263,6 +266,9 @@ INSERT INTO zz_del_preview SELECT 'contact_field_sources', COUNT(*) FROM contact
 INSERT INTO zz_del_preview SELECT 'contact_dnc_flags', COUNT(*) FROM contact_dnc_flags WHERE contact_id IN (SELECT id FROM zz_del_contacts);
 INSERT INTO zz_del_preview SELECT 'contact_activities', COUNT(*) FROM contact_activities WHERE action_id IN (SELECT id FROM zz_del_actions) OR contact_id IN (SELECT id FROM zz_del_contacts) OR simulation_id IN (SELECT id FROM zz_del_sims);
 INSERT INTO zz_del_preview SELECT 'contact_account_links', COUNT(*) FROM contact_account_links WHERE account_id IN (SELECT id FROM zz_del_mail) OR contact_id IN (SELECT id FROM zz_del_contacts);
+INSERT INTO zz_del_preview SELECT 'concierge_message', COUNT(*) FROM concierge_message WHERE (direction = 'founder' AND by_user_id = @uid) OR case_id IN (SELECT id FROM zz_del_ccases);
+INSERT INTO zz_del_preview SELECT 'concierge_edit', COUNT(*) FROM concierge_edit WHERE case_id IN (SELECT id FROM zz_del_ccases);
+INSERT INTO zz_del_preview SELECT 'concierge_case', COUNT(*) FROM concierge_case WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'compliance_profile', COUNT(*) FROM compliance_profile WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'compliance_events', COUNT(*) FROM compliance_events WHERE user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'coaching_sessions', COUNT(*) FROM coaching_sessions WHERE seat_id IN (SELECT id FROM zz_del_seats);
@@ -512,6 +518,10 @@ DELETE FROM contact_activities WHERE action_id IN (SELECT id FROM zz_del_actions
     OR simulation_id IN (SELECT id FROM zz_del_sims);
 DELETE FROM contact_account_links WHERE account_id IN (SELECT id FROM zz_del_mail)
     OR contact_id IN (SELECT id FROM zz_del_contacts);
+DELETE FROM concierge_message WHERE (direction = 'founder' AND by_user_id = @uid)
+    OR case_id IN (SELECT id FROM zz_del_ccases);
+DELETE FROM concierge_edit WHERE case_id IN (SELECT id FROM zz_del_ccases);
+DELETE FROM concierge_case WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM compliance_profile WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM compliance_events WHERE user_id = @uid;
 DELETE FROM coaching_sessions WHERE seat_id IN (SELECT id FROM zz_del_seats);
@@ -574,6 +584,13 @@ UPDATE action_approvals SET decided_by = NULL WHERE decided_by = @uid;
 UPDATE artifact_actions SET actor_id = NULL WHERE actor_id = @uid;
 UPDATE bio_chat_sessions SET takeover_by = NULL WHERE takeover_by = @uid;
 UPDATE compliance_profile SET recorded_by = NULL WHERE recorded_by = @uid;
+UPDATE concierge_case SET fee_override_by = NULL WHERE fee_override_by = @uid;
+UPDATE concierge_case SET confirmed_by = NULL WHERE confirmed_by = @uid;
+UPDATE concierge_case SET extended_by = NULL WHERE extended_by = @uid;
+UPDATE concierge_case SET accepted_user_id = NULL WHERE accepted_user_id = @uid;
+UPDATE concierge_case SET created_by = NULL WHERE created_by = @uid;
+UPDATE concierge_edit SET by_user_id = NULL WHERE by_user_id = @uid;
+UPDATE concierge_message SET by_user_id = NULL WHERE by_user_id = @uid;
 UPDATE contact_dnc_flags SET set_by = NULL WHERE set_by = @uid;
 UPDATE contact_dnc_flags SET lifted_by = NULL WHERE lifted_by = @uid;
 UPDATE contact_invites SET joined_user_id = NULL WHERE joined_user_id = @uid;
@@ -640,6 +657,7 @@ DROP TABLE IF EXISTS zz_del_csess;
 DROP TABLE IF EXISTS zz_del_smesess;
 DROP TABLE IF EXISTS zz_del_goals;
 DROP TABLE IF EXISTS zz_del_ventures;
+DROP TABLE IF EXISTS zz_del_ccases;
 DROP TABLE IF EXISTS zz_del_spages;
 DROP TABLE IF EXISTS zz_del_vartifacts;
 DROP TABLE IF EXISTS zz_del_findings;

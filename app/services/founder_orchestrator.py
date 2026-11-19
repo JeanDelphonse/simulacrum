@@ -114,6 +114,8 @@ def _investor_on(venture) -> bool:
         from app.extensions import db
         from app.models.user import User
         from app.services import founder_feature
+        if not venture.owner_user_id:          # concierge venture not yet accepted (sql/079)
+            return False
         owner = db.session.get(User, venture.owner_user_id)
         return founder_feature.is_enabled(owner, founder_feature.INVESTOR)
     except Exception as exc:
