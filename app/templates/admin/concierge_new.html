@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}New concierge venture — Admin{% endblock %}
+{% block head %}{% include 'admin/_concierge_style.html' %}{% endblock %}
+{% block content %}
+<div class="fa">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('ventures') }}
+  <p class="fa-note" style="margin:0 0 .4rem"><a href="/admin/ventures">← Concierge ventures</a></p>
+  <h1>New concierge venture</h1>
+  <p class="fa-sub">The venture stays private and unowned until the primary founder accepts it. Co-founder emails are kept on file only; nobody is invited before acceptance.</p>
+  <p class="fa-banner">{{ legal('concierge_confidentiality') }}</p>
+  {% if not encryption_ready %}<p class="fa-banner err">ENCRYPTION_KEY is not configured on this server: you can create the venture, but documents cannot be uploaded until it is set.</p>{% endif %}
+
+  <form class="fa-card" id="ccNew" novalidate>
+    <div class="cc-form">
+      <label for="cc-pname">Primary founder name <span class="cc-req" aria-hidden="true">*</span></label>
+      <input type="text" id="cc-pname" name="primary_name" maxlength="200" required autocomplete="off">
+      <label for="cc-pemail">Primary founder email <span class="cc-req" aria-hidden="true">*</span></label>
+      <div><input type="email" id="cc-pemail" name="primary_email" maxlength="255" required autocomplete="off">
+        <p class="fa-note">Only this address can accept the evaluation, once verified.</p></div>
+      <label for="cc-vname">Venture name (if known)</label>
+      <div><input type="text" id="cc-vname" name="venture_name" maxlength="200" autocomplete="off">
+        <p class="fa-note">Leave empty to take it from the documents (the evaluation proposes one).</p></div>
+      <label for="cc-cos">Co-founder emails</label>
+      <div><textarea id="cc-cos" name="cofounder_emails" rows="2" placeholder="a@x.com, b@y.com"></textarea>
+        <p class="fa-note">Invited only after acceptance, by the founder.</p></div>
+      <label for="cc-source">Source</label>
+      <input type="text" id="cc-source" name="source" maxlength="120" placeholder="e.g. accelerator, event, referral">
+      <label for="cc-ref">Referrer</label>
+      <input type="text" id="cc-ref" name="referrer" maxlength="200">
+      <label for="cc-notes">Internal notes</label>
+      <textarea id="cc-notes" name="notes" rows="3" maxlength="5000"></textarea>
+      <label for="cc-given">{{ legal('concierge_consent_source_label') }} <span class="cc-req" aria-hidden="true">*</span></label>
+      <input type="text" id="cc-given" name="consent_given_by" maxlength="200" required>
+      <label class="cc-consent" for="cc-consent">
+        <input type="checkbox" id="cc-consent" name="consent" required>
+        <span>{{ legal('concierge_consent', consent_given_by='The person named above', primary_name='the primary founder', admin_name=current_user.full_name or current_user.email, date=today) }} <span class="cc-req" aria-hidden="true">*</span></span>
+      </label>
+      <label class="cc-consent" for="cc-nda" style="background:#fff">
+        <input type="checkbox" id="cc-nda" name="nda">
+        <span>{{ legal('concierge_nda_label') }}</span>
+      </label>
+    </div>
+    <div class="fa-row" style="margin-top:1rem"><button class="btn primary sm" type="submit">Create venture</button>
+      <a class="btn sm btn-ghost" href="/admin/ventures">Cancel</a><span class="fa-msg" role="status" id="ccNewMsg"></span></div>
+  </form>
+</div>
+<script>
+(function () {
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  var form = document.getElementById('ccNew'), msg = document.getElementById('ccNewMsg');
+  function say(t, bad) { msg.textContent = t; msg.classList.toggle('err', !!bad); }
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = form.elements;
+    if (!f.primary_name.value.trim() || !f.primary_email.value.trim()) return say("Enter the primary founder's name and email.", true);
+    if (!f.consent_given_by.value.trim()) return say('Say who gave consent.', true);
+    if (!f.consent.checked) return say('Tick the consent box to record that SimiSI was authorized.', true);
+    var body = { primary_name: f.primary_name.value, primary_email: f.primary_email.value, venture_name: f.venture_name.value,
+      cofounder_emails: f.cofounder_emails.value, source: f.source.value, referrer: f.referrer.value, notes: f.notes.value,
+      consent_given_by: f.consent_given_by.value, consent: f.consent.checked, nda: f.nda.checked };
+    say('Creating…');
+    fetch(ROOT + '/api/admin/ventures', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message || d.error || 'Failed'); return d; }); })
+      .then(function (d) { location.href = ROOT + d.url; })
+      .catch(function (err) { say(err.message, true); });
+  });
+})();
+</script>
+{% endblock %}

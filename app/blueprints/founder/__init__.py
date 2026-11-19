@@ -19,7 +19,8 @@ founder_bp = Blueprint('founder', __name__)
 
 from app.blueprints.founder import landing  # noqa: E402,F401
 
-_AREA_MODULES = ('intake', 'report', 'admin', 'billing', 'workspace', 'team_proof', 'page_editor', 'support', 'investors')
+_AREA_MODULES = ('intake', 'report', 'admin', 'billing', 'workspace', 'team_proof', 'page_editor', 'support', 'investors',
+                 'concierge_admin')
 
 for _name in _AREA_MODULES:
     try:

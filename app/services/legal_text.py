@@ -130,6 +130,32 @@ DEFAULTS = {
         'you are an accredited investor, is not tied to any investment, and is not an offer to sell or a '
         'solicitation to buy securities. SimiSI does not verify, endorse or offer any investment. If the founders '
         'unpublish the page within {days} days of your payment, the fee is refunded.'),
+    # Founder Track concierge onboarding (COUNSEL_REVIEW_CONCIERGE.md). Drafts for counsel.
+    'concierge_consent': (
+        'Concierge: consent checkbox on the admin create form (C1)',
+        '{consent_given_by} authorized SimiSI to receive these documents and to evaluate them on behalf of '
+        '{primary_name} for the purpose of preparing a Founder Track evaluation. Recorded by {admin_name} on {date}.'),
+    'concierge_consent_source_label': (
+        'Concierge: consent source field label (C2)',
+        'Who gave consent (the founder, or the referrer acting for them)'),
+    'concierge_nda_label': ('Concierge: NDA flag label (C3)',
+                            'An NDA covers these documents (reference kept in notes)'),
+    'concierge_confidentiality': (
+        'Concierge: confidentiality banner in the admin area (C4)',
+        'Founder documents are confidential. They are stored encrypted, visible only to admins with concierge '
+        "permission and to the venture's primary founder, and are never public or used in analytics."),
+    'concierge_not_advice': (
+        'Concierge: required disclaimer on the evaluation, preview and result emails (E1)',
+        'Not investment advice and not a promise of funding.'),
+    'concierge_eval_basis': (
+        'Concierge: evaluation basis (E2)',
+        'This evaluation was prepared by SimiSI from the documents provided. Scores describe what those documents '
+        "show today. Fields marked 'Needs founder input' could not be found in them."),
+    'concierge_missing_docs': (
+        'Concierge: lower-confidence note when documents are missing (E3)',
+        'Some documents were not provided, so parts of this evaluation rest on less evidence.'),
+    'concierge_ai_review': ('Concierge: AI and human review note (E4)',
+                            'The evaluation was drafted with AI and reviewed by a SimiSI team member.'),
 }
 
 

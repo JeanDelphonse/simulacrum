@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Concierge ventures — Admin{% endblock %}
+{% block head %}{% include 'admin/_concierge_style.html' %}{% endblock %}
+{% block content %}
+<div class="fa">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('ventures') }}
+  <div class="fa-head">
+    <div>
+      <h1>Concierge ventures</h1>
+      <p class="fa-sub">Ventures SimiSI onboards for a founder: upload their documents, run and review the evaluation, then confirm it.
+        Consultation fee: {% if base_fee %}<b>{{ base_fee_label }}</b>{% else %}<b>not set</b> (Founder Track admin, Pricing tab){% endif %}.</p>
+    </div>
+    <a class="btn primary sm" href="/admin/ventures/new">New concierge venture</a>
+  </div>
+  <p class="fa-banner">{{ legal('concierge_confidentiality') }}</p>
+  {% if not encryption_ready %}<p class="fa-banner err">ENCRYPTION_KEY is not configured on this server, so documents cannot be uploaded or read. Set it before onboarding a venture.</p>{% endif %}
+
+  <nav class="fa-chips" aria-label="Filter by state">
+    <a class="fa-chip" href="/admin/ventures" {{ 'aria-current=true' if not state }}>All ({{ counts.values()|sum }})</a>
+    {% for s in states %}{% if counts.get(s) %}
+    <a class="fa-chip" href="/admin/ventures?state={{ s }}" {{ 'aria-current=true' if state == s }}>{{ labels[s] }} ({{ counts[s] }})</a>
+    {% endif %}{% endfor %}
+  </nav>
+
+  <div class="fa-card">
+    {% if rows %}
+    <div class="cc-list" role="list" id="ccQueue">
+      <div class="cc-row cc-head" aria-hidden="true">
+        <div>Venture</div><div>Primary founder</div><div>State</div><div>Shared · days left</div><div>Fee</div><div>Paid</div>
+      </div>
+      {% for r in rows %}
+      <div class="cc-row" role="listitem" data-case="{{ r.case_id }}">
+        <div class="cc-cell"><a href="/admin/ventures/{{ r.venture_id }}"><b>{{ r.name }}</b></a><span class="cc-sub2">Created {{ r.created_at }}</span></div>
+        <div class="cc-cell" data-label="Primary founder">{{ r.primary_name }}<br><a href="mailto:{{ r.primary_email }}">{{ r.primary_email }}</a></div>
+        <div class="cc-cell" data-label="State"><span class="fa-badge{{ ' on' if r.state in ('confirmed', 'ready_for_review', 'active', 'accepted_paid') else (' lock' if r.state in ('evaluating', 'revision_requested', 'shared', 'viewed') else (' bad' if r.state in ('declined', 'expired', 'deleted') else '')) }}">{{ r.state_label }}</span></div>
+        <div class="cc-cell" data-label="Shared · days left">{% if r.days_since_shared is not none %}{{ r.days_since_shared }} days ago{% else %}<span class="fa-note">not shared</span>{% endif %}{% if r.days_left is not none %}<span class="cc-sub2">{{ r.days_left }} days left</span>{% endif %}</div>
+        <div class="cc-cell" data-label="Fee">{% if r.fee %}{{ r.fee }}{% else %}<span class="fa-note">not set</span>{% endif %}{% if r.fee_override %} <span class="fa-badge lock">override</span>{% endif %}</div>
+        <div class="cc-cell" data-label="Paid">{% if r.paid %}<span class="fa-badge on">paid</span>{% if r.amount %}<span class="cc-sub2">{{ r.amount }}</span>{% endif %}{% else %}<span class="fa-badge">no</span>{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="fa-note" style="margin:0">{% if state %}No ventures are {{ labels[state]|lower }}.{% else %}No concierge ventures yet. Start one with "New concierge venture".{% endif %}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

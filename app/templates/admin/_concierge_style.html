@@ -1,0 +1,76 @@
+{# Shared look for the /admin/ventures pages: the admin/founder.html (fa-*)
+   look, and CSS grids instead of tables (tables were squeezed on the live site). #}
+<style>
+.fa { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; font-family: var(--sans); color: var(--ink); }
+.fa h1 { font-size: 1.5rem; margin: 0 0 .35rem; overflow-wrap: anywhere; }
+.fa h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
+.fa h3 { font-size: .95rem; margin: 0 0 .35rem; }
+.fa-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 1.1rem; max-width: 80ch; line-height: 1.5; }
+.fa-note { font-size: 13px; color: var(--mute); margin: .4rem 0 0; max-width: 80ch; line-height: 1.5; }
+.fa-card { background: #fff; border: 1px solid var(--rule); border-radius: var(--r-ui); padding: 1rem 1.1rem; margin-bottom: 1rem; min-width: 0; }
+.fa-row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin: .45rem 0; }
+.fa-row > label, .fa-row > .fa-lbl { min-width: 15rem; font-size: 14px; color: var(--ink-2); }
+.fa input[type=text], .fa input[type=email], .fa input[type=number], .fa select, .fa textarea {
+  border: 1px solid var(--rule); border-radius: 6px; padding: .4rem .55rem; font: inherit; font-size: 14px; background: #fff; color: var(--ink); max-width: 100%; box-sizing: border-box; }
+.fa input[type=number] { width: 8rem; }
+.fa-msg { font-size: 13px; color: var(--teal-ink); }
+.fa-msg.err { color: #b42318; }
+.fa-badge { display: inline-block; font-size: 12px; padding: .1rem .5rem; border-radius: 999px; background: var(--alt); color: var(--ink-2); white-space: nowrap; }
+.fa-badge.on { background: #e7f6f4; color: var(--teal-ink); }
+.fa-badge.lock { background: #fdf3e1; color: #8a5a00; }
+.fa-badge.bad { background: #fdecea; color: #b42318; }
+.fa-banner { border-left: 3px solid var(--gold); background: #fffaf0; padding: .6rem .8rem; font-size: 13px; color: var(--ink-2); line-height: 1.5; border-radius: 4px; margin: 0 0 1rem; }
+.fa-banner.err { border-left-color: #b42318; background: #fdecea; color: #7a1a12; }
+.fa-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.fa-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0 0 .8rem; }
+.fa-chip { font-size: 13px; padding: .25rem .65rem; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-2); text-decoration: none; background: #fff; }
+.fa-chip[aria-current="true"] { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+/* Queue: a CSS grid, six columns on desktop; stacked, labelled cards on phones. */
+.cc-list { display: block; border-top: 1px solid var(--rule); }
+.cc-row { display: grid; grid-template-columns: minmax(160px, 1.4fr) minmax(190px, 1.6fr) minmax(130px, 1fr) minmax(120px, .9fr) minmax(120px, .9fr) minmax(80px, .6fr);
+          gap: .5rem 1rem; padding: .75rem .5rem; border-bottom: 1px solid var(--rule); font-size: 14px; align-items: start; }
+.cc-head { background: var(--alt); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); padding: .55rem .5rem; }
+.cc-cell { min-width: 0; overflow-wrap: anywhere; line-height: 1.45; }
+.cc-cell b { color: var(--ink); font-size: 15px; }
+.cc-sub2 { display: block; font-size: 12px; color: var(--mute); margin-top: .15rem; }
+/* Venture page */
+.cc-grid2 { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.cc-docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .7rem; }
+.cc-doc { border: 1px solid var(--rule); border-radius: var(--r-ui); padding: .7rem .8rem; font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.cc-doc h3 { margin-bottom: .2rem; }
+.cc-doc input[type=file] { font-size: 13px; max-width: 100%; margin-top: .4rem; }
+.cc-kv { display: grid; grid-template-columns: minmax(8rem, auto) minmax(0, 1fr); gap: .3rem .8rem; font-size: 14px; margin: 0; }
+.cc-kv dt { color: var(--mute); } .cc-kv dd { margin: 0; overflow-wrap: anywhere; }
+.cc-field { border-top: 1px solid var(--rule); padding: .7rem 0; display: grid; grid-template-columns: minmax(8rem, 10rem) minmax(0, 1fr); gap: .3rem .9rem; font-size: 14px; }
+.cc-field:first-of-type { border-top: 0; }
+.cc-field .cc-cite { font-size: 12px; color: var(--mute); font-style: italic; margin-top: .2rem; display: block; }
+.cc-edit { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .35rem; }
+.cc-edit input[type=text], .cc-edit select, .cc-edit textarea { flex: 1 1 14rem; min-width: 0; }
+.cc-finding { border: 1px solid var(--rule); border-radius: var(--r-ui); padding: .65rem .8rem; margin: .5rem 0; font-size: 14px; }
+.cc-finding summary { cursor: pointer; }
+.cc-hist { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.cc-hist li { border-top: 1px dashed var(--rule); padding: .45rem 0; overflow-wrap: anywhere; }
+.cc-progress { font-size: 13px; color: var(--ink-2); max-height: 12rem; overflow-y: auto; list-style: none; padding: 0; margin: .4rem 0 0; }
+.cc-progress li { padding: .15rem 0; }
+.cc-form { display: grid; grid-template-columns: minmax(10rem, 15rem) minmax(0, 1fr); gap: .65rem 1rem; align-items: start; font-size: 14px; }
+.cc-form > label { color: var(--ink-2); padding-top: .4rem; }
+.cc-form input[type=text], .cc-form input[type=email], .cc-form textarea { width: 100%; }
+.cc-consent { grid-column: 1 / -1; display: flex; gap: .55rem; align-items: flex-start; border: 1px solid var(--rule); border-radius: var(--r-ui); padding: .7rem .8rem; background: var(--alt); line-height: 1.5; }
+.cc-consent input { margin-top: .25rem; flex: 0 0 auto; }
+.cc-req { color: #b42318; }
+@media (max-width: 900px) {
+  .cc-head { display: none; }
+  .cc-row { grid-template-columns: 1fr 1fr; padding: .8rem .2rem; }
+  .cc-row > .cc-cell:first-child { grid-column: 1 / -1; }
+  .cc-cell[data-label]::before { content: attr(data-label); display: block; font-size: 12px; color: var(--mute); margin-bottom: .1rem; }
+  .cc-grid2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .fa-row > label, .fa-row > .fa-lbl { min-width: 100%; }
+  .cc-form { grid-template-columns: 1fr; gap: .25rem; }
+  .cc-form > label { padding-top: .5rem; }
+  .cc-field { grid-template-columns: 1fr; }
+  .cc-kv { grid-template-columns: 1fr; gap: .1rem; }
+  .cc-kv dd { margin-bottom: .35rem; }
+}
+</style>

@@ -26,7 +26,9 @@
                 ('email_import', 'Email Import', 'mail.admin_page'),
                 ('compliance', 'Compliance', 'compliance.admin_compliance'),
                 ('legal_text', 'Legal Text', 'compliance.admin_legal_text')]),
-  ('Founder Track', [('founder', 'Founder Track', 'founder.admin_page')]),
+  ('Founder Track', [('founder', 'Founder Track', 'founder.admin_page')]
+                    + ([('ventures', 'Concierge', 'founder.admin_ventures')]
+                       if concierge_nav is defined and concierge_nav() else [])),
 ] %}
 {% set ns = namespace(current=None) %}
 {% for title, items in groups %}{% for key, label, ep in items %}{% if key == active %}{% set ns.current = title %}{% endif %}{% endfor %}{% endfor %}

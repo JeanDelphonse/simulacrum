@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}{{ venture.name }} — Concierge — Admin{% endblock %}
+{% block head %}{% include 'admin/_concierge_style.html' %}{% endblock %}
+{% block content %}
+<div class="fa" id="ccCase" data-venture="{{ venture.id }}" data-state="{{ case.state }}">
+  {% from 'partials/_admin_subnav.html' import admin_subnav %}
+  {{ admin_subnav('ventures') }}
+  <p class="fa-note" style="margin:0 0 .4rem"><a href="/admin/ventures">← Concierge ventures</a></p>
+  <div class="fa-head">
+    <div>
+      <h1>{{ venture.name }}</h1>
+      <p class="fa-sub" style="margin-bottom:.6rem"><span class="fa-badge{{ ' on' if case.state in ('ready_for_review', 'confirmed') else (' lock' if case.state == 'evaluating' else '') }}" id="ccState">{{ state_label }}</span>
+        · unowned until {{ case.primary_name }} accepts · created {{ case.created_at.strftime('%Y-%m-%d') }}{% if created_by %} by {{ created_by }}{% endif %}</p>
+    </div>
+  </div>
+  <p class="fa-banner">{{ legal('concierge_confidentiality') }}</p>
+  {% if not encryption_ready %}<p class="fa-banner err">ENCRYPTION_KEY is not configured on this server, so documents cannot be uploaded or read.</p>{% endif %}
+
+  <div class="cc-grid2">
+    <div>
+      {# ── Documents ── #}
+      <section class="fa-card" aria-labelledby="ccDocsH">
+        <h2 id="ccDocsH">Documents</h2>
+        <p class="fa-note" style="margin:0 0 .7rem">Any subset of the five. Stored encrypted; originals download as attachments only.
+          {% if case.state in ('ready_for_review', 'confirmed') %}A new document means re-running the evaluation.{% endif %}</p>
+        <div class="cc-docs">
+          {% for d in documents %}
+          <div class="cc-doc" data-kind="{{ d.kind }}">
+            <h3>{{ d.label }}</h3>
+            {% if d.current %}
+            <div><a href="/admin/ventures/{{ venture.id }}/documents/{{ d.current.id }}" rel="nofollow">{{ d.current.filename }}</a></div>
+            <span class="cc-sub2">v{{ d.current.version }} · {{ d.current.created_at.strftime('%Y-%m-%d') }}{% if d.versions > 1 %} · {{ d.versions }} versions{% endif %}{% if d.current.encrypted %} · encrypted{% endif %}</span>
+            {% else %}<span class="fa-badge">not provided</span><span class="cc-sub2">{{ d.hint }}</span>{% endif %}
+            {% if can_upload %}
+            <form class="cc-upload" data-kind="{{ d.kind }}">
+              <label class="sr" for="up-{{ d.kind }}">Upload {{ d.label }}</label>
+              <input type="file" id="up-{{ d.kind }}" accept=".pdf,.docx" required>
+              <div class="fa-row" style="margin:.35rem 0 0"><button class="btn sm" type="submit">{{ 'Replace' if d.current else 'Upload' }}</button><span class="fa-msg" role="status"></span></div>
+            </form>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% block evaluation %}{% endblock %}
+    </div>
+
+    <div>
+      {# ── Founder and consent ── #}
+      <section class="fa-card" aria-labelledby="ccWhoH">
+        <h2 id="ccWhoH">Primary founder</h2>
+        <dl class="cc-kv">
+          <dt>Name</dt><dd>{{ case.primary_name }}</dd>
+          <dt>Email</dt><dd><a href="mailto:{{ case.primary_email }}">{{ case.primary_email }}</a></dd>
+          {% if cofounders %}<dt>Co-founders</dt><dd>{{ cofounders|join(', ') }} <span class="cc-sub2">on file; invited by the founder after acceptance</span></dd>{% endif %}
+          {% if case.source %}<dt>Source</dt><dd>{{ case.source }}</dd>{% endif %}
+          {% if case.referrer %}<dt>Referrer</dt><dd>{{ case.referrer }}</dd>{% endif %}
+          <dt>Consent</dt><dd>Given by {{ case.consent_given_by }}, recorded {{ case.consent_at.strftime('%Y-%m-%d %H:%M') }} UTC <span class="cc-sub2">{{ case.consent_version }}</span></dd>
+          <dt>NDA</dt><dd>{{ 'Yes' if case.nda else 'No' }}</dd>
+          {% if case.notes %}<dt>Notes</dt><dd style="white-space:pre-wrap">{{ case.notes }}</dd>{% endif %}
+        </dl>
+      </section>
+
+      {# ── Fee ── #}
+      <section class="fa-card" aria-labelledby="ccFeeH">
+        <h2 id="ccFeeH">Consultation fee</h2>
+        <p style="margin:.1rem 0 .3rem;font-size:15px"><b id="ccFee">{{ fee or 'Not set' }}</b>
+          {% if case.fee_override_cents is not none %}<span class="fa-badge lock">override</span>{% endif %}</p>
+        <p class="fa-note" style="margin:0">Pricing setting: {{ base_fee or 'not set' }}.{% if case.fee_override_cents is not none %} Override reason: {{ case.fee_override_reason }}{% endif %}</p>
+        {% block cost %}{% endblock %}
+        {% if case.state not in ('accepted_paid', 'active', 'declined', 'expired', 'deleted') %}
+        <form id="ccFeeForm" style="margin-top:.6rem">
+          <div class="fa-row"><label for="ccFeeAmt" class="fa-lbl" style="min-width:0">Override ({{ currency|upper }})</label>
+            <input type="number" id="ccFeeAmt" min="0.50" step="0.01" value="{{ '%.2f' % (case.fee_override_cents / 100) if case.fee_override_cents is not none else '' }}"></div>
+          <div class="fa-row"><label for="ccFeeWhy" class="sr">Reason</label>
+            <input type="text" id="ccFeeWhy" maxlength="500" placeholder="Reason (required)" style="flex:1 1 12rem"></div>
+          <div class="fa-row"><button class="btn sm" type="submit">Set override</button>
+            {% if case.fee_override_cents is not none %}<button class="btn sm btn-ghost" type="button" id="ccFeeClear">Clear</button>{% endif %}
+            <span class="fa-msg" role="status" id="ccFeeMsg"></span></div>
+        </form>
+        {% endif %}
+        {% if fee_history %}
+        <details style="margin-top:.5rem"><summary class="fa-note">Fee changes ({{ fee_history|length }})</summary>
+          <ul class="cc-hist">{% for h in fee_history %}<li>{{ h.at.strftime('%Y-%m-%d %H:%M') }}: {{ h.before if h.before is not none else 'none' }} → {{ h.after if h.after is not none else 'cleared' }} (cents) · {{ h.reason }}</li>{% endfor %}</ul>
+        </details>{% endif %}
+      </section>
+      {% block side %}{% endblock %}
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var ROOT = '{{ url_for("pages.index") }}'.replace(/\/+$/, '');
+  var VID = document.getElementById('ccCase').dataset.venture;
+  function call(url, body, method) {
+    var opts = { method: method || 'POST', credentials: 'same-origin' };
+    if (body instanceof FormData) opts.body = body;
+    else if (body !== undefined) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
+    return fetch(ROOT + url, opts).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {
+      if (!r.ok) throw new Error(d.message || d.error || 'Failed'); return d; }); });
+  }
+  function say(el, text, bad) { if (!el) return; el.textContent = text; el.classList.toggle('err', !!bad); }
+  window.ccCall = call; window.ccSay = say;
+
+  document.querySelectorAll('.cc-upload').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var f = form.querySelector('input[type=file]').files[0], msg = form.querySelector('.fa-msg');
+      if (!f) return say(msg, 'Choose a file.', true);
+      var fd = new FormData(); fd.append('kind', form.dataset.kind); fd.append('file', f);
+      say(msg, 'Uploading and encrypting…');
+      call('/api/admin/ventures/' + VID + '/upload', fd).then(function () { location.reload(); })
+        .catch(function (err) { say(msg, err.message, true); });
+    });
+  });
+  var feeForm = document.getElementById('ccFeeForm');
+  if (feeForm) {
+    var fmsg = document.getElementById('ccFeeMsg');
+    feeForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = parseFloat(document.getElementById('ccFeeAmt').value), why = document.getElementById('ccFeeWhy').value.trim();
+      if (isNaN(v)) return say(fmsg, 'Enter the fee.', true);
+      if (!why) return say(fmsg, 'Give a reason.', true);
+      call('/api/admin/ventures/' + VID + '/fee', { fee_cents: Math.round(v * 100), reason: why }).then(function () { location.reload(); })
+        .catch(function (err) { say(fmsg, err.message, true); });
+    });
+    var clr = document.getElementById('ccFeeClear');
+    if (clr) clr.onclick = function () {
+      var why = document.getElementById('ccFeeWhy').value.trim();
+      if (!why) return say(fmsg, 'Give a reason for clearing the override.', true);
+      call('/api/admin/ventures/' + VID + '/fee', { clear: true, reason: why }).then(function () { location.reload(); })
+        .catch(function (err) { say(fmsg, err.message, true); });
+    };
+  }
+})();
+</script>
+{% block scripts %}{% endblock %}
+{% endblock %}

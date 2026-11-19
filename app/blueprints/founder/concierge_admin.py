@@ -1,0 +1,204 @@
+"""/admin/ventures: concierge onboarding (FOUNDER_CONCIERGE_PLAN.md section 3.8).
+
+Admins with the concierge permission (concierge_service.can_concierge: admin
+plus an explicit allow on founder_feature 'founder_concierge') onboard a
+venture for a founder: queue, create (with recorded consent), encrypted
+uploads, per-venture fee override, evaluation with the pre-fill, review edits
+and confirm. Other admins get 404 (the area stays hidden), members 403.
+
+Every state change goes through concierge_service.transition (audit-logged).
+"""
+from __future__ import annotations
+
+import io
+from datetime import datetime
+from functools import wraps
+
+from flask import abort, jsonify, render_template, request, send_file
+from flask_login import current_user, login_required
+
+from app.blueprints.founder import founder_bp
+from app.extensions import db
+
+
+def _nav_visible() -> bool:
+    try:
+        from app.services import concierge_service as cs
+        return cs.can_concierge(current_user)
+    except Exception:
+        return False
+
+
+@founder_bp.record_once
+def _register_nav(state):
+    # The admin menu shows the Concierge page only to admins who may open it.
+    state.app.jinja_env.globals['concierge_nav'] = _nav_visible
+
+
+def _err(message, code=400):
+    return jsonify({'error': 'refused', 'message': str(message)}), code
+
+
+def concierge_page(f):
+    """Pages: members 403, admins without the concierge permission 404."""
+    @wraps(f)
+    @login_required
+    def decorated(*args, **kwargs):
+        from app.services import concierge_service as cs
+        if not current_user.is_admin:
+            abort(403)
+        if not cs.can_concierge(current_user):
+            abort(404)
+        return f(*args, **kwargs)
+    return decorated
+
+
+def concierge_api(f):
+    """JSON: anonymous and members 403, admins without the permission 404,
+    cross-site writes refused."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        from app.blueprints.founder.admin import _same_origin
+        from app.services import concierge_service as cs
+        if not current_user.is_authenticated or not current_user.is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+        if not cs.can_concierge(current_user):
+            return jsonify({'error': 'Not found'}), 404
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and not _same_origin():
+            return _err('Cross-site request refused.', 403)
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _load(venture_id):
+    from app.services import concierge_service as cs
+    v, c = cs.venture_and_case(venture_id)
+    if v is None:
+        abort(404)
+    return v, c
+
+
+def _load_api(venture_id):
+    from app.services import concierge_service as cs
+    return cs.venture_and_case(venture_id)
+
+
+def _common():
+    from app.services import founder_config as fc
+    from app.services import founder_intake_service as fis
+    return {'currency': fc.get('fnd_concierge_currency'), 'encryption_ready': fis.encryption_ready()}
+
+
+# ── Pages ────────────────────────────────────────────────────────────────────
+
+@founder_bp.route('/admin/ventures')
+@concierge_page
+def admin_ventures():
+    from app.services import concierge_service as cs
+    state = request.args.get('state') or ''
+    if state not in cs.STATES:
+        state = ''
+    return render_template('admin/concierge_queue.html', rows=cs.queue(state or None), state=state,
+                           states=cs.STATES, labels=cs.STATE_LABELS, counts=cs.state_counts(),
+                           base_fee=cs.base_fee_cents(), base_fee_label=cs.money(cs.base_fee_cents()), **_common())
+
+
+@founder_bp.route('/admin/ventures/new')
+@concierge_page
+def admin_ventures_new():
+    return render_template('admin/concierge_new.html', today=datetime.utcnow().strftime('%Y-%m-%d'), **_common())
+
+
+@founder_bp.route('/admin/ventures/<venture_id>')
+@concierge_page
+def admin_venture_case(venture_id):
+    from app.services import concierge_service as cs
+    v, c = _load(venture_id)
+    return render_template('admin/concierge_case.html', **cs.case_view(v, c), **_common())
+
+
+# ── API ──────────────────────────────────────────────────────────────────────
+
+@founder_bp.route('/api/admin/ventures', methods=['POST'])
+@concierge_api
+def api_concierge_create():
+    from app.services import concierge_service as cs
+    b = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+    b = b or {}
+    try:
+        v, c = cs.create_case(current_user, b.get('primary_name'), b.get('primary_email'),
+                              cofounder_emails=b.get('cofounder_emails') or [], source=b.get('source'),
+                              referrer=b.get('referrer'), notes=b.get('notes'),
+                              consent=str(b.get('consent')).lower() in ('1', 'true', 'on', 'yes'),
+                              consent_given_by=b.get('consent_given_by'),
+                              nda=str(b.get('nda')).lower() in ('1', 'true', 'on', 'yes'),
+                              venture_name=b.get('venture_name'))
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    return jsonify({'venture_id': v.id, 'case_id': c.id, 'state': c.state, 'url': '/admin/ventures/%s' % v.id}), 201
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/upload', methods=['POST'])
+@concierge_api
+def api_concierge_upload(venture_id):
+    from app.services import concierge_service as cs
+    from app.services import founder_intake_service as fis
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    try:
+        a = cs.upload(v, c, request.files.get('file'), request.form.get('kind') or '', current_user)
+    except (cs.ConciergeError, fis.IntakeError) as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    return jsonify({'artifact': a.to_dict(), 'state': cs.case_for(v.id).state})
+
+
+@founder_bp.route('/admin/ventures/<venture_id>/documents/<artifact_id>')
+@concierge_page
+def admin_concierge_download(venture_id, artifact_id):
+    """The original document, decrypted, always as an attachment. Audited."""
+    from app.models.audit_log import AuditLog
+    from app.models.founder import VentureArtifact
+    from app.services import founder_intake_service as fis
+    v, c = _load(venture_id)
+    a = db.session.get(VentureArtifact, artifact_id)
+    if a is None or a.venture_id != v.id or not a.file_path:
+        abort(404)
+    try:
+        data = fis.artifact_file_bytes(a)
+    except fis.IntakeError as exc:
+        abort(exc.status if exc.status in (404, 503) else 404)
+    AuditLog.log('concierge_document_download', user_id=current_user.id, resource_id=v.id,
+                 metadata={'case': c.id, 'artifact': a.id, 'kind': a.kind, 'version': a.version})
+    db.session.commit()
+    name = a.filename or ('%s_v%d' % (a.kind, a.version))
+    resp = send_file(io.BytesIO(data), as_attachment=True, download_name=name,
+                     mimetype='application/octet-stream', max_age=0)
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Cache-Control'] = 'no-store, private'
+    resp.headers['Content-Security-Policy'] = "default-src 'none'; sandbox"
+    return resp
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/fee', methods=['POST'])
+@concierge_api
+def api_concierge_fee(venture_id):
+    from app.services import concierge_service as cs
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    b = request.get_json(silent=True) or {}
+    cents = b.get('fee_cents')
+    if b.get('clear'):
+        cents = None
+    elif cents is None or cents == '':
+        return _err('Enter the fee, or clear the override.')
+    try:
+        cs.set_fee_override(c, cents, b.get('reason'), current_user)
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    return jsonify({'fee_cents': cs.effective_fee_cents(c), 'override': c.fee_override_cents,
+                    'fee': cs.money(cs.effective_fee_cents(c))})

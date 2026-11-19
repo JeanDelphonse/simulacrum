@@ -220,6 +220,7 @@ def run_all(app, db, generate_id, tmp_root):
     step2_settings(ctx)
     step3_state_machine(ctx)
     step4_encryption(ctx)
+    step5_admin_area(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -559,6 +560,126 @@ def step4_encryption(ctx):
     db.session.delete(plain)
     db.session.commit()
     ctx.crypt_venture = v
+
+
+# ---------------------------------------------------------------------------
+# Step 5: /admin/ventures
+# ---------------------------------------------------------------------------
+
+def step5_admin_area(ctx):
+    db, c = ctx.db, ctx.client
+    from app.models.audit_log import AuditLog
+    from app.models.founder import ConciergeCase, FounderVenture, VentureArtifact
+    from app.services import concierge_service as cs, legal_text
+    print('\n6. Step 5: /admin/ventures queue, create, uploads, fee override, permission')
+
+    ctx.login(ctx.admin2.id)        # admin, not allowlisted
+    check('a non-allowlisted admin gets 404 on the queue', c.get('/admin/ventures').status_code == 404)
+    check('... and on the create page', c.get('/admin/ventures/new').status_code == 404)
+    check('... and on the create API', c.post('/api/admin/ventures', json={}).status_code == 404)
+    ctx.login(ctx.member.id)        # allowlisted in step 3, but not an admin
+    check('a member gets 403 on the queue', c.get('/admin/ventures').status_code == 403)
+    check('a member gets 403 on the create API', c.post('/api/admin/ventures', json={}).status_code == 403)
+    ctx.login(None)
+    r = c.get('/admin/ventures')
+    check('anonymous is sent to sign in', r.status_code in (302, 401), r.status_code)
+
+    ctx.login(ctx.admin.id)
+    r = c.get('/admin/ventures/new')
+    html = r.get_data(as_text=True)
+    check('the create form renders with the consent text and labels from legal_text',
+          r.status_code == 200 and 'authorized SimiSI to receive these documents' in html
+          and legal_text.get('concierge_consent_source_label') in html and legal_text.get('concierge_nda_label') in html
+          and legal_text.get('concierge_confidentiality')[:60] in html)
+    base = {'primary_name': 'Jane Roe', 'primary_email': 'Jane@Founder.io', 'cofounder_emails': 'sam@founder.io, x@y.com',
+            'source': 'accelerator', 'referrer': 'Pat Ref', 'notes': 'Met at demo day', 'consent_given_by': 'Pat Ref',
+            'consent': True, 'nda': True}
+    r = c.post('/api/admin/ventures', json=dict(base, consent=False))
+    check('consent is required (400)', r.status_code == 400 and 'consent' in r.get_json()['message'].lower())
+    r = c.post('/api/admin/ventures', json=dict(base, consent_given_by=''))
+    check('who gave consent is required', r.status_code == 400)
+    r = c.post('/api/admin/ventures', json=dict(base, primary_email='not-an-email'))
+    check('a bad primary email is refused', r.status_code == 400)
+    r = c.post('/api/admin/ventures', json=dict(base, primary_name=''))
+    check('the primary name is required', r.status_code == 400)
+    n_before = FounderVenture.query.count()
+    r = c.post('/api/admin/ventures', json=base)
+    check('an allowlisted admin creates a concierge venture', r.status_code == 201, r.get_data(as_text=True)[:200])
+    vid = r.get_json()['venture_id']
+    v = db.session.get(FounderVenture, vid)
+    case = cs.case_for(vid)
+    check('the venture has no owner, status and track concierge',
+          v.owner_user_id is None and v.status == 'concierge' and v.track == 'concierge'
+          and FounderVenture.query.count() == n_before + 1)
+    check('the case starts in draft with the founder, co-founders, consent and NDA',
+          case.state == 'draft' and case.primary_email == 'jane@founder.io' and case.cofounder_emails ==
+          ['sam@founder.io', 'x@y.com'] and case.consent_given_by == 'Pat Ref' and case.consent_at is not None
+          and case.nda is True and case.created_by == ctx.admin.id and case.consent_version.startswith('concierge_consent@v'))
+    check('the case id is a 9-character uppercase key', re.match(r'^[A-Z0-9]{9}$', case.id) is not None, case.id)
+    row = AuditLog.query.filter_by(action='concierge_draft', resource_id=vid).first()
+    check('creation is audited with the consent text actually shown',
+          row is not None and 'Pat Ref authorized SimiSI' in (row.extra or {}).get('consent_text', '')
+          and row.user_id == ctx.admin.id)
+    from app.services import founder_ventures
+    check('the founder (by email) does not see the venture before acceptance',
+          vid not in [x.id for x in founder_ventures.ventures_for_user(ctx.founder.id)])
+
+    html = c.get('/admin/ventures').get_data(as_text=True)
+    check('the queue lists the venture, primary email and state', vid in html and 'jane@founder.io' in html
+          and 'Draft' in html)
+    check('the queue is a CSS grid, not a table', '<table' not in html and 'class="cc-list"' in html)
+    html = c.get('/admin/ventures?state=confirmed').get_data(as_text=True)
+    check('the state filter hides other states', 'jane@founder.io' not in html)
+
+    r = c.get('/admin/ventures/%s' % vid)
+    html = r.get_data(as_text=True)
+    check('the venture page renders with five upload slots', r.status_code == 200 and html.count('class="cc-upload"') == 5)
+    check('a non-concierge venture id is 404', c.get('/admin/ventures/%s' % ctx.crypt_venture.id).status_code == 404)
+
+    data = {'kind': 'startup_plan', 'file': (io.BytesIO(make_pdf(PLAN_TEXT)), 'plan.pdf')}
+    r = c.post('/api/admin/ventures/%s/upload' % vid, data=data, content_type='multipart/form-data')
+    check('uploading a document works', r.status_code == 200, r.get_data(as_text=True)[:200])
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('the first document moves the case to documents_uploaded', case.state == 'documents_uploaded')
+    check('...through transition() (audited)', AuditLog.query.filter_by(action='concierge_documents_uploaded',
+                                                                        resource_id=vid).count() == 1)
+    data = {'kind': 'exec_summary', 'file': (io.BytesIO(make_docx(PLAN_TEXT)), 'summary.docx')}
+    r = c.post('/api/admin/ventures/%s/upload' % vid, data=data, content_type='multipart/form-data')
+    check('a second kind uploads; the state stays', r.status_code == 200 and cs.case_for(vid).state ==
+          'documents_uploaded')
+    data = {'kind': 'pitch_deck', 'file': (io.BytesIO(make_docx(PLAN_TEXT, {'word/vbaProject.bin': b'x'})), 'd.docx')}
+    r = c.post('/api/admin/ventures/%s/upload' % vid, data=data, content_type='multipart/form-data')
+    check('a macro document is refused through the API (422)', r.status_code == 422)
+    art = VentureArtifact.query.filter_by(venture_id=vid, kind='startup_plan').first()
+    ctx.login(ctx.admin2.id)
+    check('a non-allowlisted admin cannot download a document',
+          c.get('/admin/ventures/%s/documents/%s' % (vid, art.id)).status_code == 404)
+    ctx.login(ctx.admin.id)
+    r = c.get('/admin/ventures/%s/documents/%s' % (vid, art.id))
+    check('the download is the decrypted original, as an attachment',
+          r.status_code == 200 and r.data.startswith(b'%PDF') and 'attachment' in r.headers.get('Content-Disposition', '')
+          and r.headers.get('X-Content-Type-Options') == 'nosniff')
+    check('the download is audited', AuditLog.query.filter_by(action='concierge_document_download',
+                                                              resource_id=vid).count() == 1)
+
+    r = c.post('/api/admin/ventures/%s/fee' % vid, json={'fee_cents': 9900})
+    check('a fee override needs a reason', r.status_code == 400)
+    r = c.post('/api/admin/ventures/%s/fee' % vid, json={'fee_cents': 9900, 'reason': 'Pilot cohort rate'})
+    check('the override applies', r.status_code == 200 and cs.effective_fee_cents(cs.case_for(vid)) == 9900)
+    a = AuditLog.query.filter_by(action='concierge_fee_override', resource_id=vid).first()
+    check('the override is audited with before, after and reason',
+          a is not None and a.extra.get('after') == 9900 and a.extra.get('reason') == 'Pilot cohort rate')
+    html = c.get('/admin/ventures').get_data(as_text=True)
+    check('the queue shows the override', 'USD 99.00' in html and 'override' in html)
+    r = c.post('/api/admin/ventures/%s/fee' % vid, json={'clear': True, 'reason': 'Back to standard'})
+    check('clearing the override returns to the Pricing fee', r.status_code == 200
+          and cs.effective_fee_cents(cs.case_for(vid)) == FEE)
+    html = c.get('/admin/ventures').get_data(as_text=True)
+    check('the queue shows the Pricing fee from settings', '{:,.2f}'.format(FEE / 100.0) in html)
+    hits = no_price_literal()
+    check('no file under app/ carries the consultation fee as a literal', not hits, hits)
+    ctx.vid = vid
 
 
 def no_price_literal():

@@ -93,6 +93,29 @@ def main():
             check('%s: group "%s"%s' % (url, group, (', page "%s"' % page) if page else ''), ok,
                   (groups, active, sub and sub.group(0)[:200]))
 
+        print('\n3. Concierge page: listed only for admins with the concierge permission')
+        g.pop('_login_user', None)
+        html = client.get('/admin/founder').get_data(as_text=True)
+        navs = ''.join(re.findall(r'<nav class="admin-subnav[^"]*".*?</nav>', html, re.S))
+        check('an admin without the permission sees no Concierge link in the menu',
+              navs and '/admin/ventures' not in navs and 'Concierge' not in navs)
+        g.pop('_login_user', None)
+        check('and /admin/ventures is 404 for them', client.get('/admin/ventures').status_code == 404)
+        from app.services import founder_feature
+        founder_feature.set_user_access([admin.id], 'allowed', admin.id, key=founder_feature.CONCIERGE)
+        for url, page in (('/admin/ventures', 'Concierge'), ('/admin/founder', 'Founder Track')):
+            g.pop('_login_user', None)
+            res = client.get(url)
+            html = res.get_data(as_text=True)
+            top = re.search(r'<nav class="admin-subnav".*?</nav>', html, re.S)
+            active = re.findall(r'class="subnav-link active"[^>]*>([^<]+)<', top.group(0)) if top else []
+            sub = re.search(r'<nav class="admin-subnav-sub".*?</nav>', html, re.S)
+            subs = re.findall(r'class="subnav-sublink[^"]*"[^>]*>([^<]+)<', sub.group(0)) if sub else []
+            sub_active = re.findall(r'class="subnav-sublink active"[^>]*>([^<]+)<', sub.group(0)) if sub else []
+            check('%s (allowed admin): group "Founder Track", page "%s"' % (url, page),
+                  res.status_code == 200 and active == ['Founder Track'] and subs == ['Founder Track', 'Concierge']
+                  and sub_active == [page], (res.status_code, active, subs, sub_active))
+
     print('\n%d passed, %d failed' % (len(PASS), len(FAIL)))
     return 1 if FAIL else 0
 
