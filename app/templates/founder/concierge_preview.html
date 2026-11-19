@@ -22,7 +22,7 @@
   .ccp-actions { display: grid; gap: .6rem; }
   .ccp-actions .btn { width: 100%; justify-content: center; text-align: center; box-sizing: border-box; }
   .ccp textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--rule); border-radius: 8px; padding: .55rem .65rem; font: inherit; font-size: 15px; }
-  .ccp details { border-top: 1px solid var(--rule); padding-top: .7rem; }
+  .ccp details { margin: 0; }
   .ccp summary { cursor: pointer; font-weight: 600; color: var(--ink); }
   .ccp-small { font-size: .86rem; color: var(--mute); }
   .ccp-msg { font-size: .9rem; margin: .4rem 0 0; color: var(--teal-ink, #0f766e); }
@@ -31,7 +31,7 @@
   .ccp-thread li { border: 1px solid var(--rule); border-radius: 10px; padding: .6rem .75rem; overflow-wrap: anywhere; }
   .ccp-thread li.admin { background: var(--alt); }
   .ccp-banner { border-radius: 10px; padding: .8rem 1rem; margin: 0 0 1rem; background: var(--alt); line-height: 1.5; }
-  .ccp-disclaimer { margin-top: 1.4rem; font-size: .9rem; color: var(--mute); }
+  .ccp-disclaimer { margin-top: 1.6rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: .9rem; color: var(--mute); }
   @media (max-width: 820px) {
     .ccp-stats { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     .ccp-stats > .ccp-gapcard { grid-column: 1 / -1; order: 3; }

@@ -12,6 +12,7 @@
     #ccDetails input, #ccDetails select { width: 100%; box-sizing: border-box; border: 1px solid var(--rule); border-radius: 6px; padding: .45rem .55rem; font: inherit; font-size: 15px; }
     #ccDetails .ccd-cite { display: block; font-size: 12px; color: var(--mute); font-style: italic; margin-top: .2rem; overflow-wrap: anywhere; }
     #ccDetails .ccd-val { min-width: 0; overflow-wrap: anywhere; }
+    #ccDetails .ccd-link { display: block; font-size: 14px; margin-top: .3rem; }
     @media (max-width: 640px) { #ccDetails .ccd-row { grid-template-columns: minmax(0, 1fr); } }
   </style>
   <h2 id="ccDetailsH">Confirm your details</h2>
@@ -28,9 +29,9 @@
         {% elif r.key == 'one_liner' %}<label class="sr" for="ccd-one">One-line description</label><input id="ccd-one" maxlength="300" value="{{ r.value or '' }}" placeholder="Who it helps and how">
         {% elif r.key == 'stage' %}<label class="sr" for="ccd-stage">Stage</label><select id="ccd-stage" required><option value="">Choose the stage</option>{% for k, l in D.stage_labels.items() %}<option value="{{ k }}" {{ 'selected' if r.value == k and r.status != 'needs_input' }}>{{ l }}</option>{% endfor %}</select>
         {% elif r.key == 'team' %}{% if r.value %}{% for m in r.value %}{{ m.name }}{% if m.role %}, {{ m.role }}{% endif %}{{ '; ' if not loop.last }}{% endfor %}{% else %}Not in the documents.{% endif %}
-          <span class="ccd-cite"><a class="link" href="/founder/v/{{ venture.id }}/roles">Set roles and titles</a></span>
+          <span class="ccd-link"><a class="link" href="/founder/v/{{ venture.id }}/roles">Set roles and titles</a></span>
         {% elif r.key == 'alignment' %}Each founder answers the alignment check themselves.
-          <span class="ccd-cite"><a class="link" href="/founder/v/{{ venture.id }}/alignment">Take the alignment check</a></span>
+          <span class="ccd-link"><a class="link" href="/founder/v/{{ venture.id }}/alignment">Take the alignment check</a></span>
         {% endif %}
         {% if r.citation %}<span class="ccd-cite">“{{ r.citation }}”</span>{% endif %}
       </div>
