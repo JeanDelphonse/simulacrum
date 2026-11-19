@@ -225,6 +225,7 @@ def run_all(app, db, generate_id, tmp_root):
     step6_evaluation(ctx)
     install_mail_fake(ctx)
     step7_share(ctx)
+    step8_preview(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -898,6 +899,7 @@ def step7_share(ctx):
     from app.models.founder import ConciergeCase, FounderVenture
     from app.services import concierge_service as cs, founder_config as fc, legal_text
     print('\n8. Step 7: share with the founder, hashed single-purpose token, re-send, extend, messages')
+    from app.services import founder_feature as ff
     ctx.login(ctx.admin.id)
     r = c.post('/api/admin/ventures/%s/share' % vid)
     check('Share is refused before Confirm (ready_for_review)', r.status_code == 409, r.status_code)
@@ -910,6 +912,10 @@ def step7_share(ctx):
     check('Share is refused while the consultation fee is not active', r.status_code == 409
           and 'not active' in r.get_json()['message'])
     fc.set('fnd_concierge_active', True, ctx.admin.id)
+    r = c.post('/api/admin/ventures/%s/share' % vid)
+    check('Share is refused while the Founder Track is switched off (the founder could not use it)',
+          r.status_code == 409 and 'switched off' in r.get_json()['message'])
+    ff.set_mode(ff.TRACK, 'allowlist', ctx.admin.id)
     ctx.login(ctx.admin2.id)
     check('a non-allowlisted admin cannot share (404)', c.post('/api/admin/ventures/%s/share' % vid).status_code == 404)
     ctx.login(ctx.admin.id)
@@ -1040,6 +1046,198 @@ def step7_share(ctx):
           and 'walk you through' not in ctx.mails[-1]['body'])
     html = c.get('/admin/ventures').get_data(as_text=True)
     check('the queue shows days since shared and days left', 'Shared' in html)
+
+
+# ---------------------------------------------------------------------------
+# Step 8: founder preview, revision, decline, pending card
+# ---------------------------------------------------------------------------
+
+PREVIEW_KEYS = {'case_id', 'state', 'state_label', 'venture', 'overall_score', 'top_gaps', 'needs_input_count',
+                'unlocks', 'ownership_terms', 'fee', 'refund_policy', 'expires_on', 'days_left', 'days_left_text',
+                'disclaimer', 'revision_note', 'decline_confirm', 'messages', 'actions', 'declined',
+                'revision_requested'}
+
+
+def leaks(text, ctx, v):
+    """Full-evaluation content that must never reach the preview."""
+    from app.models.founder import AgentBlueprint, EvaluationFinding, VentureArtifact
+    from app.services import founder_evaluation_service as fes
+    bad = []
+    for f in EvaluationFinding.query.filter_by(venture_id=v.id).all():
+        for s in (f.detail, f.citation_text, f.citation_ref):
+            if s and s in text:
+                bad.append(('finding', s[:40]))
+    for a in VentureArtifact.query.filter_by(venture_id=v.id).all():
+        if a.filename and a.filename in text:
+            bad.append(('document', a.filename))
+    for b in AgentBlueprint.query.filter_by(venture_id=v.id).all():
+        if b.agent_key in text:
+            bad.append(('agent', b.agent_key))
+    for frag in ('third-party logistics', 'learns the shelf layout', 'Business model: monthly rental',
+                 'citation', 'blueprint', 'startup_page', '/startup/', 'plan_step', '.pdf', '.docx'):
+        if frag in text:
+            bad.append(('text', frag))
+    for dim, (label, *_rest) in fes.RUBRIC.items():
+        if '"%s"' % dim in text:
+            bad.append(('dimension', dim))
+    return bad
+
+
+def step8_preview(ctx):
+    db, c, vid = ctx.db, ctx.client, ctx.vid
+    from app.models.audit_log import AuditLog
+    from app.models.founder import ConciergeMessage, FounderVenture
+    from app.services import concierge_service as cs, founder_feature as ff, legal_text
+    print('\n9. Step 8: founder preview (primary founder only, never the full evaluation), revision, decline')
+    case = cs.case_for(vid)
+    v = db.session.get(FounderVenture, vid)
+    url, api = '/founder/concierge/%s' % case.id, '/api/founder/concierge/%s' % case.id
+    jane = ctx.jane
+
+    # Who may open it.
+    cofounder = make_user(ctx, 'sam@founder.io')
+    ctx.cofounder = cofounder
+    for label, uid in (('a co-founder on file', cofounder.id), ('another account', ctx.member.id),
+                       ('an admin (even with the concierge permission)', ctx.admin.id)):
+        ctx.login(uid)
+        r1, r2 = c.get(url), c.get(api)
+        check('%s gets 403 on the preview page and its JSON' % label,
+              r1.status_code == 403 and r2.status_code == 403 and v.name not in r1.get_data(as_text=True)
+              and v.name not in r2.get_data(as_text=True), (r1.status_code, r2.status_code))
+    ctx.login(None)
+    check('signed out: the page asks to sign in, the JSON is 401',
+          c.get(url).status_code == 302 and c.get(api).status_code == 401)
+    jane.email_verified = False
+    db.session.commit()
+    ctx.login(jane.id)
+    check('the primary founder with an unverified email gets 403', c.get(api).status_code == 403)
+    jane.email_verified = True
+    db.session.commit()
+    db.session.expire_all()
+    check('nothing so far counted as a view', cs.case_for(vid).state == 'shared')
+
+    n0 = len(ctx.mails)
+    r = c.get(api)
+    d = r.get_json()
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('the primary founder opens the JSON preview; the first view moves shared -> viewed',
+          r.status_code == 200 and case.state == 'viewed' and case.viewed_at is not None)
+    admin_mail = [m for m in ctx.mails[n0:] if ctx.app.config['FOUNDER_EMAIL'] in m['to']]
+    check('the admin is notified of the view (FOUNDER_EMAIL)', len(admin_mail) == 1 and 'viewed' in admin_mail[0]['subject'])
+    check('the JSON has exactly the preview fields', set(d) == PREVIEW_KEYS, set(d) ^ PREVIEW_KEYS)
+    check('name, one-liner, overall score, top three gap titles and the needs-input count',
+          d['venture'] == {'name': v.name, 'one_liner': v.one_liner or ''} and isinstance(d['overall_score'], int)
+          and 0 < len(d['top_gaps']) <= 3 and all(isinstance(t, str) for t in d['top_gaps'])
+          and d['needs_input_count'] == cs.needs_input_count(case) and d['needs_input_count'] >= 1)
+    check('the fee comes from Pricing (F1 line), with P1, P3, F2 and E1',
+          d['fee']['cents'] == FEE and d['fee']['line'] == legal_text.get('concierge_fee_line', fee=cs.money(FEE))
+          and d['unlocks'] == legal_text.get('concierge_unlocks') and str(d['days_left']) in d['days_left_text']
+          and d['disclaimer'] == 'Not investment advice and not a promise of funding.'
+          and d['refund_policy'].startswith('Refundable within'))
+    raw = r.get_data(as_text=True)
+    bad = leaks(raw, ctx, v)
+    check('the JSON exposes no finding detail, citation, document, agent team, plan, page or dimension scores',
+          not bad, bad[:6])
+    r = c.get(url)
+    html = r.get_data(as_text=True)
+    check('the preview page renders for the primary founder', r.status_code == 200 and v.name in html)
+    bad = leaks(html, ctx, v)
+    check('the HTML exposes none of it either', not bad, bad[:6])
+    check('the page shows score, gaps, needs-input, P1, P2, F1, F2, P3 and E1',
+          all(t in html for t in d['top_gaps']) and legal_text.get('concierge_unlocks') in html
+          and legal_text.get('concierge_ownership_terms')[:60] in html and cs.money(FEE) in html
+          and 'days left' in html and legal_text.get('concierge_not_advice') in html
+          and 'id="ccpAccept"' in html)
+    check('the page is a CSS grid, not a table', '<table' not in html)
+    check('a second view does not notify again',
+          len([m for m in ctx.mails[n0:] if ctx.app.config['FOUNDER_EMAIL'] in m['to']]) == 1)
+
+    # Fee override reaches the preview.
+    ctx.login(ctx.admin.id)
+    c.post('/api/admin/ventures/%s/fee' % vid, json={'fee_cents': 9900, 'reason': 'Pilot cohort rate'})
+    ctx.login(jane.id)
+    d = c.get(api).get_json()
+    check('a per-venture override replaces the Pricing fee on the preview', d['fee']['cents'] == 9900
+          and 'USD 99.00' in d['fee']['line'])
+    ctx.login(ctx.admin.id)
+    c.post('/api/admin/ventures/%s/fee' % vid, json={'clear': True, 'reason': 'Back to standard'})
+
+    # Pending invitation card.
+    ctx.login(jane.id)
+    html = c.get('/dashboard').get_data(as_text=True)
+    check('the dashboard shows the pending invitation to the verified invited email',
+          'id="ccPending"' in html and v.name in html and url in html)
+    ff.set_user_access([jane.id], 'allowed', ctx.admin.id)
+    html = c.get('/founder').get_data(as_text=True)
+    check('/founder shows the pending invitation card too', 'id="ccPending"' in html and url in html)
+    ctx.login(cofounder.id)
+    check('a co-founder on file sees no pending card', 'id="ccPending"' not in c.get('/dashboard').get_data(as_text=True))
+
+    # Revision request.
+    ctx.login(jane.id)
+    r = c.post(api + '/revision', json={'body': ''})
+    check('an empty revision request is refused', r.status_code == 400)
+    n0 = len(ctx.mails)
+    r = c.post(api + '/revision', json={'body': 'Please re-check the team section.'})
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('"Request a revision" -> revision_requested with a founder message',
+          r.status_code == 200 and case.state == 'revision_requested'
+          and ConciergeMessage.query.filter_by(case_id=case.id, direction='founder').count() == 1)
+    check('the admin is notified (without the message text)',
+          any('revision' in m['subject'] for m in ctx.mails[n0:]) and
+          not any('re-check the team' in m['body'] for m in ctx.mails[n0:]))
+    d = c.get(api).get_json()
+    check('while a revision is open the founder cannot pay', d['actions']['accept'] is False and d['revision_requested'])
+    ctx.login(ctx.cofounder.id)
+    check('a co-founder cannot request a revision or decline (403)',
+          c.post(api + '/revision', json={'body': 'x'}).status_code == 403
+          and c.post(api + '/decline', json={'confirm': True}).status_code == 403)
+    ctx.login(ctx.admin.id)
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('the admin sees the request on the case page and can reopen it',
+          'Please re-check the team section.' in html and 'id="ccReopen"' in html)
+    exp = case.expires_at
+    r = c.post('/api/admin/ventures/%s/reopen' % vid)
+    check('"Reopen for review" -> ready_for_review', r.status_code == 200 and cs.case_for(vid).state == 'ready_for_review')
+    ctx.login(jane.id)
+    r = c.get(url)
+    check('meanwhile the founder sees "SimiSI is revising" (no venture data)',
+          r.status_code == 200 and 'revising' in r.get_data(as_text=True) and v.name not in r.get_data(as_text=True))
+    ctx.login(ctx.admin.id)
+    c.post('/api/admin/ventures/%s/messages' % vid, json={'body': 'Updated the team findings.'})
+    c.post('/api/admin/ventures/%s/confirm' % vid)
+    r = c.post('/api/admin/ventures/%s/share' % vid)
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('re-sharing after the revision issues a new link and keeps the running window',
+          r.status_code == 200 and case.state == 'shared' and case.expires_at == exp and case.invite_version == 5)
+    ctx.token = last_token(ctx, 'jane@founder.io')
+    ctx.login(jane.id)
+    d = c.get(api).get_json()
+    check('the founder sees the admin reply in the thread', any(m['direction'] == 'admin' and 'team findings' in m['body']
+                                                               for m in d['messages']))
+
+    # Decline and change of mind.
+    r = c.post(api + '/decline', json={'reason': 'Not now'})
+    check('decline needs the P4 confirmation', r.status_code == 400)
+    n0 = len(ctx.mails)
+    r = c.post(api + '/decline', json={'confirm': True, 'reason': 'Not now'})
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('"Decline" -> declined with the optional reason', r.status_code == 200 and case.state == 'declined'
+          and case.decline_reason == 'Not now' and case.declined_at is not None)
+    check('the admin is notified of the decline', any('declined' in m['subject'] for m in ctx.mails[n0:]))
+    check('decline is audited', AuditLog.query.filter_by(action='concierge_declined', resource_id=vid).count() == 1)
+    html = c.get(url).get_data(as_text=True)
+    check('the declined preview shows P4 and offers to reopen', 'You declined this evaluation' in html
+          and 'id="ccpReopen"' in html and 'id="ccpAccept"' not in html)
+    r = c.post(api + '/reopen')
+    db.session.expire_all()
+    case = cs.case_for(vid)
+    check('the founder may change their mind within the window: declined -> viewed',
+          r.status_code == 200 and case.state == 'viewed' and case.declined_at is None and case.decline_reason is None)
 
 
 def no_price_literal():

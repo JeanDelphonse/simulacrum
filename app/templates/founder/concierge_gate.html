@@ -21,11 +21,15 @@
       <a class="btn primary" href="{{ url_for('pages.login_page') }}?next={{ next_path|urlencode }}">Sign in</a>
       <a class="btn" href="{{ url_for('pages.register_page') }}">Create an account</a>
     </div>
-    <p class="ccg-small">New to SimiSI? Create your account with the address the invitation was sent to and verify it, then open the link again. Your invitation also appears on your Founder Track page once your email is verified.</p>
+    <p class="ccg-small">New to SimiSI? Create your account with the address the invitation was sent to and verify it, then open the link again. Your invitation also appears on your dashboard once your email is verified.</p>
   {% elif mode == 'mismatch' %}
     <h1>This invitation is for another address</h1>
     <p>{{ legal('concierge_email_mismatch') }}</p>
     {% if unverified %}<p class="ccg-small">If this is your address, verify it first (check your inbox for the verification email), then open the link again.</p>{% endif %}
+    <div class="ccg-ctas"><a class="btn" href="{{ url_for('pages.dashboard') }}">Go to your dashboard</a></div>
+  {% elif mode == 'revising' %}
+    <h1>SimiSI is revising your evaluation</h1>
+    <p>Thank you for your message. We are working on the revision and will email you a new link when it is ready. The window to accept keeps running unless we extend it.</p>
     <div class="ccg-ctas"><a class="btn" href="{{ url_for('pages.dashboard') }}">Go to your dashboard</a></div>
   {% else %}
     <h1>This link is no longer valid</h1>

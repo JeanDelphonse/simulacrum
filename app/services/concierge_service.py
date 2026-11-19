@@ -282,8 +282,9 @@ def documents(venture) -> list:
 # ---------------------------------------------------------------------------
 
 def base_fee_cents() -> int:
+    """The consultation fee from Admin > Pricing (concierge_pricing)."""
     from app.services import founder_config
-    return int(founder_config.get('fnd_concierge_fee_cents') or 0)
+    return int(founder_config.concierge_pricing().get('fee_cents') or 0)
 
 
 def effective_fee_cents(case) -> int:
@@ -1042,6 +1043,9 @@ def _require_payable_fee(case):
                              'before sharing.')
     if effective_fee_cents(case) < CARD_MINIMUM_CENTS:
         raise ConciergeError('Set the consultation fee (Pricing, or an override on this venture) before sharing.')
+    if not track_open():
+        raise ConciergeError('The Founder Track is switched off, so the founder could not open the venture after '
+                             'accepting. Turn it on (allowlist or on) first.')
 
 
 def share(venture, case, admin):
@@ -1201,3 +1205,177 @@ def invite_view(case) -> dict:
         'can_reply': case.state in WINDOW_STATES + ('declined',),
         'messages': messages(case), 'fmt_date': fmt_date,
     }
+
+
+# ---------------------------------------------------------------------------
+# Founder preview, revision request, decline (step 8)
+# ---------------------------------------------------------------------------
+# Only the primary founder (verified matching email) sees the preview. It
+# carries exactly the fields below: no finding detail, citations, scores by
+# dimension, agent team, plan, documents or startup page. The JSON endpoint
+# returns this dict as is, so the API cannot expose more than the page.
+
+TOP_GAPS = 3
+ACCEPT_STATES = ('shared', 'viewed')
+
+
+def track_open() -> bool:
+    """Founder Track is not switched off, so an accepted venture can be used."""
+    try:
+        from app.services import founder_feature
+        return founder_feature.mode() != 'off'
+    except Exception:
+        return False
+
+
+def needs_input_count(case) -> int:
+    pf = case.prefill or {}
+    return sum(1 for f in PREFILL_FIELDS if not pf or (pf.get(f) or {}).get('status', 'needs_input') == 'needs_input')
+
+
+def top_gaps(venture, n: int = TOP_GAPS) -> list:
+    """Titles only of the most severe open non-strength findings."""
+    from app.services import founder_evaluation_service as fes
+    rows = [f for f in fes.findings(venture) if f.ftype != 'strength']
+    rows.sort(key=lambda f: (-fes.SEVERITY_RANK.get(f.severity, 0), f.created_at or datetime.min))
+    return [f.title for f in rows[:n]]
+
+
+def can_accept(case, now=None) -> bool:
+    from app.blueprints.founder.admin import CARD_MINIMUM_CENTS
+    now = now or datetime.utcnow()
+    return bool(case.state in ACCEPT_STATES and case.expires_at and case.expires_at > now
+                and _cfg('fnd_concierge_active') and effective_fee_cents(case) >= CARD_MINIMUM_CENTS and track_open())
+
+
+def preview_data(venture, case, now=None) -> dict:
+    """Everything the founder preview shows, and nothing else."""
+    from app.services import founder_config, legal_text
+    from app.services import founder_evaluation_service as fes
+    now = now or datetime.utcnow()
+    run = fes.latest_run(venture, done_only=True)
+    score = getattr(run, 'overall_score', None)
+    fee = effective_fee_cents(case)
+    pricing = founder_config.concierge_pricing()
+    currency = (pricing.get('currency') or 'usd').lower()
+    fee_display = money(fee, currency) if fee else ''
+    expires_on = fmt_date(case.expires_at)
+    left = days_left(case, now)
+    open_ = case.expires_at is not None and case.expires_at > now
+    return {
+        'case_id': case.id, 'state': case.state, 'state_label': STATE_LABELS.get(case.state, case.state),
+        'venture': {'name': venture.name or '', 'one_liner': venture.one_liner or ''},
+        'overall_score': int(round(score)) if score is not None else None,
+        'top_gaps': top_gaps(venture),
+        'needs_input_count': needs_input_count(case),
+        'unlocks': legal_text.get('concierge_unlocks'),
+        'ownership_terms': legal_text.get('concierge_ownership_terms'),
+        'fee': {'cents': fee, 'currency': currency, 'display': fee_display,
+                'line': legal_text.get('concierge_fee_line', fee=fee_display) if fee else ''},
+        'refund_policy': legal_text.get('concierge_refund_policy', refund_days=pricing.get('refund_window_days')),
+        'expires_on': expires_on, 'days_left': left,
+        'days_left_text': legal_text.get('concierge_days_left', expires_on=expires_on, days_left=left),
+        'disclaimer': legal_text.get('concierge_not_advice'),
+        'revision_note': legal_text.get('concierge_revision_note', window_days=_cfg('fnd_cc_window_days')),
+        'decline_confirm': legal_text.get('concierge_decline_confirm', deletion_date=expires_on),
+        'messages': [{'direction': m['direction'], 'by': m['by'], 'body': m['body'],
+                      'at': m['at'].strftime('%Y-%m-%d %H:%M') + ' UTC'} for m in messages(case)],
+        'actions': {
+            'accept': can_accept(case, now),
+            'revise': open_ and case.state in ('viewed', 'revision_requested'),
+            'decline': open_ and case.state in ('viewed', 'revision_requested'),
+            'reopen': open_ and case.state == 'declined',
+        },
+        'declined': case.state == 'declined', 'revision_requested': case.state == 'revision_requested',
+    }
+
+
+def record_view(venture, case, user):
+    """The primary founder opened the preview: shared -> viewed once, and the
+    admin is told."""
+    if case.state != 'shared':
+        return case
+    case = transition(case, 'viewed', user, note='first view by the primary founder')
+    notify_admin(case, 'was viewed by the primary founder')
+    return case
+
+
+def _require_open(case, states):
+    now = datetime.utcnow()
+    if case.state not in states:
+        raise ConciergeError('This is not possible while the evaluation is %s.'
+                             % STATE_LABELS.get(case.state, case.state).lower())
+    if case.expires_at is None or case.expires_at <= now:
+        raise ConciergeError('This evaluation is no longer available.', 410)
+
+
+def request_revision(venture, case, body: str, user):
+    """A message to SimiSI; viewed -> revision_requested (a further message
+    while one is open just joins the thread). The window keeps running."""
+    from app.extensions import db
+    _require_open(case, ('viewed', 'revision_requested'))
+    first = case.state == 'viewed'
+    add_message(case, 'founder', body, user)
+    if first:
+        transition(case, 'revision_requested', user, note='revision requested', commit=False)
+    db.session.commit()
+    notify_admin(case, 'has a revision request from the founder' if first else 'has a new message from the founder',
+                 ['Read it on the case page.'])
+    return case
+
+
+def decline(venture, case, reason: str, user):
+    """viewed | revision_requested -> declined (optional reason). Deleted at
+    the end of the window unless the founder changes their mind."""
+    from app.extensions import db
+    _require_open(case, ('viewed', 'revision_requested'))
+    case = transition(case, 'declined', user, note='declined by the primary founder', commit=False)
+    case.decline_reason = _clean(reason, REASON_MAX) or None
+    db.session.commit()
+    notify_admin(case, 'was declined by the founder',
+                 ['Reason: %s' % case.decline_reason if case.decline_reason else 'No reason given.',
+                  'It is deleted on %s unless the founder changes their mind.' % fmt_date(case.expires_at)])
+    return case
+
+
+def undo_decline(venture, case, user):
+    """declined -> viewed while the window is open (P4: "You can still accept
+    it until then")."""
+    from app.extensions import db
+    _require_open(case, ('declined',))
+    case = transition(case, 'viewed', user, note='decline withdrawn by the primary founder', commit=False)
+    case.declined_at, case.decline_reason = None, None
+    db.session.commit()
+    notify_admin(case, 'was reopened by the founder after declining')
+    return case
+
+
+def pending_for(user, now=None) -> list:
+    """Open concierge invitations for this account's verified email (the
+    pending-invitation card on /founder and the dashboard)."""
+    from app.extensions import db
+    from app.models.founder import ConciergeCase, FounderVenture
+    if user is None or not getattr(user, 'is_authenticated', False) or not getattr(user, 'email_verified', False):
+        return []
+    email = (getattr(user, 'email', None) or '').strip().lower()
+    if not email:
+        return []
+    now = now or datetime.utcnow()
+    try:
+        rows = (ConciergeCase.query.filter(ConciergeCase.primary_email == email,
+                                           ConciergeCase.state.in_(OPEN_STATES),
+                                           ConciergeCase.expires_at > now)
+                .order_by(ConciergeCase.expires_at).limit(10).all())
+    except Exception as exc:          # table missing before the migration
+        logger.debug('concierge pending lookup skipped: %s', exc)
+        db.session.rollback()
+        return []
+    out = []
+    for c in rows:
+        v = db.session.get(FounderVenture, c.venture_id)
+        if v is None:
+            continue
+        out.append({'case_id': c.id, 'name': v.name, 'days_left': days_left(c, now),
+                    'expires_on': fmt_date(c.expires_at), 'state': c.state,
+                    'state_label': STATE_LABELS.get(c.state, c.state), 'url': '/founder/concierge/%s' % c.id})
+    return out

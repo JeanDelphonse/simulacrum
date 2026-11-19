@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}Your evaluation · {{ p.venture.name }}{% endblock %}
+{% block head %}
+<meta name="robots" content="noindex, nofollow">
+<style>
+  .ccp { max-width: 980px; margin: 0 auto; padding: 2.2rem 1rem 4rem; color: var(--ink); }
+  .ccp h1 { font-size: clamp(26px, 3.4vw, 38px); line-height: 1.15; margin: 0 0 .5rem; overflow-wrap: anywhere; }
+  .ccp h2 { font-size: 1.1rem; margin: 0 0 .6rem; }
+  .ccp p { line-height: 1.6; color: var(--ink-2); margin: 0 0 .7rem; }
+  .ccp-eyebrow { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); margin: 0 0 .5rem; }
+  .ccp-lede { font-size: 1.08rem; max-width: 60ch; overflow-wrap: anywhere; }
+  .ccp-card { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 1.2rem 1.25rem; min-width: 0; }
+  .ccp-stats { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr) minmax(0, .9fr); gap: 1rem; margin: 1.4rem 0 1rem; }
+  .ccp-big { font-size: 2.6rem; font-weight: 700; line-height: 1; color: var(--ink); margin: .2rem 0 .3rem; }
+  .ccp-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin: 0; }
+  .ccp-gaps { list-style: none; padding: 0; margin: .4rem 0 0; display: grid; gap: .45rem; }
+  .ccp-gaps li { border-left: 3px solid var(--gold); padding: .1rem 0 .1rem .6rem; line-height: 1.4; overflow-wrap: anywhere; }
+  .ccp-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .ccp-stack { display: grid; gap: 1rem; min-width: 0; }
+  .ccp-fee { font-size: 1.05rem; color: var(--ink); }
+  .ccp-days { background: #fffaf0; border-left: 3px solid var(--gold); padding: .7rem .85rem; border-radius: 6px; font-size: .95rem; color: var(--ink-2); line-height: 1.5; }
+  .ccp-actions { display: grid; gap: .6rem; }
+  .ccp-actions .btn { width: 100%; justify-content: center; text-align: center; box-sizing: border-box; }
+  .ccp textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--rule); border-radius: 8px; padding: .55rem .65rem; font: inherit; font-size: 15px; }
+  .ccp details { border-top: 1px solid var(--rule); padding-top: .7rem; }
+  .ccp summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+  .ccp-small { font-size: .86rem; color: var(--mute); }
+  .ccp-msg { font-size: .9rem; margin: .4rem 0 0; color: var(--teal-ink, #0f766e); }
+  .ccp-msg.err { color: #b42318; }
+  .ccp-thread { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
+  .ccp-thread li { border: 1px solid var(--rule); border-radius: 10px; padding: .6rem .75rem; overflow-wrap: anywhere; }
+  .ccp-thread li.admin { background: var(--alt); }
+  .ccp-banner { border-radius: 10px; padding: .8rem 1rem; margin: 0 0 1rem; background: var(--alt); line-height: 1.5; }
+  .ccp-disclaimer { margin-top: 1.4rem; font-size: .9rem; color: var(--mute); }
+  @media (max-width: 820px) {
+    .ccp-stats { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .ccp-stats > .ccp-gapcard { grid-column: 1 / -1; order: 3; }
+    .ccp-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 420px) {
+    .ccp { padding-top: 1.4rem; }
+    .ccp-card { padding: 1rem; }
+    .ccp-big { font-size: 2.1rem; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ccp" id="ccPreview" data-case="{{ case_id }}">
+  <p class="ccp-eyebrow">Founder Track · Evaluation prepared by SimiSI</p>
+  <h1>{{ p.venture.name }}</h1>
+  {% if p.venture.one_liner %}<p class="ccp-lede">{{ p.venture.one_liner }}</p>{% endif %}
+
+  {% if notice %}<p class="ccp-banner" role="status">{{ notice }}</p>{% endif %}
+  {% if p.declined %}
+  <p class="ccp-banner" role="status"><b>You declined this evaluation.</b> {{ p.decline_confirm }}</p>
+  {% elif p.revision_requested %}
+  <p class="ccp-banner" role="status"><b>Revision requested.</b> SimiSI has your message and will reply here and by email.</p>
+  {% endif %}
+
+  <div class="ccp-stats">
+    <div class="ccp-card">
+      <p class="ccp-label">Overall score</p>
+      <p class="ccp-big">{{ p.overall_score if p.overall_score is not none else '—' }}<span class="ccp-small" style="font-size:1rem;font-weight:400"> / 100</span></p>
+    </div>
+    <div class="ccp-card ccp-gapcard">
+      <p class="ccp-label">Top gaps to close</p>
+      {% if p.top_gaps %}<ul class="ccp-gaps">{% for t in p.top_gaps %}<li>{{ t }}</li>{% endfor %}</ul>
+      {% else %}<p style="margin:.4rem 0 0">No open gaps were found.</p>{% endif %}
+    </div>
+    <div class="ccp-card">
+      <p class="ccp-label">Needs your input</p>
+      <p class="ccp-big">{{ p.needs_input_count }}</p>
+      <p class="ccp-small" style="margin:0">field{{ '' if p.needs_input_count == 1 else 's' }} the documents did not answer</p>
+    </div>
+  </div>
+
+  <div class="ccp-grid">
+    <div class="ccp-stack">
+      <section class="ccp-card" aria-labelledby="ccpUnlockH">
+        <h2 id="ccpUnlockH">What accepting unlocks</h2>
+        <p>{{ p.unlocks }}</p>
+        <p class="ccp-small">{{ p.ownership_terms }}</p>
+      </section>
+      {% if p.messages %}
+      <section class="ccp-card" aria-labelledby="ccpMsgH">
+        <h2 id="ccpMsgH">Messages</h2>
+        <ul class="ccp-thread">
+          {% for m in p.messages %}<li class="{{ m.direction }}"><b>{{ 'SimiSI' if m.direction == 'admin' else 'You' }}</b> <span class="ccp-small">· {{ m.at }}</span>
+            <div style="white-space:pre-wrap;margin-top:.25rem">{{ m.body }}</div></li>{% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+    </div>
+
+    <div class="ccp-stack">
+      <section class="ccp-card" aria-labelledby="ccpFeeH">
+        <h2 id="ccpFeeH">Accept and pay</h2>
+        {% if p.fee.line %}<p class="ccp-fee" id="ccpFee">{{ p.fee.line }}</p>{% endif %}
+        <p class="ccp-small">{{ p.refund_policy }}</p>
+        <p class="ccp-days" id="ccpDays">{{ p.days_left_text }}</p>
+        <div class="ccp-actions">
+          {% if p.actions.accept %}
+          <form method="post" action="/founder/concierge/{{ case_id }}/accept" id="ccpAccept">
+            <button class="btn primary btn-lg" type="submit">Accept and pay</button>
+          </form>
+          {% elif p.actions.reopen %}
+          <button class="btn primary" type="button" id="ccpReopen">I changed my mind: reopen it</button>
+          {% elif p.revision_requested %}
+          <p class="ccp-small" style="margin:0">You can accept once SimiSI has answered your revision request and shared the evaluation again.</p>
+          {% else %}
+          <p class="ccp-small" style="margin:0">Payment is not available right now. Please try again later or contact SimiSI.</p>
+          {% endif %}
+          <p class="ccp-msg" id="ccpTopMsg" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      {% if p.actions.revise %}
+      <section class="ccp-card" aria-labelledby="ccpRevH">
+        <details id="ccpRevise"{{ ' open' if p.revision_requested }}>
+          <summary id="ccpRevH">{{ 'Send another message' if p.revision_requested else 'Request a revision' }}</summary>
+          <p class="ccp-small" style="margin:.5rem 0">{{ p.revision_note }}</p>
+          <form id="ccpRevForm">
+            <label class="sr" for="ccpRevBody">What should SimiSI revise?</label>
+            <textarea id="ccpRevBody" rows="4" maxlength="4000" placeholder="What should SimiSI look at again?" required></textarea>
+            <button class="btn" type="submit" style="margin-top:.5rem">Send</button>
+            <p class="ccp-msg" id="ccpRevMsg" role="status"></p>
+          </form>
+        </details>
+      </section>
+      {% endif %}
+      {% if p.actions.decline %}
+      <section class="ccp-card" aria-labelledby="ccpDecH">
+        <details id="ccpDecline">
+          <summary id="ccpDecH">Decline</summary>
+          <form id="ccpDecForm" data-confirm="{{ p.decline_confirm }}">
+            <label class="ccp-small" for="ccpDecWhy" style="display:block;margin:.5rem 0 .3rem">Reason (optional)</label>
+            <textarea id="ccpDecWhy" rows="2" maxlength="500"></textarea>
+            <button class="btn btn-ghost" type="submit" style="margin-top:.5rem">Decline this evaluation</button>
+            <p class="ccp-msg" id="ccpDecMsg" role="status"></p>
+          </form>
+        </details>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+
+  <p class="ccp-disclaimer"><b>{{ p.disclaimer }}</b></p>
+</div>
+<script>
+(function () {
+  var CASE = document.getElementById('ccPreview').dataset.case;
+  function post(path, body) {
+    return fetch('/api/founder/concierge/' + CASE + path, { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) throw new Error(d.error || 'That did not go through.'); return d; }); });
+  }
+  function say(id, text, bad) { var el = document.getElementById(id); if (!el) return; el.textContent = text; el.classList.toggle('err', !!bad); }
+  var rev = document.getElementById('ccpRevForm');
+  if (rev) rev.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var body = document.getElementById('ccpRevBody').value.trim();
+    if (!body) return say('ccpRevMsg', 'Write what should be revised.', true);
+    post('/revision', { body: body }).then(function () { say('ccpRevMsg', 'Sent.'); setTimeout(function () { location.reload(); }, 700); })
+      .catch(function (err) { say('ccpRevMsg', err.message, true); });
+  });
+  var dec = document.getElementById('ccpDecForm');
+  if (dec) dec.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!window.confirm(dec.dataset.confirm)) return;
+    post('/decline', { confirm: true, reason: document.getElementById('ccpDecWhy').value })
+      .then(function () { location.reload(); }).catch(function (err) { say('ccpDecMsg', err.message, true); });
+  });
+  var ro = document.getElementById('ccpReopen');
+  if (ro) ro.onclick = function () {
+    post('/reopen', {}).then(function () { location.reload(); }).catch(function (err) { say('ccpTopMsg', err.message, true); });
+  };
+})();
+</script>
+{% endblock %}

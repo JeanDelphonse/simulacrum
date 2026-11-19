@@ -1,0 +1,19 @@
+{# Pending concierge invitations for the signed-in, verified invited email
+   (FOUNDER_CONCIERGE_PLAN.md 3.10). Renders nothing when there are none.
+   Included on /founder and on the dashboard. #}
+{% set _cc_pending = concierge_pending() if concierge_pending is defined else [] %}
+{% if _cc_pending %}
+<section class="cc-pending" id="ccPending" aria-labelledby="ccPendingH"
+         style="border:1px solid var(--rule, #e5e7eb);border-left:4px solid var(--gold, #c9a227);border-radius:12px;background:#fff;padding:1rem 1.1rem;margin:0 0 1.5rem">
+  <h2 id="ccPendingH" style="font-size:1.05rem;margin:0 0 .5rem">Evaluation{{ 's' if _cc_pending|length > 1 }} waiting for you</h2>
+  {% for inv in _cc_pending %}
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem 1rem;align-items:center;padding:.45rem 0;{{ 'border-top:1px solid var(--rule, #e5e7eb);' if not loop.first }}">
+    <div style="min-width:0;overflow-wrap:anywhere">
+      <b>{{ inv.name }}</b><br>
+      <span style="font-size:.88rem;color:var(--mute, #6b7280)">SimiSI prepared a Founder Track evaluation for you · {{ inv.state_label }} · {{ inv.days_left }} day{{ '' if inv.days_left == 1 else 's' }} left (until {{ inv.expires_on }})</span>
+    </div>
+    <a class="btn primary sm btn-primary btn-sm" href="{{ inv.url }}">Review</a>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
