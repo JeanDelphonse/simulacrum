@@ -121,7 +121,16 @@ def admin_venture_case(venture_id):
         db.session.rollback()
     since = cs.running_since(v) if c.state == 'evaluating' else None
     return render_template('admin/concierge_case.html', **cs.case_view(v, c), **_common(),
-                           running_since=since, stuck_reset_minutes=cs.STUCK_RESET_MINUTES)
+                           running_since=since, stuck_reset_minutes=cs.STUCK_RESET_MINUTES,
+                           progress=_progress(v) if c.state == 'evaluating' else None)
+
+
+def _progress(v):
+    from app.services import founder_evaluation_service as fes
+    try:
+        return fes.progress(v)
+    except Exception:
+        return None
 
 
 # ── API ──────────────────────────────────────────────────────────────────────
@@ -244,6 +253,7 @@ def api_concierge_status(venture_id):
         db.session.rollback()
     run = fes.latest_run(v)
     return jsonify({'state': c.state, 'state_label': cs.STATE_LABELS.get(c.state, c.state),
+                    'progress': fes.progress(v) if c.state == 'evaluating' else None,
                     'run': ({'id': run.id, 'status': run.status} if run else None)})
 
 

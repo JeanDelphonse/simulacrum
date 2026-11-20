@@ -44,7 +44,7 @@ import logging
 import re
 import threading
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -664,16 +664,28 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
             # pool; the writes below check out a fresh one (pool_pre_ping).
             calls = [(a.id, a.kind, texts[a.id] or '', d) for a, d in jobs]
             db.session.commit()
+            # Each answer is cached the moment its call returns (a short
+            # transaction of its own): progress() counts these rows, so the
+            # page can show "N of M checks done", and a run whose process is
+            # stopped midway keeps every answer it already paid for.
             with ThreadPoolExecutor(max_workers=min(WORKERS, len(calls))) as pool:
-                futs = {(aid, d): pool.submit(_evaluate_one, client, model, system, tool, kind, text, d)
+                futs = {pool.submit(_evaluate_one, client, model, system, tool, kind, text, d): (aid, d)
                         for aid, kind, text, d in calls}
-            for key, fut in futs.items():
-                try:
-                    results[key] = fut.result()
-                except Exception as exc:
-                    errors += 1
-                    causes.append(exc)
-                    logger.warning('founder eval call failed %s: %s', key, exc)
+                for fut in as_completed(futs):
+                    key = futs[fut]
+                    try:
+                        results[key] = fut.result()
+                    except Exception as exc:
+                        errors += 1
+                        causes.append(exc)
+                        logger.warning('founder eval call failed %s: %s', key, exc)
+                        continue
+                    try:
+                        _cache_answer(cache, key, results[key]['payload'])
+                        db.session.commit()
+                    except Exception as exc:
+                        logger.warning('founder eval answer %s not cached yet: %s', key, exc)
+                        db.session.rollback()
         obs = None
         if obs_run is not None:
             from app.services import observability_service as obs
@@ -684,20 +696,7 @@ def _do_run(r, venture, user_id, artifact_ids, obs_run) -> None:
                     obs.record_usage(model=res['payload'].get('model'),
                                      prompt_tokens=getattr(u, 'input_tokens', None),
                                      completion_tokens=getattr(u, 'output_tokens', None))
-            row = cache.get(key)
-            if row is None:
-                row = FounderEvalCache(artifact_id=key[0], dimension=key[1], payload=res['payload'])
-                try:
-                    with db.session.begin_nested():
-                        db.session.add(row)
-                except Exception:      # a parallel run cached it first
-                    row = FounderEvalCache.query.filter_by(artifact_id=key[0], dimension=key[1]).first()
-                    if row is not None:
-                        row.payload = res['payload']
-            else:
-                row.payload = res['payload']
-            if row is not None:
-                cache[key] = row
+            _cache_answer(cache, key, res['payload'])
 
         if errors:
             # Keep the answers that did come back (a re-run only calls the
@@ -1076,3 +1075,49 @@ def _failure_view(venture, run_row, user):
     if not getattr(user, 'is_admin', False):
         f.pop('detail', None)
     return f
+
+
+def _cache_answer(cache: dict, key, payload) -> None:
+    """Store one (artifact, dimension) answer in founder_eval_cache (insert or
+    update) and keep the in-run cache map in step. Does not commit."""
+    from app.extensions import db
+    from app.models.founder import FounderEvalCache
+    row = cache.get(key)
+    if row is not None:
+        try:
+            row.payload = payload
+            return
+        except Exception:
+            row = None
+    row = FounderEvalCache.query.filter_by(artifact_id=key[0], dimension=key[1]).first()
+    if row is None:
+        row = FounderEvalCache(artifact_id=key[0], dimension=key[1], payload=payload)
+        try:
+            with db.session.begin_nested():
+                db.session.add(row)
+        except Exception:          # a parallel run cached it first
+            row = FounderEvalCache.query.filter_by(artifact_id=key[0], dimension=key[1]).first()
+            if row is not None:
+                row.payload = payload
+    else:
+        row.payload = payload
+    if row is not None:
+        cache[key] = row
+
+
+def progress(venture) -> dict:
+    """{'done', 'total'}: answered (document, rubric dimension) checks for the
+    venture's current documents. Read from the database, so any process can
+    report it while a run is under way."""
+    from app.extensions import db
+    from app.models.founder import FounderEvalCache
+    arts = current_artifacts(venture)
+    ids = [a.id for a in arts]
+    total = len(ids) * len(DIMENSIONS)
+    if not ids:
+        return {'done': 0, 'total': 0}
+    done = (db.session.query(db.func.count(FounderEvalCache.id))
+            .filter(FounderEvalCache.artifact_id.in_(ids), FounderEvalCache.dimension.in_(list(DIMENSIONS)))
+            .scalar() or 0)
+    return {'done': min(int(done), total), 'total': total}
+

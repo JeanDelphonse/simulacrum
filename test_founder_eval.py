@@ -645,8 +645,35 @@ def main():
         artifact('pitch_deck', DECK + '\nConnection check slide.', version=9)
         ok_run = fes.run(venture(), founder)
         fake.create = real_create
-        check('no database transaction is held while the evaluation calls run',
-              seen and not any(seen) and ok_run.status == 'done', (len(seen), any(seen), ok_run.status))
+        check('no database transaction is open when the evaluation calls start',
+              seen and not seen[0] and ok_run.status == 'done', (len(seen), seen[:3], ok_run.status))
+        # Each answer is stored in its own short transaction as its call returns
+        # (progress + resume): every pair of the new deck is cached, and the
+        # progress count reads them back from the database.
+        from app.models.founder import FounderEvalCache as _FEC
+        deck9 = VentureArtifact.query.filter_by(venture_id=V_ID, kind='pitch_deck', version=9).first()
+        check('every answer of the run is cached', _FEC.query.filter_by(artifact_id=deck9.id).count()
+              == len(fes.DIMENSIONS))
+        prog = fes.progress(venture())
+        check('progress() reports done of total checks for the current documents',
+              prog['total'] == len(fes.current_artifacts(venture())) * len(fes.DIMENSIONS)
+              and prog['done'] == prog['total'], prog)
+        # A run whose calls partly fail keeps the answers that came back, so a
+        # re-run after a reset only calls the missing pairs.
+        fake.fail_keys = {('pitch_deck', 'team'), ('pitch_deck', 'market')}
+        artifact('pitch_deck', DECK + '\nResume check slide.', version=10)
+        part = fes.run(venture(), founder)
+        deck10 = VentureArtifact.query.filter_by(venture_id=V_ID, kind='pitch_deck', version=10).first()
+        mid = fes.progress(venture())
+        check('a partly failed run leaves the finished answers cached and progress below total',
+              part.status == 'failed' and _FEC.query.filter_by(artifact_id=deck10.id).count() == len(fes.DIMENSIONS) - 2
+              and mid['done'] == mid['total'] - 2, (part.status, mid))
+        fake.fail_keys = set()
+        before_calls = len(fake.calls)
+        ok2 = fes.run(venture(), founder)
+        check('the next run calls only the two missing checks and finishes',
+              ok2.status == 'done' and len([c_ for c_ in fake.calls[before_calls:] if not c_[2]]) == 2,
+              fake.calls[before_calls:])
         sys.path.insert(0, ROOT)
         import test_compliance_phrases as tcp
         src = io.open(os.path.join(ROOT, 'app/templates/founder/report.html'), encoding='utf-8').read()
