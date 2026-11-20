@@ -103,7 +103,7 @@
     clearTimeout(evalTimer);
     evalTimer = setTimeout(function () {
       api(BASE + '/evaluation').then(function (d) {
-        if (d.status === 'running') return pollEval();
+        if (d.status === 'running' || d.status === 'queued') return pollEval();
         var msg = $('fi-eval-msg');
         setEvalRunning(false);
         if (d.status === 'done') {

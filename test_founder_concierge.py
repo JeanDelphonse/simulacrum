@@ -911,6 +911,55 @@ def step6_evaluation(ctx):
     db.session.expire_all()
     check('the evaluation can run again after a reset', cs.case_for(vid).state == 'ready_for_review',
           cs.case_for(vid).state)
+
+    # ── The cron worker (fnd_eval_runner = cron, the default) ──
+    from app.models.founder import EvaluationRun as _ER2
+    from app.services import founder_config as _fc2
+    check('evaluations default to the cron worker', fes.runner() == 'cron')
+    cs.RUN_INLINE = False
+    r = c.post('/api/admin/ventures/%s/evaluate' % vid)
+    db.session.expire_all()
+    q = cs.queued_run(db.session.get(FounderVenture, vid))
+    check('Run evaluation queues the run instead of starting a thread', r.status_code == 202 and q is not None
+          and cs.case_for(vid).state == 'evaluating', (r.status_code, r.get_json()))
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('the page says it is queued and offers Run here instead once the wait is long',
+          'id="ccQueued"' in html and 'id="ccQueued" hidden' not in html and 'id="ccRunHere"' in html)
+    d_ = c.get('/api/admin/ventures/%s/status' % vid).get_json()
+    check('the status poll reports queued', d_.get('queued') is True, d_)
+    rid = fes.claim_next()
+    check('the worker claims the oldest queued run (atomic: queued -> running)', rid == q.id
+          and db.session.get(_ER2, rid).status == 'running')
+    check('a second worker gets nothing', fes.claim_next() is None)
+    db.session.get(_ER2, rid).status = 'queued'
+    db.session.commit()
+    n_ = fes.process_queue()
+    db.session.expire_all()
+    check('process_queue runs it to the end: the case reaches review', n_ == 1
+          and cs.case_for(vid).state == 'ready_for_review' and db.session.get(_ER2, rid).status == 'done',
+          (n_, cs.case_for(vid).state))
+    check('an empty queue costs nothing', fes.process_queue() == 0)
+
+    r = c.post('/api/admin/ventures/%s/evaluate' % vid)
+    db.session.expire_all()
+    q2 = cs.queued_run(db.session.get(FounderVenture, vid))
+    cs.RUN_INLINE = True
+    r = c.post('/api/admin/ventures/%s/evaluate/run-here' % vid)
+    db.session.expire_all()
+    check('Run here instead takes it off the queue and runs it on the website', r.status_code == 202
+          and db.session.get(_ER2, q2.id).status == 'done' and cs.case_for(vid).state == 'ready_for_review',
+          (r.status_code, r.get_json()))
+    check('... and the worker can no longer start it', fes.claim_next() is None)
+    r = c.post('/api/admin/ventures/%s/evaluate/run-here' % vid)
+    check('Run here instead with nothing waiting is refused', r.status_code == 409, r.status_code)
+    _fc2.set('fnd_eval_runner', 'thread', ctx.admin.id)
+    check('the runner setting can switch back to website threads', fes.runner() == 'thread')
+    _fc2.set('fnd_eval_runner', 'cron', ctx.admin.id)
+    try:
+        _fc2.set('fnd_eval_runner', 'celery', ctx.admin.id)
+        check('an unknown runner is refused', False)
+    except _fc2.FounderConfigError:
+        check('an unknown runner is refused', True)
     cs.RUN_INLINE = False
     fes.AI_CLIENT = None
 

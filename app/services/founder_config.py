@@ -98,6 +98,12 @@ _SPEC = {
     'fnd_cc_extend_days': ('int', 14, (1, 365)),
     'fnd_cc_allowed_types': ('types', ['pdf', 'docx'], CC_READABLE_TYPES),
     'fnd_cc_max_upload_mb': ('int', 20, (1, CC_MAX_UPLOAD_MB)),
+    # Who runs evaluations: 'cron' = queued and run by cron_evaluations.py (a
+    # cron process cPanel does not recycle mid-run); 'thread' = a background
+    # thread inside the web process (the original behaviour).
+    'fnd_eval_runner': ('choice', 'cron', ('cron', 'thread')),
+    # After this many minutes in the queue the admin page offers "Run here instead".
+    'fnd_eval_queue_warn_minutes': ('int', 3, (1, 60)),
 }
 
 DEFAULTS = {k: v[1] for k, v in _SPEC.items()}

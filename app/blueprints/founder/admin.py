@@ -72,7 +72,7 @@ EDITABLE = frozenset((
     # Concierge onboarding (FOUNDER_CONCIERGE_PLAN.md 3.7)
     'fnd_concierge_fee_cents', 'fnd_concierge_active', 'fnd_concierge_currency', 'fnd_concierge_stripe_price_id',
     'fnd_cc_window_days', 'fnd_cc_reminder_days', 'fnd_cc_extend_days', 'fnd_cc_allowed_types',
-    'fnd_cc_max_upload_mb',
+    'fnd_cc_max_upload_mb', 'fnd_eval_runner', 'fnd_eval_queue_warn_minutes',
 ))
 
 CSV_COLUMNS = ('name', 'firm', 'kind', 'stages', 'check_min', 'check_max', 'sectors', 'geographies', 'apply_url',

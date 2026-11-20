@@ -50,7 +50,11 @@
         <div class="fa-head"><h2 id="ccEvalH">Evaluation</h2>
           {% if can_evaluate %}<button class="btn primary sm" type="button" id="ccRun">{{ 'Re-run evaluation' if done_run else 'Run evaluation' }}</button>{% endif %}</div>
         {% if failure %}<p class="fa-banner err" id="ccFailure">The last run failed: {{ failure.message }}{% if failure.detail %} <span class="cc-sub2">{{ failure.detail }}</span>{% endif %}</p>{% endif %}
-        {% if case.state == 'evaluating' %}<p class="fa-note" style="margin:0">Running now{% if running_since %} (started {{ running_since.strftime('%H:%M') }} UTC){% endif %}. This page follows it live. Two documents usually take a few minutes.</p>
+        {% if case.state == 'evaluating' %}
+        <p class="fa-note" style="margin:0" id="ccQueued"{% if not queued %} hidden{% endif %}>Queued{% if running_since %} at {{ running_since.strftime('%H:%M') }} UTC{% endif %}. The evaluation worker starts it within a minute.</p>
+        <p class="fa-note" id="ccQueueWarn" hidden style="margin:.4rem 0 0">Still waiting after {{ queue_warn_minutes }} minutes? The cron worker may not be running.
+          <button class="btn sm" type="button" id="ccRunHere">Run here instead</button></p>
+        <p class="fa-note" style="margin:0" id="ccRunning"{% if queued %} hidden{% endif %}>Running now{% if running_since %} (started {{ running_since.strftime('%H:%M') }} UTC){% endif %}. This page follows it live. Two documents usually take a few minutes.</p>
         <p class="cc-progress-count" id="ccCount" aria-live="polite">{% if progress %}{{ progress.done }} of {{ progress.total }} checks done ({{ progress.documents }} document{{ '' if progress.documents == 1 else 's' }} × {{ progress.areas }} readiness areas){% endif %}</p>
         <div class="cc-bar" aria-hidden="true"><span id="ccBar" style="width:{{ ((progress.done * 100 / progress.total) if progress and progress.total else 0)|round|int }}%"></span></div>
         <p class="fa-note" id="ccStuck" hidden style="margin:.4rem 0 0">Still running after {{ stuck_reset_minutes }} minutes? The server may have restarted and stopped it.
@@ -281,6 +285,9 @@
             + ' document' + (d.progress.documents === 1 ? '' : 's') + ' × ' + d.progress.areas + ' readiness areas)';
           if (bar) bar.style.width = Math.round(d.progress.done * 100 / d.progress.total) + '%';
         }
+        var qn = document.getElementById('ccQueued'), rn = document.getElementById('ccRunning');
+        if (qn && rn) { qn.hidden = !d.queued; rn.hidden = !!d.queued; }
+        if (!d.queued) { var qw = document.getElementById('ccQueueWarn'); if (qw) qw.hidden = true; }
         if (d.state !== 'evaluating') { clearInterval(poll); if (es) es.close(); location.reload(); }
       }).catch(function () {});
     }, 10000);
@@ -290,7 +297,21 @@
     var started = {{ (running_since.isoformat() + 'Z')|tojson if running_since else 'null' }};
     var stuckBox = document.getElementById('ccStuck'), resetBtn = document.getElementById('ccReset');
     var limit = {{ stuck_reset_minutes|default(10) }} * 60000;
-    function checkStuck() { if (stuckBox && started && (Date.now() - Date.parse(started)) >= limit) stuckBox.hidden = false; }
+    var queuedNow = {{ 'true' if queued else 'false' }}, qLimit = {{ queue_warn_minutes|default(3) }} * 60000;
+    var qWarn = document.getElementById('ccQueueWarn'), runHere = document.getElementById('ccRunHere');
+    function checkStuck() {
+      var age = started ? (Date.now() - Date.parse(started)) : 0;
+      var isQueued = !document.getElementById('ccQueued').hidden;
+      if (qWarn) qWarn.hidden = !(isQueued && age >= qLimit);
+      if (stuckBox && started && age >= limit && !isQueued) stuckBox.hidden = false;
+    }
+    if (runHere) runHere.onclick = function () {
+      runHere.disabled = true;
+      call('/api/admin/ventures/' + VID + '/evaluate/run-here', {}).then(function () {
+        document.getElementById('ccQueued').hidden = true; document.getElementById('ccRunning').hidden = false;
+        if (qWarn) qWarn.hidden = true; line('Running here now…');
+      }).catch(function (e) { runHere.disabled = false; line((e && e.message) || 'That did not work.'); });
+    };
     checkStuck(); setInterval(checkStuck, 15000);
     if (resetBtn) resetBtn.onclick = function () {
       resetBtn.disabled = true;

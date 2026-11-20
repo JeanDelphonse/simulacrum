@@ -144,6 +144,8 @@ FAILURE_TEXT = {
     'auth': "The AI service did not accept SimiSI's credentials. An administrator needs to fix this; your documents are safe.",
     'model': "The AI model SimiSI asked for isn't available. An administrator needs to fix this; your documents are safe.",
     'bad_request': "The AI service refused the request. An administrator needs to look at this; your documents are safe.",
+    'not_started': ("The evaluation waited in the queue but never started: the background worker (cron) may "
+                    "not be running. Run it again."),
     'interrupted': ("The evaluation stopped before it finished (the server restarted). Run it again; documents "
                     "that were already scored aren't re-read."),
     'other': "The last evaluation didn't finish. Run it again; documents that were already scored aren't re-read.",
@@ -526,11 +528,24 @@ def current_artifacts(venture) -> list:
     return out
 
 
-def _new_run(venture):
+IN_FLIGHT = ('running', 'queued')     # 'queued' = waiting for the cron worker (fnd_eval_runner = cron)
+
+
+def runner() -> str:
+    """'cron' or 'thread' (founder_config fnd_eval_runner)."""
+    try:
+        from app.services import founder_config
+        v = founder_config.get('fnd_eval_runner')
+        return v if v in ('cron', 'thread') else 'thread'
+    except Exception:
+        return 'thread'
+
+
+def _new_run(venture, status: str = 'running'):
     from app.extensions import db
     from app.models.founder import EvaluationRun
     arts = current_artifacts(venture)
-    r = EvaluationRun(venture_id=venture.id, status='running',
+    r = EvaluationRun(venture_id=venture.id, status=status,
                       artifact_versions={a.kind: a.version for a in arts},
                       rung_at_run=venture.rung, started_at=datetime.utcnow())
     db.session.add(r)
@@ -543,11 +558,13 @@ def running_run(venture):
     (a crashed worker) is marked failed."""
     from app.extensions import db
     from app.models.founder import EvaluationRun
-    r = (EvaluationRun.query.filter_by(venture_id=venture.id, status='running')
+    r = (EvaluationRun.query.filter(EvaluationRun.venture_id == venture.id, EvaluationRun.status.in_(IN_FLIGHT))
          .order_by(EvaluationRun.started_at.desc()).first())
     if r is not None and r.started_at < datetime.utcnow() - timedelta(minutes=STALE_RUN_MINUTES):
+        never = r.status == 'queued'
         r.status, r.finished_at = 'failed', datetime.utcnow()
-        _log_failure(venture.id, r.id, 'interrupted', 'No result after %d minutes.' % STALE_RUN_MINUTES)
+        _log_failure(venture.id, r.id, 'not_started' if never else 'interrupted',
+                     ('Still queued after %d minutes.' if never else 'No result after %d minutes.') % STALE_RUN_MINUTES)
         db.session.commit()
         return None
     return r
@@ -559,7 +576,7 @@ def run(venture, user=None, artifact_ids=None):
     return _execute(r.id, getattr(user, 'id', None), artifact_ids)
 
 
-def _claim_run(venture):
+def _claim_run(venture, status: str = 'running'):
     """(run, created): the venture's in-flight run, or a new one. One run per
     venture at a time: the venture row is locked (SELECT ... FOR UPDATE where
     the database supports it) around check-and-insert, and after the insert an
@@ -571,8 +588,8 @@ def _claim_run(venture):
     if existing is not None:
         db.session.commit()            # release the lock
         return existing, False
-    r = _new_run(venture)              # commits, releasing the lock
-    rows = (EvaluationRun.query.filter_by(venture_id=venture.id, status='running')
+    r = _new_run(venture, status)      # commits, releasing the lock
+    rows = (EvaluationRun.query.filter(EvaluationRun.venture_id == venture.id, EvaluationRun.status.in_(IN_FLIGHT))
             .order_by(EvaluationRun.started_at, EvaluationRun.created_at, EvaluationRun.id).all())
     first = rows[0] if rows else r
     if first.id != r.id:
@@ -585,10 +602,82 @@ def _claim_run(venture):
 def run_async(venture, user=None, artifact_ids=None):
     """Start an evaluation in a background thread (the layer6 pattern) and
     return the running EvaluationRun. Reuses an in-flight run."""
+    if runner() == 'cron' and not artifact_ids:
+        # Queued for cron_evaluations.py: a cron process is not recycled by
+        # cPanel mid-run the way the web process (and its threads) can be.
+        r, _created = _claim_run(venture, 'queued')
+        return r
     r, created = _claim_run(venture)
     if created:
         _spawn(r.id, getattr(user, 'id', None), list(artifact_ids) if artifact_ids else None)
     return r
+
+
+def claim_next():
+    """Atomically move the oldest queued run to 'running' (started now) and
+    return its id, or None. Safe with several workers: only the UPDATE that
+    still finds the row queued wins."""
+    from app.extensions import db
+    from app.models.founder import EvaluationRun
+    for _attempt in range(20):
+        row = (EvaluationRun.query.filter_by(status='queued')
+               .order_by(EvaluationRun.started_at, EvaluationRun.id).first())
+        if row is None:
+            db.session.commit()
+            return None
+        rid = row.id
+        won = (EvaluationRun.query.filter_by(id=rid, status='queued')
+               .update({'status': 'running', 'started_at': datetime.utcnow()}, synchronize_session=False))
+        db.session.commit()
+        if won == 1:
+            return rid
+    return None
+
+
+def run_claimed(run_id: str) -> None:
+    """Run one claimed run to the end: a concierge case still 'evaluating'
+    gets the concierge finish (pre-fill, team, ready for review); any other
+    venture the plain evaluation."""
+    from app.extensions import db
+    from app.models.founder import EvaluationRun
+    r = db.session.get(EvaluationRun, run_id)
+    if r is None:
+        return
+    vid = r.venture_id
+    try:
+        from app.services import concierge_service as cs
+        case = cs.case_for(vid)
+    except Exception:
+        case = None
+    if case is not None and case.state == 'evaluating':
+        cs._evaluate_and_finish(run_id, case.id, None)
+    else:
+        _execute(run_id, None)
+
+
+def process_queue(max_seconds: int = 50 * 60, max_runs: int = 100) -> int:
+    """The cron worker: run queued evaluations one at a time until the queue
+    is empty (or the time or run budget is spent). Returns how many ran."""
+    import time
+    from app.extensions import db
+    t0, n = time.time(), 0
+    while n < max_runs and time.time() - t0 < max_seconds:
+        rid = claim_next()
+        if rid is None:
+            break
+        try:
+            run_claimed(rid)
+        except Exception as exc:
+            logger.exception('queued evaluation %s crashed: %s', rid, exc)
+            db.session.rollback()
+        finally:
+            # End the run's transaction so its connection goes back to the pool.
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        n += 1
+    return n
 
 
 def _spawn(run_id: str, user_id, artifact_ids) -> None:

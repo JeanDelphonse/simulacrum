@@ -183,6 +183,11 @@ def start_scheduler(app):
     if app.testing:
         return
 
+    # Cron workers (cron_evaluations.py) build the app too; they must not start
+    # a second copy of the in-process jobs.
+    if os.environ.get('SIMISI_NO_SCHEDULER'):
+        return
+
     # In dev with the Werkzeug reloader, the app starts twice; only start the
     # scheduler in the actual worker process (the one with WERKZEUG_RUN_MAIN=true),
     # or in production where that env var is absent.

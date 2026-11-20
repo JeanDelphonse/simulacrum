@@ -122,7 +122,17 @@ def admin_venture_case(venture_id):
     since = cs.running_since(v) if c.state == 'evaluating' else None
     return render_template('admin/concierge_case.html', **cs.case_view(v, c), **_common(),
                            running_since=since, stuck_reset_minutes=cs.STUCK_RESET_MINUTES,
-                           progress=_progress(v) if c.state == 'evaluating' else None)
+                           progress=_progress(v) if c.state == 'evaluating' else None,
+                           queued=bool(c.state == 'evaluating' and cs.queued_run(v) is not None),
+                           queue_warn_minutes=_warn_minutes())
+
+
+def _warn_minutes() -> int:
+    try:
+        from app.services import founder_config
+        return int(founder_config.get('fnd_eval_queue_warn_minutes'))
+    except Exception:
+        return 3
 
 
 def _progress(v):
@@ -253,8 +263,26 @@ def api_concierge_status(venture_id):
         db.session.rollback()
     run = fes.latest_run(v)
     return jsonify({'state': c.state, 'state_label': cs.STATE_LABELS.get(c.state, c.state),
+                    'queued': bool(c.state == 'evaluating' and cs.queued_run(v) is not None),
                     'progress': fes.progress(v) if c.state == 'evaluating' else None,
                     'run': ({'id': run.id, 'status': run.status} if run else None)})
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/evaluate/run-here', methods=['POST'])
+@concierge_api
+def api_concierge_eval_run_here(venture_id):
+    """'Run here instead': the queued run is taken off the cron queue and run
+    in a website thread (for when the cron worker is not running)."""
+    from app.services import concierge_service as cs
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    try:
+        rid = cs.run_here(v, c, current_user)
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    return jsonify({'ok': True, 'evaluation_run_id': rid, 'message': 'Running here now.'}), 202
 
 
 @founder_bp.route('/api/admin/ventures/<venture_id>/evaluate/reset', methods=['POST'])

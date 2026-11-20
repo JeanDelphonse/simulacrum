@@ -450,13 +450,16 @@ def start_evaluation(venture, case, admin):
                              'the documents again.' % ', '.join(unreadable), 409)
     if fes.running_run(venture) is not None:
         raise ConciergeError('An evaluation is already running.')
-    transition(case, 'evaluating', admin, note='evaluation started')
-    run, _created = fes._claim_run(venture)         # the run_async claim: one run per venture
+    queued = fes.runner() == 'cron' and not RUN_INLINE
+    transition(case, 'evaluating', admin, note='evaluation queued' if queued else 'evaluation started')
+    run, _created = fes._claim_run(venture, 'queued' if queued else 'running')   # one run per venture
     _publish(venture.id, 'concierge_evaluating', 'Evaluation started', evaluation_run_id=run.id)
     admin_id = getattr(admin, 'id', None)
     # Load everything the caller reads from these objects BEFORE the thread
     # starts: the request then needs no further query while the run begins.
     _ = (run.id, run.status, venture.id)
+    if queued:
+        return run                  # cron_evaluations.py picks it up within a minute
     if RUN_INLINE:
         _evaluate_and_finish(run.id, case.id, admin_id)
         db.session.expire_all()
@@ -486,9 +489,51 @@ STUCK_RESET_MINUTES = 10
 def running_since(venture):
     """Start time of the venture's in-flight evaluation run, or None."""
     from app.models.founder import EvaluationRun
-    r = (EvaluationRun.query.filter_by(venture_id=venture.id, status='running')
+    r = (EvaluationRun.query.filter(EvaluationRun.venture_id == venture.id,
+                                    EvaluationRun.status.in_(('running', 'queued')))
          .order_by(EvaluationRun.started_at.desc()).first())
     return r.started_at if r is not None else None
+
+
+def queued_run(venture):
+    """The venture's run waiting for the cron worker, or None."""
+    from app.models.founder import EvaluationRun
+    return (EvaluationRun.query.filter_by(venture_id=venture.id, status='queued')
+            .order_by(EvaluationRun.started_at.desc()).first())
+
+
+def run_here(venture, case, admin):
+    """'Run here instead': take the queued run off the queue (atomically, so
+    the cron worker cannot also start it) and run it in a website thread."""
+    from app.extensions import db
+    from app.models.founder import EvaluationRun
+    if case.state != 'evaluating':
+        raise ConciergeError('No evaluation is waiting.')
+    r = queued_run(venture)
+    if r is None:
+        raise ConciergeError('The worker has already started it. This page follows it live.')
+    rid = r.id
+    won = (EvaluationRun.query.filter_by(id=rid, status='queued')
+           .update({'status': 'running', 'started_at': datetime.utcnow()}, synchronize_session=False))
+    db.session.commit()
+    if won != 1:
+        raise ConciergeError('The worker has already started it. This page follows it live.')
+    admin_id = getattr(admin, 'id', None)
+    case_id = case.id
+    if RUN_INLINE:
+        _evaluate_and_finish(rid, case_id, admin_id)
+        return rid
+    from flask import current_app
+    app = current_app._get_current_object()
+
+    def _work():
+        with app.app_context():
+            try:
+                _evaluate_and_finish(rid, case_id, admin_id)
+            except Exception as exc:
+                logger.exception('concierge evaluation %s crashed: %s', rid, exc)
+    threading.Thread(target=_work, daemon=True).start()
+    return rid
 
 
 def recover_stuck(venture, case, actor=None, force: bool = False) -> bool:
@@ -531,7 +576,7 @@ def _evaluate_and_finish(run_id: str, case_id: str, admin_id: str) -> None:
     if case is None or venture is None:
         return
     if run is None or run.status != 'done':
-        if run is not None and run.status == 'running':
+        if run is not None and run.status in ('running', 'queued'):
             run.status, run.finished_at = 'failed', datetime.utcnow()
             db.session.commit()
         why = fes.failure_for(venture, run)['message'] if run is not None else 'The run did not start.'

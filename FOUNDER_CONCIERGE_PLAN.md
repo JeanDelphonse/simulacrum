@@ -312,3 +312,14 @@ Deploy:
 7. `FOUNDER_EMAIL` (admin notices) and `MAIL_DEFAULT_SENDER` (sender, simi@simisi.io) as today.
 8. Counsel: every string is a draft in Admin → Legal text (`concierge_*`); R2 needs the host's backup
    retention before it is published (COUNSEL_REVIEW_CONCIERGE.md §6b).
+
+### Evaluation worker (added after launch)
+Evaluations (concierge and self-serve) are queued and run by `cron_evaluations.py` when
+Admin → Founder Track → Concierge → "Run evaluations with" is "Cron worker" (`fnd_eval_runner = cron`,
+the default). cPanel/Passenger can stop the website's background threads mid-run; cron is not stopped.
+- Cron line, every minute (use the app folder the site runs from):
+  `* * * * * /home/dburriyy6pdz/virtualenv/public_html/simisi/3.9/bin/python /home/dburriyy6pdz/public_html/simisi/cron_evaluations.py >> /home/dburriyy6pdz/public_html/simisi/cron.log 2>&1`
+- The worker reads the app folder's `.env`: `ENCRYPTION_KEY` and the Claude API key must be there.
+- One worker at a time (lock file); an idle minute costs one query. A run still queued after
+  `fnd_eval_queue_warn_minutes` (default 3) shows "Run here instead" on the concierge case page.
+- Until the cron line exists, set "Run evaluations with" to "Website background thread".

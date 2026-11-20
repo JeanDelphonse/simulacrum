@@ -463,6 +463,19 @@ def main():
 
         print('\n12. API: start, status, failure')
         fes._spawn = lambda run_id, uid, ids: fes._execute(run_id, uid, ids)     # run inline
+        from app.services import founder_config as _fc
+        _fc.set('fnd_eval_runner', 'thread', A_ID)        # these checks use the website-thread runner
+        # Cron runner: a founder's own Run evaluation queues; the worker finishes it.
+        _fc.set('fnd_eval_runner', 'cron', A_ID)
+        artifact('pitch_deck', DECK + '\nQueue check slide.', version=11)
+        qrun = fes.run_async(venture(), db.session.get(User, F_ID))
+        check('with the cron runner a self-serve evaluation is queued', qrun.status == 'queued')
+        rv = client.get('/api/founder/v/%s/evaluation' % V_ID).get_json()
+        check('the founder sees it as in progress (queued)', rv['status'] == 'queued', rv['status'])
+        check('the worker runs it', fes.process_queue() == 1)
+        db.session.expire_all()
+        check('... to done', db.session.get(EvaluationRun, qrun.id).status == 'done')
+        _fc.set('fnd_eval_runner', 'thread', A_ID)
         r = client.post('/api/founder/v/%s/evaluate' % V_ID)
         body = r.get_json() or {}
         check('evaluate returns run_id, status and message', r.status_code == 202 and body.get('run_id')

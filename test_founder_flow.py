@@ -185,6 +185,8 @@ def main():
         fes.AI_CLIENT = fake
         fas.AI_CLIENT = fake
         fes._spawn = lambda run_id, uid, ids: fes._execute(run_id, uid, ids)          # run inline
+        from app.services import founder_config as _fc
+        _fc.set('fnd_eval_runner', 'thread', A_ID)        # the journey uses the website-thread runner
         fas._spawn = lambda step_id, uid, trigger, inputs, prior=None: fas._run_by_id(step_id, uid, trigger, inputs,
                                                                                     prior)
 

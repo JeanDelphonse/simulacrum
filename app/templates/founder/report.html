@@ -119,7 +119,7 @@
     <div class="fr-actions">
       <a class="btn btn-ghost" href="/founder/v/{{ venture.id }}/intake">Add or replace documents</a>
       {% if has_artifacts %}
-      <button type="button" class="btn primary" id="fr-run" {% if r.status == 'running' %}disabled{% endif %}>
+      <button type="button" class="btn primary" id="fr-run" {% if r.status in ('running', 'queued') %}disabled{% endif %}>
         {{ 'Re-run evaluation' if r.has_report else 'Run evaluation' }}
       </button>
       {% endif %}
@@ -130,7 +130,7 @@
   <div class="fr-disclaimer" role="note">{{ legal('founder_report_disclaimer') }}</div>
 
   <div id="fr-live" aria-live="polite">
-    {% if r.status == 'running' %}
+    {% if r.status in ('running', 'queued') %}
     <div class="fr-status"><span class="fr-spin" aria-hidden="true"></span>
       <span>Evaluation running. This page updates when it finishes.</span></div>
     {% elif r.status == 'failed' %}
@@ -315,12 +315,12 @@
     fetch('/api/founder/v/' + vid + '/evaluation', {credentials: 'same-origin'})
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (d && d.status !== 'running') { window.location.reload(); return; }
+        if (d && d.status !== 'running' && d.status !== 'queued') { window.location.reload(); return; }
         setTimeout(poll, 5000);
       })
       .catch(function () { setTimeout(poll, 10000); });
   }
-  if (status === 'running') setTimeout(poll, 5000);
+  if (status === 'running' || status === 'queued') setTimeout(poll, 5000);
 
   if (btn) btn.addEventListener('click', function () {
     btn.disabled = true;
@@ -328,7 +328,7 @@
       .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
       .then(function (res) {
         msg.textContent = res.d.message || '';
-        if (res.d.status === 'running') {
+        if (res.d.status === 'running' || res.d.status === 'queued') {
           document.getElementById('fr-live').innerHTML = '<div class="fr-status"><span class="fr-spin" aria-hidden="true"></span><span>Evaluation running. This page updates when it finishes.</span></div>';
           setTimeout(poll, 5000);
         } else { btn.disabled = false; }
