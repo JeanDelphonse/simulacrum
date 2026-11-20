@@ -361,7 +361,7 @@ def step2_settings(ctx):
 
 EXPECTED_TRANSITIONS = {
     'draft': {'documents_uploaded'},
-    'documents_uploaded': {'evaluating'},
+    'documents_uploaded': {'evaluating', 'ready_for_review'},   # the second only by the finished-run heal
     'evaluating': {'ready_for_review', 'documents_uploaded'},
     'ready_for_review': {'confirmed', 'evaluating', 'expired'},
     'confirmed': {'shared', 'evaluating', 'expired'},
@@ -911,6 +911,41 @@ def step6_evaluation(ctx):
     db.session.expire_all()
     check('the evaluation can run again after a reset', cs.case_for(vid).state == 'ready_for_review',
           cs.case_for(vid).state)
+
+    # The page's stuck check must not reset a case while the finished run's
+    # finishing step (pre-fill call, agent team) is still going (the live bug:
+    # the case went back to documents_uploaded and Confirm never appeared).
+    from app.models.founder import EvaluationRun as _ER3
+    newest = (_ER3.query.filter_by(venture_id=vid).order_by(_ER3.created_at.desc(), _ER3.id.desc()).first())
+    cc = cs.case_for(vid)
+    cc.state = 'evaluating'
+    newest.finished_at = datetime.utcnow()
+    db.session.commit()
+    d_ = c.get('/api/admin/ventures/%s/status' % vid).get_json()
+    check('while the finishing step runs after a done run, the poll leaves the case evaluating',
+          d_['state'] == 'evaluating', d_)
+    newest.finished_at = datetime.utcnow() - _td(minutes=cs.STUCK_RESET_MINUTES + 1)
+    db.session.commit()
+    d_ = c.get('/api/admin/ventures/%s/status' % vid).get_json()
+    check('if the finishing step died, the complete evaluation goes to review (not back to uploads)',
+          d_['state'] == 'ready_for_review', d_)
+    cc = cs.case_for(vid)
+    cc.state = 'documents_uploaded'
+    db.session.commit()
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('a case already sent back with a complete run and its pre-fill heals to review on page load',
+          cs.case_for(vid).state == 'ready_for_review' and 'Confirm evaluation' in html)
+    saved = dict(newest.artifact_versions or {})
+    cc = cs.case_for(vid)
+    cc.state = 'documents_uploaded'
+    newest.artifact_versions = {'pitch_deck': 999}
+    db.session.commit()
+    c.get('/admin/ventures/%s' % vid)
+    check('no heal when the documents changed since that run', cs.case_for(vid).state == 'documents_uploaded')
+    newest.artifact_versions = saved
+    db.session.commit()
+    c.get('/admin/ventures/%s' % vid)
+    check('... and it heals once they match again', cs.case_for(vid).state == 'ready_for_review')
 
     # ── The cron worker (fnd_eval_runner = cron, the default) ──
     from app.models.founder import EvaluationRun as _ER2

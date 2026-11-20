@@ -37,7 +37,7 @@ STATES = ('draft', 'documents_uploaded', 'evaluating', 'ready_for_review', 'conf
 # Nothing else moves a case.
 TRANSITIONS = {
     'draft': ('documents_uploaded',),
-    'documents_uploaded': ('evaluating',),
+    'documents_uploaded': ('evaluating', 'ready_for_review'),
     'evaluating': ('ready_for_review', 'documents_uploaded'),
     'ready_for_review': ('confirmed', 'evaluating', 'expired'),
     'confirmed': ('shared', 'evaluating', 'expired'),
@@ -542,9 +542,28 @@ def recover_stuck(venture, case, actor=None, force: bool = False) -> bool:
     while the run is younger than STUCK_RESET_MINUTES)."""
     from app.extensions import db
     from app.services import founder_evaluation_service as fes
-    if case is None or case.state != 'evaluating':
+    if case is None:
+        return False
+    if case.state == 'documents_uploaded':
+        return _heal_finished(venture, case, actor)
+    if case.state != 'evaluating':
         return False
     run = fes.running_run(venture)          # marks a run older than STALE_RUN_MINUTES failed
+    if run is None and not force:
+        # The run itself is done, but the finishing step (pre-fill call, agent
+        # team) runs after it for up to a minute or two. Give it time; if it
+        # really died, the evaluation is complete, so the case goes to review.
+        last = _newest_run(venture)
+        if last is not None and last.status == 'done':
+            if last.finished_at and last.finished_at > datetime.utcnow() - timedelta(minutes=STUCK_RESET_MINUTES):
+                return False
+            if case.prefill is None:
+                case.prefill = _empty_prefill(last.id, error='finishing step did not complete')
+                db.session.commit()
+            transition(case, 'ready_for_review', actor,
+                       note='evaluation %s done; the finishing step did not report back, so the case moved to review'
+                            % last.id)
+            return True
     if run is not None:
         if not force:
             return False
@@ -558,6 +577,33 @@ def recover_stuck(venture, case, actor=None, force: bool = False) -> bool:
     transition(case, 'documents_uploaded', actor,
                note='evaluation stopped before it finished (the server restarted or an admin reset it); run it again')
     _publish(venture.id, 'concierge_failed', 'The evaluation stopped before it finished. Run it again.')
+    return True
+
+
+def _newest_run(venture):
+    """The venture's most recently created evaluation run."""
+    from app.models.founder import EvaluationRun
+    return (EvaluationRun.query.filter_by(venture_id=venture.id)
+            .order_by(EvaluationRun.created_at.desc(), EvaluationRun.id.desc()).first())
+
+
+def _heal_finished(venture, case, actor) -> bool:
+    """A case sent back to documents_uploaded although its latest run is done,
+    covers the current documents and has its pre-fill (the page's stuck check
+    once reset a case while the run's finishing step was still going). Move it
+    to ready_for_review. True when healed."""
+    from app.services import founder_evaluation_service as fes
+    last = _newest_run(venture)
+    if last is None or last.status != 'done':
+        return False
+    meta = (case.prefill or {}).get('_meta') or {}
+    if meta.get('run_id') != last.id:
+        return False
+    current = {a.kind: a.version for a in fes.current_artifacts(venture)}
+    if (last.artifact_versions or {}) != current:
+        return False                 # documents changed since: a new run is needed
+    transition(case, 'ready_for_review', actor,
+               note='evaluation %s was complete; returned to review' % last.id)
     return True
 
 
@@ -580,7 +626,9 @@ def _evaluate_and_finish(run_id: str, case_id: str, admin_id: str) -> None:
             run.status, run.finished_at = 'failed', datetime.utcnow()
             db.session.commit()
         why = fes.failure_for(venture, run)['message'] if run is not None else 'The run did not start.'
-        transition(case, 'documents_uploaded', admin_id, note='evaluation failed: %s' % why)
+        db.session.refresh(case)
+        if case.state == 'evaluating':
+            transition(case, 'documents_uploaded', admin_id, note='evaluation failed: %s' % why)
         _publish(venture.id, 'concierge_failed', 'Evaluation failed: %s' % why, evaluation_run_id=run_id)
         return
     _publish(venture.id, 'concierge_prefill', 'Evaluation done; reading the documents for the pre-fill',
@@ -600,7 +648,9 @@ def _evaluate_and_finish(run_id: str, case_id: str, admin_id: str) -> None:
         logger.warning('concierge team build skipped for %s: %s', venture.id, exc)
         db.session.rollback()
     case = db.session.get(ConciergeCase, case_id)
-    transition(case, 'ready_for_review', admin_id, note='evaluation %s done' % run_id)
+    db.session.refresh(case)
+    if case.state == 'evaluating':               # the page may already have moved it to review
+        transition(case, 'ready_for_review', admin_id, note='evaluation %s done' % run_id)
     _publish(venture.id, 'concierge_ready', 'Ready for review', evaluation_run_id=run_id)
 
 
