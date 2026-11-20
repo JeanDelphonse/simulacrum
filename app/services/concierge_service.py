@@ -441,6 +441,9 @@ def start_evaluation(venture, case, admin):
     run, _created = fes._claim_run(venture)         # the run_async claim: one run per venture
     _publish(venture.id, 'concierge_evaluating', 'Evaluation started', evaluation_run_id=run.id)
     admin_id = getattr(admin, 'id', None)
+    # Load everything the caller reads from these objects BEFORE the thread
+    # starts: the request then needs no further query while the run begins.
+    _ = (run.id, run.status, venture.id)
     if RUN_INLINE:
         _evaluate_and_finish(run.id, case.id, admin_id)
         db.session.expire_all()

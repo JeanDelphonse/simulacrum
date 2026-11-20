@@ -28,6 +28,28 @@ def _configure_logging(app):
     app.logger.setLevel(logging.DEBUG)
 
 
+def _dispose_pool_after_fork(app):
+    """Passenger loads the app once and forks worker processes from it. A pooled
+    MySQL connection opened before the fork would be inherited by every worker,
+    and two processes reading one socket corrupt each other's packets (PyMySQL
+    'struct.error: unpack_from requires a buffer...'). In each forked child,
+    drop the inherited pool without closing the parent's sockets, so the child
+    opens its own connections (SQLAlchemy's documented multiprocessing recipe).
+    A no-op where nothing forks."""
+    if not hasattr(os, 'register_at_fork'):
+        return
+    from app.extensions import db
+
+    def _after_fork_in_child():
+        try:
+            with app.app_context():
+                for engine in db.engines.values():
+                    engine.dispose(close=False)
+        except Exception:
+            pass
+    os.register_at_fork(after_in_child=_after_fork_in_child)
+
+
 def create_app(config_name=None):
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV', 'development')
@@ -56,6 +78,7 @@ def create_app(config_name=None):
     # Initialize extensions
     app.logger.info('startup: db.init_app')
     db.init_app(app)
+    _dispose_pool_after_fork(app)
     app.logger.info('startup: migrate.init_app')
     migrate.init_app(app, db)
     app.logger.info('startup: login_manager.init_app')

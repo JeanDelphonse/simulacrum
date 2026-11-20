@@ -225,8 +225,8 @@ def api_concierge_evaluate(venture_id):
     except cs.ConciergeError as exc:
         db.session.rollback()
         return _err(exc, exc.status)
-    c = cs.case_for(v.id)
-    return jsonify({'evaluation_run_id': run.id, 'state': c.state}), 202
+    # No query after the background run has started (see start_evaluation).
+    return jsonify({'evaluation_run_id': run.id, 'state': 'evaluating'}), 202
 
 
 @founder_bp.route('/api/admin/ventures/<venture_id>/status')
