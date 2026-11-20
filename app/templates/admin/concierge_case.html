@@ -50,7 +50,9 @@
         <div class="fa-head"><h2 id="ccEvalH">Evaluation</h2>
           {% if can_evaluate %}<button class="btn primary sm" type="button" id="ccRun">{{ 'Re-run evaluation' if done_run else 'Run evaluation' }}</button>{% endif %}</div>
         {% if failure %}<p class="fa-banner err" id="ccFailure">The last run failed: {{ failure.message }}{% if failure.detail %} <span class="cc-sub2">{{ failure.detail }}</span>{% endif %}</p>{% endif %}
-        {% if case.state == 'evaluating' %}<p class="fa-note" style="margin:0">Running now. This page follows it live.</p>{% endif %}
+        {% if case.state == 'evaluating' %}<p class="fa-note" style="margin:0">Running now{% if running_since %} (started {{ running_since.strftime('%H:%M') }} UTC){% endif %}. This page follows it live. Two documents usually take a few minutes.</p>
+        <p class="fa-note" id="ccStuck" hidden style="margin:.4rem 0 0">Still running after {{ stuck_reset_minutes }} minutes? The server may have restarted and stopped it.
+          <button class="btn sm" type="button" id="ccReset">Stop and reset</button></p>{% endif %}
         <ul class="cc-progress" id="ccProgress" aria-live="polite"></ul>
         <span class="fa-msg" role="status" id="ccRunMsg"></span>
         {% if done_run %}
@@ -275,7 +277,19 @@
       }).catch(function () {});
     }, 10000);
   }
-  if (root.dataset.state === 'evaluating') { line('Evaluation running…'); follow(); }
+  if (root.dataset.state === 'evaluating') {
+    line('Evaluation running…'); follow();
+    var started = {{ (running_since.isoformat() + 'Z')|tojson if running_since else 'null' }};
+    var stuckBox = document.getElementById('ccStuck'), resetBtn = document.getElementById('ccReset');
+    var limit = {{ stuck_reset_minutes|default(10) }} * 60000;
+    function checkStuck() { if (stuckBox && started && (Date.now() - Date.parse(started)) >= limit) stuckBox.hidden = false; }
+    checkStuck(); setInterval(checkStuck, 15000);
+    if (resetBtn) resetBtn.onclick = function () {
+      resetBtn.disabled = true;
+      call('/api/admin/ventures/' + VID + '/evaluate/reset', {}).then(function () { location.reload(); })
+        .catch(function (e) { resetBtn.disabled = false; line((e && e.message) || 'Reset failed.'); });
+    };
+  }
   var run = document.getElementById('ccRun'), rmsg = document.getElementById('ccRunMsg');
   if (run) run.onclick = function () {
     run.disabled = true; say(rmsg, 'Starting…');

@@ -849,6 +849,54 @@ def step6_evaluation(ctx):
     check('values without a verifiable quote are needs_input',
           all(case.prefill[k]['status'] == 'needs_input' for k in ('name', 'one_liner', 'stage', 'team', 'alignment')))
     check('the earlier edit history is kept', ConciergeEdit.query.filter_by(case_id=case.id).count() >= 5)
+
+    # A run whose background thread died leaves the case 'evaluating' forever
+    # unless recover_stuck() moves it back (automatically when the run is dead,
+    # or by an admin's 'Stop and reset' after STUCK_RESET_MINUTES).
+    from datetime import timedelta as _td
+    from app.models.founder import EvaluationRun as _ER
+    venture_obj = db.session.get(FounderVenture, vid)
+
+    def stuck(minutes_ago):
+        r_ = _ER(venture_id=vid, status='running', started_at=datetime.utcnow() - _td(minutes=minutes_ago))
+        db.session.add(r_)
+        cc = cs.case_for(vid)
+        cc.state = 'evaluating'
+        db.session.commit()
+        return r_
+
+    young = stuck(2)
+    html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
+    check('a young run is left alone; the page offers Stop and reset (shown after the limit)',
+          cs.case_for(vid).state == 'evaluating' and 'id="ccReset"' in html and 'Stop and reset' in html)
+    r = c.post('/api/admin/ventures/%s/evaluate/reset' % vid)
+    check('Stop and reset is refused before STUCK_RESET_MINUTES', r.status_code == 409 and
+          cs.case_for(vid).state == 'evaluating', (r.status_code, r.get_json()))
+    young.started_at = datetime.utcnow() - _td(minutes=cs.STUCK_RESET_MINUTES + 1)
+    db.session.commit()
+    r = c.post('/api/admin/ventures/%s/evaluate/reset' % vid)
+    db.session.expire_all()
+    check('after the limit, Stop and reset fails the run and returns the case to documents uploaded',
+          r.status_code == 200 and cs.case_for(vid).state == 'documents_uploaded'
+          and db.session.get(_ER, young.id).status == 'failed', (r.status_code, r.get_json()))
+    dead = stuck(fes.STALE_RUN_MINUTES + 5)
+    c.get('/admin/ventures/%s' % vid)
+    db.session.expire_all()
+    check('a dead run (past the evaluation stale limit) is recovered when the page loads',
+          cs.case_for(vid).state == 'documents_uploaded' and db.session.get(_ER, dead.id).status == 'failed')
+    ghost = stuck(1)
+    ghost.status = 'failed'
+    db.session.commit()
+    d = c.get('/api/admin/ventures/%s/status' % vid).get_json()
+    check('a case left evaluating with no running run (thread died after failing) recovers on the status poll',
+          d['state'] == 'documents_uploaded', d)
+    notes = [(x.extra or {}).get('note', '') for x in AuditLog.query.filter_by(action='concierge_documents_uploaded',
+                                                                              resource_id=vid).all()]
+    check('each recovery is audited', sum('stopped before it finished' in n for n in notes) >= 3, notes)
+    r = c.post('/api/admin/ventures/%s/evaluate' % vid)
+    db.session.expire_all()
+    check('the evaluation can run again after a reset', cs.case_for(vid).state == 'ready_for_review',
+          cs.case_for(vid).state)
     cs.RUN_INLINE = False
     fes.AI_CLIENT = None
 

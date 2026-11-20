@@ -114,7 +114,14 @@ def admin_ventures_new():
 def admin_venture_case(venture_id):
     from app.services import concierge_service as cs
     v, c = _load(venture_id)
-    return render_template('admin/concierge_case.html', **cs.case_view(v, c), **_common())
+    try:
+        if cs.recover_stuck(v, c, current_user):
+            c = cs.case_for(v.id)
+    except cs.ConciergeError:
+        db.session.rollback()
+    since = cs.running_since(v) if c.state == 'evaluating' else None
+    return render_template('admin/concierge_case.html', **cs.case_view(v, c), **_common(),
+                           running_since=since, stuck_reset_minutes=cs.STUCK_RESET_MINUTES)
 
 
 # ── API ──────────────────────────────────────────────────────────────────────
@@ -230,9 +237,33 @@ def api_concierge_status(venture_id):
     v, c = _load_api(venture_id)
     if v is None:
         return _err('Not found.', 404)
+    try:
+        if cs.recover_stuck(v, c, current_user):
+            c = cs.case_for(v.id)
+    except cs.ConciergeError:
+        db.session.rollback()
     run = fes.latest_run(v)
     return jsonify({'state': c.state, 'state_label': cs.STATE_LABELS.get(c.state, c.state),
                     'run': ({'id': run.id, 'status': run.status} if run else None)})
+
+
+@founder_bp.route('/api/admin/ventures/<venture_id>/evaluate/reset', methods=['POST'])
+@concierge_api
+def api_concierge_eval_reset(venture_id):
+    """'Stop and reset' a stuck evaluation (older than STUCK_RESET_MINUTES)."""
+    from app.services import concierge_service as cs
+    v, c = _load_api(venture_id)
+    if v is None:
+        return _err('Not found.', 404)
+    try:
+        done = cs.recover_stuck(v, c, current_user, force=True)
+    except cs.ConciergeError as exc:
+        db.session.rollback()
+        return _err(exc, exc.status)
+    if not done:
+        return _err('No evaluation is running.', 409)
+    return jsonify({'ok': True, 'state': cs.case_for(v.id).state,
+                    'message': 'Evaluation reset. Run it again when you are ready.'})
 
 
 @founder_bp.route('/api/admin/ventures/<venture_id>/stream')

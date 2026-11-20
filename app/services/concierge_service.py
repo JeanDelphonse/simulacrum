@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -456,6 +456,48 @@ def start_evaluation(venture, case, admin):
                     logger.exception('concierge evaluation %s crashed: %s', run.id, exc)
         threading.Thread(target=_work, daemon=True).start()
     return run
+
+
+# A run whose background thread died (the server recycled the app process)
+# never reaches _evaluate_and_finish, so the case would stay 'evaluating'
+# forever and 'Re-run' would be refused. recover_stuck() moves such a case
+# back to documents_uploaded: automatically once the evaluation service treats
+# the run as dead (no result after STALE_RUN_MINUTES), or on an admin's
+# 'Stop and reset' once the run is older than STUCK_RESET_MINUTES.
+STUCK_RESET_MINUTES = 10
+
+
+def running_since(venture):
+    """Start time of the venture's in-flight evaluation run, or None."""
+    from app.models.founder import EvaluationRun
+    r = (EvaluationRun.query.filter_by(venture_id=venture.id, status='running')
+         .order_by(EvaluationRun.started_at.desc()).first())
+    return r.started_at if r is not None else None
+
+
+def recover_stuck(venture, case, actor=None, force: bool = False) -> bool:
+    """True when a stuck 'evaluating' case was moved back to
+    documents_uploaded. force=True is the admin's 'Stop and reset' (refused
+    while the run is younger than STUCK_RESET_MINUTES)."""
+    from app.extensions import db
+    from app.services import founder_evaluation_service as fes
+    if case is None or case.state != 'evaluating':
+        return False
+    run = fes.running_run(venture)          # marks a run older than STALE_RUN_MINUTES failed
+    if run is not None:
+        if not force:
+            return False
+        if run.started_at and run.started_at > datetime.utcnow() - timedelta(minutes=STUCK_RESET_MINUTES):
+            raise ConciergeError('The evaluation started less than %d minutes ago. Give it a little longer.'
+                                 % STUCK_RESET_MINUTES)
+        run.status, run.finished_at = 'failed', datetime.utcnow()
+        fes._log_failure(venture.id, run.id, 'interrupted', 'Stopped and reset by an admin.',
+                         getattr(actor, 'id', None))
+        db.session.commit()
+    transition(case, 'documents_uploaded', actor,
+               note='evaluation stopped before it finished (the server restarted or an admin reset it); run it again')
+    _publish(venture.id, 'concierge_failed', 'The evaluation stopped before it finished. Run it again.')
+    return True
 
 
 def _evaluate_and_finish(run_id: str, case_id: str, admin_id: str) -> None:
