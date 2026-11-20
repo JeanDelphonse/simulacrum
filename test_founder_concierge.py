@@ -868,7 +868,7 @@ def step6_evaluation(ctx):
     young = stuck(2)
     html = c.get('/admin/ventures/%s' % vid).get_data(as_text=True)
     check('a running evaluation shows how many document checks are done',
-          'id="ccCount"' in html and ' document checks done' in html and 'id="ccBar"' in html)
+          'id="ccCount"' in html and ' checks done (' in html and 'readiness areas)' in html and 'id="ccBar"' in html)
     d_ = c.get('/api/admin/ventures/%s/status' % vid).get_json()
     check('the status poll returns the progress count', d_.get('progress') and d_['progress']['total'] > 0
           and 0 <= d_['progress']['done'] <= d_['progress']['total'], d_)

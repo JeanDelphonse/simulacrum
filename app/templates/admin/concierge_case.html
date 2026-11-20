@@ -51,7 +51,7 @@
           {% if can_evaluate %}<button class="btn primary sm" type="button" id="ccRun">{{ 'Re-run evaluation' if done_run else 'Run evaluation' }}</button>{% endif %}</div>
         {% if failure %}<p class="fa-banner err" id="ccFailure">The last run failed: {{ failure.message }}{% if failure.detail %} <span class="cc-sub2">{{ failure.detail }}</span>{% endif %}</p>{% endif %}
         {% if case.state == 'evaluating' %}<p class="fa-note" style="margin:0">Running now{% if running_since %} (started {{ running_since.strftime('%H:%M') }} UTC){% endif %}. This page follows it live. Two documents usually take a few minutes.</p>
-        <p class="cc-progress-count" id="ccCount" aria-live="polite">{% if progress %}{{ progress.done }} of {{ progress.total }} document checks done{% endif %}</p>
+        <p class="cc-progress-count" id="ccCount" aria-live="polite">{% if progress %}{{ progress.done }} of {{ progress.total }} checks done ({{ progress.documents }} document{{ '' if progress.documents == 1 else 's' }} × {{ progress.areas }} readiness areas){% endif %}</p>
         <div class="cc-bar" aria-hidden="true"><span id="ccBar" style="width:{{ ((progress.done * 100 / progress.total) if progress and progress.total else 0)|round|int }}%"></span></div>
         <p class="fa-note" id="ccStuck" hidden style="margin:.4rem 0 0">Still running after {{ stuck_reset_minutes }} minutes? The server may have restarted and stopped it.
           <button class="btn sm" type="button" id="ccReset">Stop and reset</button></p>{% endif %}
@@ -277,7 +277,8 @@
       call('/api/admin/ventures/' + VID + '/status', undefined, 'GET').then(function (d) {
         if (d.progress && d.progress.total) {
           var cnt = document.getElementById('ccCount'), bar = document.getElementById('ccBar');
-          if (cnt) cnt.textContent = d.progress.done + ' of ' + d.progress.total + ' document checks done';
+          if (cnt) cnt.textContent = d.progress.done + ' of ' + d.progress.total + ' checks done (' + d.progress.documents
+            + ' document' + (d.progress.documents === 1 ? '' : 's') + ' × ' + d.progress.areas + ' readiness areas)';
           if (bar) bar.style.width = Math.round(d.progress.done * 100 / d.progress.total) + '%';
         }
         if (d.state !== 'evaluating') { clearInterval(poll); if (es) es.close(); location.reload(); }

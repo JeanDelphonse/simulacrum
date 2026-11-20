@@ -1115,9 +1115,9 @@ def progress(venture) -> dict:
     ids = [a.id for a in arts]
     total = len(ids) * len(DIMENSIONS)
     if not ids:
-        return {'done': 0, 'total': 0}
+        return {'done': 0, 'total': 0, 'documents': 0, 'areas': len(DIMENSIONS)}
     done = (db.session.query(db.func.count(FounderEvalCache.id))
             .filter(FounderEvalCache.artifact_id.in_(ids), FounderEvalCache.dimension.in_(list(DIMENSIONS)))
             .scalar() or 0)
-    return {'done': min(int(done), total), 'total': total}
+    return {'done': min(int(done), total), 'total': total, 'documents': len(ids), 'areas': len(DIMENSIONS)}
 
