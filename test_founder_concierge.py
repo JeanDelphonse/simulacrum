@@ -898,6 +898,15 @@ def step6_evaluation(ctx):
     notes = [(x.extra or {}).get('note', '') for x in AuditLog.query.filter_by(action='concierge_documents_uploaded',
                                                                               resource_id=vid).all()]
     check('each recovery is audited', sum('stopped before it finished' in n for n in notes) >= 3, notes)
+    from cryptography.fernet import Fernet as _F
+    good_key = ctx.app.config['ENCRYPTION_KEY']
+    ctx.app.config['ENCRYPTION_KEY'] = _F.generate_key().decode()
+    r = c.post('/api/admin/ventures/%s/evaluate' % vid)
+    body_ = r.get_json() or {}
+    check('a changed ENCRYPTION_KEY is reported before the run starts, naming the documents',
+          r.status_code == 409 and 'cannot be decrypted' in (body_.get('message') or body_.get('error') or '')
+          and cs.case_for(vid).state == 'documents_uploaded', (r.status_code, body_))
+    ctx.app.config['ENCRYPTION_KEY'] = good_key
     r = c.post('/api/admin/ventures/%s/evaluate' % vid)
     db.session.expire_all()
     check('the evaluation can run again after a reset', cs.case_for(vid).state == 'ready_for_review',

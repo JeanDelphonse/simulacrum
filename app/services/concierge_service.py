@@ -435,6 +435,19 @@ def start_evaluation(venture, case, admin):
         raise ConciergeError('Upload at least one document first.', 400)
     if not fis.encryption_ready():
         raise ConciergeError('ENCRYPTION_KEY is not configured, so the documents cannot be read.', 503)
+    # Decrypt every document now, in the request, so a key problem (the key was
+    # changed or differs between the app and cron environments) is reported
+    # here at once instead of failing inside the background run.
+    unreadable = []
+    for a in fes.current_artifacts(venture):
+        try:
+            fis.artifact_text(a)
+        except fis.EncryptionUnavailable:
+            unreadable.append(fis.KIND_LABELS.get(a.kind, a.kind))
+    if unreadable:
+        raise ConciergeError('These documents cannot be decrypted with the current ENCRYPTION_KEY: %s. The key '
+                             'has probably changed since they were uploaded. Restore the original key, or upload '
+                             'the documents again.' % ', '.join(unreadable), 409)
     if fes.running_run(venture) is not None:
         raise ConciergeError('An evaluation is already running.')
     transition(case, 'evaluating', admin, note='evaluation started')
