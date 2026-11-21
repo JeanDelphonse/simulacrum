@@ -457,6 +457,58 @@ def accept_invite(token: str, user):
     return v
 
 
+
+def pending_invites_for(user, now=None) -> list:
+    """Open co-founder invites for this account's verified email: the
+    "You've been invited" card on the dashboard and /founder. People who sign
+    up through the invite link go through registration, verification and
+    onboarding and never get back to the join page, so the card is where they
+    accept."""
+    from app.extensions import db
+    from app.models.founder import FounderVenture, VentureMember
+    from app.models.user import User
+    if user is None or not getattr(user, 'is_authenticated', False) or not getattr(user, 'email_verified', False):
+        return []
+    email = (getattr(user, 'email', None) or '').strip().lower()
+    if not email:
+        return []
+    now = now or datetime.utcnow()
+    cutoff = now - timedelta(days=invite_days())
+    try:
+        rows = (VentureMember.query.filter(db.func.lower(VentureMember.invite_email) == email,
+                                           VentureMember.status == 'invited',
+                                           VentureMember.invite_token.isnot(None),
+                                           VentureMember.created_at > cutoff)
+                .order_by(VentureMember.created_at.desc()).limit(10).all())
+    except Exception:
+        db.session.rollback()
+        return []
+    out = []
+    for m in rows:
+        v = db.session.get(FounderVenture, m.venture_id)
+        if v is None or m.user_id == user.id:
+            continue
+        owner = db.session.get(User, v.owner_user_id) if v.owner_user_id else None
+        d = m.to_dict()
+        out.append({'member_id': m.id, 'name': v.name,
+                    'inviter': (owner.full_name if owner and owner.full_name else 'A founder'),
+                    'role_label': d.get('team_role_label') or 'Co-founder', 'title': m.title or ''})
+    return out
+
+
+def accept_member_invite(member_id: str, user):
+    """Accept an invite from the card. Same checks as the link (right email,
+    not used, not expired)."""
+    from app.extensions import db
+    from app.models.founder import VentureMember
+    m = db.session.get(VentureMember, member_id) if member_id else None
+    if m is None or not m.invite_token or not email_matches(m, user):
+        raise AlignmentError(INVITE_PROBLEMS['invalid'], 404)
+    if not getattr(user, 'email_verified', False):
+        raise AlignmentError('Verify your email address first, then accept the invite.', 403)
+    return accept_invite(m.invite_token, user)
+
+
 # ---------------------------------------------------------------------------
 # Alignment answers
 # ---------------------------------------------------------------------------

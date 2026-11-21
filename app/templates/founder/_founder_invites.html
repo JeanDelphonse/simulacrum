@@ -1,0 +1,22 @@
+{# Open co-founder invites for the signed-in, verified invited email. People
+   who sign up through the invite link never get back to the join page, so
+   they accept here. Renders nothing when there are none. Included on
+   /founder and on the dashboard. #}
+{% set _fi_pending = founder_invites_pending() if founder_invites_pending is defined else [] %}
+{% if _fi_pending %}
+<section class="fi-pending" id="fiPending" aria-labelledby="fiPendingH"
+         style="border:1px solid var(--rule, #e5e7eb);border-left:4px solid var(--gold, #c9a227);border-radius:12px;background:#fff;padding:1rem 1.1rem;margin:0 0 1.5rem">
+  <h2 id="fiPendingH" style="font-size:1.05rem;margin:0 0 .5rem">You've been invited to join {{ 'a startup team' if _fi_pending|length == 1 else 'startup teams' }}</h2>
+  {% for inv in _fi_pending %}
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem 1rem;align-items:center;padding:.45rem 0;{{ 'border-top:1px solid var(--rule, #e5e7eb);' if not loop.first }}">
+    <div style="min-width:0;overflow-wrap:anywhere">
+      <b>{{ inv.name }}</b><br>
+      <span style="font-size:.88rem;color:var(--mute, #6b7280)">{{ inv.inviter }} invited you as {{ inv.role_label }}{% if inv.title %} · {{ inv.title }}{% endif %}</span>
+    </div>
+    <form method="post" action="{{ url_for('founder.tp_accept_invite_card', member_id=inv.member_id) }}" style="margin:0">
+      <button type="submit" class="btn primary sm btn-primary btn-sm">Accept</button>
+    </form>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}

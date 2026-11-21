@@ -299,6 +299,33 @@ def tp_join_page(token):
                            next_url=url_for('founder.tp_join_page', token=token)), status
 
 
+
+@founder_bp.route('/founder/invites/<member_id>/accept', methods=['POST'])
+def tp_accept_invite_card(member_id):
+    """Accept from the "You've been invited" card (dashboard, /founder)."""
+    from flask import flash
+    from app.services import founder_alignment_service as fas
+    if not current_user.is_authenticated:
+        return redirect('/login?next=/dashboard')
+    try:
+        v = fas.accept_member_invite(member_id, current_user)
+    except fas.AlignmentError as exc:
+        flash(str(exc), 'error')
+        return redirect(request.referrer if (request.referrer or '').startswith(request.host_url) else '/dashboard')
+    return redirect(url_for('founder.tp_alignment_page', venture_id=v.id))
+
+
+@founder_bp.record_once
+def _register_invites(state):
+    def founder_invites_pending():
+        try:
+            from app.services import founder_alignment_service as fas
+            return fas.pending_invites_for(current_user)
+        except Exception:
+            return []
+    state.app.jinja_env.globals['founder_invites_pending'] = founder_invites_pending
+
+
 # ---------------------------------------------------------------------------
 # Proof of concept
 # ---------------------------------------------------------------------------
