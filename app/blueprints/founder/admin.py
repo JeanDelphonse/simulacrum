@@ -73,6 +73,10 @@ EDITABLE = frozenset((
     'fnd_concierge_fee_cents', 'fnd_concierge_active', 'fnd_concierge_currency', 'fnd_concierge_stripe_price_id',
     'fnd_cc_window_days', 'fnd_cc_reminder_days', 'fnd_cc_extend_days', 'fnd_cc_allowed_types',
     'fnd_cc_max_upload_mb', 'fnd_eval_runner', 'fnd_eval_queue_warn_minutes',
+    # Customer email (CUSTOMER_EMAIL_PLAN.md section 5)
+    'fnd_customer_email', 'fnd_customer_from_address', 'fnd_alert_customer_complaint_pct',
+    'fnd_alert_customer_bounce_pct', 'fnd_customer_rate_min_sends', 'fnd_customer_rate_window_days',
+    'fnd_csv_max_rows',
 ))
 
 CSV_COLUMNS = ('name', 'firm', 'kind', 'stages', 'check_min', 'check_max', 'sectors', 'geographies', 'apply_url',

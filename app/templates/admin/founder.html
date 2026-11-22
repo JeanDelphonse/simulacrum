@@ -244,6 +244,30 @@ table.fa-t { width: 100%; border-collapse: collapse; font-size: 14px; }
         <input type="number" id="s-spreq" min="1" max="10000" data-key="fnd_startup_page_request_limit" value="{{ settings.fnd_startup_page_request_limit }}"></div>
       <div class="fa-row"><button class="btn primary sm" type="submit">Save caps</button><span class="fa-msg" role="status"></span></div>
     </form>
+    <form class="fa-card" data-settings-form id="customerEmailSettings">
+      <h2>Customer email</h2>
+      <p class="fa-note" style="margin:0 0 .6rem">When on, the seven customer agents' drafts can be sent through SimiSI in the founder's name
+        (From "Founder via SimiSI", replies to the founder), only to contacts the founders approved for that agent, after approval.
+        When off, customer drafts stay copy-only. The From address must be on a domain authenticated in SendGrid (SPF, DKIM, DMARC).</p>
+      <div class="fa-row"><label for="ce-on">Customer email</label>
+        <select id="ce-on" data-key="fnd_customer_email">
+          <option value="off"{{ ' selected' if settings.fnd_customer_email == 'off' }}>Off: founders copy drafts and send them themselves</option>
+          <option value="on"{{ ' selected' if settings.fnd_customer_email == 'on' }}>On: SimiSI sends after approval</option>
+        </select></div>
+      <div class="fa-row"><label for="ce-from">From address (empty = the site's default sender)</label>
+        <input type="email" id="ce-from" style="width:16rem" data-key="fnd_customer_from_address" value="{{ settings.fnd_customer_from_address }}" placeholder="founders@simisi.io"></div>
+      <div class="fa-row"><label for="ce-cmp">Pause a venture's customer email when complaints pass (%)</label>
+        <input type="number" id="ce-cmp" min="0" max="100" step="0.01" data-key="fnd_alert_customer_complaint_pct" value="{{ settings.fnd_alert_customer_complaint_pct }}"></div>
+      <div class="fa-row"><label for="ce-bnc">... or bounces pass (%)</label>
+        <input type="number" id="ce-bnc" min="0" max="100" step="0.1" data-key="fnd_alert_customer_bounce_pct" value="{{ settings.fnd_alert_customer_bounce_pct }}"></div>
+      <div class="fa-row"><label for="ce-min">Only after this many emails in the window</label>
+        <input type="number" id="ce-min" min="1" max="10000" data-key="fnd_customer_rate_min_sends" value="{{ settings.fnd_customer_rate_min_sends }}"></div>
+      <div class="fa-row"><label for="ce-win">Rate window (days)</label>
+        <input type="number" id="ce-win" min="1" max="365" data-key="fnd_customer_rate_window_days" value="{{ settings.fnd_customer_rate_window_days }}"></div>
+      <div class="fa-row"><label for="ce-csv">Most rows in one contact CSV upload</label>
+        <input type="number" id="ce-csv" min="1" max="5000" data-key="fnd_csv_max_rows" value="{{ settings.fnd_csv_max_rows }}"></div>
+      <div class="fa-row"><button class="btn primary sm" type="submit">Save customer email settings</button><span class="fa-msg" role="status"></span></div>
+    </form>
   </section>
 
   {# ── Targets ── #}

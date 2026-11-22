@@ -1961,6 +1961,16 @@ def sendgrid_event_webhook():
             elif event_type == 'spamreport':
                 log.status = 'complaint'
 
+        # Founder Track customer email (CUSTOMER_EMAIL_PLAN.md): bounces and
+        # complaints feed the venture's do-not-contact list and its pause check.
+        # Rows that aren't venture emails are left alone.
+        if log and event_type in ('bounce', 'dropped', 'spamreport'):
+            try:
+                from app.services import founder_customer_email as _fce
+                _fce.on_email_event(log, event_type, event)
+            except Exception:
+                logger.exception('founder customer email event failed for %s', getattr(log, 'id', '?'))
+
         # Auto-pause a campaign whose bounce or complaint rate is too high (C3).
         if log and log.action_id and event_type in ('bounce', 'dropped', 'spamreport'):
             try:

@@ -187,6 +187,8 @@ TABLE_ACTOR_COLS = {
     ('venture_outreach_action', 'approved_by'),
     ('concierge_case', 'fee_override_by'), ('concierge_case', 'confirmed_by'), ('concierge_case', 'extended_by'),
     ('concierge_case', 'accepted_user_id'), ('concierge_edit', 'by_user_id'), ('concierge_message', 'by_user_id'),
+    ('venture_contact', 'added_by'), ('venture_contact', 'approved_by'), ('venture_email_message', 'approved_by'),
+    ('venture_email_message', 'sender_user_id'), ('venture_suppression', 'added_by'),
 }
 
 deletes, nulls, unknown = {}, [], []

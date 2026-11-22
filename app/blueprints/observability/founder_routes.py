@@ -18,6 +18,7 @@ Control (POST/PUT):
   /api/admin/observability/founder/alerts/evaluate    POST run the evaluator now
   /api/admin/observability/founder/agents/<key>/pause POST {paused: bool}  one agent, every venture
   /api/admin/observability/founder/ventures/<id>/pause POST {paused: bool} every agent, one venture
+  /api/admin/observability/founder/ventures/<id>/customer-email POST {paused: bool} customer email, one venture
   /api/admin/observability/founder/runs/<run_id>/rerun POST re-run a failed run
 
 Platform Admin only, like every other route in this console.
@@ -120,6 +121,20 @@ def founder_venture_pause(venture_id):
     _svc().set_venture_paused(v, _flag_value(data), current_user.id)
     return jsonify({'venture_id': v.id, 'paused': v.paused_at is not None,
                     'paused_at': v.paused_at.isoformat() if v.paused_at else None}), 200
+
+
+@observability_bp.route(_BASE + '/ventures/<venture_id>/customer-email', methods=['POST'])
+@login_required
+@admin_required
+def founder_venture_customer_email(venture_id):
+    """Pause or resume one venture's customer email (CUSTOMER_EMAIL_PLAN.md)."""
+    v, err = _venture_or_404(venture_id)
+    if err:
+        return err
+    from app.services import founder_customer_email
+    data = request.get_json(silent=True) or {}
+    founder_customer_email.set_paused(v, _flag_value(data), current_user.id, str(data.get('reason') or ''))
+    return jsonify({'venture_id': v.id, 'customer_paused': v.customer_paused_at is not None}), 200
 
 
 @observability_bp.route(_BASE + '/agents/<agent_key>/pause', methods=['POST'])

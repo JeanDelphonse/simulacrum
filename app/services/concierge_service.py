@@ -2106,6 +2106,7 @@ def _venture_rows(venture_id: str) -> dict:
                   m.VentureStepEvent, m.VenturePlanStep, m.VentureOutreachAction, m.AgentParamOverride,
                   m.AgentBlueprint, m.ProofResult, m.ProofPlan, m.AlignmentResponse, m.ComplianceProfile,
                   m.InvestorLink, m.InvestorUpdate, m.InvestorTarget, m.IntroPath, m.StartupPage, m.DecisionRight,
+                  m.VentureEmailMessage, m.VentureContactAccess, m.VentureContact, m.VentureSuppression,
                   m.VentureMember):
         gone(model, model.venture_id == venture_id)
     gone(m.FounderVenture, m.FounderVenture.id == venture_id)

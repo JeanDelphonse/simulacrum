@@ -64,6 +64,14 @@ class AgentError(ValueError):
 # Prompt and briefing
 # ---------------------------------------------------------------------------
 
+def _customer_email_on() -> bool:
+    try:
+        from app.services import founder_customer_email
+        return founder_customer_email.enabled()
+    except Exception:
+        return False
+
+
 def _tool(agent: dict) -> dict:
     props = {
         'content': {'type': 'string',
@@ -83,6 +91,16 @@ def _tool(agent: dict) -> dict:
                 'body': {'type': 'string'},
             }, 'required': ['body']}}
         required.append('drafts')
+        if agent.get('external') == 'customer' and _customer_email_on():
+            props['suggested_contacts'] = {
+                'type': 'array', 'maxItems': 10,
+                'description': ('People named WITH an email address in the venture documents or the briefing who '
+                                'fit the target segment. Never invent or guess an address. The founders approve '
+                                'each one before any email.'),
+                'items': {'type': 'object', 'properties': {
+                    'name': {'type': 'string'}, 'email': {'type': 'string'}, 'company': {'type': 'string'},
+                    'role': {'type': 'string'}, 'reason': {'type': 'string'},
+                }, 'required': ['email']}}
     return {'name': 'deliver_output', 'description': 'Return the agent output for the founders.',
             'input_schema': {'type': 'object', 'properties': props, 'required': required}}
 
@@ -107,6 +125,10 @@ def system_prompt(agent: dict, venture, stricter: str = None) -> str:
                   'their own account; you never send.' % agent['external'],
                   '- Drafts say who the founders are and why they are writing, state only facts from the '
                   'briefing and never state financial terms.']
+        if agent.get('external') == 'customer' and _customer_email_on():
+            lines += ['- Write each customer draft so it can go to several people: use [First name] and [Company] '
+                      'where the recipient\'s details belong and sign with [Your name]. The founders approve every '
+                      'recipient before SimiSI sends it in their name.']
     lines += ['- Respect the parameters in force (autonomy, scope, caps, stopping rule, voice, success metric).',
               '', 'Answer by calling deliver_output.']
     if stricter:
@@ -581,6 +603,15 @@ def _do_run(step, venture, agent, user, trigger, inputs, params, obs, run, prior
             db.session.add(a)
             made.append(a)
         db.session.flush()
+        if agent.get('external') == 'customer':
+            try:
+                from app.services import founder_customer_email
+                n_sug = founder_customer_email.suggest_contacts(venture, step.agent_key,
+                                                                payload.get('suggested_contacts'))
+                if n_sug:
+                    notes.append('%d contact%s suggested for your approval' % (n_sug, '' if n_sug == 1 else 's'))
+            except Exception as exc:
+                logger.error('suggested contacts not saved for %s: %s', step.id, exc)
         if dropped:
             notes.append('%d draft%s not kept because the daily limit is reached'
                          % (dropped, '' if dropped == 1 else 's'))

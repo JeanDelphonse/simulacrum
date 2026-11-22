@@ -1129,6 +1129,9 @@ def apply_unsubscribe(token: str):
         for r in InvestorAccess.query.filter(InvestorAccess.startup_page_id == page.id,
                                              func.lower(InvestorAccess.email) == e).all():
             r.opted_in_updates = False
+    if v is not None:
+        from app.services import founder_customer_email
+        founder_customer_email.on_unsubscribe(v, e)
     AuditLog.log('founder_member_unsubscribe', user_id=uid, resource_id=data.get('v'),
                  metadata={'email_hash': h})
     db.session.commit()

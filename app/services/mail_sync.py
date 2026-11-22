@@ -365,12 +365,48 @@ def _addr_list(msg, header: str) -> list:
     return [(n.strip(), a.strip().lower()) for n, a in getaddresses(msg.get_all(header, []) or []) if a and '@' in a]
 
 
+def _msg_date(msg):
+    """The Date header as naive UTC, or None."""
+    try:
+        from datetime import timezone
+        from email.utils import parsedate_to_datetime
+        d = parsedate_to_datetime(msg.get('Date') or '')
+        if d is None:
+            return None
+        if d.tzinfo is not None:
+            d = d.astimezone(timezone.utc).replace(tzinfo=None)
+        return d
+    except Exception:
+        return None
+
+
+def _customer_replies(user_id: str, obs) -> None:
+    """Founder Track customer email: a message from a customer one of the
+    user's ventures emailed marks that contact Replied (the email's Reply-To is
+    the founder, so replies only show up here). No-op while it is off."""
+    inbound = [(o['email'], o.get('date')) for o in (obs or [])
+               if o.get('kind') == 'inbound' and o.get('email')]
+    if not inbound:
+        return
+    from app.extensions import db
+    try:
+        from app.services import founder_customer_email as fce
+        if not fce.enabled():
+            return
+        for addr, when in inbound:
+            fce.record_inbound(user_id, addr, when)
+    except Exception as exc:
+        logger.error('customer reply detection failed for %s: %s', user_id, exc)
+        db.session.rollback()
+
+
 def _inbound_obs(uid, msg) -> dict:
     name, addr = parseaddr(msg.get('From', ''))
     auth = (msg.get('Authentication-Results') or '').lower()
     auto = (msg.get('Auto-Submitted') or '').strip().lower()
     prec = (msg.get('Precedence') or '').strip().lower()
     return {'kind': 'inbound', 'uid': uid, 'name': name.strip(), 'email': (addr or '').strip().lower(),
+            'date': _msg_date(msg),
             'message_id': (msg.get('Message-ID') or '').strip(),
             'recipients': len(_addr_list(msg, 'To')) + len(_addr_list(msg, 'Cc')),
             'list_headers': bool(msg.get('List-Unsubscribe') or msg.get('List-Id')),
@@ -562,6 +598,7 @@ def run_batch(account) -> dict:
         db.session.commit()
         return run.to_dict()
     source = None
+    obs = []
     try:
         source = _source_for(account)
         obs, cursor, initial_done = source.next_batch(account.cursor)
@@ -596,7 +633,9 @@ def run_batch(account) -> dict:
             source.close()
     run.finished_at = datetime.utcnow()
     db.session.commit()
-    return run.to_dict()
+    out = run.to_dict()
+    _customer_replies(account.user_id, obs)
+    return out
 
 
 def _notify_reauth(account) -> None:

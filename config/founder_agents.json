@@ -194,6 +194,11 @@
         "stopping_rule": "Stop when the target number of customers is reached or the founders end the step.",
         "voice": "founder",
         "success_metric": "Pain confirmed in customers' own words by the target number of customers (rung 2)."
+      },
+      "customer_send": {
+        "first": "each",
+        "followup": "campaign",
+        "who": "Approved contacts in the target segment"
       }
     },
     {
@@ -280,6 +285,12 @@
         "stopping_rule": "Stop after the guide, or after one synthesis of the notes supplied.",
         "voice": "founder",
         "success_metric": "Interviews logged and synthesised."
+      },
+      "customer_send": {
+        "first": "campaign",
+        "followup": "campaign",
+        "needs_scheduling_link": true,
+        "who": "Contacts who agreed to talk; invites carry a scheduling link"
       }
     },
     {
@@ -538,6 +549,13 @@
         "stopping_rule": "Stop when the customer agrees the plan or the founders end the step.",
         "voice": "founder",
         "success_metric": "A named customer agrees the written plan (rung 3)."
+      },
+      "customer_send": {
+        "first": "each",
+        "followup": "each",
+        "max_recipients": 1,
+        "marks_poc_customer": true,
+        "who": "One named decision-maker"
       }
     },
     {
@@ -868,6 +886,11 @@
         "stopping_rule": "Stop after one synthesis.",
         "voice": "founder",
         "success_metric": "Feedback logged from the target number of users."
+      },
+      "customer_send": {
+        "first": "campaign",
+        "followup": "campaign",
+        "who": "Interviewees and proof-of-concept customers"
       }
     },
     {
@@ -1044,6 +1067,12 @@
         "stopping_rule": "Stop when the founders approve or discard the draft.",
         "voice": "founder",
         "success_metric": "Customer pays or signs a commitment (rung 5)."
+      },
+      "customer_send": {
+        "first": "each",
+        "followup": "each",
+        "poc_customer_only": true,
+        "who": "The proof-of-concept customer only"
       }
     },
     {
@@ -1281,6 +1310,12 @@
         "stopping_rule": "Stop after the design, or after one read-out of results supplied.",
         "voice": "founder",
         "success_metric": "Pricing decision backed by test data."
+      },
+      "customer_send": {
+        "first": "campaign",
+        "followup": "campaign",
+        "locked_prices": true,
+        "who": "A segment, with price versions the founders lock in advance"
       }
     },
     {
@@ -1373,6 +1408,13 @@
         "stopping_rule": "Stop at the list size or the daily action cap.",
         "voice": "founder",
         "success_metric": "Replies and booked calls from the list."
+      },
+      "customer_send": {
+        "first": "each",
+        "followup": "campaign",
+        "first_contact_max_recipients": 1,
+        "followup_requires_reply": true,
+        "who": "Approved prospects only; first contact one recipient at a time"
       }
     },
     {

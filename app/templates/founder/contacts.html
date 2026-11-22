@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% block title %}Contacts · {{ venture.name }}{% endblock %}
+{% block head %}
+<style>
+  .fc-root{color:var(--ink);padding-top:2.5rem;padding-bottom:3.5rem;max-width:1100px}
+  .fc-eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .4rem}
+  .fc-root h1{font-size:1.7rem;margin:0 0 .4rem;line-height:1.2}
+  .fc-root h2{font-size:1.15rem;margin:0 0 .35rem}
+  .fc-lede{color:var(--ink-2);line-height:1.6;margin:0 0 1.25rem}
+  .fc-sub{color:var(--ink-2);font-size:.92rem;line-height:1.55;margin:0 0 1rem}
+  .fc-card{border:1px solid var(--rule);border-radius:var(--r-ui);background:var(--bg);padding:1.25rem 1.35rem;margin:0 0 1.5rem}
+  .fc-note{border:1px solid var(--rule);border-left:4px solid var(--gold);border-radius:var(--r-ui);background:var(--alt);
+           padding:.85rem 1rem;margin:0 0 1.5rem;line-height:1.55}
+  .fc-note.warn{border-left-color:#B45309;background:#FFFBEB}
+  .fc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.6rem;align-items:end}
+  .fc-field label{display:block;font-weight:600;font-size:.88rem;margin:0 0 .3rem}
+  .fc-field input,.fc-field select,.fc-field textarea{width:100%;box-sizing:border-box}
+  .fc-agents{display:flex;flex-wrap:wrap;gap:.35rem .9rem;margin:.6rem 0}
+  .fc-agents label{font-size:.88rem;display:inline-flex;gap:.3rem;align-items:center}
+  .fc-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .fc-table{width:100%;border-collapse:collapse;font-size:.9rem}
+  .fc-table th,.fc-table td{text-align:left;padding:.5rem .45rem;border-top:1px solid var(--rule);vertical-align:top}
+  .fc-table th{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);border-top:0}
+  .fc-table td.ag{text-align:center}
+  .fc-table th.ag{writing-mode:vertical-rl;transform:rotate(180deg);text-transform:none;letter-spacing:0;font-weight:600;
+                  color:var(--ink-2);padding:.4rem .2rem;max-height:9rem;white-space:nowrap}
+  .fc-pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:12.5px;font-weight:600;
+           background:var(--alt);color:var(--ink-2);white-space:nowrap}
+  .fc-pill.proposed{background:#FEF3C7;color:#78350F}
+  .fc-pill.approved{background:#E0F2FE;color:#0C4A6E}
+  .fc-pill.contacted{background:#EDE9FE;color:#4C1D95}
+  .fc-pill.replied{background:#DCFCE7;color:#14532D}
+  .fc-pill.opted_out,.fc-pill.bounced,.fc-pill.failed,.fc-pill.complained{background:#FEE2E2;color:#7F1D1D}
+  .fc-pill.sent{background:#DCFCE7;color:#14532D}
+  .fc-pill.scheduled{background:#E0F2FE;color:#0C4A6E}
+  .fc-acts{display:flex;flex-wrap:wrap;gap:.3rem}
+  .fc-muted{color:var(--mute);font-size:.85rem}
+  .fc-msg{min-height:1.4em;margin:.4rem 0 1rem;font-weight:600}
+  .fc-msg.err{color:#B91C1C}
+  .fc-list{list-style:none;margin:0;padding:0}
+  .fc-list li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.5rem;padding:.55rem 0;border-top:1px solid var(--rule)}
+  .fc-list li:first-child{border-top:0}
+  #fcMailbox{max-height:18rem;overflow:auto;margin:.6rem 0}
+</style>
+{% endblock %}
+{% block content %}
+<div class="wrap fc-root" id="fc-root" data-venture="{{ venture.id }}">
+  <p class="fc-eyebrow">Founder Track · {{ venture.name }}</p>
+  <h1>Contacts</h1>
+  <p class="fc-lede">One contact book for your venture, shared by every co-founder. Agents can email only the approved contacts you tick for them,
+    and SimiSI sends each email in your name after you approve it. Replies come straight to you.</p>
+  {% include 'founder/_ws_nav.html' %}
+
+  {% if not book.enabled %}
+  <div class="fc-note">Sending through SimiSI is not switched on yet. You can build your contact book now; customer drafts stay copy-only until it is.</div>
+  {% endif %}
+  {% if book.paused %}
+  <div class="fc-note warn" role="alert"><b>Customer email is paused for this venture.</b> {{ book.paused_reason }}.
+    SimiSI support can resume it once the cause is fixed.</div>
+  {% endif %}
+  {% if book.enabled and not book.postal_set %}
+  <div class="fc-note warn">Every customer email carries your mailing address. Add it in <a href="/settings/notifications#sending">Settings → Notification</a>
+    (the venture owner's) before sending.</div>
+  {% endif %}
+  <p class="fc-msg" id="fc-msg" role="status" aria-live="polite"></p>
+
+  {% if book.drafts %}
+  <section class="fc-card" aria-labelledby="fc-drafts-h">
+    <h2 id="fc-drafts-h">Customer drafts</h2>
+    <p class="fc-sub">Open a draft to pick recipients, preview each email and approve it.</p>
+    <ul class="fc-list">
+      {% for d in book.drafts %}
+      <li><span><b>{{ d.subject or 'Untitled draft' }}</b> <span class="fc-muted">· {{ d.agent_label }} · {{ d.status.replace('_', ' ') }}</span></span>
+        <a class="btn sm primary" href="{{ url_for('founder.ce_send_page', venture_id=venture.id, action_id=d.id) }}">Open and send</a></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="fc-card" aria-labelledby="fc-add-h">
+    <h2 id="fc-add-h">Add a contact</h2>
+    <form id="fcAdd" class="fc-grid" novalidate>
+      <div class="fc-field"><label for="fa-email">Email</label><input id="fa-email" name="email" type="email" required autocomplete="off"></div>
+      <div class="fc-field"><label for="fa-name">Name</label><input id="fa-name" name="name" type="text" autocomplete="off"></div>
+      <div class="fc-field"><label for="fa-co">Company</label><input id="fa-co" name="company" type="text" autocomplete="off"></div>
+      <div class="fc-field"><label for="fa-role">Role</label><input id="fa-role" name="role" type="text" autocomplete="off"></div>
+      <div class="fc-field"><label for="fa-seg">Segment</label><input id="fa-seg" name="segment" type="text" autocomplete="off"></div>
+      <div><button class="btn primary sm" type="submit">Add</button></div>
+      <fieldset class="fc-agents" style="grid-column:1/-1;border:0;padding:0;margin:0">
+        <legend class="fc-muted" style="padding:0;margin-bottom:.3rem">Agents that may email them</legend>
+        {% for k, label in book.agents %}<label><input type="checkbox" name="agents" value="{{ k }}"> {{ label }}</label>{% endfor %}
+      </fieldset>
+    </form>
+  </section>
+
+  <section class="fc-card" aria-labelledby="fc-imp-h">
+    <h2 id="fc-imp-h">Import</h2>
+    <p class="fc-sub">A CSV with an <b>email</b> column (name, company, role and segment columns are optional), up to {{ book.csv_max }} rows.
+      Purchased or rented lists are not accepted: they hurt delivery for you and every other founder on SimiSI.</p>
+    <form id="fcCsv" enctype="multipart/form-data">
+      <div class="fc-field" style="max-width:24rem"><label for="fi-file">CSV file</label><input id="fi-file" name="file" type="file" accept=".csv,text/csv" required></div>
+      <fieldset class="fc-agents" style="border:0;padding:0">
+        <legend class="fc-muted" style="padding:0;margin-bottom:.3rem">Agents that may email everyone in the file (optional)</legend>
+        {% for k, label in book.agents %}<label><input type="checkbox" name="agents" value="{{ k }}"> {{ label }}</label>{% endfor %}
+      </fieldset>
+      <label style="display:flex;gap:.4rem;align-items:flex-start;margin:.4rem 0 .8rem"><input type="checkbox" name="own_list" value="1" required>
+        <span>These are people I know or who asked to hear from me. This is not a purchased or rented list.</span></label>
+      <button class="btn sm primary" type="submit">Upload</button>
+    </form>
+    <hr style="border:0;border-top:1px solid var(--rule);margin:1.2rem 0">
+    <p class="fc-sub" style="margin-bottom:.5rem">Or add people your connected mailbox already found (<a href="/contacts">Email-to-CRM</a>).</p>
+    <button class="btn sm btn-ghost" type="button" id="fcMailboxLoad">Show mailbox contacts</button>
+    <div id="fcMailbox" hidden></div>
+  </section>
+
+  <section class="fc-card" aria-labelledby="fc-book-h">
+    <h2 id="fc-book-h">Contact book ({{ book.contacts|length }})</h2>
+    <p class="fc-sub">Tick which agents may email each approved contact. Contacts an agent suggests stay <b>Proposed</b> until a founder approves them.
+      {% for st, label in book.state_labels.items() %}{% if book.counts[st] %}<span class="fc-pill {{ st }}" style="margin-left:.3rem">{{ label }} {{ book.counts[st] }}</span>{% endif %}{% endfor %}</p>
+    {% if book.contacts %}
+    <div class="fc-tablewrap">
+    <table class="fc-table">
+      <thead><tr><th scope="col">Contact</th><th scope="col">Status</th>
+        {% for k, label in book.agents %}<th scope="col" class="ag" title="{{ book.rules[k].who }}">{{ label }}</th>{% endfor %}
+        <th scope="col">Actions</th></tr></thead>
+      <tbody>
+      {% for c in book.contacts %}
+      <tr id="c-{{ c.id }}">
+        <td><b>{{ c.name or c.email }}</b>{% if c.poc_customer %} <span class="fc-pill replied" title="Proof-of-concept customer">PoC</span>{% endif %}<br>
+          <span class="fc-muted">{{ c.email }}{% if c.company %} · {{ c.company }}{% endif %}{% if c.role %} · {{ c.role }}{% endif %}{% if c.segment %} · {{ c.segment }}{% endif %}</span>
+          {% if c.state == 'proposed' and c.agent_label %}<br><span class="fc-muted">Suggested by {{ c.agent_label }}{% if c.note %}: {{ c.note }}{% endif %}</span>{% endif %}</td>
+        <td><span class="fc-pill {{ c.state }}">{{ c.state_label }}</span></td>
+        {% for k, label in book.agents %}
+        <td class="ag"><input type="checkbox" aria-label="{{ label }} may email {{ c.email }}" data-access="{{ c.id }}" data-agent="{{ k }}"
+             {{ 'checked' if k in c.access }} {{ 'disabled' if c.state not in ('approved', 'contacted', 'replied') }}></td>
+        {% endfor %}
+        <td><div class="fc-acts">
+          {% if c.state == 'proposed' %}
+          <button class="btn sm primary" type="button" data-cact="approve" data-c="{{ c.id }}">Approve</button>
+          <button class="btn sm btn-ghost" type="button" data-cact="reject" data-c="{{ c.id }}">Reject</button>
+          {% else %}
+          {% if c.state == 'contacted' %}<button class="btn sm btn-ghost" type="button" data-cact="replied" data-c="{{ c.id }}">Mark replied</button>{% endif %}
+          {% if c.state in ('approved', 'contacted', 'replied') %}
+          <button class="btn sm btn-ghost" type="button" data-poc="{{ c.id }}" data-on="{{ '0' if c.poc_customer else '1' }}">{{ 'Not PoC customer' if c.poc_customer else 'PoC customer' }}</button>
+          <button class="btn sm btn-ghost" type="button" data-cact="suppress" data-c="{{ c.id }}" data-confirm="No agent will email {{ c.email }} again. Continue?">Do not contact</button>
+          {% endif %}
+          <button class="btn sm btn-ghost" type="button" data-cact="remove" data-c="{{ c.id }}" data-confirm="Remove {{ c.email }} from the contact book?">Remove</button>
+          {% endif %}
+        </div></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="fc-muted">No contacts yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="fc-card" aria-labelledby="fc-out-h">
+    <h2 id="fc-out-h">Sent and scheduled</h2>
+    {% if book.outbox %}
+    <div class="fc-tablewrap">
+    <table class="fc-table">
+      <thead><tr><th scope="col">To</th><th scope="col">Subject</th><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">When</th><th scope="col"></th></tr></thead>
+      <tbody>
+      {% for m in book.outbox %}
+      <tr><td>{{ m.to_email }}</td><td>{{ m.subject }}</td><td>{{ m.agent_label }}<br><span class="fc-muted">{{ 'Follow-up' if m.kind == 'followup' else 'First contact' }} · {{ 'approved individually' if m.approval_mode == 'each' else 'campaign' }}</span></td>
+        <td><span class="fc-pill {{ m.status }}">{{ m.status }}</span>{% if m.replied_at %} <span class="fc-pill replied">replied</span>{% endif %}
+          {% if m.reason %}<br><span class="fc-muted">{{ m.reason }}</span>{% endif %}</td>
+        <td class="fc-muted"><time data-utc="{{ m.sent_at or m.scheduled_for or m.created_at }}">{{ (m.sent_at or m.scheduled_for or m.created_at or '')[:16].replace('T', ' ') }} UTC</time></td>
+        <td>{% if m.status == 'scheduled' %}<button class="btn sm btn-ghost" type="button" data-cancel="{{ m.id }}">Cancel</button>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="fc-muted">Nothing sent yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="fc-card" aria-labelledby="fc-dnc-h">
+    <h2 id="fc-dnc-h">Do-not-contact list ({{ book.dnc|length }})</h2>
+    <p class="fc-sub">Opt-outs, bounces and spam complaints are added automatically. No agent emails anyone on this list.</p>
+    {% if book.dnc %}
+    <ul class="fc-list">{% for s in book.dnc %}<li><span>{{ s.email }}</span><span class="fc-muted">{{ {'opt_out': 'Unsubscribed', 'bounce': 'Bounced', 'complaint': 'Spam complaint', 'manual': 'Added by a founder'}.get(s.reason, s.reason) }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="fc-muted">Empty.</p>{% endif %}
+  </section>
+</div>
+<script>
+(function () {
+  'use strict';
+  var root = document.getElementById('fc-root');
+  var vid = root.getAttribute('data-venture');
+  var msg = document.getElementById('fc-msg');
+  var base = '/api/founder/v/' + vid + '/contacts';
+  function say(t, err) { msg.textContent = t || ''; msg.className = 'fc-msg' + (err ? ' err' : ''); }
+  function post(url, body, isForm) {
+    return fetch(url, {method: 'POST', credentials: 'same-origin',
+      headers: isForm ? {} : {'Content-Type': 'application/json'},
+      body: isForm ? body : JSON.stringify(body || {})})
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return {ok: r.ok, d: d}; }); });
+  }
+  function after(res, reload) {
+    if (res.ok) { say(res.d.message || 'Saved.'); if (reload) setTimeout(function () { window.location.reload(); }, 500); }
+    else say(res.d.error || 'That did not work. Try again.', true);
+    return res;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('time[data-utc]'), function (t) {
+    var v = t.getAttribute('data-utc'); if (!v) return;
+    var d = new Date(v + (/[zZ]|[+-]\d\d:?\d\d$/.test(v) ? '' : 'Z'));
+    if (!isNaN(d)) t.textContent = d.toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'});
+  });
+
+  document.getElementById('fcAdd').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, body = {agents: []};
+    ['email', 'name', 'company', 'role', 'segment'].forEach(function (k) { body[k] = f.elements[k].value.trim(); });
+    Array.prototype.forEach.call(f.querySelectorAll('input[name=agents]:checked'), function (c) { body.agents.push(c.value); });
+    if (!body.email) { say('Enter an email address.', true); f.elements.email.focus(); return; }
+    post(base, body).then(function (r) { after(r, true); });
+  });
+
+  document.getElementById('fcCsv').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target;
+    if (!f.elements.own_list.checked) { say('Confirm the list is yours first.', true); return; }
+    if (!f.elements.file.files.length) { say('Choose a CSV file.', true); return; }
+    say('Uploading…');
+    post(base + '/import', new FormData(f), true).then(function (r) {
+      after(r, r.ok);
+      if (r.ok && r.d.skipped && r.d.skipped.length) {
+        say(r.d.message + ' First skipped: ' + r.d.skipped.slice(0, 3).map(function (s) { return 'row ' + s.row + ': ' + s.reason; }).join(' · '));
+      }
+    });
+  });
+
+  var mb = document.getElementById('fcMailbox');
+  document.getElementById('fcMailboxLoad').addEventListener('click', function () {
+    fetch(base + '/mailbox', {credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
+      mb.hidden = false;
+      if (!d.candidates || !d.candidates.length) { mb.innerHTML = '<p class="fc-muted">No mailbox contacts to add. Connect a mailbox in Email-to-CRM first.</p>'; return; }
+      var esc = function (s) { var x = document.createElement('span'); x.textContent = s || ''; return x.innerHTML; };
+      mb.innerHTML = '<form id="fcMbForm">' + d.candidates.map(function (c) {
+        return '<label style="display:flex;gap:.4rem;padding:.25rem 0"><input type="checkbox" name="ids" value="' + esc(c.id) + '"> <span><b>' +
+          esc(c.name || c.email) + '</b> <span class="fc-muted">' + esc(c.email) + (c.company ? ' · ' + esc(c.company) : '') + '</span></span></label>';
+      }).join('') + '<button class="btn sm primary" type="submit" style="margin-top:.5rem">Add selected</button></form>';
+      document.getElementById('fcMbForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var ids = Array.prototype.map.call(e.target.querySelectorAll('input:checked'), function (c) { return c.value; });
+        if (!ids.length) { say('Pick at least one.', true); return; }
+        post(base + '/mailbox', {ids: ids}).then(function (r) { after(r, true); });
+      });
+    });
+  });
+
+  root.addEventListener('change', function (e) {
+    var cb = e.target.closest('[data-access]');
+    if (!cb) return;
+    post(base + '/' + cb.getAttribute('data-access') + '/access', {agent: cb.getAttribute('data-agent'), allowed: cb.checked})
+      .then(function (r) { if (!r.ok) cb.checked = !cb.checked; after(r, false); });
+  });
+
+  root.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cact],[data-poc],[data-cancel]');
+    if (!b) return;
+    if (b.getAttribute('data-confirm') && !window.confirm(b.getAttribute('data-confirm'))) return;
+    b.disabled = true;
+    var p;
+    if (b.hasAttribute('data-cancel')) {
+      p = post('/api/founder/v/' + vid + '/messages/' + b.getAttribute('data-cancel') + '/cancel');
+    } else if (b.hasAttribute('data-poc')) {
+      p = post(base + '/' + b.getAttribute('data-poc'), {poc_customer: b.getAttribute('data-on') === '1'});
+    } else {
+      p = post(base + '/' + b.getAttribute('data-c') + '/' + b.getAttribute('data-cact'));
+    }
+    p.then(function (r) { b.disabled = false; after(r, r.ok); }, function () { b.disabled = false; say('Network error. Try again.', true); });
+  });
+})();
+</script>
+{% endblock %}

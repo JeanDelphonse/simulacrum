@@ -4,7 +4,10 @@
 {% if ns.n %}
 <section class="fw-card" aria-labelledby="fw-drafts-h">
   <h2 id="fw-drafts-h">Waiting for approval ({{ ns.n }})</h2>
-  <p class="fw-sub">Agents draft; they never send. Approve a draft, then send it yourself from your own account.</p>
+  {% set sn = namespace(send=false) %}
+  {% for L in plan.lanes %}{% for s in L.steps %}{% for a in s.drafts %}{% if a.send_url %}{% set sn.send = true %}{% endif %}{% endfor %}{% endfor %}{% endfor %}
+  <p class="fw-sub">Agents draft; they never send. Approve a draft, then send it yourself from your own account.{% if sn.send %}
+    Customer drafts can also go out through SimiSI in your name: choose "Send through SimiSI", pick recipients and approve them.{% endif %}</p>
   {% for L in plan.lanes %}{% for s in L.steps %}{% for a in s.drafts %}
   <article class="fw-draft" id="draft-{{ a.id }}">
     <div class="fw-actions" style="justify-content:space-between">
@@ -15,11 +18,12 @@
     <div class="fw-md fw-draft-body">{{ a.body|founder_md }}</div>
     {% if a.approver_user_id == me %}
     <div class="fw-actions">
-      <button type="button" class="btn primary sm" data-act="approve" data-action="{{ a.id }}">Approve draft</button>
+      {% if a.send_url %}<a class="btn primary sm" href="{{ a.send_url }}">Send through SimiSI</a>{% endif %}
+      <button type="button" class="btn {{ 'sm btn-ghost' if a.send_url else 'primary sm' }}" data-act="approve" data-action="{{ a.id }}">{{ 'Approve and copy' if a.send_url else 'Approve draft' }}</button>
       <button type="button" class="btn sm btn-ghost" data-act="reject" data-action="{{ a.id }}">Decline</button>
     </div>
     {% else %}
-    <p class="fw-note">{{ a.approver }} has the final say on this and approves it.</p>
+    <p class="fw-note">{{ a.approver }} has the final say on this and approves it.{% if a.send_url %} <a href="{{ a.send_url }}">View</a>{% endif %}</p>
     {% endif %}
   </article>
   {% endfor %}{% endfor %}{% endfor %}

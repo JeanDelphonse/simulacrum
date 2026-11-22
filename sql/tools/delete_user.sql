@@ -1,5 +1,5 @@
 -- delete_user.sql — permanently delete ONE user and everything that is theirs.
--- Generated from the models (all 194 tables reviewed). MySQL 5.7+/MariaDB.
+-- Generated from the models (all 198 tables reviewed). MySQL 5.7+/MariaDB.
 --
 -- BEFORE RUNNING
 --   1. Back up the database (cPanel > Backup, or mysqldump). This cannot be undone.
@@ -188,10 +188,14 @@ INSERT INTO zz_del_preview SELECT 'referral_partners', COUNT(*) FROM referral_pa
 INSERT INTO zz_del_preview SELECT 'profile_inquiries', COUNT(*) FROM profile_inquiries WHERE profile_user_id = @uid;
 INSERT INTO zz_del_preview SELECT 'blog_reports', COUNT(*) FROM blog_reports WHERE reporter_user_id = @uid OR target_id IN (SELECT id FROM zz_del_comments) OR target_id IN (SELECT id FROM zz_del_posts);
 INSERT INTO zz_del_preview SELECT 'blog_posts', COUNT(*) FROM blog_posts WHERE author_user_id = @uid;
+INSERT INTO zz_del_preview SELECT 'venture_suppression', COUNT(*) FROM venture_suppression WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'venture_step_event', COUNT(*) FROM venture_step_event WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'venture_plan_step', COUNT(*) FROM venture_plan_step WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'venture_outreach_action', COUNT(*) FROM venture_outreach_action WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'venture_member', COUNT(*) FROM venture_member WHERE user_id = @uid OR user_id IS NULL AND LOWER(invite_email) = LOWER((SELECT email FROM users WHERE id = @uid)) OR venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'venture_email_message', COUNT(*) FROM venture_email_message WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'venture_contact_access', COUNT(*) FROM venture_contact_access WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+INSERT INTO zz_del_preview SELECT 'venture_contact', COUNT(*) FROM venture_contact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'venture_artifact', COUNT(*) FROM venture_artifact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'venture_agent_output', COUNT(*) FROM venture_agent_output WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 INSERT INTO zz_del_preview SELECT 'user_integrations', COUNT(*) FROM user_integrations WHERE user_id = @uid;
@@ -390,12 +394,16 @@ DELETE FROM blog_reports WHERE reporter_user_id = @uid
     OR target_id IN (SELECT id FROM zz_del_comments)
     OR target_id IN (SELECT id FROM zz_del_posts);
 DELETE FROM blog_posts WHERE author_user_id = @uid;
+DELETE FROM venture_suppression WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM venture_step_event WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM venture_plan_step WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM venture_outreach_action WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM venture_member WHERE user_id = @uid
     OR user_id IS NULL AND LOWER(invite_email) = LOWER((SELECT email FROM users WHERE id = @uid))
     OR venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM venture_email_message WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM venture_contact_access WHERE venture_id IN (SELECT id FROM zz_del_ventures);
+DELETE FROM venture_contact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM venture_artifact WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM venture_agent_output WHERE venture_id IN (SELECT id FROM zz_del_ventures);
 DELETE FROM user_integrations WHERE user_id = @uid;
@@ -610,8 +618,14 @@ UPDATE transition_cohorts SET created_by = NULL WHERE created_by = @uid;
 UPDATE user_discounts SET granted_by = NULL WHERE granted_by = @uid;
 UPDATE user_feature_overrides SET set_by = NULL WHERE set_by = @uid;
 UPDATE venture_artifact SET uploaded_by = NULL WHERE uploaded_by = @uid;
+UPDATE venture_contact SET added_by = NULL WHERE added_by = @uid;
+UPDATE venture_contact SET approved_by = NULL WHERE approved_by = @uid;
+UPDATE venture_contact_access SET granted_by = NULL WHERE granted_by = @uid;
+UPDATE venture_email_message SET approved_by = NULL WHERE approved_by = @uid;
+UPDATE venture_email_message SET sender_user_id = NULL WHERE sender_user_id = @uid;
 UPDATE venture_outreach_action SET approved_by = NULL WHERE approved_by = @uid;
 UPDATE venture_step_event SET actor_user_id = NULL WHERE actor_user_id = @uid;
+UPDATE venture_suppression SET added_by = NULL WHERE added_by = @uid;
 UPDATE bundle_type_configs SET updated_by = NULL WHERE updated_by = @uid;
 UPDATE corporate_accounts SET admin_user_id = NULL WHERE admin_user_id = @uid;
 UPDATE platform_settings SET updated_by = NULL WHERE updated_by = @uid;

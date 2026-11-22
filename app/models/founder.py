@@ -11,7 +11,7 @@ Every primary key is a CHAR(9) uppercase id from generate_pk(). Column names
 avoid session_id / run_id / step_id (sql/tools/gen_delete_user.py maps those to
 other tables): plan steps are plan_step_id and observability runs obs_run_id.
 
-Migrations: sql/069_founder_core.sql ... sql/074_founder_investor.sql, ... sql/079_founder_concierge.sql.
+Migrations: sql/069_founder_core.sql ... sql/074_founder_investor.sql, ... sql/080_founder_customer_email.sql.
 """
 from __future__ import annotations
 
@@ -57,6 +57,8 @@ class FounderVenture(db.Model):
     paused_at = db.Column(db.DateTime, nullable=True)
     support_access_until = db.Column(db.DateTime, nullable=True)
     checkin_cadence_days = db.Column(db.Integer, nullable=True)
+    customer_paused_at = db.Column(db.DateTime, nullable=True)       # sql/080: customer email paused
+    customer_paused_reason = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -700,6 +702,7 @@ class VentureOutreachAction(db.Model):
     target_ref = db.Column(db.String(200), nullable=True)
     subject = db.Column(db.String(300), nullable=True)
     body = db.Column(db.Text, nullable=True)
+    send_meta = db.Column(db.JSON, nullable=True)     # sql/080: customer send settings (locked prices, scheduling link)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def to_dict(self):
@@ -816,4 +819,122 @@ class ConciergeMessage(db.Model):
     direction = db.Column(db.String(10), nullable=False)
     body = db.Column(db.Text, nullable=False)
     by_user_id = db.Column(db.String(9), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# 080 founder_customer_email (CUSTOMER_EMAIL_PLAN.md section 3)
+# The PRD's contact / contact_agent_access / email_message / suppression,
+# venture-prefixed because contacts and email_suppressions already exist.
+# ---------------------------------------------------------------------------
+
+class VentureContact(db.Model):
+    """One person in a venture's contact book, shared by its co-founders."""
+    __tablename__ = 'venture_contact'
+    __table_args__ = (db.UniqueConstraint('venture_id', 'email', name='uq_venture_contact_email'),
+                      db.Index('ix_venture_contact_state', 'venture_id', 'state'))
+
+    STATES = ('proposed', 'approved', 'contacted', 'replied', 'opted_out', 'bounced')
+    SOURCES = ('manual', 'csv', 'gmail', 'imap', 'agent')
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_pk)
+    venture_id = db.Column(db.String(9), nullable=False)
+    email = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(200), nullable=True)
+    company = db.Column(db.String(200), nullable=True)
+    role = db.Column(db.String(120), nullable=True)
+    segment = db.Column(db.String(120), nullable=True)
+    note = db.Column(db.String(500), nullable=True)
+    source = db.Column(db.String(10), nullable=False, default='manual')
+    state = db.Column(db.String(10), nullable=False, default='approved')
+    proposed_by_agent = db.Column(db.String(60), nullable=True)
+    poc_customer = db.Column(db.Boolean, nullable=False, default=False)
+    added_by = db.Column(db.String(9), nullable=True)
+    approved_by = db.Column(db.String(9), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    contacted_at = db.Column(db.DateTime, nullable=True)
+    replied_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def first_name(self) -> str:
+        return ((self.name or '').split() or [''])[0]
+
+    def to_dict(self):
+        return {'id': self.id, 'email': self.email, 'name': self.name, 'company': self.company, 'role': self.role,
+                'segment': self.segment, 'note': self.note, 'source': self.source, 'state': self.state,
+                'proposed_by_agent': self.proposed_by_agent, 'poc_customer': bool(self.poc_customer),
+                'contacted_at': _iso(self.contacted_at), 'replied_at': _iso(self.replied_at),
+                'created_at': _iso(self.created_at)}
+
+
+class VentureContactAccess(db.Model):
+    """Which approved contacts each customer agent may email."""
+    __tablename__ = 'venture_contact_access'
+    __table_args__ = (db.UniqueConstraint('venture_contact_id', 'agent_key', name='uq_venture_contact_access'),
+                      db.Index('ix_venture_contact_access_venture', 'venture_id', 'agent_key'))
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_pk)
+    venture_id = db.Column(db.String(9), nullable=False)
+    venture_contact_id = db.Column(db.String(9), nullable=False)
+    agent_key = db.Column(db.String(60), nullable=False)
+    granted_by = db.Column(db.String(9), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
+class VentureEmailMessage(db.Model):
+    """One customer email to one recipient: content as sent and its delivery
+    status. The approval itself is the venture_outreach_action it points to."""
+    __tablename__ = 'venture_email_message'
+    __table_args__ = (db.Index('ix_venture_email_message_venture', 'venture_id', 'status'),
+                      db.Index('ix_venture_email_message_action', 'outreach_action_id'),
+                      db.Index('ix_venture_email_message_log', 'email_log_id'))
+
+    STATUSES = ('scheduled', 'sending', 'sent', 'skipped', 'failed', 'bounced', 'complained', 'cancelled')
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_pk)
+    venture_id = db.Column(db.String(9), nullable=False)
+    outreach_action_id = db.Column(db.String(9), nullable=False)
+    venture_contact_id = db.Column(db.String(9), nullable=False)
+    plan_step_id = db.Column(db.String(9), nullable=True)
+    agent_key = db.Column(db.String(60), nullable=True)
+    to_email = db.Column(db.String(255), nullable=False)
+    subject = db.Column(db.String(300), nullable=True)
+    body = db.Column(db.Text, nullable=True)
+    kind = db.Column(db.String(10), nullable=False, default='first')          # first | followup
+    approval_mode = db.Column(db.String(10), nullable=False, default='each')  # each | campaign
+    approved_level = db.Column(db.Integer, nullable=True)
+    approved_by = db.Column(db.String(9), nullable=True)
+    sender_user_id = db.Column(db.String(9), nullable=True)
+    status = db.Column(db.String(10), nullable=False, default='scheduled')
+    reason = db.Column(db.String(300), nullable=True)
+    scheduled_for = db.Column(db.DateTime, nullable=True)
+    sent_at = db.Column(db.DateTime, nullable=True)
+    email_log_id = db.Column(db.String(9), nullable=True)
+    replied_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {'id': self.id, 'outreach_action_id': self.outreach_action_id,
+                'venture_contact_id': self.venture_contact_id, 'agent_key': self.agent_key,
+                'to_email': self.to_email, 'subject': self.subject, 'kind': self.kind,
+                'approval_mode': self.approval_mode, 'status': self.status, 'reason': self.reason,
+                'scheduled_for': _iso(self.scheduled_for), 'sent_at': _iso(self.sent_at),
+                'replied_at': _iso(self.replied_at), 'created_at': _iso(self.created_at)}
+
+
+class VentureSuppression(db.Model):
+    """The venture's do-not-contact list. Blocks every agent in the venture."""
+    __tablename__ = 'venture_suppression'
+    __table_args__ = (db.UniqueConstraint('venture_id', 'email', name='uq_venture_suppression_email'),)
+
+    REASONS = ('opt_out', 'bounce', 'complaint', 'manual')
+
+    id = db.Column(db.String(9), primary_key=True, default=generate_pk)
+    venture_id = db.Column(db.String(9), nullable=False)
+    email = db.Column(db.String(255), nullable=False)
+    reason = db.Column(db.String(10), nullable=False, default='manual')
+    detail = db.Column(db.String(300), nullable=True)
+    added_by = db.Column(db.String(9), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)

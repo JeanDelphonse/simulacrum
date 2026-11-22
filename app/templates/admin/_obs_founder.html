@@ -105,6 +105,12 @@
       <p class="hint">Mailbox and form-submission connectors arrive with investor connection. Until then this lists the tool calls founder runs made and how many failed.</p>
       <div class="ob-summary" id="foConnStats"></div>
       <div class="fo-scroll" id="foConn"><div class="empty">Loading…</div></div></div>
+    <div class="ob-card"><h2>Customer email</h2>
+      <p class="hint">Emails the customer agents sent through SimiSI in the window, per venture and per agent. A venture whose complaint or bounce rate passes the threshold on
+        <a href="/admin/founder?tab=caps">Founder Track settings</a> is paused automatically; resume it here once the cause is fixed.</p>
+      <div class="ob-summary" id="foMailStats"></div>
+      <div class="fo-scroll" id="foMail"><div class="empty">Loading…</div></div>
+      <div class="fo-scroll" id="foMailAgents" style="margin-top:.8rem"></div></div>
   </div>
 
   <div class="fo-view" id="fo-pages">
@@ -343,6 +349,36 @@
       el('foConn').innerHTML = table(['Tool', 'Calls', 'Failures'], d.tools.map(function (t) {
         return '<tr><td class="mono">' + esc(t.tool) + '</td><td>' + esc(t.calls) + '</td><td>' + esc(t.failures) + '</td></tr>';
       }), 'No connector calls in this window.');
+      var ce = d.customer_email || {};
+      var pc = function (v) { return v === null || v === undefined ? '–' : esc(v) + '%'; };
+      if (!ce.available) {
+        stats('foMailStats', [['Customer email', ce.enabled ? 'on' : 'off']]);
+        el('foMail').innerHTML = '<div class="empty">Customer email tables are not in use yet (sql/080).</div>';
+        el('foMailAgents').innerHTML = '';
+      } else {
+        var t = ce.totals || {};
+        stats('foMailStats', [['Customer email', ce.enabled ? 'on' : 'off'], ['Sent', esc(t.sent || 0)],
+          ['Reply rate', pc(t.reply_pct)], ['Opt-out rate', pc(t.optout_pct)], ['Complaint rate', pc(t.complaint_pct), t.complained ? 'err' : '']]);
+        el('foMail').innerHTML = table(['Venture', 'Sent', 'Bounced', 'Complaints', 'Opted out', 'Replied', 'Status'], ce.ventures.map(function (v) {
+          return '<tr><td>' + esc(v.name) + '</td><td>' + esc(v.sent) + '</td><td>' + esc(v.bounced) + ' (' + pc(v.bounce_pct) + ')</td><td>' +
+            esc(v.complained) + ' (' + pc(v.complaint_pct) + ')</td><td>' + esc(v.opted_out) + '</td><td>' + esc(v.replied) + ' (' + pc(v.reply_pct) + ')</td><td>' +
+            (v.paused ? '<span class="fo-pill on">paused</span> <button type="button" class="btn btn-sec btn-xs fo-act" data-ce-resume="' + esc(v.venture_id) + '">Resume</button>'
+                      : 'sending') + '</td></tr>';
+        }), 'No customer email in this window.');
+        el('foMailAgents').innerHTML = table(['Agent', 'Sent', 'Replied', 'Reply rate', 'Bounced', 'Complaints'], ce.agents.map(function (a) {
+          return '<tr><td>' + esc(a.label) + '</td><td>' + esc(a.sent) + '</td><td>' + esc(a.replied) + '</td><td>' + pc(a.reply_pct) + '</td><td>' +
+            esc(a.bounced) + '</td><td>' + esc(a.complained) + '</td></tr>';
+        }), '');
+        Array.prototype.forEach.call(document.querySelectorAll('[data-ce-resume]'), function (b) {
+          b.addEventListener('click', function () {
+            if (!window.confirm('Resume customer email for this venture?')) return;
+            b.disabled = true;
+            fetch('/api/admin/observability/founder/ventures/' + b.getAttribute('data-ce-resume') + '/customer-email', {
+              method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({paused: false})
+            }).then(function (r) { if (!r.ok) throw new Error('Resume failed'); loadConnectors(); }).catch(function (e) { b.disabled = false; say(e.message, true); });
+          });
+        });
+      }
     }).catch(function (e) { say(e.message, true); });
   }
 
@@ -351,11 +387,12 @@
     api('/startup-pages?hours=' + hours()).then(function (d) {
       stats('foPageStats', [['Pages', esc(d.totals.pages)], ['Published', esc(d.totals.published)],
         ['Views', esc(d.totals.views)], ['Investor unlocks', esc(d.totals.unlocks)]]);
-      el('foPages').innerHTML = table(['Page', 'Status', 'Public views', 'Investor views', 'Unlocks', 'Payments not completed', 'Refunds', 'Updates sent'],
+      el('foPages').innerHTML = table(['Page', 'Status', 'Public views', 'Investor views', 'Invited links opened', 'Unlocks', 'Payments not completed', 'Refunds', 'Updates sent'],
         d.pages.map(function (p) {
           return '<tr><td>' + esc(p.name) + ' <span class="muted mono">/startup/' + esc(p.slug) + '</span></td><td>' + esc(p.status) +
             (p.name_check === 'held' ? ' <span class="fo-pill on">name held</span>' : '') + '</td><td>' + esc(p.public_views) + '</td><td>' +
-            esc(p.investor_views) + '</td><td>' + dash(p.unlocks) + '</td><td>' + dash(p.payments_incomplete) + '</td><td>' + dash(p.refunds) +
+            esc(p.investor_views) + '</td><td>' + (p.links_issued === null || p.links_issued === undefined ? '–' : esc(p.links_opened) + ' of ' + esc(p.links_issued)) +
+            '</td><td>' + dash(p.unlocks) + '</td><td>' + dash(p.payments_incomplete) + '</td><td>' + dash(p.refunds) +
             '</td><td>' + dash(p.updates_sent) + '</td></tr>';
         }), 'No startup pages yet.');
     }).catch(function (e) { say(e.message, true); });

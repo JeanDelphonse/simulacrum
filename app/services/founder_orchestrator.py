@@ -573,6 +573,7 @@ def plan_view(venture) -> dict:
     rows = steps(venture)
     by_key = {step_key(s): s for s in rows}
     inv = _investor_on(venture)
+    send_on = _customer_send_on()
     outputs = {}
     for o in VentureAgentOutput.query.filter_by(venture_id=venture.id).order_by(VentureAgentOutput.version).all():
         outputs[o.plan_step_id] = o
@@ -595,7 +596,8 @@ def plan_view(venture) -> dict:
             o = outputs.get(s.id)
             d['output'] = {'id': o.id, 'version': o.version} if o else None
             d['drafts'] = [dict(a.to_dict(), approver=founder_autonomy.approver_name(a),
-                                approver_user_id=getattr(founder_autonomy.approver_for(a), 'user_id', None))
+                                approver_user_id=getattr(founder_autonomy.approver_for(a), 'user_id', None),
+                                send_url=_send_url(venture, a, d['external']) if send_on else None)
                            for a in drafts.get(s.id, []) if a.status in founder_autonomy.PENDING]
             cards.append(d)
         counts = {st: sum(1 for c in cards if c['state'] == st) for st in STATES}
@@ -604,6 +606,25 @@ def plan_view(venture) -> dict:
     total = len(rows)
     finished = sum(1 for s in rows if s.state in FINISHED)
     return {'lanes': lanes, 'total': total, 'finished': finished, 'has_plan': bool(rows)}
+
+
+def _customer_send_on() -> bool:
+    try:
+        from app.services import founder_customer_email
+        return founder_customer_email.enabled()
+    except Exception:
+        return False
+
+
+def _send_url(venture, action, external):
+    """The send page for a customer draft (CUSTOMER_EMAIL_PLAN.md), or None."""
+    if external != 'customer' or action.action_type != 'customer_message':
+        return None
+    try:
+        from flask import url_for
+        return url_for('founder.ce_send_page', venture_id=venture.id, action_id=action.id)
+    except Exception:
+        return None
 
 
 def activity(venture, limit: int = 30) -> list:

@@ -48,12 +48,27 @@ def venture_nav(venture) -> list:
             out.append((key, label, url_for(endpoint, venture_id=venture.id)))
         except BuildError:
             continue
+        if key == 'proof' and _contacts_tab_open():
+            try:
+                out.append(('contacts', 'Contacts', url_for('founder.ce_contacts_page', venture_id=venture.id)))
+            except BuildError:
+                pass
         if key == 'page' and _investor_tab_open():
             try:
                 out.append(('investors', 'Investors', url_for('founder.investors_page', venture_id=venture.id)))
             except BuildError:
                 pass
     return out
+
+
+def _contacts_tab_open() -> bool:
+    """The Contacts tab (customer email, CUSTOMER_EMAIL_PLAN.md) shows only
+    while fnd_customer_email is on; otherwise the tab list is unchanged."""
+    try:
+        from app.services import founder_customer_email
+        return founder_customer_email.enabled()
+    except Exception:
+        return False
 
 
 def _investor_tab_open() -> bool:

@@ -736,8 +736,15 @@ def connectors(hours) -> dict:
     consents = {'mailbox': ComplianceProfile.query.filter(ComplianceProfile.mailbox_consent_at.isnot(None)).count(),
                 'contacts': ComplianceProfile.query.filter(
                     ComplianceProfile.contacts_consent_at.isnot(None)).count()}
+    try:
+        from app.services import founder_customer_email
+        customer = founder_customer_email.metrics(hours)
+        customer['enabled'] = founder_customer_email.enabled()
+    except Exception as exc:
+        logger.debug('customer email metrics skipped: %s', exc)
+        customer = {'available': False, 'ventures': [], 'agents': [], 'totals': {}, 'enabled': False}
     return {'hours': int(hours), 'tools': tools, 'failures': sum(t['failures'] for t in tools),
-            'calls': sum(t['calls'] for t in tools), 'consents': consents,
+            'calls': sum(t['calls'] for t in tools), 'consents': consents, 'customer_email': customer,
             'placeholder': True}
 
 
@@ -755,6 +762,7 @@ def startup_pages(hours) -> dict:
         views.setdefault(pid, {})[view] = int(n)
     access = _optional_access_counts()
     updates = _optional_update_counts()
+    links = _optional_link_counts()
     out = []
     for p in pages:
         empty = {'unlocks': 0, 'incomplete': 0, 'refunds': 0, 'requests': 0}
@@ -766,12 +774,32 @@ def startup_pages(hours) -> dict:
                     'payments_incomplete': a.get('incomplete') if access is not None else None,
                     'refunds': a.get('refunds') if access is not None else None,
                     'requests': a.get('requests') if access is not None else None,
-                    'updates_sent': (updates or {}).get(p.venture_id, 0) if updates is not None else None})
+                    'updates_sent': (updates or {}).get(p.venture_id, 0) if updates is not None else None,
+                    'links_issued': (links or {}).get(p.id, {}).get('issued', 0) if links is not None else None,
+                    'links_opened': (links or {}).get(p.id, {}).get('opened', 0) if links is not None else None})
     return {'hours': int(hours), 'pages': out,
             'totals': {'pages': len(out), 'published': sum(1 for p in out if p['status'] == 'published'),
                        'views': sum(p['public_views'] + p['investor_views'] for p in out),
                        'unlocks': sum(p['unlocks'] or 0 for p in out)},
             'investor_tables': access is not None}
+
+
+def _optional_link_counts():
+    """{page_id: {'issued', 'opened'}} from investor_link, or None when absent."""
+    from app.extensions import db
+    try:
+        from app.models.founder import InvestorLink
+        out = {}
+        for link in InvestorLink.query.filter(InvestorLink.revoked_at.is_(None)).all():
+            b = out.setdefault(link.startup_page_id, {'issued': 0, 'opened': 0})
+            b['issued'] += 1
+            if link.opened_at is not None:
+                b['opened'] += 1
+        return out
+    except Exception as exc:
+        db.session.rollback()
+        logger.debug('investor_link not readable: %s', exc)
+        return None
 
 
 def _optional_access_counts():

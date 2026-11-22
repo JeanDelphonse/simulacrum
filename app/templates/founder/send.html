@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}Send · {{ view.agent_label }} · {{ venture.name }}{% endblock %}
+{% block head %}
+<style>
+  .fs-root{color:var(--ink);padding-top:2.5rem;padding-bottom:3.5rem;max-width:960px}
+  .fs-eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 .4rem}
+  .fs-root h1{font-size:1.6rem;margin:0 0 .4rem;line-height:1.2}
+  .fs-root h2{font-size:1.1rem;margin:0 0 .35rem}
+  .fs-lede{color:var(--ink-2);line-height:1.6;margin:0 0 1.25rem}
+  .fs-sub{color:var(--ink-2);font-size:.92rem;line-height:1.55;margin:0 0 .9rem}
+  .fs-card{border:1px solid var(--rule);border-radius:var(--r-ui);background:var(--bg);padding:1.25rem 1.35rem;margin:0 0 1.5rem}
+  .fs-note{border:1px solid var(--rule);border-left:4px solid var(--gold);border-radius:var(--r-ui);background:var(--alt);
+           padding:.85rem 1rem;margin:0 0 1.5rem;line-height:1.55}
+  .fs-note.warn{border-left-color:#B45309;background:#FFFBEB}
+  .fs-field{margin:0 0 .8rem}
+  .fs-field label{display:block;font-weight:600;font-size:.9rem;margin:0 0 .3rem}
+  .fs-field input[type=text],.fs-field input[type=url],.fs-field textarea{width:100%;box-sizing:border-box}
+  .fs-field textarea{min-height:14rem;font-family:inherit;line-height:1.5}
+  .fs-rules{display:grid;grid-template-columns:max-content 1fr;gap:.3rem 1rem;margin:0;font-size:.92rem}
+  .fs-rules dt{font-weight:600;color:var(--ink-2)}
+  .fs-rules dd{margin:0}
+  .fs-rcpt{list-style:none;margin:0;padding:0}
+  .fs-rcpt li{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;padding:.55rem 0;border-top:1px solid var(--rule)}
+  .fs-rcpt li:first-child{border-top:0}
+  .fs-rcpt label{display:flex;gap:.5rem;align-items:flex-start;flex:1 1 20rem}
+  .fs-pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:12.5px;font-weight:600;
+           background:var(--alt);color:var(--ink-2);white-space:nowrap}
+  .fs-pill.each{background:#FEF3C7;color:#78350F}
+  .fs-pill.campaign{background:#E0F2FE;color:#0C4A6E}
+  .fs-muted{color:var(--mute);font-size:.86rem}
+  .fs-prev{border:1px solid var(--rule);border-radius:var(--r-ui);margin:0 0 1rem;overflow:hidden}
+  .fs-prev header{background:var(--alt);padding:.6rem .85rem;font-size:.88rem;line-height:1.55}
+  .fs-prev iframe{width:100%;height:20rem;border:0;background:#fff;display:block}
+  .fs-prev footer{padding:.6rem .85rem;border-top:1px solid var(--rule)}
+  .fs-msg{min-height:1.4em;margin:.4rem 0 1rem;font-weight:600}
+  .fs-msg.err{color:#B91C1C}
+  .fs-row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+</style>
+{% endblock %}
+{% block content %}
+{% set R = view.rule %}
+<div class="wrap fs-root" id="fs-root" data-action="{{ action.id }}" data-contacts="{{ url_for('founder.ce_contacts_page', venture_id=venture.id) }}">
+  <p class="fs-eyebrow">Founder Track · {{ venture.name }} · {{ view.agent_label }}</p>
+  <h1>Send a customer email</h1>
+  <p class="fs-lede">SimiSI sends it in your name as <b>{{ view.from_name }}</b>. Replies go to <b>{{ view.reply_to }}</b>.
+    Every email carries an unsubscribe link and the mailing address from Settings.</p>
+  {% include 'founder/_ws_nav.html' %}
+  <p class="fs-msg" id="fs-msg" role="status" aria-live="polite"></p>
+
+  {% if view.reason %}
+  <div class="fs-note warn" role="alert"><b>This draft can't be sent through SimiSI:</b> {{ view.reason }} Copy it below and send it yourself.</div>
+  {% elif not view.approver_ok %}
+  <div class="fs-note">{{ view.approver }} has the final say on customer contact, so they approve and send this draft.</div>
+  {% endif %}
+  {% if not view.postal_set and not view.reason %}
+  <div class="fs-note warn">Add the mailing address in <a href="/settings/notifications#sending">Settings → Notification</a> (the venture owner's) first.</div>
+  {% endif %}
+
+  <section class="fs-card" aria-labelledby="fs-rule-h">
+    <h2 id="fs-rule-h">How {{ view.agent_label }} may send</h2>
+    <dl class="fs-rules">
+      <dt>Who it messages</dt><dd>{{ R.who or 'Approved contacts you ticked for this agent' }}</dd>
+      <dt>First contact</dt><dd>{{ 'Approve each' if R.first == 'each' else 'Approve the campaign' }}{% if R.first_contact_max_recipients %}, one recipient at a time{% endif %}{% if R.max_recipients %}, one named person per send{% endif %}</dd>
+      <dt>Follow-ups</dt><dd>{{ 'Approve each' if R.followup == 'each' else 'Approve the campaign' }}{% if R.followup_requires_reply %}, only to prospects who replied{% endif %}</dd>
+      <dt>Your setting</dt><dd>Level {{ view.level }}: {{ view.level_label }}{% if view.level == 2 %} (every recipient approved on its own){% endif %}</dd>
+      <dt>Today</dt><dd>{{ view.used }} of {{ view.cap }} emails for this agent in the last 24 hours</dd>
+    </dl>
+  </section>
+
+  <section class="fs-card" aria-labelledby="fs-draft-h">
+    <h2 id="fs-draft-h">Draft</h2>
+    {% if view.placeholders %}<p class="fs-note warn" style="margin:0 0 .8rem">Fill in {{ view.placeholders|join(', ') }} before sending. [First name], [Company] and [Your name] are filled in for each recipient.</p>{% endif %}
+    <form id="fsDraft">
+      <div class="fs-field"><label for="fs-subject">Subject</label>
+        <input type="text" id="fs-subject" name="subject" maxlength="300" value="{{ action.subject or '' }}" {{ 'readonly' if view.reason or not view.approver_ok }}></div>
+      <div class="fs-field"><label for="fs-body">Body</label>
+        <textarea id="fs-body" name="body" {{ 'readonly' if view.reason or not view.approver_ok }}>{{ action.body or '' }}</textarea></div>
+      {% if not view.reason and view.approver_ok %}<button class="btn sm" type="submit">Save draft</button>{% endif %}
+    </form>
+  </section>
+
+  {% if not view.reason and view.approver_ok %}
+  {% if R.needs_scheduling_link or R.locked_prices %}
+  <section class="fs-card" aria-labelledby="fs-set-h">
+    <h2 id="fs-set-h">Before sending</h2>
+    <form id="fsSettings">
+      {% if R.needs_scheduling_link %}
+      <div class="fs-field"><label for="fs-link">Your scheduling link (interview invites carry one)</label>
+        <input type="url" id="fs-link" name="scheduling_link" placeholder="https://cal.com/you/20min" value="{{ view.meta.scheduling_link or '' }}"></div>
+      {% endif %}
+      {% if R.locked_prices %}
+      <div class="fs-field"><label for="fs-prices">Locked price versions (one per line)</label>
+        <textarea id="fs-prices" name="locked_prices" style="min-height:5rem" placeholder="$49&#10;$99">{{ (view.meta.locked_prices or [])|join('\n') }}</textarea>
+        <p class="fs-muted">The Pricing Test sends only the prices locked here. Every price the email states must be on this list; clear it to unlock.</p></div>
+      {% endif %}
+      <button class="btn sm" type="submit">Save</button>
+    </form>
+  </section>
+  {% endif %}
+
+  <section class="fs-card" aria-labelledby="fs-to-h">
+    <h2 id="fs-to-h">Recipients</h2>
+    <p class="fs-sub">Approved contacts you ticked for {{ view.agent_label }} in <a href="{{ url_for('founder.ce_contacts_page', venture_id=venture.id) }}">Contacts</a>.</p>
+    {% if view.recipients %}
+    <ul class="fs-rcpt">
+      {% for r in view.recipients %}
+      <li><label><input type="checkbox" name="to" value="{{ r.id }}" {{ 'disabled' if r.blocked }}>
+          <span><b>{{ r.name or r.email }}</b>{% if r.poc %} <span class="fs-pill">PoC customer</span>{% endif %}<br>
+          <span class="fs-muted">{{ r.email }}{% if r.company %} · {{ r.company }}{% endif %} · {{ 'Follow-up' if r.kind == 'followup' else 'First contact' }}</span>
+          {% if r.blocked %}<br><span class="fs-muted">Can't send: {{ r.blocked }}</span>{% endif %}</span></label>
+        {% if not r.blocked %}<span class="fs-pill {{ r.mode }}">{{ r.mode_label }}</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    <div class="fs-row" style="margin-top:1rem"><button class="btn primary sm" type="button" id="fsPreview">Preview</button></div>
+    {% else %}
+    <p class="fs-muted">No contacts are ticked for this agent yet. Open <a href="{{ url_for('founder.ce_contacts_page', venture_id=venture.id) }}">Contacts</a> and tick {{ view.agent_label }} for the people it may email.</p>
+    {% endif %}
+  </section>
+
+  <section class="fs-card" id="fsReview" hidden aria-labelledby="fs-rev-h">
+    <h2 id="fs-rev-h">Preview and approve</h2>
+    <p class="fs-sub" id="fsFrom"></p>
+    <div id="fsPreviews"></div>
+    <label id="fsCampaignWrap" hidden style="display:flex;gap:.5rem;align-items:flex-start;margin:.4rem 0 1rem"><input type="checkbox" id="fsCampaign">
+      <span id="fsCampaignText"></span></label>
+    <fieldset style="border:0;padding:0;margin:0 0 1rem">
+      <legend style="font-weight:600;margin-bottom:.4rem">When</legend>
+      <div class="fs-row"><label><input type="radio" name="when" value="now" checked> Send now</label>
+        <label><input type="radio" name="when" value="later"> Schedule</label>
+        <input type="datetime-local" id="fsAt" aria-label="Send at (your local time)" disabled></div>
+    </fieldset>
+    <button class="btn primary" type="button" id="fsSend">Approve and send</button>
+  </section>
+  {% endif %}
+</div>
+<script>
+(function () {
+  'use strict';
+  var root = document.getElementById('fs-root');
+  var aid = root.getAttribute('data-action');
+  var msg = document.getElementById('fs-msg');
+  var base = '/api/founder/actions/' + aid + '/customer/';
+  var preview = null;
+  function say(t, err) { msg.textContent = t || ''; msg.className = 'fs-msg' + (err ? ' err' : ''); if (t) msg.scrollIntoView({block: 'nearest'}); }
+  function post(path, body) {
+    return fetch(base + path, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body || {})}).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return {ok: r.ok, d: d}; }); });
+  }
+  function esc(s) { var x = document.createElement('span'); x.textContent = s == null ? '' : String(s); return x.innerHTML; }
+  function invalidate() { preview = null; var rv = document.getElementById('fsReview'); if (rv) rv.hidden = true; }
+
+  var draft = document.getElementById('fsDraft');
+  if (draft) draft.addEventListener('submit', function (e) {
+    e.preventDefault();
+    post('edit', {subject: draft.elements.subject.value, body: draft.elements.body.value}).then(function (r) {
+      invalidate(); say(r.ok ? 'Draft saved.' : (r.d.error || 'Not saved.'), !r.ok); if (r.ok) setTimeout(function () { location.reload(); }, 400);
+    });
+  });
+  var settings = document.getElementById('fsSettings');
+  if (settings) settings.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var body = {};
+    if (settings.elements.scheduling_link) body.scheduling_link = settings.elements.scheduling_link.value.trim();
+    if (settings.elements.locked_prices) body.locked_prices = settings.elements.locked_prices.value.split(/\n+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    post('settings', body).then(function (r) { invalidate(); say(r.ok ? 'Saved.' : (r.d.error || 'Not saved.'), !r.ok); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name=to]'), function (c) { c.addEventListener('change', invalidate); });
+
+  var at = document.getElementById('fsAt');
+  Array.prototype.forEach.call(document.querySelectorAll('input[name=when]'), function (r) {
+    r.addEventListener('change', function () { if (at) at.disabled = r.value !== 'later' || !r.checked; });
+  });
+
+  function picked() { return Array.prototype.map.call(document.querySelectorAll('input[name=to]:checked'), function (c) { return c.value; }); }
+
+  var pv = document.getElementById('fsPreview');
+  if (pv) pv.addEventListener('click', function () {
+    var ids = picked();
+    if (!ids.length) { say('Pick at least one recipient.', true); return; }
+    pv.disabled = true;
+    post('preview', {contact_ids: ids}).then(function (r) {
+      pv.disabled = false;
+      if (!r.ok) { say(r.d.error || 'Preview failed.', true); return; }
+      preview = r.d; preview.ids = ids; say('');
+      document.getElementById('fsFrom').innerHTML = 'From <b>' + esc(r.d.from_name) + '</b> &lt;' + esc(r.d.from_email) + '&gt; · Reply-To ' + esc(r.d.reply_to);
+      var box = document.getElementById('fsPreviews');
+      box.innerHTML = r.d.recipients.map(function (x, i) {
+        return '<article class="fs-prev"><header><b>To:</b> ' + esc(x.name ? x.name + ' <' + x.email + '>' : x.email) +
+          ' <span class="fs-pill ' + esc(x.mode) + '">' + esc(x.mode_label) + '</span><br><b>Subject:</b> ' + esc(x.subject) + '</header>' +
+          '<iframe sandbox="" title="Email to ' + esc(x.email) + '" data-i="' + i + '"></iframe>' +
+          (x.mode === 'each' ? '<footer><label style="display:flex;gap:.5rem"><input type="checkbox" data-each="' + esc(x.contact_id) + '"> Approve this email to ' + esc(x.email) + '</label></footer>' : '') +
+          '</article>';
+      }).join('');
+      Array.prototype.forEach.call(box.querySelectorAll('iframe'), function (f) { f.srcdoc = r.d.recipients[+f.getAttribute('data-i')].html; });
+      var cw = document.getElementById('fsCampaignWrap');
+      if (r.d.campaign.length) {
+        cw.hidden = false; cw.style.display = 'flex';
+        document.getElementById('fsCampaignText').textContent = 'Approve the campaign: send this email to the ' + r.d.campaign.length +
+          ' recipient' + (r.d.campaign.length === 1 ? '' : 's') + ' marked "Approve the campaign".';
+        document.getElementById('fsCampaign').checked = false;
+      } else { cw.hidden = true; cw.style.display = 'none'; }
+      var rv = document.getElementById('fsReview'); rv.hidden = false; rv.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, function () { pv.disabled = false; say('Network error. Try again.', true); });
+  });
+
+  var sendBtn = document.getElementById('fsSend');
+  if (sendBtn) sendBtn.addEventListener('click', function () {
+    if (!preview) { say('Preview first.', true); return; }
+    var each = Array.prototype.map.call(document.querySelectorAll('[data-each]:checked'), function (c) { return c.getAttribute('data-each'); });
+    if (each.length < preview.needs_each.length) { say('Approve each email marked "Approve each" first.', true); return; }
+    var camp = document.getElementById('fsCampaign');
+    if (preview.campaign.length && !(camp && camp.checked)) { say('Approve the campaign first.', true); return; }
+    var body = {contact_ids: preview.ids, approved_each: each, approve_campaign: !!(camp && camp.checked), hash: preview.hash};
+    var later = document.querySelector('input[name=when][value=later]');
+    if (later && later.checked) {
+      if (!at.value) { say('Pick when to send.', true); return; }
+      var d = new Date(at.value);
+      if (isNaN(d)) { say('That date is not valid.', true); return; }
+      body.schedule_at = d.toISOString();
+    }
+    sendBtn.disabled = true; say('Sending…');
+    post('send', body).then(function (r) {
+      if (!r.ok) { sendBtn.disabled = false; say(r.d.error || 'Not sent.', true); return; }
+      say(r.d.message || 'Sent.');
+      setTimeout(function () { window.location.href = root.getAttribute('data-contacts'); }, 1500);
+    }, function () { sendBtn.disabled = false; say('Network error. Check Contacts before trying again.', true); });
+  });
+})();
+</script>
+{% endblock %}

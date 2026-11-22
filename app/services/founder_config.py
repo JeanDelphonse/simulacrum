@@ -104,6 +104,20 @@ _SPEC = {
     'fnd_eval_runner': ('choice', 'cron', ('cron', 'thread')),
     # After this many minutes in the queue the admin page offers "Run here instead".
     'fnd_eval_queue_warn_minutes': ('int', 3, (1, 60)),
+    # Customer email (CUSTOMER_EMAIL_PLAN.md, PRD decision Nov 21, 2026). Off:
+    # customer drafts stay copy-only, exactly as before.
+    'fnd_customer_email': ('choice', 'off', ('off', 'on')),
+    # From address for customer email; must be on a domain verified in
+    # SendGrid. Empty = MAIL_DEFAULT_SENDER.
+    'fnd_customer_from_address': ('email', '', None),
+    # Per-venture customer sending pauses when either rate passes its
+    # threshold, once the venture has sent fnd_customer_rate_min_sends emails
+    # in the last fnd_customer_rate_window_days days.
+    'fnd_alert_customer_complaint_pct': ('pct', 0.3, None),
+    'fnd_alert_customer_bounce_pct': ('pct', 5.0, None),
+    'fnd_customer_rate_min_sends': ('int', 20, (1, 10000)),
+    'fnd_customer_rate_window_days': ('int', 30, (1, 365)),
+    'fnd_csv_max_rows': ('int', 500, (1, 5000)),
 }
 
 DEFAULTS = {k: v[1] for k, v in _SPEC.items()}
@@ -160,6 +174,19 @@ def _validate(key: str, value):
         if v in ('0', 'false', 'no', 'off', ''):
             return False
         raise FounderConfigError('%s must be true or false.' % key)
+    if kind == 'email':
+        v = str(value or '').strip()
+        if v and not re.match(r'^[^@\s<>"]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$', v):
+            raise FounderConfigError('%s must be an email address, or empty.' % key)
+        return v.lower()
+    if kind == 'pct':
+        try:
+            f = float(str(value).strip())
+        except (TypeError, ValueError):
+            raise FounderConfigError('%s must be a number.' % key)
+        if f < 0 or f > 100:
+            raise FounderConfigError('%s must be between 0 and 100.' % key)
+        return round(f, 3)
     if kind == 'currency':
         v = str(value or '').strip().lower()
         if not re.match(r'^[a-z]{3}$', v):
