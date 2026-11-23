@@ -89,6 +89,7 @@ def main():
         ('/register',                  'register'),
         ('/verify-sent',               'verify sent'),
         ('/forgot-password',           'forgot password'),
+        ('/reset-password/no-such-token', 'choose new password'),
         ('/partners/apply',            'partner apply'),
         ('/samples/maya',              'use case: Maya'),
         ('/samples/marcus',            'use case: Marcus'),

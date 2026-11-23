@@ -1007,11 +1007,13 @@ def forgot_password_page():
 
 @pages_bp.route('/reset-password/<token>')
 def reset_password_page(token):
-    """The link in the password-reset email: a form that posts the new
-    password to /api/auth/reset-password/<token>."""
-    resp = render_template('auth/reset_password_confirm.html', token=token[:128])
+    """Where the reset email lands: choose a new password. The form posts to
+    POST /api/auth/reset-password/<token>."""
     from flask import make_response
-    resp = make_response(resp)
+    from app.blueprints.auth.routes import find_reset_user, MIN_PASSWORD_LENGTH
+    resp = make_response(render_template('auth/reset_password_confirm.html', token=token,
+                                         token_valid=find_reset_user(token) is not None,
+                                         min_length=MIN_PASSWORD_LENGTH))
     resp.headers['Referrer-Policy'] = 'no-referrer'      # keep the token out of Referer
     resp.headers['Cache-Control'] = 'no-store'
     return resp

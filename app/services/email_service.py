@@ -9,14 +9,8 @@ logger = logging.getLogger(__name__)
 # HTML email wrapper
 # ---------------------------------------------------------------------------
 
-def _html_wrap(body_html: str, preheader: str = '', footer_html: Optional[str] = None) -> str:
-    """Wrap a body snippet in a full, deliverable HTML email shell.
-
-    footer_html replaces the account-holder footer line, for emails to people
-    without an account (contact invites carry the legal footer instead)."""
-    footer = footer_html if footer_html is not None else (
-        'SimiSI · Bay Area Experiences Ventures<br>\n'
-        '        You received this email because you have an account with SimiSI.')
+def _html_wrap(body_html: str, preheader: str = '') -> str:
+    """Wrap a body snippet in a full, deliverable HTML email shell."""
     pre = f'<span style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{preheader}&nbsp;</span>' if preheader else ''
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -46,7 +40,8 @@ def _html_wrap(body_html: str, preheader: str = '', footer_html: Optional[str] =
 
       <!-- Footer -->
       <tr><td align="center" style="padding-top:24px;font-size:12px;color:#9ca3af;line-height:1.6;">
-        {footer}
+        SimiSI · Bay Area Experiences Ventures<br>
+        You received this email because you have an account with SimiSI.
       </td></tr>
 
     </table>
@@ -168,6 +163,7 @@ def send_password_reset_email(user_email: str, user_name: str, token: str):
     from flask import url_for
     first = (user_name or '').strip().split()[0] or 'there'
     try:
+        # The page, not the POST-only API endpoint — a link click is a GET.
         reset_url = url_for('pages.reset_password_page', token=token, _external=True)
         plain = (
             f'Hi {first},\n\n'
@@ -196,7 +192,7 @@ def send_password_reset_email(user_email: str, user_name: str, token: str):
         logger.error('Failed to send reset email to %s: %s', user_email, e, exc_info=True)
 
 
-def send_invoice_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int):
+def send_invoice_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int = 69500):
     from datetime import datetime
     first = (user_name or '').strip().split()[0] or 'there'
     amount_str = f'${amount_cents / 100:.2f}'
@@ -228,7 +224,7 @@ def send_invoice_email(user_email: str, user_name: str, sim_name: str, sim_id: s
         logger.error('Failed to send invoice email to %s: %s', user_email, e, exc_info=True)
 
 
-def send_simulation_failed_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int):
+def send_simulation_failed_email(user_email: str, user_name: str, sim_name: str, sim_id: str, amount_cents: int = 1000):
     first = (user_name or '').strip().split()[0] or 'there'
     amount_str = f'${amount_cents / 100:.2f}'
     try:
@@ -663,7 +659,7 @@ def send_data_retention_warning_email(user_email: str, user_name: str, deletion_
             f'is scheduled for permanent deletion on {deletion_date}.\n\n'
             f'To keep your account active, simply sign in before {deletion_date}:\n'
             f'{login_url}\n\n'
-            f'If you would prefer to delete your data now, email simi@simisi.io.\n\n'
+            f'If you would prefer to delete your data now, email simi@simulacrumai.io.\n\n'
             f'— SimiSI'
         )
         html = _html_wrap(
@@ -673,7 +669,7 @@ def send_data_retention_warning_email(user_email: str, user_name: str, deletion_
             _p('To keep your account active, sign in before that date.') +
             _btn(login_url, 'Sign in to keep my account') +
             _divider() +
-            _p('If you would prefer to delete your data now, email simi@simisi.io.', muted=True),
+            _p('If you would prefer to delete your data now, email simi@simulacrumai.io.', muted=True),
             preheader=f'Action required: your data is scheduled for deletion on {deletion_date}.',
         )
         _send(subject='Your SimiSI data is scheduled for deletion', recipients=[user_email], body=plain, html=html)
@@ -974,7 +970,7 @@ def send_bcc_signup_notification(user_email: str, user_name: str):
     try:
         _send(
             subject=f'New sign-up: {user_name} <{user_email}>',
-            recipients=['simi@simisi.io'],
+            recipients=['simi@simulacrumai.io'],
             body=f'New user registered.\n\nName: {user_name}\nEmail: {user_email}',
         )
     except Exception as e:
@@ -985,7 +981,7 @@ def send_bcc_simulation_notification(user_email: str, user_name: str, sim_name: 
     try:
         _send(
             subject=f'New simulation: {sim_name} — {user_name}',
-            recipients=['simi@simisi.io'],
+            recipients=['simi@simulacrumai.io'],
             body=f'New simulation created.\n\nUser: {user_name} <{user_email}>\nSimulation: {sim_name}\nID: {sim_id}',
         )
     except Exception as e:
@@ -1042,64 +1038,3 @@ def send_admin_new_job_application_email(admin_email: str, applicant_name: str, 
         _send(subject=f'New application — {job_title}', recipients=[admin_email], body=plain, html=html)
     except Exception as e:
         logger.error('Failed to send admin job application notification to %s: %s', admin_email, e, exc_info=True)
-
-
-def send_transition_invite_email(personal_email: str, name: str, employer: str, tier_label: str,
-                                 access_months: int, join_url: str, reminder: bool = False):
-    """PRD-SIM-TRANS-001 — the employer-paid transition package invite (and its reminders).
-
-    Says up front what the employer can and can't see, because that is the
-    question people ask before they accept anything from a former employer.
-    """
-    first = (name or '').split(' ')[0] or 'there'
-    subject = ('Reminder: your transition package from %s' % employer) if reminder else \
-        ('%s has given you a SimiSI transition package' % employer)
-    try:
-        plain = (
-            f'Hi {first},\n\n'
-            f'{employer} has paid for a SimiSI {tier_label} transition package for you: '
-            f'{access_months} months of access to a full career simulation, a professional bio page '
-            f'and the agents that help with your next move.\n\n'
-            f'Your account is yours, not your employer\'s. {employer} only ever sees aggregate numbers '
-            f'(how many people activated, for example) — never your simulation, contacts, outreach or '
-            f'coaching notes.\n\n'
-            f'Activate: {join_url}\n\n— SimiSI'
-        )
-        html = _html_wrap(
-            _h1(subject) +
-            _p(f'Hi {first}, {employer} has paid for a SimiSI <b>{tier_label}</b> transition package for '
-               f'you: {access_months} months of access to a full career simulation, a professional bio page '
-               f'and the agents that help with your next move.') +
-            _p(f'Your account is yours, not your employer\'s. {employer} only ever sees aggregate numbers — '
-               f'never your simulation, contacts, outreach or coaching notes.') +
-            _btn(join_url, 'Activate my package') +
-            _fallback_link(join_url) +
-            _divider() +
-            _p('You received this because your HR team added this address to the program. '
-               'If you don\'t want it, just ignore this email.', muted=True),
-            preheader=f'{access_months} months of SimiSI, paid for by {employer}.',
-        )
-        _send(subject=subject, recipients=[personal_email], body=plain, html=html)
-    except Exception as e:
-        logger.error('Failed to send transition invite to %s: %s', personal_email, e, exc_info=True)
-
-
-def send_enterprise_inquiry_email(notify_email: str, inquiry):
-    """A new enterprise inquiry, to the admin-set notification address only.
-
-    The submitter's details go to this one address and nowhere else.
-    """
-    import html as _html
-    rows = [('Name', inquiry.name), ('Work email', inquiry.work_email), ('Company', inquiry.company),
-            ('Role', inquiry.role or '—'), ('People affected', inquiry.headcount_band or '—'),
-            ('Timing', inquiry.timing or '—'), ('Source', inquiry.source), ('Page mode', inquiry.mode or '—')]
-    plain = 'New enterprise inquiry\n\n' + '\n'.join('%s: %s' % r for r in rows) + \
-            '\n\nNotes:\n%s\n\nWork it at /admin/inquiries' % (inquiry.notes or '—')
-    html = _html_wrap(
-        _h1('New enterprise inquiry: %s' % _html.escape(inquiry.company)) +
-        ''.join(_p('<b>%s:</b> %s' % (k, _html.escape(str(v)))) for k, v in rows) +
-        _p('<b>Notes:</b><br>%s' % _html.escape(inquiry.notes or '—').replace('\n', '<br>')) +
-        _p('Work it in the admin console under Growth → Inquiries.', muted=True),
-        preheader='%s at %s' % (inquiry.name, inquiry.company),
-    )
-    _send(subject='New enterprise inquiry: %s' % inquiry.company, recipients=[notify_email], body=plain, html=html)
