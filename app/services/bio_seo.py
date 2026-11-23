@@ -159,27 +159,16 @@ def indexable_bios() -> list:
     sitemap, which is what a crawler reads first on a partial fetch.
     """
     from app.models.bio_page import BioPage
-    from app.models.profile import UserProfile
-    from app.models.user import User
-    from app.extensions import db
-
+    from app.services.bio_service import listed_bio_pages_query
     out = []
-    rows = db.session.query(BioPage, UserProfile).join(
-        UserProfile, BioPage.user_id == UserProfile.user_id,
-    ).filter(
-        BioPage.status == BioPage.STATUS_PUBLISHED,
-    ).order_by(BioPage.updated_at.desc()).all()
+    # Deactivated owners are filtered in the shared listing query.
+    rows = listed_bio_pages_query().order_by(BioPage.updated_at.desc()).all()
 
     for bio_page, profile in rows:
         if not is_indexable(profile, bio_page):
             continue
-        # A deleted owner leaves the row behind; the page 404s in spirit even if
-        # the route still answers, so it has no business in the sitemap.
-        user = User.query.get(bio_page.user_id)
-        if not user or user.deleted_at:
-            continue
         out.append({
-            'slug': bio_page.slug,
+            'slug': profile.username,
             'updated_at': bio_page.updated_at,
         })
     return out
