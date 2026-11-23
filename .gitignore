@@ -25,3 +25,4 @@ founder_private/
 # Local scratch and private files (never commit)
 .ds_tmp/
 send_checklist.py
+simisi_videos.zip
