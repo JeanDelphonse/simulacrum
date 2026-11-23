@@ -110,20 +110,21 @@ def _send_email(notif) -> None:
         logger.warning('sendgrid package not installed; skipping email notification')
         return
 
-    first_name = (user.full_name or '').split()[0] if user.full_name else 'there'
+    from html import escape as _esc
+    first_name = _esc((user.full_name or '').split()[0]) if user.full_name else 'there'
     cta_html = ''
     if notif.cta_url and notif.cta_label:
         cta_html = (
             f'<p style="margin-top:20px">'
-            f'<a href="{_absolute(notif.cta_url)}" style="background:#0f7b72;color:#fff;'
+            f'<a href="{_esc(_absolute(notif.cta_url), quote=True)}" style="background:#0f7b72;color:#fff;'
             f'padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">'
-            f'{notif.cta_label}</a></p>'
+            f'{_esc(notif.cta_label)}</a></p>'
         )
 
     html_body = (
         f'<div style="font-family:sans-serif;max-width:560px;margin:auto">'
         f'<p>Hi {first_name},</p>'
-        f'<p>{notif.body}</p>'
+        f'<p>{_esc(notif.body or "")}</p>'
         f'{cta_html}'
         f'<hr style="margin-top:32px;border:none;border-top:1px solid #e5e7eb">'
         f'<p style="font-size:12px;color:#9ca3af">SimiSI · '

@@ -152,7 +152,8 @@ def deploy_booking_page(user_id: str, simulation_id: str,
     username = me.get('username') or me.get('user', {}).get('username', 'unknown')
 
     base_url = current_app.config.get('BASE_URL', 'http://localhost:5000')
-    webhook_url = f'{base_url}/webhooks/cal/{user_id}'
+    from app.services import webhook_auth
+    webhook_url = webhook_auth.user_webhook_url('cal', user_id)
 
     session_types = artifact.get('session_types') or []
     if not session_types:

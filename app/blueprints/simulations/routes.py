@@ -324,7 +324,7 @@ def get_simulation(sim_id):
         collab = Collaboration.query.filter_by(
             simulation_id=sim_id,
             invitee_email=current_user.email,
-        ).filter(Collaboration.accepted_at.isnot(None)).first()
+        ).filter(Collaboration.accepted_at.isnot(None), Collaboration.revoked_at.is_(None)).first()
         if not collab:
             return jsonify({'error': 'Not found'}), 404
         sim = Simulation.query.get(sim_id)
@@ -365,7 +365,7 @@ def recover_simulation(sim_id):
         collab = Collaboration.query.filter_by(
             simulation_id=sim_id,
             invitee_email=current_user.email,
-        ).filter(Collaboration.accepted_at.isnot(None)).first()
+        ).filter(Collaboration.accepted_at.isnot(None), Collaboration.revoked_at.is_(None)).first()
         if not collab:
             return jsonify({'error': 'Not found'}), 404
         sim = Simulation.query.get(sim_id)
@@ -400,7 +400,7 @@ def refine_layer(sim_id, layer_num):
             simulation_id=sim_id,
             invitee_email=current_user.email,
             permission_level='editor',
-        ).filter(Collaboration.accepted_at.isnot(None)).first()
+        ).filter(Collaboration.accepted_at.isnot(None), Collaboration.revoked_at.is_(None)).first()
         if not collab:
             return jsonify({'error': 'Not found or insufficient permissions'}), 403
         sim = Simulation.query.get(sim_id)

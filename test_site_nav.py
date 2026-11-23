@@ -233,7 +233,7 @@ def main():
         before = UserEvent.query.count()
         r1 = anon.post('/api/nav-event', json={'event': 'nav_open', 'panel': 'employers'})
         r2 = anon.post('/api/nav-event', json={'event': 'nav_click', 'item': 'tp_privacy'},
-                       headers={'Referer': 'https://simisi.io/?email=a@b.com'})
+                       headers={'Referer': 'http://localhost/?email=a@b.com'})
         rows = UserEvent.query.order_by(UserEvent.id.desc()).limit(2).all()
         check('a known panel and item are stored', r1.status_code == 204 and r2.status_code == 204
               and UserEvent.query.count() == before + 2

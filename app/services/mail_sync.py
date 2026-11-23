@@ -127,9 +127,38 @@ def connect_imap(user_id: str, address: str, password: str, host: str = '', port
     return acc
 
 
-def _imap_login(host, port, address, password):
+IMAP_PORTS = (993, 143)
+IMAP_TIMEOUT = 20
+
+
+def _public_host(host: str) -> bool:
+    """True when every address the host resolves to is a public one, so a
+    member can't point the mailbox connector at SimiSI's own network."""
+    import ipaddress
+    import socket
     try:
-        conn = IMAP_FACTORY(host, port)
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return True              # unresolvable: the connect fails on its own
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast \
+                or ip.is_unspecified:
+            return False
+    return True
+
+
+def _imap_login(host, port, address, password):
+    if int(port or 0) not in IMAP_PORTS:
+        raise SyncError('Use the IMAP port 993 (or 143).')
+    if IMAP_FACTORY is imaplib.IMAP4_SSL and not _public_host(host):
+        raise SyncError('That IMAP server is not reachable from SimiSI.')
+    try:
+        conn = (IMAP_FACTORY(host, port, timeout=IMAP_TIMEOUT) if IMAP_FACTORY is imaplib.IMAP4_SSL
+                else IMAP_FACTORY(host, port))
         conn.login(address, password)
         return conn
     except imaplib.IMAP4.error as exc:

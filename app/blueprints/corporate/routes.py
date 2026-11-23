@@ -774,7 +774,8 @@ def export_roster_csv(org_id):
     w = csv.writer(buf)
     w.writerow(['Name', 'Email', 'Status', 'Bio published', 'Simulation started', 'Activated at'])
     for r in rows:
-        w.writerow([r['name'], r['email'], r['status'],
+        from utils.validators import csv_cell as _c
+        w.writerow([_c(r['name']), _c(r['email']), r['status'],
                     'yes' if r['bio_published'] else 'no',
                     'yes' if r['sim_started'] else 'no', r['activated_at'] or ''])
     fname = f'{org.display_name.replace(" ", "_")}_roster.csv'

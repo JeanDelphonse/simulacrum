@@ -57,8 +57,8 @@ def admin_required(f):
 
 
 def _client_ip() -> str:
-    fwd = request.headers.get('X-Forwarded-For', '')
-    return (fwd.split(',')[0].strip() or request.remote_addr or '')[:45]
+    from utils.rate_limit import client_ip
+    return client_ip()
 
 
 def _rate_limited(ip: str) -> bool:

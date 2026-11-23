@@ -103,7 +103,11 @@ def _execute_chat_tool(tool_name: str, tool_input: dict, session, bp) -> str:
             return "I've noted your interest in scheduling. Please use the contact form and we'll reach out with available times."
 
         elif tool_name == 'send_rate_card':
-            interest = tool_input.get('interest_area', 'services')
+            interest = str(tool_input.get('interest_area', 'services'))[:80]
+            from utils import rate_limit as _rl
+            if _rl.hit('ratecard:s:' + session.id, 1, 86400) or \
+                    _rl.hit('ratecard:to:' + (session.visitor_email or '').lower(), 2, 86400):
+                return "The rate card was already sent. Check your inbox, or ask me about a specific service."
             try:
                 from app.blueprints.bio.routes import _assemble_context
                 from app.models.user import User
@@ -114,6 +118,8 @@ def _execute_chat_tool(tool_name: str, tool_input: dict, session, bp) -> str:
                 rate_card = (ctx.get('_rate_card_raw') or 'Contact for current rates.').strip()
                 if len(rate_card) > 2000:
                     rate_card = rate_card[:2000] + '...'
+                from app.services import contact_masking as _cm
+                rate_card = _cm.mask_text(rate_card)
                 _send(
                     subject=f'Rate card from {user.full_name if user else "your host"}',
                     recipients=[session.visitor_email],
@@ -152,7 +158,12 @@ def _execute_chat_tool(tool_name: str, tool_input: dict, session, bp) -> str:
             return f"Proposal request logged. We'll follow up at {session.visitor_email} with a custom proposal."
 
         elif tool_name == 'tag_subscriber':
-            tag = tool_input.get('tag', 'bio-chat-lead').strip().lower().replace(' ', '-')
+            import re as _re_tag
+            tag = _re_tag.sub(r'[^a-z0-9-]+', '', str(tool_input.get('tag', 'bio-chat-lead')).strip().lower()
+                              .replace(' ', '-'))[:40] or 'bio-chat-lead'
+            from utils import rate_limit as _rl
+            if _rl.hit('cktag:' + session.id, 2, 86400):
+                return "You're already subscribed for follow-up content." 
             try:
                 from app.services.convertkit_service import deploy_lead_to_convertkit
                 deploy_lead_to_convertkit(
@@ -475,8 +486,13 @@ def start_session(slug: str):
         if today_count >= daily_limit:
             return jsonify({'error': 'Chat is temporarily unavailable. Please try again tomorrow.'}), 429
 
+        from utils import rate_limit as _rl
+        if _rl.hit('biochat:start:' + _rl.client_ip(), 6, 3600):
+            return jsonify({'error': 'Too many chats started from here. Please try again later.'}), 429
+
         data = request.get_json(force=True, silent=True) or {}
-        visitor_name  = (data.get('name') or '').strip()[:200]
+        import re as _re_name
+        visitor_name  = _re_name.sub(r'[<>"`{}\\]', '', (data.get('name') or '')).strip()[:200]
         visitor_email = (data.get('email') or '').strip()[:255]
         visitor_phone = (data.get('phone') or '').strip()[:50] or None
 
@@ -526,6 +542,10 @@ def start_session(slug: str):
 
 # ── POST /api/bio-chat/sessions/<session_id>/message ──────────────────────
 
+# Visitor messages per chat session (each one is one or two model calls).
+MAX_SESSION_MESSAGES = 40
+
+
 @bio_chat_bp.route('/api/bio-chat/sessions/<session_id>/message', methods=['POST'])
 def send_message(session_id: str):
     """Send a visitor message; stream the AI response via SSE."""
@@ -538,6 +558,12 @@ def send_message(session_id: str):
     bp = BioPage.query.get(session.bio_page_id)
     if not bp:
         return jsonify({'error': 'Bio page not found'}), 404
+
+    from utils import rate_limit as _rl
+    if (session.message_count or 0) >= MAX_SESSION_MESSAGES:
+        return jsonify({'error': 'This chat has reached its message limit. Use the contact form to keep talking.'}), 429
+    if _rl.hit('biochat:msg:' + _rl.client_ip(), 40, 600) or _rl.hit('biochat:msg:s:' + session_id, 8, 60):
+        return jsonify({'error': 'You are sending messages too quickly. Please wait a moment.'}), 429
 
     data = request.get_json(force=True, silent=True) or {}
     visitor_message = (data.get('message') or '').strip()

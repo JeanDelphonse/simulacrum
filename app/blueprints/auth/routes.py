@@ -12,12 +12,30 @@ from utils.id_gen import generate_id
 
 @login_manager.user_loader
 def load_user(user_id):
-    user = User.query.get(user_id)
+    raw = str(user_id or '')
+    uid, _sep, tag = raw.partition(':')
+    user = User.query.get(uid)
     if user and user.deleted_at:
         return None
     if user:
         from flask import session as flask_session, g
         jti = flask_session.get('jti')
+        if getattr(g, '_remember_restore', False):
+            # Restored from the remember-me cookie. The cookie must carry a tag
+            # that still matches: a password change or "sign out other
+            # sessions" since it was issued invalidates it. A good restore gets
+            # its own revocable session record, like a fresh sign-in.
+            import hmac as _hmac
+            g._remember_restore = False
+            if not tag or not _hmac.compare_digest(tag, user.remember_tag()):
+                return None
+            try:
+                _, new_jti = _make_jwt(user.id)
+                _create_session(user.id, new_jti)
+                db.session.commit()
+                jti = new_jti
+            except Exception:
+                db.session.rollback()
         if jti:
             request._session_jti = jti
             from app.models.profile import UserSession
@@ -31,6 +49,24 @@ def load_user(user_id):
                 except Exception:
                     db.session.rollback()
     return user
+
+
+def _mark_remember_restore():
+    """Flask-Login restores a session from the remember cookie through this
+    method; flag it so load_user can check the cookie's tag."""
+    from flask import g
+    _orig = login_manager._load_user_from_remember_cookie
+
+    def _wrapped(cookie):
+        g._remember_restore = True
+        try:
+            return _orig(cookie)
+        finally:
+            g._remember_restore = False
+    login_manager._load_user_from_remember_cookie = _wrapped
+
+
+_mark_remember_restore()
 
 
 def _make_jwt(user_id: str):
@@ -80,6 +116,14 @@ def register():
         email = validate_email(data['email'])
     except ValidationError as exc:
         return jsonify({'error': str(exc)}), 400
+
+    from utils.validators import password_problem
+    _pw_err = password_problem(data.get('password'))
+    if _pw_err:
+        return jsonify({'error': _pw_err}), 400
+    from utils import rate_limit as _rl
+    if _rl.hit('register:' + _rl.client_ip(), 10, 3600):
+        return jsonify({'error': 'Too many sign-ups from here. Please try again later.'}), 429
 
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered'}), 409
@@ -206,6 +250,9 @@ def verify_email(token):
 @auth_bp.route('/verify/resend', methods=['POST'])
 def resend_verification():
     """Resend a verification email (needed when old token has expired)."""
+    from utils import rate_limit as _rl
+    if _rl.hit('resend:ip:' + _rl.client_ip(), 10, 3600):
+        return jsonify({'message': 'If that email is registered and unverified, a new link has been sent'}), 200
     data = request.get_json()
     if not data or not data.get('email'):
         return jsonify({'error': 'email is required'}), 400
@@ -231,6 +278,11 @@ def login():
     data = request.get_json()
     if not data or not data.get('email') or not data.get('password'):
         return jsonify({'error': 'email and password are required'}), 400
+
+    from utils import rate_limit as _rl
+    _email_key = str(data.get('email') or '').strip().lower()[:255]
+    if _rl.hit('login:ip:' + _rl.client_ip(), 30, 900) or _rl.hit('login:em:' + _email_key, 10, 900):
+        return jsonify({'error': 'Too many sign-in attempts. Wait 15 minutes and try again.'}), 429
 
     user = User.query.filter_by(email=data['email'].lower()).first()
     if not user or not user.password_hash:
@@ -284,6 +336,11 @@ def reset_password_request():
     if not data or not data.get('email'):
         return jsonify({'error': 'email is required'}), 400
 
+    from utils import rate_limit as _rl
+    _em = str(data.get('email') or '').strip().lower()[:255]
+    if _rl.hit('reset:ip:' + _rl.client_ip(), 10, 3600) or _rl.hit('reset:em:' + _em, 3, 3600):
+        return jsonify({'message': 'If that email is registered, a reset link has been sent'}), 200
+
     user = User.query.filter_by(email=data['email'].lower()).first()
     if user:
         token = secrets.token_urlsafe(32)
@@ -309,6 +366,16 @@ def reset_password_confirm(token):
     user = User.query.filter_by(password_reset_token=token).first()
     if not user or not user.password_reset_expires or user.password_reset_expires < datetime.utcnow():
         return jsonify({'error': 'Invalid or expired reset token'}), 400
+    from utils.validators import password_problem
+    _pw_err = password_problem(data.get('password'))
+    if _pw_err:
+        return jsonify({'error': _pw_err}), 400
+    # A reset signs out every existing session (the reason for a reset is
+    # often that someone else has the password).
+    from app.models.profile import UserSession
+    UserSession.query.filter_by(user_id=user.id, revoked_at=None).update(
+        {'revoked_at': datetime.utcnow()}, synchronize_session=False)
+    AuditLog.log('password_reset', user_id=user.id)
 
     user.password_hash = bcrypt.generate_password_hash(
         data['password'], rounds=current_app.config['BCRYPT_LOG_ROUNDS']
@@ -388,12 +455,26 @@ def google_oauth_callback():
 
     if not google_id or not email:
         return jsonify({'error': 'Incomplete profile from Google'}), 400
+    if profile.get('email_verified') is not True:
+        return jsonify({'error': 'Google has not verified this email address.'}), 400
 
     # Find existing account by google_id or email
     user = User.query.filter_by(google_id=google_id).first()
     if not user:
         user = User.query.filter_by(email=email).first()
         if user:
+            if not user.email_verified:
+                # Someone registered this address with a password but never
+                # proved they own it. The Google sign-in proves the real owner,
+                # so that password (and any pending tokens) must not survive:
+                # otherwise whoever registered first keeps a way in.
+                user.password_hash = None
+                for _attr in ('email_verify_token', 'email_verify_token_expires', 'password_reset_token',
+                              'password_reset_expires', 'pending_email', 'pending_email_token',
+                              'pending_email_token_expires', 'recovery_token', 'recovery_token_expires'):
+                    if hasattr(user, _attr):
+                        setattr(user, _attr, None)
+                AuditLog.log('google_link_cleared_unverified_password', user_id=user.id)
             user.google_id = google_id
             user.email_verified = True  # Google-authenticated = verified
         else:

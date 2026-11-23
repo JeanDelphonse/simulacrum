@@ -623,6 +623,11 @@ def accept_invite(invite_id: str, peer_user_id: str) -> PeerInvite:
         raise PeerError('That invite is no longer open.', 409)
     if invite.peer_user_id and invite.peer_user_id != peer_user_id:
         raise PeerError('That invite was addressed to someone else.', 403)
+    if not invite.peer_user_id and invite.invite_email:
+        from app.models.user import User as _UserP
+        _u = db.session.get(_UserP, peer_user_id)
+        if _u is None or (_u.email or '').strip().lower() != invite.invite_email.strip().lower():
+            raise PeerError('That invite was addressed to someone else.', 403)
 
     invite.peer_user_id = peer_user_id
     invite.status = INVITE_ACCEPTED

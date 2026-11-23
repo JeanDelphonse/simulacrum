@@ -172,6 +172,7 @@ def main():
         'auth/verify_sent.html',
         'auth/verify_email.html',
         'auth/reset_password.html',
+        'auth/reset_password_confirm.html',
         'public/unsubscribe.html',
         'public/explore.html',
         'public/simi_help.html',

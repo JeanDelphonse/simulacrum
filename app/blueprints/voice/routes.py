@@ -22,6 +22,8 @@ _MAX_AUDIO_MB  = 50
 @voice_bp.route('/api/voice/debug-key', methods=['GET'])
 @login_required
 def debug_key():
+    if not getattr(current_user, 'is_admin', False):
+        return jsonify({'error': 'Not found'}), 404
     import requests as _req
     key = current_app.config.get('ELEVENLABS_API_KEY') or ''
     masked = (key[:6] + '...' + key[-4:]) if len(key) > 10 else '(not set)'
@@ -31,6 +33,8 @@ def debug_key():
                      headers={'xi-api-key': key}, timeout=10)
         el_status = r.status_code
         el_body = r.json() if r.headers.get('content-type', '').startswith('application/json') else r.text[:200]
+        if isinstance(el_body, dict):
+            el_body.pop('xi_api_key', None)      # never echo the key itself
     except Exception as e:
         el_status = None
         el_body = str(e)

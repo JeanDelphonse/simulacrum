@@ -78,7 +78,7 @@ def compile_bundle_task(self, bundle_id: str):
         artifacts = []
         for action_id in bundle.artifact_ids:
             action = AgentAction.query.get(action_id)
-            if not action or not action.artifact:
+            if not action or not action.artifact or action.simulation_id != bundle.simulation_id:
                 continue
             version = ArtifactVersion.query.filter_by(
                 action_id=action_id, is_current=True,

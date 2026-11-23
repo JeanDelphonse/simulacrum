@@ -44,7 +44,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       localStorage.setItem('sim_token', data.token);
       // ?next= — same-site relative paths only (e.g. a transition-package invite).
       const nxt = new URLSearchParams(location.search).get('next') || '';
-      const safeNext = /^\/(?!\/)[^\s]*$/.test(nxt) ? nxt : '';
+      const safeNext = /^\/(?![\/\\])[^\s\\]*$/.test(nxt) ? nxt : '';
       if (data.user && data.user.needs_onboarding) {
         window.location.href = '/onboarding?step=' + (data.user.onboarding_step || 1);
       } else {

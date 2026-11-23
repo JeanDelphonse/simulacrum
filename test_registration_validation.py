@@ -186,7 +186,7 @@ def main():
 
     client = app.test_client()
 
-    def register(name, email, password='pw12345678'):
+    def register(name, email, password='Pw-12345678'):
         return client.post('/api/auth/register', json={
             'full_name': name, 'email': email, 'password': password,
         })

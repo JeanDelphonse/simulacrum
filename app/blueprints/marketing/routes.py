@@ -11,8 +11,8 @@ from app.services import enterprise_inquiry_service as eis
 
 
 def _client_ip() -> str:
-    fwd = request.headers.get('X-Forwarded-For', '')
-    return (fwd.split(',')[0].strip() if fwd else '') or (request.remote_addr or '')
+    from utils.rate_limit import client_ip
+    return client_ip()
 
 
 def _wants_json() -> bool:

@@ -560,7 +560,7 @@ def simulation_view(sim_id):
     is_collab = Collaboration.query.filter_by(
         simulation_id=sim_id,
         invitee_email=current_user.email,
-    ).filter(Collaboration.accepted_at.isnot(None)).first()
+    ).filter(Collaboration.accepted_at.isnot(None), Collaboration.revoked_at.is_(None)).first()
     if not is_owner and not is_collab:
         from flask import abort
         abort(403)
@@ -1003,6 +1003,18 @@ def verify_sent_page():
 @pages_bp.route('/forgot-password')
 def forgot_password_page():
     return render_template('auth/reset_password.html')
+
+
+@pages_bp.route('/reset-password/<token>')
+def reset_password_page(token):
+    """The link in the password-reset email: a form that posts the new
+    password to /api/auth/reset-password/<token>."""
+    resp = render_template('auth/reset_password_confirm.html', token=token[:128])
+    from flask import make_response
+    resp = make_response(resp)
+    resp.headers['Referrer-Policy'] = 'no-referrer'      # keep the token out of Referer
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 
 @pages_bp.route('/admin')

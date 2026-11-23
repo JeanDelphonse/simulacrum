@@ -52,5 +52,27 @@ class User(UserMixin, db.Model):
     resumes = db.relationship('Resume', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
     simulations = db.relationship('Simulation', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
 
+    def remember_tag(self) -> str:
+        """Binds a remember-me cookie to the current password and the latest
+        session revocation: changing the password or signing out other
+        sessions makes every older remember cookie stop working."""
+        import hashlib
+        import hmac
+        from flask import current_app
+        from sqlalchemy import func
+        from app.models.profile import UserSession
+        last = db.session.query(func.max(UserSession.revoked_at)).filter(UserSession.user_id == self.id).scalar()
+        msg = '%s|%s|%s' % (self.id, self.password_hash or '', last.isoformat() if last else '')
+        key = (current_app.config.get('SECRET_KEY') or '').encode('utf-8')
+        return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).hexdigest()[:20]
+
+    def get_id(self):
+        # "<id>:<tag>" ends up in the session and the remember cookie; the
+        # user loader checks the tag when a session is restored from that cookie.
+        try:
+            return '%s:%s' % (self.id, self.remember_tag())
+        except Exception:
+            return str(self.id)
+
     def __repr__(self):
         return f'<User {self.email}>'

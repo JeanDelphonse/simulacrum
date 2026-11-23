@@ -276,6 +276,45 @@ def create_app(config_name=None):
             pass
         return response
 
+    # Cross-site request guard (security review 2026-11). A browser always
+    # sends Origin (or at least Referer) on a cross-site POST, and form or
+    # text/plain posts need no CORS preflight, so every state-changing request
+    # must come from this site. Requests with neither header (cron, curl, the
+    # test client, mail providers' one-click unsubscribe) pass; webhooks are
+    # authenticated by their own signatures and are exempt.
+    _CSRF_EXEMPT = ('/webhooks/', '/api/webhooks/', '/api/payments/webhook')
+
+    @app.before_request
+    def _cross_site_guard():
+        from flask import request as _req, jsonify as _jsonify
+        from urllib.parse import urlsplit as _split
+        if _req.method in ('GET', 'HEAD', 'OPTIONS') or _req.path.startswith(_CSRF_EXEMPT):
+            return None
+        src = _req.headers.get('Origin') or _req.headers.get('Referer')
+        if not src:
+            return None
+        host = (_req.host or '').lower()
+        if src != 'null' and _split(src).netloc.lower() == host:
+            return None
+        app.logger.warning('cross-site %s %s refused (origin %s)', _req.method, _req.path, src[:120])
+        if _req.path.startswith('/api/') or _req.is_json:
+            return _jsonify({'error': 'Cross-site request refused.'}), 403
+        return 'Cross-site request refused.', 403
+
+    # Security headers on every response: no framing by other sites
+    # (clickjacking), no MIME sniffing, a conservative referrer policy and HSTS
+    # over HTTPS. Routes that set their own value keep it.
+    @app.after_request
+    def _security_headers(response):
+        from flask import request as _req
+        h = response.headers
+        h.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        h.setdefault('X-Content-Type-Options', 'nosniff')
+        h.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        if _req.is_secure or _req.headers.get('X-Forwarded-Proto', '') == 'https':
+            h.setdefault('Strict-Transport-Security', 'max-age=31536000')
+        return response
+
     # Onboarding gate: redirect incomplete users to /onboarding
     @app.before_request
     def _onboarding_gate():
@@ -293,7 +332,7 @@ def create_app(config_name=None):
         if _req.path.startswith(_public_prefixes):
             return
         if _req.path in ('/login', '/register', '/verify-sent', '/forgot-password',
-                         '/partners/apply', '/'):
+                         '/partners/apply', '/') or _req.path.startswith('/reset-password/'):
             return
         # Machine-requested files served from the web root rather than /static/.
         # A browser asks for these on its own, so redirecting them to onboarding
@@ -357,6 +396,13 @@ def create_app(config_name=None):
     # the few public templates that read free text straight off a model rather
     # than from an assembled context dict — masking the model attribute itself
     # would put the masked value into the session and risk persisting it.
+    @app.template_filter('safe_href')
+    def _safe_href(value):
+        """A member-supplied link, or '#' when it isn't http(s), mailto or a
+        same-site path (blocks javascript:, data: and protocol-relative URLs)."""
+        from utils.validators import safe_url
+        return safe_url(value) or '#'
+
     @app.template_filter('mask_contacts')
     def _mask_contacts(value):
         try:

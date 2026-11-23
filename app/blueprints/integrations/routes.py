@@ -199,6 +199,9 @@ def apollo_update_settings():
 
 @integrations_bp.route('/webhooks/apollo/<user_id>', methods=['POST'])
 def apollo_webhook(user_id):
+    from app.services import webhook_auth as _wa
+    if not _wa.user_webhook_ok('apollo', user_id, request):
+        return '', 403
     payload = request.get_json(silent=True) or {}
     event = payload.get('event_type')
     contact_email = (payload.get('contact') or {}).get('email')
@@ -451,8 +454,9 @@ def stripe_connect_webhook():
             logger.warning('Stripe Connect webhook signature failed: %s', exc)
             return jsonify({'error': 'Invalid signature'}), 400
     else:
-        import json
-        event = json.loads(payload)
+        # No signing secret configured: refuse rather than trust an unsigned event.
+        logger.warning('Stripe Connect webhook refused: STRIPE_CONNECT_WEBHOOK_SECRET is not set')
+        return jsonify({'error': 'Webhook not configured'}), 503
 
     event_type     = event.get('type', '')
     stripe_account = event.get('account')
@@ -594,6 +598,9 @@ def cal_webhook(user_id):
     - Increments consulting_bookings_mo momentum metric (FR-CAL-03)
     - SSE polling picks up the DB change for GCC live update (FR-CAL-03)
     """
+    from app.services import webhook_auth as _wa
+    if not _wa.user_webhook_ok('cal', user_id, request):
+        return '', 403
     payload = request.get_json(silent=True) or {}
     trigger = payload.get('triggerEvent')
 
@@ -616,6 +623,11 @@ def cal_webhook(user_id):
                        or inner.get('simulacrum_simulation_id'))
     action_id       = (payload.get('simulacrum_action_id')
                        or inner.get('simulacrum_action_id'))
+    # The payload's simulation must be this user's own.
+    if simulation_id:
+        from app.models.simulation import Simulation as _SimC
+        if _SimC.query.filter_by(id=simulation_id, user_id=user_id).first() is None:
+            simulation_id, action_id = None, None
 
     try:
         _handle_cal_event(trigger, user_id, attendee_email, attendee_name,
@@ -856,6 +868,20 @@ def signing_send():
     artifact_version_id = data.get('artifact_version_id')
     action_id_lookup = data.get('action_id')
 
+    # Everything sent for signature must come from the caller's own simulation.
+    from app.models.simulation import Simulation as _SimS
+    from app.models.agent_action import AgentAction as _AAS
+    from app.models.artifact import ArtifactVersion as _AVS
+    _sim = _SimS.query.filter_by(id=data.get('simulation_id'), user_id=current_user.id).first()
+    if _sim is None:
+        return jsonify({'error': 'Not found'}), 404
+    if action_id_lookup and _AAS.query.filter_by(id=action_id_lookup, simulation_id=_sim.id).first() is None:
+        return jsonify({'error': 'Not found'}), 404
+    if artifact_version_id:
+        _av = _AVS.query.get(artifact_version_id)
+        if _av is None or _AAS.query.filter_by(id=_av.action_id, simulation_id=_sim.id).first() is None:
+            return jsonify({'error': 'Not found'}), 404
+
     if not content_html and artifact_version_id:
         from app.models.artifact import ArtifactVersion
         av = ArtifactVersion.query.filter_by(id=artifact_version_id).first()
@@ -1036,6 +1062,9 @@ def sendgrid_clear():
 
 @integrations_bp.route('/webhooks/convertkit/<user_id>', methods=['POST'])
 def convertkit_webhook(user_id):
+    from app.services import webhook_auth as _wa
+    if not _wa.user_webhook_ok('convertkit', user_id, request):
+        return '', 403
     payload  = request.get_json(silent=True) or {}
     event    = payload.get('type') or payload.get('event')
     form_id  = str(payload.get('form_id') or '')
@@ -1198,6 +1227,9 @@ def kajabi_webhook(user_id):
     Handles Kajabi purchase, subscription, enrollment, and lesson events.
     Bayesian signals per Section 5.4 of SIM-PRD-INTEG-001.
     """
+    from app.services import webhook_auth as _wa
+    if not _wa.user_webhook_ok('kajabi', user_id, request):
+        return '', 403
     payload    = request.get_json(silent=True) or {}
     event      = payload.get('event') or payload.get('type')
     product_id = str(payload.get('product_id') or payload.get('offer_id') or '')
@@ -1881,6 +1913,10 @@ def sendgrid_event_webhook():
     from app.models.outreach_email import EmailLog, EmailSuppression
     from app.models.integration_signal import IntegrationSignal
     from utils.id_gen import generate_id
+    from app.services import webhook_auth as _wa
+
+    if not _wa.sendgrid_events_ok(request):
+        return '', 403
 
     events = request.get_json(silent=True) or []
     if not isinstance(events, list):
@@ -2010,6 +2046,10 @@ def sendgrid_inbound_parse():  # noqa: C901 (see _is_stop_reply / _opt_out_by_re
     from app.models.outreach_email import EmailLog
     from app.models.integration_signal import IntegrationSignal
     from utils.id_gen import generate_id
+    from app.services import webhook_auth as _wa
+
+    if not _wa.sendgrid_inbound_ok(request):
+        return '', 403
 
     to_addr = request.form.get('to', '')
     from_addr = request.form.get('from', '')

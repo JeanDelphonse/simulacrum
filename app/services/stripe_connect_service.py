@@ -316,6 +316,14 @@ def attribute_income_from_stripe_event(event_object: dict, stripe_account_id: st
     if not integration:
         logger.warning('No integration for Stripe account %s', stripe_account_id)
         return
+    # The metadata is set by whoever creates the charge, so it must name the
+    # account's own user and one of that user's simulations.
+    from app.models.simulation import Simulation
+    if integration.user_id != user_id or Simulation.query.filter_by(
+            id=simulation_id, user_id=integration.user_id).first() is None:
+        logger.warning('Stripe account %s event names another user or simulation; not attributed',
+                       stripe_account_id)
+        return
 
     # Determine amount
     amount_cents = (

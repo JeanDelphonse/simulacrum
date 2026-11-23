@@ -50,7 +50,10 @@ def apply():
     if not _program_enabled():
         return jsonify({'error': 'Partner program is not currently accepting applications'}), 403
 
-    data = request.get_json()
+    from utils import rate_limit as _rl
+    if _rl.hit('partners:apply:' + _rl.client_ip(), 5, 3600):
+        return jsonify({'error': 'Too many applications from here. Please try again later.'}), 429
+    data = request.get_json() or {}
     required = ['full_name', 'email', 'partner_type']
     missing = [f for f in required if not data.get(f)]
     if missing:

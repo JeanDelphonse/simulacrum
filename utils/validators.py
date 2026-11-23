@@ -218,3 +218,45 @@ def validate_email(raw, allow_disposable: bool = False) -> str:
             'results there.')
 
     return email
+
+
+_SAFE_URL_RE = re.compile(r'^(?:https?://[^\s<>"]+|mailto:[^\s<>"]+|/(?![/\\])[^\s<>"\\]*)$', re.I)
+
+
+def safe_url(raw) -> str:
+    """The URL if it is http(s), mailto or a same-site path, else ''. Used for
+    member-supplied links (bio pages, profiles): blocks javascript:, data:,
+    vbscript: and protocol-relative URLs. A bare domain gets https:// added."""
+    v = str(raw or '').strip()
+    if not v:
+        return ''
+    if re.match(r'^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[/?#][^\s<>"]*)?$', v):
+        v = 'https://' + v
+    return v if _SAFE_URL_RE.match(v) else ''
+
+
+def password_problem(pw) -> str:
+    """Why this password is too weak, or ''. The rule change_password always
+    enforced, now also on register and reset."""
+    pw = pw if isinstance(pw, str) else ''
+    if len(pw) < 8:
+        return 'Password must be at least 8 characters'
+    if len(pw) > 128:
+        return 'Password must be at most 128 characters'
+    if not re.search(r'[A-Z]', pw):
+        return 'Password must contain at least one uppercase letter'
+    if not re.search(r'[0-9]', pw):
+        return 'Password must contain at least one number'
+    if not re.search(r'[^A-Za-z0-9]', pw):
+        return 'Password must contain at least one special character'
+    return ''
+
+
+def csv_cell(value):
+    """A spreadsheet-safe CSV value: text starting with = + - @ (or a tab or
+    carriage return) is prefixed with ' so Excel and Sheets don't run it as a
+    formula."""
+    if value is None:
+        return ''
+    s = str(value)
+    return "'" + s if s[:1] in ('=', '+', '-', '@', '\t', '\r') else s

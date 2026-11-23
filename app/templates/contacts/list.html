@@ -483,12 +483,12 @@ function renderTable(contacts, total, pages) {
     <tr>
       <td class="cb-col"><input type="checkbox" class="row-cb" data-id="${c.id}" ${_selectedIds.has(c.id)?'checked':''} onchange="toggleRow(this)"></td>
       <td>
-        <a class="contact-name-link" href="${CROOT}/contacts/${c.id}">${c.display_name}</a>
-        <div class="contact-sub">${c.email}</div>
+        <a class="contact-name-link" href="${CROOT}/contacts/${_invEsc(c.id)}">${_invEsc(c.display_name)}</a>
+        <div class="contact-sub">${_invEsc(c.email)}</div>
       </td>
       <td>
-        <div>${c.company_name || '—'}</div>
-        <div class="contact-sub">${c.job_title || ''}</div>
+        <div>${_invEsc(c.company_name || '—')}</div>
+        <div class="contact-sub">${_invEsc(c.job_title || '')}</div>
       </td>
       <td>${stageBadge(c.pipeline_stage)}</td>
       <td>${scoreHtml(c.qualifying_score)}</td>
@@ -566,9 +566,9 @@ function loadKanban() {
         const items = byStage[stage] || [];
         col.parentElement.querySelector('.cnt').textContent = items.length;
         col.innerHTML = items.map(c => `
-          <div class="kanban-card" onclick="location.href='${CROOT}/contacts/${c.id}'">
-            <div class="kanban-card-name">${c.display_name}</div>
-            <div class="kanban-card-sub">${c.job_title || ''}${c.job_title && c.company_name ? ' · ' : ''}${c.company_name || ''}</div>
+          <div class="kanban-card" onclick="location.href='${CROOT}/contacts/${_invEsc(c.id)}'">
+            <div class="kanban-card-name">${_invEsc(c.display_name)}</div>
+            <div class="kanban-card-sub">${_invEsc(c.job_title || '')}${c.job_title && c.company_name ? ' · ' : ''}${_invEsc(c.company_name || '')}</div>
             ${scoreHtml(c.qualifying_score)}
           </div>
         `).join('') || '<div style="font-size:12px;color:var(--mute);padding:8px">No contacts</div>';

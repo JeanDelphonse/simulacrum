@@ -161,7 +161,8 @@ def deploy_email_campaign(action_id: str, simulation_id: str, artifact: dict) ->
     if apollo_contact_ids:
         apollo.add_contacts_to_sequence(sequence_id, apollo_contact_ids)
 
-    webhook_url = f'{current_app.config["BASE_URL"]}/webhooks/apollo/{sim.user_id}'
+    from app.services import webhook_auth
+    webhook_url = webhook_auth.user_webhook_url('apollo', sim.user_id)
     try:
         apollo.register_webhook(
             url=webhook_url,

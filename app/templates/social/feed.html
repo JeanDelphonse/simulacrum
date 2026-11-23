@@ -136,16 +136,21 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var list = document.getElementById('feed-list');
+        var esc = function (s) {
+          return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+          });
+        };
         data.events.forEach(function (ev) {
           var card = document.createElement('div');
           card.className = 'event-card';
-          var initials = (ev.actor_name || '?')[0];
+          var initials = esc((ev.actor_name || '?')[0]);
           var avatar = ev.actor_avatar
-            ? '<img class="event-avatar" src="/avatars/' + ev.actor_avatar + '" loading="lazy">'
+            ? '<img class="event-avatar" src="/avatars/' + esc(encodeURI(ev.actor_avatar)) + '" loading="lazy">'
             : '<div class="event-avatar-placeholder">' + initials + '</div>';
           var actorHtml = ev.actor_slug
-            ? '<a class="event-link" href="/u/' + ev.actor_slug + '">' + ev.actor_name + '</a>'
-            : '<strong>' + ev.actor_name + '</strong>';
+            ? '<a class="event-link" href="/u/' + esc(encodeURIComponent(ev.actor_slug)) + '">' + esc(ev.actor_name) + '</a>'
+            : '<strong>' + esc(ev.actor_name) + '</strong>';
           var typeText = {
             bio_page_published: ' published their professional bio page.',
             bio_page_updated: ' updated their professional bio page.',
@@ -156,7 +161,7 @@
           }[ev.event_type] || ' had some activity.';
           card.innerHTML = avatar +
             '<div class="event-body"><div class="event-text">' + actorHtml + typeText + '</div>' +
-            '<div class="event-time">' + ev.created_at.slice(0, 10) + '</div></div>';
+            '<div class="event-time">' + esc(String(ev.created_at || '').slice(0, 10)) + '</div></div>';
           list.appendChild(card);
         });
         if (data.has_more) {

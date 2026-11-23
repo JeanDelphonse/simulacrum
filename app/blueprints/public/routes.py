@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 
-from flask import request, jsonify, render_template, current_app, send_from_directory, url_for
+from flask import abort, request, jsonify, render_template, current_app, send_from_directory, url_for
 from flask_login import current_user
 
 from app.blueprints.public import public_bp
@@ -24,10 +24,22 @@ _SUBJECTS = (
 )
 
 
+# /avatars/ serves only profile photos and bio hero images. Everything else in
+# UPLOAD_FOLDER (voice samples, videos, resumes, careers files) is private and
+# served, if at all, by routes that check who is asking.
+PUBLIC_IMAGE_DIRS = ('avatars/', 'bio_heroes/')
+PUBLIC_IMAGE_EXTS = ('.png', '.jpg', '.jpeg', '.gif', '.webp')
+
+
 @public_bp.route('/avatars/<path:filename>')
 def serve_avatar(filename):
+    name = (filename or '').replace(chr(92), '/')
+    if not name.startswith(PUBLIC_IMAGE_DIRS) or not name.lower().endswith(PUBLIC_IMAGE_EXTS):
+        abort(404)
     upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-    return send_from_directory(upload_folder, filename)
+    resp = send_from_directory(upload_folder, name)
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
 
 
 @public_bp.route('/u/<username>')
@@ -339,14 +351,26 @@ def bio_page_json(username: str):
     bio_page = BioPage.query.filter_by(slug=slug).first()
     if not bio_page:
         return jsonify({'error': 'Not found'}), 404
-    ctx = _assemble_context(bio_page.user_id, bio_page)
-    # Unauthenticated endpoint, so the same masking the page gets. It also backs
-    # the owner's live preview, where seeing the mask is the point.
     from app.services import contact_masking
-    return jsonify({
-        'bio_page': bio_page.to_dict(),
-        'context': contact_masking.mask_deep(ctx),
-    })
+    is_owner = current_user.is_authenticated and current_user.id == bio_page.user_id
+    if is_owner:
+        # The owner's live preview: the full context, masked as the page is.
+        ctx = _assemble_context(bio_page.user_id, bio_page)
+        return jsonify({'bio_page': bio_page.to_dict(), 'context': contact_masking.mask_deep(ctx)})
+    # Everyone else (the embed card): a published page's name, title and photo
+    # only. Private-mode, draft and unpublished content never leaves here.
+    if bio_page.status != BioPage.STATUS_PUBLISHED:
+        return jsonify({'error': 'Not found'}), 404
+    profile = UserProfile.query.filter_by(user_id=bio_page.user_id).first()
+    user = User.query.get(bio_page.user_id)
+    if profile is None or user is None or user.deleted_at:
+        return jsonify({'error': 'Not found'}), 404
+    card = {'full_name': profile.display_name or user.full_name or slug, 'professional_title': '',
+            'avatar_path': profile.avatar_path or '', 'hero_image_url': ''}
+    if not profile.is_private:
+        ctx = _assemble_context(bio_page.user_id, bio_page)
+        card.update({k: ctx.get(k) or '' for k in ('full_name', 'professional_title', 'hero_image_url')})
+    return jsonify({'bio_page': {'slug': bio_page.slug}, 'context': contact_masking.mask_deep(card)})
 
 
 @public_bp.route('/u/<username>/contact', methods=['POST'])
@@ -355,7 +379,8 @@ def contact_form(username):
     if not profile or not profile.is_published or not profile.show_contact_form:
         return jsonify({'error': 'Not found'}), 404
 
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+    from utils.rate_limit import client_ip
+    ip = client_ip()
     ip_hash = hashlib.sha256(ip.encode()).hexdigest()
 
     cutoff = datetime.utcnow() - timedelta(hours=1)
@@ -589,7 +614,8 @@ def embed_badge_js(slug: str):
         slug=slug.lower(), status=BioPage.STATUS_PUBLISHED,
     ).first()
     if not bp:
-        return ('console.warn("SimiSI: bio page not found — ' + slug + '");',
+        import json as _json
+        return ('console.warn(%s);' % _json.dumps('SimiSI: bio page not found: ' + slug[:80]).replace('<', '\\u003c'),
                 404, {'Content-Type': 'application/javascript'})
 
     profile = UserProfile.query.filter_by(user_id=bp.user_id).first()

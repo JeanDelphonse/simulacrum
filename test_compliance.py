@@ -610,13 +610,14 @@ def main():
         r = send_outreach_email(simulation_id=msim.id, contact_id=to.id, subject='Re: Quick idea', html_body='<p>x</p>',
                                 from_email='simi@simisi.io', from_name='Mo Lee')
         check('a real follow-up may say Re:', r['status'] == 'sent')
-        res = client.post('/webhooks/sendgrid/inbound', data={
+        app.config['SENDGRID_INBOUND_TOKEN'] = 'inbound-token'      # webhook_auth: Inbound Parse needs its token
+        res = client.post('/webhooks/sendgrid/inbound?k=inbound-token', data={
             'to': 'reply-%s@mail.simulacrumai.io' % to.id, 'from': 'kim@x.com',
             'text': 'STOP\n\nOn Tue, Mo Lee wrote:\n> Quick idea'})
         if res.status_code == 404:
             from app.blueprints.integrations import routes as _ir
             rule = [r_ for r_ in app.url_map.iter_rules() if r_.endpoint.endswith('sendgrid_inbound_parse')][0]
-            res = client.post(rule.rule, data={'to': 'reply-%s@mail.simulacrumai.io' % to.id, 'from': 'kim@x.com',
+            res = client.post(rule.rule + '?k=inbound-token', data={'to': 'reply-%s@mail.simulacrumai.io' % to.id, 'from': 'kim@x.com',
                                                'text': 'STOP\n\nOn Tue, Mo Lee wrote:\n> Quick idea'})
         to_after = Contact.query.get(to.id)
         check('a reply of STOP opts the person out at once', res.status_code == 200

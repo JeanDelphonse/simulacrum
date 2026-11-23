@@ -409,7 +409,8 @@ def main():
         log = db.session.get(EmailLog, bob_msg.email_log_id)
         log.provider_message_id = 'BOUNCE1'
         db.session.commit()
-        r = client.post('/api/webhooks/sendgrid', json=[{'event': 'bounce', 'sg_message_id': 'BOUNCE1.filter', 'email': 'bob@beta.com',
+        app.config['SENDGRID_WEBHOOK_TOKEN'] = 'event-token'
+        r = client.post('/api/webhooks/sendgrid?k=event-token', json=[{'event': 'bounce', 'sg_message_id': 'BOUNCE1.filter', 'email': 'bob@beta.com',
                                                           'reason': '550 no such user'}])
         check('a SendGrid bounce for a venture email is accepted', r.status_code == 200)
         check('... the contact is Bounced and on the venture do-not-contact list',

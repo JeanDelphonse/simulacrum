@@ -354,6 +354,12 @@ def create_bundle(sim_id):
 
     # Collect artifact_ids: explicit list or all current versions for the layer
     artifact_ids = data.get('artifact_ids') or []
+    if artifact_ids:
+        if not isinstance(artifact_ids, list):
+            return jsonify({'error': 'artifact_ids must be a list'}), 400
+        wanted = [str(i) for i in artifact_ids][:500]
+        artifact_ids = [a.id for a in AgentAction.query.filter(
+            AgentAction.id.in_(wanted), AgentAction.simulation_id == sim_id).all()]
     if not artifact_ids:
         query = AgentAction.query.filter_by(
             simulation_id=sim_id,

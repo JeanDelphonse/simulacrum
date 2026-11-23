@@ -6,6 +6,13 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
+    # Cookies (security review 2026-11): Lax keeps the session and remember
+    # cookies off cross-site POSTs; remember-me lasts 30 days, not 365.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_DURATION = __import__('datetime').timedelta(days=30)
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-change-in-production')
     JWT_EXPIRY_DAYS = 7
     EMAIL_PROVIDER = os.environ.get('EMAIL_PROVIDER', 'smtp')  # 'smtp' or 'sendgrid'
@@ -60,6 +67,15 @@ class Config:
     BASE_URL = os.environ.get('BASE_URL', 'https://simisi.io')
     STRIPE_CLIENT_ID = os.environ.get('STRIPE_CLIENT_ID')                          # ca_xxxx (Connect app client ID)
     STRIPE_CONNECT_WEBHOOK_SECRET = os.environ.get('STRIPE_CONNECT_WEBHOOK_SECRET') # whsec_xxxx for Connect events
+    # SendGrid webhooks (app/services/webhook_auth.py). Events: the signed-webhook
+    # verification key from SendGrid (Settings -> Mail Settings -> Event Webhook ->
+    # Signature Verification), and/or a random token added to the webhook URL as ?k=.
+    # Inbound Parse: a random token added to the parse URL as ?k=. Unset = refused.
+    SENDGRID_WEBHOOK_PUBLIC_KEY = os.environ.get('SENDGRID_WEBHOOK_PUBLIC_KEY')
+    SENDGRID_WEBHOOK_TOKEN = os.environ.get('SENDGRID_WEBHOOK_TOKEN')
+    SENDGRID_INBOUND_TOKEN = os.environ.get('SENDGRID_INBOUND_TOKEN')
+    # Bearer secret for the digest cron endpoint; unset = endpoint refused.
+    DIGEST_CRON_SECRET = os.environ.get('DIGEST_CRON_SECRET')
     CAL_CLIENT_ID = os.environ.get('CAL_CLIENT_ID')
     CAL_CLIENT_SECRET = os.environ.get('CAL_CLIENT_SECRET')
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
@@ -80,6 +96,8 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///simulacrum.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     BCRYPT_LOG_ROUNDS = 12
@@ -95,6 +113,12 @@ class ProductionConfig(Config):
 
     @classmethod
     def init_app(cls, app):
+        sk = os.environ.get('SECRET_KEY') or ''
+        if not sk or sk == 'dev-secret-change-in-production' or len(sk) < 16:
+            # With the public default anyone could forge session cookies and
+            # signed links (unsubscribe, approvals, invites) for any user.
+            raise RuntimeError('SECRET_KEY must be set to a long random value in production '
+                               '(cPanel -> Setup Python App -> Environment variables).')
         key = os.environ.get('ENCRYPTION_KEY')
         if not key:
             raise RuntimeError("ENCRYPTION_KEY environment variable is required in production configuration.")
@@ -107,6 +131,7 @@ class TestingConfig(Config):
     WTF_CSRF_ENABLED = False
     CELERY_TASK_ALWAYS_EAGER = True
     BCRYPT_LOG_ROUNDS = 4
+    RATE_LIMITS_ENABLED = False      # utils/rate_limit.py; test_security_fixes.py turns it on
 
 
 config = {

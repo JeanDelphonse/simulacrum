@@ -669,7 +669,8 @@ def seats_csv(org, cohort_id: str | None = None) -> str:
     w = csv.writer(buf)
     w.writerow(['Cohort', 'Name', 'Tier', 'Status', 'Invited', 'Activated', 'Access ends'])
     for r in hr_seat_list(org, cohort_id):
-        w.writerow([r['cohort'], r['name'], r['tier'], r['status'], r['invited_at'] or '',
+        from utils.validators import csv_cell as _c
+        w.writerow([_c(r['cohort']), _c(r['name']), r['tier'], r['status'], r['invited_at'] or '',
                     r['activated_at'] or '', r['expires_at'] or ''])
     return buf.getvalue()
 

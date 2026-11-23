@@ -107,7 +107,8 @@ def main():
 
         print('\n3. Spam report (SendGrid event)')
         s1 = contact('MEMBERA01', 'spam@example.com')
-        r = client.post('/api/webhooks/sendgrid', json=[{'event': 'spamreport', 'email': 'Spam@Example.com'}])
+        app.config['SENDGRID_WEBHOOK_TOKEN'] = 'event-token'        # webhook_auth: events need the token
+        r = client.post('/api/webhooks/sendgrid?k=event-token', json=[{'event': 'spamreport', 'email': 'Spam@Example.com'}])
         check('a spam report marks the contact Do Not Contact', r.status_code == 200 and fresh(s1).do_not_contact is True
               and EmailSuppression.query.filter_by(email='spam@example.com', reason='complaint').count() == 1, r.status_code)
 

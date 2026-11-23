@@ -2,6 +2,7 @@ from flask import request, jsonify
 from flask_login import login_required, current_user
 from app.blueprints.payments import payments_bp
 from app.extensions import db
+from app.models.audit_log import AuditLog
 from app.services.stripe_service import construct_webhook_event
 import logging
 

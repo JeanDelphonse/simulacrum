@@ -7,6 +7,29 @@ from app.extensions import db
 
 logger = logging.getLogger(__name__)
 
+# Published pages and artifacts are member- or model-written HTML served on
+# the site's own domain. The sandbox gives them an opaque origin: scripts may
+# run (forms, embeds) but cannot read SimiSI cookies, storage or call its APIs
+# as the visitor.
+SANDBOX_CSP = ('sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox '
+               'allow-top-navigation-by-user-activation')
+
+
+def _hosted(body, content_type):
+    resp = Response(body, content_type=content_type)
+    resp.headers['Content-Security-Policy'] = SANDBOX_CSP
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Referrer-Policy'] = 'no-referrer'
+    return resp
+
+
+def _owned_sim(simulation_id):
+    from app.models.simulation import Simulation
+    if not simulation_id:
+        return None
+    return Simulation.query.filter_by(id=simulation_id, user_id=current_user.id).first()
+
+
 SAFE_CONTENT_TYPES = {
     'text': 'text/plain; charset=utf-8',
     'html': 'text/html; charset=utf-8',
@@ -35,7 +58,7 @@ def serve_artifact(artifact_version_id):
     if av.file_type == 'html' or (av.content and av.content.strip().startswith('<')):
         content_type = 'text/html; charset=utf-8'
 
-    return Response(av.content, content_type=content_type)
+    return _hosted(av.content, content_type)
 
 
 # ── Public sales page (/p/<slug>) (FR-PUB-03) ────────────────────────────────
@@ -49,7 +72,7 @@ def serve_page(slug):
     from app.models.published_page import PublishedPage
 
     page = PublishedPage.query.filter_by(slug=slug, status='live').first_or_404()
-    return Response(page.html_content, content_type='text/html; charset=utf-8')
+    return _hosted(page.html_content, 'text/html; charset=utf-8')
 
 
 # ── Deploy endpoint (called from GCC) ────────────────────────────────────────
@@ -73,6 +96,21 @@ def deploy():
     simulation_id = data['simulation_id']
     action_id = data.get('action_id')
     artifact_version_id = data.get('artifact_version_id')
+
+    # Everything published must belong to the caller's own simulation.
+    sim = _owned_sim(simulation_id)
+    if sim is None:
+        return jsonify({'error': 'Not found'}), 404
+    from app.models.agent_action import AgentAction
+    from app.models.artifact import ArtifactVersion
+    if action_id:
+        if AgentAction.query.filter_by(id=action_id, simulation_id=sim.id).first() is None:
+            return jsonify({'error': 'Not found'}), 404
+    if artifact_version_id:
+        _av = ArtifactVersion.query.get(artifact_version_id)
+        _owner = AgentAction.query.filter_by(id=_av.action_id, simulation_id=sim.id).first() if _av else None
+        if _owner is None:
+            return jsonify({'error': 'Not found'}), 404
     layer_number = int(data.get('layer_number', 3))
     title = data.get('title') or action_type.replace('_', ' ').title()
 
@@ -97,7 +135,8 @@ def deploy():
         from app.models.agent_action import AgentAction
         aa = AgentAction.query.get(action_id)
         if aa and aa.artifact:
-            html_content = f'<pre style="font-family:sans-serif;white-space:pre-wrap;padding:2rem">{aa.artifact}</pre>'
+            from html import escape as _esc
+            html_content = f'<pre style="font-family:sans-serif;white-space:pre-wrap;padding:2rem">{_esc(aa.artifact)}</pre>'
 
     if not html_content:
         return jsonify({'error': 'No content available to publish.'}), 422

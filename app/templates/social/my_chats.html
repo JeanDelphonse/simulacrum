@@ -162,19 +162,21 @@
     currentChatId = chatId;
     currentSlug = ownerSlug;
 
+    ownerName = ownerName || '';
     var avatarHtml = ownerAvatar
-      ? '<img class="chat-item-avatar" src="/avatars/' + ownerAvatar + '" alt="' + ownerName + '">'
-      : '<div class="chat-item-avatar-placeholder">' + (ownerName[0] || '?') + '</div>';
+      ? '<img class="chat-item-avatar" src="/avatars/' + escHtml(encodeURI(ownerAvatar)) + '" alt="' + escHtml(ownerName) + '">'
+      : '<div class="chat-item-avatar-placeholder">' + escHtml(ownerName[0] || '?') + '</div>';
+    var cid = escHtml(chatId);
 
     panel.innerHTML =
       '<div class="panel-header">' + avatarHtml +
-      '<span class="panel-header-name">' + ownerName + '</span>' +
-      (ownerSlug ? '<a href="/u/' + ownerSlug + '" target="_blank">View page →</a>' : '') +
+      '<span class="panel-header-name">' + escHtml(ownerName) + '</span>' +
+      (ownerSlug ? '<a href="/u/' + escHtml(encodeURIComponent(ownerSlug)) + '" target="_blank">View page →</a>' : '') +
       '</div>' +
-      '<div class="panel-messages" id="pm-' + chatId + '"></div>' +
+      '<div class="panel-messages" id="pm-' + cid + '"></div>' +
       '<div class="panel-input">' +
-      '<textarea id="pi-' + chatId + '" rows="2" placeholder="Type a message…"></textarea>' +
-      '<button class="panel-send" id="ps-' + chatId + '">Send</button>' +
+      '<textarea id="pi-' + cid + '" rows="2" placeholder="Type a message…"></textarea>' +
+      '<button class="panel-send" id="ps-' + cid + '">Send</button>' +
       '</div>';
 
     fetch('/api/platform-chat/' + chatId + '/messages')
@@ -250,7 +252,8 @@
   }
 
   function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 }());
 </script>

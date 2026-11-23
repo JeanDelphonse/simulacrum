@@ -69,11 +69,11 @@ def trigger_digest(user_id):
     Protected by a shared secret in the Authorization header.
     """
     from flask import current_app
+    import hmac
     secret = current_app.config.get('DIGEST_CRON_SECRET')
-    if secret:
-        auth = request.headers.get('Authorization', '')
-        if auth != f'Bearer {secret}':
-            return jsonify({'error': 'Unauthorized'}), 401
+    auth = request.headers.get('Authorization', '')
+    if not secret or not hmac.compare_digest(auth, 'Bearer %s' % secret):
+        return jsonify({'error': 'Unauthorized'}), 401
 
     from app.services.notification_service import send_daily_digest
     notif_id = send_daily_digest(user_id)

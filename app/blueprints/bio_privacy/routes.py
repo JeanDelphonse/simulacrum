@@ -140,7 +140,12 @@ p{color:#4b5563;font-size:15px;line-height:1.6;margin:0 0 20px}
 a{display:inline-block;background:#0f7b72;color:#fff;text-decoration:none;padding:11px 22px;
 border-radius:8px;font-weight:600;font-size:14px}</style></head>
 <body><div class="card">
-{% if ok %}<h1>✓ Access approved</h1>
+{% if result == 'confirm' %}<h1>Approve {{ name }}?</h1>
+<p>{{ name }} asked to see your full profile. Approve to give them access.</p>
+<form method="post"><button type="submit" style="border:0;cursor:pointer;background:#0f7b72;color:#fff;
+padding:11px 22px;border-radius:8px;font-weight:600;font-size:14px">Approve access</button></form>
+<p style="margin-top:18px"></p>
+{% elif ok %}<h1>✓ Access approved</h1>
 <p>{{ name }} can now view your full profile. They've been emailed a link, and
 added to your contacts as a verified warm lead.</p>
 {% else %}<h1>Link expired or invalid</h1>
@@ -150,11 +155,29 @@ the request manually.</p>{% endif %}
 </div></body></html>"""
 
 
-@bio_privacy_bp.route('/bio/access/approve/<token>', methods=['GET'])
+@bio_privacy_bp.route('/bio/access/approve/<token>', methods=['GET', 'POST'])
 def approve_via_token(token: str):
+    """The one-tap link in the owner's email. GET only shows a confirm button
+    (mail scanners open links on their own); the POST approves, and only a
+    request that is still pending: a revoked, denied or blocked person can't
+    be let back in by an old link."""
+    from flask import request as _rq
+    from app.models.bio_privacy import BioAccessRequest
     payload = svc.verify_approve_token(token)
     if not payload:
         return render_template_string(_APPROVE_PAGE, ok=False, result='error', name=''), 400
+    row = BioAccessRequest.query.filter_by(id=payload.get('rid')).first()
+    if row is None or row.owner_user_id != payload.get('owner'):
+        return render_template_string(_APPROVE_PAGE, ok=False, result='error', name=''), 400
+    if row.status == BioAccessRequest.STATUS_APPROVED:
+        return render_template_string(_APPROVE_PAGE, ok=True, result='approved',
+                                      name=row.requester_name or 'The requester')
+    if row.status != BioAccessRequest.STATUS_PENDING:
+        return render_template_string(_APPROVE_PAGE, ok=False, result='error', name=''), 409
+    if _rq.method == 'GET':
+        resp = render_template_string(_APPROVE_PAGE, ok=False, result='confirm',
+                                      name=row.requester_name or 'This person')
+        return resp, 200, {'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store'}
     req = svc.approve_request(payload.get('rid'), owner_user_id=payload.get('owner'))
     if not req:
         return render_template_string(_APPROVE_PAGE, ok=False, result='error', name=''), 400

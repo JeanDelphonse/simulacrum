@@ -2,15 +2,21 @@
 (function () {
   var BASE = {{ base_url | tojson }};
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+    });
+  }
+
   function buildCard(el, slug, data) {
     var ctx  = data.context || {};
     var page = data.bio_page || {};
-    var name = ctx.full_name || slug;
-    var title = ctx.professional_title || '';
+    var name = esc(ctx.full_name || slug);
+    var title = esc(ctx.professional_title || '');
     var avatar = ctx.hero_image_url || ctx.avatar_path || '';
-    var avatarSrc = avatar ? (BASE + '/avatars/' + avatar) : '';
-    var initials = name ? name.charAt(0).toUpperCase() : '?';
-    var bioUrl = BASE + '/u/' + slug;
+    var avatarSrc = avatar ? esc(BASE + '/avatars/' + encodeURI(avatar)) : '';
+    var initials = esc((ctx.full_name || slug || '?').charAt(0).toUpperCase());
+    var bioUrl = esc(BASE + '/u/' + encodeURIComponent(slug));
 
     el.style.cssText = 'display:inline-block;font-family:system-ui,-apple-system,sans-serif;';
     el.innerHTML =
