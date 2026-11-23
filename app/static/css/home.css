@@ -398,3 +398,19 @@
 
 /* Claims disclosures (COMPLIANCE_PLAN A5); wording from the legal-text source. */
 .home .disclose{font-size:13px;line-height:1.5;color:var(--mute);margin-top:12px;max-width:52em;}
+
+/* Hero video (60-second overview) and the full-walkthrough dialog */
+.home .hero-top{align-items:center;}
+.home .hero-video{position:relative;margin:0;border-radius:16px;overflow:hidden;background:#0D1B3E;
+  border:3px solid #E7D9B0;box-shadow:0 24px 60px rgba(13,27,62,.18);aspect-ratio:16/9;}
+.home .hero-video video{display:block;width:100%;height:100%;object-fit:cover;}
+.home .hv-sound{position:absolute;right:12px;top:12px;display:inline-flex;align-items:center;gap:6px;
+  padding:7px 12px;border-radius:999px;border:0;background:rgba(13,27,62,.82);color:#fff;font:600 13px/1 var(--sans);cursor:pointer;}
+.home .hv-sound:hover,.home .hv-sound:focus-visible{background:#0D1B3E;outline:2px solid #E3B85A;outline-offset:2px;}
+.home .hv-sound[aria-pressed="false"] .hv-wave{opacity:.35;}
+.home .hv-full{margin:12px 0 0;}
+.hv-modal{padding:0;border:0;border-radius:14px;width:min(1100px,94vw);background:#000;overflow:visible;}
+.hv-modal::backdrop{background:rgba(5,10,25,.78);}
+.hv-modal video{display:block;width:100%;height:auto;border-radius:14px;max-height:86vh;}
+.hv-close{position:absolute;top:-44px;right:0;width:36px;height:36px;border-radius:50%;border:0;background:#fff;
+  color:#0D1B3E;font-size:24px;line-height:1;cursor:pointer;}

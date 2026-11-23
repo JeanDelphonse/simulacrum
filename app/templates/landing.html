@@ -56,7 +56,21 @@
   <div class="wrap hero-top">
     <h1>See the five ways your career becomes wealth&nbsp;— before you live any of them.</h1>
     <div class="side">
-      <p class="lede">SimiSI reads your resume and simulates the next 24 months across five layers of income. Then {{ site_layers.agent_total }} agents build the path you choose and act on it, on the channels you allow, with every action logged.</p>
+      {# 60-second overview: plays muted with burned-in captions; the full
+         walkthrough opens with sound (static/media, docs/marketing/SimiSI
+         Onboarding Video Script.md). #}
+      <figure class="hero-video">
+        <video id="heroVideo" muted loop playsinline preload="metadata"
+               poster="{{ url_for('static', filename='media/simisi_onboarding_60s.jpg') }}"
+               aria-label="A one-minute overview of SimiSI, with captions">
+          <source src="{{ url_for('static', filename='media/simisi_onboarding_60s.mp4') }}" type="video/mp4">
+        </video>
+        <button type="button" class="hv-sound" id="heroSound" aria-pressed="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path class="hv-wave" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+          <span>Sound on</span>
+        </button>
+      </figure>
+      <p class="hv-full"><button type="button" class="demo-link" id="fullVideoBtn">&#9654; Watch the full walkthrough (3&nbsp;min)</button></p>
       <div class="ctas">
         {% if current_user.is_authenticated %}
         <a class="btn primary" href="{{ url_for('pages.dashboard') }}">Go to your dashboard</a>
@@ -64,7 +78,7 @@
         <a class="btn primary" href="{{ register }}">Run your first simulation</a><a class="btn" href="{{ register }}">Get your free bio page</a>
         {% endif %}
       </div>
-      <p class="small">The bio page is free forever. No credit card. Setup takes about three minutes. <button type="button" class="demo-link" data-demo>Watch the demo</button></p>
+      <p class="small">The bio page is free forever. No credit card. Setup takes about three minutes.</p>
     </div>
   </div>
 
@@ -433,6 +447,42 @@
 {% endblock %}
 
 {% block scripts %}
+<dialog class="hv-modal" id="fullVideoModal" aria-label="SimiSI walkthrough">
+  <button type="button" class="hv-close" id="fullVideoClose" aria-label="Close">&times;</button>
+  <video id="fullVideo" controls playsinline preload="none"
+         poster="{{ url_for('static', filename='media/simisi_onboarding_full.jpg') }}">
+    <source src="{{ url_for('static', filename='media/simisi_onboarding_full.mp4') }}" type="video/mp4">
+  </video>
+</dialog>
+<script>
+(function () {
+  var v = document.getElementById('heroVideo'), snd = document.getElementById('heroSound');
+  if (v) {
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still) { v.controls = true; } else { v.play().catch(function () { v.controls = true; }); }
+    snd.addEventListener('click', function () {
+      v.muted = !v.muted;
+      if (!v.muted) { v.currentTime = 0; v.play().catch(function () {}); }
+      snd.setAttribute('aria-pressed', String(!v.muted));
+      snd.querySelector('span').textContent = v.muted ? 'Sound on' : 'Sound off';
+    });
+  }
+  var dlg = document.getElementById('fullVideoModal'), fv = document.getElementById('fullVideo');
+  var btn = document.getElementById('fullVideoBtn');
+  if (dlg && btn && typeof dlg.showModal === 'function') {
+    btn.addEventListener('click', function () {
+      if (v) v.pause();
+      dlg.showModal(); fv.currentTime = 0; fv.play().catch(function () {});
+    });
+    var close = function () { fv.pause(); if (dlg.open) dlg.close(); if (v && !still) v.play().catch(function () {}); };
+    document.getElementById('fullVideoClose').addEventListener('click', close);
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+    dlg.addEventListener('cancel', function () { fv.pause(); });
+  } else if (btn) {
+    btn.addEventListener('click', function () { window.open(fv.querySelector('source').src, '_blank'); });
+  }
+})();
+</script>
 <script>window.HOME_LAYERS = {{ site_layers.layers|map(attribute='name')|list|tojson }};</script>
 <script src="{{ url_for('static', filename='js/home.js') }}" defer></script>
 {% endblock %}
