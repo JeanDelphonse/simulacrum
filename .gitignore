@@ -21,3 +21,7 @@ simulacrum_deploy*.zip
 .vscode/
 # Founder Track uploads and pitch drafts (private; kept outside UPLOAD_FOLDER)
 founder_private/
+
+# Local scratch and private files (never commit)
+.ds_tmp/
+send_checklist.py

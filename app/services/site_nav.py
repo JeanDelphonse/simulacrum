@@ -139,9 +139,9 @@ ACTIONS = [
 # ── Signed-in members ────────────────────────────────────────────────────────
 # Same panel style, compact (one column under its trigger). Role links show only
 # to that role. The account menu is labelled with the member's name.
-# 'target': 'bio_editor' resolves to the member's own editor (or Settings →
-# Profile while they have no username yet). 'action': 'signout' is the sign-out
-# button. Gates: 'blog', 'blog_post', 'guide', 'founder'.
+# Profile and bio page edits live in Settings -> Profile (the account menu's
+# Settings link); there is no separate bio-editor item. 'action': 'signout' is
+# the sign-out button. Gates: 'blog', 'blog_post', 'guide', 'founder'.
 
 MEMBER_GROUPS = [
     {
@@ -151,8 +151,6 @@ MEMBER_GROUPS = [
         'items': [
             {'id': 'm_simulations', 'title': 'Simulations',
              'desc': 'Your runs and what the agents are doing', 'endpoint': 'pages.dashboard'},
-            {'id': 'm_bio_page', 'title': 'My bio page',
-             'desc': 'Edit the page that captures leads for you', 'target': 'bio_editor'},
             {'id': 'm_resumes', 'title': 'Resumes',
              'desc': 'The source data behind your plans', 'endpoint': 'pages.resumes_view'},
             {'id': 'm_contacts', 'title': 'Contacts',
@@ -331,16 +329,6 @@ def _member_gates(user) -> dict:
 
 
 def _member_href(spec: dict, user) -> tuple:
-    from flask import url_for
-    if spec.get('target') == 'bio_editor':
-        try:
-            from app.models.profile import UserProfile
-            profile = UserProfile.query.filter_by(user_id=user.id).first()
-            if profile and profile.username:
-                return url_for('pages.bio_editor', slug=profile.username), False
-        except Exception:
-            pass
-        return url_for('pages.settings_profile'), False
     return _href(spec)
 
 

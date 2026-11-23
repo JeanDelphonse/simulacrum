@@ -177,7 +177,7 @@ def main():
               '<a class="ss-trigger" id="ssTrig-explore" href="/"' in mnav_html)
         check('the account menu is labelled with the name',
               '<span class="ss-acct-name">Nav Tester</span>' in mnav_html and 'id="ssPanel-account"' in mnav_html)
-        for pid, ids in (('my_work', ['m_simulations', 'm_bio_page', 'm_resumes', 'm_contacts']),
+        for pid, ids in (('my_work', ['m_simulations', 'm_resumes', 'm_contacts']),
                          ('community', ['m_feed', 'm_people', 'm_chats', 'm_journal']),
                          ('account', ['m_settings', 'm_integrations', 'm_notifications', 'm_demo', 'm_help', 'm_signout'])):
             panel = mnav_html.split('id="ssPanel-%s"' % pid)[1].split('</ul>')[0]
@@ -185,8 +185,8 @@ def main():
             check('%s panel: %s' % (pid, ', '.join(ids)), got == ids, got)
         check('Sign out is a sign-out button, set apart', 'data-signout data-nav-item="m_signout"' in mnav_html
               and '<li class="ss-sep">' in mnav_html)
-        check('no bio username yet: My bio page goes to Settings -> Profile',
-              re.search(r'href="/settings/profile" data-nav-item="m_bio_page"', mnav_html) is not None)
+        check('there is no My bio page item (profile and bio edits are in Settings -> Profile)',
+              'm_bio_page' not in mnav_html and 'My bio page' not in mnav_html and 'm_bio_page' not in mdrawer)
         check('Dashboard is marked current on the dashboard only', 'aria-current="page"' not in mnav_html)
         check('SME guide, and Write a post while posting is paused, are hidden',
               'm_guide' not in mnav_html and 'm_write' not in mnav_html)
@@ -201,7 +201,7 @@ def main():
               and mdrawer.count('data-signout') == 1 and 'ss-mi-desc' not in mdrawer, dorder)
         check('every member item renders once in the bar and once in the drawer',
               all(mnav_html.count('data-nav-item="%s"' % i) == 1 and mdrawer.count('data-nav-item="%s"' % i) == 1
-                  for i in ('m_simulations', 'm_bio_page', 'm_feed', 'm_chats', 'm_settings', 'm_demo', 'm_signout')))
+                  for i in ('m_simulations', 'm_feed', 'm_chats', 'm_settings', 'm_demo', 'm_signout')))
 
         from app.models.profile import UserProfile
         db.session.add(UserProfile(user_id='NAVUSER01', username='navtester'))
@@ -215,14 +215,14 @@ def main():
         top = re.findall(r'<li(?: class="ss-has-drop")?><a (?![^>]*ss-mi)[^>]*>([^<]+)<', mh)
         check('roles add their links: Partner dashboard, Admin', top == ['Dashboard', 'My work', 'Community',
                                                                       'Explore SimiSI', 'Partner dashboard', 'Admin'], top)
-        check('with a username, My bio page opens the editor', 'href="/u/navtester/edit" data-nav-item="m_bio_page"' in mh)
+        check('with a username, still no bio editor link in the menu', '/u/navtester/edit' not in mh)
         check('Dashboard is marked current on /dashboard', 'class="is-current" aria-current="page">Dashboard<' in mh)
         check('admins can always post, so Write a post shows', 'data-nav-item="m_write"' in mh)
         with app.test_request_context('/'):
             sme = site_nav.resolve_member(u, is_sme=True)
         check('an SME sees the SME Console link', [x['id'] for x in sme['role_links']] == ['m_partner', 'm_sme', 'm_admin'])
         check('member ids are in the event allowlist', {'my_work', 'community', 'account', 'explore'} <= site_nav.PANEL_IDS
-              and {'m_bio_page', 'm_signout', 'm_dashboard'} <= site_nav.ITEM_IDS)
+              and {'m_signout', 'm_dashboard'} <= site_nav.ITEM_IDS and 'm_bio_page' not in site_nav.ITEM_IDS)
         u.is_admin = False
         u.is_partner = False
         db.session.commit()

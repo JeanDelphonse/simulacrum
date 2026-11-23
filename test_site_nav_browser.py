@@ -327,8 +327,8 @@ def main():
             check('no console errors', not pg.errors, pg.errors)
             pg.click('#ssTrig-my_work')
             with pg.expect_navigation():
-                pg.click('#ssPanel-my_work [data-nav-item="m_bio_page"]')
-            check('My bio page opens the member\'s editor', pg.url.endswith('/u/morgan/edit'), pg.url)
+                pg.click('#ssPanel-my_work [data-nav-item="m_resumes"]')
+            check('a My work item navigates (Resumes)', '/resumes' in pg.url, pg.url)
             pg.close()
 
         # Widest bar: every role link. It must fit, without overlap, from the breakpoint up.
