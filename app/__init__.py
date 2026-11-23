@@ -290,12 +290,23 @@ def create_app(config_name=None):
         from urllib.parse import urlsplit as _split
         if _req.method in ('GET', 'HEAD', 'OPTIONS') or _req.path.startswith(_CSRF_EXEMPT):
             return None
-        src = _req.headers.get('Origin') or _req.headers.get('Referer')
-        if not src:
-            return None
-        host = (_req.host or '').lower()
-        if src != 'null' and _split(src).netloc.lower() == host:
-            return None
+        # Sec-Fetch-Site is set by the browser itself and can't be changed by
+        # page script. It says same-origin even where a no-referrer policy
+        # (investor links, reset and approval pages) makes the browser send
+        # Origin: null, so it is checked first; Origin/Referer is the
+        # fallback for browsers that don't send it.
+        fetch_site = (_req.headers.get('Sec-Fetch-Site') or '').lower()
+        if fetch_site:
+            if fetch_site in ('same-origin', 'none'):
+                return None
+            src = '%s (Sec-Fetch-Site %s)' % (_req.headers.get('Origin') or '-', fetch_site)
+        else:
+            src = _req.headers.get('Origin') or _req.headers.get('Referer')
+            if not src:
+                return None
+            host = (_req.host or '').lower()
+            if src != 'null' and _split(src).netloc.lower() == host:
+                return None
         app.logger.warning('cross-site %s %s refused (origin %s)', _req.method, _req.path, src[:120])
         if _req.path.startswith('/api/') or _req.is_json:
             return _jsonify({'error': 'Cross-site request refused.'}), 403

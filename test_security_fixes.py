@@ -236,6 +236,16 @@ def main():
               r.status_code)
         r = client.post('/api/bio-chat/nope/session', json={}, headers={'Origin': 'http://localhost'})
         check('a same-site POST passes the guard', r.status_code != 403, r.status_code)
+        r = client.post('/api/bio-chat/nope/session', json={}, headers={'Origin': 'null',
+                                                                         'Sec-Fetch-Site': 'same-origin'})
+        check('a same-origin form on a no-referrer page (Origin: null) passes', r.status_code != 403, r.status_code)
+        r = client.post('/api/settings/security/delete-account', json={'confirm_email': 'alice@x.com'},
+                        headers={'Origin': 'null'})
+        check('Origin: null without Sec-Fetch-Site is still refused', r.status_code == 403, r.status_code)
+        r = client.post('/api/settings/security/delete-account', json={'confirm_email': 'alice@x.com'},
+                        headers={'Sec-Fetch-Site': 'cross-site', 'Origin': 'https://evil.example'})
+        check('Sec-Fetch-Site: cross-site is refused', r.status_code == 403
+              and db.session.get(User, A_ID).deleted_at is None, r.status_code)
         r = client.post('/api/webhooks/sendgrid', json=[], headers={'Origin': 'https://sendgrid.example'})
         check('webhooks are exempt from the origin check (they authenticate themselves)',
               'Cross-site' not in r.get_data(as_text=True))
