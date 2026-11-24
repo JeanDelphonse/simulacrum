@@ -114,6 +114,22 @@
     .ft-lanes { grid-template-columns: repeat(5, minmax(110px, 1fr)); overflow-x: auto; }
     .ft-metrics { grid-template-columns: 1fr 1fr; }
   }
+  /* hero video */
+  .ft-video { position: relative; margin: 0; border-radius: 16px; overflow: hidden; background: #0D1B3E; aspect-ratio: 16 / 9;
+              border: 3px solid #E7D9B0; box-shadow: 0 24px 60px rgba(13,27,62,.18); }
+  .ft-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .ft-sound { position: absolute; right: 12px; top: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px;
+              border-radius: 999px; border: 0; background: rgba(13,27,62,.82); color: #fff; font: 600 13px/1 inherit; cursor: pointer; }
+  .ft-sound:hover, .ft-sound:focus-visible { background: #0D1B3E; outline: 2px solid #E3B85A; outline-offset: 2px; }
+  .ft-sound[aria-pressed="false"] .ft-wave { opacity: .35; }
+  .ft-vfull { margin: 12px 0 0; }
+  .ft-vlink { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--ink); cursor: pointer;
+              border-bottom: 2px solid var(--gold); }
+  .ft-vmodal { padding: 0; border: 0; border-radius: 14px; width: min(1100px, 94vw); background: #000; overflow: visible; }
+  .ft-vmodal::backdrop { background: rgba(5,10,25,.78); }
+  .ft-vmodal video { display: block; width: 100%; height: auto; border-radius: 14px; max-height: 86vh; }
+  .ft-vclose { position: absolute; top: -44px; right: 0; width: 36px; height: 36px; border-radius: 50%; border: 0; background: #fff;
+               color: #0D1B3E; font-size: 24px; line-height: 1; cursor: pointer; }
 </style>
 {% endblock %}
 {% block content %}
@@ -158,23 +174,22 @@
           <div class="ft-ctas">{{ cta() }}</div>
           <p class="ft-small">The evaluation preview is free. Start with whatever you have: a deck, a plan, or just a spoken pitch.</p>
         </div>
-        <div class="ft-frame" role="img" aria-label="Illustration: the Founder Track workspace showing your next step and your plan across five layers">
-          <div class="ft-bar"><i></i><i></i><i></i><span>Your workspace</span></div>
-          <div class="ft-in">
-            <div class="ft-next">
-              <small>Your next step</small>
-              <b>Collect pain-point evidence</b>
-              <p>Ask five target customers what the problem costs them today, in their own words.</p>
-              <span class="ft-btnmock">Run agent</span><span class="ft-btnmock ghost">Mark done</span>
-            </div>
-            <div class="ft-lanes" aria-hidden="true">
-              <div class="ft-lane" data-l="1"><h4>Validate</h4><div class="ft-step done">Problem statement<em>Done</em></div><div class="ft-step now">Pain evidence<em>Next</em></div><div class="ft-step">Market sizing<em>Ready</em></div></div>
-              <div class="ft-lane" data-l="2"><h4>Build</h4><div class="ft-step">MVP scope<em>Ready</em></div><div class="ft-step lock">Proof plan<em>Locked</em></div></div>
-              <div class="ft-lane" data-l="3"><h4>Sell</h4><div class="ft-step lock">Positioning<em>Locked</em></div></div>
-              <div class="ft-lane" data-l="4"><h4>Operate</h4><div class="ft-step">Runway<em>Ready</em></div></div>
-              <div class="ft-lane" data-l="5"><h4>Capitalize</h4><div class="ft-step lock">Investor readiness<em>Locked</em></div></div>
-            </div>
-          </div>
+        <div>
+          {# 45-second overview: plays muted with burned-in captions; the full
+             walkthrough opens with sound (static/media, docs/marketing/SimiSI
+             Founder Track Walkthrough Video Script.md). #}
+          <figure class="ft-video">
+            <video id="ftVideo" muted loop playsinline preload="metadata"
+                   poster="{{ url_for('static', filename='media/simisi_founder_60s.jpg') }}"
+                   aria-label="A 45-second overview of the Founder Track, with captions">
+              <source src="{{ url_for('static', filename='media/simisi_founder_60s.mp4') }}" type="video/mp4">
+            </video>
+            <button type="button" class="ft-sound" id="ftSound" aria-pressed="false">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path class="ft-wave" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+              <span>Sound on</span>
+            </button>
+          </figure>
+          <p class="ft-vfull"><button type="button" class="ft-vlink" id="ftFullBtn">&#9654; Watch the full walkthrough (6&nbsp;min)</button></p>
         </div>
       </div>
     </div>
@@ -369,5 +384,36 @@
     </div>
   </section>
 </div>
+<dialog class="ft-vmodal" id="ftFullModal" aria-label="Founder Track walkthrough">
+  <button type="button" class="ft-vclose" id="ftFullClose" aria-label="Close">&times;</button>
+  <video id="ftFull" controls playsinline preload="none" poster="{{ url_for('static', filename='media/simisi_founder_full.jpg') }}">
+    <source src="{{ url_for('static', filename='media/simisi_founder_full.mp4') }}" type="video/mp4">
+  </video>
+</dialog>
+<script>
+(function () {
+  var v = document.getElementById('ftVideo'), snd = document.getElementById('ftSound');
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (v) {
+    if (still) { v.controls = true; } else { v.play().catch(function () { v.controls = true; }); }
+    snd.addEventListener('click', function () {
+      v.muted = !v.muted;
+      if (!v.muted) { v.currentTime = 0; v.play().catch(function () {}); }
+      snd.setAttribute('aria-pressed', String(!v.muted));
+      snd.querySelector('span').textContent = v.muted ? 'Sound on' : 'Sound off';
+    });
+  }
+  var dlg = document.getElementById('ftFullModal'), fv = document.getElementById('ftFull'), btn = document.getElementById('ftFullBtn');
+  if (dlg && btn && typeof dlg.showModal === 'function') {
+    btn.addEventListener('click', function () { if (v) v.pause(); dlg.showModal(); fv.currentTime = 0; fv.play().catch(function () {}); });
+    var close = function () { fv.pause(); if (dlg.open) dlg.close(); if (v && !still) v.play().catch(function () {}); };
+    document.getElementById('ftFullClose').addEventListener('click', close);
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+    dlg.addEventListener('cancel', function () { fv.pause(); });
+  } else if (btn) {
+    btn.addEventListener('click', function () { window.open(fv.querySelector('source').src, '_blank'); });
+  }
+})();
+</script>
 {% endblock %}
 {% block footer %}{% include 'partials/_footer_public.html' %}{% endblock %}
