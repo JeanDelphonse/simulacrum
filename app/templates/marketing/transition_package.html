@@ -13,6 +13,27 @@
 <meta name="description" content="Give every departing employee a 24-month plan, a professional bio page, 49 AI agents that act with their approval, and optional human coaching. Digital-first transition support for HR.">
 <link rel="canonical" href="https://simisi.io/transition-package">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/marketing.css') }}">
+<style>
+  .tp .tp-video { position: relative; margin: 0; border-radius: 16px; overflow: hidden; background: #0D1B3E; aspect-ratio: 16 / 9;
+                  border: 3px solid rgba(227,184,90,.55); box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+  .tp .tp-video video { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .tp .tp-sound { position: absolute; right: 12px; top: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px;
+                  border-radius: 999px; border: 0; background: rgba(13,27,62,.82); color: #fff; font: 600 13px/1 inherit; cursor: pointer; }
+  .tp .tp-sound:hover, .tp .tp-sound:focus-visible { background: #0D1B3E; outline: 2px solid #E3B85A; outline-offset: 2px; }
+  .tp .tp-sound[aria-pressed="false"] .tp-wave { opacity: .35; }
+  .tp .tp-vfull { margin: 12px 0 0; }
+  .tp .tp-vnote { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: rgba(255,255,255,.75); max-width: 36em; }
+  .tp .tp-vlink { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: #fff; cursor: pointer;
+                  border-bottom: 2px solid #E3B85A; }
+  .tp-vmodal { position: fixed; inset: 0; margin: auto; height: fit-content; padding: 0; border: 0; border-radius: 14px;
+               width: min(1100px, 94vw); background: #000; overflow: hidden; }
+  .tp-vmodal::backdrop { background: rgba(5,10,25,.78); }
+  .tp-vmodal video { display: block; width: 100%; height: auto; max-height: 86vh; }
+  .tp-vclose { position: absolute; top: 10px; right: 10px; z-index: 2; width: 38px; height: 38px; border-radius: 50%; border: 0;
+               background: rgba(255,255,255,.92); color: #0D1B3E; font-size: 24px; line-height: 1; cursor: pointer;
+               box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .tp-vclose:focus-visible { outline: 3px solid #E3B85A; outline-offset: 2px; }
+</style>
 {% endblock %}
 {% block content %}
 <div class="tp">
@@ -36,14 +57,24 @@
     </div>
     <div class="micro">Digital-first · Priced per seat, well below traditional outplacement · Works for 5 people or 500</div>
   </div>
-  <div class="kit">
-    <h3>Every seat includes</h3>
-    <ul>
-      <li><span class="n">1</span><div>A 24-month simulation<small>Five ways to earn, from a new role to consulting and beyond</small></div></li>
-      <li><span class="n">2</span><div>A bio page, open to work<small>Live in the first week, theirs to keep</small></div></li>
-      <li><span class="n">3</span><div>49 agents that do the work<small>Rate card, outreach drafts, launch kit, sent only on their approval</small></div></li>
-      <li><span class="n">4</span><div>Human coaching (Plus, Executive)<small>Coaches who start from the simulation, not a blank page</small></div></li>
-    </ul>
+  <div>
+    {# 40-second overview for HR: plays muted with burned-in captions; the full
+       employer walkthrough opens with sound (static/media, docs/marketing/SimiSI
+       Transition Package Employer Video Script.md). The seat contents are in
+       #included below. #}
+    <figure class="tp-video">
+      <video id="tpVideo" muted loop playsinline preload="metadata"
+             poster="{{ url_for('static', filename='media/simisi_transition_60s.jpg') }}"
+             aria-label="A 40-second overview of the Transition Package for HR, with captions">
+        <source src="{{ url_for('static', filename='media/simisi_transition_60s.mp4') }}" type="video/mp4">
+      </video>
+      <button type="button" class="tp-sound" id="tpSound" aria-pressed="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path class="tp-wave" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+        <span>Sound on</span>
+      </button>
+    </figure>
+    <p class="tp-vfull"><button type="button" class="tp-vlink" id="tpFullBtn">&#9654; Watch the full walkthrough for HR (4&nbsp;min)</button></p>
+    <p class="tp-vnote">Each seat: a 24-month simulation, a bio page open to work, 49 agents whose outreach is sent only on their approval, and coaching on Plus and Executive.</p>
   </div>
 </div></div></header>
 
@@ -253,6 +284,37 @@
 {% endblock %}
 {% block footer %}{% include 'partials/_footer_public.html' %}{% endblock %}
 {% block scripts %}
+<dialog class="tp-vmodal" id="tpFullModal" aria-label="Transition Package walkthrough for HR">
+  <button type="button" class="tp-vclose" id="tpFullClose" aria-label="Close">&times;</button>
+  <video id="tpFull" controls playsinline preload="none" poster="{{ url_for('static', filename='media/simisi_transition_full.jpg') }}">
+    <source src="{{ url_for('static', filename='media/simisi_transition_full.mp4') }}" type="video/mp4">
+  </video>
+</dialog>
+<script>
+(function () {
+  var v = document.getElementById('tpVideo'), snd = document.getElementById('tpSound');
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (v) {
+    if (still) { v.controls = true; } else { v.play().catch(function () { v.controls = true; }); }
+    snd.addEventListener('click', function () {
+      v.muted = !v.muted;
+      if (!v.muted) { v.currentTime = 0; v.play().catch(function () {}); }
+      snd.setAttribute('aria-pressed', String(!v.muted));
+      snd.querySelector('span').textContent = v.muted ? 'Sound on' : 'Sound off';
+    });
+  }
+  var dlg = document.getElementById('tpFullModal'), fv = document.getElementById('tpFull'), btn = document.getElementById('tpFullBtn');
+  if (dlg && btn && typeof dlg.showModal === 'function') {
+    btn.addEventListener('click', function () { if (v) v.pause(); dlg.showModal(); fv.currentTime = 0; fv.play().catch(function () {}); });
+    var close = function () { fv.pause(); if (dlg.open) dlg.close(); if (v && !still) v.play().catch(function () {}); };
+    document.getElementById('tpFullClose').addEventListener('click', close);
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+    dlg.addEventListener('cancel', function () { fv.pause(); });
+  } else if (btn) {
+    btn.addEventListener('click', function () { window.open(fv.querySelector('source').src, '_blank'); });
+  }
+})();
+</script>
 <script>
 /* Progressive enhancement: post the inquiry without leaving the page. Without
    JavaScript the form posts normally and the page re-renders with the result. */
