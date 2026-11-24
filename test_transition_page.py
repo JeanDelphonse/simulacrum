@@ -34,6 +34,8 @@ def main():
     from app import create_app
     from app.extensions import db
     from utils.id_gen import generate_id
+    import app.services.labor_stats as labor_stats
+    labor_stats.fetch = lambda: None          # BLS figures: covered by test_labor_stats.py
     app = create_app('testing')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     with app.app_context():

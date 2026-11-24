@@ -22,7 +22,15 @@ def _wants_json() -> bool:
 def _page(status=200, **state):
     return render_template('marketing/transition_package.html', mode=eis.page_mode(),
                            csrf_token=eis.csrf_token(session), headcount_bands=eis.HEADCOUNT_BANDS,
-                           timings=eis.TIMINGS, honeypot=eis.HONEYPOT_FIELD, **state), status
+                           timings=eis.TIMINGS, honeypot=eis.HONEYPOT_FIELD, layoffs=_layoffs(), **state), status
+
+
+def _layoffs():
+    from app.services import labor_stats
+    try:
+        return labor_stats.layoffs()
+    except Exception:
+        return None
 
 
 @marketing_bp.route('/transition-package')

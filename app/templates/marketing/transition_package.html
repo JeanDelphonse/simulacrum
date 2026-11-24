@@ -33,6 +33,17 @@
                background: rgba(255,255,255,.92); color: #0D1B3E; font-size: 24px; line-height: 1; cursor: pointer;
                box-shadow: 0 2px 8px rgba(0,0,0,.35); }
   .tp-vclose:focus-visible { outline: 3px solid #E3B85A; outline-offset: 2px; }
+  /* Live BLS figures drawn over the walkthrough's opening (the video has none). */
+  .tp-ls { position: absolute; left: 0; top: 0; pointer-events: none; overflow: hidden; display: none; }
+  .tp-ls-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0;
+                 font-family: Inter, 'Segoe UI', system-ui, sans-serif; text-align: center; }
+  .tp-ls-num { position: absolute; left: 0; right: 0; top: 300px; font-size: 170px; font-weight: 800; color: #fff;
+               letter-spacing: -4px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .tp-ls-lbl { position: absolute; left: 0; right: 0; top: 520px; font-size: 36px; font-weight: 700; color: #E3B85A; }
+  .tp-ls-info { position: absolute; left: 0; right: 0; top: 640px; font-size: 44px; font-weight: 800; color: #5BC0CF;
+                font-variant-numeric: tabular-nums; }
+  .tp-ls-src { position: absolute; left: 0; right: 0; bottom: 150px; font-size: 20px; color: rgba(255,255,255,.6); }
+  .tp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 {% endblock %}
 {% block content %}
@@ -286,9 +297,27 @@
 {% block scripts %}
 <dialog class="tp-vmodal" id="tpFullModal" aria-label="Transition Package walkthrough for HR">
   <button type="button" class="tp-vclose" id="tpFullClose" aria-label="Close">&times;</button>
-  <video id="tpFull" controls playsinline preload="none" poster="{{ url_for('static', filename='media/simisi_transition_full.jpg') }}">
+  {# controlsList="nofullscreen": in native fullscreen the live figures below
+     would not be drawn; the dialog already fills most of the screen. #}
+  <video id="tpFull" controls controlsList="nofullscreen" disablePictureInPicture playsinline preload="none"
+         poster="{{ url_for('static', filename='media/simisi_transition_full.jpg') }}">
     <source src="{{ url_for('static', filename='media/simisi_transition_full.mp4') }}" type="video/mp4">
   </video>
+  {% if layoffs %}
+  {# Year-to-date layoffs from the Labor Department (services/labor_stats.py),
+     timed to the walkthrough's opening narration (.ds_tmp/tvideo tl_full.json:
+     count-up to 9.7s, information at 10.3s, gone by the calendar invite at 17.4s). #}
+  <div class="tp-ls" id="tpLs" aria-hidden="true" data-total="{{ layoffs.total }}" data-info="{{ layoffs.info }}"
+       data-count-end="9.7" data-info-at="10.3" data-out-at="17.4">
+    <div class="tp-ls-stage">
+      <div class="tp-ls-num" id="tpLsNum">0</div>
+      <div class="tp-ls-lbl">workers laid off, {{ layoffs.period }}</div>
+      <div class="tp-ls-info" id="tpLsInfo">Technology &amp; information: <span>0</span></div>
+      <div class="tp-ls-src">Source: {{ layoffs.source }}, layoffs and discharges, not seasonally adjusted{% if layoffs.preliminary %}; latest month preliminary{% endif %}</div>
+    </div>
+  </div>
+  <p class="tp-sr">The walkthrough opens on Labor Department figures: {{ '{:,}'.format(layoffs.total) }} workers laid off in the US, {{ layoffs.period }}, {{ '{:,}'.format(layoffs.info) }} of them in technology and information. Source: {{ layoffs.source }}.</p>
+  {% endif %}
 </dialog>
 <script>
 (function () {
@@ -312,6 +341,44 @@
     dlg.addEventListener('cancel', function () { fv.pause(); });
   } else if (btn) {
     btn.addEventListener('click', function () { window.open(fv.querySelector('source').src, '_blank'); });
+  }
+
+  // Live figures over the opening scene, driven by the video's own clock.
+  var ls = document.getElementById('tpLs');
+  if (ls && fv) {
+    var stage = ls.firstElementChild, num = document.getElementById('tpLsNum'), info = document.getElementById('tpLsInfo');
+    var infoN = info.querySelector('span'), infoLbl = info;
+    var total = +ls.dataset.total, inf = +ls.dataset.info;
+    var cEnd = +ls.dataset.countEnd, iAt = +ls.dataset.infoAt, out = +ls.dataset.outAt;
+    var started = false, raf = 0;
+    var clamp = function (x) { return x < 0 ? 0 : x > 1 ? 1 : x; };
+    var ease = function (x) { return 1 - Math.pow(1 - x, 3); };
+    var prog = function (t, a, b) { return clamp((t - a) / (b - a)); };
+    var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
+    var place = function () {
+      var w = fv.clientWidth, h = fv.clientHeight, s = Math.min(w / 1920, h / 1080);
+      ls.style.left = (fv.offsetLeft + (w - 1920 * s) / 2) + 'px';
+      ls.style.top = (fv.offsetTop + (h - 1080 * s) / 2) + 'px';
+      ls.style.width = (1920 * s) + 'px';
+      ls.style.height = (1080 * s) + 'px';
+      stage.style.transform = 'scale(' + s + ')';
+    };
+    var draw = function () {
+      var t = fv.currentTime, fade = 1 - prog(t, out - 0.6, out);
+      if (!started || fade <= 0) { ls.style.display = 'none'; return; }
+      place();
+      ls.style.display = 'block';
+      ls.style.opacity = fade;
+      num.textContent = fmt(total * ease(prog(t, 0.3, cEnd)));
+      var ik = ease(prog(t, iAt, iAt + 1.4));
+      infoLbl.style.opacity = ik;
+      infoN.textContent = fmt(inf * ik);
+    };
+    var loop = function () { draw(); raf = dlg.open ? requestAnimationFrame(loop) : 0; };
+    fv.addEventListener('playing', function () { started = true; if (!raf) loop(); });
+    fv.addEventListener('seeked', draw);
+    fv.addEventListener('timeupdate', draw);
+    dlg.addEventListener('close', function () { started = false; ls.style.display = 'none'; });
   }
 })();
 </script>
