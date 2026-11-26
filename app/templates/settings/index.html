@@ -387,6 +387,18 @@
         </div>
 
         <div class="settings-row">
+          <label class="settings-label" for="f-pronouns">Pronouns</label>
+          {% set _pr = (profile.pronouns if profile else '') or '' %}
+          <select class="input-text" id="f-pronouns">
+            <option value="" {{ 'selected' if not _pr }}>Not stated</option>
+            <option value="he" {{ 'selected' if _pr == 'he' }}>he/him</option>
+            <option value="she" {{ 'selected' if _pr == 'she' }}>she/her</option>
+            <option value="they" {{ 'selected' if _pr == 'they' }}>they/them</option>
+          </select>
+          <div class="settings-hint">Used whenever SimiSI writes about you: your bio, simulation write-ups, agent drafts and the chat on your bio page. Left unstated, we use your name or they/them and never guess. Changing it also updates text already written about you.</div>
+        </div>
+
+        <div class="settings-row">
           <label class="settings-label">Username</label>
           <input type="text" class="input-text" id="f-username"
                  value="{{ profile.username or '' }}" placeholder="your-username"
@@ -2417,6 +2429,7 @@ async function saveProfile() {
     username:          strVal('f-username'),
     tagline:           strVal('f-tagline'),
     location:          strVal('f-location'),
+    pronouns:          strVal('f-pronouns'),
     linkedin_url:      strVal('f-linkedin_url'),
     website_url:       strVal('f-website_url'),
     twitter_url:       strVal('f-twitter_url'),

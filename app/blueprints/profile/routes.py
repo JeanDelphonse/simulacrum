@@ -115,6 +115,15 @@ def update_profile():
             val = (data[field] or '').strip()[:max_len]
             setattr(profile, field, val or None)
 
+    _pronouns_changed = False
+    if 'pronouns' in data:
+        from app.services import pronouns as _pron
+        code = _pron.normalize(data['pronouns'])
+        if (data['pronouns'] or '') and not code:
+            return jsonify({'error': 'Choose he/him, she/her or they/them'}), 400
+        _pronouns_changed = (profile.pronouns or '') != code
+        profile.pronouns = code or None
+
     bool_fields = ('show_contact_form', 'show_booking_btn', 'noindex')
     for field in bool_fields:
         if field in data:
@@ -150,6 +159,11 @@ def update_profile():
     if _qr_slug_changed is not None:
         from app.services.qr_service import regenerate_for_profile
         regenerate_for_profile(profile, old_slug=_qr_slug_changed)
+
+    # Pronouns changed: fix text already written about the member, in the background
+    if _pronouns_changed and profile.pronouns:
+        from app.services import pronouns as _pron
+        _pron.fix_existing_async(current_app._get_current_object(), profile.user_id, profile.pronouns)
 
     return jsonify(_profile_dict(profile))
 
@@ -896,6 +910,7 @@ def _profile_dict(p):
         'bio_edited': p.bio_edited,
         'avatar_path': p.avatar_path,
         'location': p.location,
+        'pronouns': p.pronouns or '',
         'linkedin_url': p.linkedin_url,
         'website_url': p.website_url,
         'twitter_url': p.twitter_url,

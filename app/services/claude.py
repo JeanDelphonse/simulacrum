@@ -215,6 +215,14 @@ Return ONLY the normalized resume text. No JSON, no markdown headers with #, jus
         return text
 
 
+def _pronoun_rule(user_id) -> str:
+    try:
+        from app.services import pronouns
+        return pronouns.prompt_rule(user_id)
+    except Exception:
+        return ''
+
+
 LAYER_DEFINITIONS = {
     1: ('Active Income — 1:1 Time-for-Money', 'active', 'Consulting, freelance engagements, speaking, fractional CXO roles. Immediately actionable, directly validated by resume Deliverables.'),
     2: ('Leveraged Income — One-to-Many', 'leveraged', 'Same expertise delivered to multiple people simultaneously: group coaching cohorts, workshops, corporate training, bootcamps.'),
@@ -253,6 +261,8 @@ LAYER TYPE: {layer_desc}
 
 PROFESSIONAL BACKGROUND (excerpt):
 {parsed_text[:4000]}
+
+{_pronoun_rule(user_id)}
 
 Return ONLY a JSON object with no markdown fences:
 {{
@@ -1364,7 +1374,7 @@ def _execute_agent_action_body(
         response = _client().messages.create(
             model=model,
             max_tokens=max_tokens,
-            system=_brief.system_prompt(agent_meta),
+            system=_brief.system_prompt(agent_meta) + '\n\n' + _pronoun_rule(user_id),
             messages=[{'role': 'user', 'content': prompt}],
         )
         _span['output'] = 'stop_reason=%s out_tokens=%s' % (
@@ -1924,6 +1934,8 @@ PROFESSIONAL BACKGROUND (excerpt):
 
 EXISTING LAYER (for reference — regenerate with constraint applied):
 {json.dumps(existing_layer, indent=2)[:2000]}
+
+{_pronoun_rule(user_id)}
 
 Return ONLY a JSON object with the same structure as the existing layer but revised to honor the constraint. No markdown fences."""
 

@@ -51,6 +51,16 @@ def _client():
     return anthropic.Anthropic(api_key=current_app.config['CLAUDE_API_KEY'])
 
 
+def _pronoun_rule(profile) -> str:
+    try:
+        from app.services import pronouns
+        name = (getattr(profile, 'display_name', None) or '').split()
+        return pronouns.prompt_rule(getattr(profile, 'user_id', None), name=name[0] if name else None,
+                                    code=getattr(profile, 'pronouns', None) or '')
+    except Exception:
+        return ''
+
+
 def generate_wikipedia_bio(profile, resume_text: str, expertise_zones: list,
                            existing_bio=None) -> str:
     """Write a bio from `resume_text`, which must be real source material.
@@ -76,7 +86,8 @@ def generate_wikipedia_bio(profile, resume_text: str, expertise_zones: list,
             f'draft, not a source: keep a detail from it only if the SOURCE below supports it, '
             f'and drop every detail the SOURCE does not support. Keep the person\'s voice.\n\n'
             f'FULL NAME: {profile.display_name or "Not provided"}\n'
-            f'LOCATION: {profile.location or "Not specified"}\n\n'
+            f'LOCATION: {profile.location or "Not specified"}\n'
+            f'{_pronoun_rule(profile)}\n\n'
             f'EXISTING BIO (draft to refine, NOT evidence):\n{existing_bio}\n\n'
             f'SOURCE — RESUME / LINKEDIN / CAREER HISTORY:\n{resume_text[:8000]}\n\n'
             f'PUBLISHED SIMULATION ZONES:\n{zone_summary}\n\n'
@@ -87,7 +98,8 @@ def generate_wikipedia_bio(profile, resume_text: str, expertise_zones: list,
         user_prompt = (
             f'Write a Wikipedia-style professional biography for the following individual.\n\n'
             f'FULL NAME: {profile.display_name or "Not provided"}\n'
-            f'LOCATION: {profile.location or "Not specified"}\n\n'
+            f'LOCATION: {profile.location or "Not specified"}\n'
+            f'{_pronoun_rule(profile)}\n\n'
             f'SOURCE — RESUME / LINKEDIN / CAREER HISTORY:\n{resume_text[:8000]}\n\n'
             f'EXPERTISE ZONES (skill areas inferred by software — framing only, not facts):\n'
             f'{zone_summary}\n\n'

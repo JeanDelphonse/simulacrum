@@ -273,6 +273,14 @@ def _is_private_gated(bp: BioPage) -> bool:
             return False
 
 
+def _pronoun_rule(user_id, first_name) -> str:
+    try:
+        from app.services import pronouns
+        return pronouns.prompt_rule(user_id, name=first_name)
+    except Exception:
+        return ''
+
+
 def _assemble_teaser_system_prompt(bp: BioPage) -> str:
     """Teaser-only prompt. Deliberately loads NO gated content into context."""
     from app.models.user import User
@@ -291,7 +299,7 @@ def _assemble_teaser_system_prompt(bp: BioPage) -> str:
         user_first_name=first_name,
         expertise_tags=', '.join(tags) if tags else 'general professional expertise',
         visitor_name='{visitor_name}',
-    )
+    ) + '\n' + _pronoun_rule(bp.user_id, first_name)
 
 
 def _get_bio_page(slug: str) -> BioPage | None:
@@ -344,7 +352,7 @@ def _assemble_system_prompt(bp: BioPage) -> str:
     if len(about_text) > 1000:
         about_text = about_text[:1000] + '...'
 
-    return _SYSTEM_PROMPT.format(
+    return _pronoun_rule(bp.user_id, first_name) + '\n\n' + _SYSTEM_PROMPT.format(
         user_first_name=first_name,
         professional_title=ctx.get('professional_title') or 'Professional',
         positioning=ctx.get('positioning') or '',

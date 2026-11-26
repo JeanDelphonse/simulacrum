@@ -46,6 +46,9 @@ class UserProfile(db.Model):
     privacy_mode          = db.Column(db.String(10), nullable=False, default='public')    # public | private
     accepting_requests    = db.Column(db.Boolean, nullable=False, default=True)           # pause switch (grants stay live)
     request_notify        = db.Column(db.String(10), nullable=False, default='realtime')  # realtime | digest
+    # Pronouns for anything the AI writes about the member (services/pronouns.py):
+    # 'he' | 'she' | 'they', or NULL = not stated (never inferred from the name)
+    pronouns              = db.Column(db.String(10), nullable=True)
     created_at            = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at            = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
