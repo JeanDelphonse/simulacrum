@@ -306,9 +306,9 @@
   {% if layoffs %}
   {# Year-to-date layoffs from the Labor Department (services/labor_stats.py),
      timed to the walkthrough's opening narration (.ds_tmp/tvideo tl_full.json:
-     count-up to 9.7s, information at 10.3s, gone by the calendar invite at 17.4s). #}
+     after the 3s music intro card: in at 2.9s, count-up to 11.5s, information at 12.1s, gone by the calendar invite at 19.2s). #}
   <div class="tp-ls" id="tpLs" aria-hidden="true" data-total="{{ layoffs.total }}" data-info="{{ layoffs.info }}"
-       data-count-end="9.7" data-info-at="10.3" data-out-at="17.4">
+       data-in-at="2.9" data-count-end="11.5" data-info-at="12.1" data-out-at="19.2">
     <div class="tp-ls-stage">
       <div class="tp-ls-num" id="tpLsNum">0</div>
       <div class="tp-ls-lbl">workers laid off, {{ layoffs.period }}</div>
@@ -349,7 +349,7 @@
     var stage = ls.firstElementChild, num = document.getElementById('tpLsNum'), info = document.getElementById('tpLsInfo');
     var infoN = info.querySelector('span'), infoLbl = info;
     var total = +ls.dataset.total, inf = +ls.dataset.info;
-    var cEnd = +ls.dataset.countEnd, iAt = +ls.dataset.infoAt, out = +ls.dataset.outAt;
+    var inAt = +ls.dataset.inAt, cEnd = +ls.dataset.countEnd, iAt = +ls.dataset.infoAt, out = +ls.dataset.outAt;
     var started = false, raf = 0;
     var clamp = function (x) { return x < 0 ? 0 : x > 1 ? 1 : x; };
     var ease = function (x) { return 1 - Math.pow(1 - x, 3); };
@@ -364,12 +364,12 @@
       stage.style.transform = 'scale(' + s + ')';
     };
     var draw = function () {
-      var t = fv.currentTime, fade = 1 - prog(t, out - 0.6, out);
+      var t = fv.currentTime, fade = prog(t, inAt, inAt + 0.4) * (1 - prog(t, out - 0.6, out));
       if (!started || fade <= 0) { ls.style.display = 'none'; return; }
       place();
       ls.style.display = 'block';
       ls.style.opacity = fade;
-      num.textContent = fmt(total * ease(prog(t, 0.3, cEnd)));
+      num.textContent = fmt(total * ease(prog(t, inAt + 0.2, cEnd)));
       var ik = ease(prog(t, iAt, iAt + 1.4));
       infoLbl.style.opacity = ik;
       infoN.textContent = fmt(inf * ik);
